@@ -1,14 +1,13 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Award, Trophy, Star, Box, Wrench, Briefcase, Gem, Crown, TrendingUp } from "lucide-react";
+import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp } from "lucide-react";
 
 const levels = [
   { name: "Newbie Flipper", minProfit: 0, icon: Box, color: "text-gray-500" },
   { name: "Garage Hustler", minProfit: 100, icon: Wrench, color: "text-orange-500" },
-  { name: "Side Hustle Pro", minProfit: 500, icon: Briefcase, color: "text-blue-500" },
+  { name: "Side Hustle Pro", minProfit: 500, icon: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/abe917726_boy.png", color: "text-blue-500" },
   { name: "Marketplace Mogul", minProfit: 2500, icon: Gem, color: "text-purple-500" },
   { name: "Reselling Royalty", minProfit: 10000, icon: Crown, color: "text-amber-500" },
 ];
@@ -45,6 +44,14 @@ export default function Gamification({ sales, stats }) {
     return Math.min((profitInRange / range) * 100, 100);
   }, [stats.totalProfit, currentLevel, nextLevel]);
 
+  const renderIcon = (iconOrUrl, className) => {
+    if (typeof iconOrUrl === 'string') {
+      return <img src={iconOrUrl} alt="Level icon" className={`w-8 h-8 object-contain ${className}`} />;
+    }
+    const IconComponent = iconOrUrl;
+    return <IconComponent className={`w-8 h-8 ${className}`} />;
+  };
+
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-gray-900">
       <CardHeader>
@@ -54,7 +61,7 @@ export default function Gamification({ sales, stats }) {
         <div>
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Current Level</p>
           <div className="flex items-center gap-3 mb-3">
-             <currentLevel.icon className={`w-8 h-8 ${currentLevel.color}`} />
+             {renderIcon(currentLevel.icon, currentLevel.color)}
              <div>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800 dark:text-gray-200">
                   <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />

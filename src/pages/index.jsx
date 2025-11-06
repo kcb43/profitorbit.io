@@ -18,6 +18,8 @@ import SoldItemDetail from "./SoldItemDetail";
 
 import ProfitCalendar from "./ProfitCalendar";
 
+import Crosslist from "./Crosslist";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -39,6 +41,8 @@ const PAGES = {
     SoldItemDetail: SoldItemDetail,
     
     ProfitCalendar: ProfitCalendar,
+    
+    Crosslist: Crosslist,
     
 }
 
@@ -84,6 +88,8 @@ function PagesContent() {
                 <Route path="/SoldItemDetail" element={<SoldItemDetail />} />
                 
                 <Route path="/ProfitCalendar" element={<ProfitCalendar />} />
+                
+                <Route path="/Crosslist" element={<Crosslist />} />
                 
             </Routes>
         </Layout>

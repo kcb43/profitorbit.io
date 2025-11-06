@@ -35,6 +35,7 @@ const navigationItems = [
   { title: "Inventory", url: createPageUrl("Inventory"), icon: Package },
   { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
   { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal }, // Changed 'Gallery' to 'Showcase'
+  { title: "Crosslist", url: createPageUrl("Crosslist"), icon: Palette },
   { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
 ];
 

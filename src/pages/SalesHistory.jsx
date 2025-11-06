@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,10 +26,10 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 
 const platformIcons = {
-  ebay: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/0fd7174e9_294688_ebay_icon.png",
+  ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
   facebook_marketplace: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/f0f473258_sdfsdv.jpeg",
-  mercari: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/bd1b6983d_idtCxk9ltW_1760335987655.jpeg",
-  etsy: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/8e08e47d1_Symbol.png",
+  mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
+  etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
   offer_up: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/c0f886f60_Symbol.png"
 };
 
@@ -59,7 +58,7 @@ export default function SalesHistory() {
     startDate: null,
     endDate: null,
   });
-  const [sort, setSort] = useState({ by: "sale_date", order: "desc" }); // Default sort by sale_date desc
+  const [sort, setSort] = useState({ by: "sale_date", order: "desc" });
 
   const [selectedSales, setSelectedSales] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -78,21 +77,20 @@ export default function SalesHistory() {
   const salesWithMetrics = React.useMemo(() => {
     if (!rawSales) return [];
 
-    // First, map and calculate metrics for each sale
     const salesWithCalculatedMetrics = rawSales.map(sale => {
       const purchasePrice = sale.purchase_price || 0;
-      const profit = sale.profit || 0; // Assuming sale.profit is already calculated
+      const profit = sale.profit || 0;
 
       let roi = 0;
       if (purchasePrice > 0) {
         roi = (profit / purchasePrice) * 100;
       } else if (purchasePrice === 0) {
         if (profit > 0) {
-          roi = Infinity; // Infinite ROI for positive profit with 0 purchase price
+          roi = Infinity;
         } else if (profit < 0) {
-          roi = -Infinity; // Negative Infinite ROI for negative profit with 0 purchase price
-        } else { // profit === 0
-          roi = 0; // 0 ROI for 0 profit with 0 purchase price
+          roi = -Infinity;
+        } else {
+          roi = 0;
         }
       }
 
@@ -103,17 +101,16 @@ export default function SalesHistory() {
       return { ...sale, profit, roi, saleSpeed };
     });
 
-    // Then, sort the sales based on current sort state
     return [...salesWithCalculatedMetrics].sort((a, b) => {
       let comparison = 0;
       switch (sort.by) {
         case 'profit':
-          comparison = (b.profit || 0) - (a.profit || 0); // Highest profit first
+          comparison = (b.profit || 0) - (a.profit || 0);
           break;
         case 'roi':
           const aRoi = a.roi === Infinity ? Number.MAX_VALUE : (a.roi === -Infinity ? Number.MIN_SAFE_INTEGER : a.roi);
           const bRoi = b.roi === Infinity ? Number.MAX_VALUE : (b.roi === -Infinity ? Number.MIN_SAFE_INTEGER : b.roi);
-          comparison = (bRoi || 0) - (aRoi || 0); // Highest ROI first
+          comparison = (bRoi || 0) - (aRoi || 0);
           break;
         case 'sale_speed':
           if (a.saleSpeed === null && b.saleSpeed === null) comparison = 0;
@@ -121,24 +118,21 @@ export default function SalesHistory() {
           else if (b.saleSpeed === null) comparison = -1;
           else comparison = a.saleSpeed - b.saleSpeed;
           break;
-        default: // "Most Recent" should sort by creation date
+        default:
           comparison = new Date(b.created_date).getTime() - new Date(a.created_date).getTime();
           break;
       }
       
-      // For "Fastest Sale" (sale_speed), we want ascending order (smaller numbers first)
       if (sort.by === 'sale_speed') {
-          return comparison; // `a.saleSpeed - b.saleSpeed` already gives ascending
+          return comparison;
       }
       
-      // For all other sorts (profit, ROI, created_date), we want descending order
       return comparison;
     });
   }, [rawSales, sort]);
 
   const deleteSaleMutation = useMutation({
     mutationFn: async (sale) => {
-      // If this sale was linked to an inventory item, update the inventory first
       if (sale.inventory_id) {
         try {
           const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
@@ -147,16 +141,13 @@ export default function SalesHistory() {
           
           await base44.entities.InventoryItem.update(sale.inventory_id, {
             quantity_sold: newQuantitySold,
-            // Update status: if we still have sold quantity, keep current status; if all returned, set to available
             status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
           });
         } catch (error) {
           console.error("Failed to update inventory item on sale deletion:", error);
-          // Continue with sale deletion even if inventory update fails
         }
       }
       
-      // Delete the sale
       return base44.entities.Sale.delete(sale.id);
     },
     onSuccess: () => {
@@ -173,7 +164,6 @@ export default function SalesHistory() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (saleIds) => {
-      // First, update inventory items for all sales that have inventory_id
       const salesToDelete = salesWithMetrics.filter(s => saleIds.includes(s.id));
       
       for (const sale of salesToDelete) {
@@ -189,18 +179,16 @@ export default function SalesHistory() {
             });
           } catch (error) {
             console.error("Failed to update inventory item on bulk sale deletion:", error);
-            // Continue with other sales
           }
         }
       }
       
-      // Then delete all sales
       return Promise.all(saleIds.map(id => base44.entities.Sale.delete(id)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      setSelectedSales([]); // Corrected from setSelectedItems to setSelectedSales
+      setSelectedSales([]);
       setBulkDeleteDialogOpen(false);
     },
     onError: (error) => {
@@ -237,7 +225,6 @@ export default function SalesHistory() {
 
     const saleDate = parseISO(sale.sale_date);
     const matchesStartDate = !filters.startDate || saleDate >= filters.startDate;
-    // For endDate, ensure it includes the whole day by comparing against the end of the selected day
     const matchesEndDate = !filters.endDate || saleDate <= endOfDay(filters.endDate);
 
     return matchesSearch && matchesPlatform && matchesMinProfit && matchesMaxProfit && matchesStartDate && matchesEndDate;
@@ -265,37 +252,37 @@ export default function SalesHistory() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Sales History</h1>
-          <p className="text-muted-foreground mt-1">View and manage all your sales</p>
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto min-w-0">
+        <div className="mb-8 min-w-0">
+          <h1 className="text-3xl font-bold text-foreground break-words">Sales History</h1>
+          <p className="text-muted-foreground mt-1 break-words">View and manage all your sales</p>
         </div>
 
         <Card className="border-0 shadow-lg mb-6">
           <CardHeader className="border-b bg-gray-800 dark:bg-gray-800">
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Filter className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-white break-words">
+              <Filter className="w-5 h-5 flex-shrink-0" />
               Filters & Sort
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-              <div className="relative">
-                <Label htmlFor="search">Search</Label>
-                <Search className="absolute left-3 bottom-2.5 w-5 h-5 text-muted-foreground" />
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+              <div className="relative min-w-0">
+                <Label htmlFor="search" className="text-xs sm:text-sm mb-1.5 block break-words">Search</Label>
+                <Search className="absolute left-3 bottom-2.5 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground pointer-events-none z-10" />
                 <Input
                   id="search"
                   placeholder="Item name or category..."
                   value={filters.searchTerm}
                   onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                  className="pl-10"
+                  className="pl-9 sm:pl-10 w-full"
                 />
               </div>
-              <div>
-                <Label htmlFor="platform">Platform</Label>
+              <div className="min-w-0">
+                <Label htmlFor="platform" className="text-xs sm:text-sm mb-1.5 block break-words">Platform</Label>
                 <Select value={filters.platform} onValueChange={(v) => handleFilterChange('platform', v)}>
-                  <SelectTrigger id="platform">
+                  <SelectTrigger id="platform" className="w-full">
                     <SelectValue placeholder="All Platforms" />
                   </SelectTrigger>
                   <SelectContent>
@@ -308,24 +295,24 @@ export default function SalesHistory() {
                   </SelectContent>
                 </Select>
               </div>
-               <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="min-profit">Min Profit</Label>
-                    <Input id="min-profit" type="number" placeholder="$ Min" value={filters.minProfit} onChange={e => handleFilterChange('minProfit', e.target.value)} />
+               <div className="grid grid-cols-2 gap-2 min-w-0">
+                  <div className="min-w-0">
+                    <Label htmlFor="min-profit" className="text-xs sm:text-sm mb-1.5 block break-words">Min Profit</Label>
+                    <Input id="min-profit" type="number" placeholder="$ Min" value={filters.minProfit} onChange={e => handleFilterChange('minProfit', e.target.value)} className="w-full" />
                   </div>
-                  <div>
-                    <Label htmlFor="max-profit">Max Profit</Label>
-                    <Input id="max-profit" type="number" placeholder="$ Max" value={filters.maxProfit} onChange={e => handleFilterChange('maxProfit', e.target.value)} />
+                  <div className="min-w-0">
+                    <Label htmlFor="max-profit" className="text-xs sm:text-sm mb-1.5 block break-words">Max Profit</Label>
+                    <Input id="max-profit" type="number" placeholder="$ Max" value={filters.maxProfit} onChange={e => handleFilterChange('maxProfit', e.target.value)} className="w-full" />
                   </div>
                </div>
-               <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Sale Start Date</Label>
+               <div className="grid grid-cols-2 gap-2 min-w-0">
+                  <div className="min-w-0">
+                    <Label className="text-xs sm:text-sm mb-1.5 block break-words">Sale Start Date</Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {filters.startDate ? format(filters.startDate, "MMM d, yyyy") : "Pick Date"}
+                        <Button variant="outline" className="w-full justify-start text-left font-normal text-xs sm:text-sm">
+                          <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="truncate">{filters.startDate ? format(filters.startDate, "MMM d, yyyy") : "Pick Date"}</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
@@ -333,13 +320,13 @@ export default function SalesHistory() {
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div>
-                    <Label>Sale End Date</Label>
+                  <div className="min-w-0">
+                    <Label className="text-xs sm:text-sm mb-1.5 block break-words">Sale End Date</Label>
                      <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {filters.endDate ? format(filters.endDate, "MMM d, yyyy") : "Pick Date"}
+                        <Button variant="outline" className="w-full justify-start text-left font-normal text-xs sm:text-sm">
+                          <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="truncate">{filters.endDate ? format(filters.endDate, "MMM d, yyyy") : "Pick Date"}</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
@@ -354,22 +341,22 @@ export default function SalesHistory() {
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b bg-gray-800 dark:bg-gray-800">
-            <div className="flex justify-between items-center flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 min-w-0">
               {selectedSales.length > 0 ? (
                 <>
-                  <CardTitle className="text-white">{selectedSales.length} sale(s) selected</CardTitle>
-                  <Button variant="destructive" onClick={() => setBulkDeleteDialogOpen(true)}>
+                  <CardTitle className="text-white break-words">{selectedSales.length} sale(s) selected</CardTitle>
+                  <Button variant="destructive" onClick={() => setBulkDeleteDialogOpen(true)} className="w-full sm:w-auto">
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Selected
                   </Button>
                 </>
               ) : (
                 <>
-                  <CardTitle className="text-white">All Sales ({filteredSales.length})</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="sort-by" className="text-sm font-medium text-white">Sort by:</Label>
+                  <CardTitle className="text-white break-words">All Sales ({filteredSales.length})</CardTitle>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full sm:w-auto">
+                    <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">Sort by:</Label>
                      <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
-                        <SelectTrigger id="sort-by" className="w-[180px]">
+                        <SelectTrigger id="sort-by" className="w-full sm:w-[180px]">
                            <SelectValue placeholder="Sort by"/>
                         </SelectTrigger>
                         <SelectContent>
@@ -390,91 +377,102 @@ export default function SalesHistory() {
             ) : (
               <div className="divide-y">
                 {filteredSales.length > 0 && (
-                  <div className="p-6 flex items-center gap-4 bg-gray-50/50 dark:bg-gray-800/30">
+                  <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 bg-gray-50/50 dark:bg-gray-800/30 min-w-0">
                     <Checkbox
                       checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
                       onCheckedChange={handleSelectAll}
                       id="select-all"
-                      className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600"
+                      className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0"
                     />
-                    <label htmlFor="select-all" className="font-medium text-sm text-foreground">Select All</label>
+                    <label htmlFor="select-all" className="font-medium text-xs sm:text-sm text-foreground cursor-pointer break-words">Select All</label>
+                  </div>
+                )}
+                {filteredSales.length === 0 && (
+                  <div className="p-12 text-center">
+                    <Package className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground text-base sm:text-lg break-words">No sales found</p>
+                    <p className="text-muted-foreground text-xs sm:text-sm mt-1 break-words">
+                      {(filters.searchTerm || filters.platform !== "all" || filters.minProfit || filters.maxProfit || filters.startDate || filters.endDate)
+                        ? "Try adjusting your filters"
+                        : "Start adding sales to see them here"}
+                    </p>
                   </div>
                 )}
                 {filteredSales.map((sale) => (
-                  <div key={sale.id} className="flex items-start gap-4 p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                  <div key={sale.id} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 min-w-0">
                     <Checkbox
                       checked={selectedSales.includes(sale.id)}
                       onCheckedChange={() => handleSelect(sale.id)}
                       id={`select-${sale.id}`}
-                      className="mt-1 !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600"
+                      className="mt-1 !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0"
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0 w-full">
+                      <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
                         <div className="flex-1 min-w-0 w-full">
-                          <div className="flex items-start gap-3 mb-2">
+                          <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-3 mb-2 min-w-0">
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}`)} className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-foreground text-lg break-words hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer">{sale.item_name}</h3>
+                              <h3 className="font-semibold text-foreground text-base sm:text-lg break-words hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer">{sale.item_name}</h3>
                             </Link>
-                            <Badge className={`${platformColors[sale.platform]} border flex-shrink-0`}>
-                              {platformIcons[sale.platform] && <img src={platformIcons[sale.platform]} alt={platformNames[sale.platform]} className="w-4 h-4 mr-1.5 rounded-sm object-contain" />}
+                            <Badge className={`${platformColors[sale.platform]} border flex-shrink-0 text-xs sm:text-sm whitespace-nowrap`}>
+                              {platformIcons[sale.platform] && <img src={platformIcons[sale.platform]} alt={platformNames[sale.platform]} className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 rounded-sm object-contain flex-shrink-0" />}
                               {platformNames[sale.platform]}
                             </Badge>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-3">
-                            <div>
-                              <p className="text-muted-foreground">Sale Date</p>
-                              <p className="font-medium text-foreground">
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm mb-3 min-w-0">
+                            <div className="min-w-0">
+                              <p className="text-muted-foreground break-words">Sale Date</p>
+                              <p className="font-medium text-foreground break-words">
                                 {format(parseISO(sale.sale_date), 'MMM dd, yyyy')}
                               </p>
                             </div>
-                            <div>
-                              <p className="text-muted-foreground">Selling Price</p>
-                              <p className="font-medium text-foreground">${sale.selling_price?.toFixed(2)}</p>
+                            <div className="min-w-0">
+                              <p className="text-muted-foreground break-words">Selling Price</p>
+                              <p className="font-medium text-foreground break-words">${sale.selling_price?.toFixed(2)}</p>
                             </div>
-                            <div>
-                              <p className="text-muted-foreground">Total Costs</p>
-                              <p className="font-medium text-foreground">
+                            <div className="min-w-0">
+                              <p className="text-muted-foreground break-words">Total Costs</p>
+                              <p className="font-medium text-foreground break-words">
                                 ${((sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0)).toFixed(2)}
                               </p>
                             </div>
-                            <div>
-                              <p className="text-muted-foreground">Profit</p>
-                              <p className={`font-bold text-lg ${sale.profit >= 0 ? 'text-green-400 dark:text-green-400' : 'text-red-600'} ${sale.profit >= 0 ? 'dark:[text-shadow:0_0_6px_rgba(34,197,94,0.5)]' : ''}`}>
+                            <div className="min-w-0">
+                              <p className="text-muted-foreground break-words">Profit</p>
+                              <p className={`font-bold text-base sm:text-lg break-words ${sale.profit >= 0 ? 'text-green-400 dark:text-green-400' : 'text-red-600'} ${sale.profit >= 0 ? 'dark:[text-shadow:0_0_6px_rgba(34,197,94,0.5)]' : ''}`}>
                                 ${sale.profit?.toFixed(2) || '0.00'}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm border-t border-gray-200 dark:border-gray-700 pt-3">
-                             <div className="flex items-center text-foreground" title="Return on Investment">
-                                <TrendingUp className="w-4 h-4 mr-1.5 text-blue-500"/>
-                                <span className="font-medium">ROI:</span>
-                                <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400">
+                          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm border-t border-gray-200 dark:border-gray-700 pt-3 min-w-0">
+                             <div className="flex items-center text-foreground min-w-0" title="Return on Investment">
+                                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 text-blue-500 flex-shrink-0"/>
+                                <span className="font-medium whitespace-nowrap">ROI:</span>
+                                <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400 break-words">
                                   {isFinite(sale.roi) ? `${sale.roi.toFixed(1)}%` : (sale.roi > 0 ? '∞%' : '-∞%')}
                                 </span>
                              </div>
-                             <div className="flex items-center text-foreground" title="Sale Speed">
-                                <Zap className="w-4 h-4 mr-1.5 text-orange-500"/>
-                                <span className="font-medium">Sold in:</span>
-                                <span className="ml-1 font-semibold text-orange-600 dark:text-orange-400">
+                             <div className="flex items-center text-foreground min-w-0" title="Sale Speed">
+                                <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 text-orange-500 flex-shrink-0"/>
+                                <span className="font-medium whitespace-nowrap">Sold in:</span>
+                                <span className="ml-1 font-semibold text-orange-600 dark:text-orange-400 break-words">
                                   {sale.saleSpeed !== null ? `${sale.saleSpeed} day(s)` : 'N/A'}
                                 </span>
                              </div>
                           </div>
                           
                           {(sale.category || sale.notes || sale.image_url) && (
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-foreground mt-3">
+                            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2 text-xs sm:text-sm text-foreground mt-3 min-w-0">
                               {sale.image_url && (
-                                <img src={sale.image_url} alt={sale.item_name} className="w-10 h-10 object-cover rounded-md border" />
+                                <img src={sale.image_url} alt={sale.item_name} className="w-8 h-8 sm:w-10 sm:h-10 object-cover rounded-md border flex-shrink-0" />
                               )}
                               {sale.category && (
-                                <p>
+                                <p className="break-words min-w-0">
                                   <span className="font-medium">Category:</span> {sale.category}
                                 </p>
                               )}
                               {sale.notes && (
-                                <p className="italic">
+                                <p className="italic break-words min-w-0">
                                   <span className="font-medium not-italic">Notes:</span> "{sale.notes}"
                                 </p>
                               )}
@@ -482,49 +480,38 @@ export default function SalesHistory() {
                           )}
                         </div>
 
-                        <div className="flex items-center self-end md:self-start flex-shrink-0">
-                          <Link to={createPageUrl(`AddSale?id=${sale.id}`)}>
-                            <Button variant="ghost" size="icon" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                              <Pencil className="w-5 h-5" />
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 min-w-0 w-full">
+                          <Link to={createPageUrl(`AddSale?id=${sale.id}`)} className="flex-shrink-0">
+                            <Button variant="ghost" size="icon" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-8 w-8 sm:h-10 sm:w-10">
+                              <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
                             </Button>
                           </Link>
-                          <Link to={createPageUrl(`AddSale?copyId=${sale.id}`)}>
-                            <Button variant="ghost" size="icon" className="text-foreground hover:text-foreground/80 hover:bg-muted/50">
-                              <Copy className="w-5 h-5" />
+                          <Link to={createPageUrl(`AddSale?copyId=${sale.id}`)} className="flex-shrink-0">
+                            <Button variant="ghost" size="icon" className="text-foreground hover:text-foreground/80 hover:bg-muted/50 h-8 w-8 sm:h-10 sm:w-10">
+                              <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
                             </Button>
                           </Link>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleAddToInventory(sale)}
-                            className="text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+                            className="text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
                           >
-                            <ArchiveRestore className="w-5 h-5" />
+                            <ArchiveRestore className="w-4 h-4 sm:w-5 sm:h-5" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteClick(sale)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                           </Button>
                         </div>
                       </div>
                     </div>
                   </div>
                 ))}
-                {filteredSales.length === 0 && (
-                  <div className="p-12 text-center">
-                    <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground text-lg">No sales found</p>
-                    <p className="text-muted-foreground text-sm mt-1">
-                      {(filters.searchTerm || filters.platform !== "all" || filters.minProfit || filters.maxProfit || filters.startDate || filters.endDate)
-                        ? "Try adjusting your filters"
-                        : "Start adding sales to see them here"}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
@@ -535,7 +522,7 @@ export default function SalesHistory() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Sale?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="break-words">
               Are you sure you want to delete "{saleToDelete?.item_name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -555,7 +542,7 @@ export default function SalesHistory() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Multiple Sales?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="break-words">
               Are you sure you want to delete the {selectedSales.length} selected sales? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

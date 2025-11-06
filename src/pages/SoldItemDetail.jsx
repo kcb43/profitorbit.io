@@ -80,11 +80,11 @@ function ImageUploader({ saleId, saleItemName }) {
   };
 
   return (
-    <div className="mt-6">
-      <Label htmlFor="image-upload" className="font-semibold text-gray-700 dark:text-gray-300">Update Image</Label>
-      <div className="flex items-center gap-2 mt-2">
-        <Input id="image-upload" type="file" onChange={handleFileChange} className="flex-1 dark:bg-gray-800 dark:text-white dark:border-gray-700" disabled={isUploading} />
-        <Button onClick={() => document.getElementById('image-upload').click()} disabled={isUploading} className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+    <div className="mt-4 sm:mt-6 min-w-0">
+      <Label htmlFor="image-upload" className="font-semibold text-sm sm:text-base text-gray-700 dark:text-gray-300 break-words">Update Image</Label>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-2">
+        <Input id="image-upload" type="file" onChange={handleFileChange} className="flex-1 dark:bg-gray-800 dark:text-white dark:border-gray-700 w-full min-w-0" disabled={isUploading} accept="image/*" />
+        <Button onClick={() => document.getElementById('image-upload').click()} disabled={isUploading} className="dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 whitespace-nowrap w-full sm:w-auto">
           <Upload className="w-4 h-4 mr-2" />
           {isUploading ? "Uploading..." : "Upload"}
         </Button>
@@ -174,7 +174,7 @@ export default function SoldItemDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-5xl mx-auto dark:bg-gray-900">
+      <div className="p-4 sm:p-8 max-w-5xl mx-auto dark:bg-gray-900">
         <Skeleton className="h-8 w-48 mb-8 bg-gray-200 dark:bg-gray-700" />
         <div className="grid md:grid-cols-2 gap-8">
           <Skeleton className="w-full h-96 bg-gray-200 dark:bg-gray-700" />
@@ -189,105 +189,111 @@ export default function SoldItemDetail() {
   }
   
   if (isError || !sale) {
-    return <div className="p-8 text-center text-red-500 dark:text-red-400 dark:bg-gray-900">Error: Could not load sale details.</div>
+    return <div className="p-4 sm:p-8 text-center text-red-500 dark:text-red-400 dark:bg-gray-900">Error: Could not load sale details.</div>
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+      <div className="max-w-5xl mx-auto min-w-0">
+        <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8 min-w-0">
           <Button
             variant="outline"
             size="icon"
-            onClick={() => navigate(-1)}
-            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(createPageUrl("Dashboard"));
+              }
+            }}
+            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-white dark:text-white">{sale?.item_name}</h1>
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">Sale Details</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white dark:text-white break-words">{sale?.item_name}</h1>
+            <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 break-words">Sale Details</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 min-w-0">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
             <Card className="border-0 shadow-lg overflow-hidden dark:bg-gray-800">
               <div className="aspect-video bg-gray-100 dark:bg-gray-800 flex items-center justify-center p-4">
                 <img 
                   src={sale?.image_url || DEFAULT_IMAGE_URL} 
                   alt={sale?.item_name} 
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain max-w-full"
                 />
               </div>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
                 <ImageUploader saleId={sale.id} saleItemName={sale.item_name} />
               </CardContent>
             </Card>
 
             {sale?.notes && (
               <Card className="border-0 shadow-sm dark:bg-gray-800">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
-                    <FileText className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                    Notes
+                <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2 dark:text-white">
+                    <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <span className="break-words">Notes</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 dark:text-gray-300 italic">"{sale.notes}"</p>
+                <CardContent className="px-4 sm:px-6">
+                  <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 italic break-words">"{sale.notes}"</p>
                 </CardContent>
               </Card>
             )}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6 min-w-0">
             <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 dark:border-green-800">
-              <CardHeader className="border-b border-green-100 dark:border-green-800">
-                <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-400">
-                  <DollarSign className="w-6 h-6" />
-                  Net Profit
+              <CardHeader className="border-b border-green-100 dark:border-green-800 px-4 sm:px-6 py-3 sm:py-4">
+                <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-400 text-base sm:text-lg break-words">
+                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                  <span>Net Profit</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6">
-                <p className="text-4xl md:text-5xl font-bold text-green-600 dark:text-green-400">
+              <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+                <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-green-600 dark:text-green-400 break-words">
                   ${profit?.toFixed(2)}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-sm dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white">Sale Information</CardTitle>
+              <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+                <CardTitle className="text-base sm:text-lg dark:text-white break-words">Sale Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Selling Price</span>
-                  <span className="font-semibold text-white dark:text-white">${sellingPrice?.toFixed(2)}</span>
+              <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 min-w-0">
+                <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Selling Price</span>
+                  <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${sellingPrice?.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Platform</span>
-                  <Badge className={`${platformColors[sale?.platform] || platformColors.default}`}>
+                <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Platform</span>
+                  <Badge className={`${platformColors[sale?.platform] || platformColors.default} text-xs sm:text-sm whitespace-nowrap flex-shrink-0`}>
                     {platformNames[sale?.platform] || "N/A"}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Sale Date</span>
-                  <span className="font-semibold text-white dark:text-white">
+                <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Sale Date</span>
+                  <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">
                     {sale && format(parseISO(sale.sale_date), 'MMM dd, yyyy')}
                   </span>
                 </div>
                 {sale?.category && (
-                  <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Category</span>
-                    <Badge variant="secondary" className="dark:bg-gray-700 dark:text-gray-200">{sale.category}</Badge>
+                  <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Category</span>
+                    <Badge variant="secondary" className="dark:bg-gray-700 dark:text-gray-200 text-xs sm:text-sm break-words max-w-[60%] text-right">{sale.category}</Badge>
                   </div>
                 )}
                 {sale?.source && (
-                  <div className="flex justify-between items-center py-2 dark:border-gray-700">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Source</span>
-                    <span className="font-semibold text-white dark:text-white">
+                  <div className="flex justify-between items-center py-2 dark:border-gray-700 gap-2 min-w-0">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Source</span>
+                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words text-right max-w-[60%]">
                       {sourceIcons[sale.source] ? (
-                        <img src={sourceIcons[sale.source]} alt={sale.source} className="w-auto h-4 object-contain inline-block mr-1 align-text-bottom" />
+                        <img src={sourceIcons[sale.source]} alt={sale.source} className="w-auto h-3 sm:h-4 object-contain inline-block mr-1 align-text-bottom" />
                       ) : sale.source}
                     </span>
                   </div>
@@ -296,69 +302,69 @@ export default function SoldItemDetail() {
             </Card>
 
             <Card className="border-0 shadow-sm dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white">Cost Breakdown</CardTitle>
+              <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+                <CardTitle className="text-base sm:text-lg dark:text-white break-words">Cost Breakdown</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Purchase Price</span>
-                  <span className="font-semibold text-white dark:text-white">${purchasePrice?.toFixed(2)}</span>
+              <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6 min-w-0">
+                <div className="flex justify-between items-center gap-2 min-w-0">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Purchase Price</span>
+                  <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${purchasePrice?.toFixed(2)}</span>
                 </div>
                 {shippingCost > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Shipping</span>
-                    <span className="font-semibold text-white dark:text-white">${shippingCost?.toFixed(2)}</span>
+                  <div className="flex justify-between items-center gap-2 min-w-0">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Shipping</span>
+                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${shippingCost?.toFixed(2)}</span>
                   </div>
                 )}
                 {platformFees > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Platform Fees</span>
-                    <span className="font-semibold text-white dark:text-white">${platformFees?.toFixed(2)}</span>
+                  <div className="flex justify-between items-center gap-2 min-w-0">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Platform Fees</span>
+                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${platformFees?.toFixed(2)}</span>
                   </div>
                 )}
                 {otherCosts > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Other Costs</span>
-                    <span className="font-semibold text-white dark:text-white">${otherCosts?.toFixed(2)}</span>
+                  <div className="flex justify-between items-center gap-2 min-w-0">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Other Costs</span>
+                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${otherCosts?.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700 font-semibold">
-                  <span className="text-white dark:text-white">Total Costs</span>
-                  <span className="text-white dark:text-white">${totalCosts.toFixed(2)}</span>
+                <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700 font-semibold gap-2 min-w-0">
+                  <span className="text-sm sm:text-base text-white dark:text-white break-words">Total Costs</span>
+                  <span className="text-sm sm:text-base text-white dark:text-white break-words">${totalCosts.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-sm dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="text-lg dark:text-white">Performance Metrics</CardTitle>
+              <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+                <CardTitle className="text-base sm:text-lg dark:text-white break-words">Performance Metrics</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ROI</span>
+              <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 min-w-0">
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 break-words">ROI</span>
                   </div>
-                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                  <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 break-words whitespace-nowrap">
                     {isFinite(roi) ? `${roi.toFixed(1)}%` : '∞%'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Percent className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Profit Margin</span>
+                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 break-words">Profit Margin</span>
                   </div>
-                  <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                  <span className="text-base sm:text-lg font-bold text-purple-600 dark:text-purple-400 break-words whitespace-nowrap">
                     {isFinite(profitMargin) ? `${profitMargin.toFixed(1)}%` : '∞%'}
                   </span>
                 </div>
                 {saleSpeed !== null && (
-                  <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sale Speed</span>
+                  <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 break-words">Sale Speed</span>
                   </div>
-                    <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                    <span className="text-base sm:text-lg font-bold text-orange-600 dark:text-orange-400 break-words whitespace-nowrap">
                       {saleSpeed} days
                     </span>
                   </div>
@@ -366,15 +372,15 @@ export default function SoldItemDetail() {
               </CardContent>
             </Card>
 
-            <div className="flex gap-3">
-              <Link to={createPageUrl("AddSale", { searchItemName: sale?.item_name })} className="flex-1">
-                <Button variant="outline" className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 min-w-0">
+              <Link to={createPageUrl("AddSale", { searchItemName: sale?.item_name })} className="flex-1 min-w-0">
+                <Button variant="outline" className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white text-sm sm:text-base h-9 sm:h-10">
                   <BarChart className="w-4 h-4 mr-2" />
                   Search
                 </Button>
               </Link>
-              <Link to={createPageUrl(`AddSale?id=${sale?.id}`)} className="flex-1">
-                <Button variant="outline" className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white">
+              <Link to={createPageUrl(`AddSale?id=${sale?.id}`)} className="flex-1 min-w-0">
+                <Button variant="outline" className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white text-sm sm:text-base h-9 sm:h-10">
                   <Pencil className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
@@ -382,7 +388,7 @@ export default function SoldItemDetail() {
               <Button
                 variant="destructive"
                 onClick={() => setDeleteDialogOpen(true)}
-                className="flex-1 dark:bg-red-700 dark:hover:bg-red-600 dark:text-white"
+                className="flex-1 dark:bg-red-700 dark:hover:bg-red-600 dark:text-white text-sm sm:text-base h-9 sm:h-10"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete
@@ -393,18 +399,18 @@ export default function SoldItemDetail() {
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700 dark:text-white max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">Delete Sale?</AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-300">
+            <AlertDialogTitle className="dark:text-white break-words">Delete Sale?</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-300 break-words">
               Are you sure you want to delete this sale? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white w-full sm:w-auto">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 dark:text-white"
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 dark:text-white w-full sm:w-auto"
             >
               {deleteMutation.isLoading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
