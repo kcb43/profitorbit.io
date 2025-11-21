@@ -62,20 +62,6 @@ export default async function handler(req, res) {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    // Validate that we have at least one required search parameter
-    const hasRequiredParam = !!(
-      req.query.q || 
-      req.query.category_ids || 
-      req.query.gtin || 
-      req.query.charity_ids
-    );
-    
-    if (!hasRequiredParam) {
-      return res.status(400).json({ 
-        error: 'Missing required parameter. Must provide q, category_ids, gtin, or charity_ids' 
-      });
-    }
-
     // Build search query from request parameters
     const searchParams = new URLSearchParams();
     
@@ -98,10 +84,11 @@ export default async function handler(req, res) {
     if (req.query.aspect_filter) searchParams.append('aspect_filter', req.query.aspect_filter);
     if (req.query.compatibility_filter) searchParams.append('compatibility_filter', req.query.compatibility_filter);
     
-    // Double-check that we still have a required parameter after processing
+    // Validate that we have at least one required search parameter after processing
     if (!searchParams.has('q') && !searchParams.has('category_ids') && !searchParams.has('gtin') && !searchParams.has('charity_ids')) {
       return res.status(400).json({ 
-        error: 'Invalid parameters. Must provide a valid q, category_ids, gtin, or charity_ids' 
+        error: 'Missing required parameter. Must provide q, category_ids, gtin, or charity_ids',
+        receivedQuery: req.query 
       });
     }
 
