@@ -1,82 +1,24 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO, subDays, eachDayOfInterval, isSameDay } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { sortSalesByRecency } from "@/utils/sales";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
-import { ArchiveRestore, TrendingUp } from "lucide-react";
+import { ArchiveRestore, Gift, BellRing } from "lucide-react";
+import { stripCustomFeeNotes } from "@/utils/customFees";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  facebook_marketplace: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/f0f473258_sdfsdv.jpeg",
+  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
   mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
   etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
-  offer_up: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/c0f886f60_Symbol.png"
-};
-
-const platformColors = {
-  ebay: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
-  facebook_marketplace: "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100",
-  etsy: "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100",
-  mercari: "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-100",
-  offer_up: "bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100"
-};
-
-const platformNames = {
-  ebay: "eBay",
-  facebook_marketplace: "Facebook",
-  etsy: "Etsy",
-  mercari: "Mercari",
-  offer_up: "OfferUp"
-};
-
-const WeeklyProfitMiniChart = ({ sales }) => {
-  const chartData = React.useMemo(() => {
-    const endDate = new Date();
-    const startDate = subDays(endDate, 6);
-    const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-
-    const dailyProfits = dateRange.map(date => {
-      const dailySales = sales.filter(sale => isSameDay(parseISO(sale.sale_date), date));
-      const profit = dailySales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
-      return {
-        date: format(date, 'MMM d'),
-        profit: profit,
-      };
-    });
-    return dailyProfits;
-  }, [sales]);
-
-  return (
-    <div className="mt-6">
-       <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2 flex items-center gap-2">
-         <TrendingUp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-         Last 7 Days Profit
-       </h3>
-      <ResponsiveContainer width="100%" height={80}>
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id="miniProfitGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <Tooltip
-            contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.5rem' }}
-            formatter={(value) => [`$${value.toFixed(2)}`, 'Profit']}
-          />
-          <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} fill="url(#miniProfitGradient)" />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
 };
 
 export default function RecentSales({ sales }) {
-  const recentSales = sales.slice(0, 10);
+  const recentSales = sortSalesByRecency(sales ?? []).slice(0, 10);
   const navigate = useNavigate();
 
   const handleAddToInventory = (e, sale) => {
@@ -89,7 +31,7 @@ export default function RecentSales({ sales }) {
     if (sale.source) params.set('source', sale.source);
     if (sale.category) params.set('category', sale.category);
     if (sale.image_url) params.set('imageUrl', sale.image_url);
-    if (sale.notes) params.set('notes', sale.notes);
+    if (sale.notes) params.set('notes', stripCustomFeeNotes(sale.notes));
 
     navigate(createPageUrl(`AddInventoryItem?${params.toString()}`));
   };
@@ -146,9 +88,19 @@ export default function RecentSales({ sales }) {
                             )}
                             
                             <div className="absolute top-2 right-2 z-10">
-                              <Badge className="bg-green-600/90 text-white border-green-500 shadow-lg dark:[text-shadow:0_0_6px_rgba(34,197,94,0.5)]">
-                                ${sale.profit?.toFixed(2) || '0.00'}
-                              </Badge>
+                              {(() => {
+                                const profitValue = sale.profit ?? 0;
+                                const profitPositive = profitValue >= 0;
+                                const profitClass = profitPositive
+                                  ? "bg-green-600/90 text-white border-green-500 shadow-lg dark:[text-shadow:0_0_6px_rgba(34,197,94,0.5)]"
+                                  : "bg-red-600 text-white border-red-500 shadow-lg";
+                                const formattedProfit = `${profitPositive ? "" : "-"}$${Math.abs(profitValue).toFixed(2)}`;
+                                return (
+                                  <Badge className={profitClass}>
+                                    {formattedProfit}
+                                  </Badge>
+                                );
+                              })()}
                             </div>
                             
                             <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
@@ -177,7 +129,36 @@ export default function RecentSales({ sales }) {
               <p className="text-sm mt-1">Add your first sale to get started</p>
             </div>
           )}
-          {sales.length > 0 && <WeeklyProfitMiniChart sales={sales} />}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="flex items-start gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-900/20 p-4 shadow-sm">
+              <div className="p-2 rounded-lg bg-white/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-200">
+                <Gift className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">Quarterly Giveaway Drops</h3>
+                  <Badge className="bg-emerald-600 text-white border-transparent text-[10px]">Coming Soon</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Join surprise raffles for sourcing credits, gear, and coaching. Stay tuned for our first drop!
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50 dark:bg-indigo-900/20 p-4 shadow-sm">
+              <div className="p-2 rounded-lg bg-white/70 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-200">
+                <BellRing className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">Deal Radar Alerts</h3>
+                  <Badge className="bg-indigo-600 text-white border-transparent text-[10px]">VIP Upgrade</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Premium members will get real-time flips curated by our sourcing team. Launching later this year.
+                </p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </Carousel>

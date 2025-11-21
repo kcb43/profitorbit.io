@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -33,16 +33,25 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import SoldLookupDialog from "../components/SoldLookupDialog";
+import { useInventoryTags } from "@/hooks/useInventoryTags";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
 };
 
 const statusColors = {
-  available: "bg-blue-100 text-blue-800",
-  listed: "bg-yellow-100 text-yellow-800",
-  sold: "bg-gray-100 text-gray-800",
+  available: "bg-blue-100 text-blue-800 border border-blue-200",
+  listed: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+  sold: "bg-gray-100 text-gray-800 border border-gray-200",
 };
+
+const statusLabels = {
+  available: "In Stock",
+  listed: "Listed",
+  sold: "Sold",
+};
+
+const QUICK_TAGS = ["Return Soon", "Restock", "Consignment", "Gift", "High Priority"];
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
@@ -57,11 +66,57 @@ export default function InventoryPage() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [itemToSell, setItemToSell] = useState(null);
   const [quantityToSell, setQuantityToSell] = useState(1);
   const [soldDialogOpen, setSoldDialogOpen] = useState(false);
   const [soldDialogName, setSoldDialogName] = useState("");
+  const [titlePreview, setTitlePreview] = useState(null);
+  const [bulkUpdateForm, setBulkUpdateForm] = useState({
+    status: "",
+    category: "",
+    source: "",
+    purchase_date: "",
+  });
+  const [tagEditorFor, setTagEditorFor] = useState(null);
+  const [tagDrafts, setTagDrafts] = useState({});
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const {
+    toggleFavorite,
+    addTag,
+    removeTag,
+    clearTags,
+    isFavorite,
+    getTags,
+    clearRemovedItems,
+  } = useInventoryTags();
+  const returnStateForInventory = React.useMemo(() => ({
+    from: {
+      pathname: location.pathname,
+      search: location.search || "",
+      filters: { ...filters },
+    },
+  }), [location.pathname, location.search, filters]);
+
+  const resetBulkUpdateForm = () => {
+    setBulkUpdateForm({
+      status: "",
+      category: "",
+      source: "",
+      purchase_date: "",
+    });
+  };
+
+  const buildBulkUpdatePayload = () => {
+    const updates = {};
+    if (bulkUpdateForm.status) updates.status = bulkUpdateForm.status;
+    if (bulkUpdateForm.category && bulkUpdateForm.category.trim()) updates.category = bulkUpdateForm.category.trim();
+    if (bulkUpdateForm.source && bulkUpdateForm.source.trim()) updates.source = bulkUpdateForm.source.trim();
+    if (bulkUpdateForm.purchase_date) updates.purchase_date = bulkUpdateForm.purchase_date;
+    return updates;
+  };
 
   const { data: inventoryItems, isLoading } = useQuery({
     queryKey: ['inventoryItems'],
@@ -70,15 +125,37 @@ export default function InventoryPage() {
   });
 
   useEffect(() => {
+    if (isLoading) return;
+    if (Array.isArray(inventoryItems)) {
+      clearRemovedItems(inventoryItems.map((item) => item.id));
+    }
+  }, [inventoryItems, clearRemovedItems, isLoading]);
+
+  useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const filterParam = searchParams.get('filter');
+    const statusParam = searchParams.get('status');
     
     if (filterParam === 'stale') {
       setFilters(prev => ({ ...prev, daysInStock: "stale", status: "not_sold" }));
     } else if (filterParam === 'returnDeadline') {
       setFilters(prev => ({ ...prev, daysInStock: "returnDeadline", status: "not_sold" }));
     }
+
+    if (statusParam) {
+      const normalizedStatus = statusParam.toLowerCase();
+      const allowedStatuses = ["all", "not_sold", "available", "listed", "sold"];
+      if (allowedStatuses.includes(normalizedStatus)) {
+        setFilters(prev => ({ ...prev, status: normalizedStatus }));
+      }
+    }
   }, [location.search]);
+
+  useEffect(() => {
+    if (location.state?.filters) {
+      setFilters(prev => ({ ...prev, ...location.state.filters }));
+    }
+  }, [location.state]);
 
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId) => {
@@ -154,10 +231,100 @@ export default function InventoryPage() {
     },
   });
 
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ ids, updates }) => {
+      const results = [];
+      for (const id of ids) {
+        try {
+          await base44.entities.InventoryItem.update(id, updates);
+          results.push({ id, success: true });
+        } catch (error) {
+          results.push({ id, success: false, error: error.message });
+        }
+      }
+      return results;
+    },
+    onMutate: async ({ ids, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
+      const previousItems = queryClient.getQueryData(['inventoryItems']);
+
+      queryClient.setQueryData(['inventoryItems'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item) => (ids.includes(item.id) ? { ...item, ...updates } : item));
+      });
+
+      return { previousItems };
+    },
+    onError: (error, _variables, context) => {
+      console.error("Bulk update failed:", error);
+      if (context?.previousItems) {
+        queryClient.setQueryData(['inventoryItems'], context.previousItems);
+      }
+      toast({
+        title: "Bulk update failed",
+        description: "We couldn’t update those items. Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (results) => {
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.length - successCount;
+      toast({
+        title: "Bulk update complete",
+        description:
+          failCount === 0
+            ? `Updated ${successCount} item${successCount === 1 ? "" : "s"}.`
+            : `Updated ${successCount} item${successCount === 1 ? "" : "s"}. ${failCount} failed.`,
+        variant: failCount === 0 ? "default" : "destructive",
+      });
+      resetBulkUpdateForm();
+      setBulkUpdateDialogOpen(false);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+    },
+  });
+
   const inventorySummary = React.useMemo(() => {
-    const unsoldItems = inventoryItems.filter(item => item.status !== 'sold');
-    const totalInvested = unsoldItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
-    const totalQuantity = unsoldItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const items = Array.isArray(inventoryItems) ? inventoryItems : [];
+
+    const trackableItems = items.filter(item => {
+      const status = (item.status || "").toLowerCase();
+      return status === "available" || status === "listed";
+    });
+
+    const totalInvested = trackableItems.reduce((sum, item) => {
+      const rawPurchasePrice = Number(item.purchase_price ?? 0);
+      const purchasePrice = Number.isFinite(rawPurchasePrice) && rawPurchasePrice >= 0 ? rawPurchasePrice : 0;
+
+      const rawQuantity = Number(item.quantity ?? 1);
+      const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+
+      const rawSold = Number(item.quantity_sold ?? 0);
+      const quantitySold = Number.isFinite(rawSold) && rawSold >= 0 ? rawSold : 0;
+
+      const remaining = Math.max(quantity - quantitySold, 0);
+      
+      if (quantity > 0 && remaining > 0) {
+        const perItemPrice = purchasePrice / quantity;
+        const investedForRemaining = perItemPrice * remaining;
+        return sum + investedForRemaining;
+      }
+      
+      return sum;
+    }, 0);
+
+    const totalQuantity = trackableItems.reduce((sum, item) => {
+      const rawQuantity = Number(item.quantity ?? 1);
+      const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+
+      const rawSold = Number(item.quantity_sold ?? 0);
+      const quantitySold = Number.isFinite(rawSold) && rawSold > 0 ? rawSold : 0;
+
+      const remaining = Math.max(quantity - quantitySold, 0);
+      return sum + remaining;
+    }, 0);
+
     return { totalInvested, totalQuantity };
   }, [inventoryItems]);
 
@@ -170,6 +337,7 @@ export default function InventoryPage() {
     const searchMatch = item.item_name.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.category?.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.source?.toLowerCase().includes(filters.search.toLowerCase());
+    const favoriteMatch = !showFavoritesOnly || isFavorite(item.id);
     
     let daysInStockMatch = true;
     if (filters.daysInStock !== "all" && item.status !== "sold") {
@@ -191,8 +359,49 @@ export default function InventoryPage() {
       }
     }
     
-    return statusMatch && searchMatch && daysInStockMatch;
+    return statusMatch && searchMatch && daysInStockMatch && favoriteMatch;
   });
+
+  const favoritesCount = React.useMemo(() => {
+    if (!Array.isArray(inventoryItems)) return 0;
+    return inventoryItems.reduce((count, item) => count + (isFavorite(item.id) ? 1 : 0), 0);
+  }, [inventoryItems, isFavorite]);
+
+  const handleTagEditorToggle = (itemId) => {
+    setTagEditorFor((prev) => (prev === itemId ? null : itemId));
+    setTagDrafts((prev) => ({ ...prev, [itemId]: prev[itemId] || "" }));
+  };
+
+  const handleAddTagToItem = (itemId, value) => {
+    const cleanValue = (value ?? "").trim();
+    if (!cleanValue) return;
+    addTag(itemId, cleanValue);
+    setTagDrafts((prev) => ({ ...prev, [itemId]: "" }));
+    toast({
+      title: "Tag added",
+      description: `Tagged "${cleanValue}"`,
+    });
+  };
+
+  const handleRemoveTagFromItem = (itemId, value) => {
+    removeTag(itemId, value);
+    toast({
+      title: "Tag removed",
+      description: `Removed "${value}"`,
+    });
+  };
+
+  const handleQuickTag = (itemId, value) => {
+    handleAddTagToItem(itemId, value);
+  };
+
+  const handleClearTagsForItem = (itemId) => {
+    clearTags(itemId);
+    toast({
+      title: "Tags cleared",
+      description: "All tags removed from this item.",
+    });
+  };
 
   const sortedItems = React.useMemo(() => {
     return [...filteredItems].sort((a, b) => {
@@ -228,8 +437,9 @@ export default function InventoryPage() {
   };
 
   const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedItems(sortedItems.map(i => i.id));
+    const isChecked = checked === true;
+    if (isChecked) {
+      setSelectedItems(sortedItems.map((item) => item.id));
     } else {
       setSelectedItems([]);
     }
@@ -250,6 +460,12 @@ export default function InventoryPage() {
     if (selectedItems.length > 0) {
       bulkDeleteMutation.mutate(selectedItems);
     }
+  };
+
+  const handleBulkUpdateConfirm = () => {
+    const updates = buildBulkUpdatePayload();
+    if (selectedItems.length === 0 || Object.keys(updates).length === 0) return;
+    bulkUpdateMutation.mutate({ ids: selectedItems, updates });
   };
 
   const proceedToAddSale = (item, quantity) => {
@@ -300,7 +516,10 @@ export default function InventoryPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Inventory</h1>
               <p className="text-sm text-muted-foreground mt-1">Track items you have for sale.</p>
             </div>
-            <Link to={createPageUrl("AddInventoryItem")}>
+            <Link
+              to={createPageUrl("AddInventoryItem")}
+              state={returnStateForInventory}
+            >
               <Button className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-md w-full sm:w-auto">
                 <Plus className="w-5 h-5 mr-2" />
                 Add Item
@@ -359,8 +578,8 @@ export default function InventoryPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="not_sold">Available/Listed</SelectItem>
-                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="not_sold">In Stock/Listed</SelectItem>
+                      <SelectItem value="available">In Stock</SelectItem>
                       <SelectItem value="listed">Listed</SelectItem>
                       <SelectItem value="sold">Sold</SelectItem>
                       <SelectItem value="all">All Items</SelectItem>
@@ -374,7 +593,7 @@ export default function InventoryPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Ages</SelectItem>
+                  <SelectItem value="all">All Ages</SelectItem>
                       <SelectItem value="stale">14+ Days</SelectItem>
                       <SelectItem value="returnDeadline">Return Soon</SelectItem>
                     </SelectContent>
@@ -387,7 +606,7 @@ export default function InventoryPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="newest">Newest First</SelectItem>
                       <SelectItem value="oldest">Oldest First</SelectItem>
                       <SelectItem value="price-high">Price: High to Low</SelectItem>
                       <SelectItem value="price-low">Price: Low to High</SelectItem>
@@ -399,23 +618,56 @@ export default function InventoryPage() {
                   </Select>
                 </div>
               </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground">
+                  Favorites let you flag items for quick actions such as returns.
+                </div>
+                <Button
+                  variant={showFavoritesOnly ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Star className={`w-4 h-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
+                  {showFavoritesOnly ? "Showing Favorites" : "Show Favorites"}
+                  {favoritesCount > 0 && (
+                    <span className="text-xs font-normal opacity-80">({favoritesCount})</span>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
           {selectedItems.length > 0 && (
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-4">
               <span className="text-sm font-medium">
-                {selectedItems.length} item(s) selected
+                {selectedItems.length} item{selectedItems.length === 1 ? "" : "s"} selected
               </span>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={() => setBulkDeleteDialogOpen(true)}
-                disabled={bulkDeleteMutation.isPending}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    resetBulkUpdateForm();
+                    setBulkUpdateDialogOpen(true);
+                  }}
+                  disabled={bulkUpdateMutation.isPending}
+                  className="whitespace-nowrap"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  {bulkUpdateMutation.isPending ? "Updating..." : "Bulk Update"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setBulkDeleteDialogOpen(true)}
+                  disabled={bulkDeleteMutation.isPending}
+                  className="whitespace-nowrap"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -445,8 +697,18 @@ export default function InventoryPage() {
                 const quantitySold = item.quantity_sold || 0;
                 const isSoldOut = quantitySold >= item.quantity;
                 const availableToSell = item.quantity - quantitySold;
+                const itemTags = getTags(item.id);
+                const favoriteMarked = isFavorite(item.id);
+                const tagDraftValue = tagDrafts[item.id] ?? "";
+                const favoriteButtonLabel = favoriteMarked ? "Remove from favorites" : "Add to favorites";
 
-                return (
+            const truncatedTitle = (() => {
+              const words = (item.item_name || "").split(/\s+/).filter(Boolean);
+              if (words.length <= 8) return item.item_name;
+              return `${words.slice(0, 8).join(" ")}…`;
+            })();
+
+            return (
                   <Card key={item.id} className="group overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                     <div className="relative">
                       <div className="absolute top-2 left-2 z-10">
@@ -458,22 +720,61 @@ export default function InventoryPage() {
                         />
                       </div>
                       
-                      <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
-                        <img 
-                          src={item.image_url || DEFAULT_IMAGE_URL}
-                          alt={item.item_name} 
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <div className="absolute top-2 right-2">
-                          <Badge className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5`}>
-                            {item.status}
-                          </Badge>
-                        </div>
+                  <Link
+                    to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
+                    state={returnStateForInventory}
+                  >
+                    <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
+                      <img 
+                        src={item.image_url || DEFAULT_IMAGE_URL}
+                        alt={item.item_name} 
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5`}>
+                          {statusLabels[item.status] || statusLabels.available}
+                        </Badge>
                       </div>
+                    </div>
+                  </Link>
                     </div>
 
                     <CardContent className="p-3">
-                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 mb-2 min-h-[2.5rem] text-foreground">{item.item_name}</h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorite(item.id)}
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition ${
+                            favoriteMarked
+                              ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                              : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                          }`}
+                        >
+                          <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                          <span className="sr-only">{favoriteButtonLabel}</span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1"
+                          onClick={() => handleTagEditorToggle(item.id)}
+                        >
+                          <Tag className="h-3.5 w-3.5" />
+                          {tagEditorFor === item.id ? "Close" : "Add Tag"}
+                        </Button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setTitlePreview(item.item_name)}
+                        className="font-semibold text-sm leading-tight mb-2 min-h-[2.5rem] text-foreground text-left hover:text-primary transition-colors group/item focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 rounded"
+                        aria-label={`View full title for ${item.item_name}`}
+                      >
+                        <span className="block line-clamp-2 break-words">
+                          {truncatedTitle}
+                        </span>
+                      </button>
                       
                       <div className="space-y-1.5 text-xs mb-3">
                         <div className="flex justify-between">
@@ -497,10 +798,81 @@ export default function InventoryPage() {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date:</span>
-                          <span className="font-medium text-foreground">{format(parseISO(item.purchase_date), 'MMM dd')}</span>
+                          <span className="text-muted-foreground">Purchase Date:</span>
+                          <span className="font-medium text-foreground">{item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}</span>
                         </div>
                       </div>
+
+                      {itemTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {itemTags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px]">
+                              {tag}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTagFromItem(item.id, tag)}
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-muted-foreground hover:bg-black/20"
+                              >
+                                <X className="h-3 w-3" />
+                                <span className="sr-only">Remove tag</span>
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {tagEditorFor === item.id && (
+                        <div className="mb-3 space-y-3 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 p-3">
+                          <div>
+                            <Label className="text-xs mb-1.5 block text-muted-foreground">Add a tag</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                value={tagDraftValue}
+                                placeholder="e.g. Return Soon"
+                                onChange={(e) =>
+                                  setTagDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))
+                                }
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="whitespace-nowrap"
+                                onClick={() => handleAddTagToItem(item.id, tagDraftValue)}
+                              >
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Quick tags</p>
+                            <div className="flex flex-wrap gap-2">
+                              {QUICK_TAGS.map((quickTag) => (
+                                <Button
+                                  key={quickTag}
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => handleQuickTag(item.id, quickTag)}
+                                >
+                                  {quickTag}
+                                </Button>
+                              ))}
+                              {itemTags.length > 0 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => handleClearTagsForItem(item.id)}
+                                >
+                                  Clear tags
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {daysRemaining !== null && (
                         <div className="mb-3 p-1.5 bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500 rounded-r text-red-800 dark:text-red-200">
@@ -524,19 +896,30 @@ export default function InventoryPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => { setSoldDialogName(item.item_name); setSoldDialogOpen(true); }}
+                          onClick={() => {
+                            setSoldDialogName(item.item_name || "");
+                            setSoldDialogOpen(true);
+                          }}
                           className="w-full h-8 text-xs"
                         >
                           <BarChart className="w-3.5 h-3.5 mr-2" />
                           Search Sold
                         </Button>
                         <div className="grid grid-cols-3 gap-1">
-                          <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} className="flex-1">
+                          <Link
+                            to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
+                            state={returnStateForInventory}
+                            className="flex-1"
+                          >
                             <Button variant="outline" size="sm" className="w-full h-7 px-2">
                               <Edit className="w-3 h-3" />
                             </Button>
                           </Link>
-                          <Link to={createPageUrl(`AddInventoryItem?copyId=${item.id}`)} className="flex-1">
+                          <Link
+                            to={createPageUrl(`AddInventoryItem?copyId=${item.id}`)}
+                            state={returnStateForInventory}
+                            className="flex-1"
+                          >
                             <Button variant="outline" size="sm" className="w-full h-7 px-2">
                               <Copy className="w-3 h-3" />
                             </Button>
@@ -587,6 +970,104 @@ export default function InventoryPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={bulkUpdateDialogOpen}
+        onOpenChange={(open) => {
+          setBulkUpdateDialogOpen(open);
+          if (!open) resetBulkUpdateForm();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Update Items</DialogTitle>
+            <DialogDescription>
+              Choose the fields you want to update for the {selectedItems.length} selected item
+              {selectedItems.length === 1 ? "" : "s"}. Leave a field blank to keep existing values.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-status">Status</Label>
+              <Select
+                value={bulkUpdateForm.status}
+                onValueChange={(value) =>
+                  setBulkUpdateForm((prev) => ({
+                    ...prev,
+                    status: value === "__keep" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger id="bulk-status">
+                  <SelectValue placeholder="Leave unchanged" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__keep">Leave unchanged</SelectItem>
+                  <SelectItem value="available">In Stock</SelectItem>
+                  <SelectItem value="listed">Listed</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-category">Category</Label>
+              <Input
+                id="bulk-category"
+                value={bulkUpdateForm.category}
+                onChange={(e) => setBulkUpdateForm((prev) => ({ ...prev, category: e.target.value }))}
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-source">Source</Label>
+              <Input
+                id="bulk-source"
+                value={bulkUpdateForm.source}
+                onChange={(e) => setBulkUpdateForm((prev) => ({ ...prev, source: e.target.value }))}
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-purchase-date">Purchase Date</Label>
+              <Input
+                id="bulk-purchase-date"
+                type="date"
+                value={bulkUpdateForm.purchase_date}
+                onChange={(e) => setBulkUpdateForm((prev) => ({ ...prev, purchase_date: e.target.value }))}
+              />
+            </div>
+          </div>
+          {Object.keys(buildBulkUpdatePayload()).length === 0 && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              Choose at least one field above to enable “Update Items”.
+            </p>
+          )}
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetBulkUpdateForm();
+                setBulkUpdateDialogOpen(false);
+              }}
+              disabled={bulkUpdateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleBulkUpdateConfirm}
+              disabled={
+                bulkUpdateMutation.isPending ||
+                selectedItems.length === 0 ||
+                Object.keys(buildBulkUpdatePayload()).length === 0
+              }
+            >
+              {bulkUpdateMutation.isPending ? "Updating..." : "Update Items"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <AlertDialogContent>
@@ -643,6 +1124,20 @@ export default function InventoryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+    <Dialog open={!!titlePreview} onOpenChange={(isOpen) => !isOpen && setTitlePreview(null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Full Item Title</DialogTitle>
+        </DialogHeader>
+        <div className="text-sm text-foreground break-words">
+          {titlePreview}
+        </div>
+        <DialogFooter className="pt-4">
+          <Button variant="outline" onClick={() => setTitlePreview(null)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
       <SoldLookupDialog
         open={soldDialogOpen}

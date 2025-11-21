@@ -1,23 +1,25 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { sortSalesByRecency } from "@/utils/sales";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Calculator, Upload, Calendar as CalendarIcon, BarChart, Globe } from "lucide-react";
+import { ArrowLeft, Save, Calculator, Calendar as CalendarIcon, BarChart, Globe, Camera, Truck, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay
 } from "@/components/ui/dialog";
 import ClearableDateInput from "../components/ClearableDateInput";
-
+import imageCompression from "browser-image-compression";
+import { extractCustomFees, getCustomFeesTotal, injectCustomFees } from "@/utils/customFees";
 
 const platformOptions = [
   { value: "ebay", label: "eBay" },
@@ -27,21 +29,42 @@ const platformOptions = [
   { value: "offer_up", label: "OfferUp" }
 ];
 
+const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
+
 const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy"];
 const PREDEFINED_CATEGORIES = [
-  "Electronics",
-  "Clothing & Apparel",
-  "Home & Garden",
-  "Kitchen",
-  "Toys & Hobbies",
-  "Collectibles",
+  "Antiques",
   "Books, Movies & Music",
+  "Clothing & Apparel",
+  "Collectibles",
+  "Electronics",
+  "Gym/Workout",
+  "Health & Beauty",
+  "Home & Garden",
+  "Jewelry & Watches",
+  "Kitchen",
+  "Makeup",
+  "Mic/Audio Equipment",
+  "Motorcycle",
+  "Motorcycle Accessories",
+  "Pets",
+  "Pool Equipment",
+  "Shoes/Sneakers",
+  "Stereos & Speakers",
   "Sporting Goods",
   "Tools",
-  "Health & Beauty",
-  "Jewelry & Watches",
-  "Antiques"
+  "Toys & Hobbies",
+  "Yoga"
 ];
+
+const MoneyPrinterIcon = ({ className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className}>
+    <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+      <path d="M8.25 8.25a7.5 7.5 0 1 0 15 0a7.5 7.5 0 0 0-15 0m-1.875 5.842a1.34 1.34 0 0 0 .843 1.245l2.064.826a1.342 1.342 0 0 1-.5 2.587H6.75m1.5 1.5v-1.5" />
+      <path d="M5.281 8.867a7.5 7.5 0 1 0 9.853 9.852M17.25 5.25h-2.033a1.342 1.342 0 0 0-.5 2.587l2.064.826a1.342 1.342 0 0 1-.5 2.587H14.25m1.5-6v-1.5m0 9v-1.5" />
+    </g>
+  </svg>
+);
 
 
 export default function AddSale() {
@@ -96,8 +119,12 @@ export default function AddSale() {
     image_url: "",
     quantity_sold: 1, // Default for new sales
     return_deadline: "",
+    facebook_sale_type: "local",
   });
 
+  const [customFees, setCustomFees] = useState([]);
+  const [customFeeFormOpen, setCustomFeeFormOpen] = useState(false);
+  const [customFeeDraft, setCustomFeeDraft] = useState({ name: "", amount: "" });
   // NEW: Store per-item purchase price for multi-quantity inventory items
   const [perItemPurchasePrice, setPerItemPurchasePrice] = useState(null);
 
@@ -116,6 +143,7 @@ export default function AddSale() {
   const [isUploading, setIsUploading] = useState(false);
   const [soldDialogOpen, setSoldDialogOpen] = useState(false); // New state for sold listings dialog
   const [activeMarket, setActiveMarket] = useState('ebay_sold');
+  const imageInputRef = useRef(null);
 
   useEffect(() => {
     setIsOtherSource(false);
@@ -123,26 +151,46 @@ export default function AddSale() {
     
     if (existingSale) {
       const dataToLoad = { ...existingSale };
+      const { cleanNotes, customFees: storedCustomFees } = extractCustomFees(dataToLoad.notes || "");
+      const customFeesTotal = getCustomFeesTotal(storedCustomFees);
+      let feesForState = storedCustomFees;
+
       if (copyId) {
         dataToLoad.sale_date = new Date().toISOString().split('T')[0];
         dataToLoad.profit = null;
         delete dataToLoad._id;
-        dataToLoad.notes = '';
         dataToLoad.inventory_id = null; // Don't copy inventory association when creating a new sale from an existing one
         dataToLoad.return_deadline = ""; // Clear return deadline for copied sales
+        feesForState = [];
       }
+
+      const rawOtherCosts =
+        typeof dataToLoad.other_costs === "number"
+          ? dataToLoad.other_costs
+          : parseFloat(dataToLoad.other_costs);
+      const adjustedOtherCosts =
+        Number.isFinite(rawOtherCosts) && customFeesTotal > 0
+          ? Math.max(0, rawOtherCosts - customFeesTotal)
+          : Number.isFinite(rawOtherCosts)
+            ? rawOtherCosts
+            : "";
+      const formattedOtherCosts =
+        adjustedOtherCosts === "" ? "" : adjustedOtherCosts.toFixed(2);
+
+      setCustomFees(feesForState);
 
       setFormData(prev => ({
         ...prev,
         ...dataToLoad,
         return_deadline: dataToLoad.return_deadline || "", // Initialize return_deadline
+        facebook_sale_type: dataToLoad.facebook_sale_type || "local",
         purchase_price: String(dataToLoad.purchase_price ?? ''),
         selling_price: String(dataToLoad.selling_price ?? ''),
         shipping_cost: String(dataToLoad.shipping_cost ?? ''),
         platform_fees: String(dataToLoad.platform_fees ?? ''),
-        other_costs: String(dataToLoad.other_costs ?? ''),
+        other_costs: formattedOtherCosts,
         vat_fees: String(dataToLoad.vat_fees ?? ''),
-        notes: dataToLoad.notes ?? '',
+        notes: copyId ? '' : cleanNotes,
         quantity_sold: String(dataToLoad.quantity_sold ?? 1),
       }));
 
@@ -201,74 +249,126 @@ export default function AddSale() {
     }
   }, [formData.quantity_sold, inventoryId, idToLoad, perItemPurchasePrice]);
 
+  const buildSalePayload = (saleData, feeList = customFees) => {
+    const purchasePrice = parseFloat(saleData.purchase_price) || 0;
+    const sellingPrice = parseFloat(saleData.selling_price) || 0;
+    const shippingCost = parseFloat(saleData.shipping_cost) || 0;
+    const platformFees = parseFloat(saleData.platform_fees) || 0;
+    const otherCosts = parseFloat(saleData.other_costs) || 0;
+    const vatFees = parseFloat(saleData.vat_fees) || 0;
+    const quantitySold = parseInt(saleData.quantity_sold, 10) || 1;
+    const includeCustomFees = saleData.platform === 'ebay';
+    const activeCustomFees = includeCustomFees ? feeList : [];
+    const customFeesTotal = getCustomFeesTotal(activeCustomFees);
+    const combinedOtherCosts = otherCosts + customFeesTotal;
+
+    const totalCosts = purchasePrice + shippingCost + platformFees + combinedOtherCosts + vatFees;
+    const profit = sellingPrice - totalCosts;
+    const notesWithCustomFees = injectCustomFees(saleData.notes, activeCustomFees);
+
+    return {
+      ...saleData,
+      purchase_price: purchasePrice,
+      selling_price: sellingPrice,
+      shipping_cost: shippingCost,
+      platform_fees: platformFees,
+      other_costs: combinedOtherCosts,
+      vat_fees: vatFees,
+      return_deadline: saleData.return_deadline ? saleData.return_deadline : null,
+      facebook_sale_type: saleData.facebook_sale_type || "local",
+      profit,
+      quantity_sold: quantitySold,
+      inventory_id: inventoryId || saleData.inventory_id || null,
+      sale_date: saleData.sale_date || new Date().toISOString().split("T")[0],
+      created_date: saleData.created_date || new Date().toISOString(),
+      notes: notesWithCustomFees,
+    };
+  };
+
   const saleMutation = useMutation({
     mutationFn: (saleData) => {
-      const purchasePrice = parseFloat(saleData.purchase_price) || 0;
-      const sellingPrice = parseFloat(saleData.selling_price) || 0;
-      const shippingCost = parseFloat(saleData.shipping_cost) || 0;
-      const platformFees = parseFloat(saleData.platform_fees) || 0;
-      const otherCosts = parseFloat(saleData.other_costs) || 0;
-      const vatFees = parseFloat(saleData.vat_fees) || 0;
-      const quantitySold = parseInt(saleData.quantity_sold, 10) || 1;
-
-      const totalCosts = purchasePrice + shippingCost + platformFees + otherCosts + vatFees;
-      const profit = sellingPrice - totalCosts;
-
-      const finalData = { 
-        ...saleData, 
-        purchase_price: purchasePrice, 
-        selling_price: sellingPrice, 
-        shipping_cost: shippingCost, 
-        platform_fees: platformFees, 
-        other_costs: otherCosts,
-        vat_fees: vatFees,
-        return_deadline: saleData.return_deadline ? saleData.return_deadline : null, // Set to null if empty
-        profit: profit,
-        quantity_sold: quantitySold,
-        inventory_id: inventoryId || saleData.inventory_id || null // Added inventory_id here
-      };
-      
-      if (saleId) {
-        return base44.entities.Sale.update(saleId, finalData);
-      }
-      return base44.entities.Sale.create(finalData);
+      const finalData = buildSalePayload(saleData);
+      return saleId
+        ? base44.entities.Sale.update(saleId, finalData)
+        : base44.entities.Sale.create(finalData);
     },
-    onSuccess: async () => {
-      // Invalidate sales queries first
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      
-      // Update inventory item quantity_sold for NEW sales created from inventory
+    onMutate: async (saleData) => {
+      const payload = buildSalePayload(saleData);
+      const optimisticId = saleId || payload.id || `temp-${Date.now()}`;
+      const optimisticSale = {
+        ...payload,
+        id: optimisticId,
+      };
+
+      await queryClient.cancelQueries({ queryKey: ['sales'] });
+      const previousSales = queryClient.getQueryData(['sales']);
+
+      queryClient.setQueryData(['sales'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        const updated = saleId
+          ? old.map((sale) => (sale.id === saleId ? { ...sale, ...optimisticSale } : sale))
+          : [...old, optimisticSale];
+        return sortSalesByRecency(updated);
+      });
+
+      return { previousSales, optimisticId };
+    },
+    onError: (error, _saleData, context) => {
+      console.error("Failed to save sale:", error);
+      if (context?.previousSales) {
+        queryClient.setQueryData(['sales'], context.previousSales);
+      }
+      alert("Failed to save sale. Please try again.");
+    },
+    onSuccess: async (result, _saleData, context) => {
+      if (result && context?.optimisticId) {
+        queryClient.setQueryData(['sales'], (old = []) => {
+          if (!Array.isArray(old)) return old;
+          const replaced = old.map((sale) =>
+            sale.id === context.optimisticId ? { ...result } : sale
+          );
+          return sortSalesByRecency(replaced);
+        });
+      }
+
+      // Update related inventory records if sourced from inventory
       if (inventoryId && !saleId && !copyId) {
         try {
-            // Get the latest inventory item state
-            const originalItem = await base44.entities.InventoryItem.get(inventoryId);
-            const quantitySold = parseInt(formData.quantity_sold, 10) || 1;
-            
-            // Update quantity_sold by adding the newly sold quantity
-            const newQuantitySold = (originalItem.quantity_sold || 0) + quantitySold;
-            // Check if all items are now sold
-            const isSoldOut = newQuantitySold >= originalItem.quantity;
-            
-            await base44.entities.InventoryItem.update(inventoryId, { 
-                quantity_sold: newQuantitySold,
-                // If sold out, set status to "sold"; otherwise, maintain existing status
-                status: isSoldOut ? "sold" : originalItem.status
-            });
-            
-            // Invalidate inventory queries to refresh the display
-            queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-            queryClient.invalidateQueries({ queryKey: ['inventoryItemForSaleCreation', inventoryId] });
+          const originalItem = await base44.entities.InventoryItem.get(inventoryId);
+          const quantitySold = parseInt(formData.quantity_sold, 10) || 1;
+          const newQuantitySold = (originalItem.quantity_sold || 0) + quantitySold;
+          const isSoldOut = newQuantitySold >= originalItem.quantity;
+
+          await base44.entities.InventoryItem.update(inventoryId, {
+            quantity_sold: newQuantitySold,
+            status: isSoldOut ? "sold" : originalItem.status,
+          });
+
+          queryClient.setQueryData(['inventoryItems'], (old = []) => {
+            if (!Array.isArray(old)) return old;
+            return old.map((item) =>
+              item.id === inventoryId
+                ? {
+                    ...item,
+                    quantity_sold: newQuantitySold,
+                    status: isSoldOut ? "sold" : item.status,
+                  }
+                : item
+            );
+          });
+
+          queryClient.invalidateQueries({ queryKey: ['inventoryItemForSaleCreation', inventoryId] });
         } catch (error) {
-            console.error("Failed to update inventory item quantity_sold:", error);
-            alert("Sale created but failed to update inventory. Please refresh the page.");
+          console.error("Failed to update inventory item quantity_sold:", error);
+          alert("Sale created but failed to update inventory. Please refresh the page.");
         }
       }
-      
+
       navigate(createPageUrl(saleId || copyId ? "SalesHistory" : "Dashboard"));
     },
-    onError: (error) => {
-      console.error("Failed to save sale:", error);
-      alert("Failed to save sale. Please try again.");
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
     },
   });
 
@@ -289,35 +389,106 @@ export default function AddSale() {
       }
 
       setFormData(prev => ({ ...prev, [field]: finalValue }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      return;
     }
+
+    if (field === 'facebook_sale_type') {
+      setFormData(prev => ({
+        ...prev,
+        facebook_sale_type: value,
+        shipping_cost: prev.platform === 'facebook_marketplace' && value === 'local' ? '' : prev.shipping_cost,
+        platform_fees: prev.platform === 'facebook_marketplace' && value === 'local' ? '' : prev.platform_fees,
+        vat_fees: prev.platform === 'facebook_marketplace' && value === 'local' ? '' : prev.vat_fees,
+      }));
+      return;
+    }
+
+    if (field === 'platform') {
+      const isFacebookPlatform = value === 'facebook_marketplace';
+      const defaultSaleType = (value === 'facebook_marketplace' || value === 'ebay') ? 'local' : 'online';
+      setFormData(prev => ({
+        ...prev,
+        platform: value,
+        facebook_sale_type: defaultSaleType,
+        shipping_cost: isFacebookPlatform && defaultSaleType === 'local' ? '' : prev.shipping_cost,
+        platform_fees: isFacebookPlatform && defaultSaleType === 'local' ? '' : prev.platform_fees,
+        vat_fees: isFacebookPlatform && defaultSaleType === 'local' ? '' : prev.vat_fees,
+      }));
+      return;
+    }
+
+    if (field === 'source') {
+      setFormData(prev => ({ ...prev, source: value }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCustomFeeDraftChange = (field, value) => {
+    setCustomFeeDraft(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddCustomFee = () => {
+    const name = customFeeDraft.name.trim();
+    const amount = parseFloat(customFeeDraft.amount);
+    if (!name || Number.isNaN(amount) || amount < 0) return;
+
+    setCustomFees(prev => [
+      ...prev,
+      {
+        id: `fee-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name,
+        amount: parseFloat(amount.toFixed(2)),
+      },
+    ]);
+    setCustomFeeDraft({ name: "", amount: "" });
+    setCustomFeeFormOpen(false);
+  };
+
+  const handleRemoveCustomFee = (id) => {
+    setCustomFees(prev => prev.filter((fee) => fee.id !== id));
   };
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 0.25,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+      const fileToUpload = compressedFile || file;
+      const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
       handleChange('image_url', file_url);
     } catch (error) {
       console.error("Image upload failed:", error);
       alert("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
-      e.target.value = null; 
+      if (imageInputRef.current) {
+        imageInputRef.current.value = null;
+      }
     }
   };
 
   const handleSourceSelectChange = (value) => {
     if (value === 'other') {
       setIsOtherSource(true);
-      handleChange('source', '');
+      setFormData(prev => ({
+        ...prev,
+        source: '',
+      }));
     } else {
       setIsOtherSource(false);
-      handleChange('source', value);
+      setFormData(prev => ({
+        ...prev,
+        source: value,
+      }));
     }
   };
   
@@ -338,8 +509,10 @@ export default function AddSale() {
     const platformFees = parseFloat(formData.platform_fees) || 0;
     const otherCosts = parseFloat(formData.other_costs) || 0;
     const vatFees = parseFloat(formData.vat_fees) || 0;
+    const includeCustomFees = formData.platform === 'ebay';
+    const customFeesTotal = includeCustomFees ? getCustomFeesTotal(customFees) : 0;
 
-    const totalCosts = purchasePrice + shippingCost + platformFees + otherCosts + vatFees;
+    const totalCosts = purchasePrice + shippingCost + platformFees + otherCosts + vatFees + customFeesTotal;
     const profit = sellingPrice - totalCosts;
     
     setCalculatedProfit(profit);
@@ -356,6 +529,17 @@ export default function AddSale() {
   }
 
   const isEbay = formData.platform === 'ebay';
+  const facebookSaleType = formData.facebook_sale_type || 'online';
+  const isFacebookPlatform = formData.platform === 'facebook_marketplace';
+  const isFacebookLocal = isFacebookPlatform && facebookSaleType === 'local';
+  const shippingRequired =
+    (formData.platform === 'ebay' ||
+      formData.platform === 'mercari' ||
+      formData.platform === 'etsy' ||
+      (isFacebookPlatform && !isFacebookLocal));
+  const otherCostsLabel = isEbay ? 'Transaction Fees' : 'Other Costs';
+  const otherCostsPlaceholder = '0.00';
+  const customFeesTotal = isEbay ? getCustomFeesTotal(customFees) : 0;
 
   const buildSearchQuery = (name) => {
     if (!name) return "";
@@ -425,9 +609,77 @@ export default function AddSale() {
                         </AlertDescription>
                     </Alert>
                 )}
+              <div className="space-y-3">
+                <Label htmlFor="image-upload-input" className="dark:text-gray-200 break-words">Item Image</Label>
+                <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => !isUploading && imageInputRef.current?.click()}
+                    disabled={isUploading}
+                    className={`relative aspect-square w-32 sm:w-40 md:w-52 rounded-2xl border-2 border-dashed border-muted-foreground/40 bg-muted/20 flex items-center justify-center overflow-hidden transition-all ${isUploading ? 'opacity-70 cursor-wait' : 'hover:border-primary hover:bg-primary/5 cursor-pointer'}`}
+                  >
+                    {formData.image_url ? (
+                      <img
+                        src={formData.image_url}
+                        alt="Item"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Camera className="w-7 h-7 sm:w-9 sm:h-9" />
+                        <span className="text-xs sm:text-sm font-medium">Add item photo</span>
+                        <span className="text-[11px] sm:text-xs text-muted-foreground/70">Tap to upload</span>
+                      </div>
+                    )}
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center text-sm font-medium text-muted-foreground">
+                        Uploading...
+                      </div>
+                    )}
+                  </button>
+                  <div className="flex flex-col gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <span>Upload a clear photo so you can quickly recognize this item later.</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? 'Uploading...' : formData.image_url ? 'Change image' : 'Upload image'}
+                      </Button>
+                      {formData.image_url && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleChange('image_url', '')}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    <span className="text-[11px] sm:text-xs text-muted-foreground/70">Supports JPG or PNG up to 5 MB.</span>
+                  </div>
+                </div>
+                <input
+                  ref={imageInputRef}
+                  id="image-upload-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+              </div>
+
               <div className="grid md:grid-cols-2 gap-6 min-w-0">
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="item_name" className="dark:text-gray-200">Item Name *</Label>
+                  <Label htmlFor="item_name" className="dark:text-gray-200 flex items-center gap-1">
+                    <span>Item Name</span>
+                    <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="item_name"
                     value={formData.item_name}
@@ -480,8 +732,14 @@ export default function AddSale() {
                 </div>
 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="purchase_price" className="dark:text-gray-200">
-                    Purchase Price {inventoryId && !idToLoad && perItemPurchasePrice !== null ? `($${perItemPurchasePrice.toFixed(2)} per item)` : ''} *
+                  <Label htmlFor="purchase_price" className="dark:text-gray-200 flex items-center gap-1">
+                    <span>
+                      Purchase Price
+                      {inventoryId && !idToLoad && perItemPurchasePrice !== null
+                        ? ` ($${perItemPurchasePrice.toFixed(2)} per item)`
+                        : ""}
+                    </span>
+                    <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="purchase_price"
@@ -495,6 +753,14 @@ export default function AddSale() {
                     className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
+
+                <ClearableDateInput
+                  id="purchase_date"
+                  label="Purchase Date"
+                  value={formData.purchase_date}
+                  onChange={(val) => handleChange('purchase_date', val)}
+                  required
+                />
 
                  <div className="space-y-2 min-w-0">
                   <Label htmlFor="source_select" className="dark:text-gray-200">Source</Label>
@@ -515,7 +781,10 @@ export default function AddSale() {
                 </div>
                 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="platform" className="dark:text-gray-200">Sold On *</Label>
+                  <Label htmlFor="platform" className="dark:text-gray-200 flex items-center gap-1">
+                    <span>Sold On</span>
+                    <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     value={formData.platform}
                     onValueChange={(value) => handleChange('platform', value)}
@@ -534,6 +803,26 @@ export default function AddSale() {
                   </Select>
                 </div>
 
+                {isFacebookPlatform && (
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="facebook_sale_type" className="dark:text-gray-200">
+                      Facebook Sale Type
+                    </Label>
+                    <Select
+                      value={facebookSaleType}
+                      onValueChange={(value) => handleChange('facebook_sale_type', value)}
+                    >
+                      <SelectTrigger id="facebook_sale_type" className="w-full">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="online">Online (Shipped)</SelectItem>
+                        <SelectItem value="local">Local Pickup</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {isOtherSource ? (
                   <div className="space-y-2 md:col-span-2 min-w-0">
                     <Label htmlFor="other_source" className="dark:text-gray-200">Custom Source</Label>
@@ -547,14 +836,6 @@ export default function AddSale() {
                   </div>
                 ) : null}
 
-                <ClearableDateInput
-                  id="purchase_date"
-                  label="Purchase Date"
-                  value={formData.purchase_date}
-                  onChange={(val) => handleChange('purchase_date', val)}
-                  required
-                />
-                
                 <div className="space-y-2 min-w-0">
                   <Label htmlFor="selling_price" className="dark:text-gray-200">Selling Price *</Label>
                   <Input
@@ -578,39 +859,131 @@ export default function AddSale() {
                   required
                 />
 
-                <div className="space-y-2 min-w-0">
-                  <Label htmlFor="shipping_cost" className="dark:text-gray-200">Shipping Cost</Label>
-                  <Input
-                    id="shipping_cost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.shipping_cost}
-                    onChange={(e) => handleChange('shipping_cost', e.target.value)}
-                    placeholder="0.00"
-                    className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                </div>
+                {!isFacebookLocal && (
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="shipping_cost" className="dark:text-gray-200 flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-muted-foreground" />
+                      Shipping Cost {shippingRequired && <span className="text-red-500">*</span>}
+                    </Label>
+                    <Input
+                      id="shipping_cost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.shipping_cost}
+                      onChange={(e) => handleChange('shipping_cost', e.target.value)}
+                      placeholder="0.00"
+                      className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      required={shippingRequired}
+                    />
+                  </div>
+                )}
+
+                {!isFacebookLocal && (
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="platform_fees" className="dark:text-gray-200 flex items-center gap-2">
+                      <MoneyPrinterIcon className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
+                      {isEbay ? 'Sales Tax (collected from buyer)' : 'Platform Fees'}
+                    </Label>
+                    <Input
+                      id="platform_fees"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.platform_fees}
+                      onChange={(e) => handleChange('platform_fees', e.target.value)}
+                      placeholder="0.00"
+                      className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </div>
+                )}
+
+                {isEbay && (
+                  <div className="space-y-3 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 dark:bg-muted/10 p-4 min-w-0">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Custom Fees</p>
+                        <p className="text-xs text-muted-foreground">Track additional marketplace or promotional costs.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setCustomFeeFormOpen((prev) => !prev)}
+                        className="gap-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {customFeeFormOpen ? "Close" : "Add Custom Fee"}
+                      </Button>
+                    </div>
+
+                    {customFeeFormOpen && (
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto]">
+                        <Input
+                          placeholder="e.g., International surcharge"
+                          value={customFeeDraft.name}
+                          onChange={(e) => handleCustomFeeDraftChange('name', e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={customFeeDraft.amount}
+                          onChange={(e) => handleCustomFeeDraftChange('amount', e.target.value)}
+                          className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleAddCustomFee}
+                          disabled={!customFeeDraft.name.trim() || customFeeDraft.amount === "" || Number.isNaN(parseFloat(customFeeDraft.amount))}
+                        >
+                          Save Fee
+                        </Button>
+                      </div>
+                    )}
+
+                    {customFees.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="space-y-2">
+                          {customFees.map((fee) => (
+                            <div
+                              key={fee.id}
+                              className="flex items-center justify-between rounded-md border border-muted bg-background/70 px-3 py-2 text-sm"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium text-foreground truncate">{fee.name}</p>
+                                <p className="text-xs text-muted-foreground">${fee.amount.toFixed(2)}</p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRemoveCustomFee(fee.id)}
+                                aria-label={`Remove ${fee.name}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
+                          <span>Custom fee total</span>
+                          <span>${customFeesTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No custom fees added yet.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="platform_fees" className="dark:text-gray-200">
-                    {isEbay ? 'Sales Tax (collected from buyer)' : 'Platform Fees'}
-                  </Label>
-                  <Input
-                    id="platform_fees"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.platform_fees}
-                    onChange={(e) => handleChange('platform_fees', e.target.value)}
-                    placeholder="0.00"
-                    className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                </div>
-
-                <div className="space-y-2 min-w-0">
-                  <Label htmlFor="other_costs" className="dark:text-gray-200">
-                    {isEbay ? 'Transaction Fees' : 'Other Costs'}
+                  <Label htmlFor="other_costs" className="dark:text-gray-200 flex items-center gap-2">
+                    <MoneyPrinterIcon className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
+                    {otherCostsLabel}
                   </Label>
                   <Input
                     id="other_costs"
@@ -619,12 +992,12 @@ export default function AddSale() {
                     min="0"
                     value={formData.other_costs}
                     onChange={(e) => handleChange('other_costs', e.target.value)}
-                    placeholder="0.00"
-                    className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    placeholder={otherCostsPlaceholder}
+                    className={`w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${isFacebookLocal ? 'sm:max-w-[160px]' : ''}`}
                   />
                 </div>
 
-                {isEbay && (
+                {isEbay && !isFacebookLocal && (
                   <div className="space-y-2 min-w-0">
                     <Label htmlFor="vat_fees" className="dark:text-gray-200">
                       VAT Fees (if applicable, collected from buyer)
@@ -642,15 +1015,13 @@ export default function AddSale() {
                   </div>
                 )}
                 
-                <ClearableDateInput
-                  id="return_deadline"
-                  label="Return Deadline"
-                  value={formData.return_deadline}
-                  onChange={(val) => handleChange('return_deadline', val)}
-                />
-
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="category_select" className="dark:text-gray-200">Category</Label>
+                  <Label htmlFor="category_select" className="dark:text-gray-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground dark:text-muted-foreground">
+                      <path fill="currentColor" d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/>
+                    </svg>
+                    Category
+                  </Label>
                   <Select
                     onValueChange={handleCategorySelectChange}
                     value={isOtherCategory ? 'other' : formData.category}
@@ -691,36 +1062,6 @@ export default function AddSale() {
                     rows={3}
                     className="w-full"
                   />
-                </div>
-
-                <div className="space-y-2 md:col-span-2 min-w-0">
-                  <Label htmlFor="image-upload" className="dark:text-gray-200">Item Image</Label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => document.getElementById('image-upload-input').click()}
-                      disabled={isUploading}
-                      className="whitespace-nowrap"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {isUploading ? 'Uploading...' : 'Upload Image'}
-                    </Button>
-                    <Input 
-                      id="image-upload-input" 
-                      type="file" 
-                      onChange={handleImageUpload} 
-                      className="hidden" 
-                      disabled={isUploading} 
-                      accept="image/*" 
-                    />
-                  </div>
-                  {formData.image_url && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image Preview:</p>
-                      <img src={formData.image_url} alt="Item Preview" className="max-h-40 max-w-full object-contain rounded-md border p-2 bg-gray-50 dark:bg-gray-800" />
-                    </div>
-                  )}
                 </div>
 
               </div>
@@ -832,7 +1173,7 @@ export default function AddSale() {
                     alt="eBay"
                     className="w-5 h-5 object-contain"
                   />
-                  eBay 
+                  <span className="hidden sm:inline">eBay</span>
                 </button>
                 <button
                   type="button"
@@ -851,7 +1192,7 @@ export default function AddSale() {
                     alt="Mercari"
                     className="w-5 h-5 object-contain"
                   />
-                  Mercari
+                  <span className="hidden sm:inline">Mercari</span>
                 </button>
                 <button
                   type="button"
@@ -867,12 +1208,12 @@ export default function AddSale() {
                 >
 
                   <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg"
+                    src={FACEBOOK_ICON_URL}
                     alt="Facebook"
                     className="w-4 h-4 object-contain"
                   />
 
-                  Facebook
+                  <span className="hidden sm:inline">Facebook</span>
                 </button>
               </div>
 
@@ -890,14 +1231,12 @@ export default function AddSale() {
                     ${activeMarket === 'etsy' ? '!bg-foreground !text-background dark:!bg-foreground dark:!text-background' : ''}
                   `}
                 >
-
                   <img
                     src="https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B"
                     alt="Etsy"
                     className="w-5 h-5 object-contain"
                   />
-
-                  Etsy
+                  <span className="hidden sm:inline">Etsy</span>
                 </button>
                 <button
                   type="button"
@@ -912,13 +1251,13 @@ export default function AddSale() {
                   `}
                 >
                   <Globe className="w-5 h-5 object-contain" />
-                  All markets
+                  <span className="hidden sm:inline">All markets</span>
                 </button>
               </div>
 
               {/* Helper text */}
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Completed + Sold filter applied
+                Completed + Sold
               </p>
             </div>
 
@@ -926,7 +1265,6 @@ export default function AddSale() {
             <div className="space-y-3 min-w-0 pt-2">
               {activeMarket === 'ebay_sold' && (
                 <>
-                  <p className="text-sm">Completed + Sold filter applied.</p>
                   <div className="flex flex-col sm:flex-row gap-2 min-w-0">
                     <Button asChild className="bg-blue-600 hover:bg-blue-700 max-w-full truncate">
                       <a href={ebaySoldUrl} target="_blank" rel="noreferrer">Open eBay Sold</a>
@@ -940,7 +1278,6 @@ export default function AddSale() {
 
               {activeMarket === 'mercari' && (
                 <>
-                  <p className="text-sm">Search via Google.</p>
                   <Button asChild variant="outline" className="max-w-full truncate">
                     <a href={mercariSoldGoogle} target="_blank" rel="noreferrer">Search Mercari (Google)</a>
                   </Button>
@@ -949,7 +1286,6 @@ export default function AddSale() {
 
               {activeMarket === 'facebook' && (
                 <>
-                  <p className="text-sm">Search via Google.</p>
                   <Button asChild variant="outline" className="max-w-full truncate">
                     <a href={fbMarketplaceGoogle} target="_blank" rel="noreferrer">Search Facebook (Google)</a>
                   </Button>
@@ -958,7 +1294,6 @@ export default function AddSale() {
 
               {activeMarket === 'etsy' && (
                 <>
-                  <p className="text-sm">Etsy sold examples (via Google).</p>
                   <Button asChild variant="outline" className="max-w-full truncate">
                     <a href={etsySoldGoogle} target="_blank" rel="noreferrer">Search Etsy (Google)</a>
                   </Button>
@@ -967,7 +1302,6 @@ export default function AddSale() {
 
               {activeMarket === 'all' && (
                 <>
-                  <p className="text-sm">Broad Search via Google.</p>
                   <Button asChild variant="outline" className="max-w-full truncate">
                     <a href={googleAllMarketsUrl} target="_blank" rel="noreferrer">Search All Markets (Google)</a>
                   </Button>

@@ -51,7 +51,7 @@ export default function ProfitCalendar() {
   };
 
   // Re-evaluation of calendar data and profit aggregation
-  const { profitByDay, calendarDays } = useMemo(() => {
+  const { profitByDay, calendarDays, maxDailyProfit } = useMemo(() => {
     // Calendar should cover 6 weeks to ensure all days of the month are visible
     // Start of week is Sunday by default in date-fns, but explicitly setting for clarity
     const calendarStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }); 
@@ -78,9 +78,15 @@ export default function ProfitCalendar() {
       aggregatedProfitByDay[formattedDate].sales.push(sale);
     });
 
+    const maxDaily = Object.values(aggregatedProfitByDay).reduce(
+      (acc, { profit }) => Math.max(acc, profit || 0),
+      0
+    );
+
     return {
       profitByDay: aggregatedProfitByDay,
-      calendarDays: days
+      calendarDays: days,
+      maxDailyProfit: maxDaily
     };
   }, [sales, currentMonth]);
 
@@ -113,52 +119,112 @@ export default function ProfitCalendar() {
     };
   }, [sales, currentMonth]);
 
+  const getHeatLevel = (profit) => {
+    if (!profit || maxDailyProfit === 0) return 'none';
+    const ratio = profit / maxDailyProfit;
+    if (ratio >= 0.75) return 'hot';
+    if (ratio >= 0.5) return 'high';
+    if (ratio >= 0.25) return 'mid';
+    return 'low';
+  };
+
+  const heatStyles = {
+    none: 'md:bg-[#1b2534] md:text-[#6b7280]',
+    low: 'md:bg-[#10271b] md:text-[#22c55e] md:border md:border-[#1e5534]',
+    mid: 'md:bg-[#124227] md:text-[#34d399] md:border md:border-[#1f7547]',
+    high: 'md:bg-[#0f6131] md:text-[#6ee7b7] md:border md:border-[#2ca56b]',
+    hot: 'md:bg-[#0f7a3c] md:text-[#bbf7d0] md:border md:border-[#34d399] md:shadow-[0_0_0_1px_rgba(74,222,128,0.35)]'
+  };
+
   if (isLoading) {
     return <div className="p-4 sm:p-8 text-center text-gray-700 dark:text-gray-300">Loading calendar...</div>;
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 md:bg-[#0b1220]">
+      <div className="max-w-5xl mx-auto md:max-w-6xl">
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Profit Calendar</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Track your daily profits at a glance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground md:text-white">Profit Calendar</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1 md:text-slate-300">
+            Track your daily profits at a glance
+          </p>
         </div>
 
-        <Card className="border-0 shadow-lg mb-6">
-          <CardHeader className="border-b bg-gray-800 dark:bg-gray-800 p-4">
+        <Card className="border-0 shadow-lg mb-6 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden">
+          <CardHeader className="border-b bg-gray-800 dark:bg-gray-800 p-4 md:bg-transparent md:border-b md:border-white/5 md:px-6 md:py-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle className="text-lg sm:text-xl text-white">
                 {format(currentMonth, 'MMMM yyyy')}
               </CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handlePreviousMonth}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousMonth}
+                  className="md:border-white/20 md:text-white md:hover:bg-white/10"
+                >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleToday}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToday}
+                  className="md:border-white/20 md:text-white md:hover:bg-white/10"
+                >
                   Today
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleNextMonth}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextMonth}
+                  className="md:border-white/20 md:text-white md:hover:bg-white/10"
+                >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-2 sm:p-3">
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-2">
+          <div className="hidden md:flex items-center justify-between px-6 py-5 border-b border-white/5 bg-[#0d1728]">
+            <div className="flex items-center gap-6 text-sm text-slate-300">
+              <span className="uppercase tracking-wide text-xs text-slate-400">Month Total</span>
+              <span className="text-lg font-semibold text-emerald-300">${monthlyProfit.toFixed(2)}</span>
+              <span className="text-xs text-slate-500">Avg / Day</span>
+              <span className="text-lg font-semibold text-emerald-200">${avgDailyProfit.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-400">
+              {[
+                { label: 'Low', color: 'bg-emerald-700/40 border border-emerald-500/40' },
+                { label: 'Mid', color: 'bg-emerald-500/40 border border-emerald-400/60' },
+                { label: 'High', color: 'bg-emerald-400/60 border border-emerald-300/60' },
+                { label: 'Hot', color: 'bg-emerald-300/70 border border-emerald-200/70' }
+              ].map((item) => (
+                <span key={item.label} className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <CardContent className="p-2 sm:p-3 md:px-6 md:py-6 md:bg-transparent">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-2 md:gap-2 md:mb-4">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-1">
+                <div
+                  key={day}
+                  className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-1 md:text-slate-400 md:uppercase md:text-[11px]"
+                >
                   {day}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
               {calendarDays.map((day, index) => {
                 const dayData = profitByDay[format(day, 'yyyy-MM-dd')];
                 const profit = dayData?.profit || 0;
                 const isToday = isSameDay(day, new Date());
                 const isCurrentMonth = isSameMonth(day, currentMonth);
+
+                const heatLevel = getHeatLevel(profit);
 
                 return (
                   <div
@@ -167,20 +233,23 @@ export default function ProfitCalendar() {
                     className={`
                       aspect-square p-1 rounded-lg text-center flex flex-col justify-between
                       ${!isCurrentMonth ? 'opacity-30' : ''}
-                      ${isToday ? 'ring-2 ring-blue-500' : ''}
-                      ${dayData ? 'cursor-pointer hover:scale-105 transition-transform' : ''}
+                      ${isToday ? 'ring-2 ring-blue-500 md:ring-emerald-400/70' : ''}
+                      ${dayData ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}
                       ${profit > 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-gray-50 dark:bg-gray-800/50'}
+                      ${heatStyles[heatLevel]}
                     `}
                   >
-                    <div className={`text-[10px] sm:text-xs font-medium ${
-                      dayData 
-                        ? 'text-foreground' 
-                        : 'text-muted-foreground'
-                    }`}>
+                    <div
+                      className={`text-[10px] sm:text-xs font-medium md:text-sm ${
+                        dayData
+                          ? 'text-foreground md:text-inherit'
+                          : 'text-muted-foreground md:text-inherit'
+                      }`}
+                    >
                       {format(day, 'd')}
                     </div>
                     {dayData && (
-                      <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400">
+                      <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm md:text-inherit">
                         ${profit.toFixed(0)}
                       </div>
                     )}
@@ -192,36 +261,36 @@ export default function ProfitCalendar() {
         </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+          <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
+            <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
+              <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg md:bg-emerald-500/10 md:border md:border-emerald-400/40">
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 md:text-emerald-300" />
               </div>
               <div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">This Month</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white">${monthlyProfit.toFixed(2)}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 md:text-slate-400">This Month</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">${monthlyProfit.toFixed(2)}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+          <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
+            <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
+              <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg md:bg-blue-500/10 md:border md:border-blue-400/40">
+                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 md:text-blue-300" />
               </div>
               <div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Sales Count</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white">{monthlySalesCount}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 md:text-slate-400">Sales Count</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">{monthlySalesCount}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+          <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
+            <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
+              <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg md:bg-purple-500/10 md:border md:border-purple-400/40">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 md:text-purple-300" />
               </div>
               <div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Avg Daily</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white">${avgDailyProfit.toFixed(2)}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 md:text-slate-400">Avg Daily</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">${avgDailyProfit.toFixed(2)}</p>
               </div>
             </CardContent>
           </Card>
@@ -235,25 +304,35 @@ export default function ProfitCalendar() {
               Sales on {selectedDay && format(selectedDay, 'MMMM d, yyyy')}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-6">
             {selectedSales.map(sale => (
-              <Link key={sale.id} to={createPageUrl(`SoldItemDetail?id=${sale.id}`)}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-foreground">{sale.item_name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Sold for ${sale.selling_price?.toFixed(2)}
-                        </p>
-                      </div>
-                      <Badge className="bg-green-600 text-white">
-                        +${sale.profit?.toFixed(2)}
-                      </Badge>
+              <Card key={sale.id} className="hover:shadow-md transition-shadow border border-border/60 rounded-xl mb-4">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{sale.item_name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Sold for ${sale.selling_price?.toFixed(2)}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                    <Badge className={`${sale.profit >= 0 ? "bg-green-600" : "bg-red-600"} text-white`}>
+                      {sale.profit >= 0 ? "+" : "-"}${Math.abs(sale.profit ?? 0).toFixed(2)}
+                    </Badge>
+                  </div>
+                  <div className="h-px bg-border/70" />
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `/SoldItemDetail?id=${encodeURIComponent(sale.id)}&expandFees=true`;
+                      }}
+                      className="inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                    >
+                      View Sale Details
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </DialogContent>

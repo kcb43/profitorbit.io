@@ -19,6 +19,7 @@ import SoldItemDetail from "./SoldItemDetail";
 import ProfitCalendar from "./ProfitCalendar";
 
 import Crosslist from "./Crosslist";
+import DevErrorBoundary from "../components/DevErrorBoundary";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -77,7 +78,18 @@ function PagesContent() {
                 
                 <Route path="/SalesHistory" element={<SalesHistory />} />
                 
-                <Route path="/Inventory" element={<Inventory />} />
+                <Route
+                  path="/Inventory"
+                  element={
+                    import.meta.env.DEV ? (
+                      <DevErrorBoundary>
+                        <Inventory />
+                      </DevErrorBoundary>
+                    ) : (
+                      <Inventory />
+                    )
+                  }
+                />
                 
                 <Route path="/AddInventoryItem" element={<AddInventoryItem />} />
                 

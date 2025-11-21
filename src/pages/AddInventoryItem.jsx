@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -10,28 +10,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Upload, Copy as CopyIcon, BarChart } from "lucide-react";
+import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import ClearableDateInput from "../components/ClearableDateInput";
 import SoldLookupDialog from "../components/SoldLookupDialog";
+import ReceiptScannerDialog from "@/components/ReceiptScannerDialog";
+import { scanReceiptPlaceholder } from "@/api/receiptScanner";
+import imageCompression from "browser-image-compression";
 
 const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy"];
 const PREDEFINED_CATEGORIES = [
-  "Electronics",
-  "Clothing & Apparel",
-  "Home & Garden",
-  "Kitchen",
-  "Toys & Hobbies",
-  "Collectibles",
-  "Books, Movies & Music",
-  "Sporting Goods",
-  "Tools",
-  "Health & Beauty",
-  "Jewelry & Watches",
   "Antiques",
-  "Pets"
+  "Books, Movies & Music",
+  "Clothing & Apparel",
+  "Collectibles",
+  "Electronics",
+  "Gym/Workout",
+  "Health & Beauty",
+  "Home & Garden",
+  "Jewelry & Watches",
+  "Kitchen",
+  "Makeup",
+  "Mic/Audio Equipment",
+  "Motorcycle",
+  "Motorcycle Accessories",
+  "Pets",
+  "Pool Equipment",
+  "Shoes/Sneakers",
+  "Sporting Goods",
+  "Stereos & Speakers",
+  "Tools",
+  "Toys & Hobbies",
+  "Yoga"
 ];
 
 const RETURN_WINDOWS = {
@@ -43,6 +55,34 @@ const RETURN_WINDOWS = {
 export default function AddInventoryItem() {
   const navigate = useNavigate();
   const location = useLocation();
+  const rawReturnTo = location.state?.from;
+  const resolvedReturnTo = React.useMemo(() => {
+    const defaultPath = createPageUrl("Dashboard");
+
+    if (rawReturnTo && typeof rawReturnTo === "object") {
+      const pathname = rawReturnTo.pathname || defaultPath;
+      const search = rawReturnTo.search || "";
+      const filters = rawReturnTo.filters;
+      const state = filters ? { filters } : rawReturnTo.state;
+
+      return {
+        path: `${pathname}${search}`,
+        state,
+      };
+    }
+
+    if (typeof rawReturnTo === "string") {
+      return { path: rawReturnTo, state: undefined };
+    }
+
+    return { path: defaultPath, state: undefined };
+  }, [rawReturnTo]);
+  const navigateBackToReturn = React.useCallback(() => {
+    navigate(resolvedReturnTo.path, {
+      replace: true,
+      state: resolvedReturnTo.state,
+    });
+  }, [navigate, resolvedReturnTo]);
   const queryClient = useQueryClient();
   
   const searchParams = new URLSearchParams(location.search);
@@ -65,6 +105,10 @@ export default function AddInventoryItem() {
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [soldDialogOpen, setSoldDialogOpen] = useState(false);
+  const [soldDialogName, setSoldDialogName] = useState("");
+  const imageInputRef = useRef(null);
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [isReceiptScanning, setIsReceiptScanning] = useState(false);
 
   const { data: existingItem, isLoading: isLoadingItem } = useQuery({
     queryKey: ['inventoryItem', itemId],
@@ -179,35 +223,115 @@ export default function AddInventoryItem() {
     }));
   };
 
+  const buildInventoryPayload = (data) => ({
+    ...data,
+    purchase_price: parseFloat(data.purchase_price) || 0,
+    quantity: parseInt(data.quantity, 10) || 1,
+    return_deadline: data.return_deadline ? data.return_deadline : null,
+  });
+
   const itemMutation = useMutation({
     mutationFn: (data) => {
-      const numericData = {
-        ...data,
-        purchase_price: parseFloat(data.purchase_price) || 0,
-        quantity: parseInt(data.quantity, 10) || 1,
-        return_deadline: data.return_deadline ? data.return_deadline : null
-      };
-      return (itemId && !copyId) ? base44.entities.InventoryItem.update(itemId, numericData) : base44.entities.InventoryItem.create(numericData);
+      const numericData = buildInventoryPayload(data);
+      return (itemId && !copyId)
+        ? base44.entities.InventoryItem.update(itemId, numericData)
+        : base44.entities.InventoryItem.create(numericData);
     },
-    onSuccess: () => {
+    onMutate: async (data) => {
+      const payload = buildInventoryPayload(data);
+      const optimisticId = (itemId && !copyId) ? itemId : payload.id || `temp-${Date.now()}`;
+      const optimisticItem = {
+        ...payload,
+        id: optimisticId,
+        created_date: payload.created_date || new Date().toISOString(),
+      };
+
+      await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
+      const previousItems = queryClient.getQueryData(['inventoryItems']);
+
+      queryClient.setQueryData(['inventoryItems'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        if (itemId && !copyId) {
+          return old.map((item) => (item.id === itemId ? { ...item, ...optimisticItem } : item));
+        }
+        return [optimisticItem, ...old];
+      });
+
+      return { previousItems, optimisticId };
+    },
+    onError: (error, _data, context) => {
+      console.error("Failed to save inventory item:", error);
+      if (context?.previousItems) {
+        queryClient.setQueryData(['inventoryItems'], context.previousItems);
+      }
+      alert("Failed to save item. Please try again.");
+    },
+    onSuccess: (result, _data, context) => {
+      if (result && context?.optimisticId) {
+        queryClient.setQueryData(['inventoryItems'], (old = []) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((item) => (item.id === context.optimisticId ? { ...result } : item));
+        });
+      }
+      navigateBackToReturn();
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      navigate(createPageUrl("Inventory"));
     },
   });
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 0.25,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+      const fileToUpload = compressedFile || file;
+      const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
       handleChange('image_url', file_url);
     } catch (error) {
       console.error("Image upload failed:", error);
     } finally {
       setIsUploading(false);
-      // Clear the input value to allow re-uploading the same file if needed
-      if (e.target) e.target.value = null; 
+      if (imageInputRef.current) {
+        imageInputRef.current.value = null;
+      }
+    }
+  };
+
+  const handleReceiptScan = async (file) => {
+    setIsReceiptScanning(true);
+    try {
+      const parsed = await scanReceiptPlaceholder(file);
+      setFormData((prev) => {
+        const next = { ...prev };
+        if (parsed.item_name) next.item_name = parsed.item_name;
+        if (parsed.purchase_price) next.purchase_price = String(parsed.purchase_price);
+        if (parsed.purchase_date) next.purchase_date = parsed.purchase_date;
+        if (parsed.source) next.source = parsed.source;
+        if (parsed.category) next.category = parsed.category;
+        if (parsed.notes) next.notes = parsed.notes;
+        return next;
+      });
+
+      if (parsed.source) {
+        setIsOtherSource(!PREDEFINED_SOURCES.includes(parsed.source));
+      }
+      if (parsed.category) {
+        setIsOtherCategory(!PREDEFINED_CATEGORIES.includes(parsed.category));
+      }
+
+      setReceiptDialogOpen(false);
+    } catch (error) {
+      console.error("Receipt scan failed:", error);
+      alert("Unable to scan receipt. Connect a real OCR provider to enable this feature.");
+    } finally {
+      setIsReceiptScanning(false);
     }
   };
 
@@ -244,7 +368,7 @@ export default function AddInventoryItem() {
     <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
       <div className="max-w-3xl mx-auto w-full min-w-0">
         <div className="flex items-center gap-4 mb-8 min-w-0">
-          <Button variant="outline" size="icon" onClick={() => navigate(createPageUrl("Inventory"))}>
+          <Button variant="outline" size="icon" onClick={navigateBackToReturn}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="min-w-0">
@@ -275,6 +399,82 @@ export default function AddInventoryItem() {
                         </AlertDescription>
                     </Alert>
                 )}
+                <div className="space-y-3">
+                  <Label htmlFor="image-upload-input" className="dark:text-gray-200 break-words">Item Image</Label>
+                  <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => !isUploading && imageInputRef.current?.click()}
+                      disabled={isUploading}
+                      className={`relative aspect-square w-32 sm:w-40 md:w-52 rounded-2xl border-2 border-dashed border-muted-foreground/40 bg-muted/20 flex items-center justify-center overflow-hidden transition-all ${isUploading ? 'opacity-70 cursor-wait' : 'hover:border-primary hover:bg-primary/5 cursor-pointer'}`}
+                    >
+                      {formData.image_url ? (
+                        <img
+                          src={formData.image_url}
+                          alt="Inventory item"
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <Camera className="w-7 h-7 sm:w-9 sm:h-9" />
+                          <span className="text-xs sm:text-sm font-medium">Add item photo</span>
+                          <span className="text-[11px] sm:text-xs text-muted-foreground/70">Tap to upload</span>
+                        </div>
+                      )}
+                      {isUploading && (
+                        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center text-sm font-medium text-muted-foreground">
+                          Uploading...
+                        </div>
+                      )}
+                    </button>
+                    <div className="flex flex-col gap-2 text-xs sm:text-sm text-muted-foreground">
+                      <span>Include a photo so you know exactly which item this record refers to.</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => imageInputRef.current?.click()}
+                          disabled={isUploading}
+                        >
+                          {isUploading ? 'Uploading...' : formData.image_url ? 'Change image' : 'Upload image'}
+                        </Button>
+                        {formData.image_url && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleChange('image_url', '')}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setReceiptDialogOpen(true)}
+                          disabled={isUploading}
+                          className="flex items-center gap-2"
+                        >
+                          <Scan className="w-4 h-4" />
+                          Scan Receipt
+                        </Button>
+                      </div>
+                      <span className="text-[11px] sm:text-xs text-muted-foreground/70">Supports JPG or PNG up to 5 MB.</span>
+                    </div>
+                  </div>
+                  <input
+                    ref={imageInputRef}
+                    id="image-upload-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-6 min-w-0">
                     <div className="space-y-2 min-w-0">
                         <Label htmlFor="item_name" className="dark:text-gray-200 break-words">Item Name *</Label>
@@ -291,7 +491,10 @@ export default function AddInventoryItem() {
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => setSoldDialogOpen(true)}
+                              onClick={() => {
+                                setSoldDialogName(formData.item_name || "");
+                                setSoldDialogOpen(true);
+                              }}
                               className="whitespace-nowrap"
                             >
                               <BarChart className="w-4 h-4 mr-2" />
@@ -386,14 +589,19 @@ export default function AddInventoryItem() {
                               <SelectValue placeholder="Select status"/>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="available">Available</SelectItem>
+                                <SelectItem value="available">In Stock</SelectItem>
                                 <SelectItem value="listed">Listed</SelectItem>
                                 <SelectItem value="sold">Sold</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="category_select" className="dark:text-gray-200 break-words">Category</Label>
+                        <Label htmlFor="category_select" className="dark:text-gray-200 break-words flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground dark:text-muted-foreground">
+                            <path fill="currentColor" d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/>
+                          </svg>
+                          Category
+                        </Label>
                         <Select
                             onValueChange={handleCategorySelectChange}
                             value={isOtherCategory ? 'other' : formData.category}
@@ -434,44 +642,14 @@ export default function AddInventoryItem() {
                           className="w-full"
                         />
                     </div>
-
-                    <div className="space-y-2 md:col-span-2 min-w-0">
-                      <Label htmlFor="image-upload-input" className="dark:text-gray-200 break-words">Item Image</Label>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('image-upload-input').click()}
-                          disabled={isUploading}
-                          className="whitespace-nowrap"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          {isUploading ? 'Uploading...' : 'Upload Image'}
-                        </Button>
-                        <Input 
-                          id="image-upload-input" 
-                          type="file" 
-                          onChange={handleImageUpload} 
-                          className="hidden" 
-                          disabled={isUploading} 
-                          accept="image/*" 
-                        />
-                      </div>
-                      {formData.image_url && (
-                        <div className="mt-4">
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image Preview:</p>
-                          <img src={formData.image_url} alt="Item Preview" className="max-h-40 max-w-full object-contain rounded-md border p-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600" />
-                        </div>
-                      )}
-                    </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                     <Button 
                       type="button" 
                       variant="outline" 
-                      onClick={() => navigate(createPageUrl("Inventory"))}
+                      onClick={navigateBackToReturn}
                     >
-                      Cancel
+                      Go Back
                     </Button>
                     <Button 
                       type="submit" 
@@ -490,7 +668,13 @@ export default function AddInventoryItem() {
       <SoldLookupDialog
         open={soldDialogOpen}
         onOpenChange={setSoldDialogOpen}
-        itemName={formData.item_name}
+        itemName={soldDialogName}
+      />
+      <ReceiptScannerDialog
+        open={receiptDialogOpen}
+        onOpenChange={setReceiptDialogOpen}
+        onScan={handleReceiptScan}
+        isScanning={isReceiptScanning}
       />
     </div>
   );

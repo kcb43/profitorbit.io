@@ -4,6 +4,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
+import { stripCustomFeeNotes } from "@/utils/customFees";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,6 +102,11 @@ export default function SoldItemDetail() {
   const saleId = searchParams.get('id');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [feesExpanded, setFeesExpanded] = React.useState(location.search.includes('expandFees=true'));
+
+  React.useEffect(() => {
+    setFeesExpanded(location.search.includes('expandFees=true'));
+  }, [location.search]);
 
   const { data: sale, isLoading, isError } = useQuery({
     queryKey: ['sale', saleId],
@@ -153,13 +159,15 @@ export default function SoldItemDetail() {
   const shippingCost = sale?.shipping_cost ?? 0;
   const platformFees = sale?.platform_fees ?? 0;
   const otherCosts = sale?.other_costs ?? 0;
+  const vatFees = sale?.vat_fees ?? 0;
 
-  const totalCosts = purchasePrice + shippingCost + platformFees + otherCosts;
+  const totalCosts = purchasePrice + shippingCost + platformFees + otherCosts + vatFees;
   const profit = sale?.profit ?? 0;
   const sellingPrice = sale?.selling_price ?? 0;
 
   const roi = totalCosts > 0 ? (profit / totalCosts) * 100 : (profit > 0 ? Infinity : 0);
   const profitMargin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : (profit > 0 ? Infinity : 0);
+  const displayNotes = stripCustomFeeNotes(sale?.notes || "");
 
   let saleSpeed = null;
   if (sale?.sale_date && sale?.purchase_date) {
@@ -231,7 +239,7 @@ export default function SoldItemDetail() {
               </CardContent>
             </Card>
 
-            {sale?.notes && (
+            {displayNotes && (
               <Card className="border-0 shadow-sm dark:bg-gray-800">
                 <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
                   <CardTitle className="text-base sm:text-lg flex items-center gap-2 dark:text-white">
@@ -240,7 +248,7 @@ export default function SoldItemDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
-                  <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 italic break-words">"{sale.notes}"</p>
+                  <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 italic break-words">"{displayNotes}"</p>
                 </CardContent>
               </Card>
             )}
@@ -305,33 +313,55 @@ export default function SoldItemDetail() {
               <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
                 <CardTitle className="text-base sm:text-lg dark:text-white break-words">Cost Breakdown</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6 min-w-0">
+              <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 min-w-0">
                 <div className="flex justify-between items-center gap-2 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Purchase Price</span>
-                  <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${purchasePrice?.toFixed(2)}</span>
-                </div>
-                {shippingCost > 0 && (
-                  <div className="flex justify-between items-center gap-2 min-w-0">
-                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Shipping</span>
-                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${shippingCost?.toFixed(2)}</span>
-                  </div>
-                )}
-                {platformFees > 0 && (
-                  <div className="flex justify-between items-center gap-2 min-w-0">
-                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Platform Fees</span>
-                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${platformFees?.toFixed(2)}</span>
-                  </div>
-                )}
-                {otherCosts > 0 && (
-                  <div className="flex justify-between items-center gap-2 min-w-0">
-                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Other Costs</span>
-                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${otherCosts?.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700 font-semibold gap-2 min-w-0">
                   <span className="text-sm sm:text-base text-white dark:text-white break-words">Total Costs</span>
-                  <span className="text-sm sm:text-base text-white dark:text-white break-words">${totalCosts.toFixed(2)}</span>
+                  <span className="text-sm sm:text-base font-semibold text-white dark:text-white break-words">${totalCosts.toFixed(2)}</span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFeesExpanded((prev) => !prev)}
+                  className="text-xs sm:text-sm font-medium text-orange-600 dark:text-orange-300 hover:text-orange-500 dark:hover:text-orange-200 transition"
+                >
+                  {feesExpanded ? "Hide fees" : "Show fees"}
+                </button>
+
+                {feesExpanded && (
+                  <div className="space-y-2 border-t dark:border-gray-700 pt-3 text-[13px] sm:text-sm text-red-500 dark:text-red-300">
+                    <div className="flex justify-between items-center gap-2 min-w-0">
+                      <span className="break-words">Purchase Price</span>
+                      <span className="font-semibold break-words">${purchasePrice?.toFixed(2)}</span>
+                    </div>
+                    {shippingCost > 0 && (
+                      <div className="flex justify-between items-center gap-2 min-w-0">
+                        <span className="break-words">Shipping</span>
+                        <span className="font-semibold break-words">${shippingCost?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {platformFees > 0 && (
+                      <div className="flex justify-between items-center gap-2 min-w-0">
+                        <span className="break-words">Platform Fees</span>
+                        <span className="font-semibold break-words">${platformFees?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {otherCosts > 0 && (
+                      <div className="flex justify-between items-center gap-2 min-w-0">
+                        <span className="break-words">Other Costs</span>
+                        <span className="font-semibold break-words">${otherCosts?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {vatFees > 0 && (
+                      <div className="flex justify-between items-center gap-2 min-w-0">
+                        <span className="break-words">VAT Fees</span>
+                        <span className="font-semibold break-words">${vatFees?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {shippingCost <= 0 && platformFees <= 0 && otherCosts <= 0 && vatFees <= 0 && (
+                      <p className="text-muted-foreground text-[11px] sm:text-xs">No additional fees recorded.</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

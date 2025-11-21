@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { sortSalesByRecency } from "@/utils/sales";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,16 +22,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
+import { stripCustomFeeNotes } from "@/utils/customFees";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  facebook_marketplace: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/f0f473258_sdfsdv.jpeg",
+  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
   mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
   etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
-  offer_up: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/c0f886f60_Symbol.png"
+  offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
 };
 
 const platformColors = {
@@ -49,6 +59,31 @@ const platformNames = {
   offer_up: "OfferUp"
 };
 
+const PREDEFINED_CATEGORIES = [
+  "Antiques",
+  "Books, Movies & Music",
+  "Clothing & Apparel",
+  "Collectibles",
+  "Electronics",
+  "Gym/Workout",
+  "Health & Beauty",
+  "Home & Garden",
+  "Jewelry & Watches",
+  "Kitchen",
+  "Makeup",
+  "Mic/Audio Equipment",
+  "Motorcycle",
+  "Motorcycle Accessories",
+  "Pets",
+  "Pool Equipment",
+  "Shoes/Sneakers",
+  "Sporting Goods",
+  "Stereos & Speakers",
+  "Tools",
+  "Toys & Hobbies",
+  "Yoga",
+];
+
 export default function SalesHistory() {
   const [filters, setFilters] = useState({
     searchTerm: "",
@@ -64,6 +99,13 @@ export default function SalesHistory() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
+  const [bulkUpdateForm, setBulkUpdateForm] = useState({
+    platform: "",
+    category: "",
+    customCategory: "",
+    sale_date: "",
+  });
   const navigate = useNavigate();
 
   const queryClient = useQueryClient();
@@ -77,7 +119,9 @@ export default function SalesHistory() {
   const salesWithMetrics = React.useMemo(() => {
     if (!rawSales) return [];
 
-    const salesWithCalculatedMetrics = rawSales.map(sale => {
+    const baseSortedSales = sortSalesByRecency(rawSales);
+
+    const salesWithCalculatedMetrics = baseSortedSales.map(sale => {
       const purchasePrice = sale.purchase_price || 0;
       const profit = sale.profit || 0;
 
@@ -101,6 +145,10 @@ export default function SalesHistory() {
       return { ...sale, profit, roi, saleSpeed };
     });
 
+    if (sort.by === "sale_date") {
+      return salesWithCalculatedMetrics;
+    }
+
     return [...salesWithCalculatedMetrics].sort((a, b) => {
       let comparison = 0;
       switch (sort.by) {
@@ -119,7 +167,7 @@ export default function SalesHistory() {
           else comparison = a.saleSpeed - b.saleSpeed;
           break;
         default:
-          comparison = new Date(b.created_date).getTime() - new Date(a.created_date).getTime();
+          comparison = 0;
           break;
       }
       
@@ -197,6 +245,74 @@ export default function SalesHistory() {
     },
   });
 
+  const resetBulkUpdateForm = () => {
+    setBulkUpdateForm({
+      platform: "",
+      category: "",
+      customCategory: "",
+      sale_date: "",
+    });
+  };
+
+  const buildBulkUpdatePayload = () => {
+    const updates = {};
+    if (bulkUpdateForm.platform) updates.platform = bulkUpdateForm.platform;
+    if (bulkUpdateForm.category) {
+      if (bulkUpdateForm.category === "__custom" && bulkUpdateForm.customCategory.trim() !== "") {
+        updates.category = bulkUpdateForm.customCategory.trim();
+      } else if (bulkUpdateForm.category !== "__custom") {
+        updates.category = bulkUpdateForm.category;
+      }
+    } else if (bulkUpdateForm.customCategory.trim() !== "") {
+      updates.category = bulkUpdateForm.customCategory.trim();
+    }
+    if (bulkUpdateForm.sale_date) updates.sale_date = bulkUpdateForm.sale_date;
+    return updates;
+  };
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ ids, updates }) => {
+      const results = [];
+      for (const id of ids) {
+        try {
+          await base44.entities.Sale.update(id, updates);
+          results.push({ id, success: true });
+        } catch (error) {
+          results.push({ id, success: false, error: error.message });
+        }
+      }
+      return results;
+    },
+    onMutate: async ({ ids, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['sales'] });
+      const previousSales = queryClient.getQueryData(['sales']);
+      queryClient.setQueryData(['sales'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((sale) => (ids.includes(sale.id) ? { ...sale, ...updates } : sale));
+      });
+      return { previousSales };
+    },
+    onError: (error, _variables, context) => {
+      console.error("Failed to bulk update sales:", error);
+      if (context?.previousSales) {
+        queryClient.setQueryData(['sales'], context.previousSales);
+      }
+      alert("Failed to update selected sales. Please try again.");
+    },
+    onSuccess: (results) => {
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.length - successCount;
+      if (failCount > 0) {
+        alert(`Updated ${successCount} sale(s). ${failCount} sale(s) failed.`);
+      }
+      resetBulkUpdateForm();
+      setBulkUpdateDialogOpen(false);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+
   const handleAddToInventory = (sale) => {
     const params = new URLSearchParams();
     params.set('itemName', sale.item_name);
@@ -205,7 +321,8 @@ export default function SalesHistory() {
     if (sale.source) params.set('source', sale.source);
     if (sale.category) params.set('category', sale.category);
     if (sale.image_url) params.set('imageUrl', sale.image_url);
-    if (sale.notes) params.set('notes', sale.notes);
+    const safeNotes = stripCustomFeeNotes(sale.notes || "");
+    if (safeNotes) params.set('notes', safeNotes);
 
     navigate(createPageUrl(`AddInventoryItem?${params.toString()}`));
   };
@@ -230,6 +347,8 @@ export default function SalesHistory() {
     return matchesSearch && matchesPlatform && matchesMinProfit && matchesMaxProfit && matchesStartDate && matchesEndDate;
   });
 
+  const bulkPayloadEmpty = Object.keys(buildBulkUpdatePayload()).length === 0;
+
   const handleSelect = (saleId) => {
     setSelectedSales(prev =>
       prev.includes(saleId)
@@ -239,8 +358,9 @@ export default function SalesHistory() {
   };
 
   const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedSales(filteredSales.map(s => s.id));
+    const isChecked = checked === true;
+    if (isChecked) {
+      setSelectedSales(filteredSales.map((s) => s.id));
     } else {
       setSelectedSales([]);
     }
@@ -249,6 +369,12 @@ export default function SalesHistory() {
   const handleDeleteClick = (sale) => {
     setSaleToDelete(sale);
     setDeleteDialogOpen(true);
+  };
+
+  const handleBulkUpdateConfirm = () => {
+    const updates = buildBulkUpdatePayload();
+    if (selectedSales.length === 0 || Object.keys(updates).length === 0) return;
+    bulkUpdateMutation.mutate({ ids: selectedSales, updates });
   };
 
   return (
@@ -345,27 +471,47 @@ export default function SalesHistory() {
               {selectedSales.length > 0 ? (
                 <>
                   <CardTitle className="text-white break-words">{selectedSales.length} sale(s) selected</CardTitle>
-                  <Button variant="destructive" onClick={() => setBulkDeleteDialogOpen(true)} className="w-full sm:w-auto">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Selected
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        resetBulkUpdateForm();
+                        setBulkUpdateDialogOpen(true);
+                      }}
+                      disabled={bulkUpdateMutation.isPending}
+                      className="w-full sm:w-auto"
+                    >
+                      {bulkUpdateMutation.isPending ? "Updating..." : "Bulk Update"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setBulkDeleteDialogOpen(true)}
+                      disabled={bulkDeleteMutation.isPending}
+                      className="w-full sm:w-auto"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {bulkDeleteMutation.isPending ? "Deleting..." : "Delete Selected"}
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <>
                   <CardTitle className="text-white break-words">All Sales ({filteredSales.length})</CardTitle>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full sm:w-auto">
-                    <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">Sort by:</Label>
-                     <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
-                        <SelectTrigger id="sort-by" className="w-full sm:w-[180px]">
-                           <SelectValue placeholder="Sort by"/>
-                        </SelectTrigger>
-                        <SelectContent>
-                           <SelectItem value="sale_date">Most Recent</SelectItem>
-                           <SelectItem value="profit">Highest Profit</SelectItem>
-                           <SelectItem value="roi">Highest ROI</SelectItem>
-                           <SelectItem value="sale_speed">Fastest Sale</SelectItem>
-                        </SelectContent>
-                     </Select>
+                    <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">
+                      Sort by:
+                    </Label>
+                    <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
+                      <SelectTrigger id="sort-by" className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sale_date">Most Recent</SelectItem>
+                        <SelectItem value="profit">Highest Profit</SelectItem>
+                        <SelectItem value="roi">Highest ROI</SelectItem>
+                        <SelectItem value="sale_speed">Fastest Sale</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </>
               )}
@@ -398,7 +544,9 @@ export default function SalesHistory() {
                     </p>
                   </div>
                 )}
-                {filteredSales.map((sale) => (
+                {filteredSales.map((sale) => {
+                  const safeNotes = stripCustomFeeNotes(sale.notes || "");
+                  return (
                   <div key={sale.id} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 min-w-0">
                     <Checkbox
                       checked={selectedSales.includes(sale.id)}
@@ -444,43 +592,49 @@ export default function SalesHistory() {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm border-t border-gray-200 dark:border-gray-700 pt-3 min-w-0">
-                             <div className="flex items-center text-foreground min-w-0" title="Return on Investment">
-                                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 text-blue-500 flex-shrink-0"/>
-                                <span className="font-medium whitespace-nowrap">ROI:</span>
-                                <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400 break-words">
+                          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center mt-4 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2 text-xs sm:text-sm text-foreground min-w-0">
+                              <div className="flex items-center text-foreground min-w-0" title="Return on Investment">
+                                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-500 flex-shrink-0" />
+                                <span className="font-semibold whitespace-nowrap text-sm sm:text-base">ROI:</span>
+                                <span className="ml-2 font-bold text-blue-600 dark:text-blue-400 break-words text-sm sm:text-lg">
                                   {isFinite(sale.roi) ? `${sale.roi.toFixed(1)}%` : (sale.roi > 0 ? '∞%' : '-∞%')}
                                 </span>
-                             </div>
-                             <div className="flex items-center text-foreground min-w-0" title="Sale Speed">
-                                <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 text-orange-500 flex-shrink-0"/>
-                                <span className="font-medium whitespace-nowrap">Sold in:</span>
-                                <span className="ml-1 font-semibold text-orange-600 dark:text-orange-400 break-words">
+                              </div>
+                              <div className="flex items-center text-foreground min-w-0" title="Sale Speed">
+                                <Zap className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-orange-500 flex-shrink-0" />
+                                <span className="font-semibold whitespace-nowrap text-sm sm:text-base">Sold in:</span>
+                                <span className="ml-2 font-bold text-orange-600 dark:text-orange-400 break-words text-sm sm:text-lg">
                                   {sale.saleSpeed !== null ? `${sale.saleSpeed} day(s)` : 'N/A'}
                                 </span>
-                             </div>
-                          </div>
-                          
-                          {(sale.category || sale.notes || sale.image_url) && (
-                            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2 text-xs sm:text-sm text-foreground mt-3 min-w-0">
-                              {sale.image_url && (
-                                <img src={sale.image_url} alt={sale.item_name} className="w-8 h-8 sm:w-10 sm:h-10 object-cover rounded-md border flex-shrink-0" />
-                              )}
+                              </div>
                               {sale.category && (
-                                <p className="break-words min-w-0">
-                                  <span className="font-medium">Category:</span> {sale.category}
+                                <p className="break-words min-w-0 text-sm sm:text-base">
+                                  <span className="font-semibold">Category:</span> {sale.category}
                                 </p>
                               )}
-                              {sale.notes && (
-                                <p className="italic break-words min-w-0">
-                                  <span className="font-medium not-italic">Notes:</span> "{sale.notes}"
+                            </div>
+
+                          {(sale.image_url || safeNotes) && (
+                            <div className="flex flex-col md:flex-col md:items-end md:gap-3 gap-2 sm:gap-3">
+                              {sale.image_url && (
+                                <img
+                                  src={sale.image_url}
+                                  alt={sale.item_name}
+                                  className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-36 lg:h-36 object-cover rounded-md border flex-shrink-0"
+                                />
+                              )}
+                              {safeNotes && (
+                                <p className="italic text-sm sm:text-base text-foreground md:max-w-xs md:text-right">
+                                  <span className="font-medium not-italic">Notes:</span> "{safeNotes}"
                                 </p>
                               )}
                             </div>
                           )}
+                          </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 min-w-0 w-full">
+                        <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 sm:gap-2 min-w-0 w-full border-t border-gray-200 dark:border-gray-700 pt-3">
                           <Link to={createPageUrl(`AddSale?id=${sale.id}`)} className="flex-shrink-0">
                             <Button variant="ghost" size="icon" className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-8 w-8 sm:h-10 sm:w-10">
                               <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -511,12 +665,141 @@ export default function SalesHistory() {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={bulkUpdateDialogOpen}
+        onOpenChange={(open) => {
+          setBulkUpdateDialogOpen(open);
+          if (!open) resetBulkUpdateForm();
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Update Sales</DialogTitle>
+            <DialogDescription>
+              Choose the fields you want to update for the {selectedSales.length} selected sale
+              {selectedSales.length === 1 ? "" : "s"}. Leave a field blank to keep existing values.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-platform">Sold On</Label>
+              <Select
+                value={bulkUpdateForm.platform || "__keep"}
+                onValueChange={(value) =>
+                  setBulkUpdateForm((prev) => ({
+                    ...prev,
+                    platform: value === "__keep" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger id="bulk-platform">
+                  <SelectValue placeholder="Leave unchanged" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__keep">Leave unchanged</SelectItem>
+                  <SelectItem value="ebay">eBay</SelectItem>
+                  <SelectItem value="facebook_marketplace">Facebook</SelectItem>
+                  <SelectItem value="etsy">Etsy</SelectItem>
+                  <SelectItem value="mercari">Mercari</SelectItem>
+                  <SelectItem value="offer_up">OfferUp</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-category" className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground dark:text-muted-foreground">
+                  <path fill="currentColor" d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/>
+                </svg>
+                Category
+              </Label>
+              <Select
+                value={bulkUpdateForm.category || "__keep"}
+                onValueChange={(value) =>
+                  setBulkUpdateForm((prev) => ({
+                    ...prev,
+                    category: value === "__keep" ? "" : value,
+                    customCategory:
+                      value === "__custom" ? prev.customCategory : "",
+                  }))
+                }
+              >
+                <SelectTrigger id="bulk-category">
+                  <SelectValue placeholder="Leave unchanged" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__keep">Leave unchanged</SelectItem>
+                  {PREDEFINED_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom">Custom...</SelectItem>
+                </SelectContent>
+              </Select>
+              {(bulkUpdateForm.category === "__custom" || bulkUpdateForm.category === "" ) && (
+                <Input
+                  id="bulk-custom-category"
+                  placeholder="Enter custom category"
+                  value={bulkUpdateForm.customCategory}
+                  onChange={(e) =>
+                    setBulkUpdateForm((prev) => ({
+                      ...prev,
+                      customCategory: e.target.value,
+                    }))
+                  }
+                />
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-sale-date">Sale Date</Label>
+              <Input
+                id="bulk-sale-date"
+                type="date"
+                value={bulkUpdateForm.sale_date}
+                onChange={(e) =>
+                  setBulkUpdateForm((prev) => ({ ...prev, sale_date: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          {bulkPayloadEmpty && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              Choose at least one field above to enable “Update Sales”.
+            </p>
+          )}
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetBulkUpdateForm();
+                setBulkUpdateDialogOpen(false);
+              }}
+              disabled={bulkUpdateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleBulkUpdateConfirm}
+              disabled={
+                bulkUpdateMutation.isPending ||
+                selectedSales.length === 0 ||
+                bulkPayloadEmpty
+              }
+            >
+              {bulkUpdateMutation.isPending ? "Updating..." : "Update Sales"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

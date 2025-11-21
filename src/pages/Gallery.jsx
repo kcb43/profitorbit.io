@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,15 +8,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ImageIcon, DollarSign, BarChart3, Clock, Award, Zap, TrendingUp, Trophy } from 'lucide-react';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import ShowcaseItemModal from '../components/showcase/ShowcaseItemModal';
+import { sortSalesByRecency } from "@/utils/sales";
+import DealOfTheMonth from '../components/dashboard/DealOfTheMonth';
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  facebook_marketplace: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/f0f473258_sdfsdv.jpeg",
+  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
   mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
   etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
-  offer_up: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/c0f886f60_Symbol.png"
+  offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
 };
 
 export default function GalleryPage() {
@@ -25,13 +27,21 @@ export default function GalleryPage() {
     queryFn: () => base44.entities.Sale.list('-sale_date'),
     initialData: [],
   });
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, []);
   
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const sortedSales = useMemo(() => sortSalesByRecency(rawSales ?? []), [rawSales]);
+
   const salesWithMetrics = useMemo(() => {
-    if (!rawSales) return [];
-    return rawSales.map(sale => {
+    if (!sortedSales) return [];
+    return sortedSales.map(sale => {
       const purchasePrice = sale.purchase_price || 0;
       const profit = sale.profit || 0;
       let roi = 0;
@@ -77,7 +87,15 @@ export default function GalleryPage() {
     setIsModalOpen(true);
   };
   
-  const handleCloseModal = () => setIsModalOpen(false);
+  const handleCloseModal = (open) => {
+    if (typeof open === "boolean") {
+      setIsModalOpen(open);
+      if (!open) setSelectedItem(null);
+    } else {
+      setIsModalOpen(false);
+      setSelectedItem(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -87,6 +105,10 @@ export default function GalleryPage() {
           <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Showcase</h1>
             <p className="text-sm text-muted-foreground mt-1">Your successful sales at a glance.</p>
+          </div>
+
+          <div className="mb-6">
+            <DealOfTheMonth sales={sortedSales} />
           </div>
 
           {/* Stats Cards - Stack on mobile */}
@@ -128,75 +150,6 @@ export default function GalleryPage() {
             </Card>
           </div>
 
-          {/* Top Flips - Stack on mobile */}
-          {(monthlyStats.topFlips.highestProfit || monthlyStats.topFlips.fastestSale || monthlyStats.topFlips.highestRoi) && (
-            <div className="mb-6">
-              <h2 className="text-lg sm:text-xl font-bold text-foreground mb-3 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" />
-                <span>Top Flips This Month</span>
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {monthlyStats.topFlips.highestProfit && (
-                  <Card 
-                    onClick={() => handleItemClick(monthlyStats.topFlips.highestProfit)}
-                    className="cursor-pointer bg-gradient-to-br from-amber-400 to-yellow-500 text-white border-0"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Award className="w-5 h-5" />
-                        <div>
-                          <p className="text-xs font-semibold">Best Profit</p>
-                          <p className="text-lg font-bold">${monthlyStats.topFlips.highestProfit.profit.toFixed(0)}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs truncate opacity-90">{monthlyStats.topFlips.highestProfit.item_name}</p>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {monthlyStats.topFlips.fastestSale && (
-                  <Card 
-                    onClick={() => handleItemClick(monthlyStats.topFlips.fastestSale)}
-                    className="cursor-pointer bg-gradient-to-br from-gray-400 to-slate-500 text-white border-0"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Zap className="w-5 h-5" />
-                        <div>
-                          <p className="text-xs font-semibold">Fastest Sale</p>
-                          <p className="text-lg font-bold">{monthlyStats.topFlips.fastestSale.saleSpeed}d</p>
-                        </div>
-                      </div>
-                      <p className="text-xs truncate opacity-90">{monthlyStats.topFlips.fastestSale.item_name}</p>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {monthlyStats.topFlips.highestRoi && (
-                  <Card 
-                    onClick={() => handleItemClick(monthlyStats.topFlips.highestRoi)}
-                    className="cursor-pointer bg-gradient-to-br from-orange-500 to-amber-600 text-white border-0"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-5 h-5" />
-                        <div>
-                          <p className="text-xs font-semibold">Highest ROI</p>
-                          <p className="text-lg font-bold">
-                            {isFinite(monthlyStats.topFlips.highestRoi.roi) 
-                              ? `${monthlyStats.topFlips.highestRoi.roi.toFixed(0)}%` 
-                              : '∞%'}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-xs truncate opacity-90">{monthlyStats.topFlips.highestRoi.item_name}</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Main Grid */}
           {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
@@ -219,9 +172,15 @@ export default function GalleryPage() {
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute top-2 right-2">
-                      <Badge className="bg-green-600 text-white text-[10px] px-1.5 py-0.5">
-                        +${sale.profit?.toFixed(0) || '0'}
-                      </Badge>
+                      {sale.profit >= 0 ? (
+                        <Badge className="bg-green-600 hover:bg-green-600 text-white text-[10px] px-1.5 py-0.5">
+                          +${sale.profit?.toFixed(0) || '0'}
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-red-600 hover:bg-red-600 text-white text-[10px] px-1.5 py-0.5">
+                          -${Math.abs(sale.profit)?.toFixed(0) || '0'}
+                        </Badge>
+                      )}
                     </div>
                     {platformIcons[sale.platform] && (
                       <div className="absolute bottom-2 left-2 w-5 h-5 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center p-0.5">

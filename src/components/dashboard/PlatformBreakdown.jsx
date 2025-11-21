@@ -21,10 +21,10 @@ const platformNames = {
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  facebook_marketplace: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/f0f473258_sdfsdv.jpeg",
+  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
   mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
   etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
-  offer_up: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/c0f886f60_Symbol.png"
+  offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
 };
 
 export default function PlatformBreakdown({ sales }) {
@@ -56,7 +56,7 @@ export default function PlatformBreakdown({ sales }) {
               <div className="flex items-center gap-3">
                 <Badge className={`${platformColors[platform]} border px-3 py-1 flex items-center justify-center`}>
                   {platformIcons[platform] ? (
-                    <img src={platformIcons[platform]} alt={platformNames[platform]} className="w-6 h-6 object-contain" />
+                    <img src={platformIcons[platform]} alt={platformNames[platform]} className="w-8 h-8 object-contain" />
                   ) : (
                     platformNames[platform]
                   )}
