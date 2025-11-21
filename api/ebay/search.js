@@ -62,10 +62,31 @@ export default async function handler(req, res) {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
+    // Validate that we have at least one required search parameter
+    const hasRequiredParam = !!(
+      req.query.q || 
+      req.query.category_ids || 
+      req.query.gtin || 
+      req.query.charity_ids
+    );
+    
+    if (!hasRequiredParam) {
+      return res.status(400).json({ 
+        error: 'Missing required parameter. Must provide q, category_ids, gtin, or charity_ids' 
+      });
+    }
+
     // Build search query from request parameters
     const searchParams = new URLSearchParams();
     
-    if (req.query.q) searchParams.append('q', req.query.q);
+    // Trim and validate q parameter if provided
+    if (req.query.q) {
+      const qValue = String(req.query.q).trim();
+      if (qValue.length > 0) {
+        searchParams.append('q', qValue);
+      }
+    }
+    
     if (req.query.category_ids) searchParams.append('category_ids', req.query.category_ids);
     if (req.query.gtin) searchParams.append('gtin', req.query.gtin);
     if (req.query.charity_ids) searchParams.append('charity_ids', req.query.charity_ids);
@@ -76,6 +97,13 @@ export default async function handler(req, res) {
     if (req.query.fieldgroups) searchParams.append('fieldgroups', req.query.fieldgroups);
     if (req.query.aspect_filter) searchParams.append('aspect_filter', req.query.aspect_filter);
     if (req.query.compatibility_filter) searchParams.append('compatibility_filter', req.query.compatibility_filter);
+    
+    // Double-check that we still have a required parameter after processing
+    if (!searchParams.has('q') && !searchParams.has('category_ids') && !searchParams.has('gtin') && !searchParams.has('charity_ids')) {
+      return res.status(400).json({ 
+        error: 'Invalid parameters. Must provide a valid q, category_ids, gtin, or charity_ids' 
+      });
+    }
 
     // eBay Browse API base URL
     const baseUrl = process.env.EBAY_ENV === 'production' 
