@@ -33,74 +33,112 @@ const EBAY_CONFIG = {
 };
 
 /**
- * Get OAuth access token for eBay API
- * Uses Client Credentials grant type for application access
+ * Get OAuth access token for eBay API via Vercel API route
+ * This avoids CORS issues by calling our serverless function
  */
 async function getAccessToken() {
   try {
-    // For sandbox, you can use the sandbox user token directly
-    // For production or full OAuth, use this endpoint:
-    const credentials = btoa(`${EBAY_CONFIG.clientId}:${EBAY_CONFIG.clientSecret}`);
-    
-    const response = await fetch(EBAY_CONFIG.oauthUrl, {
+    const response = await fetch('/api/ebay/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        scope: 'https://api.ebay.com/oauth/api_scope',
-      }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get access token: ${response.status} - ${errorText}`);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`Failed to get access token: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
     return data.access_token;
   } catch (error) {
     console.error('Error getting eBay access token:', error);
-    // For sandbox testing, return null to use unauthenticated requests where possible
-    return null;
+    throw error;
   }
 }
 
 /**
- * Make an authenticated request to eBay API
+ * Make an authenticated request to eBay API via Vercel API route
+ * This avoids CORS issues by proxying through our serverless function
  */
 async function makeRequest(endpoint, options = {}) {
-  const accessToken = await getAccessToken();
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US', // Change based on your marketplace
-    ...options.headers,
-  };
+  // Determine which API endpoint to use based on the endpoint path
+  if (endpoint.startsWith('/buy/browse/v1/item_summary/search')) {
+    // Use search API route
+    const queryParams = new URLSearchParams();
+    const urlObj = new URL(endpoint, 'https://api.sandbox.ebay.com');
+    urlObj.searchParams.forEach((value, key) => {
+      queryParams.append(key, value);
+    });
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  const url = `${EBAY_CONFIG.baseUrl}${endpoint}`;
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
+    const response = await fetch(`/api/ebay/search?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`eBay API error: ${response.status} - ${errorText}`);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`eBay API error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
     }
 
     return await response.json();
-  } catch (error) {
-    console.error('eBay API request error:', error);
-    throw error;
+  } else if (endpoint.startsWith('/buy/browse/v1/item/')) {
+    // Use item API route
+    const itemId = endpoint.split('/buy/browse/v1/item/')[1].split('?')[0];
+    const urlObj = new URL(endpoint, 'https://api.sandbox.ebay.com');
+    const queryParams = new URLSearchParams();
+    urlObj.searchParams.forEach((value, key) => {
+      queryParams.append(key, value);
+    });
+
+    const response = await fetch(`/api/ebay/item?itemId=${encodeURIComponent(itemId)}&${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`eBay API error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+    }
+
+    return await response.json();
+  } else {
+    // Fallback for other endpoints - try direct call (may still have CORS issues)
+    const accessToken = await getAccessToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+      ...options.headers,
+    };
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const url = `${EBAY_CONFIG.baseUrl}${endpoint}`;
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`eBay API error: ${response.status} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('eBay API request error:', error);
+      throw error;
+    }
   }
 }
 
@@ -165,9 +203,20 @@ export async function searchItems(params = {}) {
   if (aspect_filter) queryParams.append('aspect_filter', aspect_filter);
   if (compatibility_filter) queryParams.append('compatibility_filter', compatibility_filter);
 
-  const endpoint = `/buy/browse/v1/item_summary/search?${queryParams.toString()}`;
-  
-  return await makeRequest(endpoint);
+  // Call our Vercel API route instead of eBay directly (avoids CORS)
+  const response = await fetch(`/api/ebay/search?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`eBay API error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+
+  return await response.json();
 }
 
 /**
@@ -186,13 +235,25 @@ export async function getItem(itemId, fieldgroups = 'PRODUCT') {
   }
 
   const queryParams = new URLSearchParams();
+  queryParams.append('itemId', itemId);
   if (fieldgroups) {
     queryParams.append('fieldgroups', fieldgroups);
   }
 
-  const endpoint = `/buy/browse/v1/item/${encodeURIComponent(itemId)}?${queryParams.toString()}`;
-  
-  return await makeRequest(endpoint);
+  // Call our Vercel API route instead of eBay directly (avoids CORS)
+  const response = await fetch(`/api/ebay/item?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`eBay API error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+
+  return await response.json();
 }
 
 /**
@@ -210,9 +271,20 @@ export async function getItemByLegacyId(legacyItemId) {
     throw new Error('Legacy item ID is required');
   }
 
-  const endpoint = `/buy/browse/v1/item/get_item_by_legacy_id?legacy_item_id=${legacyItemId}`;
-  
-  return await makeRequest(endpoint);
+  // Call our Vercel API route instead of eBay directly (avoids CORS)
+  const response = await fetch(`/api/ebay/item?legacyItemId=${encodeURIComponent(legacyItemId)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`eBay API error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+
+  return await response.json();
 }
 
 /**
