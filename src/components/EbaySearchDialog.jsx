@@ -226,7 +226,7 @@ export default function EbaySearchDialog({
             Search eBay for Items
           </DialogTitle>
           <DialogDescription>
-            Live Listings. Select item &gt; add to inventory & edit.
+            Live listings. Select item &gt; add to inventory & edit.
           </DialogDescription>
         </DialogHeader>
 
