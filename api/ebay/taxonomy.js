@@ -169,6 +169,13 @@ export default async function handler(req, res) {
       const marketplaceId = marketplace_id || MARKETPLACE_ID;
       const taxonomyUrl = `${baseUrl}/commerce/taxonomy/v1/category_tree/${category_tree_id}/get_category_subtree?category_id=${category_id}`;
 
+      console.log('Calling eBay Taxonomy API:', {
+        url: taxonomyUrl,
+        category_tree_id,
+        category_id,
+        marketplaceId,
+      });
+
       const taxonomyResp = await fetch(taxonomyUrl, {
         method: 'GET',
         headers: {
@@ -181,15 +188,33 @@ export default async function handler(req, res) {
       });
 
       if (!taxonomyResp.ok) {
-        const errorData = await taxonomyResp.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('eBay Taxonomy API error:', taxonomyResp.status, errorData);
+        const errorData = await taxonomyResp.json().catch(() => {
+          // If JSON parsing fails, try to get the text
+          return taxonomyResp.text().then(text => {
+            console.error('eBay Taxonomy API error (non-JSON):', text);
+            return { error: 'Unknown error', rawResponse: text };
+          });
+        });
+        console.error('eBay Taxonomy API error:', {
+          status: taxonomyResp.status,
+          statusText: taxonomyResp.statusText,
+          errorData,
+          url: taxonomyUrl,
+        });
         return res.status(taxonomyResp.status).json({
           error: 'eBay Taxonomy API error',
           details: errorData,
+          status: taxonomyResp.status,
+          statusText: taxonomyResp.statusText,
         });
       }
 
       const taxonomyData = await taxonomyResp.json();
+      console.log('eBay Taxonomy API success:', {
+        categoryTreeId: taxonomyData.categoryTreeId,
+        hasSubtreeNode: !!taxonomyData.categorySubtreeNode,
+        subtreeNodeKeys: taxonomyData.categorySubtreeNode ? Object.keys(taxonomyData.categorySubtreeNode) : [],
+      });
       return res.status(200).json(taxonomyData);
 
     } else {
