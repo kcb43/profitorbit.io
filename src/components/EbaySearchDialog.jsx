@@ -120,8 +120,10 @@ export default function EbaySearchDialog({
   }, [searchResults?.itemSummaries, debouncedQuery]);
 
   const handleSearch = () => {
-    if (searchQuery.trim().length >= 2) {
-      refetch();
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery.length >= 2) {
+      // Immediately update debouncedQuery to bypass debounce delay when user clicks search
+      setDebouncedQuery(trimmedQuery);
     }
   };
 

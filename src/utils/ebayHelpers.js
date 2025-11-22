@@ -272,13 +272,35 @@ export function getEbayItemUrl(itemId, itemWebUrl) {
   // Sandbox items won't exist on production eBay, but at least the URL will be valid
   // Format: https://www.ebay.com/itm/{itemId}
   // For RESTful IDs like "v1|123456789012|0", extract the middle number
+  
+  if (!itemId) {
+    // Fallback if no itemId provided
+    return 'https://www.ebay.com';
+  }
+  
+  // Extract numeric ID from RESTful format
   let extractedId = itemId;
   const idMatch = itemId?.match(/\|(\d+)\|/);
   if (idMatch) {
     extractedId = idMatch[1];
+  } else if (itemId.includes('|')) {
+    // Handle other pipe-separated formats
+    const parts = itemId.split('|');
+    extractedId = parts.find(p => /^\d+$/.test(p)) || extractedId;
   }
   
-  // Always use production eBay URL - ignore sandbox URLs
+  // Ensure we have a valid numeric ID
+  if (!/^\d+$/.test(extractedId)) {
+    // If ID is not numeric, try to extract from itemWebUrl if provided
+    if (itemWebUrl && !itemWebUrl.includes('sandbox')) {
+      const urlMatch = itemWebUrl.match(/\/itm\/(\d+)/);
+      if (urlMatch) {
+        extractedId = urlMatch[1];
+      }
+    }
+  }
+  
+  // Always use production eBay URL - never use sandbox URLs
   // Note: Sandbox items won't exist on production eBay, but the URL will at least work
   return `https://www.ebay.com/itm/${extractedId}`;
 }
