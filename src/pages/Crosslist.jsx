@@ -706,13 +706,11 @@ export default function Crosslist() {
                 <Button
                   variant="outline"
                   onClick={() => toggleAll(selected.length !== filtered.length)}
-                  className="whitespace-nowrap w-full md:w-auto"
+                  className="whitespace-nowrap w-auto"
                 >
                   {selected.length === filtered.length ? "Unselect All" : "Select All"}
                 </Button>
-                <div className="w-full md:w-auto">
-                  <BulkActionsMenu />
-                </div>
+                <BulkActionsMenu />
                 <Button
                   onClick={() => {
                     if (selected.length > 0) {
@@ -721,7 +719,7 @@ export default function Crosslist() {
                       openComposer([]);
                     }
                   }}
-                  className="bg-green-600 hover:bg-green-700 whitespace-nowrap w-full md:w-auto"
+                  className="bg-green-600 hover:bg-green-700 whitespace-nowrap w-auto"
                 >
                   <Rocket className="w-4 h-4 mr-2" />
                   {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
