@@ -65,17 +65,57 @@ export function useEbayCategories(categoryTreeId, categoryId = '0', enabled = tr
 
       // Use getCategoryTree for root level, getCategorySubtree for nested categories
       // Check for root: undefined, null, empty string, '0', or 0
-      const isRoot = !categoryId || categoryId === '0' || categoryId === 0 || String(categoryId).trim() === '';
-      const operation = isRoot ? 'getCategoryTree' : 'getCategorySubtree';
-      const url = isRoot
-        ? `/api/ebay/taxonomy?operation=getCategoryTree&category_tree_id=${categoryTreeId}`
-        : `/api/ebay/taxonomy?operation=getCategorySubtree&category_tree_id=${categoryTreeId}&category_id=${categoryId}`;
+      const categoryIdStr = String(categoryId || '0');
+      const isRoot = !categoryId || categoryId === '0' || categoryId === 0 || categoryIdStr.trim() === '' || categoryIdStr === '0';
       
-      console.log('useEbayCategories hook:', {
+      // Force use getCategoryTree for root level - NEVER use getCategorySubtree with category_id=0
+      if (isRoot) {
+        const url = `/api/ebay/taxonomy?operation=getCategoryTree&category_tree_id=${categoryTreeId}`;
+        console.log('useEbayCategories hook (ROOT):', {
+          categoryTreeId,
+          categoryId,
+          categoryIdStr,
+          isRoot,
+          operation: 'getCategoryTree',
+          url,
+        });
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to get categories (ROOT):', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData,
+            url,
+            operation: 'getCategoryTree',
+            categoryId,
+          });
+          const error = new Error(`Failed to get categories: ${response.status} - ${errorData.error || 'Unknown error'}`);
+          error.response = { details: errorData };
+          throw error;
+        }
+        
+        const data = await response.json();
+        
+        // getCategoryTree returns: { rootCategoryNode: {...}, categoryTreeId: "...", categoryTreeVersion: "..." }
+        // We normalize it to have categorySubtreeNode for consistency
+        return {
+          categorySubtreeNode: data.rootCategoryNode,
+          categoryTreeId: data.categoryTreeId || categoryTreeId,
+          categoryTreeVersion: data.categoryTreeVersion || '',
+        };
+      }
+      
+      // For nested categories, use getCategorySubtree
+      const url = `/api/ebay/taxonomy?operation=getCategorySubtree&category_tree_id=${categoryTreeId}&category_id=${categoryId}`;
+      console.log('useEbayCategories hook (NESTED):', {
         categoryTreeId,
         categoryId,
+        categoryIdStr,
         isRoot,
-        operation,
+        operation: 'getCategorySubtree',
         url,
       });
       
