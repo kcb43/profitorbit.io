@@ -30,8 +30,8 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
     ? `https://www.google.com/search?q=${encodeURIComponent(q + " site:etsy.com sold")}`
     : "https://www.google.com";
   const allMarkets = q
-    ? `https://www.google.com/search?q=${encodeURIComponent(q)}`
-    : "https://www.google.com";
+    ? `https://www.google.com/shopping?q=${encodeURIComponent(q)}`
+    : "https://www.google.com/shopping";
 
   const copyQuery = async () => {
     if (!q) return;

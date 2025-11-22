@@ -558,8 +558,8 @@ export default function AddSale() {
     : "https://www.ebay.com";
 
   const googleAllMarketsUrl = q
-    ? `https://www.google.com/search?q=${encodeURIComponent(q + "")}`
-    : "https://www.google.com";
+    ? `https://www.google.com/shopping?q=${encodeURIComponent(q + "")}`
+    : "https://www.google.com/shopping";
 
   const mercariSoldGoogle = q
     ? `https://www.google.com/search?q=${encodeURIComponent(q + " site:mercari.com")}`
