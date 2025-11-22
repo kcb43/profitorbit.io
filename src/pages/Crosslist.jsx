@@ -518,24 +518,31 @@ export default function Crosslist() {
         if (anyListed) return false;
       }
 
-      // Marketplace filter - if no marketplaces selected, show all items
-      // If all marketplaces selected, show all items
-      // If specific marketplaces selected, only show items crosslisted to those
-      if (activeMkts.length === 0 || activeMkts.length === MARKETPLACES.length) {
-        // No filter or all selected - show all items
+      // Marketplace filter
+      if (activeMkts.length === 0) {
+        // No marketplaces selected - show all items
         return true;
       }
 
-      // Filter by selected marketplaces - item must be crosslisted to at least one selected marketplace
+      // Map marketplace IDs to the keys used in computeListingState
+      const marketplaceMap = {
+        ebay: "ebay",
+        facebook: "facebook",
+        mercari: "mercari",
+        etsy: "etsy",
+        poshmark: "poshmark",
+      };
+
+      if (activeMkts.length === MARKETPLACES.length) {
+        // All marketplaces selected - item must be crosslisted to ALL marketplaces
+        const itemIsListedOnAllMkts = activeMkts.every((mktId) => {
+          return map[marketplaceMap[mktId]] === true;
+        });
+        return itemIsListedOnAllMkts;
+      }
+
+      // Some marketplaces selected - item must be crosslisted to at least one selected marketplace
       const itemIsListedOnSelectedMkts = activeMkts.some((mktId) => {
-        // Map marketplace IDs to the keys used in computeListingState
-        const marketplaceMap = {
-          ebay: "ebay",
-          facebook: "facebook",
-          mercari: "mercari",
-          etsy: "etsy",
-          poshmark: "poshmark",
-        };
         return map[marketplaceMap[mktId]] === true;
       });
 
@@ -667,7 +674,7 @@ export default function Crosslist() {
                   {activeMkts.length === 0
                     ? "Showing all items. Select marketplaces to filter by crosslisting status."
                     : activeMkts.length === MARKETPLACES.length
-                    ? "All marketplaces selected. Showing all items."
+                    ? "Showing items crosslisted to ALL marketplaces."
                     : `Showing items crosslisted to ${activeMkts.length} marketplace${activeMkts.length === 1 ? "" : "s"}.`
                   }
                 </p>
