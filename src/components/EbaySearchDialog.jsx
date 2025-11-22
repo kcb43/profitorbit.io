@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Loader2, Package, ExternalLink, Check, Filter } from "lucide-react";
+import { Search, Loader2, Package, ExternalLink, Check, BarChart } from "lucide-react";
 import { useEbaySearch, useEbaySearchInfinite } from "@/hooks/useEbaySearch";
 import {
   ebayItemToInventory,
@@ -34,7 +34,6 @@ export default function EbaySearchDialog({
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
   const [limit] = useState(100); // Increased to 100 items
-  const [showSoldOnly, setShowSoldOnly] = useState(false);
   const scrollAreaRef = React.useRef(null);
 
   // Set initial search query when dialog opens
@@ -47,7 +46,6 @@ export default function EbaySearchDialog({
       setSearchQuery("");
       setDebouncedQuery("");
       setSelectedItem(null);
-      setShowSoldOnly(false);
     }
   }, [open, initialSearchQuery]);
 
@@ -129,29 +127,7 @@ export default function EbaySearchDialog({
   const items = React.useMemo(() => {
     if (!searchResults?.itemSummaries) return [];
     
-    let allItems = searchResults.itemSummaries;
-    
-    // Filter for sold/ended items if showSoldOnly is true
-    if (showSoldOnly) {
-      allItems = allItems.filter(item => {
-        // Check if item has ended
-        if (item.itemEndDate) {
-          const endDate = new Date(item.itemEndDate);
-          const now = new Date();
-          if (endDate < now) {
-            return true;
-          }
-        }
-        
-        // Check estimated availability status
-        if (item.estimatedAvailabilityStatus === 'OUT_OF_STOCK') {
-          return true;
-        }
-        
-        return false;
-      });
-    }
-    
+    const allItems = searchResults.itemSummaries;
     const queryLower = debouncedQuery.toLowerCase();
     
     // Split query into words
@@ -202,7 +178,7 @@ export default function EbaySearchDialog({
       const priceB = b.price?.value || 0;
       return priceA - priceB;
     });
-  }, [searchResults?.itemSummaries, debouncedQuery, showSoldOnly]);
+  }, [searchResults?.itemSummaries, debouncedQuery]);
 
   const handleSearch = () => {
     const trimmedQuery = searchQuery.trim();
@@ -229,10 +205,18 @@ export default function EbaySearchDialog({
       setSearchQuery("");
       setDebouncedQuery("");
       setSelectedItem(null);
-      setShowSoldOnly(false);
     }
     onOpenChange?.(openState);
   };
+
+  // Build eBay sold listings URL
+  const ebaySoldUrl = React.useMemo(() => {
+    if (!debouncedQuery || debouncedQuery.trim().length < 2) {
+      return "https://www.ebay.com/sch/i.html?_nkw=&LH_Sold=1&LH_Complete=1";
+    }
+    const query = debouncedQuery.trim();
+    return `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`;
+  }, [debouncedQuery]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
