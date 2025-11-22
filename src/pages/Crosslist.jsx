@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -40,6 +39,9 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
+import imageCompression from "browser-image-compression";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInventoryTags } from "@/hooks/useInventoryTags";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -84,19 +86,19 @@ const GENERAL_TEMPLATE_DEFAULT = {
   description: "",
   brand: "",
   condition: "",
-  color1: "",
-  color2: "",
-  color3: "",
+  color1: "", // Primary Color
+  color2: "", // Secondary Color
+  color3: "", // Accent Color (optional)
   sku: "",
   zip: "",
   tags: "",
   quantity: "1",
   category: "",
-  size: "",
+  size: "", // US Size
   packageDetails: "",
-  price: "",
-  cost: "",
-  customLabels: "",
+  price: "", // Listing Price
+  cost: "", // Purchase Price
+  customLabels: "", // Will sync to inventory tags
 };
 
 const MARKETPLACE_TEMPLATE_DEFAULTS = {
@@ -212,6 +214,8 @@ const renderMarketplaceIcon = (marketplace, sizeClass = "w-4 h-4") => {
 export default function Crosslist() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { addTag } = useInventoryTags();
   const [layout, setLayout] = useState("rows");
   const [q, setQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
@@ -220,7 +224,8 @@ export default function Crosslist() {
   const [composerTargets, setComposerTargets] = useState([]);
   const [activeMkts, setActiveMkts] = useState(["ebay", "facebook", "mercari"]);
   const [templateForms, setTemplateForms] = useState(() => createInitialTemplateState());
-  const [activeTemplateTab, setActiveTemplateTab] = useState("general");
+  const [activeForm, setActiveForm] = useState("general"); // "general" | "ebay" | "etsy" | "mercari" | "facebook"
+  const [isSaving, setIsSaving] = useState(false);
   const photoInputRef = React.useRef(null);
 
   const { data: inventory = [], isLoading } = useQuery({
@@ -247,7 +252,7 @@ export default function Crosslist() {
   const populateTemplates = React.useCallback(
     (item) => {
       setTemplateForms(createInitialTemplateState(item));
-      setActiveTemplateTab("general");
+      setActiveForm("general");
     },
     []
   );
@@ -343,27 +348,111 @@ export default function Crosslist() {
     });
   };
 
-  const handlePhotoUpload = (event) => {
+  const MAX_PHOTOS = 25;
+  const MAX_FILE_SIZE_MB = 15;
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+
+  const handlePhotoUpload = async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    const newPhotos = Array.from(files).map((file) => ({
-      id: `${file.name}-${Date.now()}`,
-      preview: URL.createObjectURL(file),
-      fileName: file.name,
-      fromInventory: false,
-    }));
+    setIsUploadingPhotos(true);
 
-    setTemplateForms((prev) => ({
-      ...prev,
-      general: {
-        ...prev.general,
-        photos: [...(prev.general.photos || []), ...newPhotos],
-      },
-    }));
+    try {
+      const currentPhotoCount = generalForm.photos?.length || 0;
+      const remainingSlots = MAX_PHOTOS - currentPhotoCount;
+      
+      if (remainingSlots <= 0) {
+        toast({
+          title: "Photo limit reached",
+          description: `Maximum ${MAX_PHOTOS} photos allowed. Please remove some photos first.`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (photoInputRef.current) {
-      photoInputRef.current.value = "";
+      const filesArray = Array.from(files).slice(0, remainingSlots);
+      
+      // Validate file sizes and compress if needed
+      const processedPhotos = [];
+      
+      for (const file of filesArray) {
+        // Check file size (15MB = 15 * 1024 * 1024 bytes)
+        const maxSizeBytes = MAX_FILE_SIZE_MB * 1024 * 1024;
+        
+        if (file.size > maxSizeBytes) {
+          toast({
+            title: "File too large",
+            description: `${file.name} exceeds ${MAX_FILE_SIZE_MB}MB limit. Compressing...`,
+          });
+        }
+
+        // Compress image if it's larger than 1MB
+        let processedFile = file;
+        if (file.size > 1024 * 1024) {
+          try {
+            processedFile = await imageCompression(file, {
+              maxSizeMB: MAX_FILE_SIZE_MB,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+            });
+          } catch (error) {
+            console.error("Error compressing image:", error);
+            toast({
+              title: "Compression failed",
+              description: `Skipping ${file.name}. Please try a different image.`,
+              variant: "destructive",
+            });
+            continue;
+          }
+        }
+
+        processedPhotos.push({
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+          preview: URL.createObjectURL(processedFile),
+          fileName: file.name,
+          file: processedFile, // Store the actual file for upload
+          fromInventory: false,
+        });
+      }
+
+      if (processedPhotos.length === 0) {
+        return;
+      }
+
+      setTemplateForms((prev) => ({
+        ...prev,
+        general: {
+          ...prev.general,
+          photos: [...(prev.general.photos || []), ...processedPhotos],
+        },
+      }));
+
+      if (processedPhotos.length < filesArray.length) {
+        toast({
+          title: "Some photos skipped",
+          description: `${processedPhotos.length} of ${filesArray.length} photos added.`,
+        });
+      }
+
+      if (remainingSlots - processedPhotos.length <= 0) {
+        toast({
+          title: "Photo limit reached",
+          description: `You've reached the maximum of ${MAX_PHOTOS} photos.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error processing photos:", error);
+      toast({
+        title: "Upload error",
+        description: "Failed to process some photos. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingPhotos(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = "";
+      }
     }
   };
 
@@ -412,7 +501,12 @@ export default function Crosslist() {
     const primaryId = ids?.[0] || selected[0];
     const targetItem = crosslistableItems.find((item) => item.id === primaryId);
 
-    populateTemplates(targetItem);
+    // If no item selected, create new empty template
+    if (!targetItem) {
+      setTemplateForms(createInitialTemplateState(null));
+    } else {
+      populateTemplates(targetItem);
+    }
 
     setComposerTargets(activeMkts);
     if (ids?.length) setSelected(ids);
@@ -685,19 +779,28 @@ export default function Crosslist() {
           </SheetHeader>
 
           <div className="mt-4">
-            <Label className="text-xs mb-1.5 block">Target Marketplaces</Label>
+            <Label className="text-xs mb-1.5 block">Select Form</Label>
             <div className="flex flex-wrap gap-2">
+              {/* General form option */}
+              <button
+                type="button"
+                onClick={() => setActiveForm("general")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-sm transition
+                  ${activeForm === "general"
+                    ? "bg-foreground text-background dark:bg-foreground dark:text-background"
+                    : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
+                  }`}
+              >
+                General
+              </button>
+              {/* Marketplace form options */}
               {MARKETPLACES.map((m) => {
-                const active = composerTargets.includes(m.id);
+                const active = activeForm === m.id;
                 return (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() =>
-                      setComposerTargets((prev) =>
-                        prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id]
-                      )
-                    }
+                    onClick={() => setActiveForm(m.id)}
                     className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-sm transition
                       ${active
                         ? "bg-foreground text-background dark:bg-foreground dark:text-background"
@@ -710,23 +813,14 @@ export default function Crosslist() {
                 );
               })}
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Select a form to configure. General form data syncs to all marketplace-specific forms.
+            </p>
           </div>
 
-          <Tabs value={activeTemplateTab} onValueChange={setActiveTemplateTab} className="mt-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <TabsList className="bg-muted/60">
-                <TabsTrigger value="general" className="min-w-[6rem]">General</TabsTrigger>
-                <TabsTrigger value="ebay" className="min-w-[6rem]">eBay</TabsTrigger>
-                <TabsTrigger value="etsy" className="min-w-[6rem]">Etsy</TabsTrigger>
-                <TabsTrigger value="mercari" className="min-w-[6rem]">Mercari</TabsTrigger>
-                <TabsTrigger value="facebook" className="min-w-[7rem]">Facebook</TabsTrigger>
-              </TabsList>
-              <div className="text-xs text-muted-foreground">
-                Templates help you keep marketplace requirements synced. Save per-channel overrides any time.
-              </div>
-            </div>
-
-            <TabsContent value="general">
+          <div className="mt-6 space-y-6">
+            {/* General Form */}
+            {activeForm === "general" && (
               <div className="space-y-6">
                 <div>
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
@@ -747,7 +841,8 @@ export default function Crosslist() {
                     <button
                       type="button"
                       onClick={() => photoInputRef.current?.click()}
-                      className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground"
+                      disabled={isUploadingPhotos || (generalForm.photos?.length || 0) >= MAX_PHOTOS}
+                      className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ImagePlus className="h-5 w-5" />
                       <span className="mt-1 text-[11px] font-medium">Add photos</span>
@@ -762,7 +857,8 @@ export default function Crosslist() {
                     />
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Up to 12 photos. Drag-and-drop ordering is coming soon.
+                    Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {generalForm.photos?.length || 0}/{MAX_PHOTOS} used.
+                    {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
                   </p>
                 </div>
 
@@ -785,6 +881,7 @@ export default function Crosslist() {
                       value={generalForm.price}
                       onChange={(e) => handleGeneralChange("price", e.target.value)}
                     />
+                    <p className="mt-1 text-xs text-muted-foreground">Price you'll list this item for</p>
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-xs mb-1.5 block">Description</Label>
@@ -858,7 +955,7 @@ export default function Crosslist() {
                   <div>
                     <Label className="text-xs mb-1.5 block">US Size</Label>
                     <Input
-                      placeholder="e.g. Men's M"
+                      placeholder="e.g. Men's M, 10, XL"
                       value={generalForm.size}
                       onChange={(e) => handleGeneralChange("size", e.target.value)}
                     />
@@ -873,9 +970,9 @@ export default function Crosslist() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs mb-1.5 block">Color 1</Label>
+                    <Label className="text-xs mb-1.5 block">Primary Color</Label>
                     <Input
                       placeholder="Primary color"
                       value={generalForm.color1}
@@ -883,19 +980,11 @@ export default function Crosslist() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Color 2</Label>
+                    <Label className="text-xs mb-1.5 block">Secondary Color</Label>
                     <Input
                       placeholder="Secondary color"
                       value={generalForm.color2}
                       onChange={(e) => handleGeneralChange("color2", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Color 3</Label>
-                    <Input
-                      placeholder="Accent color"
-                      value={generalForm.color3}
-                      onChange={(e) => handleGeneralChange("color3", e.target.value)}
                     />
                   </div>
                 </div>
@@ -912,7 +1001,7 @@ export default function Crosslist() {
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <Label className="text-xs mb-1.5 block">Cost of Goods</Label>
+                      <Label className="text-xs mb-1.5 block">Purchase Price</Label>
                       <Input
                         type="number"
                         min="0"
@@ -925,10 +1014,13 @@ export default function Crosslist() {
                     <div>
                       <Label className="text-xs mb-1.5 block">Custom Labels</Label>
                       <Input
-                        placeholder="e.g. Q4 Liquidation, Holiday Gift"
+                        placeholder="Comma-separated labels (e.g. Q4 Liquidation, Holiday Gift). These will appear as tags in inventory."
                         value={generalForm.customLabels}
                         onChange={(e) => handleGeneralChange("customLabels", e.target.value)}
                       />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Custom labels will be saved as tags in your inventory page
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -940,9 +1032,10 @@ export default function Crosslist() {
                   </Button>
                 </div>
               </div>
-            </TabsContent>
+            )}
 
-            <TabsContent value="ebay">
+            {/* eBay Form */}
+            {activeForm === "ebay" && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -1133,9 +1226,10 @@ export default function Crosslist() {
                   </Button>
                 </div>
               </div>
-            </TabsContent>
+            )}
 
-            <TabsContent value="etsy">
+            {/* Etsy Form */}
+            {activeForm === "etsy" && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -1268,9 +1362,10 @@ export default function Crosslist() {
                   </Button>
                 </div>
               </div>
-            </TabsContent>
+            )}
 
-            <TabsContent value="mercari">
+            {/* Mercari Form */}
+            {activeForm === "mercari" && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -1372,9 +1467,10 @@ export default function Crosslist() {
                   </Button>
                 </div>
               </div>
-            </TabsContent>
+            )}
 
-            <TabsContent value="facebook">
+            {/* Facebook Form */}
+            {activeForm === "facebook" && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -1475,21 +1571,118 @@ export default function Crosslist() {
                   </Button>
                 </div>
               </div>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
 
           <SheetFooter className="mt-6">
             <SheetClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isSaving}>Cancel</Button>
             </SheetClose>
             <Button
               className="bg-green-600 hover:bg-green-700"
-              onClick={() => {
-                setComposerOpen(false);
+              disabled={isSaving}
+              onClick={async () => {
+                setIsSaving(true);
+                try {
+                  // Upload first photo if available
+                  let imageUrl = "";
+                  if (generalForm.photos && generalForm.photos.length > 0) {
+                    const firstPhoto = generalForm.photos[0];
+                    if (firstPhoto.file) {
+                      // Upload the file
+                      const uploadPayload = firstPhoto.file instanceof File 
+                        ? firstPhoto.file 
+                        : new File([firstPhoto.file], firstPhoto.fileName, { type: firstPhoto.file.type });
+                      
+                      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+                      imageUrl = file_url;
+                    } else if (firstPhoto.preview && !firstPhoto.preview.startsWith('blob:')) {
+                      // Already uploaded URL
+                      imageUrl = firstPhoto.preview;
+                    }
+                  }
+
+                  // Build custom labels array from comma-separated string
+                  const customLabels = generalForm.customLabels
+                    ? generalForm.customLabels.split(',').map(label => label.trim()).filter(Boolean)
+                    : [];
+
+                  // Build tags array from comma-separated string
+                  const tags = generalForm.tags
+                    ? generalForm.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+                    : [];
+
+                  // Create inventory item
+                  const inventoryData = {
+                    item_name: generalForm.title || "Untitled Item",
+                    purchase_price: generalForm.cost ? parseFloat(generalForm.cost) : 0,
+                    listing_price: generalForm.price ? parseFloat(generalForm.price) : 0,
+                    purchase_date: new Date().toISOString().split('T')[0],
+                    source: "Crosslist",
+                    status: "available",
+                    category: generalForm.category || "",
+                    quantity: generalForm.quantity ? parseInt(generalForm.quantity, 10) : 1,
+                    brand: generalForm.brand || "",
+                    condition: generalForm.condition || "",
+                    color1: generalForm.color1 || "",
+                    color2: generalForm.color2 || "",
+                    color3: generalForm.color3 || "",
+                    sku: generalForm.sku || "",
+                    zip_code: generalForm.zip || "",
+                    size: generalForm.size || "",
+                    package_details: generalForm.packageDetails || "",
+                    custom_labels: generalForm.customLabels || "",
+                    image_url: imageUrl,
+                    notes: generalForm.description || "",
+                  };
+
+                  // Create the inventory item
+                  const createdItem = await base44.entities.InventoryItem.create(inventoryData);
+
+                  // Add custom labels as tags using useInventoryTags hook
+                  if (createdItem?.id) {
+                    const allLabels = [...customLabels, ...tags];
+                    for (const label of allLabels) {
+                      addTag(createdItem.id, label);
+                    }
+                  }
+
+                  // Invalidate inventory query to refresh the list
+                  queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+
+                  toast({
+                    title: "Item saved to inventory",
+                    description: `${generalForm.title || "Item"} has been added to your inventory.`,
+                  });
+
+                  setComposerOpen(false);
+                  
+                  // Reset form for next use
+                  setTemplateForms(createInitialTemplateState(null));
+                  setSelected([]);
+                } catch (error) {
+                  console.error("Error saving inventory item:", error);
+                  toast({
+                    title: "Failed to save item",
+                    description: error.message || "Please try again.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsSaving(false);
+                }
               }}
             >
-              Create Drafts
-              <Rocket className="w-4 h-4 ml-2" />
+              {isSaving ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  Save to Inventory
+                  <Rocket className="w-4 h-4 ml-2" />
+                </>
+              )}
             </Button>
           </SheetFooter>
         </SheetContent>
