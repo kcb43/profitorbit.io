@@ -563,7 +563,7 @@ export default function Crosslist() {
   const toggleMarketActive = (mkt) =>
     setActiveMkts((prev) => (prev.includes(mkt) ? prev.filter((x) => x !== mkt) : [...prev, mkt]));
 
-  const openComposer = (ids) => {
+  const openComposer = (ids, autoSelect = true) => {
     const itemIds = ids && ids.length > 0 ? ids : selected.length > 0 ? selected : [];
     
     // If bulk mode (multiple items selected)
@@ -586,7 +586,10 @@ export default function Crosslist() {
 
     // Set composer targets - if activeMkts is empty, use all marketplaces as default for composer
     setComposerTargets(activeMkts.length > 0 ? activeMkts : MARKETPLACES.map(m => m.id));
-    if (itemIds.length > 0) setSelected(itemIds);
+    // Only auto-select items if autoSelect is true (default behavior for bulk actions)
+    if (autoSelect && itemIds.length > 0) {
+      setSelected(itemIds);
+    }
     setComposerOpen(true);
   };
 
@@ -752,7 +755,7 @@ export default function Crosslist() {
                     <Checkbox
                       checked={selected.includes(it.id)}
                       onCheckedChange={() => toggleSelect(it.id)}
-                      className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0"
+                      className="!h-6 !w-6 !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0 [&_svg]:!h-6 [&_svg]:!w-6"
                     />
                     <img
                       src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
@@ -802,7 +805,7 @@ export default function Crosslist() {
                   <div className="col-span-12 sm:col-span-2 flex sm:justify-end gap-2 flex-wrap">
                     <Button
                       variant="outline"
-                      onClick={() => openComposer([it.id])}
+                      onClick={() => openComposer([it.id], false)}
                       className="w-full sm:w-auto whitespace-nowrap"
                     >
                       Crosslist
@@ -836,7 +839,7 @@ export default function Crosslist() {
                       <Checkbox
                         checked={selected.includes(it.id)}
                         onCheckedChange={() => toggleSelect(it.id)}
-                        className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600"
+                        className="!h-6 !w-6 !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&_svg]:!h-6 [&_svg]:!w-6"
                       />
                     </div>
                   </div>
@@ -862,7 +865,7 @@ export default function Crosslist() {
                       })}
                     </div>
                     <div className="flex gap-2 mt-3">
-                      <Button size="sm" className="w-full whitespace-nowrap" onClick={() => openComposer([it.id])}>
+                      <Button size="sm" className="w-full whitespace-nowrap" onClick={() => openComposer([it.id], false)}>
                         Crosslist
                       </Button>
                       <Button size="sm" variant="outline" className="w-full whitespace-nowrap" onClick={() => navigate(createPageUrl(`AddInventoryItem?id=${it.id}`))}>
