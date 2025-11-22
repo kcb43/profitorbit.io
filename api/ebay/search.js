@@ -15,16 +15,24 @@ async function getAppToken() {
     throw new Error('Missing EBAY_CLIENT_ID or EBAY_CLIENT_SECRET env vars');
   }
 
-  // Determine environment - check both EBAY_ENV and Client ID prefix
+  // Determine environment - check both EBAY_ENV and Client ID for production indicators
   const ebayEnv = process.env.EBAY_ENV;
   const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
-  const isProductionByClientId = clientId.includes('-PRD-') || clientId.startsWith('PRD-');
+  // Check if Client ID contains PRD (production) - can be in middle or at start
+  // Examples: "BertsonB-ProfitPu-PRD-..." or "PRD-..."
+  const isProductionByClientId = clientId && (
+    clientId.includes('-PRD-') || 
+    clientId.includes('-PRD') || 
+    clientId.startsWith('PRD-') ||
+    /PRD/i.test(clientId) // Case-insensitive check for PRD anywhere
+  );
   const useProduction = isProductionByEnv || isProductionByClientId;
   
   console.log('Environment detection:', {
     EBAY_ENV: JSON.stringify(ebayEnv),
     isProductionByEnv,
-    clientIdPrefix: clientId.substring(0, 20) + '...',
+    clientIdPrefix: clientId?.substring(0, 30),
+    clientIdContainsPRD: clientId?.includes('PRD'),
     isProductionByClientId,
     useProduction
   });
@@ -126,16 +134,24 @@ export default async function handler(req, res) {
     // Get access token
     const token = await getAppToken();
 
-    // Determine environment - check both EBAY_ENV and Client ID prefix
+    // Determine environment - check both EBAY_ENV and Client ID for production indicators
     const clientId = process.env.VITE_EBAY_CLIENT_ID || process.env.EBAY_CLIENT_ID;
     const ebayEnv = process.env.EBAY_ENV;
     const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
-    const isProductionByClientId = clientId?.includes('-PRD-') || clientId?.startsWith('PRD-');
+    // Check if Client ID contains PRD (production) - can be in middle or at start
+    const isProductionByClientId = clientId && (
+      clientId.includes('-PRD-') || 
+      clientId.includes('-PRD') || 
+      clientId.startsWith('PRD-') ||
+      /PRD/i.test(clientId) // Case-insensitive check for PRD anywhere
+    );
     const useProduction = isProductionByEnv || isProductionByClientId;
     
     console.log('Handler environment detection:', {
       EBAY_ENV: JSON.stringify(ebayEnv),
       isProductionByEnv,
+      clientIdPrefix: clientId?.substring(0, 30),
+      clientIdContainsPRD: clientId?.includes('PRD'),
       isProductionByClientId,
       useProduction
     });
