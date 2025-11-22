@@ -55,7 +55,7 @@ import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
-import { useEbayCategoryTreeId, useEbayCategorySuggestions } from "@/hooks/useEbayCategorySuggestions";
+import { useEbayCategoryTreeId, useEbayCategories } from "@/hooks/useEbayCategorySuggestions";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -127,6 +127,7 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     categoryName: "",
     shippingMethod: "Calculated",
     shippingCostType: "calculated",
+    shippingCost: "",
     handlingTime: "1 business day",
     shipFromCountry: "United States",
     shippingService: "Standard Shipping (3 to 5 business days)",
@@ -257,31 +258,19 @@ export default function Crosslist() {
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [editingColorField, setEditingColorField] = useState(null); // "color1", "color2", or "ebay.color"
-  const [categorySearchQuery, setCategorySearchQuery] = useState("");
-  const [debouncedCategoryQuery, setDebouncedCategoryQuery] = useState("");
   const photoInputRef = React.useRef(null);
   
   // Get eBay category tree ID
   const { data: categoryTreeData, isLoading: isLoadingCategoryTree } = useEbayCategoryTreeId('EBAY_US');
   const categoryTreeId = categoryTreeData?.categoryTreeId;
   
-  // Get category suggestions based on search query
-  const { data: categorySuggestionsData, isLoading: isLoadingCategorySuggestions } = useEbayCategorySuggestions(
+  // Get all eBay categories (flattened and sorted alphabetically)
+  const { data: categoriesData, isLoading: isLoadingCategories } = useEbayCategories(
     categoryTreeId,
-    debouncedCategoryQuery,
     activeForm === "ebay" && composerOpen
   );
   
-  const categorySuggestions = categorySuggestionsData?.categorySuggestions || [];
-  
-  // Debounce category search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedCategoryQuery(categorySearchQuery);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [categorySearchQuery]);
+  const ebayCategories = categoriesData?.categories || [];
 
   // Popular brands list (sorted alphabetically)
   const POPULAR_BRANDS = [
@@ -456,6 +445,50 @@ export default function Crosslist() {
     toast({
       title: `${label} template saved`,
       description: "Your preferences will be used the next time you compose a listing.",
+    });
+  };
+
+  // Validate required fields for eBay form
+  const validateEbayForm = () => {
+    const errors = [];
+    
+    // Check eBay-specific required fields
+    if (!ebayForm.handlingTime) errors.push("Handling Time");
+    if (!ebayForm.shippingService) errors.push("Shipping Service");
+    if (!ebayForm.shippingCostType) errors.push("Shipping Cost Type");
+    if (!ebayForm.shippingMethod) errors.push("Shipping Method");
+    if (!ebayForm.pricingFormat) errors.push("Pricing Format");
+    if (!ebayForm.duration) errors.push("Duration");
+    if (!ebayForm.buyItNowPrice) errors.push("Buy It Now Price");
+    if (!ebayForm.color) errors.push("Color");
+    if (!ebayForm.categoryId) errors.push("Category");
+    if (!ebayForm.shippingCost) errors.push("Shipping Cost");
+    
+    // Check general form required fields (needed for eBay listing)
+    if (!generalForm.title) errors.push("Title");
+    if (!generalForm.brand) errors.push("Brand");
+    if (!generalForm.quantity) errors.push("Quantity");
+    
+    return errors;
+  };
+
+  const handleListOnMarketplace = (marketplace) => {
+    if (marketplace === "ebay") {
+      const errors = validateEbayForm();
+      if (errors.length > 0) {
+        toast({
+          title: "Missing required fields",
+          description: `Please fill in: ${errors.join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // TODO: Implement actual listing API call
+    toast({
+      title: `List on ${TEMPLATE_DISPLAY_NAMES[marketplace] || marketplace}`,
+      description: "Listing functionality coming soon!",
     });
   };
 
@@ -1024,7 +1057,6 @@ export default function Crosslist() {
           // Reset bulk mode when closing
           setBulkSelectedItems([]);
           setCurrentEditingItemId(null);
-          setCategorySearchQuery("");
         }
       }}>
         <SheetContent side="bottom" className="h-[85vh] sm:rounded-t-2xl overflow-y-auto">
@@ -1418,10 +1450,10 @@ export default function Crosslist() {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button className="gap-2" onClick={() => handleTemplateSave("general")}>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("general")}>
                     <Save className="h-4 w-4" />
-                    Save General Template
+                    Save
                   </Button>
                 </div>
               </div>
@@ -1449,7 +1481,7 @@ export default function Crosslist() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs mb-1.5 block">Pricing Format</Label>
+                    <Label className="text-xs mb-1.5 block">Pricing Format <span className="text-red-500">*</span></Label>
                     <Select
                       value={ebayForm.pricingFormat}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "pricingFormat", value)}
@@ -1464,7 +1496,7 @@ export default function Crosslist() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Duration</Label>
+                    <Label className="text-xs mb-1.5 block">Duration <span className="text-red-500">*</span></Label>
                     <Select
                       value={ebayForm.duration}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "duration", value)}
@@ -1480,7 +1512,7 @@ export default function Crosslist() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Buy It Now Price</Label>
+                    <Label className="text-xs mb-1.5 block">Buy It Now Price <span className="text-red-500">*</span></Label>
                     <Input
                       type="number"
                       min="0"
@@ -1508,7 +1540,7 @@ export default function Crosslist() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Shipping Method</Label>
+                    <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
                     <Select
                       value={ebayForm.shippingMethod}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "shippingMethod", value)}
@@ -1524,7 +1556,7 @@ export default function Crosslist() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Shipping Cost Type</Label>
+                    <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={ebayForm.shippingCostType}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
@@ -1540,7 +1572,18 @@ export default function Crosslist() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Handling Time</Label>
+                    <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={ebayForm.shippingCost}
+                      onChange={(e) => handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
                     <Select
                       value={ebayForm.handlingTime}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
@@ -1564,7 +1607,7 @@ export default function Crosslist() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Shipping Service</Label>
+                    <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
                     <Select
                       value={ebayForm.shippingService}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
@@ -1600,7 +1643,7 @@ export default function Crosslist() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Color</Label>
+                    <Label className="text-xs mb-1.5 block">Color <span className="text-red-500">*</span></Label>
                     <Button
                       type="button"
                       variant={ebayForm.color ? "default" : "outline"}
@@ -1624,89 +1667,35 @@ export default function Crosslist() {
                     </Button>
                   </div>
                   <div className="md:col-span-2">
-                    <Label className="text-xs mb-1.5 block">Category</Label>
-                    <div className="relative">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search for a category (e.g. iPhone, cell phone, sneakers)"
-                          value={categorySearchQuery}
-                          onChange={(e) => setCategorySearchQuery(e.target.value)}
-                          className="pl-9"
-                        />
+                    <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                    {isLoadingCategoryTree || isLoadingCategories ? (
+                      <div className="flex items-center gap-2 p-3 border rounded-md">
+                        <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Loading categories...</span>
                       </div>
-                      
-                      {/* Category suggestions dropdown */}
-                      {categorySearchQuery && categorySearchQuery.trim().length >= 2 && (
-                        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                          {isLoadingCategorySuggestions ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                              <RefreshCw className="w-4 h-4 mr-2 inline animate-spin" />
-                              Loading categories...
-                            </div>
-                          ) : categorySuggestions.length > 0 ? (
-                            <div className="p-1">
-                              {categorySuggestions.map((suggestion, index) => {
-                                const category = suggestion.category;
-                                const ancestors = suggestion.categoryTreeNodeAncestors || [];
-                                const fullPath = [...ancestors.map(a => a.categoryName), category.categoryName].join(" > ");
-                                
-                                return (
-                                  <button
-                                    key={category.categoryId || index}
-                                    type="button"
-                                    onClick={() => {
-                                      handleMarketplaceChange("ebay", "categoryId", category.categoryId);
-                                      handleMarketplaceChange("ebay", "categoryName", fullPath);
-                                      setCategorySearchQuery("");
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors"
-                                  >
-                                    <div className="font-medium">{category.categoryName}</div>
-                                    {ancestors.length > 0 && (
-                                      <div className="text-xs text-muted-foreground truncate">
-                                        {fullPath}
-                                      </div>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ) : categorySearchQuery.trim().length >= 2 && !isLoadingCategorySuggestions ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                              No categories found. Try a different search term.
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-                      
-                      {/* Selected category display */}
-                      {ebayForm.categoryName && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {ebayForm.categoryName}
-                          </Badge>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              handleMarketplaceChange("ebay", "categoryId", "");
-                              handleMarketplaceChange("ebay", "categoryName", "");
-                            }}
-                            className="h-6 px-2 text-xs"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {isLoadingCategoryTree && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Loading category tree...
-                        </p>
-                      )}
-                    </div>
+                    ) : (
+                      <Select
+                        value={ebayForm.categoryId || undefined}
+                        onValueChange={(value) => {
+                          const selectedCategory = ebayCategories.find(cat => cat.categoryId === value);
+                          if (selectedCategory) {
+                            handleMarketplaceChange("ebay", "categoryId", selectedCategory.categoryId);
+                            handleMarketplaceChange("ebay", "categoryName", selectedCategory.fullPath);
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {ebayCategories.map((category) => (
+                            <SelectItem key={category.categoryId} value={category.categoryId}>
+                              {category.fullPath}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
 
@@ -1721,10 +1710,13 @@ export default function Crosslist() {
                   </Button>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button className="gap-2" onClick={() => handleTemplateSave("ebay")}>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
                     <Save className="h-4 w-4" />
-                    Save eBay Template
+                    Save
+                  </Button>
+                  <Button className="gap-2" onClick={() => handleListOnMarketplace("ebay")}>
+                    List on eBay
                   </Button>
                 </div>
               </div>
@@ -1857,10 +1849,13 @@ export default function Crosslist() {
                   </Button>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button className="gap-2" onClick={() => handleTemplateSave("etsy")}>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("etsy")}>
                     <Save className="h-4 w-4" />
-                    Save Etsy Template
+                    Save
+                  </Button>
+                  <Button className="gap-2" onClick={() => handleListOnMarketplace("etsy")}>
+                    List on Etsy
                   </Button>
                 </div>
               </div>
@@ -1962,10 +1957,13 @@ export default function Crosslist() {
                   </Button>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button className="gap-2" onClick={() => handleTemplateSave("mercari")}>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("mercari")}>
                     <Save className="h-4 w-4" />
-                    Save Mercari Template
+                    Save
+                  </Button>
+                  <Button className="gap-2" onClick={() => handleListOnMarketplace("mercari")}>
+                    List on Mercari
                   </Button>
                 </div>
               </div>
@@ -2066,10 +2064,13 @@ export default function Crosslist() {
                   </Button>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button className="gap-2" onClick={() => handleTemplateSave("facebook")}>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("facebook")}>
                     <Save className="h-4 w-4" />
-                    Save Facebook Template
+                    Save
+                  </Button>
+                  <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")}>
+                    List on Facebook
                   </Button>
                 </div>
               </div>
@@ -2169,7 +2170,6 @@ export default function Crosslist() {
                   setBulkSelectedItems([]);
                   setCurrentEditingItemId(null);
                   setBrandIsCustom(false);
-                  setCategorySearchQuery("");
                 } catch (error) {
                   console.error("Error saving inventory item:", error);
                   toast({
