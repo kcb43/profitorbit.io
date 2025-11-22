@@ -226,8 +226,7 @@ export default function EbaySearchDialog({
             Search eBay for Items
           </DialogTitle>
           <DialogDescription>
-            Search for items on eBay to quickly fill in inventory details.
-            Select an item to auto-populate the form.
+            Live Listings. Select item &gt; add to inventory & edit.
           </DialogDescription>
         </DialogHeader>
 
