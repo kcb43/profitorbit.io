@@ -51,11 +51,6 @@ export default function BulkActionsMenu() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={() => comingSoon("Bulk List")}>
-          <ListChecks className="mr-2 h-4 w-4" />
-          <span>Bulk List</span>
-        </DropdownMenuItem>
-
         <DropdownMenuItem onClick={() => comingSoon("Bulk Delist")}>
           <ListX className="mr-2 h-4 w-4" />
           <span>Bulk Delist</span>
