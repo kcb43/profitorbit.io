@@ -55,6 +55,7 @@ import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
+import { useEbayCategoryTreeId, useEbayCategorySuggestions } from "@/hooks/useEbayCategorySuggestions";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -121,6 +122,9 @@ const GENERAL_TEMPLATE_DEFAULT = {
 const MARKETPLACE_TEMPLATE_DEFAULTS = {
   ebay: {
     inheritGeneral: true,
+    color: "",
+    categoryId: "",
+    categoryName: "",
     shippingMethod: "Calculated",
     shippingCostType: "calculated",
     handlingTime: "1 business day",
@@ -252,10 +256,32 @@ export default function Crosslist() {
   const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const [editingColorField, setEditingColorField] = useState(null); // "color1" or "color2"
-  const [colorSearchQuery, setColorSearchQuery] = useState("");
-  const [customColorHex, setCustomColorHex] = useState("");
+  const [editingColorField, setEditingColorField] = useState(null); // "color1", "color2", or "ebay.color"
+  const [categorySearchQuery, setCategorySearchQuery] = useState("");
+  const [debouncedCategoryQuery, setDebouncedCategoryQuery] = useState("");
   const photoInputRef = React.useRef(null);
+  
+  // Get eBay category tree ID
+  const { data: categoryTreeData, isLoading: isLoadingCategoryTree } = useEbayCategoryTreeId('EBAY_US');
+  const categoryTreeId = categoryTreeData?.categoryTreeId;
+  
+  // Get category suggestions based on search query
+  const { data: categorySuggestionsData, isLoading: isLoadingCategorySuggestions } = useEbayCategorySuggestions(
+    categoryTreeId,
+    debouncedCategoryQuery,
+    activeForm === "ebay" && composerOpen
+  );
+  
+  const categorySuggestions = categorySuggestionsData?.categorySuggestions || [];
+  
+  // Debounce category search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCategoryQuery(categorySearchQuery);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [categorySearchQuery]);
 
   // Popular brands list (sorted alphabetically)
   const POPULAR_BRANDS = [
@@ -1572,6 +1598,115 @@ export default function Crosslist() {
                       <Label htmlFor="ebay-accept-returns" className="text-sm">Accept returns</Label>
                     </div>
                   </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Color</Label>
+                    <Button
+                      type="button"
+                      variant={ebayForm.color ? "default" : "outline"}
+                      onClick={() => openColorPicker("ebay.color")}
+                      className="w-full justify-start"
+                    >
+                      {ebayForm.color ? (
+                        <>
+                          <div
+                            className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                            style={{ backgroundColor: getColorHex(ebayForm.color) || "#808080" }}
+                          />
+                          <span className="flex-1 text-left">{getColorName(ebayForm.color)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Palette className="w-4 h-4 mr-2" />
+                          <span>Select color</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-xs mb-1.5 block">Category</Label>
+                    <div className="relative">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search for a category (e.g. iPhone, cell phone, sneakers)"
+                          value={categorySearchQuery}
+                          onChange={(e) => setCategorySearchQuery(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      
+                      {/* Category suggestions dropdown */}
+                      {categorySearchQuery && categorySearchQuery.trim().length >= 2 && (
+                        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {isLoadingCategorySuggestions ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              <RefreshCw className="w-4 h-4 mr-2 inline animate-spin" />
+                              Loading categories...
+                            </div>
+                          ) : categorySuggestions.length > 0 ? (
+                            <div className="p-1">
+                              {categorySuggestions.map((suggestion, index) => {
+                                const category = suggestion.category;
+                                const ancestors = suggestion.categoryTreeNodeAncestors || [];
+                                const fullPath = [...ancestors.map(a => a.categoryName), category.categoryName].join(" > ");
+                                
+                                return (
+                                  <button
+                                    key={category.categoryId || index}
+                                    type="button"
+                                    onClick={() => {
+                                      handleMarketplaceChange("ebay", "categoryId", category.categoryId);
+                                      handleMarketplaceChange("ebay", "categoryName", fullPath);
+                                      setCategorySearchQuery("");
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors"
+                                  >
+                                    <div className="font-medium">{category.categoryName}</div>
+                                    {ancestors.length > 0 && (
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        {fullPath}
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : categorySearchQuery.trim().length >= 2 && !isLoadingCategorySuggestions ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              No categories found. Try a different search term.
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                      
+                      {/* Selected category display */}
+                      {ebayForm.categoryName && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {ebayForm.categoryName}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              handleMarketplaceChange("ebay", "categoryId", "");
+                              handleMarketplaceChange("ebay", "categoryName", "");
+                            }}
+                            className="h-6 px-2 text-xs"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {isLoadingCategoryTree && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Loading category tree...
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3 rounded-lg border border-muted-foreground/30 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -2033,6 +2168,7 @@ export default function Crosslist() {
                   setBulkSelectedItems([]);
                   setCurrentEditingItemId(null);
                   setBrandIsCustom(false);
+                  setCategorySearchQuery("");
                 } catch (error) {
                   console.error("Error saving inventory item:", error);
                   toast({
