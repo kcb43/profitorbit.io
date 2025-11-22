@@ -26,6 +26,14 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Filter,
   Grid2X2,
   Rows,
@@ -99,6 +107,10 @@ const GENERAL_TEMPLATE_DEFAULT = {
   category: "",
   size: "", // US Size
   packageDetails: "",
+  packageWeight: "",
+  packageLength: "",
+  packageWidth: "",
+  packageHeight: "",
   price: "", // Listing Price
   cost: "", // Purchase Price
   customLabels: "", // Will sync to inventory tags
@@ -165,6 +177,10 @@ const createInitialTemplateState = (item) => {
     category: item?.category || "",
     size: item?.size || "",
     packageDetails: item?.package_details || "",
+    packageWeight: item?.package_weight || "",
+    packageLength: item?.package_length || "",
+    packageWidth: item?.package_width || "",
+    packageHeight: item?.package_height || "",
     price: item?.listing_price != null ? String(item.listing_price) : "",
     cost: item?.purchase_price != null ? String(item.purchase_price) : "",
     customLabels: item?.custom_labels || "",
@@ -231,6 +247,7 @@ export default function Crosslist() {
   const [isSaving, setIsSaving] = useState(false);
   const [bulkSelectedItems, setBulkSelectedItems] = useState([]); // Items selected for bulk crosslisting
   const [currentEditingItemId, setCurrentEditingItemId] = useState(null); // Currently editing item ID in bulk mode
+  const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
   const photoInputRef = React.useRef(null);
 
   const { data: inventory = [], isLoading } = useQuery({
@@ -1166,13 +1183,20 @@ export default function Crosslist() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs mb-1.5 block">Package Details</Label>
-                    <Textarea
-                      placeholder="Box size, weight, fragile notes…"
-                      value={generalForm.packageDetails}
-                      onChange={(e) => handleGeneralChange("packageDetails", e.target.value)}
-                      className="min-h-[100px]"
-                    />
+                    <Label className="text-xs mb-1.5 block">
+                      Package Details <span className="text-red-500">*</span>
+                    </Label>
+                    <Button
+                      type="button"
+                      variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                      onClick={() => setPackageDetailsDialogOpen(true)}
+                      className="w-full justify-start"
+                    >
+                      <Package className="w-4 h-4 mr-2" />
+                      {generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                        ? `${generalForm.packageWeight} lbs • ${generalForm.packageLength}" × ${generalForm.packageWidth}" × ${generalForm.packageHeight}"`
+                        : "Enter package weight and dimensions"}
+                    </Button>
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
@@ -1755,7 +1779,7 @@ export default function Crosslist() {
             </SheetClose>
             <Button
               className="bg-green-600 hover:bg-green-700"
-              disabled={isSaving}
+              disabled={isSaving || !generalForm.packageWeight || !generalForm.packageLength || !generalForm.packageWidth || !generalForm.packageHeight}
               onClick={async () => {
                 setIsSaving(true);
                 try {
@@ -1806,6 +1830,10 @@ export default function Crosslist() {
                     zip_code: generalForm.zip || "",
                     size: generalForm.size || "",
                     package_details: generalForm.packageDetails || "",
+                    package_weight: generalForm.packageWeight || "",
+                    package_length: generalForm.packageLength || "",
+                    package_width: generalForm.packageWidth || "",
+                    package_height: generalForm.packageHeight || "",
                     custom_labels: generalForm.customLabels || "",
                     image_url: imageUrl,
                     notes: generalForm.description || "",
@@ -1864,6 +1892,112 @@ export default function Crosslist() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Package Details Dialog */}
+      <Dialog open={packageDetailsDialogOpen} onOpenChange={setPackageDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Package Details</DialogTitle>
+            <DialogDescription>
+              Enter the package weight and dimensions. This information is required.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="package-weight" className="text-sm font-medium">
+                Weight (lbs) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="package-weight"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={generalForm.packageWeight}
+                onChange={(e) => handleGeneralChange("packageWeight", e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="package-length" className="text-sm font-medium">
+                  Length (in) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="package-length"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={generalForm.packageLength}
+                  onChange={(e) => handleGeneralChange("packageLength", e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="package-width" className="text-sm font-medium">
+                  Width (in) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="package-width"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={generalForm.packageWidth}
+                  onChange={(e) => handleGeneralChange("packageWidth", e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="package-height" className="text-sm font-medium">
+                  Height (in) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="package-height"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={generalForm.packageHeight}
+                  onChange={(e) => handleGeneralChange("packageHeight", e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="package-notes" className="text-sm font-medium">
+                Additional Notes (Optional)
+              </Label>
+              <Textarea
+                id="package-notes"
+                placeholder="Fragile, special handling instructions, etc."
+                value={generalForm.packageDetails}
+                onChange={(e) => handleGeneralChange("packageDetails", e.target.value)}
+                className="mt-1.5 min-h-[80px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPackageDetailsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => setPackageDetailsDialogOpen(false)}
+              disabled={!generalForm.packageWeight || !generalForm.packageLength || !generalForm.packageWidth || !generalForm.packageHeight}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
