@@ -36,7 +36,7 @@ export default function BulkActionsMenu() {
 
         <DropdownMenuItem onClick={() => comingSoon("Bulk Edit Labels")}>
           <Edit className="mr-2 h-4 w-4" />
-          <span>Bulk Edit Vendoo Labels</span>
+          <span>Bulk Edit Labels</span>
         </DropdownMenuItem>
 
         <DropdownMenuItem onClick={() => comingSoon("Bulk Copy Items")}>
