@@ -222,7 +222,7 @@ export default function Crosslist() {
   const [selected, setSelected] = useState([]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerTargets, setComposerTargets] = useState([]);
-  const [activeMkts, setActiveMkts] = useState(["ebay", "facebook", "mercari"]);
+  const [activeMkts, setActiveMkts] = useState([]); // Start with no marketplaces selected
   const [templateForms, setTemplateForms] = useState(() => createInitialTemplateState());
   const [activeForm, setActiveForm] = useState("general"); // "general" | "ebay" | "etsy" | "mercari" | "facebook"
   const [isSaving, setIsSaving] = useState(false);
@@ -498,6 +498,7 @@ export default function Crosslist() {
 
   const filtered = useMemo(() => {
     return crosslistableItems.filter((it) => {
+      // Text search filter
       const matchesQ =
         !q ||
         it.item_name.toLowerCase().includes(q.toLowerCase()) ||
@@ -505,12 +506,42 @@ export default function Crosslist() {
         it.source?.toLowerCase().includes(q.toLowerCase());
       if (!matchesQ) return false;
 
-      if (platformFilter === "all") return true;
+      // Listing state filter (all/listed/unlisted)
       const map = computeListingState(it);
       const anyListed = Object.values(map).some(Boolean);
-      return platformFilter === "listed" ? anyListed : !anyListed;
+      
+      if (platformFilter === "all") {
+        // Continue to marketplace filter
+      } else if (platformFilter === "listed") {
+        if (!anyListed) return false;
+      } else if (platformFilter === "unlisted") {
+        if (anyListed) return false;
+      }
+
+      // Marketplace filter - if no marketplaces selected, show all items
+      // If all marketplaces selected, show all items
+      // If specific marketplaces selected, only show items crosslisted to those
+      if (activeMkts.length === 0 || activeMkts.length === MARKETPLACES.length) {
+        // No filter or all selected - show all items
+        return true;
+      }
+
+      // Filter by selected marketplaces - item must be crosslisted to at least one selected marketplace
+      const itemIsListedOnSelectedMkts = activeMkts.some((mktId) => {
+        // Map marketplace IDs to the keys used in computeListingState
+        const marketplaceMap = {
+          ebay: "ebay",
+          facebook: "facebook",
+          mercari: "mercari",
+          etsy: "etsy",
+          poshmark: "poshmark",
+        };
+        return map[marketplaceMap[mktId]] === true;
+      });
+
+      return itemIsListedOnSelectedMkts;
     });
-  }, [crosslistableItems, q, platformFilter]);
+  }, [crosslistableItems, q, platformFilter, activeMkts]);
 
   const toggleSelect = (id) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -531,7 +562,8 @@ export default function Crosslist() {
       populateTemplates(targetItem);
     }
 
-    setComposerTargets(activeMkts);
+    // Set composer targets - if activeMkts is empty, use all marketplaces as default for composer
+    setComposerTargets(activeMkts.length > 0 ? activeMkts : MARKETPLACES.map(m => m.id));
     if (ids?.length) setSelected(ids);
     setComposerOpen(true);
   };
@@ -631,6 +663,14 @@ export default function Crosslist() {
                     );
                   })}
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {activeMkts.length === 0
+                    ? "Showing all items. Select marketplaces to filter by crosslisting status."
+                    : activeMkts.length === MARKETPLACES.length
+                    ? "All marketplaces selected. Showing all items."
+                    : `Showing items crosslisted to ${activeMkts.length} marketplace${activeMkts.length === 1 ? "" : "s"}.`
+                  }
+                </p>
               </div>
             </div>
 
