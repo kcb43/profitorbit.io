@@ -534,7 +534,7 @@ export default function AddInventoryItem() {
                               className="whitespace-nowrap"
                             >
                               <BarChart className="w-4 h-4 mr-2" />
-                              Sold
+                              Search
                             </Button>
                           )}
                         </div>
