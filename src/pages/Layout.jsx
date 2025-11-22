@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Check, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import {
   Sidebar,
@@ -161,6 +161,9 @@ export default function Layout({ children }) {
     // Remove old theme class, add new one
     root.classList.remove('light', 'dark');
     root.classList.add(themeConfig.isDark ? 'dark' : 'light');
+    
+    // Add data-theme attribute for specific theme targeting
+    root.setAttribute('data-theme', theme);
     
     // Set CSS variables
     const cssString = themeConfig.isDark ? `.dark { ${themeConfig.css} }` : `:root { ${themeConfig.css} }`;

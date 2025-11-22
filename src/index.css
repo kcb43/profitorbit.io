@@ -156,3 +156,18 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+/* Make checkboxes white in Default Dark theme only */
+[data-theme="default-dark"] button[role="checkbox"] {
+  border-color: white !important;
+  background-color: transparent !important;
+}
+
+[data-theme="default-dark"] button[role="checkbox"][data-state="checked"] {
+  background-color: white !important;
+  border-color: white !important;
+}
+
+[data-theme="default-dark"] button[role="checkbox"][data-state="checked"] svg {
+  color: hsl(var(--background)) !important;
+}
