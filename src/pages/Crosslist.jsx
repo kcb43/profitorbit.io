@@ -1742,6 +1742,11 @@ export default function Crosslist() {
                       ) : categoriesError ? (
                         <div className="p-3 border rounded-md border-destructive/50 bg-destructive/10">
                           <p className="text-sm text-destructive">Error loading categories: {categoriesError.message}</p>
+                          {categoriesError?.response?.details && (
+                            <p className="text-xs text-destructive mt-2">
+                              Details: {JSON.stringify(categoriesError.response.details)}
+                            </p>
+                          )}
                         </div>
                       ) : sortedCategories.length > 0 ? (
                         <Select

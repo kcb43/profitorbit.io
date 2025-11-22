@@ -69,8 +69,15 @@ export function useEbayCategories(categoryTreeId, categoryId = '0', enabled = tr
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Failed to get categories:', response.status, errorData);
-        throw new Error(`Failed to get categories: ${response.status} - ${errorData.error || 'Unknown error'}`);
+        console.error('Failed to get categories:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          url: `/api/ebay/taxonomy?operation=getCategorySubtree&category_tree_id=${categoryTreeId}&category_id=${categoryId}`,
+        });
+        const error = new Error(`Failed to get categories: ${response.status} - ${errorData.error || 'Unknown error'}`);
+        error.response = { details: errorData };
+        throw error;
       }
       
       const data = await response.json();
