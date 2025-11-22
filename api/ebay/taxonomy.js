@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     const { operation, marketplace_id, category_tree_id, q } = req.query;
 
     if (!operation) {
-      return res.status(400).json({ error: 'Operation parameter is required (getDefaultCategoryTreeId or getCategorySuggestions)' });
+      return res.status(400).json({ error: 'Operation parameter is required (getDefaultCategoryTreeId, getCategorySuggestions, or getCategorySubtree)' });
     }
 
     // Determine environment
