@@ -1,7 +1,13 @@
 import React, { useMemo } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { BarChart, Copy, Package } from "lucide-react";
+import { BarChart, Copy } from "lucide-react";
+import GlobeIcon from "@/components/icons/GlobeIcon";
+
+const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
+const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
+const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
+const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
 
 /**
  * Minimal, crash-proof "Sold Listings" dialog used across Inventory and Add Sale.
@@ -51,13 +57,9 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
             Sold Listings Lookup
           </DialogTitle>
           <DialogDescription>
-            Quick search links based on “{q || "your item name"}”.
+            Quick search links based on "{q || "your item name"}".
           </DialogDescription>
         </DialogHeader>
-
-        <div className="text-sm text-muted-foreground">
-          💡 Tip: keep names short (brand + model + size). Refine further on the results page.
-        </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {onEbaySearch ? (
@@ -68,33 +70,38 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
               }}
               className="w-full"
             >
-              <Package className="w-4 h-4 mr-2" />
-              Search eBay
+              <img src={EBAY_ICON_URL} alt="eBay" className="w-4 h-4 mr-2 object-contain" />
+              eBay
             </Button>
           ) : (
             <Button asChild className="w-full">
-              <a href={ebaySoldUrl} target="_blank" rel="noreferrer">
+              <a href={ebaySoldUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+                <img src={EBAY_ICON_URL} alt="eBay" className="w-4 h-4 object-contain" />
                 eBay (Sold + Completed)
               </a>
             </Button>
           )}
           <Button asChild variant="outline" className="w-full">
-            <a href={mercariGoogle} target="_blank" rel="noreferrer">
+            <a href={mercariGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+              <img src={MERCARI_ICON_URL} alt="Mercari" className="w-4 h-4 object-contain" />
               Mercari
             </a>
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <a href={fbGoogle} target="_blank" rel="noreferrer">
+            <a href={fbGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+              <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-4 h-4 object-contain" />
               Facebook
             </a>
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <a href={etsyGoogle} target="_blank" rel="noreferrer">
+            <a href={etsyGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+              <img src={ETSY_ICON_URL} alt="Etsy" className="w-4 h-4 object-contain" />
               Etsy
             </a>
           </Button>
           <Button asChild variant="outline" className="col-span-2 sm:col-span-1 w-full">
-            <a href={allMarkets} target="_blank" rel="noreferrer">
+            <a href={allMarkets} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+              <GlobeIcon className="w-4 h-4" />
               All Markets
             </a>
           </Button>
