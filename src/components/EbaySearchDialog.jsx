@@ -274,9 +274,6 @@ export default function EbaySearchDialog({
                   <BarChart className="w-4 h-4" />
                   View All Sold
                 </Button>
-                <span className="text-xs text-muted-foreground">
-                  Opens eBay's sold listings page (LH_Sold=1&LH_Complete=1)
-                </span>
               </div>
             )}
             {searchQuery && searchQuery.trim().length < 2 && (
