@@ -1024,6 +1024,7 @@ export default function Crosslist() {
           // Reset bulk mode when closing
           setBulkSelectedItems([]);
           setCurrentEditingItemId(null);
+          setCategorySearchQuery("");
         }
       }}>
         <SheetContent side="bottom" className="h-[85vh] sm:rounded-t-2xl overflow-y-auto">
