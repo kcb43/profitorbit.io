@@ -47,9 +47,11 @@ import {
   Save,
   Package,
   Check,
+  Palette,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
+import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
@@ -249,6 +251,10 @@ export default function Crosslist() {
   const [currentEditingItemId, setCurrentEditingItemId] = useState(null); // Currently editing item ID in bulk mode
   const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
   const [brandIsCustom, setBrandIsCustom] = useState(false);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [editingColorField, setEditingColorField] = useState(null); // "color1" or "color2"
+  const [colorSearchQuery, setColorSearchQuery] = useState("");
+  const [customColorHex, setCustomColorHex] = useState("");
   const photoInputRef = React.useRef(null);
 
   // Popular brands list (sorted alphabetically)
@@ -660,6 +666,99 @@ export default function Crosslist() {
   const etsyForm = templateForms.etsy;
   const mercariForm = templateForms.mercari;
   const facebookForm = templateForms.facebook;
+
+  // Helper to get hex code from color name or return hex if already hex
+  const getColorHex = (colorValue) => {
+    if (!colorValue) return null;
+    // If it's already a hex code, return it
+    if (colorValue.startsWith("#")) return colorValue;
+    // Look up hex from common colors
+    const color = COMMON_COLORS.find(c => c.name.toLowerCase() === colorValue.toLowerCase());
+    return color ? color.hex : null;
+  };
+
+  // Helper to get color name from hex or return the value if it's a name
+  const getColorName = (colorValue) => {
+    if (!colorValue) return "Select color";
+    if (colorValue.startsWith("#")) {
+      // If it's a hex, try to find the name, otherwise show the hex
+      const color = COMMON_COLORS.find(c => c.hex.toLowerCase() === colorValue.toLowerCase());
+      return color ? color.name : colorValue;
+    }
+    return colorValue;
+  };
+
+  // Import COMMON_COLORS from ColorPickerDialog
+  // We'll define it here too for the helper functions
+  const COMMON_COLORS = [
+    { name: "Black", hex: "#000000" },
+    { name: "White", hex: "#FFFFFF" },
+    { name: "Gray", hex: "#808080" },
+    { name: "Navy", hex: "#000080" },
+    { name: "Brown", hex: "#8B4513" },
+    { name: "Tan", hex: "#D2B48C" },
+    { name: "Beige", hex: "#F5F5DC" },
+    { name: "Khaki", hex: "#C3B091" },
+    { name: "Camel", hex: "#C19A6B" },
+    { name: "Olive", hex: "#808000" },
+    { name: "Forest Green", hex: "#228B22" },
+    { name: "Burgundy", hex: "#800020" },
+    { name: "Maroon", hex: "#800000" },
+    { name: "Red", hex: "#FF0000" },
+    { name: "Pink", hex: "#FFC0CB" },
+    { name: "Rose", hex: "#FF007F" },
+    { name: "Purple", hex: "#800080" },
+    { name: "Lavender", hex: "#E6E6FA" },
+    { name: "Blue", hex: "#0000FF" },
+    { name: "Royal Blue", hex: "#4169E1" },
+    { name: "Sky Blue", hex: "#87CEEB" },
+    { name: "Teal", hex: "#008080" },
+    { name: "Turquoise", hex: "#40E0D0" },
+    { name: "Green", hex: "#008000" },
+    { name: "Lime", hex: "#00FF00" },
+    { name: "Yellow", hex: "#FFFF00" },
+    { name: "Gold", hex: "#FFD700" },
+    { name: "Orange", hex: "#FFA500" },
+    { name: "Coral", hex: "#FF7F50" },
+    { name: "Salmon", hex: "#FA8072" },
+    { name: "Ivory", hex: "#FFFFF0" },
+    { name: "Cream", hex: "#FFFDD0" },
+    { name: "Champagne", hex: "#F7E7CE" },
+    { name: "Blush", hex: "#DE5D83" },
+    { name: "Dusty Rose", hex: "#B76E79" },
+    { name: "Mauve", hex: "#E0B0FF" },
+    { name: "Plum", hex: "#8E4585" },
+    { name: "Indigo", hex: "#4B0082" },
+    { name: "Electric Blue", hex: "#7DF9FF" },
+    { name: "Sapphire", hex: "#0F52BA" },
+    { name: "Mint", hex: "#98FB98" },
+    { name: "Emerald", hex: "#50C878" },
+    { name: "Chartreuse", hex: "#7FFF00" },
+    { name: "Amber", hex: "#FFBF00" },
+    { name: "Rust", hex: "#B7410E" },
+    { name: "Brick", hex: "#CB4154" },
+    { name: "Charcoal", hex: "#36454F" },
+    { name: "Slate", hex: "#708090" },
+    { name: "Silver", hex: "#C0C0C0" },
+    { name: "Platinum", hex: "#E5E4E2" },
+    { name: "Bronze", hex: "#CD7F32" },
+    { name: "Copper", hex: "#B87333" },
+  ];
+
+  const handleColorSelect = (colorName, colorHex) => {
+    if (editingColorField) {
+      // If it's a hex code (custom color), store the hex, otherwise store the name
+      const valueToStore = colorName.startsWith("#") ? colorName : colorName;
+      handleGeneralChange(editingColorField, valueToStore);
+      setEditingColorField(null);
+      setColorPickerOpen(false);
+    }
+  };
+
+  const openColorPicker = (field) => {
+    setEditingColorField(field);
+    setColorPickerOpen(true);
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
@@ -1093,7 +1192,7 @@ export default function Crosslist() {
                   <div>
                     <Label className="text-xs mb-1.5 block">Title</Label>
                     <Input
-                      placeholder="Brand + Model + Size"
+                      placeholder=""
                       value={generalForm.title}
                       onChange={(e) => handleGeneralChange("title", e.target.value)}
                     />
@@ -1240,19 +1339,51 @@ export default function Crosslist() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs mb-1.5 block">Primary Color</Label>
-                    <Input
-                      placeholder="Primary color"
-                      value={generalForm.color1}
-                      onChange={(e) => handleGeneralChange("color1", e.target.value)}
-                    />
+                    <Button
+                      type="button"
+                      variant={generalForm.color1 ? "default" : "outline"}
+                      onClick={() => openColorPicker("color1")}
+                      className="w-full justify-start"
+                    >
+                      {generalForm.color1 ? (
+                        <>
+                          <div
+                            className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                            style={{ backgroundColor: getColorHex(generalForm.color1) || "#808080" }}
+                          />
+                          <span className="flex-1 text-left">{getColorName(generalForm.color1)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Palette className="w-4 h-4 mr-2" />
+                          <span>Select color</span>
+                        </>
+                      )}
+                    </Button>
                   </div>
                   <div>
                     <Label className="text-xs mb-1.5 block">Secondary Color</Label>
-                    <Input
-                      placeholder="Secondary color"
-                      value={generalForm.color2}
-                      onChange={(e) => handleGeneralChange("color2", e.target.value)}
-                    />
+                    <Button
+                      type="button"
+                      variant={generalForm.color2 ? "default" : "outline"}
+                      onClick={() => openColorPicker("color2")}
+                      className="w-full justify-start"
+                    >
+                      {generalForm.color2 ? (
+                        <>
+                          <div
+                            className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                            style={{ backgroundColor: getColorHex(generalForm.color2) || "#808080" }}
+                          />
+                          <span className="flex-1 text-left">{getColorName(generalForm.color2)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Palette className="w-4 h-4 mr-2" />
+                          <span>Select color</span>
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
 
@@ -2074,6 +2205,15 @@ export default function Crosslist() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Color Picker Dialog */}
+      <ColorPickerDialog
+        open={colorPickerOpen}
+        onOpenChange={setColorPickerOpen}
+        currentColor={editingColorField === "color1" ? generalForm.color1 : generalForm.color2}
+        onSelectColor={handleColorSelect}
+        fieldLabel={editingColorField === "color1" ? "Primary Color" : "Secondary Color"}
+      />
     </div>
   );
 }
