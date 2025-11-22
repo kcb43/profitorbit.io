@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Check, CalendarDays } from "lucide-react";
+import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import {
   Sidebar,
   SidebarContent,
@@ -32,7 +33,7 @@ const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
   { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
   { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
-  { title: "Crosslist", url: createPageUrl("Crosslist"), icon: Palette },
+  { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
   { title: "Inventory", url: createPageUrl("Inventory"), icon: Package },
   { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
   { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal }, // Changed 'Gallery' to 'Showcase'
