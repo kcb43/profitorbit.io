@@ -176,20 +176,41 @@ button:focus-visible {
 /* Crosslist button */
 [data-theme="default-dark"] button.bg-green-600 {
   background-color: rgb(37 99 235) !important; /* blue-600 */
+  color: white !important;
 }
 
 [data-theme="default-dark"] button.bg-green-600:hover {
   background-color: rgb(29 78 216) !important; /* blue-700 */
+  color: white !important;
 }
 
-/* Add Item button (gradient) */
-[data-theme="default-dark"] button.from-emerald-500 {
-  background-image: linear-gradient(to right, rgb(59 130 246), rgb(37 99 235)) !important; /* from-blue-500 to-blue-600 */
+/* Add Sale button - revert to original blue gradient (Dashboard) */
+[data-theme="default-dark"] a[href*="AddSale"] button.from-emerald-500 {
+  background-image: linear-gradient(to right, rgb(59 130 246), rgb(99 102 241)) !important; /* from-blue-500 to-indigo-500 */
 }
 
-[data-theme="default-dark"] button.from-emerald-500:hover {
-  background-image: linear-gradient(to right, rgb(37 99 235), rgb(29 78 216)) !important; /* from-blue-600 to-blue-700 */
+[data-theme="default-dark"] a[href*="AddSale"] button.from-emerald-500:hover {
+  background-image: linear-gradient(to right, rgb(37 99 235), rgb(79 70 229)) !important; /* from-blue-600 to-indigo-600 */
+}
+
+/* Add Item button (white-to-purple gradient) - indigo-600 like VIP Upgrade badge (Inventory page) */
+[data-theme="default-dark"] a[href*="AddInventoryItem"] button.from-emerald-500 {
+  background-image: linear-gradient(to right, rgb(255 255 255), rgb(79 70 229)) !important; /* from-white to-indigo-600 */
+}
+
+[data-theme="default-dark"] a[href*="AddInventoryItem"] button.from-emerald-500:hover {
+  background-image: linear-gradient(to right, rgb(255 255 255), rgb(67 56 202)) !important; /* from-white to-indigo-700 */
 }
 
 /* Mark Sold button - same as Crosslist button */
 /* Already covered by the .bg-green-600 rule above */
+
+/* Ensure text and icons are white in these buttons */
+[data-theme="default-dark"] button.bg-green-600,
+[data-theme="default-dark"] button.bg-green-600 * {
+  color: white !important;
+}
+
+[data-theme="default-dark"] button.bg-green-600 svg {
+  color: white !important;
+}
