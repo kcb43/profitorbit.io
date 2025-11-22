@@ -528,7 +528,7 @@ export default function SalesHistory() {
                       checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
                       onCheckedChange={handleSelectAll}
                       id="select-all"
-                      className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0"
+                      className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
                     />
                     <label htmlFor="select-all" className="font-medium text-xs sm:text-sm text-foreground cursor-pointer break-words">Select All</label>
                   </div>
@@ -552,7 +552,7 @@ export default function SalesHistory() {
                       checked={selectedSales.includes(sale.id)}
                       onCheckedChange={() => handleSelect(sale.id)}
                       id={`select-${sale.id}`}
-                      className="mt-1 !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0"
+                      className="mt-1 !h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
                     />
                     <div className="flex-1 min-w-0 w-full">
                       <div className="flex flex-col gap-3 sm:gap-4 min-w-0">

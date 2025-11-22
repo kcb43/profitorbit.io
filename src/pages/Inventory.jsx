@@ -689,7 +689,7 @@ export default function InventoryPage() {
                 checked={selectedItems.length === sortedItems.length && sortedItems.length > 0}
                 onCheckedChange={handleSelectAll}
                 id="select-all"
-                className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600"
+                className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
               />
               <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-white">
                 Select All ({sortedItems.length})
@@ -728,7 +728,7 @@ export default function InventoryPage() {
                           checked={selectedItems.includes(item.id)}
                           onCheckedChange={() => handleSelect(item.id)}
                           id={`select-${item.id}`}
-                          className="!bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 backdrop-blur"
+                          className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 backdrop-blur [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
                         />
                       </div>
                       
