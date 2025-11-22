@@ -591,7 +591,7 @@ export default function Crosslist() {
               Start crosslisting your inventory in seconds. Bulk tools now; marketplace APIs later.
             </p>
           </div>
-          <div className="flex gap-2 flex-shrink-0 flex-wrap">
+          <div className="flex flex-col gap-2 flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}
@@ -600,15 +600,16 @@ export default function Crosslist() {
               {layout === "rows" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
               {layout === "rows" ? "Grid View" : "Row View"}
             </Button>
-            <BulkActionsMenu />
-            <Button
-              onClick={() => openComposer(selected)}
-              disabled={selected.length === 0}
-              className="bg-green-600 hover:bg-green-700 whitespace-nowrap"
-            >
-              <Rocket className="w-4 h-4 mr-2" />
-              Crosslist {selected.length > 0 ? `(${selected.length})` : ""}
-            </Button>
+            <div className="flex gap-2 flex-shrink-0 flex-wrap">
+              <BulkActionsMenu />
+              <Button
+                onClick={() => openComposer([])}
+                className="bg-green-600 hover:bg-green-700 whitespace-nowrap"
+              >
+                <Rocket className="w-4 h-4 mr-2" />
+                Crosslist
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -693,14 +694,6 @@ export default function Crosslist() {
                   className="whitespace-nowrap"
                 >
                   {selected.length === filtered.length ? "Unselect All" : "Select All"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => openComposer([])}
-                  className="whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Compose New Listing
                 </Button>
               </div>
             </div>
