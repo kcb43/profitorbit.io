@@ -32,10 +32,10 @@ const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
   { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
   { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
+  { title: "Crosslist", url: createPageUrl("Crosslist"), icon: Palette },
   { title: "Inventory", url: createPageUrl("Inventory"), icon: Package },
   { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
   { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal }, // Changed 'Gallery' to 'Showcase'
-  { title: "Crosslist", url: createPageUrl("Crosslist"), icon: Palette },
   { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
 ];
 
