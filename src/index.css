@@ -171,3 +171,25 @@ button:focus-visible {
 [data-theme="default-dark"] button[role="checkbox"][data-state="checked"] svg {
   color: hsl(var(--background)) !important;
 }
+
+/* Replace green with blue for specific buttons in Default Dark theme only */
+/* Crosslist button */
+[data-theme="default-dark"] button.bg-green-600 {
+  background-color: rgb(37 99 235) !important; /* blue-600 */
+}
+
+[data-theme="default-dark"] button.bg-green-600:hover {
+  background-color: rgb(29 78 216) !important; /* blue-700 */
+}
+
+/* Add Item button (gradient) */
+[data-theme="default-dark"] button.from-emerald-500 {
+  background-image: linear-gradient(to right, rgb(59 130 246), rgb(37 99 235)) !important; /* from-blue-500 to-blue-600 */
+}
+
+[data-theme="default-dark"] button.from-emerald-500:hover {
+  background-image: linear-gradient(to right, rgb(37 99 235), rgb(29 78 216)) !important; /* from-blue-600 to-blue-700 */
+}
+
+/* Mark Sold button - same as Crosslist button */
+/* Already covered by the .bg-green-600 rule above */
