@@ -1279,7 +1279,7 @@ export default function AddSale() {
               {activeMarket === 'mercari' && (
                 <>
                   <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={mercariSoldGoogle} target="_blank" rel="noreferrer">Search Mercari (Google)</a>
+                    <a href={mercariSoldGoogle} target="_blank" rel="noreferrer">Search Mercari</a>
                   </Button>
                 </>
               )}
@@ -1287,7 +1287,7 @@ export default function AddSale() {
               {activeMarket === 'facebook' && (
                 <>
                   <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={fbMarketplaceGoogle} target="_blank" rel="noreferrer">Search Facebook (Google)</a>
+                    <a href={fbMarketplaceGoogle} target="_blank" rel="noreferrer">Search Facebook</a>
                   </Button>
                 </>
               )}
@@ -1295,7 +1295,7 @@ export default function AddSale() {
               {activeMarket === 'etsy' && (
                 <>
                   <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={etsySoldGoogle} target="_blank" rel="noreferrer">Search Etsy (Google)</a>
+                    <a href={etsySoldGoogle} target="_blank" rel="noreferrer">Search Etsy</a>
                   </Button>
                 </>
               )}
@@ -1303,7 +1303,7 @@ export default function AddSale() {
               {activeMarket === 'all' && (
                 <>
                   <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={googleAllMarketsUrl} target="_blank" rel="noreferrer">Search All Markets (Google)</a>
+                    <a href={googleAllMarketsUrl} target="_blank" rel="noreferrer">Search All Markets</a>
                   </Button>
                 </>
               )}

@@ -80,17 +80,17 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
           )}
           <Button asChild variant="outline" className="w-full">
             <a href={mercariGoogle} target="_blank" rel="noreferrer">
-              Mercari (Google)
+              Mercari
             </a>
           </Button>
           <Button asChild variant="outline" className="w-full">
             <a href={fbGoogle} target="_blank" rel="noreferrer">
-              Facebook (Google)
+              Facebook
             </a>
           </Button>
           <Button asChild variant="outline" className="w-full">
             <a href={etsyGoogle} target="_blank" rel="noreferrer">
-              Etsy (Google)
+              Etsy
             </a>
           </Button>
           <Button asChild variant="outline" className="col-span-2 sm:col-span-1 w-full">
