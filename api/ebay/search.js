@@ -15,11 +15,19 @@ async function getAppToken() {
     throw new Error('Missing EBAY_CLIENT_ID or EBAY_CLIENT_SECRET env vars');
   }
 
-  // Determine environment (default to sandbox if not explicitly set)
+  // Determine environment - check both EBAY_ENV and Client ID prefix
   const ebayEnv = process.env.EBAY_ENV;
-  console.log('EBAY_ENV value:', JSON.stringify(ebayEnv), 'Type:', typeof ebayEnv);
-  const useProduction = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
-  console.log('useProduction:', useProduction);
+  const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
+  const isProductionByClientId = clientId.includes('-PRD-') || clientId.startsWith('PRD-');
+  const useProduction = isProductionByEnv || isProductionByClientId;
+  
+  console.log('Environment detection:', {
+    EBAY_ENV: JSON.stringify(ebayEnv),
+    isProductionByEnv,
+    clientIdPrefix: clientId.substring(0, 20) + '...',
+    isProductionByClientId,
+    useProduction
+  });
   
   const oauthUrl = useProduction
     ? 'https://api.ebay.com/identity/v1/oauth2/token'
@@ -118,11 +126,19 @@ export default async function handler(req, res) {
     // Get access token
     const token = await getAppToken();
 
-    // Determine environment (default to sandbox if not explicitly set)
+    // Determine environment - check both EBAY_ENV and Client ID prefix
+    const clientId = process.env.VITE_EBAY_CLIENT_ID || process.env.EBAY_CLIENT_ID;
     const ebayEnv = process.env.EBAY_ENV;
-    console.log('EBAY_ENV value (in handler):', JSON.stringify(ebayEnv), 'Type:', typeof ebayEnv);
-    const useProduction = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
-    console.log('useProduction (in handler):', useProduction);
+    const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
+    const isProductionByClientId = clientId?.includes('-PRD-') || clientId?.startsWith('PRD-');
+    const useProduction = isProductionByEnv || isProductionByClientId;
+    
+    console.log('Handler environment detection:', {
+      EBAY_ENV: JSON.stringify(ebayEnv),
+      isProductionByEnv,
+      isProductionByClientId,
+      useProduction
+    });
     
     const baseUrl = useProduction
       ? 'https://api.ebay.com'
