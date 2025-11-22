@@ -251,21 +251,30 @@ export default function Crosslist() {
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const photoInputRef = React.useRef(null);
 
-  // Popular brands list
+  // Popular brands list (sorted alphabetically)
   const POPULAR_BRANDS = [
-    "Nike", "Adidas", "Jordan", "Puma", "New Balance", "Vans", "Converse",
-    "Under Armour", "Reebok", "Fila", "ASICS", "Brooks",
-    "Patagonia", "The North Face", "Columbia", "Arc'teryx", "REI",
-    "Lululemon", "Athleta", "Fabletics", "Gymshark", "Alo Yoga",
-    "Levi's", "Wrangler", "Dickies", "Carhartt",
-    "Apple", "Samsung", "Sony", "Bose", "JBL", "Beats",
-    "Gucci", "Louis Vuitton", "Prada", "Versace", "Burberry", "Chanel",
-    "Coach", "Kate Spade", "Michael Kors", "Tory Burch",
-    "Ralph Lauren", "Tommy Hilfiger", "Calvin Klein", "Hugo Boss",
-    "Zara", "H&M", "Forever 21", "Uniqlo", "Gap",
-    "Yeti", "Hydro Flask", "Stanley",
-    "Lego", "Hasbro", "Mattel",
-    "KitchenAid", "Instant Pot", "Ninja", "Dyson",
+    "Adidas", "Alo Yoga", "Apple", "Arc'teryx", "ASICS", "Athleta",
+    "Beats", "Bose", "Brooks", "Burberry",
+    "Calvin Klein", "Carhartt", "Chanel", "Coach", "Columbia", "Converse",
+    "Dickies", "Dyson",
+    "Fabletics", "Fila", "Forever 21",
+    "Gap", "Gucci", "Gymshark",
+    "Hasbro", "H&M", "Hugo Boss", "Hydro Flask",
+    "Instant Pot",
+    "JBL", "Jordan",
+    "Kate Spade", "KitchenAid",
+    "Lego", "Levi's", "Louis Vuitton", "Lululemon",
+    "Mattel", "Michael Kors",
+    "New Balance", "Nike", "Ninja",
+    "Patagonia", "Prada", "Puma",
+    "Ralph Lauren", "REI", "Reebok",
+    "Samsung", "Sony", "Stanley",
+    "The North Face", "Tommy Hilfiger", "Tory Burch",
+    "Under Armour", "Uniqlo",
+    "Vans", "Versace",
+    "Wrangler",
+    "Yeti",
+    "Zara",
   ];
 
   const { data: inventory = [], isLoading } = useQuery({
