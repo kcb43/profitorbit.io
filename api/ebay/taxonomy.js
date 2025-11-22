@@ -183,7 +183,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
           'X-EBAY-C-MARKETPLACE-ID': marketplaceId,
           'Accept-Language': 'en-US',
-          'Accept-Encoding': 'gzip', // Request gzip compression
+          // Note: Node.js fetch automatically handles gzip decompression, so we don't set Accept-Encoding manually
         },
       });
 
