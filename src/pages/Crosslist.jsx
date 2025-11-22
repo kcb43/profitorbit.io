@@ -697,20 +697,22 @@ export default function Crosslist() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 flex-wrap gap-3 min-w-0">
-              <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between pt-2 gap-3 min-w-0">
+              <div className="text-sm text-muted-foreground order-2 md:order-1">
                 Showing <span className="font-medium text-foreground">{filtered.length}</span> of{" "}
                 <span className="font-medium text-foreground">{crosslistableItems.length}</span> items
               </div>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-col md:flex-row gap-2 flex-wrap order-1 md:order-2 md:ml-auto">
                 <Button
                   variant="outline"
                   onClick={() => toggleAll(selected.length !== filtered.length)}
-                  className="whitespace-nowrap"
+                  className="whitespace-nowrap w-full md:w-auto"
                 >
                   {selected.length === filtered.length ? "Unselect All" : "Select All"}
                 </Button>
-                <BulkActionsMenu />
+                <div className="w-full md:w-auto">
+                  <BulkActionsMenu />
+                </div>
                 <Button
                   onClick={() => {
                     if (selected.length > 0) {
@@ -719,7 +721,7 @@ export default function Crosslist() {
                       openComposer([]);
                     }
                   }}
-                  className="bg-green-600 hover:bg-green-700 whitespace-nowrap"
+                  className="bg-green-600 hover:bg-green-700 whitespace-nowrap w-full md:w-auto"
                 >
                   <Rocket className="w-4 h-4 mr-2" />
                   {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
