@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, Package } from "lucide-react";
+import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -485,20 +485,6 @@ export default function AddInventoryItem() {
                         >
                           <Scan className="w-4 h-4" />
                           Scan Receipt
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEbaySearchInitialQuery(formData.item_name || "");
-                            setEbaySearchDialogOpen(true);
-                          }}
-                          disabled={isUploading}
-                          className="flex items-center gap-2"
-                        >
-                          <Package className="w-4 h-4" />
-                          Search eBay
                         </Button>
                       </div>
                       <span className="text-[11px] sm:text-xs text-muted-foreground/70">Supports JPG or PNG up to 5 MB.</span>
