@@ -103,7 +103,7 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button variant="outline" onClick={copyQuery} disabled={!q} className="flex-1 sm:flex-none">
             <Copy className="w-4 h-4 mr-2" />
-            Copy Query
+            Copy Title
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 sm:flex-none">
             Close
