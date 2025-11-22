@@ -64,11 +64,20 @@ export function useEbayCategories(categoryTreeId, categoryId = '0', enabled = tr
       }
 
       // Use getCategoryTree for root level, getCategorySubtree for nested categories
-      const isRoot = !categoryId || categoryId === '0';
+      // Check for root: undefined, null, empty string, '0', or 0
+      const isRoot = !categoryId || categoryId === '0' || categoryId === 0 || String(categoryId).trim() === '';
       const operation = isRoot ? 'getCategoryTree' : 'getCategorySubtree';
       const url = isRoot
         ? `/api/ebay/taxonomy?operation=getCategoryTree&category_tree_id=${categoryTreeId}`
         : `/api/ebay/taxonomy?operation=getCategorySubtree&category_tree_id=${categoryTreeId}&category_id=${categoryId}`;
+      
+      console.log('useEbayCategories hook:', {
+        categoryTreeId,
+        categoryId,
+        isRoot,
+        operation,
+        url,
+      });
       
       const response = await fetch(url);
       
