@@ -62,6 +62,9 @@ export default async function handler(req, res) {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
+    // Debug: Log received query parameters
+    console.log('Received query parameters:', JSON.stringify(req.query));
+    
     // Build search query from request parameters
     const searchParams = new URLSearchParams();
     
@@ -70,7 +73,12 @@ export default async function handler(req, res) {
       const qValue = String(req.query.q).trim();
       if (qValue.length > 0) {
         searchParams.append('q', qValue);
+        console.log('Added q parameter:', qValue);
+      } else {
+        console.log('q parameter was empty after trimming');
       }
+    } else {
+      console.log('No q parameter in request.query');
     }
     
     if (req.query.category_ids) searchParams.append('category_ids', req.query.category_ids);
@@ -86,18 +94,40 @@ export default async function handler(req, res) {
     
     // Validate that we have at least one required search parameter after processing
     if (!searchParams.has('q') && !searchParams.has('category_ids') && !searchParams.has('gtin') && !searchParams.has('charity_ids')) {
+      console.error('Validation failed: Missing required parameter', {
+        hasQ: searchParams.has('q'),
+        hasCategoryIds: searchParams.has('category_ids'),
+        hasGtin: searchParams.has('gtin'),
+        hasCharityIds: searchParams.has('charity_ids'),
+        receivedQuery: req.query,
+        searchParamsString: searchParams.toString()
+      });
       return res.status(400).json({ 
         error: 'Missing required parameter. Must provide q, category_ids, gtin, or charity_ids',
-        receivedQuery: req.query 
+        receivedQuery: req.query,
+        debug: {
+          hasQ: searchParams.has('q'),
+          searchParamsString: searchParams.toString()
+        }
       });
     }
+    
+    console.log('Final search params:', searchParams.toString());
 
     // eBay Browse API base URL
-    const baseUrl = process.env.EBAY_ENV === 'production' 
+    // Check if we should use production (default to sandbox if not explicitly set)
+    const useProduction = process.env.EBAY_ENV === 'production';
+    const baseUrl = useProduction
       ? 'https://api.ebay.com'
       : 'https://api.sandbox.ebay.com';
 
     const searchUrl = `${baseUrl}/buy/browse/v1/item_summary/search?${searchParams.toString()}`;
+    
+    console.log('Making request to eBay:', {
+      environment: useProduction ? 'production' : 'sandbox',
+      url: searchUrl,
+      params: searchParams.toString()
+    });
 
     // Make search request to eBay
     const searchResponse = await fetch(searchUrl, {
