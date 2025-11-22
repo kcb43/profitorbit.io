@@ -193,13 +193,13 @@ button:focus-visible {
   background-image: linear-gradient(to right, rgb(37 99 235), rgb(79 70 229)) !important; /* from-blue-600 to-indigo-600 */
 }
 
-/* Add Item button (white-to-purple gradient) - indigo-600 like VIP Upgrade badge (Inventory page) */
+/* Add Item button - same as Add Inventory button (blue-to-indigo gradient) */
 [data-theme="default-dark"] a[href*="AddInventoryItem"] button.from-emerald-500 {
-  background-image: linear-gradient(to right, rgb(255 255 255), rgb(79 70 229)) !important; /* from-white to-indigo-600 */
+  background-image: linear-gradient(to right, rgb(59 130 246), rgb(99 102 241)) !important; /* from-blue-500 to-indigo-500 */
 }
 
 [data-theme="default-dark"] a[href*="AddInventoryItem"] button.from-emerald-500:hover {
-  background-image: linear-gradient(to right, rgb(255 255 255), rgb(67 56 202)) !important; /* from-white to-indigo-700 */
+  background-image: linear-gradient(to right, rgb(37 99 235), rgb(79 70 229)) !important; /* from-blue-600 to-indigo-600 */
 }
 
 /* Mark Sold button - same as Crosslist button */
