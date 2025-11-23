@@ -32,6 +32,7 @@ import {
   Check,
   Palette,
   ArrowLeft,
+  GripVertical,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
@@ -638,6 +639,22 @@ export default function CrosslistComposer() {
       };
     });
   };
+
+  const handlePhotoReorder = (dragIndex, dropIndex) => {
+    setTemplateForms((prev) => {
+      const photos = [...prev.general.photos];
+      const [draggedPhoto] = photos.splice(dragIndex, 1);
+      photos.splice(dropIndex, 0, draggedPhoto);
+      const general = {
+        ...prev.general,
+        photos,
+      };
+      return {
+        ...prev,
+        general,
+      };
+    });
+  };
   
   const handleSaveToInventory = async () => {
     setIsSaving(true);
@@ -844,28 +861,107 @@ export default function CrosslistComposer() {
             <div className="space-y-6">
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
-                <div className="mt-2 flex flex-wrap gap-3">
-                  {generalForm.photos.map((photo) => (
-                    <div key={photo.id} className="relative h-20 w-20 md:h-64 md:w-64 overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted">
-                      <img src={photo.preview} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />
+                <div className="mt-2 flex flex-wrap gap-3 items-start">
+                  {/* Main Photo */}
+                  {generalForm.photos.length > 0 && (
+                    <div
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", "0");
+                        e.currentTarget.classList.add("opacity-50");
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.classList.remove("opacity-50");
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const dragIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+                        const dropIndex = 0;
+                        if (dragIndex !== dropIndex) {
+                          handlePhotoReorder(dragIndex, dropIndex);
+                        }
+                        e.currentTarget.classList.remove("opacity-50");
+                      }}
+                      className="relative h-20 w-20 md:h-64 md:w-64 overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
+                    >
+                      <img src={generalForm.photos[0].preview} alt={generalForm.photos[0].fileName || "Main photo"} className="h-full w-full object-cover" />
+                      <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
+                        Main
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handlePhotoRemove(photo.id)}
-                        className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePhotoRemove(generalForm.photos[0].id);
+                        }}
+                        className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
                       >
                         <X className="h-3.5 w-3.5" />
                         <span className="sr-only">Remove photo</span>
                       </button>
                     </div>
+                  )}
+                  
+                  {/* Other Photos */}
+                  {generalForm.photos.slice(1).map((photo, index) => (
+                    <div
+                      key={photo.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", String(index + 1));
+                        e.currentTarget.classList.add("opacity-50");
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.classList.remove("opacity-50");
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const dragIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+                        const dropIndex = index + 1;
+                        if (dragIndex !== dropIndex) {
+                          handlePhotoReorder(dragIndex, dropIndex);
+                        }
+                        e.currentTarget.classList.remove("opacity-50");
+                      }}
+                      className="relative h-10 w-10 md:h-32 md:w-32 overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition"
+                    >
+                      <img src={photo.preview} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />
+                      <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
+                        <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePhotoRemove(photo.id);
+                        }}
+                        className="absolute top-0.5 right-0.5 inline-flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                      >
+                        <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                        <span className="sr-only">Remove photo</span>
+                      </button>
+                    </div>
                   ))}
+                  
+                  {/* Add Photo Button */}
                   <button
                     type="button"
                     onClick={() => photoInputRef.current?.click()}
                     disabled={isUploadingPhotos || (generalForm.photos?.length || 0) >= MAX_PHOTOS}
-                    className="flex h-20 w-20 md:h-64 md:w-64 flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 md:h-32 md:w-32 flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <ImagePlus className="h-5 w-5" />
-                    <span className="mt-1 text-[11px] font-medium">Add photos</span>
+                    <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
+                    <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
                   </button>
                   <input
                     ref={photoInputRef}
