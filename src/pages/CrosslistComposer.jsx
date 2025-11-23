@@ -3101,12 +3101,12 @@ export default function CrosslistComposer() {
                 <div className="md:col-span-2">
                   <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
                   <Input
-                    placeholder="Optional descriptive text (e.g., 'Spain' or 'Spain, Japan')"
+                    placeholder="Optional descriptive text (e.g., 'Spain')"
                     value={ebayForm.locationDescriptions || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "locationDescriptions", e.target.value)}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Optional descriptive text shown to buyers (e.g., "Spain" or "Spain, Japan")
+                    Optional descriptive text shown to buyers (e.g., "Spain")
                   </p>
                 </div>
                 <div>
