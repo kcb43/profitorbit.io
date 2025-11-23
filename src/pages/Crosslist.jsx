@@ -349,12 +349,12 @@ export default function Crosslist() {
       // No crosslisting data - all marketplaces grayed out
       // Items that are just "in stock" or have "listed" status but haven't been crosslisted
       // should show all grayed out icons
-      return {
+    return {
         ebay:     false,
-        facebook: false,
-        mercari:  false,
-        etsy:     false,
-        poshmark: false,
+      facebook: false,
+      mercari:  false,
+      etsy:     false,
+      poshmark: false,
       };
     }
     
@@ -581,9 +581,9 @@ export default function Crosslist() {
         processedPhotos.push({
           id: `${file.name}-${Date.now()}-${Math.random()}`,
           preview: URL.createObjectURL(processedFile),
-          fileName: file.name,
+      fileName: file.name,
           file: processedFile, // Store the actual file for upload
-          fromInventory: false,
+      fromInventory: false,
         });
       }
 
@@ -591,13 +591,13 @@ export default function Crosslist() {
         return;
       }
 
-      setTemplateForms((prev) => ({
-        ...prev,
-        general: {
-          ...prev.general,
+    setTemplateForms((prev) => ({
+      ...prev,
+      general: {
+        ...prev.general,
           photos: [...(prev.general.photos || []), ...processedPhotos],
-        },
-      }));
+      },
+    }));
 
       if (processedPhotos.length < filesArray.length) {
         toast({
@@ -621,8 +621,8 @@ export default function Crosslist() {
       });
     } finally {
       setIsUploadingPhotos(false);
-      if (photoInputRef.current) {
-        photoInputRef.current.value = "";
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
       }
     }
   };
@@ -835,7 +835,7 @@ export default function Crosslist() {
               </div>
 
               <div className="min-w-0">
-                <Label className="text-xs mb-1.5 block">Listing State</Label>
+                <Label className="text-xs mb-1.5 block">Status</Label>
                 <Select value={platformFilter} onValueChange={setPlatformFilter}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
