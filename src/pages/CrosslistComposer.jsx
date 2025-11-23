@@ -2465,7 +2465,7 @@ export default function CrosslistComposer() {
                 </div>
                 {/* eBay Brand - use same dropdown as general form */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Brand Select or Custom <span className="text-red-500">*</span></Label>
+                  <Label className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
