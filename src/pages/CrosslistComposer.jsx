@@ -33,18 +33,48 @@ import {
   Palette,
   ArrowLeft,
   GripVertical,
+  Sparkles,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { useEbayCategoryTreeId, useEbayCategories, useEbayCategoryAspects } from "@/hooks/useEbayCategorySuggestions";
+import { TagInput } from "@/components/TagInput";
+import { DescriptionGenerator } from "@/components/DescriptionGenerator";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
 const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
 const POSHMARK_ICON_URL = "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B";
+
+// Predefined categories that should be cleared when loading items into crosslisting composer
+// to allow users to select from eBay category picklist instead
+const PREDEFINED_CATEGORIES = [
+  "Antiques",
+  "Books, Movies & Music",
+  "Clothing & Apparel",
+  "Collectibles",
+  "Electronics",
+  "Gym/Workout",
+  "Health & Beauty",
+  "Home & Garden",
+  "Jewelry & Watches",
+  "Kitchen",
+  "Makeup",
+  "Mic/Audio Equipment",
+  "Motorcycle",
+  "Motorcycle Accessories",
+  "Pets",
+  "Pool Equipment",
+  "Shoes/Sneakers",
+  "Sporting Goods",
+  "Stereos & Speakers",
+  "Tools",
+  "Toys & Hobbies",
+  "Yoga"
+];
 
 const MARKETPLACES = [
   { id: "ebay",     label: "eBay",     icon: EBAY_ICON_URL },
@@ -90,6 +120,9 @@ const GENERAL_TEMPLATE_DEFAULT = {
 const MARKETPLACE_TEMPLATE_DEFAULTS = {
   ebay: {
     inheritGeneral: true,
+    photos: [],
+    title: "",
+    description: "",
     color: "",
     categoryId: "",
     categoryName: "",
@@ -113,6 +146,9 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
   },
   etsy: {
     inheritGeneral: true,
+    photos: [],
+    title: "",
+    description: "",
     renewalOption: "manual",
     whoMade: "i_did",
     whenMade: "2020s",
@@ -123,6 +159,9 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
   },
   mercari: {
     inheritGeneral: true,
+    photos: [],
+    title: "",
+    description: "",
     shippingCarrier: "Mercari Prepaid",
     shippingPrice: "",
     localPickup: false,
@@ -131,6 +170,9 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
   },
   facebook: {
     inheritGeneral: true,
+    photos: [],
+    title: "",
+    description: "",
     deliveryMethod: "shipping_and_pickup",
     shippingPrice: "",
     localPickup: true,
@@ -140,6 +182,11 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
 };
 
 const createInitialTemplateState = (item) => {
+  // If item has a predefined category, clear it so user can select from eBay category picklist
+  const itemCategory = item?.category || "";
+  const shouldClearCategory = itemCategory && PREDEFINED_CATEGORIES.includes(itemCategory);
+  const category = shouldClearCategory ? "" : itemCategory;
+  
   const general = {
     ...GENERAL_TEMPLATE_DEFAULT,
     photos: item?.image_url ? [{ id: "inventory-photo", preview: item.image_url, fileName: "Inventory photo", fromInventory: true }] : [],
@@ -152,9 +199,9 @@ const createInitialTemplateState = (item) => {
     color3: item?.color3 || "",
     sku: item?.sku || "",
     zip: item?.zip_code || "",
-    tags: item?.tags || item?.category || "",
+    tags: item?.tags || (shouldClearCategory ? "" : item?.category || ""),
     quantity: item?.quantity != null ? String(item.quantity) : "1",
-    category: item?.category || "",
+    category: category,
     size: item?.size || "",
     packageDetails: item?.package_details || "",
     packageWeight: item?.package_weight || "",
@@ -170,19 +217,31 @@ const createInitialTemplateState = (item) => {
     general,
     ebay: {
       ...MARKETPLACE_TEMPLATE_DEFAULTS.ebay,
+      photos: general.photos || [],
+      title: general.title || "",
+      description: general.description || "",
       buyItNowPrice: general.price,
       shippingLocation: general.zip,
     },
     etsy: {
       ...MARKETPLACE_TEMPLATE_DEFAULTS.etsy,
+      photos: general.photos || [],
+      title: general.title || "",
+      description: general.description || "",
       tags: general.tags,
     },
     mercari: {
       ...MARKETPLACE_TEMPLATE_DEFAULTS.mercari,
+      photos: general.photos || [],
+      title: general.title || "",
+      description: general.description || "",
       shippingPrice: general.price ? (Number(general.price) >= 100 ? "Free" : "Buyer pays") : "",
     },
     facebook: {
       ...MARKETPLACE_TEMPLATE_DEFAULTS.facebook,
+      photos: general.photos || [],
+      title: general.title || "",
+      description: general.description || "",
       meetUpLocation: general.zip ? `Meet near ${general.zip}` : "",
       shippingPrice: general.price ? (Number(general.price) >= 75 ? "Free shipping" : "") : "",
     },
@@ -222,7 +281,7 @@ const POPULAR_BRANDS = [
   "Kate Spade", "KitchenAid",
   "Lego", "Levi's", "Louis Vuitton", "Lululemon",
   "Mattel", "Michael Kors",
-  "New Balance", "Nike", "Ninja",
+  "New Balance", "Nike", "Ninja", "Nintendo",
   "Patagonia", "Prada", "Puma",
   "Ralph Lauren", "REI", "Reebok",
   "Samsung", "Sony", "Stanley",
@@ -297,22 +356,47 @@ export default function CrosslistComposer() {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [editingColorField, setEditingColorField] = useState(null);
   const [selectedCategoryPath, setSelectedCategoryPath] = useState([]);
+  const [generalCategoryPath, setGeneralCategoryPath] = useState([]);
+  const [descriptionGeneratorOpen, setDescriptionGeneratorOpen] = useState(false);
   const photoInputRef = React.useRef(null);
+  const ebayPhotoInputRef = React.useRef(null);
+  const etsyPhotoInputRef = React.useRef(null);
+  const mercariPhotoInputRef = React.useRef(null);
+  const facebookPhotoInputRef = React.useRef(null);
   
   // Get eBay category tree ID
   const { data: categoryTreeData, isLoading: isLoadingCategoryTree } = useEbayCategoryTreeId('EBAY_US');
   const categoryTreeId = categoryTreeData?.categoryTreeId;
   
-  // Get the current level of categories based on selected path
-  const currentCategoryId = selectedCategoryPath.length > 0 
+  // Get the current level of categories based on selected path for eBay form
+  const ebayCurrentCategoryId = selectedCategoryPath.length > 0 
     ? selectedCategoryPath[selectedCategoryPath.length - 1].categoryId 
     : '0';
   
-  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useEbayCategories(
+  // Get the current level of categories based on selected path for General form
+  const generalCurrentCategoryId = generalCategoryPath.length > 0 
+    ? generalCategoryPath[generalCategoryPath.length - 1].categoryId 
+    : '0';
+  
+  // Categories for eBay form
+  const { data: ebayCategoriesData, isLoading: isLoadingEbayCategories, error: ebayCategoriesError } = useEbayCategories(
     categoryTreeId,
-    currentCategoryId,
+    ebayCurrentCategoryId,
     activeForm === "ebay" && !!categoryTreeId
   );
+  
+  // Categories for General form
+  const { data: generalCategoriesData, isLoading: isLoadingGeneralCategories, error: generalCategoriesError } = useEbayCategories(
+    categoryTreeId,
+    generalCurrentCategoryId,
+    activeForm === "general" && !!categoryTreeId
+  );
+  
+  // Use the appropriate category data based on active form
+  const categoriesData = activeForm === "general" ? generalCategoriesData : ebayCategoriesData;
+  const isLoadingCategories = activeForm === "general" ? isLoadingGeneralCategories : isLoadingEbayCategories;
+  const categoriesError = activeForm === "general" ? generalCategoriesError : ebayCategoriesError;
+  const currentCategoryPath = activeForm === "general" ? generalCategoryPath : selectedCategoryPath;
   
   const categorySubtreeNode = categoriesData?.categorySubtreeNode;
   const currentCategories = categorySubtreeNode?.childCategoryTreeNodes || [];
@@ -373,6 +457,8 @@ export default function CrosslistComposer() {
   const populateTemplates = React.useCallback((item) => {
     setTemplateForms(createInitialTemplateState(item));
     setActiveForm("general");
+    setSelectedCategoryPath([]);
+    setGeneralCategoryPath([]);
     const brand = item?.brand || "";
     if (brand && !POPULAR_BRANDS.includes(brand)) {
       setBrandIsCustom(true);
@@ -428,12 +514,16 @@ export default function CrosslistComposer() {
         setCurrentEditingItemId(primaryItem.id);
         setTemplateForms(createInitialTemplateState(null));
         setBrandIsCustom(false);
+        setSelectedCategoryPath([]);
+        setGeneralCategoryPath([]);
       }
     } else {
       // New item mode - no items selected
       setCurrentEditingItemId(null);
       setTemplateForms(createInitialTemplateState(null));
       setBrandIsCustom(false);
+      setSelectedCategoryPath([]);
+      setGeneralCategoryPath([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulkSelectedItems.length, autoSelect, itemIds.join(',')]);
@@ -445,6 +535,7 @@ export default function CrosslistComposer() {
       populateTemplates(item);
       setActiveForm("general");
       setSelectedCategoryPath([]);
+      setGeneralCategoryPath([]);
     }
   };
   
@@ -453,6 +544,40 @@ export default function CrosslistComposer() {
   const etsyForm = templateForms.etsy;
   const mercariForm = templateForms.mercari;
   const facebookForm = templateForms.facebook;
+
+  // Find similar items for description generation
+  const similarItems = useMemo(() => {
+    if (!generalForm.title && !generalForm.brand && !generalForm.category) {
+      return [];
+    }
+
+    return inventory
+      .filter(item => {
+        // Exclude current item if editing
+        if (currentEditingItemId && item.id === currentEditingItemId) {
+          return false;
+        }
+
+        // Find items with similar characteristics
+        const titleMatch = generalForm.title && item.item_name
+          ? item.item_name.toLowerCase().includes(generalForm.title.toLowerCase().split(' ')[0]) ||
+            generalForm.title.toLowerCase().includes(item.item_name.toLowerCase().split(' ')[0])
+          : false;
+
+        const brandMatch = generalForm.brand && item.brand
+          ? item.brand.toLowerCase() === generalForm.brand.toLowerCase()
+          : false;
+
+        const categoryMatch = generalForm.category && item.category
+          ? item.category.toLowerCase() === generalForm.category.toLowerCase()
+          : false;
+
+        return (titleMatch || brandMatch || categoryMatch) && item.notes && item.notes.trim().length > 0;
+      })
+      .slice(0, 10) // Limit to 10 similar items
+      .map(item => item.notes)
+      .filter(Boolean);
+  }, [inventory, generalForm.title, generalForm.brand, generalForm.category, currentEditingItemId]);
 
   // Get category aspects (brands, types, etc.) when a final category is selected
   const { data: categoryAspectsData } = useEbayCategoryAspects(
@@ -572,6 +697,11 @@ export default function CrosslistComposer() {
       };
 
       if (checked) {
+        // Copy photos and title from general when inheriting
+        updated.photos = prev.general.photos || [];
+        updated.title = prev.general.title || "";
+        updated.description = prev.general.description || "";
+        
         if (marketplace === "ebay") {
           updated.buyItNowPrice = prev.general.price;
           updated.shippingLocation = prev.general.zip;
@@ -636,39 +766,39 @@ export default function CrosslistComposer() {
   const copyGeneralFieldsToMarketplace = (generalData, marketplaceKey) => {
     const copied = {};
     
-    // Common fields that all marketplaces can use
-    if (generalData.title) copied.title = generalData.title;
-    if (generalData.description) copied.description = generalData.description;
-    if (generalData.brand) {
-      if (marketplaceKey === 'ebay') {
-        copied.ebayBrand = generalData.brand;
-      } else {
-        copied.brand = generalData.brand;
-      }
+    // Copy ALL common fields that all marketplaces can use (even if empty to ensure sync)
+    copied.title = generalData.title || "";
+    copied.description = generalData.description || "";
+    copied.condition = generalData.condition || "";
+    copied.quantity = generalData.quantity || "1";
+    copied.photos = generalData.photos || [];
+    copied.sku = generalData.sku || "";
+    copied.category = generalData.category || "";
+    copied.size = generalData.size || "";
+    
+    // Handle brand field (marketplace-specific)
+    if (marketplaceKey === 'ebay') {
+      copied.ebayBrand = generalData.brand || "";
+    } else {
+      copied.brand = generalData.brand || "";
     }
-    if (generalData.condition) copied.condition = generalData.condition;
-    if (generalData.quantity) copied.quantity = generalData.quantity;
-    if (generalData.photos) copied.photos = generalData.photos;
-    if (generalData.sku) copied.sku = generalData.sku;
     
     // Marketplace-specific field mappings
     if (marketplaceKey === 'ebay') {
-      if (generalData.price) copied.buyItNowPrice = generalData.price;
-      if (generalData.zip) copied.shippingLocation = generalData.zip;
-      if (generalData.color1) copied.color = generalData.color1;
+      copied.buyItNowPrice = generalData.price || "";
+      copied.shippingLocation = generalData.zip || "";
+      copied.color = generalData.color1 || "";
     } else if (marketplaceKey === 'etsy') {
-      if (generalData.tags) copied.tags = generalData.tags;
+      copied.tags = generalData.tags || "";
     } else if (marketplaceKey === 'mercari') {
-      if (generalData.price) {
-        copied.shippingPrice = Number(generalData.price) >= 100 ? "Free" : "Buyer pays";
-      }
+      copied.shippingPrice = generalData.price
+        ? (Number(generalData.price) >= 100 ? "Free" : "Buyer pays")
+        : "";
     } else if (marketplaceKey === 'facebook') {
-      if (generalData.zip) {
-        copied.meetUpLocation = generalData.zip ? `Meet near ${generalData.zip}` : "";
-      }
-      if (generalData.price) {
-        copied.shippingPrice = Number(generalData.price) >= 75 ? "Free shipping" : "";
-      }
+      copied.meetUpLocation = generalData.zip ? `Meet near ${generalData.zip}` : "";
+      copied.shippingPrice = generalData.price
+        ? (Number(generalData.price) >= 75 ? "Free shipping" : "")
+        : "";
     }
     
     return copied;
@@ -981,14 +1111,18 @@ export default function CrosslistComposer() {
   const MAX_FILE_SIZE_MB = 15;
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   
-  const handlePhotoUpload = async (event) => {
+  // Generic photo upload handler for any marketplace form
+  const handlePhotoUpload = async (event, marketplace = 'general') => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploadingPhotos(true);
 
     try {
-      const currentPhotoCount = generalForm.photos?.length || 0;
+      const formPhotos = marketplace === 'general' 
+        ? generalForm.photos 
+        : templateForms[marketplace]?.photos || [];
+      const currentPhotoCount = formPhotos?.length || 0;
       const remainingSlots = MAX_PHOTOS - currentPhotoCount;
       
       if (remainingSlots <= 0) {
@@ -1045,13 +1179,21 @@ export default function CrosslistComposer() {
         return;
       }
 
-      setTemplateForms((prev) => ({
-        ...prev,
-        general: {
-          ...prev.general,
-          photos: [...(prev.general.photos || []), ...processedPhotos],
-        },
-      }));
+      setTemplateForms((prev) => {
+        const updated = { ...prev };
+        if (marketplace === 'general') {
+          updated.general = {
+            ...prev.general,
+            photos: [...(prev.general.photos || []), ...processedPhotos],
+          };
+        } else {
+          updated[marketplace] = {
+            ...prev[marketplace],
+            photos: [...(prev[marketplace]?.photos || []), ...processedPhotos],
+          };
+        }
+        return updated;
+      });
 
       if (processedPhotos.length < filesArray.length) {
         toast({
@@ -1075,45 +1217,73 @@ export default function CrosslistComposer() {
       });
     } finally {
       setIsUploadingPhotos(false);
-      if (photoInputRef.current) {
-        photoInputRef.current.value = "";
+      const refMap = {
+        'general': photoInputRef,
+        'ebay': ebayPhotoInputRef,
+        'etsy': etsyPhotoInputRef,
+        'mercari': mercariPhotoInputRef,
+        'facebook': facebookPhotoInputRef,
+      };
+      const ref = refMap[marketplace];
+      if (ref?.current) {
+        ref.current.value = "";
       }
     }
   };
   
-  const handlePhotoRemove = (photoId) => {
+  // Generic photo remove handler for any marketplace form
+  const handlePhotoRemove = (photoId, marketplace = 'general') => {
     setTemplateForms((prev) => {
-      const targetPhoto = prev.general.photos.find((photo) => photo.id === photoId);
+      const formPhotos = marketplace === 'general' 
+        ? prev.general.photos 
+        : prev[marketplace]?.photos || [];
+      const targetPhoto = formPhotos.find((photo) => photo.id === photoId);
       if (targetPhoto && !targetPhoto.fromInventory && targetPhoto.preview.startsWith("blob:")) {
         URL.revokeObjectURL(targetPhoto.preview);
       }
-      const general = {
-        ...prev.general,
-        photos: prev.general.photos.filter((photo) => photo.id !== photoId),
-      };
-      return {
-        ...prev,
-        general,
-      };
+      
+      const updated = { ...prev };
+      if (marketplace === 'general') {
+        updated.general = {
+          ...prev.general,
+          photos: prev.general.photos.filter((photo) => photo.id !== photoId),
+        };
+      } else {
+        updated[marketplace] = {
+          ...prev[marketplace],
+          photos: (prev[marketplace]?.photos || []).filter((photo) => photo.id !== photoId),
+        };
+      }
+      return updated;
     });
   };
 
-  const handleDeleteAllPhotos = () => {
+  // Generic delete all photos handler for any marketplace form
+  const handleDeleteAllPhotos = (marketplace = 'general') => {
     setTemplateForms((prev) => {
+      const formPhotos = marketplace === 'general' 
+        ? prev.general.photos 
+        : prev[marketplace]?.photos || [];
       // Revoke blob URLs for all non-inventory photos
-      prev.general.photos.forEach((photo) => {
+      formPhotos.forEach((photo) => {
         if (!photo.fromInventory && photo.preview.startsWith("blob:")) {
           URL.revokeObjectURL(photo.preview);
         }
       });
-      const general = {
-        ...prev.general,
-        photos: [],
-      };
-      return {
-        ...prev,
-        general,
-      };
+      
+      const updated = { ...prev };
+      if (marketplace === 'general') {
+        updated.general = {
+          ...prev.general,
+          photos: [],
+        };
+      } else {
+        updated[marketplace] = {
+          ...prev[marketplace],
+          photos: [],
+        };
+      }
+      return updated;
     });
   };
 
@@ -1491,9 +1661,21 @@ export default function CrosslistComposer() {
                   <p className="mt-1 text-xs text-muted-foreground">Price you'll list this item for</p>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Description</Label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-xs">Description</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDescriptionGeneratorOpen(true)}
+                      className="gap-2 h-7 text-xs"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      AI Generate
+                    </Button>
+                  </div>
                   <Textarea
-                    placeholder="Condition, inclusions, measurements, shipping, returns…"
+                    placeholder=""
                     value={generalForm.description}
                     onChange={(e) => handleGeneralChange("description", e.target.value)}
                     className="min-h-[120px]"
@@ -1591,13 +1773,139 @@ export default function CrosslistComposer() {
                     onChange={(e) => handleGeneralChange("quantity", e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <Label className="text-xs mb-1.5 block">Category</Label>
-                  <Input
-                    placeholder="Primary category"
-                    value={generalForm.category}
-                    onChange={(e) => handleGeneralChange("category", e.target.value)}
-                  />
+                  
+                  {/* Breadcrumb navigation for category path */}
+                  {generalCategoryPath.length > 0 && (
+                    <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGeneralCategoryPath([]);
+                          handleGeneralChange("category", "");
+                        }}
+                        className="hover:text-foreground underline"
+                      >
+                        Home
+                      </button>
+                      {generalCategoryPath.map((cat, index) => (
+                        <React.Fragment key={cat.categoryId}>
+                          <span>/</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newPath = generalCategoryPath.slice(0, index + 1);
+                              setGeneralCategoryPath(newPath);
+                              const lastCat = newPath[newPath.length - 1];
+                              const fullPath = newPath.map(c => c.categoryName).join(" > ");
+                              handleGeneralChange("category", fullPath);
+                            }}
+                            className="hover:text-foreground underline"
+                          >
+                            {cat.categoryName}
+                          </button>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {isLoadingCategoryTree || isLoadingCategories ? (
+                    <div className="flex items-center gap-2 p-3 border rounded-md">
+                      <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Loading categories...</span>
+                    </div>
+                  ) : categoriesError ? (
+                    <div className="p-3 border rounded-md border-destructive/50 bg-destructive/10">
+                      <p className="text-sm text-destructive">Error loading categories: {categoriesError.message}</p>
+                      {categoriesError?.response?.details && (
+                        <p className="text-xs text-destructive mt-2">
+                          Details: {JSON.stringify(categoriesError.response.details)}
+                        </p>
+                      )}
+                    </div>
+                  ) : sortedCategories.length > 0 ? (
+                    <Select
+                      value={undefined}
+                      onValueChange={(value) => {
+                        const selectedCategory = sortedCategories.find(
+                          cat => cat.category?.categoryId === value
+                        );
+                        
+                        if (selectedCategory) {
+                          const category = selectedCategory.category;
+                          const newPath = [...generalCategoryPath, {
+                            categoryId: category.categoryId,
+                            categoryName: category.categoryName,
+                          }];
+                          
+                          // Check if this category has children
+                          const hasChildren = selectedCategory.childCategoryTreeNodes && 
+                            selectedCategory.childCategoryTreeNodes.length > 0 &&
+                            !selectedCategory.leafCategoryTreeNode;
+                          
+                          if (hasChildren) {
+                            // Navigate deeper into the tree
+                            setGeneralCategoryPath(newPath);
+                          } else {
+                            // This is a leaf node - select it
+                            const fullPath = newPath.map(c => c.categoryName).join(" > ");
+                            handleGeneralChange("category", fullPath);
+                            setGeneralCategoryPath(newPath);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={generalCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {sortedCategories.map((categoryNode) => {
+                          const category = categoryNode.category;
+                          if (!category || !category.categoryId) return null;
+                          
+                          const hasChildren = categoryNode.childCategoryTreeNodes && 
+                            categoryNode.childCategoryTreeNodes.length > 0 &&
+                            !categoryNode.leafCategoryTreeNode;
+                          
+                          return (
+                            <SelectItem key={category.categoryId} value={category.categoryId}>
+                              <div className="flex items-center gap-2">
+                                <span>{category.categoryName}</span>
+                                {hasChildren && (
+                                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                )}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-3 border rounded-md">
+                      <p className="text-sm text-muted-foreground">No subcategories available.</p>
+                    </div>
+                  )}
+                  
+                  {generalForm.category && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Selected: {generalForm.category}
+                      </Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          handleGeneralChange("category", "");
+                          setGeneralCategoryPath([]);
+                        }}
+                        className="h-6 px-2 text-xs"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">US Size</Label>
@@ -1609,10 +1917,10 @@ export default function CrosslistComposer() {
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs mb-1.5 block">Tags</Label>
-                  <Input
-                    placeholder="Comma separated keywords"
+                  <TagInput
+                    placeholder="Type keywords and press space or comma to add tags (used for Mercari and Facebook)"
                     value={generalForm.tags}
-                    onChange={(e) => handleGeneralChange("tags", e.target.value)}
+                    onChange={(value) => handleGeneralChange("tags", value)}
                   />
                 </div>
               </div>
@@ -1737,6 +2045,77 @@ export default function CrosslistComposer() {
                     onCheckedChange={(checked) => handleToggleInherit("ebay", checked)}
                   />
                   <Label htmlFor="ebay-sync" className="text-sm text-muted-foreground">Sync with General</Label>
+                </div>
+              </div>
+
+              {/* Photos and Title Section */}
+              <div className="space-y-6">
+                {/* Photos Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
+                    {(ebayForm.photos?.length > 0) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteAllPhotos('ebay')}
+                        className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Delete All
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
+                    {ebayForm.photos?.length > 0 && ebayForm.photos.map((photo, index) => (
+                      <div
+                        key={photo.id || index}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-muted-foreground/40 bg-muted cursor-move"
+                      >
+                        <img src={photo.preview || photo.imageUrl} alt={photo.fileName || `Photo ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handlePhotoRemove(photo.id, 'ebay')}
+                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                        >
+                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => ebayPhotoInputRef.current?.click()}
+                      disabled={isUploadingPhotos || (ebayForm.photos?.length || 0) >= MAX_PHOTOS}
+                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
+                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
+                    </button>
+                    <input
+                      ref={ebayPhotoInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, 'ebay')}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {ebayForm.photos?.length || 0}/{MAX_PHOTOS} used.
+                    {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
+                  </p>
+                </div>
+
+                {/* Title Section */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Input
+                    placeholder="Enter listing title"
+                    value={ebayForm.title || ""}
+                    onChange={(e) => handleMarketplaceChange("ebay", "title", e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -2246,6 +2625,77 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
+              {/* Photos and Title Section */}
+              <div className="space-y-6">
+                {/* Photos Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
+                    {(etsyForm.photos?.length > 0) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteAllPhotos('etsy')}
+                        className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Delete All
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
+                    {etsyForm.photos?.length > 0 && etsyForm.photos.map((photo, index) => (
+                      <div
+                        key={photo.id || index}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-muted-foreground/40 bg-muted cursor-move"
+                      >
+                        <img src={photo.preview || photo.imageUrl} alt={photo.fileName || `Photo ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handlePhotoRemove(photo.id, 'etsy')}
+                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                        >
+                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => etsyPhotoInputRef.current?.click()}
+                      disabled={isUploadingPhotos || (etsyForm.photos?.length || 0) >= MAX_PHOTOS}
+                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
+                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
+                    </button>
+                    <input
+                      ref={etsyPhotoInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, 'etsy')}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {etsyForm.photos?.length || 0}/{MAX_PHOTOS} used.
+                    {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
+                  </p>
+                </div>
+
+                {/* Title Section */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Input
+                    placeholder="Enter listing title"
+                    value={etsyForm.title || ""}
+                    onChange={(e) => handleMarketplaceChange("etsy", "title", e.target.value)}
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs mb-1.5 block">Processing Time</Label>
@@ -2322,10 +2772,10 @@ export default function CrosslistComposer() {
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs mb-1.5 block">Tags</Label>
-                  <Input
-                    placeholder="Inherits general tags unless overridden"
+                  <TagInput
+                    placeholder={etsyForm.inheritGeneral ? "Inherits general tags" : "Type keywords and press space or comma to add tags"}
                     value={etsyForm.tags}
-                    onChange={(e) => handleMarketplaceChange("etsy", "tags", e.target.value)}
+                    onChange={(value) => handleMarketplaceChange("etsy", "tags", value)}
                     disabled={etsyForm.inheritGeneral}
                   />
                 </div>
@@ -2382,6 +2832,77 @@ export default function CrosslistComposer() {
                     onCheckedChange={(checked) => handleToggleInherit("mercari", checked)}
                   />
                   <Label htmlFor="mercari-sync" className="text-sm text-muted-foreground">Sync with General</Label>
+                </div>
+              </div>
+
+              {/* Photos and Title Section */}
+              <div className="space-y-6">
+                {/* Photos Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
+                    {(mercariForm.photos?.length > 0) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteAllPhotos('mercari')}
+                        className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Delete All
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
+                    {mercariForm.photos?.length > 0 && mercariForm.photos.map((photo, index) => (
+                      <div
+                        key={photo.id || index}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-muted-foreground/40 bg-muted cursor-move"
+                      >
+                        <img src={photo.preview || photo.imageUrl} alt={photo.fileName || `Photo ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handlePhotoRemove(photo.id, 'mercari')}
+                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                        >
+                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => mercariPhotoInputRef.current?.click()}
+                      disabled={isUploadingPhotos || (mercariForm.photos?.length || 0) >= MAX_PHOTOS}
+                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
+                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
+                    </button>
+                    <input
+                      ref={mercariPhotoInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, 'mercari')}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {mercariForm.photos?.length || 0}/{MAX_PHOTOS} used.
+                    {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
+                  </p>
+                </div>
+
+                {/* Title Section */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Input
+                    placeholder="Enter listing title"
+                    value={mercariForm.title || ""}
+                    onChange={(e) => handleMarketplaceChange("mercari", "title", e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -2490,6 +3011,77 @@ export default function CrosslistComposer() {
                     onCheckedChange={(checked) => handleToggleInherit("facebook", checked)}
                   />
                   <Label htmlFor="facebook-sync" className="text-sm text-muted-foreground">Sync with General</Label>
+                </div>
+              </div>
+
+              {/* Photos and Title Section */}
+              <div className="space-y-6">
+                {/* Photos Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
+                    {(facebookForm.photos?.length > 0) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteAllPhotos('facebook')}
+                        className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Delete All
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
+                    {facebookForm.photos?.length > 0 && facebookForm.photos.map((photo, index) => (
+                      <div
+                        key={photo.id || index}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-muted-foreground/40 bg-muted cursor-move"
+                      >
+                        <img src={photo.preview || photo.imageUrl} alt={photo.fileName || `Photo ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handlePhotoRemove(photo.id, 'facebook')}
+                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                        >
+                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => facebookPhotoInputRef.current?.click()}
+                      disabled={isUploadingPhotos || (facebookForm.photos?.length || 0) >= MAX_PHOTOS}
+                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
+                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
+                    </button>
+                    <input
+                      ref={facebookPhotoInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, 'facebook')}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {facebookForm.photos?.length || 0}/{MAX_PHOTOS} used.
+                    {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
+                  </p>
+                </div>
+
+                {/* Title Section */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Input
+                    placeholder="Enter listing title"
+                    value={facebookForm.title || ""}
+                    onChange={(e) => handleMarketplaceChange("facebook", "title", e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -2746,6 +3338,20 @@ export default function CrosslistComposer() {
           editingColorField === "color2" ? "Secondary Color" :
           editingColorField === "ebay.color" ? "Color" : "Color"
         }
+      />
+
+      {/* Description Generator Dialog */}
+      <DescriptionGenerator
+        open={descriptionGeneratorOpen}
+        onOpenChange={setDescriptionGeneratorOpen}
+        onSelectDescription={(description) => {
+          handleGeneralChange("description", description);
+        }}
+        title={generalForm.title}
+        brand={generalForm.brand}
+        category={generalForm.category}
+        condition={generalForm.condition}
+        similarDescriptions={similarItems}
       />
     </div>
   );

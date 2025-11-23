@@ -352,10 +352,7 @@ export default function AddInventoryItem() {
       if (inventoryData.category) {
         setIsOtherCategory(!PREDEFINED_CATEGORIES.includes(inventoryData.category));
       }
-      if (inventoryData.notes) {
-        // Append eBay notes to existing notes
-        next.notes = prev.notes ? `${prev.notes}\n\n${inventoryData.notes}` : inventoryData.notes;
-      }
+      // Don't modify notes field when selecting eBay item
       return next;
     });
     setEbaySearchDialogOpen(false);

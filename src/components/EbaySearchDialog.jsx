@@ -73,9 +73,9 @@ export default function EbaySearchDialog({
     {
       q: trimmedQuery,
       limit,
-      // Removed sort: "price" - let eBay use best match (relevance) instead of sorting by cheapest
-      // This will show more relevant results like actual iPhones instead of just cases
-      // Removed filter: "buyingOptions:{FIXED_PRICE}" - show all items including auctions
+      // No sort parameter specified - eBay defaults to "Best Match" sorting
+      // Best Match considers relevance, popularity, seller performance, etc.
+      // This ensures the most relevant items (like consoles for "Gamecube") appear first
     },
     {
       enabled: hasValidQuery, // Only search if we have a valid query
@@ -122,62 +122,21 @@ export default function EbaySearchDialog({
     return () => viewport.removeEventListener('scroll', handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Filter and sort items for better relevance
+  // Use eBay's native "Best Match" sorting (default when no sort parameter is specified)
+  // eBay's Best Match algorithm considers:
+  // - Relevance to search terms
+  // - Listing popularity and performance
+  // - Seller performance and feedback
+  // - Category relevance
+  // - Item quality and condition
+  // We preserve the original order from eBay's API results (sorted by Best Match)
   const items = React.useMemo(() => {
     if (!searchResults?.itemSummaries) return [];
     
-    const allItems = searchResults.itemSummaries;
-    const queryLower = debouncedQuery.toLowerCase();
-    
-    // Split query into words
-    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
-    
-    // Score items based on relevance
-    const scoredItems = allItems.map(item => {
-      const titleLower = (item.title || '').toLowerCase();
-      let score = 0;
-      
-      // Exact phrase match gets highest score
-      if (titleLower.includes(queryLower)) {
-        score += 100;
-      }
-      
-      // Word matches
-      queryWords.forEach(word => {
-        if (titleLower.includes(word)) {
-          score += 10;
-        }
-      });
-      
-      // Penalize common accessory keywords
-      const accessoryKeywords = ['case', 'cover', 'protector', 'screen protector', 'charger', 'cable', 'adapter'];
-      accessoryKeywords.forEach(keyword => {
-        if (titleLower.includes(keyword) && !queryLower.includes(keyword)) {
-          score -= 5;
-        }
-      });
-      
-      // Boost items that start with query words
-      queryWords.forEach(word => {
-        if (titleLower.startsWith(word)) {
-          score += 5;
-        }
-      });
-      
-      return { ...item, _relevanceScore: score };
-    });
-    
-    // Sort by relevance score (highest first), then by price
-    return scoredItems.sort((a, b) => {
-      if (b._relevanceScore !== a._relevanceScore) {
-        return b._relevanceScore - a._relevanceScore;
-      }
-      // If scores are equal, sort by price (lower first)
-      const priceA = a.price?.value || 0;
-      const priceB = b.price?.value || 0;
-      return priceA - priceB;
-    });
-  }, [searchResults?.itemSummaries, debouncedQuery]);
+    // Return items in their original order from eBay (sorted by Best Match/relevance)
+    // This matches what users see on eBay.com when searching
+    return searchResults.itemSummaries;
+  }, [searchResults?.itemSummaries]);
 
   const handleSearch = () => {
     const trimmedQuery = searchQuery.trim();

@@ -21,7 +21,7 @@ export function ebayItemToInventory(ebayItem) {
     category: mapEbayCategoryToInventory(ebayItem.categoryPath || []),
     source: 'eBay',
     status: 'available',
-    notes: formatEbayNotes(ebayItem),
+    // Don't include notes when converting eBay item to inventory
   };
 }
 
@@ -129,40 +129,19 @@ export function mapEbayCategoryToInventory(categoryPath) {
 
 /**
  * Format eBay item notes from summary data
+ * Only returns the eBay item URL as a clickable link
  * 
  * @param {Object} ebayItem - eBay item summary
- * @returns {string} Formatted notes
+ * @returns {string} eBay item URL
  */
 export function formatEbayNotes(ebayItem) {
-  const notes = [];
+  if (!ebayItem) return '';
   
-  if (ebayItem.itemId) {
-    notes.push(`eBay Item ID: ${ebayItem.itemId}`);
-  }
+  // Get the eBay item URL using the helper function to ensure we get a production URL
+  const ebayUrl = getEbayItemUrl(ebayItem.itemId, ebayItem.itemWebUrl);
   
-  if (ebayItem.condition) {
-    notes.push(`Condition: ${ebayItem.condition}`);
-  }
-  
-  if (ebayItem.seller?.username) {
-    notes.push(`Seller: ${ebayItem.seller.username}`);
-  }
-  
-  if (ebayItem.buyingOptions?.includes('FIXED_PRICE')) {
-    notes.push('Buy It Now');
-  } else if (ebayItem.buyingOptions?.includes('AUCTION')) {
-    notes.push('Auction');
-  }
-  
-  if (ebayItem.shippingOptions?.shippingCost?.value) {
-    notes.push(`Shipping: $${ebayItem.shippingOptions.shippingCost.value}`);
-  }
-  
-  if (ebayItem.itemWebUrl) {
-    notes.push(`eBay URL: ${ebayItem.itemWebUrl}`);
-  }
-  
-  return notes.join('\n');
+  // Return only the URL - plain URLs are clickable in most text fields and notes viewers
+  return ebayUrl;
 }
 
 /**

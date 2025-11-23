@@ -313,7 +313,7 @@ export default function Crosslist() {
     "Kate Spade", "KitchenAid",
     "Lego", "Levi's", "Louis Vuitton", "Lululemon",
     "Mattel", "Michael Kors",
-    "New Balance", "Nike", "Ninja",
+    "New Balance", "Nike", "Ninja", "Nintendo",
     "Patagonia", "Prada", "Puma",
     "Ralph Lauren", "REI", "Reebok",
     "Samsung", "Sony", "Stanley",
