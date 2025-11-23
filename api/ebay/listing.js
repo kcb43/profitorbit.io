@@ -108,7 +108,7 @@ export default async function handler(req, res) {
       }
 
       // Build XML request for AddFixedPriceItem
-      const xml = buildAddFixedPriceItemXML(listingData);
+      const xml = buildAddFixedPriceItemXML(listingData, token);
 
       console.log('eBay Trading API request (AddFixedPriceItem):', {
         baseUrl,
@@ -167,7 +167,7 @@ export default async function handler(req, res) {
 /**
  * Build XML request for AddFixedPriceItem
  */
-function buildAddFixedPriceItemXML(listingData) {
+function buildAddFixedPriceItemXML(listingData, token) {
   const {
     title,
     description,
@@ -301,7 +301,7 @@ function buildAddFixedPriceItemXML(listingData) {
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <AddFixedPriceItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
-    <eBayAuthToken>USER_TOKEN_PLACEHOLDER</eBayAuthToken>
+    <eBayAuthToken>${escapeXML(token || '')}</eBayAuthToken>
   </RequesterCredentials>
   <ErrorLanguage>en_US</ErrorLanguage>
   <WarningLevel>High</WarningLevel>
