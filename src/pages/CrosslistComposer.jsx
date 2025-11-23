@@ -2495,10 +2495,9 @@ export default function CrosslistComposer() {
                           handleMarketplaceChange("ebay", "ebayBrand", value);
                         }
                       }}
-                      disabled={Boolean(generalForm.brand)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={generalForm.brand ? `Inherits: ${generalForm.brand}` : "Select or Custom"} />
+                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
                         {POPULAR_BRANDS.map((brand) => (
@@ -3178,10 +3177,9 @@ export default function CrosslistComposer() {
                           handleMarketplaceChange("etsy", "brand", value);
                         }
                       }}
-                      disabled={Boolean(generalForm.brand)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={generalForm.brand ? `Inherits: ${generalForm.brand}` : "Select or Custom"} />
+                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
                         {POPULAR_BRANDS.map((brand) => (
