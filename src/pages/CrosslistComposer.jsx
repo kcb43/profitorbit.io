@@ -611,10 +611,13 @@ export default function CrosslistComposer() {
   }, [inventory, generalForm.title, generalForm.brand, generalForm.category, currentEditingItemId]);
 
   // Get category aspects (brands, types, etc.) when a final category is selected
+  // Only fetch if we have a valid category tree ID (not '0' or 0) and a valid category ID
+  const isValidCategoryTreeId = categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && String(categoryTreeId).trim() !== '';
+  const isValidCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
   const { data: categoryAspectsData } = useEbayCategoryAspects(
     categoryTreeId,
     ebayForm.categoryId,
-    activeForm === "ebay" && !!categoryTreeId && !!ebayForm.categoryId && ebayForm.categoryId !== '0'
+    activeForm === "ebay" && isValidCategoryTreeId && isValidCategoryId
   );
 
   const categoryAspects = categoryAspectsData?.aspects || [];

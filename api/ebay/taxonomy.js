@@ -276,13 +276,13 @@ export default async function handler(req, res) {
 
     } else if (operation === 'getItemAspectsForCategory') {
       // Get item aspects (like Brand, Type) for a specific category
-      if (!category_tree_id) {
-        return res.status(400).json({ error: 'category_tree_id is required for getItemAspectsForCategory' });
+      if (!category_tree_id || category_tree_id === '0' || category_tree_id === 0) {
+        return res.status(400).json({ error: 'category_tree_id is required for getItemAspectsForCategory and cannot be 0 (root). Use getDefaultCategoryTreeId to get a valid category tree ID.' });
       }
 
       const category_id = req.query.category_id;
-      if (!category_id || category_id === '0') {
-        return res.status(400).json({ error: 'category_id is required for getItemAspectsForCategory' });
+      if (!category_id || category_id === '0' || category_id === 0) {
+        return res.status(400).json({ error: 'category_id is required for getItemAspectsForCategory and cannot be 0 (root).' });
       }
 
       const marketplaceId = marketplace_id || MARKETPLACE_ID;

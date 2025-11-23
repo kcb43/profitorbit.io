@@ -165,7 +165,13 @@ export function useEbayCategoryAspects(categoryTreeId, categoryId, enabled = tru
   return useQuery({
     queryKey: ['ebayCategoryAspects', categoryTreeId, categoryId],
     queryFn: async () => {
-      if (!categoryTreeId || !categoryId || categoryId === '0') {
+      // Validate that both categoryTreeId and categoryId are valid (not '0', 0, null, or undefined)
+      const treeIdStr = String(categoryTreeId || '');
+      const catIdStr = String(categoryId || '');
+      const isInvalidTreeId = !categoryTreeId || categoryTreeId === '0' || categoryTreeId === 0 || treeIdStr.trim() === '' || treeIdStr === '0';
+      const isInvalidCatId = !categoryId || categoryId === '0' || categoryId === 0 || catIdStr.trim() === '' || catIdStr === '0';
+      
+      if (isInvalidTreeId || isInvalidCatId) {
         return null;
       }
 
@@ -180,7 +186,7 @@ export function useEbayCategoryAspects(categoryTreeId, categoryId, enabled = tru
       
       return response.json();
     },
-    enabled: enabled && !!categoryTreeId && !!categoryId && categoryId !== '0',
+    enabled: enabled && !!categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && !!categoryId && categoryId !== '0' && categoryId !== 0,
     staleTime: 24 * 60 * 60 * 1000, // Cache for 24 hours
     retry: 1,
   });
