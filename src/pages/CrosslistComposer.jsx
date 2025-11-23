@@ -2515,32 +2515,11 @@ export default function CrosslistComposer() {
                   )}
                 </div>
 
-                {/* Condition Dropdown - Always visible */}
-                <div>
-                  <Label className="text-xs mb-1.5 block">
-                    Condition <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={ebayForm.condition || undefined}
-                    onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select condition" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="New">New</SelectItem>
-                      <SelectItem value="Open Box">Open Box</SelectItem>
-                      <SelectItem value="Used">Used</SelectItem>
-                      <SelectItem value="For parts or not working">For parts or not working</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {/* Category Specifics Section */}
                 {ebayForm.categoryId && (
-                  <div className="md:col-span-2 space-y-4 border-t pt-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-medium">Category Specifics</Label>
+                  <div className="md:col-span-2 space-y-3 border-t pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Category Specifics</Label>
                       <Button
                         type="button"
                         variant="ghost"
@@ -2552,33 +2531,79 @@ export default function CrosslistComposer() {
                         className="gap-2 h-7 text-xs"
                       >
                         <RefreshCw className="h-3 w-3" />
-                        Reload
                       </Button>
                     </div>
                     
-                    {/* Model Dropdown */}
-                    {typeValues.length > 0 && (
+                    {/* Type and Condition side by side */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Type/Model Dropdown */}
+                      {typeValues.length > 0 && (
+                        <div>
+                          <Label className="text-xs mb-1.5 block">
+                            Type <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            value={ebayForm.itemType || undefined}
+                            onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {typeValues.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Condition Dropdown */}
                       <div>
                         <Label className="text-xs mb-1.5 block">
-                          Model <span className="text-red-500">*</span>
+                          Condition <span className="text-red-500">*</span>
                         </Label>
                         <Select
-                          value={ebayForm.itemType || undefined}
-                          onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
+                          value={ebayForm.condition || undefined}
+                          onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select model" />
+                            <SelectValue placeholder="Select condition" />
                           </SelectTrigger>
                           <SelectContent>
-                            {typeValues.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="New">New</SelectItem>
+                            <SelectItem value="Open Box">Open Box</SelectItem>
+                            <SelectItem value="Used">Used</SelectItem>
+                            <SelectItem value="For parts or not working">For parts or not working</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Condition Dropdown - Show when no category selected */}
+                {!ebayForm.categoryId && (
+                  <div>
+                    <Label className="text-xs mb-1.5 block">
+                      Condition <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={ebayForm.condition || undefined}
+                      onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select condition" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="New">New</SelectItem>
+                        <SelectItem value="Open Box">Open Box</SelectItem>
+                        <SelectItem value="Used">Used</SelectItem>
+                        <SelectItem value="For parts or not working">For parts or not working</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
