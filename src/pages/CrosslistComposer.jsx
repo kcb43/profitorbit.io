@@ -861,7 +861,7 @@ export default function CrosslistComposer() {
             <div className="space-y-6">
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
-                <div className="mt-2 flex flex-wrap gap-3 items-start">
+                <div className="mt-2 flex flex-wrap gap-3">
                   {/* Main Photo */}
                   {generalForm.photos.length > 0 && (
                     <div
@@ -887,7 +887,7 @@ export default function CrosslistComposer() {
                         }
                         e.currentTarget.classList.remove("opacity-50");
                       }}
-                      className="relative h-20 w-20 md:h-64 md:w-64 overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
+                      className="relative aspect-square h-20 w-20 md:h-64 md:w-64 shrink-0 overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
                     >
                       <img src={generalForm.photos[0].preview} alt={generalForm.photos[0].fileName || "Main photo"} className="h-full w-full object-cover" />
                       <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
@@ -933,7 +933,7 @@ export default function CrosslistComposer() {
                         }
                         e.currentTarget.classList.remove("opacity-50");
                       }}
-                      className="relative h-10 w-10 md:h-32 md:w-32 overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition"
+                      className="relative aspect-square h-9 w-9 md:h-28 md:w-28 shrink-0 overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition"
                     >
                       <img src={photo.preview} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />
                       <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
@@ -945,9 +945,9 @@ export default function CrosslistComposer() {
                           e.stopPropagation();
                           handlePhotoRemove(photo.id);
                         }}
-                        className="absolute top-0.5 right-0.5 inline-flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                        className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
                       >
-                        <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                        <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
                         <span className="sr-only">Remove photo</span>
                       </button>
                     </div>
@@ -958,7 +958,7 @@ export default function CrosslistComposer() {
                     type="button"
                     onClick={() => photoInputRef.current?.click()}
                     disabled={isUploadingPhotos || (generalForm.photos?.length || 0) >= MAX_PHOTOS}
-                    className="flex h-10 w-10 md:h-32 md:w-32 flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex aspect-square h-9 w-9 md:h-28 md:w-28 shrink-0 flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
                     <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
