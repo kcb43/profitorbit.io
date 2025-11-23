@@ -2024,6 +2024,54 @@ export default function CrosslistComposer() {
                     onChange={(e) => handleGeneralChange("sku", e.target.value)}
                   />
                 </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Primary Color</Label>
+                  <Button
+                    type="button"
+                    variant={generalForm.color1 ? "default" : "outline"}
+                    onClick={() => openColorPicker("color1")}
+                    className="w-full justify-start"
+                  >
+                    {generalForm.color1 ? (
+                      <>
+                        <div
+                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(generalForm.color1) || "#808080" }}
+                        />
+                        <span className="flex-1 text-left">{getColorName(generalForm.color1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Palette className="w-4 h-4 mr-2" />
+                        <span>Select color</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Secondary Color</Label>
+                  <Button
+                    type="button"
+                    variant={generalForm.color2 ? "default" : "outline"}
+                    onClick={() => openColorPicker("color2")}
+                    className="w-full justify-start"
+                  >
+                    {generalForm.color2 ? (
+                      <>
+                        <div
+                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(generalForm.color2) || "#808080" }}
+                        />
+                        <span className="flex-1 text-left">{getColorName(generalForm.color2)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Palette className="w-4 h-4 mr-2" />
+                        <span>Select color</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs mb-1.5 block">Category</Label>
                   
@@ -2208,57 +2256,6 @@ export default function CrosslistComposer() {
                     value={generalForm.tags}
                     onChange={(value) => handleGeneralChange("tags", value)}
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <Label className="text-xs mb-1.5 block">Primary Color</Label>
-                  <Button
-                    type="button"
-                    variant={generalForm.color1 ? "default" : "outline"}
-                    onClick={() => openColorPicker("color1")}
-                    className="w-full justify-start"
-                  >
-                    {generalForm.color1 ? (
-                      <>
-                        <div
-                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
-                          style={{ backgroundColor: getColorHex(generalForm.color1) || "#808080" }}
-                        />
-                        <span className="flex-1 text-left">{getColorName(generalForm.color1)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Palette className="w-4 h-4 mr-2" />
-                        <span>Select color</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Secondary Color</Label>
-                  <Button
-                    type="button"
-                    variant={generalForm.color2 ? "default" : "outline"}
-                    onClick={() => openColorPicker("color2")}
-                    className="w-full justify-start"
-                  >
-                    {generalForm.color2 ? (
-                      <>
-                        <div
-                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
-                          style={{ backgroundColor: getColorHex(generalForm.color2) || "#808080" }}
-                        />
-                        <span className="flex-1 text-left">{getColorName(generalForm.color2)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Palette className="w-4 h-4 mr-2" />
-                        <span>Select color</span>
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
 
@@ -2843,6 +2840,30 @@ export default function CrosslistComposer() {
                     </p>
                   )}
                 </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Color <span className="text-red-500">*</span></Label>
+                  <Button
+                    type="button"
+                    variant={ebayForm.color ? "default" : "outline"}
+                    onClick={() => openColorPicker("ebay.color")}
+                    className="w-full justify-start"
+                  >
+                    {ebayForm.color ? (
+                      <>
+                        <div
+                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(ebayForm.color) || "#808080" }}
+                        />
+                        <span className="flex-1 text-left">{getColorName(ebayForm.color)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Palette className="w-4 h-4 mr-2" />
+                        <span>Select color</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {/* Pricing Section */}
@@ -2904,30 +2925,6 @@ export default function CrosslistComposer() {
                     />
                     <Label htmlFor="ebay-best-offer" className="text-sm">Allow buyers to submit offers</Label>
                   </div>
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Color <span className="text-red-500">*</span></Label>
-                  <Button
-                    type="button"
-                    variant={ebayForm.color ? "default" : "outline"}
-                    onClick={() => openColorPicker("ebay.color")}
-                    className="w-full justify-start"
-                  >
-                    {ebayForm.color ? (
-                      <>
-                        <div
-                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
-                          style={{ backgroundColor: getColorHex(ebayForm.color) || "#808080" }}
-                        />
-                        <span className="flex-1 text-left">{getColorName(ebayForm.color)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Palette className="w-4 h-4 mr-2" />
-                        <span>Select color</span>
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
 
