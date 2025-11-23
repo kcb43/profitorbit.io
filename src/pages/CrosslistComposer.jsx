@@ -2407,7 +2407,7 @@ export default function CrosslistComposer() {
                 </div>
                 {/* eBay Brand Dropdown - show always, use category-specific brands if available */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">eBay Brand <span className="text-red-500">*</span></Label>
+                  <Label className="text-xs mb-1.5 block">Brand Select or Custom <span className="text-red-500">*</span></Label>
                   {ebayBrands.length > 0 ? (
                     <Select
                       value={ebayForm.ebayBrand || undefined}
