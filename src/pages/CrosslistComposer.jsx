@@ -619,16 +619,28 @@ export default function CrosslistComposer() {
   }, [inventory, generalForm.title, generalForm.brand, generalForm.category, currentEditingItemId]);
 
   // Get category aspects (brands, types, etc.) when a final category is selected
-  // Only fetch if we have a valid category tree ID (not '0' or 0) and a valid category ID
+  // For eBay form
   const isValidCategoryTreeId = categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && String(categoryTreeId).trim() !== '';
-  const isValidCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
-  const { data: categoryAspectsData } = useEbayCategoryAspects(
+  const isValidEbayCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
+  const { data: ebayCategoryAspectsData } = useEbayCategoryAspects(
     categoryTreeId,
     ebayForm.categoryId,
-    activeForm === "ebay" && isValidCategoryTreeId && isValidCategoryId
+    activeForm === "ebay" && isValidCategoryTreeId && isValidEbayCategoryId
   );
 
-  const categoryAspects = categoryAspectsData?.aspects || [];
+  // For General form - fetch aspects if categoryId is available
+  const isValidGeneralCategoryId = generalForm.categoryId && generalForm.categoryId !== '0' && generalForm.categoryId !== 0 && String(generalForm.categoryId).trim() !== '';
+  const { data: generalCategoryAspectsData } = useEbayCategoryAspects(
+    categoryTreeId,
+    generalForm.categoryId,
+    (activeForm === "general" || activeForm === "etsy" || activeForm === "mercari" || activeForm === "facebook") && isValidCategoryTreeId && isValidGeneralCategoryId
+  );
+
+  // Use appropriate aspects data based on active form
+  const categoryAspects = activeForm === "ebay" 
+    ? (ebayCategoryAspectsData?.aspects || [])
+    : (generalCategoryAspectsData?.aspects || []);
+
   const brandAspect = categoryAspects.find(aspect => 
     aspect.localizedAspectName?.toLowerCase() === 'brand' ||
     aspect.aspectConstraint?.aspectDataType === 'STRING'
@@ -636,6 +648,27 @@ export default function CrosslistComposer() {
   const typeAspect = categoryAspects.find(aspect => 
     aspect.localizedAspectName?.toLowerCase() === 'type'
   );
+  
+  // Check if category has size-related aspects
+  const sizeAspect = categoryAspects.find(aspect => {
+    const aspectName = aspect.localizedAspectName?.toLowerCase() || '';
+    return aspectName.includes('size') || 
+           aspectName.includes('shirt size') || 
+           aspectName.includes('shoe size') ||
+           aspectName.includes('clothing size') ||
+           aspectName.includes('apparel size') ||
+           aspectName === 'us size' ||
+           aspectName === 'size type';
+  });
+  const hasSizeAspect = !!sizeAspect;
+
+  // For General form, also check if category is selected (fallback if aspects not available)
+  const generalHasCategory = generalForm.category && generalForm.category.trim() !== '';
+  const shouldShowGeneralSize = generalHasCategory && (hasSizeAspect || generalForm.categoryId);
+
+  // For eBay form, require both category and size aspect
+  const ebayHasCategory = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0;
+  const shouldShowEbaySize = ebayHasCategory && hasSizeAspect;
 
   const ebayBrands = brandAspect?.aspectValues?.map(val => val.localizedValue) || [];
   const typeValues = typeAspect?.aspectValues?.map(val => val.localizedValue) || [];
@@ -2223,6 +2256,18 @@ export default function CrosslistComposer() {
                     </div>
                   )}
                 </div>
+                
+                {/* US Size - Only show when category is selected and has size aspect */}
+                {shouldShowGeneralSize && (
+                  <div>
+                    <Label className="text-xs mb-1.5 block">US Size</Label>
+                    <Input
+                      placeholder="e.g. Men's M, 10, XL"
+                      value={generalForm.size}
+                      onChange={(e) => handleGeneralChange("size", e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Shipping Settings Section */}
@@ -2250,14 +2295,6 @@ export default function CrosslistComposer() {
                     step="1"
                     value={generalForm.quantity}
                     onChange={(e) => handleGeneralChange("quantity", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">US Size</Label>
-                  <Input
-                    placeholder="e.g. Men's M, 10, XL"
-                    value={generalForm.size}
-                    onChange={(e) => handleGeneralChange("size", e.target.value)}
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -2707,6 +2744,23 @@ export default function CrosslistComposer() {
                     )}
                   </div>
                 </div>
+                
+                {/* US Size - Only show when category is selected and has size aspect */}
+                {shouldShowEbaySize && (
+                  <div>
+                    <Label className="text-xs mb-1.5 block">US Size</Label>
+                    <Input
+                      placeholder={generalForm.size || "e.g. Men's M, 10, XL"}
+                      value={ebayForm.size || generalForm.size || ""}
+                      onChange={(e) => handleMarketplaceChange("ebay", "size", e.target.value)}
+                    />
+                    {generalForm.size && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Inherited {generalForm.size} from General form. You can edit this field.
+                      </p>
+                    )}
+                  </div>
+                )}
                 
                 {/* Type field - shown when category is selected */}
                 {ebayForm.categoryId && typeAspect && typeValues.length > 0 && (
