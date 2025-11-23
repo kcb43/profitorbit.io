@@ -401,7 +401,6 @@ export default function CrosslistComposer() {
   });
   
   // Handle OAuth callback from URL params
-  const location = useLocation();
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     
