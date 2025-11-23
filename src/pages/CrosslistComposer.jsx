@@ -640,6 +640,25 @@ export default function CrosslistComposer() {
     });
   };
 
+  const handleDeleteAllPhotos = () => {
+    setTemplateForms((prev) => {
+      // Revoke blob URLs for all non-inventory photos
+      prev.general.photos.forEach((photo) => {
+        if (!photo.fromInventory && photo.preview.startsWith("blob:")) {
+          URL.revokeObjectURL(photo.preview);
+        }
+      });
+      const general = {
+        ...prev.general,
+        photos: [],
+      };
+      return {
+        ...prev,
+        general,
+      };
+    });
+  };
+
   const handlePhotoReorder = (dragIndex, dropIndex) => {
     setTemplateForms((prev) => {
       const photos = [...prev.general.photos];
@@ -860,7 +879,21 @@ export default function CrosslistComposer() {
           {activeForm === "general" && (
             <div className="space-y-6">
               <div>
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
+                  {generalForm.photos && generalForm.photos.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDeleteAllPhotos}
+                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Delete All
+                    </Button>
+                  )}
+                </div>
                 <div className="mt-2 grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
                   {/* Main Photo - spans 2 columns and 2 rows */}
                   {generalForm.photos.length > 0 && (
