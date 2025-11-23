@@ -691,7 +691,7 @@ export default function CrosslistComposer() {
       "New With Tags/Box": "New",
       "New Without Tags/Box": "Open Box",
       "Pre - Owned - Good": "Used",
-      "Poor (Majorflaws)": "Used",
+      "Poor (Major flaws)": "Used",
       // These don't map - user must choose manually on eBay
       "New With Imperfections": null,
       "Pre - Owned - Excellent": null,
@@ -1992,7 +1992,7 @@ export default function CrosslistComposer() {
                       <SelectItem value="Pre - Owned - Excellent">Pre - Owned - Excellent</SelectItem>
                       <SelectItem value="Pre - Owned - Good">Pre - Owned - Good</SelectItem>
                       <SelectItem value="Pre - Owned - Fair">Pre - Owned - Fair</SelectItem>
-                      <SelectItem value="Poor (Majorflaws)">Poor (Majorflaws)</SelectItem>
+                      <SelectItem value="Poor (Major flaws)">Poor (Major flaws)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
