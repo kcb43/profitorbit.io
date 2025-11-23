@@ -2388,15 +2388,14 @@ export default function CrosslistComposer() {
                     </Button>
                   </div>
                   <Textarea
-                    placeholder={ebayForm.inheritGeneral && generalForm.description ? `Inherits: ${generalForm.description.substring(0, 50)}...` : ""}
+                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
                     value={ebayForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "description", e.target.value)}
                     className="min-h-[120px]"
-                    disabled={Boolean(generalForm.description)}
                   />
-                  {ebayForm.inheritGeneral && generalForm.description && (
+                  {generalForm.description && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits description from General form.
+                      Inherited from General form. You can edit this field.
                     </p>
                   )}
                 </div>
@@ -2444,11 +2443,10 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.price || "0.00"}
                     value={ebayForm.buyItNowPrice}
                     onChange={(e) => handleMarketplaceChange("ebay", "buyItNowPrice", e.target.value)}
-                    disabled={Boolean(generalForm.price)}
                   />
-                  {ebayForm.inheritGeneral && (
+                  {generalForm.price && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits {generalForm.price ? `$${generalForm.price}` : "General price"} from General form.
+                      Inherited ${generalForm.price} from General form. You can edit this price.
                     </p>
                   )}
                 </div>
@@ -2469,11 +2467,10 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter brand name"
+                        placeholder={generalForm.brand || "Enter brand name"}
                         value={ebayForm.ebayBrand || ""}
                         onChange={(e) => handleMarketplaceChange("ebay", "ebayBrand", e.target.value)}
                         className="flex-1"
-                        disabled={Boolean(generalForm.brand)}
                       />
                       <Button
                         type="button"
@@ -2614,11 +2611,10 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.sku || "Enter SKU"}
                     value={ebayForm.sku || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "sku", e.target.value)}
-                    disabled={Boolean(generalForm.sku)}
                   />
                   {generalForm.sku && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits {generalForm.sku} from General form.
+                      Inherited {generalForm.sku} from General form. You can edit this field.
                     </p>
                   )}
                 </div>
@@ -2748,9 +2744,13 @@ export default function CrosslistComposer() {
                   <Input
                     placeholder={generalForm.zip || "Zip or region"}
                     value={ebayForm.shippingLocation}
-                    disabled={Boolean(generalForm.zip)}
                     onChange={(e) => handleMarketplaceChange("ebay", "shippingLocation", e.target.value)}
                   />
+                  {generalForm.zip && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Inherited {generalForm.zip} from General form. You can edit this field.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
@@ -3132,15 +3132,14 @@ export default function CrosslistComposer() {
                     </Button>
                   </div>
                   <Textarea
-                    placeholder={generalForm.description ? `Inherits: ${generalForm.description.substring(0, 50)}...` : ""}
+                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
                     value={etsyForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("etsy", "description", e.target.value)}
                     className="min-h-[120px]"
-                    disabled={Boolean(generalForm.description)}
                   />
                   {generalForm.description && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits description from General form.
+                      Inherited from General form. You can edit this field.
                     </p>
                   )}
                 </div>
@@ -3151,11 +3150,10 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter brand name"
+                        placeholder={generalForm.brand || "Enter brand name"}
                         value={etsyForm.brand || ""}
                         onChange={(e) => handleMarketplaceChange("etsy", "brand", e.target.value)}
                         className="flex-1"
-                        disabled={Boolean(generalForm.brand)}
                       />
                       <Button
                         type="button"
@@ -3204,11 +3202,10 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.sku || "Enter SKU"}
                     value={etsyForm.sku || ""}
                     onChange={(e) => handleMarketplaceChange("etsy", "sku", e.target.value)}
-                    disabled={Boolean(generalForm.sku)}
                   />
                   {generalForm.sku && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits {generalForm.sku} from General form.
+                      Inherited {generalForm.sku} from General form. You can edit this field.
                     </p>
                   )}
                 </div>
@@ -3438,15 +3435,14 @@ export default function CrosslistComposer() {
                     </Button>
                   </div>
                   <Textarea
-                    placeholder={mercariForm.inheritGeneral && generalForm.description ? `Inherits: ${generalForm.description.substring(0, 50)}...` : ""}
+                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
                     value={mercariForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("mercari", "description", e.target.value)}
                     className="min-h-[120px]"
-                    disabled={Boolean(generalForm.description)}
                   />
-                  {mercariForm.inheritGeneral && generalForm.description && (
+                  {generalForm.description && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits description from General form.
+                      Inherited from General form. You can edit this field.
                     </p>
                   )}
                 </div>
@@ -3457,11 +3453,10 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter brand name"
+                        placeholder={generalForm.brand || "Enter brand name"}
                         value={mercariForm.brand || ""}
                         onChange={(e) => handleMarketplaceChange("mercari", "brand", e.target.value)}
                         className="flex-1"
-                        disabled={Boolean(generalForm.brand)}
                       />
                       <Button
                         type="button"
@@ -3486,10 +3481,9 @@ export default function CrosslistComposer() {
                           handleMarketplaceChange("mercari", "brand", value);
                         }
                       }}
-                      disabled={Boolean(generalForm.brand)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={mercariForm.inheritGeneral && generalForm.brand ? `Inherits: ${generalForm.brand}` : "Select or Custom"} />
+                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
                         {POPULAR_BRANDS.map((brand) => (
@@ -3702,15 +3696,14 @@ export default function CrosslistComposer() {
                     </Button>
                   </div>
                   <Textarea
-                    placeholder={facebookForm.inheritGeneral && generalForm.description ? `Inherits: ${generalForm.description.substring(0, 50)}...` : ""}
+                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
                     value={facebookForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("facebook", "description", e.target.value)}
                     className="min-h-[120px]"
-                    disabled={Boolean(generalForm.description)}
                   />
-                  {facebookForm.inheritGeneral && generalForm.description && (
+                  {generalForm.description && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherits description from General form.
+                      Inherited from General form. You can edit this field.
                     </p>
                   )}
                 </div>
@@ -3721,11 +3714,10 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter brand name"
+                        placeholder={generalForm.brand || "Enter brand name"}
                         value={facebookForm.brand || ""}
                         onChange={(e) => handleMarketplaceChange("facebook", "brand", e.target.value)}
                         className="flex-1"
-                        disabled={Boolean(generalForm.brand)}
                       />
                       <Button
                         type="button"
@@ -3750,10 +3742,9 @@ export default function CrosslistComposer() {
                           handleMarketplaceChange("facebook", "brand", value);
                         }
                       }}
-                      disabled={Boolean(generalForm.brand)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={facebookForm.inheritGeneral && generalForm.brand ? `Inherits: ${generalForm.brand}` : "Select or Custom"} />
+                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
                         {POPULAR_BRANDS.map((brand) => (
@@ -3807,11 +3798,15 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Meetup Location</Label>
                   <Input
-                    placeholder="Preferred meetup details"
+                    placeholder={generalForm.zip ? `Inherited from General: ${generalForm.zip}` : "Preferred meetup details"}
                     value={facebookForm.meetUpLocation}
                     onChange={(e) => handleMarketplaceChange("facebook", "meetUpLocation", e.target.value)}
-                    disabled={Boolean(generalForm.zip)}
                   />
+                  {generalForm.zip && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Inherited {generalForm.zip} from General form. You can edit this field.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Allow Offers</Label>
