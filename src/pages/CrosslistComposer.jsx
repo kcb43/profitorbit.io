@@ -1064,7 +1064,7 @@ export default function CrosslistComposer() {
         // Existing item - just show success message
         toast({
           title: "General template saved",
-          description: "Your preferences have been saved and synced to marketplace forms with sync enabled.",
+          description: "Your preferences have been saved and automatically synced to all marketplace forms.",
         });
       }
     } else {
