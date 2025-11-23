@@ -102,7 +102,10 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     shipFromCountry: "United States",
     shippingService: "Standard Shipping (3 to 5 business days)",
     shippingLocation: "",
-    acceptReturns: true,
+    acceptReturns: false,
+    returnWithin: "30 days",
+    returnShippingPayer: "Buyer",
+    returnRefundMethod: "Full Refund",
     pricingFormat: "fixed",
     duration: "Good 'Til Canceled",
     buyItNowPrice: "",
@@ -443,6 +446,9 @@ export default function CrosslistComposer() {
       shippingService: ebayForm.shippingService,
       shipFromCountry: ebayForm.shipFromCountry,
       acceptReturns: ebayForm.acceptReturns,
+      returnWithin: ebayForm.returnWithin,
+      returnShippingPayer: ebayForm.returnShippingPayer,
+      returnRefundMethod: ebayForm.returnRefundMethod,
       shippingCostType: ebayForm.shippingCostType,
       shippingMethod: ebayForm.shippingMethod,
     };
@@ -1596,6 +1602,58 @@ export default function CrosslistComposer() {
                     <Label htmlFor="ebay-accept-returns" className="text-sm">Accept returns</Label>
                   </div>
                 </div>
+                
+                {/* Return fields - shown when Accept Returns is enabled */}
+                {ebayForm.acceptReturns && (
+                  <>
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Return Within</Label>
+                      <Select
+                        value={ebayForm.returnWithin || "30 days"}
+                        onValueChange={(value) => handleMarketplaceChange("ebay", "returnWithin", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30 days">30 days</SelectItem>
+                          <SelectItem value="60 days">60 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Return Shipping Payer</Label>
+                      <Select
+                        value={ebayForm.returnShippingPayer || "Buyer"}
+                        onValueChange={(value) => handleMarketplaceChange("ebay", "returnShippingPayer", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Buyer">Buyer</SelectItem>
+                          <SelectItem value="Free for buyer, you pay">Free for buyer, you pay</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1.5 block">Return Refund Method</Label>
+                      <Select
+                        value={ebayForm.returnRefundMethod || "Full Refund"}
+                        onValueChange={(value) => handleMarketplaceChange("ebay", "returnRefundMethod", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Full Refund">Full Refund</SelectItem>
+                          <SelectItem value="Full Refund or Replacement">Full Refund or Replacement</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+                
                 <div>
                   <Label className="text-xs mb-1.5 block">Color <span className="text-red-500">*</span></Label>
                   <Button
