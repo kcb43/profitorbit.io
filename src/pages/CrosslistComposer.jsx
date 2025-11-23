@@ -1875,7 +1875,15 @@ export default function CrosslistComposer() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Item Details Section */}
+              <div className="flex items-center justify-between pb-2 border-b mb-4">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Item Details</Label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <Label className="text-xs mb-1.5 block">Title</Label>
                   <div className="flex gap-2">
@@ -2014,24 +2022,6 @@ export default function CrosslistComposer() {
                     placeholder=""
                     value={generalForm.sku}
                     onChange={(e) => handleGeneralChange("sku", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Zip Code</Label>
-                  <Input
-                    placeholder="Enter Zip Code"
-                    value={generalForm.zip}
-                    onChange={(e) => handleGeneralChange("zip", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Quantity</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={generalForm.quantity}
-                    onChange={(e) => handleGeneralChange("quantity", e.target.value)}
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -2174,6 +2164,35 @@ export default function CrosslistComposer() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Shipping Settings Section */}
+              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
+                <div className="flex items-center gap-2">
+                  <Save className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Shipping Settings</Label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Zip Code</Label>
+                  <Input
+                    placeholder="Enter Zip Code"
+                    value={generalForm.zip}
+                    onChange={(e) => handleGeneralChange("zip", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Quantity</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={generalForm.quantity}
+                    onChange={(e) => handleGeneralChange("quantity", e.target.value)}
+                  />
+                </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">US Size</Label>
                   <Input
@@ -2192,7 +2211,7 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <Label className="text-xs mb-1.5 block">Primary Color</Label>
                   <Button
@@ -2243,7 +2262,15 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Package Details Section */}
+              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Package Details</Label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <Label className="text-xs mb-1.5 block">
                     Package Details <span className="text-red-500">*</span>
