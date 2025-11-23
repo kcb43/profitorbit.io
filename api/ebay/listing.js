@@ -145,8 +145,64 @@ export default async function handler(req, res) {
 
       return res.status(200).json(result);
 
+    } else if (operation === 'GetItem') {
+      const { itemId, includeItemCompatibilityList, includeItemSpecifics } = req.body;
+
+      if (!itemId) {
+        return res.status(400).json({ error: 'itemId is required for GetItem' });
+      }
+
+      // Build XML request for GetItem
+      const xml = buildGetItemXML(itemId, token, {
+        includeItemCompatibilityList: includeItemCompatibilityList === true,
+        includeItemSpecifics: includeItemSpecifics === true,
+      });
+
+      console.log('eBay Trading API request (GetItem):', {
+        baseUrl,
+        itemId,
+        includeItemCompatibilityList,
+        includeItemSpecifics,
+      });
+
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: {
+          'X-EBAY-API-CALL-NAME': 'GetItem',
+          'X-EBAY-API-SITEID': '0', // 0 = US
+          'X-EBAY-API-COMPATIBILITY-LEVEL': '1193', // API version
+          'X-EBAY-API-DEV-NAME': devId,
+          'X-EBAY-API-APP-NAME': clientId || '',
+          'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-DETAIL-LEVEL': '0',
+          'Content-Type': 'text/xml',
+        },
+        body: xml,
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        console.error('eBay Trading API error:', response.status, responseText);
+        return res.status(response.status).json({
+          error: 'eBay Trading API error',
+          details: responseText,
+          status: response.status,
+        });
+      }
+
+      // Parse XML response
+      const result = parseGetItemResponse(responseText);
+
+      console.log('eBay Trading API success (GetItem):', {
+        itemId: result.ItemID,
+        title: result.Title,
+      });
+
+      return res.status(200).json(result);
+
     } else {
-      return res.status(400).json({ error: `Unknown operation: ${operation}` });
+      return res.status(400).json({ error: `Unknown operation: ${operation}. Supported operations: AddFixedPriceItem, GetItem` });
     }
 
   } catch (err) {
@@ -363,7 +419,36 @@ function buildAddFixedPriceItemXML(listingData, token) {
 }
 
 /**
- * Parse Trading API XML response
+ * Build XML request for GetItem
+ */
+function buildGetItemXML(itemId, token, options = {}) {
+  const { includeItemCompatibilityList = false, includeItemSpecifics = false } = options;
+
+  let includeOptions = '';
+  if (includeItemCompatibilityList) {
+    includeOptions += '<IncludeItemCompatibilityList>true</IncludeItemCompatibilityList>';
+  }
+  if (includeItemSpecifics) {
+    includeOptions += '<IncludeItemSpecifics>true</IncludeItemSpecifics>';
+  }
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${escapeXML(token || '')}</eBayAuthToken>
+  </RequesterCredentials>
+  <ErrorLanguage>en_US</ErrorLanguage>
+  <WarningLevel>High</WarningLevel>
+  <ItemID>${escapeXML(itemId)}</ItemID>
+  <DetailLevel>ReturnAll</DetailLevel>
+  ${includeOptions}
+</GetItemRequest>`;
+
+  return xml;
+}
+
+/**
+ * Parse Trading API XML response for AddFixedPriceItem
  */
 function parseTradingAPIResponse(xmlText) {
   // Basic XML parsing - in production, use a proper XML parser
@@ -397,6 +482,122 @@ function parseTradingAPIResponse(xmlText) {
     };
   } catch (error) {
     console.error('Error parsing Trading API response:', error);
+    return {
+      raw: xmlText,
+      parseError: error.message,
+    };
+  }
+}
+
+/**
+ * Parse Trading API XML response for GetItem
+ */
+function parseGetItemResponse(xmlText) {
+  // Basic XML parsing - in production, use a proper XML parser
+  try {
+    const ackMatch = xmlText.match(/<Ack>(.*?)<\/Ack>/);
+    const ack = ackMatch ? ackMatch[1] : null;
+
+    // Extract item ID
+    const itemIdMatch = xmlText.match(/<ItemID>(.*?)<\/ItemID>/);
+    const itemId = itemIdMatch ? itemIdMatch[1] : null;
+
+    // Extract title
+    const titleMatch = xmlText.match(/<Title>(.*?)<\/Title>/);
+    const title = titleMatch ? titleMatch[1] : null;
+
+    // Extract description
+    const descriptionMatch = xmlText.match(/<Description><!\[CDATA\[(.*?)\]\]><\/Description>/s);
+    const description = descriptionMatch ? descriptionMatch[1] : null;
+
+    // Extract listing type
+    const listingTypeMatch = xmlText.match(/<ListingType>(.*?)<\/ListingType>/);
+    const listingType = listingTypeMatch ? listingTypeMatch[1] : null;
+
+    // Extract start price
+    const startPriceMatch = xmlText.match(/<StartPrice currencyID="USD">(.*?)<\/StartPrice>/);
+    const startPrice = startPriceMatch ? startPriceMatch[1] : null;
+
+    // Extract quantity
+    const quantityMatch = xmlText.match(/<Quantity>(.*?)<\/Quantity>/);
+    const quantity = quantityMatch ? quantityMatch[1] : null;
+
+    // Extract condition
+    const conditionIdMatch = xmlText.match(/<ConditionID>(.*?)<\/ConditionID>/);
+    const conditionId = conditionIdMatch ? conditionIdMatch[1] : null;
+    const conditionDisplayNameMatch = xmlText.match(/<ConditionDisplayName>(.*?)<\/ConditionDisplayName>/);
+    const conditionDisplayName = conditionDisplayNameMatch ? conditionDisplayNameMatch[1] : null;
+
+    // Extract category
+    const categoryIdMatch = xmlText.match(/<CategoryID>(.*?)<\/CategoryID>/);
+    const categoryId = categoryIdMatch ? categoryIdMatch[1] : null;
+    const categoryNameMatch = xmlText.match(/<CategoryName>(.*?)<\/CategoryName>/);
+    const categoryName = categoryNameMatch ? categoryNameMatch[1] : null;
+
+    // Extract item specifics
+    const itemSpecifics = [];
+    const nameValueMatches = xmlText.matchAll(/<NameValueList><Name>(.*?)<\/Name>(.*?)<\/NameValueList>/gs);
+    for (const match of nameValueMatches) {
+      const name = match[1];
+      const valueContent = match[2];
+      const values = [];
+      const valueMatches = valueContent.matchAll(/<Value>(.*?)<\/Value>/g);
+      for (const valueMatch of valueMatches) {
+        values.push(valueMatch[1]);
+      }
+      if (name && values.length > 0) {
+        itemSpecifics.push({ name, values });
+      }
+    }
+
+    // Extract pictures
+    const pictures = [];
+    const pictureMatches = xmlText.matchAll(/<PictureURL>(.*?)<\/PictureURL>/g);
+    for (const match of pictureMatches) {
+      pictures.push(match[1]);
+    }
+
+    // Extract seller information
+    const sellerUserIdMatch = xmlText.match(/<UserID>(.*?)<\/UserID>/);
+    const sellerUserId = sellerUserIdMatch ? sellerUserIdMatch[1] : null;
+
+    // Extract shipping details
+    const shippingTypeMatch = xmlText.match(/<ShippingType>(.*?)<\/ShippingType>/);
+    const shippingType = shippingTypeMatch ? shippingTypeMatch[1] : null;
+
+    // Extract return policy
+    const returnsAcceptedMatch = xmlText.match(/<ReturnsAcceptedOption>(.*?)<\/ReturnsAcceptedOption>/);
+    const returnsAccepted = returnsAcceptedMatch ? returnsAcceptedMatch[1] : null;
+
+    // Extract errors
+    const errors = [];
+    const errorMatches = xmlText.matchAll(/<ShortMessage>(.*?)<\/ShortMessage>/g);
+    for (const match of errorMatches) {
+      errors.push(match[1]);
+    }
+
+    return {
+      Ack: ack,
+      ItemID: itemId,
+      Title: title,
+      Description: description,
+      ListingType: listingType,
+      StartPrice: startPrice ? parseFloat(startPrice) : null,
+      Quantity: quantity ? parseInt(quantity) : null,
+      ConditionID: conditionId,
+      ConditionDisplayName: conditionDisplayName,
+      CategoryID: categoryId,
+      CategoryName: categoryName,
+      ItemSpecifics: itemSpecifics.length > 0 ? itemSpecifics : undefined,
+      Pictures: pictures.length > 0 ? pictures : undefined,
+      SellerUserID: sellerUserId,
+      ShippingType: shippingType,
+      ReturnsAccepted: returnsAccepted,
+      Errors: errors.length > 0 ? errors : undefined,
+      raw: xmlText,
+    };
+  } catch (error) {
+    console.error('Error parsing GetItem response:', error);
     return {
       raw: xmlText,
       parseError: error.message,
