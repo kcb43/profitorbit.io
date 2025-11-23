@@ -136,12 +136,13 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     condition: "",
     model: "",
     sku: "",
-    shippingMethod: "Calculated",
-    shippingCostType: "calculated",
+    shippingMethod: "Standard: Small to medium items",
+    shippingCostType: "Calculated: Cost varies based on buyer location",
     shippingCost: "",
     handlingTime: "1 business day",
     shipFromCountry: "United States",
     shippingService: "Standard Shipping (3 to 5 business days)",
+    locationDescriptions: "",
     shippingLocation: "",
     acceptReturns: false,
     returnWithin: "30 days",
@@ -3016,9 +3017,8 @@ export default function CrosslistComposer() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Calculated">Calculated Shipping</SelectItem>
-                      <SelectItem value="Flat">Flat Rate Shipping</SelectItem>
-                      <SelectItem value="Local pickup">Local Pickup Only</SelectItem>
+                      <SelectItem value="Standard: Small to medium items">Standard: Small to medium items</SelectItem>
+                      <SelectItem value="Local pickup only: Sell to buyer nears you">Local pickup only: Sell to buyer nears you</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -3032,9 +3032,8 @@ export default function CrosslistComposer() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="calculated">Calculated</SelectItem>
-                      <SelectItem value="flat">Flat</SelectItem>
-                      <SelectItem value="freight">Freight</SelectItem>
+                      <SelectItem value="Calculated: Cost varies based on buyer location">Calculated: Cost varies based on buyer location</SelectItem>
+                      <SelectItem value="Flat: Same cost regardless of buyer location">Flat: Same cost regardless of buyer location</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -3098,6 +3097,17 @@ export default function CrosslistComposer() {
                       <SelectItem value="USPS Priority Mail">USPS Priority Mail</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                  <Input
+                    placeholder="Optional descriptive text (e.g., 'Spain' or 'Spain, Japan')"
+                    value={ebayForm.locationDescriptions || ""}
+                    onChange={(e) => handleMarketplaceChange("ebay", "locationDescriptions", e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Optional descriptive text shown to buyers (e.g., "Spain" or "Spain, Japan")
+                  </p>
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Shipping Location</Label>
