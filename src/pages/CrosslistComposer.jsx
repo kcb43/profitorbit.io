@@ -462,7 +462,28 @@ export default function CrosslistComposer() {
   }, []);
   
   const populateTemplates = React.useCallback((item) => {
-    setTemplateForms(createInitialTemplateState(item));
+    const itemId = item?.id;
+    
+    // First, load any saved form data for this item
+    const savedGeneral = loadTemplateFromStorage('general', itemId);
+    const savedEbay = loadTemplateFromStorage('ebay', itemId);
+    const savedEtsy = loadTemplateFromStorage('etsy', itemId);
+    const savedMercari = loadTemplateFromStorage('mercari', itemId);
+    const savedFacebook = loadTemplateFromStorage('facebook', itemId);
+    
+    // Start with initial template state from item
+    const initial = createInitialTemplateState(item);
+    
+    // Merge with saved form data (saved data takes precedence over initial state)
+    const merged = {
+      general: savedGeneral ? { ...initial.general, ...savedGeneral } : initial.general,
+      ebay: savedEbay ? { ...initial.ebay, ...savedEbay } : initial.ebay,
+      etsy: savedEtsy ? { ...initial.etsy, ...savedEtsy } : initial.etsy,
+      mercari: savedMercari ? { ...initial.mercari, ...savedMercari } : initial.mercari,
+      facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : initial.facebook,
+    };
+    
+    setTemplateForms(merged);
     setActiveForm("general");
     setSelectedCategoryPath([]);
     setGeneralCategoryPath([]);
@@ -474,39 +495,42 @@ export default function CrosslistComposer() {
     }
   }, []);
   
-  // Load saved templates from localStorage on mount (only if no item is being edited)
+  // Load saved templates from localStorage - per-item if editing, global templates for new items
+  // Note: This runs when item ID changes, but populateTemplates also loads saved data
+  // So we'll only use this for cases where we switch items without calling populateTemplates
   useEffect(() => {
-    if (!currentEditingItemId && bulkSelectedItems.length === 0) {
-      const savedGeneral = loadTemplateFromStorage('general');
-      const savedEbay = loadTemplateFromStorage('ebay');
-      const savedEtsy = loadTemplateFromStorage('etsy');
-      const savedMercari = loadTemplateFromStorage('mercari');
-      const savedFacebook = loadTemplateFromStorage('facebook');
-      
-      if (savedGeneral || savedEbay || savedEtsy || savedMercari || savedFacebook) {
-        setTemplateForms((prev) => {
-          const updated = { ...prev };
-          if (savedGeneral) {
-            updated.general = { ...prev.general, ...savedGeneral };
-          }
-          if (savedEbay) {
-            updated.ebay = { ...prev.ebay, ...savedEbay };
-          }
-          if (savedEtsy) {
-            updated.etsy = { ...prev.etsy, ...savedEtsy };
-          }
-          if (savedMercari) {
-            updated.mercari = { ...prev.mercari, ...savedMercari };
-          }
-          if (savedFacebook) {
-            updated.facebook = { ...prev.facebook, ...savedFacebook };
-          }
-          return updated;
-        });
+    const itemId = currentEditingItemId;
+    
+    // Skip if we don't have an item ID (new item mode will use global templates via different mechanism)
+    if (!itemId) {
+      // For new items, load global templates only on initial mount
+      if (bulkSelectedItems.length === 0) {
+        const savedGeneral = loadTemplateFromStorage('general', null);
+        const savedEbay = loadTemplateFromStorage('ebay', null);
+        const savedEtsy = loadTemplateFromStorage('etsy', null);
+        const savedMercari = loadTemplateFromStorage('mercari', null);
+        const savedFacebook = loadTemplateFromStorage('facebook', null);
+        
+        if (savedGeneral || savedEbay || savedEtsy || savedMercari || savedFacebook) {
+          setTemplateForms((prev) => {
+            const updated = { ...prev };
+            if (savedGeneral) updated.general = { ...prev.general, ...savedGeneral };
+            if (savedEbay) updated.ebay = { ...prev.ebay, ...savedEbay };
+            if (savedEtsy) updated.etsy = { ...prev.etsy, ...savedEtsy };
+            if (savedMercari) updated.mercari = { ...prev.mercari, ...savedMercari };
+            if (savedFacebook) updated.facebook = { ...prev.facebook, ...savedFacebook };
+            return updated;
+          });
+        }
       }
+      return;
     }
+    
+    // For existing items, populateTemplates already loads saved data
+    // So we don't need to do anything here - populateTemplates handles it
+    // This useEffect is mainly for the initial mount case
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, [currentEditingItemId, bulkSelectedItems.length]); // Reload when item ID changes
   
   // Initialize template from first item if available
   useEffect(() => {
@@ -789,19 +813,18 @@ export default function CrosslistComposer() {
     });
   };
   
-  // Template storage keys
-  const TEMPLATE_STORAGE_KEYS = {
-    general: 'crosslist-template-general',
-    ebay: 'crosslist-template-ebay',
-    etsy: 'crosslist-template-etsy',
-    mercari: 'crosslist-template-mercari',
-    facebook: 'crosslist-template-facebook',
+  // Template storage keys - use item-specific keys when editing an item, global templates for new items
+  const getStorageKey = (templateKey, itemId = null) => {
+    if (itemId) {
+      return `crosslist-item-${itemId}-${templateKey}`;
+    }
+    return `crosslist-template-${templateKey}`;
   };
 
-  const saveTemplateToStorage = (templateKey, data) => {
+  const saveTemplateToStorage = (templateKey, data, itemId = null) => {
     if (typeof window === 'undefined') return;
     try {
-      const key = TEMPLATE_STORAGE_KEYS[templateKey];
+      const key = getStorageKey(templateKey, itemId);
       if (key) {
         localStorage.setItem(key, JSON.stringify(data));
       }
@@ -810,10 +833,10 @@ export default function CrosslistComposer() {
     }
   };
 
-  const loadTemplateFromStorage = (templateKey) => {
+  const loadTemplateFromStorage = (templateKey, itemId = null) => {
     if (typeof window === 'undefined') return null;
     try {
-      const key = TEMPLATE_STORAGE_KEYS[templateKey];
+      const key = getStorageKey(templateKey, itemId);
       if (!key) return null;
       const stored = localStorage.getItem(key);
       if (!stored) return null;
@@ -877,10 +900,11 @@ export default function CrosslistComposer() {
 
   const handleTemplateSave = async (templateKey) => {
     const label = TEMPLATE_DISPLAY_NAMES[templateKey] || "Template";
+    const itemId = currentEditingItemId; // Use current item ID if editing an existing item
     
     if (templateKey === 'general') {
-      // Save general form
-      saveTemplateToStorage('general', generalForm);
+      // Save general form (per-item if editing, or as template for new items)
+      saveTemplateToStorage('general', generalForm, itemId);
       
       // Copy general fields to all marketplace forms (only if inheritGeneral is true)
       const updatedForms = { ...templateForms };
@@ -893,28 +917,28 @@ export default function CrosslistComposer() {
         if (generalCategoryPath.length > 0) {
           setSelectedCategoryPath(generalCategoryPath);
         }
-        saveTemplateToStorage('ebay', updatedForms.ebay);
+        saveTemplateToStorage('ebay', updatedForms.ebay, itemId);
       }
       
       // Update Etsy form if sync is enabled
       if (updatedForms.etsy?.inheritGeneral) {
         const etsyUpdates = copyGeneralFieldsToMarketplace(generalForm, 'etsy');
         updatedForms.etsy = { ...updatedForms.etsy, ...etsyUpdates };
-        saveTemplateToStorage('etsy', updatedForms.etsy);
+        saveTemplateToStorage('etsy', updatedForms.etsy, itemId);
       }
       
       // Update Mercari form if sync is enabled
       if (updatedForms.mercari?.inheritGeneral) {
         const mercariUpdates = copyGeneralFieldsToMarketplace(generalForm, 'mercari');
         updatedForms.mercari = { ...updatedForms.mercari, ...mercariUpdates };
-        saveTemplateToStorage('mercari', updatedForms.mercari);
+        saveTemplateToStorage('mercari', updatedForms.mercari, itemId);
       }
       
       // Update Facebook form if sync is enabled
       if (updatedForms.facebook?.inheritGeneral) {
         const facebookUpdates = copyGeneralFieldsToMarketplace(generalForm, 'facebook');
         updatedForms.facebook = { ...updatedForms.facebook, ...facebookUpdates };
-        saveTemplateToStorage('facebook', updatedForms.facebook);
+        saveTemplateToStorage('facebook', updatedForms.facebook, itemId);
       }
       
       // Update state with copied fields
@@ -1012,13 +1036,15 @@ export default function CrosslistComposer() {
         });
       }
     } else {
-      // Save individual marketplace template
+      // Save individual marketplace template (per-item if editing, or as template for new items)
       const marketplaceForm = templateForms[templateKey];
       if (marketplaceForm) {
-        saveTemplateToStorage(templateKey, marketplaceForm);
+        saveTemplateToStorage(templateKey, marketplaceForm, itemId);
         toast({
-          title: `${label} template saved`,
-          description: "Your preferences will be used the next time you compose a listing.",
+          title: `${label} ${itemId ? 'saved' : 'template saved'}`,
+          description: itemId 
+            ? `Your ${label.toLowerCase()} preferences have been saved for this item.` 
+            : "Your preferences will be used the next time you compose a listing.",
         });
       }
     }
