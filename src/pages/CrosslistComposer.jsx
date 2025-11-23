@@ -1096,7 +1096,7 @@ export default function CrosslistComposer() {
     if (ebayForm.categoryId && !ebayForm.itemType) errors.push("Model (Type)");
     if (!ebayForm.condition) errors.push("Condition");
     if (!ebayForm.shippingCost) errors.push("Shipping Cost");
-    if (!ebayForm.acceptReturns) errors.push("Accept Returns");
+    // Only require return fields when Accept Returns is enabled
     if (ebayForm.acceptReturns) {
       if (!ebayForm.returnWithin) errors.push("Return Within");
       if (!ebayForm.returnShippingPayer) errors.push("Return Shipping Payer");
