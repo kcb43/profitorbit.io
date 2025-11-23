@@ -2515,6 +2515,27 @@ export default function CrosslistComposer() {
                   )}
                 </div>
 
+                {/* Condition Dropdown - Always visible */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">
+                    Condition <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={ebayForm.condition || undefined}
+                    onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select condition" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="New">New</SelectItem>
+                      <SelectItem value="Open Box">Open Box</SelectItem>
+                      <SelectItem value="Used">Used</SelectItem>
+                      <SelectItem value="For parts or not working">For parts or not working</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Category Specifics Section */}
                 {ebayForm.categoryId && (
                   <div className="md:col-span-2 space-y-4 border-t pt-4">
@@ -2558,27 +2579,6 @@ export default function CrosslistComposer() {
                         </Select>
                       </div>
                     )}
-
-                    {/* Condition Dropdown */}
-                    <div>
-                      <Label className="text-xs mb-1.5 block">
-                        Condition <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={ebayForm.condition || undefined}
-                        onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select condition" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="New">New</SelectItem>
-                          <SelectItem value="Open Box">Open Box</SelectItem>
-                          <SelectItem value="Used">Used</SelectItem>
-                          <SelectItem value="For parts or not working">For parts or not working</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                 )}
 
