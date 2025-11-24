@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import SoldLookupDialog from "../components/SoldLookupDialog";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
+import { ImageEditor } from "@/components/ImageEditor";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -82,6 +83,8 @@ export default function InventoryPage() {
   const [tagEditorFor, setTagEditorFor] = useState(null);
   const [tagDrafts, setTagDrafts] = useState({});
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
 
   const {
     toggleFavorite,
@@ -749,6 +752,19 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   </Link>
+                  {/* Edit Photo Button */}
+                  {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="absolute bottom-2 right-2 z-10 h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 backdrop-blur-sm"
+                      onClick={(e) => handleEditImage(e, item)}
+                    >
+                      <ImageIcon className="h-3 w-3" />
+                      Edit
+                    </Button>
+                  )}
                     </div>
 
                     <CardContent className="p-3">
@@ -1150,6 +1166,15 @@ export default function InventoryPage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+      {/* Image Editor */}
+      <ImageEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        imageSrc={imageToEdit.url}
+        onSave={handleSaveEditedImage}
+        fileName={`${imageToEdit.itemId}-edited.jpg`}
+      />
 
       <SoldLookupDialog
         open={soldDialogOpen}

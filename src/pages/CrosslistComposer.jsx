@@ -48,6 +48,7 @@ import { useEbayCategoryTreeId, useEbayCategories, useEbayCategoryAspects } from
 import { TagInput } from "@/components/TagInput";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
 import { getEbayItemUrl } from "@/utils/ebayHelpers";
+import { ImageEditor } from "@/components/ImageEditor";
 import {
   Command,
   CommandDialog,
@@ -439,6 +440,10 @@ export default function CrosslistComposer() {
   
   // eBay listing ID state
   const [ebayListingId, setEbayListingId] = useState(null);
+  
+  // Image Editor state
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [imageToEdit, setImageToEdit] = useState({ url: null, photoId: null, marketplace: null, index: null });
   
   // Load listing ID when currentEditingItemId changes
   useEffect(() => {
@@ -2121,6 +2126,62 @@ export default function CrosslistComposer() {
     });
   };
 
+  const handleSaveEditedImage = async (editedFile) => {
+    if (!imageToEdit.photoId || !imageToEdit.marketplace) return;
+
+    try {
+      // Create a new preview URL for the edited image
+      const newPreview = URL.createObjectURL(editedFile);
+      
+      // Update the photo in the correct form
+      setTemplateForms((prev) => {
+        const updated = { ...prev };
+        const formPhotos = imageToEdit.marketplace === 'general' 
+          ? updated.general.photos 
+          : updated[imageToEdit.marketplace]?.photos || [];
+        
+        const updatedPhotos = formPhotos.map((photo, idx) => {
+          if (photo.id === imageToEdit.photoId) {
+            return {
+              ...photo,
+              file: editedFile,
+              preview: newPreview,
+            };
+          }
+          return photo;
+        });
+
+        if (imageToEdit.marketplace === 'general') {
+          updated.general = {
+            ...updated.general,
+            photos: updatedPhotos,
+          };
+        } else {
+          updated[imageToEdit.marketplace] = {
+            ...updated[imageToEdit.marketplace],
+            photos: updatedPhotos,
+          };
+        }
+
+        return updated;
+      });
+
+      toast({
+        title: "Image Updated",
+        description: "The photo has been successfully updated.",
+      });
+      setEditorOpen(false);
+      setImageToEdit({ url: null, photoId: null, marketplace: null, index: null });
+    } catch (error) {
+      console.error("Error updating image:", error);
+      toast({
+        title: "Error Updating Image",
+        description: "Failed to update the image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handlePhotoReorder = (dragIndex, dropIndex, marketplace = 'general') => {
     setTemplateForms((prev) => {
       const photos = marketplace === 'general'
@@ -2519,17 +2580,37 @@ export default function CrosslistComposer() {
                       <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
                         <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePhotoRemove(photo.id);
-                        }}
-                        className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                      >
-                        <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        <span className="sr-only">Remove photo</span>
-                      </button>
+                      <div className="absolute top-1 right-1 flex gap-1 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageToEdit({ 
+                              url: photo.preview, 
+                              photoId: photo.id, 
+                              marketplace: 'general',
+                              index: index + 1
+                            });
+                            setEditorOpen(true);
+                          }}
+                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                          title="Edit photo"
+                        >
+                          <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                          <span className="sr-only">Edit photo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePhotoRemove(photo.id);
+                          }}
+                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                        >
+                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
                     </div>
                   ))}
                   
