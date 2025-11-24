@@ -150,15 +150,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       throw new Error('No 2d context');
     }
 
-    // Check if canvas is tainted before proceeding
-    try {
-      ctx.getImageData(0, 0, 1, 1);
-    } catch (e) {
-      if (e.name === 'SecurityError') {
-        throw new Error('Cannot edit this image due to CORS restrictions. Please use an image from the same origin or ensure proper CORS headers are set.');
-      }
-    }
-
     const rotRad = getRadianAngle(rotation);
 
     // Calculate bounding box of the rotated image
@@ -181,9 +172,22 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     // Draw the rotated image
     try {
       ctx.drawImage(image, 0, 0);
+      
+      // Test if canvas is tainted after drawing
+      try {
+        ctx.getImageData(0, 0, 1, 1);
+      } catch (e) {
+        if (e.name === 'SecurityError' || e.code === 18) {
+          throw new Error('Cannot edit this image due to CORS restrictions. Please use an image from your local device or ensure proper CORS headers are set on the image server.');
+        }
+        throw e;
+      }
     } catch (error) {
       console.error('Error drawing image to canvas:', error);
-      throw new Error('Failed to process image. This may be due to CORS restrictions.');
+      if (error.message && error.message.includes('CORS')) {
+        throw error;
+      }
+      throw new Error('Failed to process image. This may be due to CORS restrictions or an invalid image format.');
     }
 
     const croppedCanvas = document.createElement('canvas');
@@ -242,6 +246,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       }
     } catch (error) {
       console.error('Error processing image:', error);
+      // Show user-friendly error message
+      const errorMessage = error.message || 'Failed to process image. Please try again with a different image.';
+      alert(errorMessage);
     } finally {
       setIsProcessing(false);
     }
