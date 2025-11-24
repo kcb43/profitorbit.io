@@ -1240,21 +1240,11 @@ export default function CrosslistComposer() {
     if (!ebayForm.buyItNowPrice) errors.push("Buy It Now Price");
     if (!ebayForm.color) errors.push("Color");
     if (!ebayForm.categoryId) errors.push("Category");
-    // Only require Type if category is selected and aspects indicate it's required
+    // Only require Type if category is selected and typeAspect exists with values
     if (ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0) {
-      // Check if aspects have loaded
-      if (ebayCategoryAspectsData?.aspects) {
-        // If we found a type aspect, it's likely required (most categories that have it require it)
-        if (typeAspect && !ebayForm.itemType) {
-          errors.push("Model (Type)");
-        }
-        // If aspects loaded but no type aspect found, don't require it
-      } else {
-        // Aspects haven't loaded yet - be conservative and require it
-        // This handles the case where aspects are still loading
-        if (!ebayForm.itemType) {
-          errors.push("Model (Type)");
-        }
+      // Only require if we have the type aspect with values
+      if (typeAspect && typeValues.length > 0 && !ebayForm.itemType) {
+        errors.push(typeAspect.localizedAspectName || "Model (Type)");
       }
     }
     if (!ebayForm.condition) errors.push("Condition");
@@ -1300,6 +1290,7 @@ export default function CrosslistComposer() {
           condition: ebayForm.condition || generalForm.condition || 'New',
           brand: ebayForm.ebayBrand || generalForm.brand || '',
           itemType: ebayForm.itemType || '',
+          itemTypeAspectName: typeAspect?.localizedAspectName || 'Type',
           shippingMethod: ebayForm.shippingMethod,
           shippingCostType: ebayForm.shippingCostType,
           shippingCost: ebayForm.shippingCost,
@@ -2943,35 +2934,27 @@ export default function CrosslistComposer() {
                     
                     {/* Type and Condition side by side */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Type/Model Field - Show if category is selected */}
-                      {shouldShowEbayType && (
+                      {/* Type/Model Field - Only show if typeAspect exists with values from eBay */}
+                      {typeAspect && typeValues.length > 0 && (
                         <div>
                           <Label className="text-xs mb-1.5 block">
-                            {typeAspect?.localizedAspectName || 'Model (Type)'} <span className="text-red-500">*</span>
+                            {typeAspect.localizedAspectName} <span className="text-red-500">*</span>
                           </Label>
-                          {typeValues.length > 0 ? (
-                            <Select
-                              value={ebayForm.itemType || undefined}
-                              onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {typeValues.map((type) => (
-                                  <SelectItem key={type} value={type}>
-                                    {type}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input
-                              placeholder="Enter model/type"
-                              value={ebayForm.itemType || ""}
-                              onChange={(e) => handleMarketplaceChange("ebay", "itemType", e.target.value)}
-                            />
-                          )}
+                          <Select
+                            value={ebayForm.itemType || undefined}
+                            onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={`Select ${typeAspect.localizedAspectName.toLowerCase()}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {typeValues.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       )}
 

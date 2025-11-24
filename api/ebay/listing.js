@@ -228,6 +228,7 @@ function buildAddFixedPriceItemXML(listingData, token) {
     condition,
     brand,
     itemType,
+    itemTypeAspectName = 'Type',
     shippingMethod,
     shippingCostType,
     shippingCost,
@@ -267,11 +268,49 @@ function buildAddFixedPriceItemXML(listingData, token) {
   const listingType = 'FixedPriceItem';
   const listingDuration = duration === "Good 'Til Canceled" ? 'GTC' : duration === "30 Days" ? 'Days_30' : 'Days_7';
 
+  // Map human-readable shipping service names to eBay service codes
+  const shippingServiceMap = {
+    'Standard Shipping (3 to 5 business days)': 'USPSPriority',
+    'Expedited Shipping (1 to 3 business days)': 'USPSPriorityMailExpress',
+    'USPS Priority Mail': 'USPSPriority',
+    'USPS Priority Mail Express': 'USPSPriorityMailExpress',
+    'USPS First Class': 'USPSFirstClass',
+    'USPS Parcel Select': 'USPSParcel',
+    'FedEx Ground': 'FedExGround',
+    'FedEx Home Delivery': 'FedExHomeDelivery',
+    'FedEx Standard Overnight': 'FedExStandardOvernight',
+  };
+  
+  // Get eBay shipping service code
+  const getEbayShippingServiceCode = (serviceName) => {
+    if (!serviceName) return 'USPSPriority'; // Default
+    // Check exact match first
+    if (shippingServiceMap[serviceName]) {
+      return shippingServiceMap[serviceName];
+    }
+    // Check partial matches
+    const serviceLower = serviceName.toLowerCase();
+    if (serviceLower.includes('priority')) {
+      return 'USPSPriority';
+    }
+    if (serviceLower.includes('express') || serviceLower.includes('expedited')) {
+      return 'USPSPriorityMailExpress';
+    }
+    if (serviceLower.includes('first class')) {
+      return 'USPSFirstClass';
+    }
+    // Default fallback
+    return 'USPSPriority';
+  };
+
   // Build shipping details
   // Determine shipping type from shippingCostType
   const isFlat = shippingCostType && shippingCostType.includes('Flat');
   const isCalculated = shippingCostType && shippingCostType.includes('Calculated');
   const isLocalPickup = shippingMethod && shippingMethod.includes('Local pickup');
+  
+  // Parse handling time (format: "1 day", "2 days", etc.)
+  const handlingDays = handlingTime ? parseInt(handlingTime.split(' ')[0]) || 1 : 1;
   
   let shippingXML = '';
   
@@ -285,34 +324,37 @@ function buildAddFixedPriceItemXML(listingData, token) {
           <ShippingService>Pickup</ShippingService>
           <ShippingServiceCost>0.0</ShippingServiceCost>
         </ShippingServiceOptions>
+        <DispatchTimeMax>${handlingDays}</DispatchTimeMax>
       </ShippingDetails>`;
   } else if (isFlat && shippingCost) {
     // Flat rate shipping
+    const ebayServiceCode = getEbayShippingServiceCode(shippingService);
     shippingXML = `
       <ShippingDetails>
         <ShippingType>Flat</ShippingType>
         <ShippingServiceOptions>
           <ShippingServicePriority>1</ShippingServicePriority>
-          <ShippingService>${escapeXML(shippingService)}</ShippingService>
+          <ShippingService>${escapeXML(ebayServiceCode)}</ShippingService>
           <ShippingServiceCost>${escapeXML(shippingCost)}</ShippingServiceCost>
           <ShippingServiceAdditionalCost>0.0</ShippingServiceAdditionalCost>
+          <ShippingSurcharge>0.0</ShippingSurcharge>
         </ShippingServiceOptions>
-        <ShippingTimeMin>${handlingTime ? handlingTime.split(' ')[0] : '1'}</ShippingTimeMin>
-        <ShippingTimeMax>${handlingTime ? handlingTime.split(' ')[0] : '1'}</ShippingTimeMax>
+        <DispatchTimeMax>${handlingDays}</DispatchTimeMax>
       </ShippingDetails>`;
   } else {
     // Calculated shipping (default)
+    const ebayServiceCode = getEbayShippingServiceCode(shippingService);
     shippingXML = `
       <ShippingDetails>
         <ShippingType>Calculated</ShippingType>
         <ShippingServiceOptions>
           <ShippingServicePriority>1</ShippingServicePriority>
-          <ShippingService>ShippingMethodStandard</ShippingService>
+          <ShippingService>${escapeXML(ebayServiceCode)}</ShippingService>
           <ShippingServiceCost>0.0</ShippingServiceCost>
           <ShippingServiceAdditionalCost>0.0</ShippingServiceAdditionalCost>
+          <ShippingSurcharge>0.0</ShippingSurcharge>
         </ShippingServiceOptions>
-        <ShippingTimeMin>${handlingTime ? handlingTime.split(' ')[0] : '1'}</ShippingTimeMin>
-        <ShippingTimeMax>${handlingTime ? handlingTime.split(' ')[0] : '1'}</ShippingTimeMax>
+        <DispatchTimeMax>${handlingDays}</DispatchTimeMax>
       </ShippingDetails>`;
   }
 
@@ -374,7 +416,8 @@ function buildAddFixedPriceItemXML(listingData, token) {
     itemSpecifics.push(`<NameValueList><Name>Brand</Name><Value>${escapeXML(brand)}</Value></NameValueList>`);
   }
   if (itemType) {
-    itemSpecifics.push(`<NameValueList><Name>Type</Name><Value>${escapeXML(itemType)}</Value></NameValueList>`);
+    // Use the actual aspect name from eBay (could be "Model", "Type", etc.)
+    itemSpecifics.push(`<NameValueList><Name>${escapeXML(itemTypeAspectName)}</Name><Value>${escapeXML(itemType)}</Value></NameValueList>`);
   }
   if (itemSpecifics.length > 0) {
     itemSpecificsXML = `<ItemSpecifics>${itemSpecifics.join('')}</ItemSpecifics>`;
