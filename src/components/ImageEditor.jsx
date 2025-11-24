@@ -23,9 +23,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [rotation, setRotation] = useState(0);
   const [brightness, setBrightness] = useState(100); // 0-200, 100 = normal
   const [contrast, setContrast] = useState(100); // 0-200, 100 = normal
+  const [shadows, setShadows] = useState(0); // -100 to 100, 0 = normal
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [aspect, setAspect] = useState(16 / 9);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [filteredImageSrc, setFilteredImageSrc] = useState(null);
   const canvasRef = useRef(null);
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
@@ -38,11 +40,98 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     setRotation(0);
     setBrightness(100);
     setContrast(100);
+    setShadows(0);
   };
 
   const handleRotate = (direction) => {
-    setRotation(prev => direction === 'cw' ? prev + 90 : prev - 90);
+    setRotation(prev => {
+      const newRotation = direction === 'cw' ? prev + 90 : prev - 90;
+      // Normalize to -180 to 180 range
+      return ((newRotation % 360) + 360) % 360 > 180 
+        ? ((newRotation % 360) + 360) % 360 - 360 
+        : ((newRotation % 360) + 360) % 360;
+    });
   };
+
+  // Create filtered preview image for live preview
+  React.useEffect(() => {
+    if (!imageSrc) {
+      setFilteredImageSrc(null);
+      return;
+    }
+
+    const createFilteredPreview = async () => {
+      try {
+        let image;
+        try {
+          image = await createImage(imageSrc);
+        } catch (error) {
+          console.error('Error loading image for preview:', error);
+          setFilteredImageSrc(imageSrc); // Fallback to original
+          return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          setFilteredImageSrc(imageSrc);
+          return;
+        }
+
+        // Apply brightness, contrast, and shadows
+        const brightnessValue = brightness / 100;
+        const contrastValue = contrast / 100;
+        // Shadows: negative values darken, positive values lighten
+        const shadowAdjustment = shadows / 100;
+        
+        // Apply filters
+        ctx.filter = `brightness(${brightnessValue}) contrast(${contrastValue})`;
+        ctx.drawImage(image, 0, 0);
+
+        // Apply shadow adjustment by manipulating pixel data
+        if (shadowAdjustment !== 0) {
+          try {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+              // Adjust RGB channels for shadow effect
+              if (shadowAdjustment < 0) {
+                // Darken (shadows)
+                const factor = 1 + shadowAdjustment;
+                data[i] = Math.max(0, Math.min(255, data[i] * factor)); // R
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] * factor)); // G
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] * factor)); // B
+              } else {
+                // Lighten (highlights)
+                const factor = shadowAdjustment;
+                data[i] = Math.max(0, Math.min(255, data[i] + (255 - data[i]) * factor)); // R
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + (255 - data[i + 1]) * factor)); // G
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + (255 - data[i + 2]) * factor)); // B
+              }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+          } catch (e) {
+            // If pixel manipulation fails (CORS), just use brightness/contrast
+            console.warn('Could not apply shadow adjustment:', e);
+          }
+        }
+
+        // Convert to data URL for preview
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setFilteredImageSrc(dataUrl);
+      } catch (error) {
+        console.error('Error creating filtered preview:', error);
+        setFilteredImageSrc(imageSrc); // Fallback to original
+      }
+    };
+
+    createFilteredPreview();
+  }, [imageSrc, brightness, contrast, shadows]);
 
   // Convert blob URL to data URL to avoid CORS issues
   const blobToDataURL = (blobUrl) => {
