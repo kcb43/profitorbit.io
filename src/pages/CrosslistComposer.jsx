@@ -484,15 +484,23 @@ export default function CrosslistComposer() {
                       newUrl.searchParams.set('autoSelect', String(stateData.autoSelect));
                     }
                     
+                    // Preserve theme before navigation
+                    const currentTheme = localStorage.getItem('theme') || 'default-light';
+                    
                     // Use navigate instead of reload to preserve theme and other preferences
                     navigate(newUrl.pathname + newUrl.search, { replace: true });
                     
-                    // Restore theme if it was changed during navigation
-                    if (savedTheme && localStorage.getItem('theme') !== savedTheme) {
-                      localStorage.setItem('theme', savedTheme);
-                      // Trigger theme update
-                      window.dispatchEvent(new Event('storage'));
-                    }
+                    // Restore theme immediately after navigation
+                    setTimeout(() => {
+                      if (localStorage.getItem('theme') !== currentTheme) {
+                        localStorage.setItem('theme', currentTheme);
+                        // Trigger theme update by dispatching storage event
+                        window.dispatchEvent(new Event('storage'));
+                        // Also update the root element directly
+                        const root = document.documentElement;
+                        root.setAttribute('data-theme', currentTheme);
+                      }
+                    }, 100);
                     
                     // Don't reload - let React handle the state restoration
                     return; // Exit early
@@ -3130,8 +3138,10 @@ export default function CrosslistComposer() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Title Section */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Label htmlFor="ebay-title" className="text-xs mb-1.5 block">Title</Label>
                   <Input
+                    id="ebay-title"
+                    name="ebay-title"
                     placeholder="Enter listing title"
                     value={ebayForm.title || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "title", e.target.value)}
@@ -3141,7 +3151,7 @@ export default function CrosslistComposer() {
                 {/* Description Section */}
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
-                    <Label className="text-xs">Description</Label>
+                    <Label htmlFor="ebay-description" className="text-xs">Description</Label>
                     <Button
                       type="button"
                       variant="outline"
@@ -3154,6 +3164,8 @@ export default function CrosslistComposer() {
                     </Button>
                   </div>
                   <Textarea
+                    id="ebay-description"
+                    name="ebay-description"
                     placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
                     value={ebayForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "description", e.target.value)}
@@ -3168,10 +3180,12 @@ export default function CrosslistComposer() {
 
                 {/* eBay Brand - use same dropdown as general form */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="ebay-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
+                        id="ebay-brand"
+                        name="ebay-brand"
                         placeholder={generalForm.brand || "Enter brand name"}
                         value={ebayForm.ebayBrand || ""}
                         onChange={(e) => handleMarketplaceChange("ebay", "ebayBrand", e.target.value)}
@@ -3218,7 +3232,7 @@ export default function CrosslistComposer() {
 
                 {/* Category Section */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="ebay-category" className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                   <div className="space-y-2">
                     {/* Breadcrumb navigation */}
                     {selectedCategoryPath.length > 0 && (
@@ -3272,6 +3286,8 @@ export default function CrosslistComposer() {
                       </div>
                     ) : sortedCategories.length > 0 ? (
                       <Select
+                        id="ebay-category"
+                        name="ebay-category"
                         value={ebayForm.categoryId ? String(ebayForm.categoryId) : undefined}
                         onValueChange={(value) => {
                           const selectedCategory = sortedCategories.find(
@@ -3303,7 +3319,7 @@ export default function CrosslistComposer() {
                           }
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="ebay-category-trigger">
                           <SelectValue placeholder={selectedCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
@@ -3529,8 +3545,10 @@ export default function CrosslistComposer() {
 
                 {/* SKU Field */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">SKU</Label>
+                  <Label htmlFor="ebay-sku" className="text-xs mb-1.5 block">SKU</Label>
                   <Input
+                    id="ebay-sku"
+                    name="ebay-sku"
                     placeholder={generalForm.sku || "Enter SKU"}
                     value={ebayForm.sku || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "sku", e.target.value)}
