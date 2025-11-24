@@ -223,7 +223,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     };
   };
 
-  const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0, brightness = 100, contrast = 100) => {
+  const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0, brightness = 100, contrast = 100, shadows = 0) => {
     let image;
     try {
       image = await createImage(imageSrc);
@@ -451,38 +451,32 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
             {/* Rotation */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm">Rotation</Label>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleRotate('ccw')}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleRotate('cw')}
-                  >
-                    <RotateCw className="h-4 w-4" />
-                  </Button>
-                </div>
+              <Label className="text-sm mb-2 block">Rotation</Label>
+              <div className="flex gap-2 items-center justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRotate('ccw')}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Rotate Left
+                </Button>
+                <span className="text-sm text-muted-foreground min-w-[60px] text-center">
+                  {rotation}°
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRotate('cw')}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  Rotate Right
+                </Button>
               </div>
-              <Slider
-                value={[rotation]}
-                onValueChange={([value]) => setRotation(value)}
-                min={-180}
-                max={180}
-                step={1}
-                className="w-full"
-              />
-              <div className="text-xs text-muted-foreground text-center mt-1">{rotation}°</div>
             </div>
 
             {/* Brightness */}
