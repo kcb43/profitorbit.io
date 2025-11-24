@@ -137,7 +137,7 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     model: "",
     sku: "",
     shippingMethod: "Standard: Small to medium items",
-    shippingCostType: "Calculated: Cost varies based on buyer location",
+    shippingCostType: "",
     shippingCost: "",
     handlingTime: "1 business day",
     shipFromCountry: "United States",
@@ -453,6 +453,22 @@ export default function CrosslistComposer() {
               }
               if (stateData.currentEditingItemId) {
                 setCurrentEditingItemId(stateData.currentEditingItemId);
+                // Reload item data if we have an item ID and it exists in inventory
+                if (stateData.itemIds) {
+                  const itemIdsArray = stateData.itemIds.split(',').filter(Boolean);
+                  if (itemIdsArray.length > 0) {
+                    // Update URL to include item IDs so the page knows which items to show
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('ids', stateData.itemIds);
+                    if (stateData.autoSelect !== undefined) {
+                      newUrl.searchParams.set('autoSelect', String(stateData.autoSelect));
+                    }
+                    window.history.replaceState({}, '', newUrl.toString());
+                    // Reload page to restore full state with items
+                    window.location.reload();
+                    return; // Exit early since we're reloading
+                  }
+                }
               }
               if (stateData.activeForm) {
                 setActiveForm(stateData.activeForm);
@@ -1313,6 +1329,10 @@ export default function CrosslistComposer() {
       copied.shippingLocation = generalData.zip || "";
       copied.categoryId = generalData.categoryId || "";
       copied.categoryName = generalData.category || "";
+      // Sync zip code to eBay shipping location
+      if (generalData.zip) {
+        copied.shippingLocation = generalData.zip;
+      }
     } else if (marketplaceKey === 'etsy') {
       copied.tags = generalData.tags || "";
     } else if (marketplaceKey === 'mercari') {
@@ -1481,6 +1501,7 @@ export default function CrosslistComposer() {
           toast({
             title: "General template saved",
             description: "Your preferences have been saved, synced to marketplace forms, and the item has been added to inventory.",
+            duration: 2000, // Auto-dismiss after 2 seconds
           });
         } catch (error) {
           console.error("Error saving item to inventory:", error);
@@ -1497,6 +1518,7 @@ export default function CrosslistComposer() {
         toast({
           title: "General template saved",
           description: "Your preferences have been saved and automatically synced to all marketplace forms.",
+          duration: 2000, // Auto-dismiss after 2 seconds
         });
       }
     } else {

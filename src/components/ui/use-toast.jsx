@@ -2,7 +2,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 3000; // 3 seconds auto-dismiss
+const TOAST_REMOVE_DELAY = 2000; // 2 seconds auto-dismiss
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
