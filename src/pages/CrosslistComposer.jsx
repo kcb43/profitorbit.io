@@ -701,7 +701,7 @@ export default function CrosslistComposer() {
   const isValidEbayCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
   // Fetch aspects whenever a category is selected (not just when form is active)
   // This ensures aspects are loaded and ready when user switches to eBay form
-  const { data: ebayCategoryAspectsData } = useEbayCategoryAspects(
+  const { data: ebayCategoryAspectsData, isLoading: isLoadingEbayAspects, error: ebayAspectsError } = useEbayCategoryAspects(
     categoryTreeId,
     ebayForm.categoryId,
     isValidCategoryTreeId && isValidEbayCategoryId
@@ -720,6 +720,60 @@ export default function CrosslistComposer() {
     ? (ebayCategoryAspectsData?.aspects || [])
     : (generalCategoryAspectsData?.aspects || []);
 
+  // eBay-specific aspects (always use eBay aspects for eBay Category Specifics section)
+  // Handle different possible response structures
+  const ebayCategoryAspects = (
+    ebayCategoryAspectsData?.aspects || 
+    ebayCategoryAspectsData?.aspectsForCategory || 
+    ebayCategoryAspectsData?.categoryAspects ||
+    ebayCategoryAspectsData?.data?.aspects ||
+    (Array.isArray(ebayCategoryAspectsData) ? ebayCategoryAspectsData : [])
+  ) || [];
+  
+  // eBay-specific aspect detection
+  const ebayBrandAspect = ebayCategoryAspects.find(aspect => 
+    aspect.localizedAspectName?.toLowerCase() === 'brand' ||
+    aspect.aspectConstraint?.aspectDataType === 'STRING'
+  );
+  
+  // Find Type/Model aspect for eBay - check for various naming patterns
+  // eBay can return "Model", "Type", "Model (Type)", "Console Model", etc.
+  const ebayTypeAspect = ebayCategoryAspects.find(aspect => {
+    // Check multiple possible fields for aspect name
+    const aspectName = (
+      aspect.localizedAspectName?.toLowerCase() || 
+      aspect.aspectName?.toLowerCase() ||
+      aspect.name?.toLowerCase() ||
+      ''
+    ).trim();
+    
+    if (!aspectName) return false;
+    
+    // Check for exact matches first (highest priority)
+    if (aspectName === 'type' || aspectName === 'model') {
+      return true;
+    }
+    
+    // Check for combined names with parentheses
+    if (aspectName === 'model (type)' || aspectName === 'type (model)') {
+      return true;
+    }
+    
+    // Check if it contains "model" (case-insensitive) - this catches "Console Model", "Video Game Console Model", etc.
+    if (aspectName.includes('model')) {
+      return true;
+    }
+    
+    // Check if it contains "type" but NOT "model" (to avoid duplicates)
+    // This catches categories that only have "Type" aspect
+    if (aspectName.includes('type') && !aspectName.includes('model')) {
+      return true;
+    }
+    
+    return false;
+  });
+
+  // General form aspects (for active form display)
   const brandAspect = categoryAspects.find(aspect => 
     aspect.localizedAspectName?.toLowerCase() === 'brand' ||
     aspect.aspectConstraint?.aspectDataType === 'STRING'
@@ -749,22 +803,45 @@ export default function CrosslistComposer() {
   });
   
   // Debug logging (remove in production if needed)
-  if (activeForm === "ebay" && ebayForm.categoryId && categoryAspects.length > 0) {
-    console.log('Category Aspects Debug:', {
+  if (ebayForm.categoryId) {
+    console.log('eBay Category Aspects Debug:', {
       categoryId: ebayForm.categoryId,
-      aspectCount: categoryAspects.length,
-      aspectNames: categoryAspects.map(a => a.localizedAspectName),
-      foundTypeAspect: !!typeAspect,
-      typeAspectName: typeAspect?.localizedAspectName,
-      typeAspectValues: typeAspect?.aspectValues?.length || 0,
+      categoryName: ebayForm.categoryName,
+      aspectCount: ebayCategoryAspects.length,
+      aspectNames: ebayCategoryAspects.map(a => ({
+        localizedAspectName: a.localizedAspectName,
+        aspectName: a.aspectName,
+        name: a.name,
+        fullAspect: a
+      })),
+      foundTypeAspect: !!ebayTypeAspect,
+      typeAspectName: ebayTypeAspect?.localizedAspectName || ebayTypeAspect?.aspectName || ebayTypeAspect?.name,
+      typeAspectValues: ebayTypeAspect?.aspectValues?.length || 0,
+      typeAspectFull: ebayTypeAspect,
+      allAspectsFull: ebayCategoryAspects,
     });
   }
   
-  // Check if Type aspect is required or recommended
+  // Check if Type aspect is required or recommended (for eBay)
+  const isEbayTypeRequired = ebayTypeAspect?.aspectConstraint?.aspectMode === 'REQUIRED' || 
+                             ebayTypeAspect?.aspectConstraint?.aspectMode === 'RECOMMENDED';
+  
+  // Check if Type aspect is required or recommended (for general form)
   const isTypeRequired = typeAspect?.aspectConstraint?.aspectMode === 'REQUIRED' || 
                          typeAspect?.aspectConstraint?.aspectMode === 'RECOMMENDED';
   
-  // Check if category has size-related aspects
+  // Check if category has size-related aspects (use eBay aspects for eBay form)
+  const ebaySizeAspect = ebayCategoryAspects.find(aspect => {
+    const aspectName = aspect.localizedAspectName?.toLowerCase() || '';
+    return aspectName.includes('size') || 
+           aspectName.includes('shirt size') || 
+           aspectName.includes('shoe size') ||
+           aspectName.includes('clothing size') ||
+           aspectName.includes('apparel size') ||
+           aspectName === 'us size' ||
+           aspectName === 'size type';
+  });
+  
   const sizeAspect = categoryAspects.find(aspect => {
     const aspectName = aspect.localizedAspectName?.toLowerCase() || '';
     return aspectName.includes('size') || 
@@ -776,6 +853,7 @@ export default function CrosslistComposer() {
            aspectName === 'size type';
   });
   const hasSizeAspect = !!sizeAspect;
+  const hasEbaySizeAspect = !!ebaySizeAspect;
 
   // For General form, also check if category is selected (fallback if aspects not available)
   const generalHasCategory = generalForm.category && generalForm.category.trim() !== '';
@@ -783,11 +861,37 @@ export default function CrosslistComposer() {
 
   // For eBay form, require both category and size aspect
   const ebayHasCategory = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0;
-  const shouldShowEbaySize = ebayHasCategory && hasSizeAspect;
+  const shouldShowEbaySize = ebayHasCategory && hasEbaySizeAspect;
 
-  const ebayBrands = brandAspect?.aspectValues?.map(val => val.localizedValue) || [];
+  const ebayBrands = ebayBrandAspect?.aspectValues?.map(val => val.localizedValue) || [];
   
-  // Extract type values - handle different possible structures
+  // Extract type values for eBay - handle different possible structures
+  let ebayTypeValues = [];
+  if (ebayTypeAspect) {
+    // Check multiple possible structures for aspect values
+    const aspectValues = ebayTypeAspect.aspectValues || 
+                        ebayTypeAspect.values || 
+                        ebayTypeAspect.value || 
+                        [];
+    
+    if (Array.isArray(aspectValues)) {
+      ebayTypeValues = aspectValues.map(val => {
+        // Handle different possible structures
+        if (typeof val === 'string') {
+          return val;
+        }
+        return val?.localizedValue || val?.value || val?.localizedLabel || val?.label || val;
+      }).filter(Boolean).filter(val => val && typeof val === 'string' && val.trim().length > 0);
+    } else if (aspectValues) {
+      // Single value case
+      const singleVal = aspectValues.localizedValue || aspectValues.value || aspectValues.localizedLabel || aspectValues.label || aspectValues;
+      if (singleVal && typeof singleVal === 'string' && singleVal.trim().length > 0) {
+        ebayTypeValues = [singleVal];
+      }
+    }
+  }
+  
+  // Extract type values for general form - handle different possible structures
   let typeValues = [];
   if (typeAspect?.aspectValues) {
     typeValues = typeAspect.aspectValues.map(val => {
@@ -797,9 +901,9 @@ export default function CrosslistComposer() {
   }
   
   // Determine if we should show/require Type field for eBay
-  // Show if: category is selected AND (typeAspect exists OR aspects are still loading)
+  // Show if: category is selected AND (ebayTypeAspect exists OR aspects are still loading)
   const shouldShowEbayType = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0;
-  const shouldRequireEbayType = shouldShowEbayType && (isTypeRequired || typeAspect);
+  const shouldRequireEbayType = shouldShowEbayType && (isEbayTypeRequired || ebayTypeAspect);
 
   const handleSaveShippingDefaults = () => {
     const defaults = {
@@ -1273,11 +1377,11 @@ export default function CrosslistComposer() {
     if (!ebayForm.buyItNowPrice) errors.push("Buy It Now Price");
     if (!ebayForm.color) errors.push("Color");
     if (!ebayForm.categoryId) errors.push("Category");
-    // Only require Type if category is selected and typeAspect exists with values
+    // Only require Type if category is selected and ebayTypeAspect exists with values
     if (ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0) {
       // Only require if we have the type aspect with values
-      if (typeAspect && typeValues.length > 0 && !ebayForm.itemType) {
-        errors.push(typeAspect.localizedAspectName || "Model (Type)");
+      if (ebayTypeAspect && ebayTypeValues.length > 0 && !ebayForm.itemType) {
+        errors.push(ebayTypeAspect.localizedAspectName || "Model (Type)");
       }
     }
     if (!ebayForm.condition) errors.push("Condition");
@@ -2965,68 +3069,131 @@ export default function CrosslistComposer() {
                       </Button>
                     </div>
                     
-                    {/* Debug info - remove this in production */}
-                    {process.env.NODE_ENV === 'development' && categoryAspects.length > 0 && (
-                      <div className="text-xs text-muted-foreground p-2 bg-muted rounded mb-2">
-                        <strong>Debug:</strong> Found {categoryAspects.length} aspects: {categoryAspects.map(a => a.localizedAspectName).join(', ')}
-                        {typeAspect && <div>Type/Model aspect found: {typeAspect.localizedAspectName} ({typeValues.length} values)</div>}
-                        {!typeAspect && <div className="text-orange-600">No Type/Model aspect found. Available aspects: {categoryAspects.map(a => a.localizedAspectName).join(', ')}</div>}
+                    {/* Loading state */}
+                    {isLoadingEbayAspects && (
+                      <div className="flex items-center gap-2 p-3 border rounded-md mb-4">
+                        <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Loading category specifics...</span>
+                      </div>
+                    )}
+
+                    {/* Error state */}
+                    {ebayAspectsError && !isLoadingEbayAspects && (
+                      <div className="p-3 border rounded-md border-destructive/50 bg-destructive/10 mb-4">
+                        <p className="text-sm text-destructive">Error loading category specifics: {ebayAspectsError.message}</p>
+                        <details className="mt-2 text-xs">
+                          <summary className="cursor-pointer">Full error details</summary>
+                          <pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(ebayAspectsError, null, 2)}</pre>
+                        </details>
+                      </div>
+                    )}
+
+                    {/* Show raw API response in debug mode when no aspects found */}
+                    {process.env.NODE_ENV === 'development' && !isLoadingEbayAspects && !ebayAspectsError && ebayCategoryAspects.length === 0 && ebayCategoryAspectsData && (
+                      <div className="p-3 border rounded-md border-orange-500/50 bg-orange-500/10 mb-4">
+                        <p className="text-sm text-orange-600">⚠️ API returned data but no aspects were found. Raw response:</p>
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs">View raw API response</summary>
+                          <pre className="mt-1 text-xs whitespace-pre-wrap break-all">{JSON.stringify(ebayCategoryAspectsData, null, 2)}</pre>
+                        </details>
+                      </div>
+                    )}
+
+                    {/* Debug info - always show in development for debugging */}
+                    {process.env.NODE_ENV === 'development' && !isLoadingEbayAspects && (
+                      <div className="text-xs text-muted-foreground p-2 bg-muted rounded mb-2 space-y-1">
+                        <div><strong>Debug Info:</strong></div>
+                        <div>Category ID: {ebayForm.categoryId}</div>
+                        <div>Category Name: {ebayForm.categoryName}</div>
+                        {ebayAspectsError && (
+                          <div className="text-red-600">Error: {ebayAspectsError.message}</div>
+                        )}
+                        {!ebayAspectsError && (
+                          <>
+                            <div>Found {ebayCategoryAspects.length} aspect(s):</div>
+                            {ebayCategoryAspects.map((a, idx) => (
+                              <div key={idx} className="ml-2 text-xs">
+                                - Aspect {idx + 1}: {a.localizedAspectName || a.aspectName || a.name || 'Unknown'} 
+                                (Values: {a.aspectValues?.length || 0})
+                                <details className="ml-2">
+                                  <summary className="cursor-pointer">Full data</summary>
+                                  <pre className="text-xs mt-1 whitespace-pre-wrap break-all">{JSON.stringify(a, null, 2)}</pre>
+                                </details>
+                              </div>
+                            ))}
+                            {ebayTypeAspect ? (
+                              <div className="text-green-600">
+                                ✓ Model/Type aspect found: {ebayTypeAspect.localizedAspectName || ebayTypeAspect.aspectName || ebayTypeAspect.name} ({ebayTypeValues.length} values)
+                              </div>
+                            ) : (
+                              <div className="text-orange-600">
+                                ✗ No Model/Type aspect found. Check console for full aspect data.
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                     
                     {/* Type and Condition side by side */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Type/Model Field - Show if typeAspect exists (even if no values yet, to show loading state) */}
-                      {typeAspect && (
+                    {!isLoadingEbayAspects && !ebayAspectsError && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Type/Model Field - Show if ebayTypeAspect exists (even if no values yet, to show loading state) */}
+                        {ebayTypeAspect ? (
+                          <div>
+                            <Label className="text-xs mb-1.5 block">
+                              {ebayTypeAspect.localizedAspectName} <span className="text-red-500">*</span>
+                            </Label>
+                            {ebayTypeValues.length > 0 ? (
+                              <Select
+                                value={ebayForm.itemType || undefined}
+                                onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={`Select ${ebayTypeAspect.localizedAspectName.toLowerCase()}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ebayTypeValues.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                      {type}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div className="text-xs text-muted-foreground p-2 border rounded">
+                                Loading {ebayTypeAspect.localizedAspectName.toLowerCase()} options...
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground p-2 border rounded">
+                            No Model/Type aspect available for this category.
+                          </div>
+                        )}
+
+                        {/* Condition Dropdown */}
                         <div>
                           <Label className="text-xs mb-1.5 block">
-                            {typeAspect.localizedAspectName} <span className="text-red-500">*</span>
+                            Condition <span className="text-red-500">*</span>
                           </Label>
-                          {typeValues.length > 0 ? (
-                            <Select
-                              value={ebayForm.itemType || undefined}
-                              onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={`Select ${typeAspect.localizedAspectName.toLowerCase()}`} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {typeValues.map((type) => (
-                                  <SelectItem key={type} value={type}>
-                                    {type}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="text-xs text-muted-foreground p-2 border rounded">
-                              Loading {typeAspect.localizedAspectName.toLowerCase()} options...
-                            </div>
-                          )}
+                          <Select
+                            value={ebayForm.condition || undefined}
+                            onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select condition" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="New">New</SelectItem>
+                              <SelectItem value="Open Box">Open Box</SelectItem>
+                              <SelectItem value="Used">Used</SelectItem>
+                              <SelectItem value="For parts or not working">For parts or not working</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      )}
-
-                      {/* Condition Dropdown */}
-                      <div>
-                        <Label className="text-xs mb-1.5 block">
-                          Condition <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          value={ebayForm.condition || undefined}
-                          onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="New">New</SelectItem>
-                            <SelectItem value="Open Box">Open Box</SelectItem>
-                            <SelectItem value="Used">Used</SelectItem>
-                            <SelectItem value="For parts or not working">For parts or not working</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
