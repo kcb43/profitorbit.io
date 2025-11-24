@@ -724,8 +724,8 @@ export default function CrosslistComposer() {
 
   // Get category aspects (brands, types, etc.) when a final category is selected
   // For eBay form
-  // Only use categoryTreeId if it's actually loaded and not '0'
-  const isValidCategoryTreeId = !isLoadingCategoryTree && categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && String(categoryTreeId).trim() !== '' && String(categoryTreeId) !== '0';
+  // Note: categoryTreeId can be '0' for US marketplace, so only check for null/undefined/loading
+  const isValidCategoryTreeId = !isLoadingCategoryTree && categoryTreeId !== null && categoryTreeId !== undefined && String(categoryTreeId).trim() !== '';
   const isValidEbayCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
   
   // Log debugging info for aspect fetching
