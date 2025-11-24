@@ -75,12 +75,12 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
               eBay
             </Button>
           ) : (
-            <Button asChild className="w-full">
+          <Button asChild className="w-full">
               <a href={ebaySoldUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
                 <img src={EBAY_ICON_URL} alt="eBay" className="w-4 h-4 object-contain" />
-                eBay (Sold + Completed)
-              </a>
-            </Button>
+              eBay (Sold + Completed)
+            </a>
+          </Button>
           )}
           <Button asChild variant="outline" className="w-full">
             <a href={mercariGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">

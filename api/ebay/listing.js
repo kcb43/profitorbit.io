@@ -195,6 +195,48 @@ export default async function handler(req, res) {
 
       return res.status(200).json(result);
 
+    } else if (operation === 'GetUser') {
+      // Get user information including username
+      // Build XML request for GetUser
+      const xml = buildGetUserXML(token);
+
+      console.log('eBay Trading API request (GetUser):', {
+        baseUrl,
+      });
+
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: {
+          'X-EBAY-API-CALL-NAME': 'GetUser',
+          'X-EBAY-API-SITEID': '0', // 0 = US
+          'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+          'X-EBAY-API-DEV-NAME': devId,
+          'X-EBAY-API-APP-NAME': clientId || '',
+          'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-DETAIL-LEVEL': '0',
+          'Content-Type': 'text/xml',
+        },
+        body: xml,
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        console.error('eBay Trading API error:', response.status, responseText);
+        return res.status(response.status).json({
+          error: 'eBay Trading API error',
+          details: responseText,
+        });
+      }
+
+      const result = parseGetUserResponse(responseText);
+
+      console.log('eBay Trading API success (GetUser):', {
+        userId: result.User?.UserID,
+      });
+
+      return res.status(200).json(result);
+
     } else if (operation === 'GetItem') {
       const { itemId, includeItemCompatibilityList, includeItemSpecifics } = req.body;
 
@@ -528,6 +570,23 @@ function buildGetCategoryFeaturesXML(categoryId, token) {
 }
 
 /**
+ * Build XML request for GetUser
+ */
+function buildGetUserXML(token) {
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetUserRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${escapeXML(token || '')}</eBayAuthToken>
+  </RequesterCredentials>
+  <ErrorLanguage>en_US</ErrorLanguage>
+  <WarningLevel>High</WarningLevel>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetUserRequest>`;
+
+  return xml;
+}
+
+/**
  * Build XML request for GetItem
  */
 function buildGetItemXML(itemId, token, options = {}) {
@@ -591,6 +650,45 @@ function parseTradingAPIResponse(xmlText) {
     };
   } catch (error) {
     console.error('Error parsing Trading API response:', error);
+    return {
+      raw: xmlText,
+      parseError: error.message,
+    };
+  }
+}
+
+/**
+ * Parse Trading API XML response for GetUser
+ */
+function parseGetUserResponse(xmlText) {
+  // Basic XML parsing - in production, use a proper XML parser
+  try {
+    const ackMatch = xmlText.match(/<Ack>(.*?)<\/Ack>/);
+    const ack = ackMatch ? ackMatch[1] : null;
+
+    // Extract user ID
+    const userIdMatch = xmlText.match(/<UserID>(.*?)<\/UserID>/);
+    const userId = userIdMatch ? userIdMatch[1] : null;
+
+    // Extract email (if available)
+    const emailMatch = xmlText.match(/<Email>(.*?)<\/Email>/);
+    const email = emailMatch ? emailMatch[1] : null;
+
+    // Extract feedback score
+    const feedbackScoreMatch = xmlText.match(/<FeedbackScore>(.*?)<\/FeedbackScore>/);
+    const feedbackScore = feedbackScoreMatch ? feedbackScoreMatch[1] : null;
+
+    return {
+      Ack: ack,
+      User: {
+        UserID: userId,
+        Email: email,
+        FeedbackScore: feedbackScore,
+      },
+      raw: xmlText,
+    };
+  } catch (error) {
+    console.error('Error parsing GetUser response:', error);
     return {
       raw: xmlText,
       parseError: error.message,

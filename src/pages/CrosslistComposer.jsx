@@ -425,6 +425,38 @@ export default function CrosslistComposer() {
           localStorage.setItem('ebay_user_token', JSON.stringify(tokenToStore));
           setEbayToken(tokenToStore);
           
+          // Fetch username after token is stored
+          // This will be done in a separate useEffect
+          
+          // Restore saved form state
+          const savedState = sessionStorage.getItem('ebay_oauth_state');
+          if (savedState) {
+            try {
+              const stateData = JSON.parse(savedState);
+              // Restore form state
+              if (stateData.templateForms) {
+                setTemplateForms(stateData.templateForms);
+              }
+              if (stateData.currentEditingItemId) {
+                setCurrentEditingItemId(stateData.currentEditingItemId);
+              }
+              if (stateData.activeForm) {
+                setActiveForm(stateData.activeForm);
+              }
+              if (stateData.selectedCategoryPath) {
+                setSelectedCategoryPath(stateData.selectedCategoryPath);
+              }
+              if (stateData.generalCategoryPath) {
+                setGeneralCategoryPath(stateData.generalCategoryPath);
+              }
+              
+              // Clear saved state
+              sessionStorage.removeItem('ebay_oauth_state');
+            } catch (e) {
+              console.error('Error restoring saved state:', e);
+            }
+          }
+          
           toast({
             title: "eBay account connected!",
             description: "Your eBay account has been successfully connected.",
@@ -455,6 +487,47 @@ export default function CrosslistComposer() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [location, toast]);
+
+  // Fetch eBay username when token is available
+  useEffect(() => {
+    const fetchEbayUsername = async () => {
+      if (ebayToken?.access_token && !ebayUsername) {
+        try {
+          // Check if token is expired
+          if (ebayToken.expires_at && ebayToken.expires_at <= Date.now()) {
+            console.warn('eBay token expired, cannot fetch username');
+            return;
+          }
+
+          const response = await fetch('/api/ebay/listing', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              operation: 'GetUser',
+              userToken: ebayToken.access_token,
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const username = result.User?.UserID;
+            if (username) {
+              setEbayUsername(username);
+              localStorage.setItem('ebay_username', username);
+            }
+          } else {
+            console.error('Failed to fetch eBay username:', response.status);
+          }
+        } catch (error) {
+          console.error('Error fetching eBay username:', error);
+        }
+      }
+    };
+
+    fetchEbayUsername();
+  }, [ebayToken, ebayUsername]);
   
   // Get eBay category tree ID
   const { data: categoryTreeData, isLoading: isLoadingCategoryTree, error: categoryTreeError } = useEbayCategoryTreeId('EBAY_US');
@@ -1265,6 +1338,20 @@ export default function CrosslistComposer() {
   };
   
   const handleConnectEbay = () => {
+    // Save current form state before redirecting to OAuth
+    const stateToSave = {
+      templateForms,
+      currentEditingItemId,
+      activeForm,
+      selectedCategoryPath,
+      generalCategoryPath,
+      itemIds: itemIds.join(','), // Save as comma-separated string
+      autoSelect,
+    };
+    
+    // Save to sessionStorage (cleared when tab closes)
+    sessionStorage.setItem('ebay_oauth_state', JSON.stringify(stateToSave));
+    
     // Initiate eBay OAuth flow
     window.location.href = '/api/ebay/auth';
   };
@@ -2014,6 +2101,77 @@ export default function CrosslistComposer() {
                 ? `Editing ${bulkSelectedItems.length} items. Select an item to configure its listing.`
                 : "Choose marketplaces and set the base fields. Full per-market fine-tuning can follow."}
             </p>
+          </div>
+        </div>
+
+        {/* eBay Account Connection Section - At Top */}
+        <div className="rounded-lg border border-muted-foreground/30 bg-card p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src={EBAY_ICON_URL} alt="eBay" className="w-5 h-5" />
+              <Label className="text-base font-semibold">eBay Account</Label>
+            </div>
+            {ebayToken ? (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("ebay")}>
+                  <RefreshCw className="h-4 w-4" />
+                  Reconnect
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleDisconnectEbay}>
+                  <X className="h-4 w-4" />
+                  Disconnect
+                </Button>
+              </div>
+            ) : (
+              <Button variant="default" size="sm" className="gap-2" onClick={handleConnectEbay}>
+                <Check className="h-4 w-4" />
+                Connect eBay Account
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t">
+            {/* Status */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">Status</Label>
+              <div className="flex items-center gap-2">
+                {ebayToken ? (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Token Expires */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">Token Expires</Label>
+              <div className="text-sm">
+                {ebayToken?.expires_at ? (
+                  <span>{new Date(ebayToken.expires_at).toLocaleDateString()}</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+
+            {/* eBay Account (Username) */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">eBay Account</Label>
+              <div className="text-sm">
+                {ebayUsername ? (
+                  <span className="font-medium">{ebayUsername}</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3603,43 +3761,6 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 rounded-lg border border-muted-foreground/30 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  {ebayToken ? (
-                    <>
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span>eBay account connected</span>
-                      {ebayToken.expires_at && (
-                        <span className="text-xs">
-                          (Expires: {new Date(ebayToken.expires_at).toLocaleDateString()})
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <X className="h-4 w-4 text-red-600" />
-                      <span>eBay account not connected</span>
-                    </>
-                  )}
-                </div>
-                {ebayToken ? (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("ebay")}>
-                      <RefreshCw className="h-4 w-4" />
-                      Reconnect
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleDisconnectEbay}>
-                      <X className="h-4 w-4" />
-                      Disconnect
-                    </Button>
-                  </div>
-                ) : (
-                  <Button variant="default" size="sm" className="gap-2" onClick={handleConnectEbay}>
-                    <Check className="h-4 w-4" />
-                    Connect eBay Account
-                  </Button>
-                )}
-              </div>
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
