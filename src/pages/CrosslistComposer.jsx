@@ -474,14 +474,26 @@ export default function CrosslistComposer() {
                 if (stateData.itemIds) {
                   const itemIdsArray = stateData.itemIds.split(',').filter(Boolean);
                   if (itemIdsArray.length > 0) {
+                    // Preserve theme preference from localStorage before navigation
+                    const savedTheme = localStorage.getItem('theme');
+                    
                     // Update URL to include item IDs so the page knows which items to show
                     const newUrl = new URL(window.location.href);
                     newUrl.searchParams.set('ids', stateData.itemIds);
                     if (stateData.autoSelect !== undefined) {
                       newUrl.searchParams.set('autoSelect', String(stateData.autoSelect));
                     }
+                    
                     // Use navigate instead of reload to preserve theme and other preferences
                     navigate(newUrl.pathname + newUrl.search, { replace: true });
+                    
+                    // Restore theme if it was changed during navigation
+                    if (savedTheme && localStorage.getItem('theme') !== savedTheme) {
+                      localStorage.setItem('theme', savedTheme);
+                      // Trigger theme update
+                      window.dispatchEvent(new Event('storage'));
+                    }
+                    
                     // Don't reload - let React handle the state restoration
                     return; // Exit early
                   }
@@ -2468,11 +2480,13 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title</Label>
                   <div className="flex gap-2">
                     <Input
+                      id="general-title"
+                      name="general-title"
                       placeholder=""
-                      value={generalForm.title}
+                      value={generalForm.title || ""}
                       onChange={(e) => handleGeneralChange("title", e.target.value)}
                       className="w-full"
                     />
@@ -2492,31 +2506,35 @@ export default function CrosslistComposer() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Listing Price</Label>
+                  <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price</Label>
                   <Input
+                    id="general-price"
+                    name="general-price"
                     type="number"
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    value={generalForm.price}
+                    value={generalForm.price || ""}
                     onChange={(e) => handleGeneralChange("price", e.target.value)}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">Price you'll list this item for</p>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Purchase Price</Label>
+                  <Label htmlFor="general-cost" className="text-xs mb-1.5 block">Purchase Price</Label>
                   <Input
+                    id="general-cost"
+                    name="general-cost"
                     type="number"
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    value={generalForm.cost}
+                    value={generalForm.cost || ""}
                     onChange={(e) => handleGeneralChange("cost", e.target.value)}
                   />
                 </div>
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
-                    <Label className="text-xs">Description</Label>
+                    <Label htmlFor="general-description" className="text-xs">Description</Label>
                     <Button
                       type="button"
                       variant="outline"
@@ -2529,19 +2547,23 @@ export default function CrosslistComposer() {
                     </Button>
                   </div>
                   <Textarea
+                    id="general-description"
+                    name="general-description"
                     placeholder=""
-                    value={generalForm.description}
+                    value={generalForm.description || ""}
                     onChange={(e) => handleGeneralChange("description", e.target.value)}
                     className="min-h-[120px]"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Brand</Label>
+                  <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand</Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
+                        id="general-brand"
+                        name="general-brand"
                         placeholder="Enter brand name"
-                        value={generalForm.brand}
+                        value={generalForm.brand || ""}
                         onChange={(e) => handleGeneralChange("brand", e.target.value)}
                         className="flex-1"
                       />
@@ -2620,9 +2642,9 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Condition</Label>
+                  <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition</Label>
                   <Select
-                    value={generalForm.condition || undefined}
+                    value={generalForm.condition ? String(generalForm.condition) : undefined}
                     onValueChange={(value) => {
                       handleGeneralChange("condition", value);
                       // Map condition to eBay form
@@ -2647,10 +2669,12 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">SKU</Label>
+                  <Label htmlFor="general-sku" className="text-xs mb-1.5 block">SKU</Label>
                   <Input
+                    id="general-sku"
+                    name="general-sku"
                     placeholder=""
-                    value={generalForm.sku}
+                    value={generalForm.sku || ""}
                     onChange={(e) => handleGeneralChange("sku", e.target.value)}
                   />
                 </div>
@@ -2866,10 +2890,12 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">Zip Code</Label>
+                  <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
                   <Input
+                    id="general-zip"
+                    name="general-zip"
                     placeholder="Enter Zip Code"
-                    value={generalForm.zip}
+                    value={generalForm.zip || ""}
                     onChange={(e) => handleGeneralChange("zip", e.target.value)}
                   />
                 </div>
@@ -3165,7 +3191,7 @@ export default function CrosslistComposer() {
                     </div>
                   ) : (
                     <Select
-                      value={ebayForm.ebayBrand || generalForm.brand || undefined}
+                      value={ebayForm.ebayBrand || generalForm.brand ? String(ebayForm.ebayBrand || generalForm.brand) : undefined}
                       onValueChange={(value) => {
                         if (value === "custom") {
                           setBrandIsCustom(true);
@@ -3246,7 +3272,7 @@ export default function CrosslistComposer() {
                       </div>
                     ) : sortedCategories.length > 0 ? (
                       <Select
-                        value={ebayForm.categoryId || undefined}
+                        value={ebayForm.categoryId ? String(ebayForm.categoryId) : undefined}
                         onValueChange={(value) => {
                           const selectedCategory = sortedCategories.find(
                             cat => cat.category?.categoryId === value
@@ -3427,7 +3453,7 @@ export default function CrosslistComposer() {
                             </Label>
                             {ebayTypeValues.length > 0 ? (
                               <Select
-                                value={ebayForm.itemType || undefined}
+                                value={ebayForm.itemType ? String(ebayForm.itemType) : undefined}
                                 onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
                               >
                                 <SelectTrigger>
@@ -3459,7 +3485,7 @@ export default function CrosslistComposer() {
                             Condition <span className="text-red-500">*</span>
                           </Label>
                           <Select
-                            value={ebayForm.condition || undefined}
+                            value={ebayForm.condition ? String(ebayForm.condition) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
                           >
                             <SelectTrigger>
@@ -3485,7 +3511,7 @@ export default function CrosslistComposer() {
                       Condition <span className="text-red-500">*</span>
                     </Label>
                     <Select
-                      value={ebayForm.condition || undefined}
+                      value={ebayForm.condition ? String(ebayForm.condition) : undefined}
                       onValueChange={(value) => handleMarketplaceChange("ebay", "condition", value)}
                     >
                       <SelectTrigger>
@@ -3546,7 +3572,7 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Pricing Format <span className="text-red-500">*</span></Label>
                   <Select
-                    value={ebayForm.pricingFormat}
+                    value={ebayForm.pricingFormat ? String(ebayForm.pricingFormat) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "pricingFormat", value)}
                   >
                     <SelectTrigger>
@@ -3561,7 +3587,7 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Duration <span className="text-red-500">*</span></Label>
                   <Select
-                    value={ebayForm.duration}
+                    value={ebayForm.duration ? String(ebayForm.duration) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "duration", value)}
                   >
                     <SelectTrigger>
@@ -3581,7 +3607,7 @@ export default function CrosslistComposer() {
                     min="0"
                     step="0.01"
                     placeholder={generalForm.price || "0.00"}
-                    value={ebayForm.buyItNowPrice}
+                    value={ebayForm.buyItNowPrice || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "buyItNowPrice", e.target.value)}
                   />
                   {generalForm.price && (
@@ -3632,7 +3658,7 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
                   <Select
-                    value={ebayForm.shippingMethod}
+                    value={ebayForm.shippingMethod ? String(ebayForm.shippingMethod) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingMethod", value)}
                   >
                     <SelectTrigger>
@@ -3647,7 +3673,7 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
                   <Select
-                    value={ebayForm.shippingCostType}
+                    value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
                   >
                     <SelectTrigger>
@@ -3666,14 +3692,14 @@ export default function CrosslistComposer() {
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    value={ebayForm.shippingCost}
+                    value={ebayForm.shippingCost || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
                   />
                 </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
                   <Select
-                    value={ebayForm.handlingTime}
+                    value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
                   >
                     <SelectTrigger>
@@ -3689,7 +3715,7 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Ship From Country</Label>
                   <Select
-                    value={ebayForm.shipFromCountry || "United States"}
+                    value={ebayForm.shipFromCountry ? String(ebayForm.shipFromCountry) : "United States"}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shipFromCountry", value)}
                   >
                     <SelectTrigger>
@@ -3707,7 +3733,7 @@ export default function CrosslistComposer() {
                 <div>
                   <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
                   <Select
-                    value={ebayForm.shippingService}
+                    value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
                   >
                     <SelectTrigger>
@@ -3735,7 +3761,7 @@ export default function CrosslistComposer() {
                   <Label className="text-xs mb-1.5 block">Shipping Location</Label>
                   <Input
                     placeholder={generalForm.zip || "Zip or region"}
-                    value={ebayForm.shippingLocation}
+                    value={ebayForm.shippingLocation || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "shippingLocation", e.target.value)}
                   />
                   {generalForm.zip && (
@@ -3762,7 +3788,7 @@ export default function CrosslistComposer() {
                     <div>
                       <Label className="text-xs mb-1.5 block">Return Within <span className="text-red-500">*</span></Label>
                       <Select
-                        value={ebayForm.returnWithin || "30 days"}
+                        value={ebayForm.returnWithin ? String(ebayForm.returnWithin) : "30 days"}
                         onValueChange={(value) => handleMarketplaceChange("ebay", "returnWithin", value)}
                       >
                         <SelectTrigger>
@@ -3777,7 +3803,7 @@ export default function CrosslistComposer() {
                     <div>
                       <Label className="text-xs mb-1.5 block">Return Shipping Payer <span className="text-red-500">*</span></Label>
                       <Select
-                        value={ebayForm.returnShippingPayer || "Buyer"}
+                        value={ebayForm.returnShippingPayer ? String(ebayForm.returnShippingPayer) : "Buyer"}
                         onValueChange={(value) => handleMarketplaceChange("ebay", "returnShippingPayer", value)}
                       >
                         <SelectTrigger>
@@ -3792,7 +3818,7 @@ export default function CrosslistComposer() {
                     <div>
                       <Label className="text-xs mb-1.5 block">Return Refund Method <span className="text-red-500">*</span></Label>
                       <Select
-                        value={ebayForm.returnRefundMethod || "Full Refund"}
+                        value={ebayForm.returnRefundMethod ? String(ebayForm.returnRefundMethod) : "Full Refund"}
                         onValueChange={(value) => handleMarketplaceChange("ebay", "returnRefundMethod", value)}
                       >
                         <SelectTrigger>
