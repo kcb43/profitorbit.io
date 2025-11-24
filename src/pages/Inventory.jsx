@@ -288,6 +288,57 @@ export default function InventoryPage() {
     },
   });
 
+  // Mutation for updating item image
+  const updateImageMutation = useMutation({
+    mutationFn: async ({ itemId, file }) => {
+      // Upload the edited image
+      const uploadPayload = file instanceof File ? file : new File([file], file.name || 'edited-image.jpg', { type: file.type || 'image/jpeg' });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+      
+      // Update the item with new image URL
+      await base44.entities.InventoryItem.update(itemId, { image_url: file_url });
+      return file_url;
+    },
+    onSuccess: (fileUrl, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      toast({
+        title: "Image Updated",
+        description: "The item image has been successfully updated.",
+      });
+      setEditorOpen(false);
+      setImageToEdit({ url: null, itemId: null });
+    },
+    onError: (error) => {
+      console.error("Error updating image:", error);
+      toast({
+        title: "Error Updating Image",
+        description: "Failed to update the image. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditImage = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (item.image_url && item.image_url !== DEFAULT_IMAGE_URL) {
+      setImageToEdit({ url: item.image_url, itemId: item.id });
+      setEditorOpen(true);
+    } else {
+      toast({
+        title: "No Image to Edit",
+        description: "This item doesn't have a custom image to edit.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveEditedImage = (editedFile) => {
+    if (imageToEdit.itemId) {
+      updateImageMutation.mutate({ itemId: imageToEdit.itemId, file: editedFile });
+    }
+  };
+
   const inventorySummary = React.useMemo(() => {
     const items = Array.isArray(inventoryItems) ? inventoryItems : [];
 
@@ -752,20 +803,20 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   </Link>
-                  {/* Edit Photo Button */}
-                  {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="absolute bottom-2 right-2 z-10 h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 backdrop-blur-sm"
-                      onClick={(e) => handleEditImage(e, item)}
-                    >
-                      <ImageIcon className="h-3 w-3" />
-                      Edit
-                    </Button>
-                  )}
                     </div>
+                    {/* Edit Photo Button */}
+                    {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute bottom-2 right-2 z-10 h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 backdrop-blur-sm"
+                        onClick={(e) => handleEditImage(e, item)}
+                      >
+                        <ImageIcon className="h-3 w-3" />
+                        Edit
+                      </Button>
+                    )}
 
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-2">
