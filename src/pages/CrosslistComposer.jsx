@@ -726,14 +726,39 @@ export default function CrosslistComposer() {
   );
   
   // Find Type/Model aspect - check for various naming patterns
+  // eBay can return "Model", "Type", "Model (Type)", etc.
   const typeAspect = categoryAspects.find(aspect => {
     const aspectName = aspect.localizedAspectName?.toLowerCase() || '';
-    return aspectName === 'type' || 
-           aspectName === 'model' ||
-           aspectName.includes('type') && aspectName.includes('model') ||
-           aspectName === 'model (type)' ||
-           aspectName === 'type (model)';
+    // Check for exact matches first
+    if (aspectName === 'type' || aspectName === 'model') {
+      return true;
+    }
+    // Check for combined names
+    if (aspectName.includes('type') && aspectName.includes('model')) {
+      return true;
+    }
+    // Check for variations with parentheses
+    if (aspectName === 'model (type)' || aspectName === 'type (model)') {
+      return true;
+    }
+    // Check if it contains "model" (case-insensitive)
+    if (aspectName.includes('model')) {
+      return true;
+    }
+    return false;
   });
+  
+  // Debug logging (remove in production if needed)
+  if (activeForm === "ebay" && ebayForm.categoryId && categoryAspects.length > 0) {
+    console.log('Category Aspects Debug:', {
+      categoryId: ebayForm.categoryId,
+      aspectCount: categoryAspects.length,
+      aspectNames: categoryAspects.map(a => a.localizedAspectName),
+      foundTypeAspect: !!typeAspect,
+      typeAspectName: typeAspect?.localizedAspectName,
+      typeAspectValues: typeAspect?.aspectValues?.length || 0,
+    });
+  }
   
   // Check if Type aspect is required or recommended
   const isTypeRequired = typeAspect?.aspectConstraint?.aspectMode === 'REQUIRED' || 
@@ -761,7 +786,15 @@ export default function CrosslistComposer() {
   const shouldShowEbaySize = ebayHasCategory && hasSizeAspect;
 
   const ebayBrands = brandAspect?.aspectValues?.map(val => val.localizedValue) || [];
-  const typeValues = typeAspect?.aspectValues?.map(val => val.localizedValue) || [];
+  
+  // Extract type values - handle different possible structures
+  let typeValues = [];
+  if (typeAspect?.aspectValues) {
+    typeValues = typeAspect.aspectValues.map(val => {
+      // Handle different possible structures
+      return val.localizedValue || val.value || val;
+    }).filter(Boolean);
+  }
   
   // Determine if we should show/require Type field for eBay
   // Show if: category is selected AND (typeAspect exists OR aspects are still loading)
@@ -2932,29 +2965,44 @@ export default function CrosslistComposer() {
                       </Button>
                     </div>
                     
+                    {/* Debug info - remove this in production */}
+                    {process.env.NODE_ENV === 'development' && categoryAspects.length > 0 && (
+                      <div className="text-xs text-muted-foreground p-2 bg-muted rounded mb-2">
+                        <strong>Debug:</strong> Found {categoryAspects.length} aspects: {categoryAspects.map(a => a.localizedAspectName).join(', ')}
+                        {typeAspect && <div>Type/Model aspect found: {typeAspect.localizedAspectName} ({typeValues.length} values)</div>}
+                        {!typeAspect && <div className="text-orange-600">No Type/Model aspect found. Available aspects: {categoryAspects.map(a => a.localizedAspectName).join(', ')}</div>}
+                      </div>
+                    )}
+                    
                     {/* Type and Condition side by side */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Type/Model Field - Only show if typeAspect exists with values from eBay */}
-                      {typeAspect && typeValues.length > 0 && (
+                      {/* Type/Model Field - Show if typeAspect exists (even if no values yet, to show loading state) */}
+                      {typeAspect && (
                         <div>
                           <Label className="text-xs mb-1.5 block">
                             {typeAspect.localizedAspectName} <span className="text-red-500">*</span>
                           </Label>
-                          <Select
-                            value={ebayForm.itemType || undefined}
-                            onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={`Select ${typeAspect.localizedAspectName.toLowerCase()}`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {typeValues.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {typeValues.length > 0 ? (
+                            <Select
+                              value={ebayForm.itemType || undefined}
+                              onValueChange={(value) => handleMarketplaceChange("ebay", "itemType", value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={`Select ${typeAspect.localizedAspectName.toLowerCase()}`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {typeValues.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="text-xs text-muted-foreground p-2 border rounded">
+                              Loading {typeAspect.localizedAspectName.toLowerCase()} options...
+                            </div>
+                          )}
                         </div>
                       )}
 
