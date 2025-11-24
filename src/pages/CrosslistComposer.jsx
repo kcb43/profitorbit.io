@@ -136,7 +136,7 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     condition: "",
     model: "",
     sku: "",
-    shippingMethod: "Standard: Small to medium items",
+    shippingMethod: "",
     shippingCostType: "",
     shippingCost: "",
     handlingTime: "1 business day",
