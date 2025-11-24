@@ -463,10 +463,10 @@ export default function CrosslistComposer() {
                     if (stateData.autoSelect !== undefined) {
                       newUrl.searchParams.set('autoSelect', String(stateData.autoSelect));
                     }
-                    window.history.replaceState({}, '', newUrl.toString());
-                    // Reload page to restore full state with items
-                    window.location.reload();
-                    return; // Exit early since we're reloading
+                    // Use navigate instead of reload to preserve theme and other preferences
+                    navigate(newUrl.pathname + newUrl.search, { replace: true });
+                    // Don't reload - let React handle the state restoration
+                    return; // Exit early
                   }
                 }
               }
@@ -2140,7 +2140,8 @@ export default function CrosslistComposer() {
           </div>
         </div>
 
-        {/* eBay Account Connection Section - At Top */}
+        {/* eBay Account Connection Section - At Top (Only show on eBay form) */}
+        {activeForm === "ebay" && (
         <div className="rounded-lg border border-muted-foreground/30 bg-card p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
