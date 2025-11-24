@@ -435,6 +435,30 @@ export default function CrosslistComposer() {
     return null;
   });
   
+  // eBay listing ID state
+  const [ebayListingId, setEbayListingId] = useState(null);
+  
+  // Load listing ID when currentEditingItemId changes
+  useEffect(() => {
+    if (currentEditingItemId) {
+      const stored = localStorage.getItem(`ebay_listing_${currentEditingItemId}`);
+      if (stored) {
+        setEbayListingId(stored);
+      } else {
+        // Check inventory item for listing ID
+        const inventoryItem = inventory.find(item => item.id === currentEditingItemId);
+        if (inventoryItem?.ebay_listing_id) {
+          localStorage.setItem(`ebay_listing_${currentEditingItemId}`, inventoryItem.ebay_listing_id);
+          setEbayListingId(inventoryItem.ebay_listing_id);
+        } else {
+          setEbayListingId(null);
+        }
+      }
+    } else {
+      setEbayListingId(null);
+    }
+  }, [currentEditingItemId, inventory]);
+  
   // Handle OAuth callback from URL params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
