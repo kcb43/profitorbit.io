@@ -44,14 +44,83 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     setRotation(prev => direction === 'cw' ? prev + 90 : prev - 90);
   };
 
-  // Create edited image with filters and cropping
-  const createImage = (url) =>
-    new Promise((resolve, reject) => {
-      const image = new Image();
-      image.addEventListener('load', () => resolve(image));
-      image.addEventListener('error', (error) => reject(error));
-      image.src = url;
+  // Convert blob URL to data URL to avoid CORS issues
+  const blobToDataURL = (blobUrl) => {
+    return new Promise((resolve, reject) => {
+      fetch(blobUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        })
+        .catch(reject);
     });
+  };
+
+  // Create edited image with filters and cropping
+  const createImage = async (url) => {
+    // If it's a blob URL, convert to data URL to avoid CORS issues
+    let imageUrl = url;
+    if (url && url.startsWith('blob:')) {
+      try {
+        imageUrl = await blobToDataURL(url);
+      } catch (error) {
+        console.warn('Failed to convert blob to data URL, using original:', error);
+        // Continue with blob URL if conversion fails
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      
+      // Handle CORS - set crossOrigin for external images
+      // Blob URLs, data URLs, and same-origin URLs don't need crossOrigin
+      if (imageUrl && !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+        // Check if it's a same-origin URL
+        try {
+          const urlObj = new URL(imageUrl, window.location.origin);
+          const isSameOrigin = urlObj.origin === window.location.origin;
+          if (!isSameOrigin) {
+            image.crossOrigin = 'anonymous';
+          }
+        } catch (e) {
+          // Invalid URL, try with crossOrigin anyway
+          image.crossOrigin = 'anonymous';
+        }
+      }
+      
+      image.addEventListener('load', () => {
+        // Verify image loaded correctly
+        if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+          resolve(image);
+        } else {
+          reject(new Error('Image failed to load completely'));
+        }
+      });
+      
+      image.addEventListener('error', (error) => {
+        // If CORS fails, try without crossOrigin (for same-origin images)
+        if (image.crossOrigin && imageUrl && !imageUrl.startsWith('data:')) {
+          const fallbackImage = new Image();
+          fallbackImage.addEventListener('load', () => {
+            if (fallbackImage.complete && fallbackImage.naturalWidth > 0 && fallbackImage.naturalHeight > 0) {
+              resolve(fallbackImage);
+            } else {
+              reject(new Error('Image failed to load completely'));
+            }
+          });
+          fallbackImage.addEventListener('error', (err) => reject(err));
+          fallbackImage.src = imageUrl;
+        } else {
+          reject(new Error(`Failed to load image: ${error.message || 'Unknown error'}`));
+        }
+      });
+      
+      image.src = imageUrl;
+    });
+  };
 
   const getRadianAngle = (degreeValue) => {
     return (degreeValue * Math.PI) / 180;
@@ -66,12 +135,28 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   };
 
   const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0, brightness = 100, contrast = 100) => {
-    const image = await createImage(imageSrc);
+    let image;
+    try {
+      image = await createImage(imageSrc);
+    } catch (error) {
+      console.error('Error loading image:', error);
+      throw new Error('Failed to load image. This may be due to CORS restrictions. Please ensure the image is from the same origin or has proper CORS headers.');
+    }
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
       throw new Error('No 2d context');
+    }
+
+    // Check if canvas is tainted before proceeding
+    try {
+      ctx.getImageData(0, 0, 1, 1);
+    } catch (e) {
+      if (e.name === 'SecurityError') {
+        throw new Error('Cannot edit this image due to CORS restrictions. Please use an image from the same origin or ensure proper CORS headers are set.');
+      }
     }
 
     const rotRad = getRadianAngle(rotation);
@@ -94,7 +179,12 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     ctx.filter = `brightness(${brightnessValue}) contrast(${contrastValue})`;
 
     // Draw the rotated image
-    ctx.drawImage(image, 0, 0);
+    try {
+      ctx.drawImage(image, 0, 0);
+    } catch (error) {
+      console.error('Error drawing image to canvas:', error);
+      throw new Error('Failed to process image. This may be due to CORS restrictions.');
+    }
 
     const croppedCanvas = document.createElement('canvas');
     const croppedCtx = croppedCanvas.getContext('2d');

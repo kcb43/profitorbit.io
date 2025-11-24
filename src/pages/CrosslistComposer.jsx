@@ -25,6 +25,7 @@ import {
   ArrowRight,
   Rocket,
   ImagePlus,
+  ImageIcon,
   X,
   RefreshCw,
   Save,
