@@ -145,6 +145,56 @@ export default async function handler(req, res) {
 
       return res.status(200).json(result);
 
+    } else if (operation === 'GetCategoryFeatures') {
+      // Get category features to check if Item Specifics are enabled
+      const { categoryId } = req.body;
+
+      if (!categoryId) {
+        return res.status(400).json({ error: 'categoryId is required for GetCategoryFeatures' });
+      }
+
+      // Build XML request for GetCategoryFeatures
+      const xml = buildGetCategoryFeaturesXML(categoryId, token);
+
+      console.log('eBay Trading API request (GetCategoryFeatures):', {
+        baseUrl,
+        categoryId,
+      });
+
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: {
+          'X-EBAY-API-CALL-NAME': 'GetCategoryFeatures',
+          'X-EBAY-API-SITEID': '0', // 0 = US
+          'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+          'X-EBAY-API-DEV-NAME': devId,
+          'X-EBAY-API-APP-NAME': clientId || '',
+          'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-DETAIL-LEVEL': '0',
+          'Content-Type': 'text/xml',
+        },
+        body: xml,
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        console.error('eBay Trading API error:', response.status, responseText);
+        return res.status(response.status).json({
+          error: 'eBay Trading API error',
+          details: responseText,
+        });
+      }
+
+      const result = parseTradingAPIResponse(responseText);
+
+      console.log('eBay Trading API success (GetCategoryFeatures):', {
+        categoryId,
+        itemSpecificsEnabled: result.Category?.ItemSpecificsEnabled,
+      });
+
+      return res.status(200).json(result);
+
     } else if (operation === 'GetItem') {
       const { itemId, includeItemCompatibilityList, includeItemSpecifics } = req.body;
 
@@ -454,6 +504,25 @@ function buildAddFixedPriceItemXML(listingData, token) {
     <SellerProvidedTitle>${escapeXML(title)}</SellerProvidedTitle>
   </Item>
 </AddFixedPriceItemRequest>`;
+
+  return xml;
+}
+
+/**
+ * Build XML request for GetCategoryFeatures
+ */
+function buildGetCategoryFeaturesXML(categoryId, token) {
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetCategoryFeaturesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${escapeXML(token || '')}</eBayAuthToken>
+  </RequesterCredentials>
+  <ErrorLanguage>en_US</ErrorLanguage>
+  <WarningLevel>High</WarningLevel>
+  <CategoryID>${escapeXML(categoryId)}</CategoryID>
+  <FeatureID>ItemSpecificsEnabled</FeatureID>
+  <AllFeaturesForCategory>true</AllFeaturesForCategory>
+</GetCategoryFeaturesRequest>`;
 
   return xml;
 }

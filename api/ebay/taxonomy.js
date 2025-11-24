@@ -327,14 +327,30 @@ export default async function handler(req, res) {
       }
 
       const taxonomyData = await taxonomyResp.json();
+      
+      // Log full response for debugging
       console.log('eBay Taxonomy API success (getItemAspectsForCategory):', {
         category_tree_id,
         category_id,
         responseKeys: Object.keys(taxonomyData),
         aspectCount: taxonomyData.aspects?.length || 0,
-        aspects: taxonomyData.aspects?.map(a => a.localizedAspectName) || [],
+        aspects: taxonomyData.aspects?.map(a => ({
+          name: a.localizedAspectName || a.aspectName || a.name,
+          full: a
+        })) || [],
         fullResponse: JSON.stringify(taxonomyData, null, 2),
       });
+      
+      // If no aspects found, log a warning
+      if (!taxonomyData.aspects || taxonomyData.aspects.length === 0) {
+        console.warn('⚠️ No aspects returned for category:', {
+          category_tree_id,
+          category_id,
+          responseStructure: Object.keys(taxonomyData),
+          fullResponse: JSON.stringify(taxonomyData, null, 2),
+        });
+      }
+      
       return res.status(200).json(taxonomyData);
 
     } else {
