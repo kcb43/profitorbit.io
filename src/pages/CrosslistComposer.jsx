@@ -29,7 +29,6 @@ import {
   RefreshCw,
   Save,
   Package,
-  Check,
   Palette,
   ArrowLeft,
   GripVertical,
@@ -45,6 +44,22 @@ import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { useEbayCategoryTreeId, useEbayCategories, useEbayCategoryAspects } from "@/hooks/useEbayCategorySuggestions";
 import { TagInput } from "@/components/TagInput";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
+import {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -371,6 +386,8 @@ export default function CrosslistComposer() {
   const [selectedCategoryPath, setSelectedCategoryPath] = useState([]);
   const [generalCategoryPath, setGeneralCategoryPath] = useState([]);
   const [descriptionGeneratorOpen, setDescriptionGeneratorOpen] = useState(false);
+  const [brandSearchOpen, setBrandSearchOpen] = useState(false);
+  const [categorySearchOpen, setCategorySearchOpen] = useState(false);
   const photoInputRef = React.useRef(null);
   const ebayPhotoInputRef = React.useRef(null);
   const etsyPhotoInputRef = React.useRef(null);
@@ -2541,29 +2558,65 @@ export default function CrosslistComposer() {
                       </Button>
                     </div>
                   ) : (
-                    <Select
-                      value={generalForm.brand || undefined}
-                      onValueChange={(value) => {
-                        if (value === "custom") {
-                          setBrandIsCustom(true);
-                          handleGeneralChange("brand", "");
-                        } else {
-                          handleGeneralChange("brand", value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select or Custom" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {POPULAR_BRANDS.map((brand) => (
-                          <SelectItem key={brand} value={brand}>
-                            {brand}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="custom">Add Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Popover open={brandSearchOpen} onOpenChange={setBrandSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={brandSearchOpen}
+                          className="w-full justify-between"
+                        >
+                          {generalForm.brand
+                            ? POPULAR_BRANDS.find((brand) => brand === generalForm.brand) || generalForm.brand
+                            : "Search brand..."}
+                          <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search brand..." />
+                          <CommandList>
+                            <CommandEmpty>No brand found.</CommandEmpty>
+                            <CommandGroup>
+                              {POPULAR_BRANDS.map((brand) => (
+                                <CommandItem
+                                  key={brand}
+                                  value={brand}
+                                  onSelect={() => {
+                                    handleGeneralChange("brand", brand);
+                                    setBrandSearchOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      generalForm.brand === brand ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {brand}
+                                </CommandItem>
+                              ))}
+                              <CommandItem
+                                value="custom"
+                                onSelect={() => {
+                                  setBrandIsCustom(true);
+                                  setBrandSearchOpen(false);
+                                  handleGeneralChange("brand", "");
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    "opacity-0"
+                                  )}
+                                />
+                                Add Custom...
+                              </CommandItem>
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
                 <div>
@@ -3277,25 +3330,8 @@ export default function CrosslistComposer() {
                     )}
                   </div>
                 </div>
-                
-                {/* US Size - Only show when category is selected and has size aspect */}
-                {shouldShowEbaySize && (
-                  <div>
-                    <Label className="text-xs mb-1.5 block">US Size</Label>
-                    <Input
-                      placeholder={generalForm.size || "e.g. Men's M, 10, XL"}
-                      value={ebayForm.size || generalForm.size || ""}
-                      onChange={(e) => handleMarketplaceChange("ebay", "size", e.target.value)}
-                    />
-                    {generalForm.size && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Inherited {generalForm.size} from General form. You can edit this field.
-                      </p>
-                    )}
-                  </div>
-                )}
 
-                {/* Category Specifics Section */}
+                {/* Category Specifics Section - Always show when category is selected */}
                 {ebayForm.categoryId && (
                   <div className="md:col-span-2 space-y-3 border-t pt-4">
                     <div className="flex items-center justify-between mb-2">
