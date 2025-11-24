@@ -728,19 +728,23 @@ export default function CrosslistComposer() {
   const isValidCategoryTreeId = !isLoadingCategoryTree && categoryTreeId !== null && categoryTreeId !== undefined && String(categoryTreeId).trim() !== '';
   const isValidEbayCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
   
-  // Log debugging info for aspect fetching
+  // Log debugging info for aspect fetching (only log when values actually change)
   useEffect(() => {
-    if (ebayForm.categoryId) {
+    if (ebayForm.categoryId && !isLoadingCategoryTree) {
+      const validTreeId = categoryTreeId !== null && categoryTreeId !== undefined && String(categoryTreeId).trim() !== '';
+      const validCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
+      const willFetch = validTreeId && validCategoryId;
+      
       console.log('🔍 Aspect fetch check:', {
         isLoadingCategoryTree,
         categoryTreeId,
         categoryId: ebayForm.categoryId,
-        isValidCategoryTreeId,
-        isValidEbayCategoryId,
-        willFetch: isValidCategoryTreeId && isValidEbayCategoryId,
+        isValidCategoryTreeId: validTreeId,
+        isValidEbayCategoryId: validCategoryId,
+        willFetch,
       });
     }
-  }, [isLoadingCategoryTree, categoryTreeId, ebayForm.categoryId, isValidCategoryTreeId, isValidEbayCategoryId]);
+  }, [isLoadingCategoryTree, categoryTreeId, ebayForm.categoryId]); // Removed computed values from deps
   
   // Fetch aspects whenever a category is selected (not just when form is active)
   // This ensures aspects are loaded and ready when user switches to eBay form
