@@ -165,13 +165,17 @@ export function useEbayCategoryAspects(categoryTreeId, categoryId, enabled = tru
   return useQuery({
     queryKey: ['ebayCategoryAspects', categoryTreeId, categoryId],
     queryFn: async () => {
-      // Validate that both categoryTreeId and categoryId are valid (not '0', 0, null, or undefined)
+      // Validate that categoryTreeId exists (note: '0' might be valid for US marketplace)
+      // But categoryId cannot be '0' (root category)
       const treeIdStr = String(categoryTreeId || '');
       const catIdStr = String(categoryId || '');
-      const isInvalidTreeId = !categoryTreeId || categoryTreeId === '0' || categoryTreeId === 0 || treeIdStr.trim() === '' || treeIdStr === '0';
+      // categoryTreeId can be '0' for US marketplace, so only check for null/undefined/empty
+      const isInvalidTreeId = categoryTreeId === null || categoryTreeId === undefined || treeIdStr.trim() === '';
+      // categoryId cannot be '0' (root) or null/undefined
       const isInvalidCatId = !categoryId || categoryId === '0' || categoryId === 0 || catIdStr.trim() === '' || catIdStr === '0';
       
       if (isInvalidTreeId || isInvalidCatId) {
+        console.warn('⚠️ Skipping aspect fetch - invalid parameters:', { categoryTreeId, categoryId, isInvalidTreeId, isInvalidCatId });
         return null;
       }
 
@@ -186,7 +190,8 @@ export function useEbayCategoryAspects(categoryTreeId, categoryId, enabled = tru
       
       return response.json();
     },
-    enabled: enabled && !!categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && !!categoryId && categoryId !== '0' && categoryId !== 0,
+    // Note: categoryTreeId can be '0' for US marketplace, so only check for null/undefined
+    enabled: enabled && categoryTreeId !== null && categoryTreeId !== undefined && !!categoryId && categoryId !== '0' && categoryId !== 0,
     staleTime: 24 * 60 * 60 * 1000, // Cache for 24 hours
     retry: 1,
   });
