@@ -457,8 +457,24 @@ export default function CrosslistComposer() {
   }, [location, toast]);
   
   // Get eBay category tree ID
-  const { data: categoryTreeData, isLoading: isLoadingCategoryTree } = useEbayCategoryTreeId('EBAY_US');
-  const categoryTreeId = categoryTreeData?.categoryTreeId;
+  const { data: categoryTreeData, isLoading: isLoadingCategoryTree, error: categoryTreeError } = useEbayCategoryTreeId('EBAY_US');
+  // Extract category tree ID - check multiple possible response structures
+  const categoryTreeId = categoryTreeData?.categoryTreeId || categoryTreeData?.category_tree_id || categoryTreeData?.categoryTree?.categoryTreeId || null;
+  
+  // Debug logging for category tree ID
+  useEffect(() => {
+    if (!isLoadingCategoryTree) {
+      if (categoryTreeError) {
+        console.error('❌ Error loading category tree ID:', categoryTreeError);
+      } else if (!categoryTreeId) {
+        console.warn('⚠️ Category tree ID not found. Response:', categoryTreeData);
+      } else if (categoryTreeId === '0' || categoryTreeId === 0) {
+        console.error('❌ Invalid category tree ID (0). Response:', categoryTreeData);
+      } else {
+        console.log('✅ Category tree ID loaded:', categoryTreeId);
+      }
+    }
+  }, [categoryTreeId, categoryTreeData, isLoadingCategoryTree, categoryTreeError]);
   
   // Get the current level of categories based on selected path for eBay form
   const ebayCurrentCategoryId = selectedCategoryPath.length > 0 
@@ -697,12 +713,28 @@ export default function CrosslistComposer() {
 
   // Get category aspects (brands, types, etc.) when a final category is selected
   // For eBay form
-  const isValidCategoryTreeId = categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && String(categoryTreeId).trim() !== '';
+  // Only use categoryTreeId if it's actually loaded and not '0'
+  const isValidCategoryTreeId = !isLoadingCategoryTree && categoryTreeId && categoryTreeId !== '0' && categoryTreeId !== 0 && String(categoryTreeId).trim() !== '' && String(categoryTreeId) !== '0';
   const isValidEbayCategoryId = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0 && String(ebayForm.categoryId).trim() !== '';
+  
+  // Log debugging info for aspect fetching
+  useEffect(() => {
+    if (ebayForm.categoryId) {
+      console.log('🔍 Aspect fetch check:', {
+        isLoadingCategoryTree,
+        categoryTreeId,
+        categoryId: ebayForm.categoryId,
+        isValidCategoryTreeId,
+        isValidEbayCategoryId,
+        willFetch: isValidCategoryTreeId && isValidEbayCategoryId,
+      });
+    }
+  }, [isLoadingCategoryTree, categoryTreeId, ebayForm.categoryId, isValidCategoryTreeId, isValidEbayCategoryId]);
+  
   // Fetch aspects whenever a category is selected (not just when form is active)
   // This ensures aspects are loaded and ready when user switches to eBay form
   const { data: ebayCategoryAspectsData, isLoading: isLoadingEbayAspects, error: ebayAspectsError } = useEbayCategoryAspects(
-    categoryTreeId,
+    categoryTreeId || null, // Pass null if invalid to prevent API call
     ebayForm.categoryId,
     isValidCategoryTreeId && isValidEbayCategoryId
   );
