@@ -464,14 +464,25 @@ export default function CrosslistComposer() {
   // Debug logging for category tree ID
   useEffect(() => {
     if (!isLoadingCategoryTree) {
+      console.log('🔍 Category Tree ID Debug:', {
+        isLoadingCategoryTree,
+        categoryTreeData,
+        categoryTreeId,
+        categoryTreeError,
+        extractedFrom: {
+          categoryTreeId: categoryTreeData?.categoryTreeId,
+          category_tree_id: categoryTreeData?.category_tree_id,
+          categoryTree_categoryTreeId: categoryTreeData?.categoryTree?.categoryTreeId,
+        },
+      });
+      
       if (categoryTreeError) {
         console.error('❌ Error loading category tree ID:', categoryTreeError);
       } else if (!categoryTreeId) {
-        console.warn('⚠️ Category tree ID not found. Response:', categoryTreeData);
-      } else if (categoryTreeId === '0' || categoryTreeId === 0) {
-        console.error('❌ Invalid category tree ID (0). Response:', categoryTreeData);
+        console.warn('⚠️ Category tree ID not found. Full response:', categoryTreeData);
       } else {
-        console.log('✅ Category tree ID loaded:', categoryTreeId);
+        // Note: "0" might be a valid category tree ID for US marketplace!
+        console.log('✅ Category tree ID:', categoryTreeId, typeof categoryTreeId);
       }
     }
   }, [categoryTreeId, categoryTreeData, isLoadingCategoryTree, categoryTreeError]);
