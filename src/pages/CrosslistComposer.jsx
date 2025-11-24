@@ -2534,17 +2534,37 @@ export default function CrosslistComposer() {
                       <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                         Main
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePhotoRemove(generalForm.photos[0].id);
-                        }}
-                        className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        <span className="sr-only">Remove photo</span>
-                      </button>
+                      <div className="absolute top-1 right-1 flex gap-1 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageToEdit({ 
+                              url: generalForm.photos[0].preview, 
+                              photoId: generalForm.photos[0].id, 
+                              marketplace: 'general',
+                              index: 0
+                            });
+                            setEditorOpen(true);
+                          }}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                          title="Edit photo"
+                        >
+                          <ImageIcon className="h-3 w-3" />
+                          <span className="sr-only">Edit photo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePhotoRemove(generalForm.photos[0].id);
+                          }}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                   
