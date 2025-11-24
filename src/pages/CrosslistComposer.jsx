@@ -2211,6 +2211,7 @@ export default function CrosslistComposer() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Bulk item selector */}
         {bulkSelectedItems.length > 1 && (
