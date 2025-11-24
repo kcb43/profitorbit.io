@@ -3249,17 +3249,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
                           <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
                         </div>
+                      <div className="absolute top-1 right-1 flex gap-1 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageToEdit({ 
+                              url: photo.preview || photo.imageUrl, 
+                              photoId: photo.id, 
+                              marketplace: 'ebay',
+                              index: index + 1
+                            });
+                            setEditorOpen(true);
+                          }}
+                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                          title="Edit photo"
+                        >
+                          <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                          <span className="sr-only">Edit photo</span>
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePhotoRemove(photo.id, 'ebay');
                           }}
-                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
+                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                         >
                           <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
                           <span className="sr-only">Remove photo</span>
                         </button>
+                      </div>
                       </div>
                     ))}
                     
