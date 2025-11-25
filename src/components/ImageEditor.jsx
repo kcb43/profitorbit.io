@@ -524,14 +524,14 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-5xl max-h-[95vh] sm:max-h-[95vh] max-h-screen overflow-hidden flex flex-col p-0 w-[95vw] sm:w-full">
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <DialogTitle>Edit Image</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Crop Area */}
-          <div className="relative bg-black flex-shrink-0" style={{ height: '350px' }}>
+          <div className="relative bg-black flex-shrink-0 h-[250px] sm:h-[300px] md:h-[350px] max-h-[40vh] sm:max-h-[45vh] md:max-h-none">
             <Cropper
               image={filteredImageSrc || imageSrc}
               crop={crop}
