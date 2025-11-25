@@ -24,8 +24,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [brightness, setBrightness] = useState(100); // 0-200, 100 = normal
   const [contrast, setContrast] = useState(100); // 0-200, 100 = normal
   const [shadows, setShadows] = useState(0); // -100 to 100, 0 = normal
+  const [sharpness, setSharpness] = useState(0); // -100 to 100, 0 = normal
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [aspect, setAspect] = useState(16 / 9);
+  const [aspect, setAspect] = useState(1); // Default to 1:1 (square) as recommended
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredImageSrc, setFilteredImageSrc] = useState(null);
   const canvasRef = useRef(null);
@@ -41,6 +42,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     setBrightness(100);
     setContrast(100);
     setShadows(0);
+    setSharpness(0);
+    setAspect(1); // Reset to recommended square
   };
 
   const handleRotate = (direction) => {
@@ -81,15 +84,89 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           return;
         }
 
-        // Apply brightness, contrast, and shadows
+        // Apply brightness, contrast, shadows, and sharpness
         const brightnessValue = brightness / 100;
         const contrastValue = contrast / 100;
         // Shadows: negative values darken, positive values lighten
         const shadowAdjustment = shadows / 100;
+        // Sharpness: positive values sharpen, negative values blur
+        const sharpnessValue = sharpness / 100;
         
         // Apply filters
         ctx.filter = `brightness(${brightnessValue}) contrast(${contrastValue})`;
         ctx.drawImage(image, 0, 0);
+        
+        // Apply sharpness using convolution
+        if (sharpnessValue !== 0) {
+          try {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Create a copy for sharpening/blurring
+            const tempData = new Uint8ClampedArray(data);
+            
+            // Apply unsharp mask for sharpening or blur for negative values
+            if (sharpnessValue > 0) {
+              // Sharpening kernel
+              const kernel = [
+                0, -sharpnessValue * 0.5, 0,
+                -sharpnessValue * 0.5, 1 + sharpnessValue * 2, -sharpnessValue * 0.5,
+                0, -sharpnessValue * 0.5, 0
+              ];
+              
+              for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                  for (let c = 0; c < 3; c++) { // RGB channels
+                    let sum = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                      for (let kx = -1; kx <= 1; kx++) {
+                        const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                        const kidx = (ky + 1) * 3 + (kx + 1);
+                        sum += data[idx] * kernel[kidx];
+                      }
+                    }
+                    const idx = (y * width + x) * 4 + c;
+                    tempData[idx] = Math.max(0, Math.min(255, sum));
+                  }
+                }
+              }
+            } else if (sharpnessValue < 0) {
+              // Blur (simple box blur)
+              const blurAmount = Math.abs(sharpnessValue);
+              for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                  for (let c = 0; c < 3; c++) {
+                    let sum = 0;
+                    let count = 0;
+                    const radius = Math.floor(blurAmount * 2);
+                    for (let ky = -radius; ky <= radius; ky++) {
+                      for (let kx = -radius; kx <= radius; kx++) {
+                        const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                        if (idx >= 0 && idx < data.length) {
+                          sum += data[idx];
+                          count++;
+                        }
+                      }
+                    }
+                    const idx = (y * width + x) * 4 + c;
+                    tempData[idx] = count > 0 ? sum / count : data[idx];
+                  }
+                }
+              }
+            }
+            
+            // Copy back the processed data
+            for (let i = 0; i < data.length; i++) {
+              data[i] = tempData[i];
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+          } catch (e) {
+            console.warn('Could not apply sharpness adjustment:', e);
+          }
+        }
 
         // Apply shadow adjustment by manipulating pixel data
         if (shadowAdjustment !== 0) {
@@ -131,7 +208,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     };
 
     createFilteredPreview();
-  }, [imageSrc, brightness, contrast, shadows]);
+  }, [imageSrc, brightness, contrast, shadows, sharpness]);
 
   // Convert blob URL to data URL to avoid CORS issues
   const blobToDataURL = (blobUrl) => {
@@ -223,7 +300,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     };
   };
 
-  const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0, brightness = 100, contrast = 100, shadows = 0) => {
+  const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0, brightness = 100, contrast = 100, shadows = 0, sharpness = 0) => {
     let image;
     try {
       image = await createImage(imageSrc);
@@ -273,34 +350,97 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         canManipulatePixels = false;
       }
 
-      // Apply shadow adjustment if possible
-      if (shadows !== 0 && canManipulatePixels) {
+      // Apply shadow and sharpness adjustments if possible
+      if ((shadows !== 0 || sharpness !== 0) && canManipulatePixels) {
         try {
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const data = imageData.data;
-          const shadowAdjustment = shadows / 100;
+          const width = canvas.width;
+          const height = canvas.height;
           
-          for (let i = 0; i < data.length; i += 4) {
-            // Adjust RGB channels for shadow effect
-            if (shadowAdjustment < 0) {
-              // Darken (shadows)
-              const factor = 1 + shadowAdjustment;
-              data[i] = Math.max(0, Math.min(255, data[i] * factor)); // R
-              data[i + 1] = Math.max(0, Math.min(255, data[i + 1] * factor)); // G
-              data[i + 2] = Math.max(0, Math.min(255, data[i + 2] * factor)); // B
+          // Apply shadow adjustment
+          if (shadows !== 0) {
+            const shadowAdjustment = shadows / 100;
+            for (let i = 0; i < data.length; i += 4) {
+              // Adjust RGB channels for shadow effect
+              if (shadowAdjustment < 0) {
+                // Darken (shadows)
+                const factor = 1 + shadowAdjustment;
+                data[i] = Math.max(0, Math.min(255, data[i] * factor)); // R
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] * factor)); // G
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] * factor)); // B
+              } else {
+                // Lighten (highlights)
+                const factor = shadowAdjustment;
+                data[i] = Math.max(0, Math.min(255, data[i] + (255 - data[i]) * factor)); // R
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + (255 - data[i + 1]) * factor)); // G
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + (255 - data[i + 2]) * factor)); // B
+              }
+            }
+          }
+          
+          // Apply sharpness
+          if (sharpness !== 0) {
+            const sharpnessValue = sharpness / 100;
+            const tempData = new Uint8ClampedArray(data);
+            
+            if (sharpnessValue > 0) {
+              // Sharpening
+              const kernel = [
+                0, -sharpnessValue * 0.5, 0,
+                -sharpnessValue * 0.5, 1 + sharpnessValue * 2, -sharpnessValue * 0.5,
+                0, -sharpnessValue * 0.5, 0
+              ];
+              
+              for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                  for (let c = 0; c < 3; c++) {
+                    let sum = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                      for (let kx = -1; kx <= 1; kx++) {
+                        const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                        const kidx = (ky + 1) * 3 + (kx + 1);
+                        sum += data[idx] * kernel[kidx];
+                      }
+                    }
+                    const idx = (y * width + x) * 4 + c;
+                    tempData[idx] = Math.max(0, Math.min(255, sum));
+                  }
+                }
+              }
             } else {
-              // Lighten (highlights)
-              const factor = shadowAdjustment;
-              data[i] = Math.max(0, Math.min(255, data[i] + (255 - data[i]) * factor)); // R
-              data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + (255 - data[i + 1]) * factor)); // G
-              data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + (255 - data[i + 2]) * factor)); // B
+              // Blur
+              const blurAmount = Math.abs(sharpnessValue);
+              const radius = Math.floor(blurAmount * 2);
+              for (let y = radius; y < height - radius; y++) {
+                for (let x = radius; x < width - radius; x++) {
+                  for (let c = 0; c < 3; c++) {
+                    let sum = 0;
+                    let count = 0;
+                    for (let ky = -radius; ky <= radius; ky++) {
+                      for (let kx = -radius; kx <= radius; kx++) {
+                        const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                        sum += data[idx];
+                        count++;
+                      }
+                    }
+                    const idx = (y * width + x) * 4 + c;
+                    tempData[idx] = count > 0 ? sum / count : data[idx];
+                  }
+                }
+              }
+            }
+            
+            // Copy processed data back
+            for (let i = 0; i < data.length; i++) {
+              data[i] = tempData[i];
             }
           }
           
           ctx.putImageData(imageData, 0, 0);
         } catch (e) {
-          console.warn('Could not apply shadow adjustment to final image:', e);
-          // Continue without shadow adjustment
+          console.warn('Could not apply adjustments to final image:', e);
+          // Continue without adjustments
         }
       }
     } catch (error) {
@@ -358,7 +498,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         rotation,
         brightness,
         contrast,
-        shadows
+        shadows,
+        sharpness
       );
 
       if (croppedImage && onSave) {
@@ -409,15 +550,17 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           <div className="px-6 py-4 border-t space-y-4 overflow-y-auto max-h-[300px]">
             {/* Aspect Ratio */}
             <div>
-              <Label className="text-sm mb-2 block">Aspect Ratio</Label>
-              <div className="flex gap-2">
+              <Label className="text-sm mb-2 block">Crop Aspect Ratio</Label>
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant={aspect === 1 ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setAspect(1)}
+                  className="relative"
                 >
                   1:1
+                  {aspect === 1 && <span className="ml-1 text-xs opacity-75">(Recommended)</span>}
                 </Button>
                 <Button
                   type="button"
@@ -444,6 +587,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   Free
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                1:1 (Square) is recommended for all platforms
+              </p>
             </div>
 
             {/* Zoom */}
@@ -538,6 +684,38 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 className="w-full"
               />
               <div className="text-xs text-muted-foreground text-center mt-1">{contrast}%</div>
+            </div>
+
+            {/* Shadows */}
+            <div>
+              <Label className="text-sm mb-2 block">Shadows</Label>
+              <Slider
+                value={[shadows]}
+                onValueChange={([value]) => setShadows(value)}
+                min={-100}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+              <div className="text-xs text-muted-foreground text-center mt-1">
+                {shadows > 0 ? `+${shadows}` : shadows} (Left: Darken, Right: Lighten)
+              </div>
+            </div>
+
+            {/* Sharpness */}
+            <div>
+              <Label className="text-sm mb-2 block">Sharpness</Label>
+              <Slider
+                value={[sharpness]}
+                onValueChange={([value]) => setSharpness(value)}
+                min={-100}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+              <div className="text-xs text-muted-foreground text-center mt-1">
+                {sharpness > 0 ? `+${sharpness}` : sharpness} (Left: Blur, Right: Sharpen)
+              </div>
             </div>
 
             {/* Reset Button */}
