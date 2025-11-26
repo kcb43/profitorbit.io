@@ -108,10 +108,10 @@ export default function TipOfTheDay() {
   ];
 
   return (
-    <Card className="border-0 shadow-sm bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 lg:h-auto h-full flex flex-col">
-      <CardContent className="p-6 lg:pb-6 pb-3 flex flex-col lg:h-auto h-full">
+    <Card className="border-0 shadow-sm bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 h-full flex flex-col">
+      <CardContent className="p-6 lg:pb-6 pb-3 flex flex-col h-full">
         {/* Tip of the Day Section */}
-        <div className="flex flex-col mb-4 lg:mb-3">
+        <div className="flex flex-col mb-4">
           <div className="flex items-start gap-4 mb-4">
             <Lightbulb className="w-6 h-6 md:w-8 md:h-8 text-yellow-600 dark:text-yellow-400 mt-1 flex-shrink-0" />
             <p className="font-semibold text-yellow-900 dark:text-yellow-200 md:text-lg">Tip of the Day</p>
@@ -120,7 +120,7 @@ export default function TipOfTheDay() {
         </div>
 
         {/* Quick Actions Section - At the bottom, only on desktop */}
-        <div className="hidden lg:block border-t border-yellow-300 dark:border-yellow-700 pt-3">
+        <div className="hidden lg:block border-t border-yellow-300 dark:border-yellow-700 pt-3 lg:pb-0 pb-0 mt-auto">
           <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-200 mb-2">Quick Actions</p>
           <div className="grid grid-cols-2 gap-2">
             {quickActions.map((action) => {
