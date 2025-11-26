@@ -74,13 +74,13 @@ export default function TipOfTheDay() {
   }, []);
 
   return (
-    <Card className="border-0 shadow-sm bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 h-full flex flex-col">
-      <CardContent className="p-6 flex flex-col h-full">
+    <Card className="border-0 shadow-sm bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 lg:h-auto h-full flex flex-col">
+      <CardContent className="p-6 flex flex-col lg:h-auto h-full">
         <div className="flex items-start gap-4 mb-4">
           <Lightbulb className="w-6 h-6 md:w-8 md:h-8 text-yellow-600 dark:text-yellow-400 mt-1 flex-shrink-0" />
           <p className="font-semibold text-yellow-900 dark:text-yellow-200 md:text-lg">Tip of the Day</p>
         </div>
-        <p className="text-sm md:text-base text-yellow-800 dark:text-yellow-300 line-clamp-3 flex-1">"{tip}"</p>
+        <p className="text-sm md:text-base text-yellow-800 dark:text-yellow-300 lg:line-clamp-none lg:flex-none line-clamp-3 flex-1">"{tip}"</p>
       </CardContent>
     </Card>
   );
