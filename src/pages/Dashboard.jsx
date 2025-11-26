@@ -19,7 +19,6 @@ import RecentSales from "../components/dashboard/RecentSales";
 import Gamification from "../components/dashboard/Gamification";
 import TipOfTheDay from "../components/dashboard/TipOfTheDay";
 import MarketIntelligence from "../components/dashboard/MarketIntelligence";
-import QuickActions from "../components/dashboard/QuickActions";
 
 const SUPPORTED_MARKETPLACES = [
   {
@@ -355,12 +354,9 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Dashboard cards: Your Progress, Quick Actions (desktop only), Tip of the Day, Market Intelligence */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+        {/* Dashboard cards: Your Progress, Tip of the Day (with Quick Actions), Market Intelligence */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <Gamification sales={sales} stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }} />
-          <div className="hidden lg:block">
-            <QuickActions />
-          </div>
           <TipOfTheDay />
           <MarketIntelligence />
         </div>
