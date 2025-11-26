@@ -117,7 +117,7 @@ export default function TipOfTheDay() {
       </CardHeader>
       <CardContent className="p-6 pt-0 flex flex-col h-full">
         {/* Tip of the Day Section */}
-        <div className="flex flex-col mb-0 lg:mb-[300px]">
+        <div className="flex flex-col mb-0 lg:mb-[350px]">
           <p className="text-sm text-yellow-800 dark:text-yellow-300 line-clamp-3">"{tip}"</p>
         </div>
 
