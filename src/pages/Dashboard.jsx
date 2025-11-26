@@ -359,9 +359,9 @@ export default function Dashboard() {
         {/* Dashboard cards: Your Progress, Tip of the Day (with Quick Actions), Market Intelligence */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Left column: Your Progress + Tax Summary */}
-          <div className="flex flex-col lg:h-full">
+          <div className="flex flex-col lg:h-full lg:gap-6 space-y-6">
             <Gamification sales={sales} stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }} />
-            <div className="hidden lg:block lg:mt-6 lg:mt-auto">
+            <div className="hidden lg:block lg:mt-auto">
               <TaxSummary sales={sales} totalProfit={totalProfit} />
             </div>
           </div>
