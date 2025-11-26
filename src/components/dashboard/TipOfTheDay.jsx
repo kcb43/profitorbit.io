@@ -122,7 +122,7 @@ export default function TipOfTheDay() {
         </div>
 
         {/* Quick Actions Section - Aligned with Tax Summary content, only on desktop */}
-        <div className="hidden lg:block border-t border-yellow-300 dark:border-yellow-700 pt-4 lg:mt-8 mt-auto">
+        <div className="hidden lg:block border-t border-yellow-300 dark:border-yellow-700 pt-4 mt-auto">
           <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-200 mb-2">Quick Actions</p>
           <div className="grid grid-cols-2 gap-2">
             {quickActions.map((action) => {
