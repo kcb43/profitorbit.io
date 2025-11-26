@@ -389,7 +389,7 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 lg:-mt-[200px]">
           {/* Profit Chart (Mobile: 1st, Desktop: Row 1, Col 1-4) */}
           <div className="lg:col-span-4 lg:row-start-1">
             <ProfitChart sales={sales} range={profitChartRange} onRangeChange={setProfitChartRange} />
