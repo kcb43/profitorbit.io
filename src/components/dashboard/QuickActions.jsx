@@ -49,7 +49,7 @@ export default function QuickActions() {
             <Link
               key={action.title}
               to={action.link}
-              className="relative rounded-xl p-12 backdrop-blur-[10px] bg-gray-50/50 dark:bg-slate-800/80 border border-indigo-500/30 dark:border-indigo-500/50 hover:border-indigo-500/50 dark:hover:border-indigo-500/70 shadow-[rgba(0,0,0,0.15)_0px_8px_16px] hover:shadow-[rgba(0,0,0,0.2)_0px_10px_20px] transition-all duration-300 text-center group"
+              className="relative rounded-xl p-12 backdrop-blur-[10px] bg-gray-50/50 dark:bg-slate-800/80 border border-indigo-500/30 dark:border-indigo-500/50 hover:border-indigo-500/50 dark:hover:border-indigo-500/70 shadow-[rgba(0,0,0,0.08)_0px_4px_12px] dark:shadow-[rgba(0,0,0,0.15)_0px_8px_16px] hover:shadow-[rgba(0,0,0,0.12)_0px_6px_16px] dark:hover:shadow-[rgba(0,0,0,0.2)_0px_10px_20px] transition-all duration-300 text-center group"
             >
               {/* Icon with gradient background */}
               <div className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center bg-gradient-to-br ${action.gradient} shadow-lg ${action.shadow}`}>
