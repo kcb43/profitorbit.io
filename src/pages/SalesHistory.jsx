@@ -695,8 +695,22 @@ export default function SalesHistory() {
                 )}
                 {filteredSales.map((sale) => {
                   const safeNotes = stripCustomFeeNotes(sale.notes || "");
+                  const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
+                  
+                  // Calculate days until permanent deletion for deleted sales
+                  let daysUntilPermanentDelete = null;
+                  if (isDeleted) {
+                    const deletedDate = parseISO(sale.deleted_at);
+                    const thirtyDaysAfterDelete = new Date(deletedDate);
+                    thirtyDaysAfterDelete.setDate(thirtyDaysAfterDelete.getDate() + 30);
+                    const today = new Date();
+                    if (thirtyDaysAfterDelete > today) {
+                      daysUntilPermanentDelete = differenceInDays(thirtyDaysAfterDelete, today);
+                    }
+                  }
+                  
                   return (
-                  <div key={sale.id} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 min-w-0">
+                  <div key={sale.id} className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 min-w-0 ${isDeleted ? 'opacity-75 border-l-4 border-red-300 dark:border-red-700' : ''}`}>
                     <Checkbox
                       checked={selectedSales.includes(sale.id)}
                       onCheckedChange={() => handleSelect(sale.id)}
