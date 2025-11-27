@@ -257,7 +257,12 @@ button:focus-visible {
 .product-list-item {
   position: relative;
   overflow: hidden;
-  transition: 0.3s;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-list-item:hover {
+  transform: translateY(-4px);
+  box-shadow: rgba(0, 0, 0, 0.4) 0px 15px 35px -5px !important;
 }
 
 .product-list-item::before {

@@ -1123,7 +1123,7 @@ export default function SalesHistory() {
                       </div>
 
                       {/* Title */}
-                      <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}`)} className="block mb-3">
+                      <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-3">
                         <h3 className="text-lg sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2"
                           style={{ letterSpacing: '0.5px' }}>
                           {sale.item_name || 'Untitled Item'}
@@ -1185,38 +1185,33 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-row sm:flex-col items-center justify-center gap-2 px-4 py-4 sm:py-6 flex-shrink-0 w-full sm:w-auto border-t sm:border-t-0 sm:border-l border-gray-700"
+                    <div className="flex flex-col items-stretch justify-center gap-2 px-3 py-3 flex-shrink-0 w-full sm:w-[200px] border-t sm:border-t-0 sm:border-l border-gray-700"
                       style={{
-                        width: '100%',
-                        minWidth: '271px',
                         background: 'rgb(51, 65, 85)'
                       }}>
-                      {/* Action Row - Price and Favorite */}
-                      <div className="flex items-center justify-between w-full sm:w-auto mb-0 sm:mb-2 gap-2">
-                        <div className="glass px-4 sm:px-6 py-2 rounded-xl text-white font-bold text-lg sm:text-xl text-center border border-gray-700 flex-1 sm:flex-none"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            borderColor: 'rgb(55, 69, 88)',
-                            minWidth: '120px'
-                          }}>
-                          ${sale.selling_price?.toFixed(2) || '0.00'}
-                        </div>
+                      {/* Price Display */}
+                      <div className="glass px-3 py-1.5 rounded-xl text-white font-bold text-base text-center border border-gray-700"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          borderColor: 'rgb(55, 69, 88)'
+                        }}>
+                        ${sale.selling_price?.toFixed(2) || '0.00'}
                       </div>
 
                       {/* View Details Button */}
-                      <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}`)} className="w-full sm:w-full flex-1 sm:flex-none">
+                      <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full">
                         <Button 
-                          className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-2 px-4 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-xs sm:text-sm"
+                          className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-xs"
                           style={{ letterSpacing: '1px' }}
                         >
-                          <span className="flex justify-center items-center gap-1.5">
+                          <span className="flex justify-center items-center gap-1">
                             View Details
                           </span>
                         </Button>
                       </Link>
 
                       {/* Action Buttons Row */}
-                      <div className="flex items-center justify-center gap-2 w-auto">
+                      <div className="flex items-center justify-center gap-1.5">
                         {isDeleted ? (
                           <>
                             <Button
@@ -1224,14 +1219,14 @@ export default function SalesHistory() {
                               size="icon"
                               onClick={() => recoverSaleMutation.mutate(sale)}
                               disabled={recoverSaleMutation.isPending}
-                              className="glass text-green-400 hover:text-green-300 hover:bg-green-900/20 flex-shrink-0 h-10 w-10"
+                              className="glass text-green-400 hover:text-green-300 hover:bg-green-900/20 flex-shrink-0 h-8 w-8"
                               style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '12px'
+                                borderRadius: '8px'
                               }}
                               title="Recover Sale"
                             >
-                              <ArchiveRestore className="w-5 h-5" />
+                              <ArchiveRestore className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -1241,14 +1236,14 @@ export default function SalesHistory() {
                                 setPermanentDeleteDialogOpen(true);
                               }}
                               disabled={permanentDeleteSaleMutation.isPending}
-                              className="glass text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0 h-10 w-10"
+                              className="glass text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0 h-8 w-8"
                               style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '12px'
+                                borderRadius: '8px'
                               }}
                               title="Permanently Delete"
                             >
-                              <Trash2 className="w-5 h-5" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </>
                         ) : (
@@ -1257,55 +1252,55 @@ export default function SalesHistory() {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="glass text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 h-10 w-10"
+                                className="glass text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 h-8 w-8"
                                 style={{
                                   background: 'rgba(255, 255, 255, 0.1)',
-                                  borderRadius: '12px'
+                                  borderRadius: '8px'
                                 }}
                                 title="Edit"
                               >
-                                <Pencil className="w-5 h-5" />
+                                <Pencil className="w-4 h-4" />
                               </Button>
                             </Link>
                             <Link to={createPageUrl(`AddSale?copyId=${sale.id}`)} className="flex-shrink-0">
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="glass text-white hover:text-gray-300 hover:bg-gray-700/50 h-10 w-10"
+                                className="glass text-white hover:text-gray-300 hover:bg-gray-700/50 h-8 w-8"
                                 style={{
                                   background: 'rgba(255, 255, 255, 0.1)',
-                                  borderRadius: '12px'
+                                  borderRadius: '8px'
                                 }}
                                 title="Copy"
                               >
-                                <Copy className="w-5 h-5" />
+                                <Copy className="w-4 h-4" />
                               </Button>
                             </Link>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleAddToInventory(sale)}
-                              className="glass text-green-400 hover:text-green-300 hover:bg-green-900/20 flex-shrink-0 h-10 w-10"
+                              className="glass text-green-400 hover:text-green-300 hover:bg-green-900/20 flex-shrink-0 h-8 w-8"
                               style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '12px'
+                                borderRadius: '8px'
                               }}
                               title="Add to Inventory"
                             >
-                              <ArchiveRestore className="w-5 h-5" />
+                              <ArchiveRestore className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteClick(sale)}
-                              className="glass text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0 h-10 w-10"
+                              className="glass text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0 h-8 w-8"
                               style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '12px'
+                                borderRadius: '8px'
                               }}
                               title="Delete"
                             >
-                              <Trash2 className="w-5 h-5" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </>
                         )}
