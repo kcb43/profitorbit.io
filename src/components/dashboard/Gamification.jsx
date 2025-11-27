@@ -98,52 +98,53 @@ export default function Gamification({ sales, stats }) {
         <CardTitle className="text-xl font-bold text-foreground">Your Progress</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 relative z-10">
-        <div>
-          <div className="flex items-center gap-4 mb-4">
-            {/* Smaller Tier Badge - square-like rectangle */}
-            <div className={`relative rounded-xl p-3 shadow-lg ${tierInfo.shadow} ${tierInfo.hoverShadow} transition-shadow duration-300 overflow-hidden group bg-gradient-to-br ${tierInfo.color} border ${tierInfo.border} flex-shrink-0`}>
-              {/* Shine effect overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
-              
-              <div className="relative flex items-center gap-2">
-                {/* Icon with rotating ring */}
-                <div className="relative flex-shrink-0">
-                  {/* Rotating ring */}
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-transparent animate-spin-slow pointer-events-none" />
-                  
-                  {/* Icon container */}
-                  <div className="relative w-12 h-12 rounded-full bg-white/20 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 group-hover:scale-110 transition-transform duration-300">
-                    <Medal className="w-6 h-6 text-white drop-shadow-lg" />
-                  </div>
-                </div>
-                
-                {/* Tier info - compact */}
-                <div className="min-w-0">
-                  <div className="text-white/70 text-[10px] font-semibold uppercase tracking-wider leading-tight">Your Tier</div>
-                  <h4 className="text-white text-base font-black tracking-tight drop-shadow-lg leading-tight">{tierInfo.name}</h4>
-                  <div className="text-white/80 text-xs font-medium leading-tight">{points.toLocaleString()}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Current Level - bigger */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                {renderIcon(currentLevel.icon, currentLevel.color)}
-                <div>
-                  <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-800 dark:text-gray-200">
-                    <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    {currentLevel.name}
-                  </h3>
-                  {nextLevel ? (
-                    <p className="text-base text-gray-600 dark:text-gray-400 mt-1">Next: {nextLevel.name}</p>
-                  ) : (
-                    <p className="text-base text-green-500 font-semibold mt-1">Max Level Reached!</p>
-                  )}
-                </div>
+        <div className="flex items-start justify-between gap-4">
+          {/* Left side - Current Level */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              {renderIcon(currentLevel.icon, currentLevel.color)}
+              <div>
+                <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-800 dark:text-gray-200">
+                  <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  {currentLevel.name}
+                </h3>
+                {nextLevel ? (
+                  <p className="text-base text-gray-600 dark:text-gray-400 mt-1">Next: {nextLevel.name}</p>
+                ) : (
+                  <p className="text-base text-green-500 font-semibold mt-1">Max Level Reached!</p>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Right side - Tier Badge (slightly bigger) */}
+          <div className={`relative rounded-xl p-4 shadow-lg ${tierInfo.shadow} ${tierInfo.hoverShadow} transition-shadow duration-300 overflow-hidden group bg-gradient-to-br ${tierInfo.color} border ${tierInfo.border} flex-shrink-0`}>
+            {/* Shine effect overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+            
+            <div className="relative flex items-center gap-3">
+              {/* Icon with rotating ring */}
+              <div className="relative flex-shrink-0">
+                {/* Rotating ring */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-transparent animate-spin-slow pointer-events-none" />
+                
+                {/* Icon container */}
+                <div className="relative w-14 h-14 rounded-full bg-white/20 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 group-hover:scale-110 transition-transform duration-300">
+                  <Medal className="w-7 h-7 text-white drop-shadow-lg" />
+                </div>
+              </div>
+              
+              {/* Tier info - slightly bigger */}
+              <div className="min-w-0">
+                <div className="text-white/70 text-xs font-semibold uppercase tracking-wider leading-tight">Your Tier</div>
+                <h4 className="text-white text-lg font-black tracking-tight drop-shadow-lg leading-tight">{tierInfo.name}</h4>
+                <div className="text-white/80 text-sm font-medium leading-tight">{points.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div>
 
           {/* Custom Progress Bar */}
           {nextLevel && tierInfo.nextTier && (
