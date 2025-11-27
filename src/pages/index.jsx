@@ -23,7 +23,7 @@ import CrosslistComposer from "./CrosslistComposer";
 import MarketIntelligence from "./MarketIntelligence";
 import DevErrorBoundary from "../components/DevErrorBoundary";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 
 const PAGES = {
     
@@ -75,9 +75,10 @@ function PagesContent() {
         <Layout currentPageName={currentPage}>
             <Routes>            
                 
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 
                 
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/Dashboard" element={<Dashboard />} />
                 
                 <Route path="/AddSale" element={<AddSale />} />
