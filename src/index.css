@@ -185,6 +185,19 @@ button:focus-visible {
   color: #000000 !important;
 }
 
+/* Make navigation text black for retro console theme only */
+[data-theme="retro-console-light"] .sidebar-nav-category-header {
+  color: #000000 !important;
+}
+
+[data-theme="retro-console-light"] .sidebar-nav-item-text {
+  color: #000000 !important;
+}
+
+[data-theme="retro-console-light"] .sidebar-nav-item-icon {
+  color: #000000 !important;
+}
+
 /* Replace green with blue for specific buttons in Default Dark theme only */
 /* Crosslist button */
 [data-theme="default-dark"] button.bg-green-600 {
