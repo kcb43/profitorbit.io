@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import {
   Sidebar,
@@ -29,15 +29,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-const navigationItems = [
-  { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
-  { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
-  { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
-  { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
-  { title: "Inventory", url: createPageUrl("Inventory"), icon: Package },
-  { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
-  { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal }, // Changed 'Gallery' to 'Showcase'
-  { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
+// Navigation categories matching the example design
+const navigationCategories = [
+  {
+    title: "Core",
+    icon: BarChart3,
+    items: [
+      { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
+      { title: "Inventory", url: createPageUrl("Inventory"), icon: Package },
+      { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
+    ]
+  },
+  {
+    title: "Tools",
+    icon: Settings,
+    items: [
+      { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
+      { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
+    ]
+  },
+  {
+    title: "Analytics",
+    icon: BarChart3,
+    items: [
+      { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
+      { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
+      { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal },
+    ]
+  }
 ];
 
 const themes = {
@@ -177,7 +196,7 @@ export default function Layout({ children }) {
     <SidebarProvider>
       <style>{themeStyles}</style>
       <div className="min-h-screen flex w-full bg-[#FAFAF9] dark:bg-gray-900/95">
-        <Sidebar className="border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <Sidebar className="border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-950/95 w-[279px]">
           <SidebarHeader className="border-b border-gray-100 dark:border-gray-800 p-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -190,33 +209,77 @@ export default function Layout({ children }) {
             </div>
           </SidebarHeader>
           
-          <SidebarContent className="p-3">
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navigationItems.map((item) => {
-                    const isActive = location.pathname === item.url;
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton 
-                          asChild 
-                          className={`rounded-lg mb-1 transition-all duration-200 ${
-                            isActive 
-                              ? 'bg-gray-100/50 dark:bg-green-500/10 text-gray-900 dark:text-green-400 border-l-2 border-green-500 dark:border-green-400' 
-                              : 'hover:bg-gray-100 dark:hover:bg-gray-800/50 dark:hover:text-green-400'
-                          }`}
-                        >
-                          <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                            <item.icon className={`w-5 h-5 ${isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`} />
-                            <span className="font-medium text-gray-800 dark:text-gray-200">{item.title}</span>
+          <SidebarContent className="px-3.5 pt-4 pb-6">
+            {navigationCategories.map((category, categoryIndex) => (
+              <React.Fragment key={category.title}>
+                {/* Category */}
+                <div className="mb-6 last:mb-0">
+                  {/* Category Header */}
+                  <div className="flex items-center gap-2.5 px-3.5 py-2 mb-1.5 border-l-[3px] border-transparent bg-gradient-to-r from-green-500/10 dark:from-green-500/10 to-transparent transition-all duration-300">
+                    <div className="w-5 h-5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center p-1 shadow-lg shadow-green-500/30">
+                      <category.icon className="w-3 h-3 text-white stroke-[2.5]" />
+                    </div>
+                    <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-slate-400 dark:text-slate-400">
+                      {category.title}
+                    </span>
+                  </div>
+
+                  {/* Category Items */}
+                  <ul className="flex flex-col gap-1 p-0 m-0 list-none">
+                    {category.items.map((item) => {
+                      const isActive = location.pathname === item.url;
+                      const IconComponent = item.icon;
+                      return (
+                        <li key={item.title} className="relative transition-all duration-300">
+                          <Link
+                            to={item.url}
+                            className={`
+                              flex items-center gap-3 h-[43px] px-4 py-2.5 mx-2 rounded-[10px]
+                              transition-all duration-300 ease-out
+                              relative overflow-hidden
+                              ${isActive
+                                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border border-green-500/50 shadow-lg shadow-green-500/40'
+                                : 'text-slate-400 dark:text-slate-400 border border-transparent hover:border-green-500/20 hover:bg-green-500/5 dark:hover:bg-green-500/5'
+                              }
+                            `}
+                          >
+                            {/* Active background effect */}
+                            {isActive && (
+                              <div className="absolute inset-0 rounded-[12px] bg-gradient-to-br from-green-400/10 to-emerald-500/10 opacity-0 hover:opacity-100 transition-opacity duration-300 -z-10" />
+                            )}
+
+                            {/* Icon */}
+                            <IconComponent 
+                              className={`
+                                w-5 h-5 flex-shrink-0 transition-all duration-300
+                                ${isActive 
+                                  ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]' 
+                                  : 'text-slate-400 dark:text-slate-400'
+                                }
+                              `}
+                              strokeWidth={isActive ? 2 : 2}
+                            />
+
+                            {/* Text */}
+                            <span className={`
+                              text-sm font-medium flex-1 tracking-wide
+                              ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400'}
+                            `}>
+                              {item.title}
+                            </span>
                           </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                {/* Category Divider (except for last category) */}
+                {categoryIndex < navigationCategories.length - 1 && (
+                  <div className="h-px bg-gradient-to-r from-transparent via-slate-500/30 to-transparent mx-4 my-5" />
+                )}
+              </React.Fragment>
+            ))}
           </SidebarContent>
 
           <SidebarFooter className="border-t border-gray-100 dark:border-gray-800 p-4">
