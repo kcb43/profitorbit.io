@@ -749,6 +749,13 @@ export default function AddInventoryItem() {
         onSelectItem={handleEbayItemSelect}
         initialSearchQuery={ebaySearchInitialQuery}
       />
+      <ImageEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        imageSrc={imageToEdit.url}
+        onSave={handleSaveEditedImage}
+        fileName="inventory-item-edited.jpg"
+      />
     </div>
   );
 }
