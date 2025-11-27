@@ -196,23 +196,47 @@ export default function InventoryPage() {
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId) => {
       const deletedAt = new Date().toISOString();
-      await base44.entities.InventoryItem.update(itemId, {
+      console.log("Attempting to soft delete item:", itemId, "with deleted_at:", deletedAt);
+      
+      // First, check if the item exists and what fields it has
+      try {
+        const beforeItem = await base44.entities.InventoryItem.get(itemId);
+        console.log("Item before update:", beforeItem);
+        console.log("Item fields:", Object.keys(beforeItem));
+      } catch (e) {
+        console.warn("Could not fetch item before update:", e);
+      }
+      
+      // Perform the update
+      const updateResponse = await base44.entities.InventoryItem.update(itemId, {
         deleted_at: deletedAt
       });
+      console.log("Update response:", updateResponse);
+      
+      // Wait a brief moment for the server to process
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verify the update was successful by fetching the item
       try {
         const updatedItem = await base44.entities.InventoryItem.get(itemId);
-        if (!updatedItem.deleted_at) {
-          console.error("Server update failed: deleted_at not set on server", updatedItem);
-          throw new Error("Failed to persist deletion - server did not save deleted_at field");
+        console.log("Item after update:", updatedItem);
+        console.log("Item fields after update:", Object.keys(updatedItem));
+        console.log("deleted_at value:", updatedItem.deleted_at);
+        console.log("deletedAt value (camelCase):", updatedItem.deletedAt);
+        
+        // Check both snake_case and camelCase
+        if (!updatedItem.deleted_at && !updatedItem.deletedAt) {
+          console.error("Server update failed: deleted_at/deletedAt not set on server", updatedItem);
+          throw new Error("Failed to persist deletion - server did not save deleted_at field. The field may not exist in the entity schema. Please check your Base44 entity configuration.");
         }
+        
+        // Use whichever format was saved
+        const actualDeletedAt = updatedItem.deleted_at || updatedItem.deletedAt;
+        return { itemId, deletedAt: actualDeletedAt };
       } catch (verifyError) {
         console.error("Failed to verify deletion on server:", verifyError);
-        throw new Error("Failed to verify deletion was saved to server");
+        throw new Error("Failed to verify deletion was saved to server: " + verifyError.message);
       }
-      
-      return { itemId, deletedAt };
     },
     onMutate: async (itemId) => {
       // IMMEDIATELY update the cache before server responds
