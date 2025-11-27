@@ -237,9 +237,21 @@ export default function SalesHistory() {
       const deletedAt = new Date().toISOString();
       
       // Soft delete: set deleted_at timestamp
-      await base44.entities.Sale.update(sale.id, {
+      const updateResult = await base44.entities.Sale.update(sale.id, {
         deleted_at: deletedAt
       });
+      
+      // Verify the update was successful by fetching the sale
+      try {
+        const updatedSale = await base44.entities.Sale.get(sale.id);
+        if (!updatedSale.deleted_at) {
+          console.error("Server update failed: deleted_at not set on server", updatedSale);
+          throw new Error("Failed to persist deletion - server did not save deleted_at field");
+        }
+      } catch (verifyError) {
+        console.error("Failed to verify deletion on server:", verifyError);
+        throw new Error("Failed to verify deletion was saved to server");
+      }
       
       // Update inventory item quantity
       if (sale.inventory_id) {
@@ -274,9 +286,28 @@ export default function SalesHistory() {
       
       return { previousData };
     },
-    onSuccess: (data, sale) => {
-      // Don't invalidate - the optimistic update already updated the cache
-      // The item should already be filtered out by the filteredSales logic
+    onSuccess: async (data, sale) => {
+      // Wait a moment, then refetch to verify server state matches our optimistic update
+      // This ensures the server has the updated data before we rely on it
+      setTimeout(async () => {
+        try {
+          await queryClient.invalidateQueries({ queryKey: ['sales'] });
+          // Update the cache with the verified server data
+          const updatedSale = await base44.entities.Sale.get(sale.id);
+          if (updatedSale.deleted_at) {
+            // Ensure cache has the correct deleted_at value
+            queryClient.setQueryData(['sales'], (old = []) => {
+              if (!Array.isArray(old)) return old;
+              return old.map(s => 
+                s.id === sale.id ? { ...s, deleted_at: updatedSale.deleted_at } : s
+              );
+            });
+          }
+        } catch (error) {
+          console.error("Error verifying deletion on server:", error);
+        }
+      }, 500);
+      
       toast({
         title: "✅ Sale Deleted Successfully",
         description: `"${sale?.item_name || 'Sale'}" has been moved to deleted items. You can recover it within 30 days.`,
@@ -342,11 +373,22 @@ export default function SalesHistory() {
       const salesToDelete = salesWithMetrics.filter(s => saleIds.includes(s.id));
       const deletedAt = new Date().toISOString();
       
-      // Soft delete all sales
+      // Soft delete all sales with verification
       await Promise.all(
-        saleIds.map(id => 
-          base44.entities.Sale.update(id, { deleted_at: deletedAt })
-        )
+        saleIds.map(async (id) => {
+          await base44.entities.Sale.update(id, { deleted_at: deletedAt });
+          // Verify each update
+          try {
+            const updatedSale = await base44.entities.Sale.get(id);
+            if (!updatedSale.deleted_at) {
+              console.error(`Server update failed for sale ${id}: deleted_at not set`);
+              throw new Error(`Failed to persist deletion for sale ${id}`);
+            }
+          } catch (verifyError) {
+            console.error(`Failed to verify deletion for sale ${id}:`, verifyError);
+            throw verifyError;
+          }
+        })
       );
       
       // Update inventory items
@@ -387,8 +429,33 @@ export default function SalesHistory() {
       
       return { previousData };
     },
-    onSuccess: (saleIds) => {
-      // Don't invalidate - the optimistic update already updated the cache
+    onSuccess: async (saleIds) => {
+      // Wait a moment, then refetch to verify server state matches our optimistic update
+      setTimeout(async () => {
+        try {
+          await queryClient.invalidateQueries({ queryKey: ['sales'] });
+          // Verify all sales have deleted_at set on server
+          for (const id of saleIds) {
+            try {
+              const updatedSale = await base44.entities.Sale.get(id);
+              if (updatedSale.deleted_at) {
+                // Ensure cache has the correct deleted_at value
+                queryClient.setQueryData(['sales'], (old = []) => {
+                  if (!Array.isArray(old)) return old;
+                  return old.map(s => 
+                    s.id === id ? { ...s, deleted_at: updatedSale.deleted_at } : s
+                  );
+                });
+              }
+            } catch (error) {
+              console.error(`Error verifying deletion for sale ${id}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error("Error verifying bulk deletion on server:", error);
+        }
+      }, 500);
+      
       // Only invalidate inventoryItems since we updated quantity_sold
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       setBulkDeleteDialogOpen(false);

@@ -199,6 +199,19 @@ export default function InventoryPage() {
       await base44.entities.InventoryItem.update(itemId, {
         deleted_at: deletedAt
       });
+      
+      // Verify the update was successful by fetching the item
+      try {
+        const updatedItem = await base44.entities.InventoryItem.get(itemId);
+        if (!updatedItem.deleted_at) {
+          console.error("Server update failed: deleted_at not set on server", updatedItem);
+          throw new Error("Failed to persist deletion - server did not save deleted_at field");
+        }
+      } catch (verifyError) {
+        console.error("Failed to verify deletion on server:", verifyError);
+        throw new Error("Failed to verify deletion was saved to server");
+      }
+      
       return { itemId, deletedAt };
     },
     onMutate: async (itemId) => {
@@ -220,9 +233,27 @@ export default function InventoryPage() {
       
       return { previousData };
     },
-    onSuccess: (data, itemId) => {
-      // Don't invalidate - the optimistic update already updated the cache
-      // The item should already be filtered out by the filteredItems logic
+    onSuccess: async (data, itemId) => {
+      // Wait a moment, then refetch to verify server state matches our optimistic update
+      setTimeout(async () => {
+        try {
+          await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+          // Update the cache with the verified server data
+          const updatedItem = await base44.entities.InventoryItem.get(itemId);
+          if (updatedItem.deleted_at) {
+            // Ensure cache has the correct deleted_at value
+            queryClient.setQueryData(['inventoryItems'], (old = []) => {
+              if (!Array.isArray(old)) return old;
+              return old.map(item => 
+                item.id === itemId ? { ...item, deleted_at: updatedItem.deleted_at } : item
+              );
+            });
+          }
+        } catch (error) {
+          console.error("Error verifying deletion on server:", error);
+        }
+      }, 500);
+      
       toast({
         title: "✅ Item Deleted Successfully",
         description: `"${itemToDelete?.item_name || 'Item'}" has been moved to deleted items. You can recover it within 30 days.`,
@@ -308,13 +339,38 @@ export default function InventoryPage() {
       
       return { previousData };
     },
-    onSuccess: (results) => {
+    onSuccess: async (results) => {
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;
       
       setBulkDeleteDialogOpen(false);
-      // Don't invalidate - the optimistic update already updated the cache
-      // The items should already be filtered out by the filteredItems logic
+      
+      // Wait a moment, then refetch to verify server state matches our optimistic update
+      setTimeout(async () => {
+        try {
+          await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+          // Verify all successfully deleted items have deleted_at set on server
+          const successfulIds = results.filter(r => r.success).map(r => r.id);
+          for (const id of successfulIds) {
+            try {
+              const updatedItem = await base44.entities.InventoryItem.get(id);
+              if (updatedItem.deleted_at) {
+                // Ensure cache has the correct deleted_at value
+                queryClient.setQueryData(['inventoryItems'], (old = []) => {
+                  if (!Array.isArray(old)) return old;
+                  return old.map(item => 
+                    item.id === id ? { ...item, deleted_at: updatedItem.deleted_at } : item
+                  );
+                });
+              }
+            } catch (error) {
+              console.error(`Error verifying deletion for item ${id}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error("Error verifying bulk deletion on server:", error);
+        }
+      }, 500);
       
       if (failCount === 0) {
         toast({
