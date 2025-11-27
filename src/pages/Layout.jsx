@@ -214,7 +214,7 @@ export default function Layout({ children }) {
             {navigationCategories.map((category, categoryIndex) => (
               <React.Fragment key={category.title}>
                 {/* Category */}
-                <div className="mb-6 last:mb-0">
+                <div className="mb-2 last:mb-0">
                   {/* Category Header */}
                   <div className="flex items-center gap-2.5 px-3.5 py-2 mb-1.5 border-l-[3px] border-transparent bg-gradient-to-r from-green-500/10 dark:from-green-500/10 to-transparent transition-all duration-300">
                     <div className="w-5 h-5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center p-1 shadow-lg shadow-green-500/30">
@@ -277,7 +277,7 @@ export default function Layout({ children }) {
 
                 {/* Category Divider (except for last category) */}
                 {categoryIndex < navigationCategories.length - 1 && (
-                  <div className="h-px bg-gradient-to-r from-transparent via-slate-500/30 to-transparent mx-4 my-5" />
+                  <div className="h-px bg-gradient-to-r from-transparent via-slate-500/30 to-transparent mx-4 my-2" />
                 )}
               </React.Fragment>
             ))}
