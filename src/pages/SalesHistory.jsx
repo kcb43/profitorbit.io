@@ -109,7 +109,7 @@ export default function SalesHistory() {
     sale_date: "",
   });
   const navigate = useNavigate();
-
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: rawSales, isLoading } = useQuery({
