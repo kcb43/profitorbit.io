@@ -131,9 +131,9 @@ export default function MarketIntelligence() {
             {/* Inventory Refresh - Notification API */}
             <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800 min-w-0">
               <div className="flex items-start justify-between mb-2 min-w-0 gap-2">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <h4 className="font-semibold text-sm">Notifications API</h4>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <h4 className="font-semibold text-sm break-words">Notifications API</h4>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
