@@ -432,6 +432,18 @@ export default function SalesHistory() {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
+  const deletedCount = React.useMemo(() => {
+    if (!Array.isArray(rawSales)) return 0;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    return rawSales.filter(sale => {
+      if (!sale.deleted_at) return false;
+      const deletedDate = parseISO(sale.deleted_at);
+      return deletedDate >= thirtyDaysAgo; // Only count sales within 30 days
+    }).length;
+  }, [rawSales]);
+
   const filteredSales = React.useMemo(() => {
     return salesWithMetrics.filter(sale => {
       // Filter deleted sales based on showDeletedOnly state
