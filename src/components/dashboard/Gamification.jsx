@@ -91,8 +91,6 @@ export default function Gamification({ sales, stats }) {
 
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-gray-900 relative overflow-hidden">
-      {/* Gradient blur effect - positioned like the example */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-full blur-[64px] pointer-events-none" style={{ bottom: '-108px' }} />
       
       <CardHeader className="relative z-10">
         <CardTitle className="text-xl font-bold text-foreground">Your Progress</CardTitle>
@@ -117,8 +115,8 @@ export default function Gamification({ sales, stats }) {
             </div>
           </div>
 
-          {/* Right side - Tier Badge (slightly bigger) */}
-          <div className={`relative rounded-xl p-4 shadow-lg ${tierInfo.shadow} ${tierInfo.hoverShadow} transition-shadow duration-300 overflow-hidden group bg-gradient-to-br ${tierInfo.color} border ${tierInfo.border} flex-shrink-0`}>
+          {/* Right side - Tier Badge (bigger) */}
+          <div className={`relative rounded-xl p-5 shadow-lg ${tierInfo.shadow} ${tierInfo.hoverShadow} transition-shadow duration-300 overflow-hidden group bg-gradient-to-br ${tierInfo.color} border ${tierInfo.border} flex-shrink-0`}>
             {/* Shine effect overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
             
@@ -129,15 +127,15 @@ export default function Gamification({ sales, stats }) {
                 <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-transparent animate-spin-slow pointer-events-none" />
                 
                 {/* Icon container */}
-                <div className="relative w-14 h-14 rounded-full bg-white/20 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 group-hover:scale-110 transition-transform duration-300">
-                  <Medal className="w-7 h-7 text-white drop-shadow-lg" />
+                <div className="relative w-16 h-16 rounded-full bg-white/20 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 group-hover:scale-110 transition-transform duration-300">
+                  <Medal className="w-8 h-8 text-white drop-shadow-lg" />
                 </div>
               </div>
               
-              {/* Tier info - slightly bigger */}
+              {/* Tier info - bigger */}
               <div className="min-w-0">
-                <div className="text-white/70 text-xs font-semibold uppercase tracking-wider leading-tight">Your Tier</div>
-                <h4 className="text-white text-lg font-black tracking-tight drop-shadow-lg leading-tight">{tierInfo.name}</h4>
+                <div className="text-white/70 text-xs font-semibold uppercase tracking-wider leading-tight mb-0.5">Your Tier</div>
+                <h4 className="text-white text-xl font-black tracking-tight drop-shadow-lg leading-tight">{tierInfo.name}</h4>
                 <div className="text-white/80 text-sm font-medium leading-tight">{points.toLocaleString()}</div>
               </div>
             </div>
@@ -153,7 +151,7 @@ export default function Gamification({ sales, stats }) {
                 <span className="text-gray-700 dark:text-slate-300 text-sm font-medium">Progress to {tierInfo.nextTier}</span>
                 <span className="text-green-600 dark:text-green-400 text-sm font-bold">{Math.round(tierProgress.percentage)}%</span>
               </div>
-              <div className="h-2 rounded-full bg-white/10 dark:bg-white/10 overflow-hidden">
+              <div className="h-2 rounded-full bg-gray-200 dark:bg-white/10 border border-gray-300 dark:border-transparent overflow-hidden">
                 <div 
                   className="h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 transition-[width] duration-1000 ease-out"
                   style={{ width: `${tierProgress.percentage}%` }}
