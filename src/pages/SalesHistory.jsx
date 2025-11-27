@@ -1157,12 +1157,6 @@ export default function SalesHistory() {
                             {sale.saleSpeed !== null ? `${sale.saleSpeed} day(s)` : 'N/A'}
                           </span>
                         </div>
-                        <div className="flex items-center text-white min-w-0">
-                          <span className="font-semibold">Profit:</span>
-                          <span className={`ml-2 font-bold text-lg sm:text-xl break-words ${sale.profit >= 0 ? 'text-green-400' : 'text-red-500'}`}>
-                            {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(2) || '0.00'}
-                          </span>
-                        </div>
                       </div>
 
                       {/* Deletion Warnings */}
@@ -1189,13 +1183,16 @@ export default function SalesHistory() {
                       style={{
                         background: 'rgb(51, 65, 85)'
                       }}>
-                      {/* Price Display */}
+                      {/* Profit Display */}
                       <div className="glass px-3 py-1.5 rounded-xl text-white font-bold text-base text-center border border-gray-700"
                         style={{
                           background: 'rgba(255, 255, 255, 0.1)',
                           borderColor: 'rgb(55, 69, 88)'
                         }}>
-                        ${sale.selling_price?.toFixed(2) || '0.00'}
+                        <span className="font-semibold">Profit: </span>
+                        <span className={`${sale.profit >= 0 ? 'text-green-400' : 'text-red-500'}`}>
+                          {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(2) || '0.00'}
+                        </span>
                       </div>
 
                       {/* View Details Button */}
