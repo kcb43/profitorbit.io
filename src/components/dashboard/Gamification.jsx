@@ -95,7 +95,7 @@ export default function Gamification({ sales, stats }) {
       <CardHeader className="relative z-10">
         <CardTitle className="text-xl font-bold text-foreground">Your Progress</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 relative z-10">
+      <CardContent className="space-y-6 relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 rounded-lg">
         <div className="flex items-start justify-between gap-4">
           {/* Left side - Current Level */}
           <div className="flex-1">
