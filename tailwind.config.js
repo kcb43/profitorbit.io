@@ -82,13 +82,16 @@ module.exports = {
   				'0%': {
   					transform: 'translateX(0) rotate(0deg)'
   				},
-  				'1%, 3%, 5%, 7%, 9%': {
+  				'0.5%, 1.05%, 1.47%': {
   					transform: 'translateX(-2px) rotate(-1deg)'
   				},
-  				'2%, 4%, 6%, 8%, 10%': {
+  				'0.26%, 0.79%, 1.31%': {
   					transform: 'translateX(2px) rotate(1deg)'
   				},
-  				'1.57%, 5.76%, 100%': {
+  				'1.57%': {
+  					transform: 'translateX(0) rotate(0deg)'
+  				},
+  				'1.58%, 100%': {
   					transform: 'translateX(0) rotate(0deg)'
   				}
   			}
