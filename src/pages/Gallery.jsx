@@ -10,6 +10,7 @@ import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, isWithinI
 import ShowcaseItemModal from '../components/showcase/ShowcaseItemModal';
 import { sortSalesByRecency } from "@/utils/sales";
 import DealOfTheMonth from '../components/dashboard/DealOfTheMonth';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
@@ -166,10 +167,12 @@ export default function GalleryPage() {
                   className="group overflow-hidden shadow-sm hover:shadow-lg transition-shadow cursor-pointer"
                 >
                   <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
-                    <img 
-                      src={sale.image_url || DEFAULT_IMAGE_URL} 
+                    <OptimizedImage
+                      src={sale.image_url || DEFAULT_IMAGE_URL}
                       alt={sale.item_name}
+                      fallback={DEFAULT_IMAGE_URL}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      lazy={true}
                     />
                     <div className="absolute top-2 right-2">
                       {sale.profit >= 0 ? (

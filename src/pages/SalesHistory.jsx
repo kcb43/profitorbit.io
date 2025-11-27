@@ -35,6 +35,7 @@ import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { stripCustomFeeNotes } from "@/utils/customFees";
 import { useToast } from "@/components/ui/use-toast";
+import { OptimizedImage } from "@/components/OptimizedImage";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
@@ -1071,11 +1072,12 @@ export default function SalesHistory() {
                         padding: '16px'
                       }}>
                       {sale.image_url ? (
-                        <img 
-                          src={sale.image_url} 
+                        <OptimizedImage
+                          src={sale.image_url}
                           alt={sale.item_name}
                           className="w-full h-full object-contain"
                           style={{ maxHeight: '186px' }}
+                          lazy={true}
                         />
                       ) : (
                         <Package className="w-24 h-24 text-gray-400" />

@@ -53,6 +53,7 @@ import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { useEbayCategoryTreeId, useEbayCategories } from "@/hooks/useEbayCategorySuggestions";
@@ -960,11 +961,13 @@ export default function Crosslist() {
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       padding: '16px'
                     }}>
-                    <img
+                    <OptimizedImage
                       src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
                       alt={it.item_name}
+                      fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
                       className="w-full h-full object-contain"
                       style={{ maxHeight: '186px' }}
+                      lazy={true}
                     />
                   </div>
 
@@ -1080,10 +1083,12 @@ export default function Crosslist() {
               return (
                 <Card key={it.id} className="overflow-hidden">
                   <div className="relative">
-                    <img
+                    <OptimizedImage
                       src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
                       alt={it.item_name}
+                      fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
                       className="aspect-square w-full object-cover md:h-[38rem]"
+                      lazy={true}
                     />
                     <div className="absolute top-2 left-2">
                       <Checkbox

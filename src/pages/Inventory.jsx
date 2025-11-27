@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/use-toast";
 import SoldLookupDialog from "../components/SoldLookupDialog";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { ImageEditor } from "@/components/ImageEditor";
+import { OptimizedImage } from "@/components/OptimizedImage";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -1073,10 +1074,12 @@ export default function InventoryPage() {
                     state={returnStateForInventory}
                   >
                     <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
-                      <img 
+                      <OptimizedImage
                         src={item.image_url || DEFAULT_IMAGE_URL}
-                        alt={item.item_name} 
+                        alt={item.item_name}
+                        fallback={DEFAULT_IMAGE_URL}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        lazy={true}
                       />
                       <div className="absolute top-2 right-2">
                         <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5`}>
