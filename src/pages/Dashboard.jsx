@@ -276,7 +276,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
                     {/* Icon box */}
                     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-red-500 via-red-600 to-rose-500 shadow-lg shadow-red-500/40 flex-shrink-0">
-                      <AlarmClock className="w-6 h-6 sm:w-8 sm:h-8 text-white animate-shake-alarm" />
+                      <AlarmClock className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     </div>
                     
                     {/* Text content */}
