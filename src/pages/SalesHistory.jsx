@@ -180,8 +180,64 @@ export default function SalesHistory() {
     });
   }, [rawSales, sort]);
 
+  // Cleanup function to hard delete sales older than 30 days
+  const cleanupOldDeletedSales = React.useCallback(async () => {
+    if (!Array.isArray(rawSales)) return;
+    
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const salesToHardDelete = rawSales.filter(sale => {
+      if (!sale.deleted_at) return false;
+      const deletedDate = parseISO(sale.deleted_at);
+      return deletedDate < thirtyDaysAgo;
+    });
+
+    if (salesToHardDelete.length > 0) {
+      try {
+        // Update inventory items first
+        for (const sale of salesToHardDelete) {
+          if (sale.inventory_id) {
+            try {
+              const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+              const quantitySoldInSale = sale.quantity_sold || 1;
+              const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
+              
+              await base44.entities.InventoryItem.update(sale.inventory_id, {
+                quantity_sold: newQuantitySold,
+                status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
+              });
+            } catch (error) {
+              console.error("Failed to update inventory item on sale cleanup:", error);
+            }
+          }
+        }
+        
+        // Then hard delete the sales
+        await Promise.all(
+          salesToHardDelete.map(sale => base44.entities.Sale.delete(sale.id))
+        );
+        queryClient.invalidateQueries({ queryKey: ['sales'] });
+        queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      } catch (error) {
+        console.error("Error cleaning up old deleted sales:", error);
+      }
+    }
+  }, [rawSales, queryClient]);
+
+  // Run cleanup on mount and when rawSales change
+  React.useEffect(() => {
+    cleanupOldDeletedSales();
+  }, [cleanupOldDeletedSales]);
+
   const deleteSaleMutation = useMutation({
     mutationFn: async (sale) => {
+      // Soft delete: set deleted_at timestamp instead of deleting
+      await base44.entities.Sale.update(sale.id, {
+        deleted_at: new Date().toISOString()
+      });
+      
+      // Still update inventory item quantity
       if (sale.inventory_id) {
         try {
           const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
@@ -197,17 +253,54 @@ export default function SalesHistory() {
         }
       }
       
-      return base44.entities.Sale.delete(sale.id);
+      return sale.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       setDeleteDialogOpen(false);
       setSaleToDelete(null);
+      alert("The sale has been moved to deleted items. You can recover it within 30 days.");
     },
     onError: (error) => {
       console.error("Failed to delete sale:", error);
       alert("Failed to delete sale. Please try again.");
+    },
+  });
+
+  const recoverSaleMutation = useMutation({
+    mutationFn: async (sale) => {
+      // Recover: remove deleted_at and restore inventory quantity
+      await base44.entities.Sale.update(sale.id, {
+        deleted_at: null
+      });
+      
+      // Restore inventory item quantity
+      if (sale.inventory_id) {
+        try {
+          const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+          const quantitySoldInSale = sale.quantity_sold || 1;
+          const newQuantitySold = (inventoryItem.quantity_sold || 0) + quantitySoldInSale;
+          
+          await base44.entities.InventoryItem.update(sale.inventory_id, {
+            quantity_sold: newQuantitySold,
+            status: newQuantitySold >= inventoryItem.quantity ? "sold" : inventoryItem.status
+          });
+        } catch (error) {
+          console.error("Failed to update inventory item on sale recovery:", error);
+        }
+      }
+      
+      return sale.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      alert("The sale has been restored.");
+    },
+    onError: (error) => {
+      console.error("Failed to recover sale:", error);
+      alert("Failed to recover sale. Please try again.");
     },
   });
 
