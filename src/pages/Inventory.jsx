@@ -324,13 +324,6 @@ export default function InventoryPage() {
       // Return a context object with the snapshotted value
       return { previousItems };
     },
-    onError: (error, itemIds, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousItems) {
-        queryClient.setQueryData(['inventoryItems'], context.previousItems);
-      }
-      console.error("Bulk delete error:", error);
-    },
     onSuccess: (results) => {
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;
@@ -352,7 +345,11 @@ export default function InventoryPage() {
         });
       }
     },
-    onError: (error) => {
+    onError: (error, itemIds, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousItems) {
+        queryClient.setQueryData(['inventoryItems'], context.previousItems);
+      }
       console.error("Bulk delete error:", error);
       toast({
         title: "Error Deleting Items",
@@ -360,6 +357,10 @@ export default function InventoryPage() {
         variant: "destructive",
       });
       setBulkDeleteDialogOpen(false);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
     },
   });
 
