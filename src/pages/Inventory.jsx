@@ -203,7 +203,41 @@ export default function InventoryPage() {
         throw new Error(`Failed to delete item: ${error.message}`);
       }
     },
+    onMutate: async (itemId) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
+
+      // Snapshot the previous value
+      const previousItems = queryClient.getQueryData(['inventoryItems']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['inventoryItems'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item) =>
+          item.id === itemId
+            ? { ...item, deleted_at: new Date().toISOString() }
+            : item
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousItems };
+    },
+    onError: (error, itemId, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousItems) {
+        queryClient.setQueryData(['inventoryItems'], context.previousItems);
+      }
+      console.error("Delete error:", error);
+      toast({
+        title: "Error Deleting Item",
+        description: error.message || "Failed to delete item. Please try again.",
+        variant: "destructive",
+      });
+      setDeleteDialogOpen(false);
+    },
     onSuccess: (deletedId) => {
+      // Invalidate to refetch and ensure consistency
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       setDeleteDialogOpen(false);
       setItemToDelete(null);
@@ -212,14 +246,9 @@ export default function InventoryPage() {
         description: "The item has been moved to deleted items. You can recover it within 30 days.",
       });
     },
-    onError: (error) => {
-      console.error("Delete error:", error);
-      toast({
-        title: "Error Deleting Item",
-        description: error.message || "Failed to delete item. Please try again.",
-        variant: "destructive",
-      });
-      setDeleteDialogOpen(false);
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
     },
   });
 
@@ -267,6 +296,34 @@ export default function InventoryPage() {
         }
       }
       return results;
+    },
+    onMutate: async (itemIds) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
+
+      // Snapshot the previous value
+      const previousItems = queryClient.getQueryData(['inventoryItems']);
+
+      // Optimistically update to the new value
+      const deletedAt = new Date().toISOString();
+      queryClient.setQueryData(['inventoryItems'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item) =>
+          itemIds.includes(item.id)
+            ? { ...item, deleted_at: deletedAt }
+            : item
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousItems };
+    },
+    onError: (error, itemIds, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousItems) {
+        queryClient.setQueryData(['inventoryItems'], context.previousItems);
+      }
+      console.error("Bulk delete error:", error);
     },
     onSuccess: (results) => {
       const successCount = results.filter(r => r.success).length;
