@@ -215,3 +215,17 @@ button:focus-visible {
 [data-theme="default-dark"] button.bg-green-600 svg {
   color: white !important;
 }
+
+/* Slow spin animation for tier badge rotating ring */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}

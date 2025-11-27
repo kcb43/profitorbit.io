@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp } from "lucide-react";
+import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal } from "lucide-react";
 
 const levels = [
   { name: "Newbie Flipper", minProfit: 0, icon: Box, color: "text-gray-500" },
@@ -11,6 +11,21 @@ const levels = [
   { name: "Marketplace Mogul", minProfit: 2500, icon: Gem, color: "text-purple-500" },
   { name: "Reselling Royalty", minProfit: 10000, icon: Crown, color: "text-amber-500" },
 ];
+
+// Tier mapping based on profit levels
+const getTierInfo = (totalProfit) => {
+  if (totalProfit >= 10000) {
+    return { name: "Diamond", color: "from-cyan-500/20 to-blue-500/20", shadow: "shadow-cyan-500/30", hoverShadow: "hover:shadow-cyan-500/50", border: "border-cyan-500/30" };
+  } else if (totalProfit >= 2500) {
+    return { name: "Platinum", color: "from-purple-500/20 to-indigo-500/20", shadow: "shadow-purple-500/30", hoverShadow: "hover:shadow-purple-500/50", border: "border-purple-500/30" };
+  } else if (totalProfit >= 1000) {
+    return { name: "Gold", color: "from-amber-500/20 to-yellow-500/20", shadow: "shadow-amber-500/30", hoverShadow: "hover:shadow-amber-500/50", border: "border-amber-500/30" };
+  } else if (totalProfit >= 500) {
+    return { name: "Silver", color: "from-gray-400/20 to-slate-500/20", shadow: "shadow-gray-400/30", hoverShadow: "hover:shadow-gray-400/50", border: "border-gray-400/30" };
+  } else {
+    return { name: "Bronze", color: "from-orange-500/20 to-amber-500/20", shadow: "shadow-orange-500/30", hoverShadow: "hover:shadow-orange-500/50", border: "border-orange-500/30" };
+  }
+};
 
 export default function Gamification({ sales, stats }) {
   const achievements = React.useMemo(() => {
@@ -52,6 +67,11 @@ export default function Gamification({ sales, stats }) {
     return <IconComponent className={`w-8 h-8 ${className}`} />;
   };
 
+  const tierInfo = React.useMemo(() => getTierInfo(stats.totalProfit), [stats.totalProfit]);
+  
+  // Calculate points (using total profit as points for now, can be adjusted)
+  const points = Math.floor(stats.totalProfit);
+
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-gray-900 relative overflow-hidden">
       {/* Gradient blur effect - positioned like the example */}
@@ -61,6 +81,35 @@ export default function Gamification({ sales, stats }) {
         <CardTitle className="text-xl font-bold text-foreground">Your Progress</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 relative z-10">
+        {/* Tier Badge */}
+        <div className={`relative rounded-2xl p-6 shadow-lg ${tierInfo.shadow} ${tierInfo.hoverShadow} transition-shadow duration-300 overflow-hidden group bg-gradient-to-br ${tierInfo.color} border ${tierInfo.border}`}>
+          {/* Shine effect overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+          
+          <div className="relative flex items-center gap-5">
+            {/* Icon with hexagonal backdrop */}
+            <div className="relative flex-shrink-0">
+              {/* Rotating ring */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-transparent animate-spin-slow pointer-events-none" />
+              
+              {/* Icon container */}
+              <div className="relative w-20 h-20 rounded-full bg-white/20 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 group-hover:scale-110 transition-transform duration-300">
+                <Medal className="w-10 h-10 text-white drop-shadow-lg" />
+              </div>
+            </div>
+            
+            {/* Tier info */}
+            <div className="flex-1 min-w-0">
+              <div className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">Your Tier</div>
+              <h3 className="text-white text-3xl font-black tracking-tight mb-1 drop-shadow-lg">{tierInfo.name}</h3>
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-12 bg-gradient-to-r from-white/50 to-transparent rounded-full" />
+                <span className="text-white/80 text-sm font-medium">{points.toLocaleString()} points</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div>
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Current Level</p>
           <div className="flex items-center gap-3 mb-3">
