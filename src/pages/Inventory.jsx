@@ -126,6 +126,7 @@ export default function InventoryPage() {
     queryKey: ['inventoryItems'],
     queryFn: () => base44.entities.InventoryItem.list('-purchase_date'),
     initialData: [],
+    notifyOnChangeProps: 'all', // Ensure we get notified of all changes for optimistic updates
   });
 
   useEffect(() => {
