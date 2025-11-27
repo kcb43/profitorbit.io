@@ -47,6 +47,7 @@ const navigationCategories = [
       { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
       { title: "Market Intelligence", url: createPageUrl("MarketIntelligence"), icon: TrendingUp },
+      { title: "Settings", url: createPageUrl("Settings"), icon: Settings },
     ]
   },
   {

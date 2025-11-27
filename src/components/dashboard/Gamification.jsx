@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -7,13 +7,26 @@ import narutoIcon from "@/assets/naruto-icon.svg?url";
 import sakuraIcon from "@/assets/sakura-icon.svg?url";
 import kakashiIcon from "@/assets/kakashi-icon.svg?url";
 
-const levels = [
+// Character icon mapping
+const characterIcons = {
+  naruto: narutoIcon,
+  sakura: sakuraIcon,
+  kakashi: kakashiIcon,
+};
+
+// Get the selected character icon from localStorage
+const getSelectedCharacterIcon = () => {
+  const selectedCharacter = localStorage.getItem('selectedCharacter') || 'naruto';
+  return characterIcons[selectedCharacter] || narutoIcon;
+};
+
+const baseLevels = [
   { name: "Newbie", minProfit: 0, icon: Box, color: "text-gray-500" },
   { name: "Weekend Warrior", minProfit: 100, icon: Wrench, color: "text-orange-500" },
   { name: "Hustler", minProfit: 250, icon: sakuraIcon, color: "text-pink-500" },
   { name: "Side Hustle Pro", minProfit: 500, icon: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/abe917726_boy.png", color: "text-blue-500" },
   { name: "Flipping Pro", minProfit: 1000, icon: kakashiIcon, color: "text-indigo-500" },
-  { name: "Marketplace Mogul", minProfit: 2500, icon: narutoIcon, color: "text-purple-500" },
+  { name: "Marketplace Mogul", minProfit: 2500, icon: null, color: "text-purple-500" }, // Will be set dynamically
   { name: "Reselling Royalty", minProfit: 10000, icon: Crown, color: "text-amber-500" },
 ];
 
@@ -33,6 +46,40 @@ const getTierInfo = (totalProfit) => {
 };
 
 export default function Gamification({ sales, stats }) {
+  const [selectedCharacterIcon, setSelectedCharacterIcon] = useState(getSelectedCharacterIcon());
+
+  // Listen for character changes
+  useEffect(() => {
+    const handleCharacterChange = () => {
+      setSelectedCharacterIcon(getSelectedCharacterIcon());
+    };
+
+    window.addEventListener('characterChanged', handleCharacterChange);
+    
+    // Also check localStorage periodically in case it was changed in another tab
+    const interval = setInterval(() => {
+      const newIcon = getSelectedCharacterIcon();
+      if (newIcon !== selectedCharacterIcon) {
+        setSelectedCharacterIcon(newIcon);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('characterChanged', handleCharacterChange);
+      clearInterval(interval);
+    };
+  }, [selectedCharacterIcon]);
+
+  // Create levels array with dynamic icon for Marketplace Mogul
+  const levels = React.useMemo(() => {
+    return baseLevels.map(level => {
+      if (level.name === "Marketplace Mogul") {
+        return { ...level, icon: selectedCharacterIcon };
+      }
+      return level;
+    });
+  }, [selectedCharacterIcon]);
+
   const achievements = React.useMemo(() => {
     const earned = [];
     if (stats.totalProfit >= 1000) {

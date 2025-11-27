@@ -21,6 +21,7 @@ import ProfitCalendar from "./ProfitCalendar";
 import Crosslist from "./Crosslist";
 import CrosslistComposer from "./CrosslistComposer";
 import MarketIntelligence from "./MarketIntelligence";
+import Settings from "./Settings";
 import DevErrorBoundary from "../components/DevErrorBoundary";
 
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
@@ -50,6 +51,8 @@ const PAGES = {
     CrosslistComposer: CrosslistComposer,
     
     MarketIntelligence: MarketIntelligence,
+    
+    Settings: Settings,
     
 }
 
@@ -113,6 +116,8 @@ function PagesContent() {
                 <Route path="/CrosslistComposer" element={<CrosslistComposer />} />
                 
                 <Route path="/MarketIntelligence" element={<MarketIntelligence />} />
+                
+                <Route path="/Settings" element={<Settings />} />
                 
             </Routes>
         </Layout>
