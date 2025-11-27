@@ -135,31 +135,6 @@ const themes = {
       --input: 213 26% 22%;
       --ring: 142 71% 50%;
     `
-  },
-  'retro-console-light': {
-    name: "Retro Console",
-    isDark: false,
-    css: `
-      --background: 83 22% 91%;
-      --foreground: 83 12% 21%;
-      --card: 83 22% 88%;
-      --card-foreground: 83 12% 21%;
-      --popover: 83 22% 91%;
-      --popover-foreground: 83 12% 21%;
-      --primary: 158 52% 20%;
-      --primary-foreground: 83 22% 91%;
-      --secondary: 83 15% 85%;
-      --secondary-foreground: 83 12% 21%;
-      --muted: 83 15% 85%;
-      --muted-foreground: 83 10% 45%;
-      --accent: 158 52% 20%;
-      --accent-foreground: 83 22% 91%;
-      --destructive: 350 71% 40%;
-      --destructive-foreground: 83 22% 91%;
-      --border: 83 15% 80%;
-      --input: 83 15% 80%;
-      --ring: 158 52% 20%;
-    `
   }
 };
 
