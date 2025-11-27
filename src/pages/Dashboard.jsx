@@ -18,7 +18,6 @@ import PlatformBreakdown from "../components/dashboard/PlatformBreakdown";
 import RecentSales from "../components/dashboard/RecentSales";
 import Gamification from "../components/dashboard/Gamification";
 import TipOfTheDay from "../components/dashboard/TipOfTheDay";
-import TaxSummary from "../components/dashboard/TaxSummary";
 import QuickActions from "../components/dashboard/QuickActions";
 
 const SUPPORTED_MARKETPLACES = [
@@ -363,13 +362,8 @@ export default function Dashboard() {
           {/* Quick Actions section */}
           <QuickActions />
           
-          {/* Tip of Day and Tax Summary side-by-side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TipOfTheDay />
-            <div className="hidden lg:block">
-              <TaxSummary sales={sales} totalProfit={totalProfit} />
-            </div>
-          </div>
+          {/* Tip of Day */}
+          <TipOfTheDay />
         </div>
 
         <div className="flex justify-start lg:justify-end mb-6">

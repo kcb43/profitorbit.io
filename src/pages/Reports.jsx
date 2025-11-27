@@ -9,6 +9,7 @@ import MonthlyPnlChart from "../components/reports/MonthlyPnlChart";
 import CategoryPerformance from "../components/reports/CategoryPerformance";
 import PlatformComparison from "../components/reports/PlatformComparison";
 import StatCard from "../components/dashboard/StatCard";
+import TaxSummary from "../components/dashboard/TaxSummary";
 import { sortSalesByRecency } from "@/utils/sales";
 
 const PLATFORM_DISPLAY_NAMES = {
@@ -269,6 +270,11 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <CategoryPerformance sales={filteredSales} rangeLabel={rangeLabel} />
           <PlatformComparison sales={filteredSales} rangeLabel={rangeLabel} />
+        </div>
+
+        {/* Tax Summary Section */}
+        <div className="mt-6">
+          <TaxSummary sales={sortedSales} totalProfit={metrics.totalProfit} />
         </div>
       </div>
     </div>
