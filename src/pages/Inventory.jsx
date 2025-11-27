@@ -220,12 +220,15 @@ export default function InventoryPage() {
       
       return { previousData };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, itemId) => {
+      // Don't invalidate - the optimistic update already updated the cache
+      // The item should already be filtered out by the filteredItems logic
       toast({
         title: "✅ Item Deleted Successfully",
         description: `"${itemToDelete?.item_name || 'Item'}" has been moved to deleted items. You can recover it within 30 days.`,
       });
-      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     },
     onError: (error, itemId, context) => {
       // Rollback on error
@@ -310,7 +313,8 @@ export default function InventoryPage() {
       const failCount = results.filter(r => !r.success).length;
       
       setBulkDeleteDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      // Don't invalidate - the optimistic update already updated the cache
+      // The items should already be filtered out by the filteredItems logic
       
       if (failCount === 0) {
         toast({

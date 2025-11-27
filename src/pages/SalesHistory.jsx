@@ -274,12 +274,14 @@ export default function SalesHistory() {
       
       return { previousData };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, sale) => {
+      // Don't invalidate - the optimistic update already updated the cache
+      // The item should already be filtered out by the filteredSales logic
       toast({
         title: "✅ Sale Deleted Successfully",
-        description: `"${saleToDelete?.item_name || 'Sale'}" has been moved to deleted items. You can recover it within 30 days.`,
+        description: `"${sale?.item_name || 'Sale'}" has been moved to deleted items. You can recover it within 30 days.`,
       });
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      // Only invalidate inventoryItems since we updated quantity_sold
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       setDeleteDialogOpen(false);
       setSaleToDelete(null);
@@ -386,13 +388,14 @@ export default function SalesHistory() {
       return { previousData };
     },
     onSuccess: (saleIds) => {
+      // Don't invalidate - the optimistic update already updated the cache
+      // Only invalidate inventoryItems since we updated quantity_sold
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      setBulkDeleteDialogOpen(false);
       toast({
         title: `✅ ${saleIds.length} Sale${saleIds.length > 1 ? 's' : ''} Deleted`,
         description: `All selected sales have been moved to deleted items. You can recover them within 30 days.`,
       });
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      setBulkDeleteDialogOpen(false);
     },
     onError: (error, saleIds, context) => {
       // Rollback on error
