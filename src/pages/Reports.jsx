@@ -52,7 +52,9 @@ export default function ReportsPage() {
 
   const [range, setRange] = React.useState("90d");
 
-  const sortedSales = React.useMemo(() => sortSalesByRecency(sales ?? []), [sales]);
+  // Filter out soft-deleted sales
+  const activeSales = React.useMemo(() => (sales ?? []).filter(sale => !sale.deleted_at), [sales]);
+  const sortedSales = React.useMemo(() => sortSalesByRecency(activeSales), [activeSales]);
 
   const filteredSales = React.useMemo(() => {
     if (!sortedSales || sortedSales.length === 0) return [];

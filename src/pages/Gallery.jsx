@@ -38,7 +38,9 @@ export default function GalleryPage() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const sortedSales = useMemo(() => sortSalesByRecency(rawSales ?? []), [rawSales]);
+  // Filter out soft-deleted sales
+  const activeSales = useMemo(() => (rawSales ?? []).filter(sale => !sale.deleted_at), [rawSales]);
+  const sortedSales = useMemo(() => sortSalesByRecency(activeSales), [activeSales]);
 
   const salesWithMetrics = useMemo(() => {
     if (!sortedSales) return [];

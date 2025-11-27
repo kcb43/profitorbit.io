@@ -32,11 +32,14 @@ export default function ProfitCalendar() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedSales, setSelectedSales] = useState([]);
 
-  const { data: sales, isLoading } = useQuery({
+  const { data: rawSales, isLoading } = useQuery({
     queryKey: ['sales'],
     queryFn: () => base44.entities.Sale.list(),
     initialData: [],
   });
+
+  // Filter out soft-deleted sales
+  const sales = useMemo(() => (rawSales ?? []).filter(sale => !sale.deleted_at), [rawSales]);
 
   // Helper functions for month navigation
   const handlePreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));

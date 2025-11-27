@@ -74,7 +74,11 @@ export default function Dashboard() {
     initialData: [],
   });
 
-  const sales = React.useMemo(() => sortSalesByRecency(rawSales ?? []), [rawSales]);
+  // Filter out soft-deleted sales for dashboard calculations and display
+  const sales = React.useMemo(() => {
+    const activeSales = (rawSales ?? []).filter(sale => !sale.deleted_at);
+    return sortSalesByRecency(activeSales);
+  }, [rawSales]);
   
   // New query for inventory items
   const { data: inventoryItems, isLoading: isLoadingInventory } = useQuery({

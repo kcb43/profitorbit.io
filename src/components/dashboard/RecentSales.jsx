@@ -18,7 +18,9 @@ const platformIcons = {
 };
 
 export default function RecentSales({ sales }) {
-  const recentSales = sortSalesByRecency(sales ?? []).slice(0, 10);
+  // Filter out soft-deleted sales
+  const activeSales = (sales ?? []).filter(sale => !sale.deleted_at);
+  const recentSales = sortSalesByRecency(activeSales).slice(0, 10);
   const navigate = useNavigate();
 
   const handleAddToInventory = (e, sale) => {
