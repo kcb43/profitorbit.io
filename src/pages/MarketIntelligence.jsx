@@ -45,11 +45,11 @@ export default function MarketIntelligence() {
           </CardHeader>
           <CardContent className="space-y-4 min-w-0">
             {/* Feed Beta API */}
-            <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <h4 className="font-semibold text-sm">Feed Beta API</h4>
+            <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800 min-w-0">
+              <div className="flex items-start justify-between mb-2 min-w-0 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Database className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                  <h4 className="font-semibold text-sm break-words">Feed Beta API</h4>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -97,11 +97,11 @@ export default function MarketIntelligence() {
             </div>
 
             {/* Browse & Download */}
-            <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <h4 className="font-semibold text-sm">Browse Feeds</h4>
+            <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800 min-w-0">
+              <div className="flex items-start justify-between mb-2 min-w-0 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <h4 className="font-semibold text-sm break-words">Browse Feeds</h4>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
