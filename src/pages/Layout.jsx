@@ -220,7 +220,7 @@ export default function Layout({ children }) {
                     <div className="w-5 h-5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center p-1 shadow-lg shadow-green-500/30">
                       <category.icon className="w-3 h-3 text-white stroke-[2.5]" />
                     </div>
-                    <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-slate-400 dark:text-slate-400 [&[data-theme='default-light']]:text-black">
+                    <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-slate-400 dark:text-slate-400 sidebar-nav-category-header">
                       {category.title}
                     </span>
                   </div>
@@ -240,7 +240,7 @@ export default function Layout({ children }) {
                               relative overflow-hidden
                               ${isActive
                                 ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border border-green-500/50 shadow-lg shadow-green-500/40'
-                                : 'text-slate-400 dark:text-slate-400 [&[data-theme=\'default-light\']]:text-black border border-transparent hover:border-green-500/20 hover:bg-green-500/5 dark:hover:bg-green-500/5'
+                                : 'text-slate-400 dark:text-slate-400 border border-transparent hover:border-green-500/20 hover:bg-green-500/5 dark:hover:bg-green-500/5'
                               }
                             `}
                           >
@@ -255,7 +255,7 @@ export default function Layout({ children }) {
                                 w-5 h-5 flex-shrink-0 transition-all duration-300
                                 ${isActive 
                                   ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]' 
-                                  : 'text-slate-400 dark:text-slate-400 [&[data-theme=\'default-light\']]:text-black'
+                                  : 'text-slate-400 dark:text-slate-400 sidebar-nav-item-icon'
                                 }
                               `}
                               strokeWidth={isActive ? 2 : 2}
@@ -264,7 +264,7 @@ export default function Layout({ children }) {
                             {/* Text */}
                             <span className={`
                               text-sm font-medium flex-1 tracking-wide
-                              ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400 [&[data-theme=\'default-light\']]:text-black'}
+                              ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400 sidebar-nav-item-text'}
                             `}>
                               {item.title}
                             </span>

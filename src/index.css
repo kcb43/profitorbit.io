@@ -172,6 +172,19 @@ button:focus-visible {
   color: hsl(var(--background)) !important;
 }
 
+/* Make navigation text black for default light theme only */
+[data-theme="default-light"] .sidebar-nav-category-header {
+  color: #000000 !important;
+}
+
+[data-theme="default-light"] .sidebar-nav-item-text {
+  color: #000000 !important;
+}
+
+[data-theme="default-light"] .sidebar-nav-item-icon {
+  color: #000000 !important;
+}
+
 /* Replace green with blue for specific buttons in Default Dark theme only */
 /* Crosslist button */
 [data-theme="default-dark"] button.bg-green-600 {
