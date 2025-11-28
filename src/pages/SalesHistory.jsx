@@ -1117,16 +1117,6 @@ export default function SalesHistory() {
                           </div>
                         </div>
                       </div>
-
-                      {/* Description/Details - Under image on mobile */}
-                      <div className="flex flex-col sm:hidden mt-1.5 px-0.5 min-w-0 w-full">
-                        <p className="text-gray-300 text-[10px] break-words line-clamp-1 leading-[14px]"
-                          style={{ 
-                            letterSpacing: '0.5px'
-                          }}>
-                          Sold {format(parseISO(sale.sale_date), 'MM/dd/yyyy')} • ${sale.selling_price?.toFixed(2)}
-                        </p>
-                      </div>
                     </div>
 
                     {/* Details Section */}
@@ -1160,10 +1150,18 @@ export default function SalesHistory() {
                       </Link>
 
                       {/* Sold Price - Under title on mobile */}
-                      <div className="mb-1 sm:hidden">
+                      <div className="mb-0.5 sm:hidden">
                         <p className="text-gray-300 text-[10px] break-words leading-[14px]"
                           style={{ letterSpacing: '0.5px' }}>
                           <span className="font-semibold">Sold Price:</span> ${sale.selling_price?.toFixed(2)}
+                        </p>
+                      </div>
+
+                      {/* Date - Under sold price on mobile */}
+                      <div className="mb-1 sm:hidden">
+                        <p className="text-gray-300 text-[10px] break-words leading-[14px]"
+                          style={{ letterSpacing: '0.5px' }}>
+                          {format(parseISO(sale.sale_date), 'MM/dd/yyyy')}
                         </p>
                       </div>
 
