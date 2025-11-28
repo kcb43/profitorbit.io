@@ -2,6 +2,8 @@
 
 This document describes the Base44 entity schema needed for saving image editor templates.
 
+> ✅ **Status**: Entity created in Base44 and ready for use.
+
 ## Entity: ImageEditorTemplate
 
 ### Required Fields
