@@ -1558,7 +1558,6 @@ export default function SalesHistory() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </div>
       </div>
     </div>
   );
