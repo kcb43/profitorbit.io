@@ -283,3 +283,53 @@ button:focus-visible {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+
+/* Photo Editor Slider Styles */
+input[type="range"].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].slider::-webkit-slider-track {
+  background: #475569;
+  height: 6px;
+  border-radius: 3px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #6c5ce7;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.3s;
+  margin-top: -6px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"].slider::-moz-range-track {
+  background: #475569;
+  height: 6px;
+  border-radius: 3px;
+}
+
+input[type="range"].slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #6c5ce7;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.3s;
+}
+
+input[type="range"].slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
