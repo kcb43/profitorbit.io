@@ -806,9 +806,9 @@ export default function SalesHistory() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      <div className="p-4 md:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto min-w-0 w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+      <div className="p-4 md:p-6 lg:p-8 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+        <div className="max-w-7xl mx-auto min-w-0 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <div className="mb-8 min-w-0">
           <h1 className="text-3xl font-bold text-foreground break-words">Sales History</h1>
           <p className="text-muted-foreground mt-1 break-words">View and manage all your sales</p>
@@ -998,7 +998,7 @@ export default function SalesHistory() {
             {isLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading...</div>
             ) : (
-              <div className="w-full min-w-0 max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
                 {filteredSales.length > 0 && (
                   <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 bg-gray-50/50 dark:bg-gray-800/30 min-w-0 mb-4 rounded-lg">
                     <Checkbox
@@ -1176,7 +1176,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-1.5 sm:px-3 py-2 sm:py-3 mr-2 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[95px] sm:w-[200px] min-w-[95px] sm:min-w-[200px] max-w-[95px] sm:max-w-[200px]"
+                    <div className="flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-1.5 sm:px-3 py-2 sm:py-3 mr-2 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[90px] sm:w-[200px] min-w-[90px] sm:min-w-[200px] max-w-[90px] sm:max-w-[200px]"
                       style={{
                         background: 'rgb(51, 65, 85)',
                         flexShrink: 0
