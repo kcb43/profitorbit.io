@@ -477,23 +477,23 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] p-0 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
-          <DialogHeader className="px-5 py-4 border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
+        <DialogContent className="w-[92vw] sm:w-[90vw] max-w-[95vw] max-h-[90vh] p-0 overflow-hidden overflow-x-hidden bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+          <DialogHeader className="px-3 sm:px-5 py-3 sm:py-4 border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-sm flex-shrink-0">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-semibold text-white flex items-center gap-2">
-                <Camera className="w-5 h-5" />
-                Advanced Photo Editor
+              <DialogTitle className="text-base sm:text-xl font-semibold text-white flex items-center gap-2">
+                <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-xl">Advanced Photo Editor</span>
               </DialogTitle>
             </div>
           </DialogHeader>
 
-          <div className="flex flex-col md:flex-row h-[calc(95vh-140px)] overflow-hidden">
+          <div className="flex flex-col md:flex-row h-[calc(90vh-120px)] sm:h-[calc(90vh-140px)] overflow-hidden">
             {/* Sidebar */}
-            <div className="w-full md:w-[300px] bg-slate-800/50 backdrop-blur-sm border-r border-slate-700/50 overflow-y-auto p-4 space-y-6">
+            <div className="w-full md:w-[300px] bg-slate-800/50 backdrop-blur-sm border-r border-slate-700/50 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-3 sm:space-y-6 max-h-full">
               {/* Template Section */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                  <Save className="w-4 h-4" />
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Templates
                 </h3>
                 <Select
@@ -510,7 +510,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     }
                   }}
                 >
-                  <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-slate-300">
+                  <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-slate-300 text-xs sm:text-sm h-8 sm:h-10">
                     <SelectValue placeholder="Select template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -524,17 +524,17 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 </Select>
                 <Button
                   onClick={handleSaveTemplateClick}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2"
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-10"
                 >
-                  <Save className="w-4 h-4" />
-                  Save Current Settings
+                  <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="text-xs sm:text-sm">Save Current Settings</span>
                 </Button>
               </div>
 
               {/* Upload Section */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Upload
                 </h3>
                 <div>
@@ -547,18 +547,18 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   />
                   <Button
                     onClick={() => document.getElementById('imageUploader')?.click()}
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2"
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-10"
                   >
-                    <Upload className="w-4 h-4" />
-                    <span>Upload Image</span>
+                    <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-sm">Upload Image</span>
                   </Button>
                 </div>
               </div>
 
               {/* Adjustments Section */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4" />
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Adjustments
                 </h3>
                 <div className="space-y-2">
@@ -587,12 +587,12 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
               </div>
 
               {/* Filters Section */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Filters
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                   {[
                     { id: 'brightness', icon: BrightnessIcon, label: 'Brightness' },
                     { id: 'contrast', icon: Contrast, label: 'Contrast' },
@@ -602,26 +602,26 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     <button
                       key={id}
                       onClick={() => handleFilterClick(id)}
-                      className={`p-3 rounded-lg border transition-all duration-300 flex flex-col items-center gap-2 ${
+                      className={`p-2 sm:p-3 rounded-lg border transition-all duration-300 flex flex-col items-center gap-1 sm:gap-2 ${
                         activeFilter === id
                           ? 'bg-indigo-600 border-indigo-400 text-white'
                           : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-indigo-600/50'
                       }`}
                     >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-xs">{label}</span>
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-[10px] sm:text-xs">{label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Transform Section */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                  <Crop className="w-4 h-4" />
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <Crop className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Transform
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                   {[
                     { id: 'rotate_left', icon: RotateCcw, label: 'Rotate Left' },
                     { id: 'rotate_right', icon: RotateCw, label: 'Rotate Right' },
@@ -632,10 +632,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     <button
                       key={id}
                       onClick={() => handleTransform(id)}
-                      className="p-3 rounded-lg border bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-indigo-600/50 transition-all duration-300 flex flex-col items-center gap-2"
+                      className="p-2 sm:p-3 rounded-lg border bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-indigo-600/50 transition-all duration-300 flex flex-col items-center gap-1 sm:gap-2"
                     >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-xs">{label}</span>
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-[10px] sm:text-xs">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -643,14 +643,14 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-900/50 overflow-hidden">
-              <div className="w-full h-full max-h-full flex items-center justify-center overflow-hidden rounded-lg bg-slate-950 border border-slate-700">
+            <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 bg-slate-900/50 overflow-hidden min-w-0 max-h-full">
+              <div className="w-full h-full max-h-full flex items-center justify-center overflow-hidden rounded-lg bg-slate-950 border border-slate-700 min-w-0">
                 {imgSrc && (
-                  <img
-                    ref={imageRef}
-                    src={imgSrc}
-                    alt="Editor Preview"
-                    className="max-w-full max-h-full object-contain"
+                <img
+                  ref={imageRef}
+                  src={imgSrc}
+                  alt="Editor Preview"
+                  className="max-w-full max-h-full object-contain min-w-0"
                     style={{
                       filter: `brightness(${filters.brightness}%) 
                               contrast(${filters.contrast}%) 
@@ -679,28 +679,28 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 border-t border-slate-700/50 bg-slate-800/50 backdrop-blur-sm flex gap-3">
+          <div className="px-3 sm:px-5 py-2 sm:py-4 border-t border-slate-700/50 bg-slate-800/50 backdrop-blur-sm flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
             <Button
               onClick={resetAll}
-              className="flex-1 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center gap-2"
+              className="flex-1 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
             >
-              <Undo2 className="w-4 h-4" />
-              Reset All
+              <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-base">Reset All</span>
             </Button>
             <Button
               onClick={handleCancel}
               variant="outline"
-              className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+              className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 text-sm sm:text-base"
             >
-              Cancel
+              <span className="text-xs sm:text-base">Cancel</span>
             </Button>
             <Button
               onClick={handleSave}
-              className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2"
+              className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
               disabled={!imgSrc}
             >
-              <Download className="w-4 h-4" />
-              Save Image
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-base">Save Image</span>
             </Button>
           </div>
         </DialogContent>
