@@ -1060,7 +1060,7 @@ export default function SalesHistory() {
                       {/* Product Image Section - Clickable */}
                       <div 
                         onClick={() => handleSelect(sale.id)}
-                        className={`glass flex items-center justify-center relative w-[90px] sm:w-[220px] min-w-[90px] sm:min-w-[220px] max-w-[90px] sm:max-w-[220px] h-[90px] sm:h-[210px] p-1.5 sm:p-4 cursor-pointer transition-all duration-200 ${selectedSales.includes(sale.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
+                        className={`glass flex items-center justify-center relative w-[104px] sm:w-[220px] min-w-[104px] sm:min-w-[220px] max-w-[104px] sm:max-w-[220px] h-[104px] sm:h-[210px] p-1.5 sm:p-4 cursor-pointer transition-all duration-200 ${selectedSales.includes(sale.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
                         style={{
                           borderRadius: '12px',
                           background: 'rgba(255, 255, 255, 0.1)',
@@ -1120,12 +1120,14 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Details Section */}
-                    <div className="flex-1 flex flex-col justify-start px-2 sm:px-6 py-1.5 sm:py-6 border-l border-r min-w-0 overflow-hidden"
+                    <div className="flex-1 flex flex-col justify-start px-2 sm:px-6 py-1.5 sm:py-6 border-r min-w-0 overflow-hidden relative"
                       style={{
                         borderColor: 'rgba(51, 65, 85, 0.6)',
                         flexShrink: 1,
                         minWidth: 0
                       }}>
+                      {/* Vertical Divider - Centered on mobile */}
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-[60%] sm:h-full sm:top-0 sm:translate-y-0 bg-slate-600/60"></div>
                       {/* Resale Value Badge - Desktop Only */}
                       <div className="mb-2 sm:mb-3 hidden sm:block">
                         <div className="glass inline-block px-4 sm:px-6 py-2 rounded-xl text-white text-xs sm:text-sm font-medium"
@@ -1218,7 +1220,8 @@ export default function SalesHistory() {
                           style={{ letterSpacing: '0.3px', fontSize: '8px', width: 'auto', minWidth: '70px', maxWidth: '80px', boxSizing: 'border-box' }}
                         >
                           <span className="whitespace-nowrap">
-                            View Details
+                            <span className="sm:hidden">Details</span>
+                            <span className="hidden sm:inline">View Details</span>
                           </span>
                         </Button>
                       </Link>
