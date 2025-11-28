@@ -6,6 +6,7 @@ import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal } from 
 import narutoIcon from "@/assets/naruto-icon.svg?url";
 import sakuraIcon from "@/assets/sakura-icon.svg?url";
 import kakashiIcon from "@/assets/kakashi-icon.svg?url";
+import wizardIcon from "@/assets/wizard-icon.png?url";
 
 // Character icon mapping
 const characterIcons = {
@@ -15,9 +16,14 @@ const characterIcons = {
 };
 
 // Get the selected character icon from localStorage
+// Returns null if no anime character is selected (default theme)
 const getSelectedCharacterIcon = () => {
-  const selectedCharacter = localStorage.getItem('selectedCharacter') || 'naruto';
-  return characterIcons[selectedCharacter] || narutoIcon;
+  const selectedCharacter = localStorage.getItem('selectedCharacter');
+  // If no character selected or it's an invalid one, return null to use default wizard icon
+  if (!selectedCharacter || !characterIcons[selectedCharacter]) {
+    return null;
+  }
+  return characterIcons[selectedCharacter];
 };
 
 const baseLevels = [
@@ -46,7 +52,7 @@ const getTierInfo = (totalProfit) => {
 };
 
 export default function Gamification({ sales, stats }) {
-  const [selectedCharacterIcon, setSelectedCharacterIcon] = useState(getSelectedCharacterIcon());
+  const [selectedCharacterIcon, setSelectedCharacterIcon] = useState(() => getSelectedCharacterIcon());
 
   // Listen for character changes
   useEffect(() => {
@@ -74,7 +80,8 @@ export default function Gamification({ sales, stats }) {
   const levels = React.useMemo(() => {
     return baseLevels.map(level => {
       if (level.name === "Marketplace Mogul") {
-        return { ...level, icon: selectedCharacterIcon };
+        // Use anime character icon if selected, otherwise use default wizard icon
+        return { ...level, icon: selectedCharacterIcon || wizardIcon };
       }
       return level;
     });

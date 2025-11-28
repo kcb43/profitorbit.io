@@ -37,7 +37,7 @@ export default function Settings() {
   useEffect(() => {
     // Load saved preferences
     const savedTheme = localStorage.getItem('theme') || 'default-light';
-    const savedCharacter = localStorage.getItem('selectedCharacter') || 'naruto';
+    const savedCharacter = localStorage.getItem('selectedCharacter') || 'default';
     
     setCurrentTheme(savedTheme);
     setSelectedCharacter(savedCharacter);
@@ -58,7 +58,11 @@ export default function Settings() {
 
   const handleCharacterChange = (character) => {
     setSelectedCharacter(character);
-    localStorage.setItem('selectedCharacter', character);
+    if (character === 'default') {
+      localStorage.removeItem('selectedCharacter'); // Clear it so Gamification uses wizard
+    } else {
+      localStorage.setItem('selectedCharacter', character);
+    }
     
     // Trigger a custom event to notify other components
     window.dispatchEvent(new CustomEvent('characterChanged', { detail: { character } }));
@@ -139,6 +143,14 @@ export default function Settings() {
                   <SelectValue placeholder="Select a character" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="default">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-400">
+                        Default
+                      </div>
+                      <span>Default (Wizard)</span>
+                    </div>
+                  </SelectItem>
                   {Object.entries(animeCharacters).map(([key, character]) => (
                     <SelectItem key={key} value={key}>
                       <div className="flex items-center gap-3">
