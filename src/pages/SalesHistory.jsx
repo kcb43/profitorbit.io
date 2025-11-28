@@ -998,7 +998,7 @@ export default function SalesHistory() {
             {isLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading...</div>
             ) : (
-              <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 {filteredSales.length > 0 && (
                   <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 bg-gray-50/50 dark:bg-gray-800/30 min-w-0 mb-4 rounded-lg">
                     <Checkbox
@@ -1041,7 +1041,7 @@ export default function SalesHistory() {
                   const totalCosts = ((sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0));
                   
                   return (
-                  <div key={sale.id} className={`product-list-item relative flex flex-row sm:flex-row items-start sm:items-center mb-4 sm:mb-6 min-w-0 w-full ${isDeleted ? 'opacity-75' : ''}`}
+                  <div key={sale.id} className={`product-list-item relative flex flex-row sm:flex-row items-start sm:items-center mb-4 sm:mb-6 min-w-0 w-full max-w-full ${isDeleted ? 'opacity-75' : ''}`}
                     style={{
                       minHeight: 'auto',
                       height: 'auto',
@@ -1052,7 +1052,8 @@ export default function SalesHistory() {
                       overflow: 'hidden',
                       maxWidth: '100%',
                       width: '100%',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      flexShrink: 0
                     }}>
                     {/* Checkbox - positioned absolutely, right on mobile, left on desktop */}
                     <div className="absolute top-3 right-3 sm:top-4 sm:left-4 sm:right-auto z-20">
@@ -1065,11 +1066,12 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Product Image Section */}
-                    <div className="glass flex items-center justify-center relative flex-shrink-0 m-2 sm:m-4 w-[90px] sm:w-[220px] min-w-[90px] sm:min-w-[220px] max-w-[90px] sm:max-w-[220px] h-[90px] sm:h-[210px] p-1.5 sm:p-4"
+                    <div className="glass flex items-center justify-center relative flex-shrink-0 m-1.5 sm:m-4 w-[90px] sm:w-[220px] min-w-[90px] sm:min-w-[220px] max-w-[90px] sm:max-w-[220px] h-[90px] sm:h-[210px] p-1.5 sm:p-4"
                       style={{
                         borderRadius: '12px',
                         background: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        flexShrink: 0
                       }}>
                       {sale.image_url ? (
                         <OptimizedImage
@@ -1115,9 +1117,11 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Details Section */}
-                    <div className="flex-1 flex flex-col justify-between h-full px-2 sm:px-6 py-2 sm:py-6 border-l border-r min-w-0 max-w-full overflow-hidden"
+                    <div className="flex-1 flex flex-col justify-between h-full px-2 sm:px-6 py-2 sm:py-6 border-l border-r min-w-0 overflow-hidden"
                       style={{
-                        borderColor: 'rgba(51, 65, 85, 0.6)'
+                        borderColor: 'rgba(51, 65, 85, 0.6)',
+                        flexShrink: 1,
+                        minWidth: 0
                       }}>
                       {/* Resale Value Badge - Desktop Only */}
                       <div className="mb-3 hidden sm:block">
@@ -1172,12 +1176,10 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-col items-stretch justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700"
+                    <div className="flex flex-col items-stretch justify-center gap-1.5 sm:gap-2 px-1.5 sm:px-3 py-2 sm:py-3 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[100px] sm:w-[200px] min-w-[100px] sm:min-w-[200px] max-w-[100px] sm:max-w-[200px]"
                       style={{
                         background: 'rgb(51, 65, 85)',
-                        minWidth: 0,
-                        width: '100%',
-                        maxWidth: '100%'
+                        flexShrink: 0
                       }}>
                       {/* Profit Display - Desktop Only */}
                       <div className="hidden sm:block glass px-3 py-1.5 rounded-xl text-white font-bold text-base text-center border border-gray-700"
@@ -1194,10 +1196,10 @@ export default function SalesHistory() {
                       {/* View Details Button */}
                       <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full min-w-0 block">
                         <Button 
-                          className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-1 sm:py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-[11px] sm:text-xs min-w-0 max-w-full"
-                          style={{ letterSpacing: '0.5px', width: '100%', boxSizing: 'border-box' }}
+                          className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-1 sm:py-1.5 px-1.5 sm:px-3 rounded-lg sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-[10px] sm:text-xs min-w-0 max-w-full"
+                          style={{ letterSpacing: '0.5px', width: '100%', boxSizing: 'border-box', fontSize: '10px' }}
                         >
-                          <span className="flex justify-center items-center gap-1 truncate w-full">
+                          <span className="flex justify-center items-center gap-0.5 truncate w-full whitespace-nowrap">
                             View Details
                           </span>
                         </Button>
