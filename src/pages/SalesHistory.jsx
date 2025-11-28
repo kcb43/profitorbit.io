@@ -1062,7 +1062,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Product Image Section */}
-                    <div className="glass flex items-center justify-center relative flex-shrink-0 m-3 sm:m-4 w-[120px] sm:w-[220px] min-w-[120px] sm:min-w-[220px] h-[120px] sm:h-[210px] p-2 sm:p-4"
+                    <div className="glass flex items-center justify-center relative flex-shrink-0 m-2 sm:m-4 w-[90px] sm:w-[220px] min-w-[90px] sm:min-w-[220px] h-[90px] sm:h-[210px] p-1.5 sm:p-4"
                       style={{
                         borderRadius: '12px',
                         background: 'rgba(255, 255, 255, 0.1)',
@@ -1077,7 +1077,7 @@ export default function SalesHistory() {
                           lazy={true}
                         />
                       ) : (
-                        <Package className="w-12 h-12 sm:w-24 sm:h-24 text-gray-400" />
+                        <Package className="w-10 h-10 sm:w-24 sm:h-24 text-gray-400" />
                       )}
                       {/* Platform Icon Overlay - hidden on mobile */}
                       {platformIcons[sale.platform] && (
@@ -1099,8 +1099,8 @@ export default function SalesHistory() {
                         </div>
                       )}
                       {/* Profit Badge - Mobile Only, bottom-right of image */}
-                      <div className="absolute bottom-1 right-1 sm:hidden z-10">
-                        <div className="px-2 py-1 rounded-lg text-white text-xs font-semibold"
+                      <div className="absolute bottom-0.5 right-0.5 sm:hidden z-10">
+                        <div className="px-1.5 py-0.5 rounded text-white text-[10px] font-semibold"
                           style={{
                             background: sale.profit >= 0 ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)',
                             color: 'white',
@@ -1112,7 +1112,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Details Section */}
-                    <div className="flex-1 flex flex-col justify-between h-full px-2 sm:px-6 py-3 sm:py-6 border-l border-r min-w-0 max-w-full overflow-hidden"
+                    <div className="flex-1 flex flex-col justify-between h-full px-2 sm:px-6 py-2 sm:py-6 border-l border-r min-w-0 max-w-full overflow-hidden"
                       style={{
                         borderColor: 'rgba(51, 65, 85, 0.6)'
                       }}>
@@ -1169,7 +1169,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-col items-stretch justify-center gap-2 px-2 sm:px-3 py-2 sm:py-3 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700"
+                    <div className="flex flex-col items-stretch justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 sm:py-3 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700"
                       style={{
                         background: 'rgb(51, 65, 85)',
                         minWidth: 0,
@@ -1191,8 +1191,8 @@ export default function SalesHistory() {
                       {/* View Details Button */}
                       <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full min-w-0 block">
                         <Button 
-                          className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-1.5 px-2 sm:px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-xs min-w-0 max-w-full"
-                          style={{ letterSpacing: '1px', width: '100%', boxSizing: 'border-box' }}
+                          className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-1 sm:py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-[11px] sm:text-xs min-w-0 max-w-full"
+                          style={{ letterSpacing: '0.5px', width: '100%', boxSizing: 'border-box' }}
                         >
                           <span className="flex justify-center items-center gap-1 truncate w-full">
                             View Details
