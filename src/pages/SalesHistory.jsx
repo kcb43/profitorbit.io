@@ -806,8 +806,9 @@ export default function SalesHistory() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto min-w-0">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+      <div className="p-4 md:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto min-w-0 w-full">
         <div className="mb-8 min-w-0">
           <h1 className="text-3xl font-bold text-foreground break-words">Sales History</h1>
           <p className="text-muted-foreground mt-1 break-words">View and manage all your sales</p>
@@ -893,7 +894,7 @@ export default function SalesHistory() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg w-full min-w-0 max-w-full overflow-x-hidden">
           <CardHeader className="border-b bg-gray-800 dark:bg-gray-800">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 min-w-0">
               {selectedSales.length > 0 ? (
@@ -1049,7 +1050,9 @@ export default function SalesHistory() {
                       background: 'rgb(30, 41, 59)',
                       boxShadow: 'rgba(0, 0, 0, 0.3) 0px 10px 25px -5px',
                       overflow: 'hidden',
-                      maxWidth: '100%'
+                      maxWidth: '100%',
+                      width: '100%',
+                      boxSizing: 'border-box'
                     }}>
                     {/* Checkbox - positioned absolutely, right on mobile, left on desktop */}
                     <div className="absolute top-3 right-3 sm:top-4 sm:left-4 sm:right-auto z-20">
@@ -1062,7 +1065,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Product Image Section */}
-                    <div className="glass flex items-center justify-center relative flex-shrink-0 m-2 sm:m-4 w-[90px] sm:w-[220px] min-w-[90px] sm:min-w-[220px] h-[90px] sm:h-[210px] p-1.5 sm:p-4"
+                    <div className="glass flex items-center justify-center relative flex-shrink-0 m-2 sm:m-4 w-[90px] sm:w-[220px] min-w-[90px] sm:min-w-[220px] max-w-[90px] sm:max-w-[220px] h-[90px] sm:h-[210px] p-1.5 sm:p-4"
                       style={{
                         borderRadius: '12px',
                         background: 'rgba(255, 255, 255, 0.1)',
@@ -1314,6 +1317,7 @@ export default function SalesHistory() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <Dialog
@@ -1552,6 +1556,8 @@ export default function SalesHistory() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </div>
+      </div>
     </div>
   );
 }
