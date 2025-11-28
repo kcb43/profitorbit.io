@@ -1056,11 +1056,11 @@ export default function SalesHistory() {
                       flexShrink: 0
                     }}>
                     {/* Image and Description Container - Mobile stacked, desktop side-by-side */}
-                    <div className="flex flex-col sm:block flex-shrink-0 m-1.5 sm:m-4">
+                    <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                       {/* Product Image Section - Clickable */}
                       <div 
                         onClick={() => handleSelect(sale.id)}
-                        className={`glass flex items-center justify-center relative w-[104px] sm:w-[220px] min-w-[104px] sm:min-w-[220px] max-w-[104px] sm:max-w-[220px] h-[104px] sm:h-[210px] p-1.5 sm:p-4 cursor-pointer transition-all duration-200 ${selectedSales.includes(sale.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
+                        className={`glass flex items-center justify-center relative w-[62px] sm:w-[220px] min-w-[62px] sm:min-w-[220px] max-w-[62px] sm:max-w-[220px] h-[62px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 ${selectedSales.includes(sale.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
                         style={{
                           borderRadius: '12px',
                           background: 'rgba(255, 255, 255, 0.1)',
@@ -1076,7 +1076,7 @@ export default function SalesHistory() {
                             lazy={true}
                           />
                         ) : (
-                          <Package className="w-10 h-10 sm:w-24 sm:h-24 text-gray-400" />
+                          <Package className="w-8 h-8 sm:w-24 sm:h-24 text-gray-400" />
                         )}
                         {/* Platform Icon Overlay - hidden on mobile */}
                         {platformIcons[sale.platform] && (
@@ -1099,28 +1099,28 @@ export default function SalesHistory() {
                         )}
                         {/* Selection Indicator - Top center when selected */}
                         {selectedSales.includes(sale.id) && (
-                          <div className="absolute top-1 left-1/2 transform -translate-x-1/2 z-20">
-                            <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                              <Check className="w-3 h-3 text-white" />
+                          <div className="absolute top-0.5 left-1/2 transform -translate-x-1/2 z-20">
+                            <div className="bg-green-600 rounded-full p-0.5 shadow-lg">
+                              <Check className="w-2.5 h-2.5 text-white" />
                             </div>
                           </div>
                         )}
-                        {/* Profit Badge - Mobile Only, bottom-right of image */}
-                        <div className="absolute bottom-0.5 right-0.5 sm:hidden z-10">
-                          <div className="px-1.5 py-0.5 rounded text-white text-[10px] font-semibold"
-                            style={{
-                              background: sale.profit >= 0 ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)',
-                              color: 'white',
-                              backdropFilter: 'blur(10px)'
-                            }}>
-                            {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(0) || '0'}
-                          </div>
+                      {/* Profit Badge - Mobile Only, bottom-right of image */}
+                      <div className="absolute bottom-0.5 right-0.5 sm:hidden z-10">
+                        <div className="px-1 py-0.5 rounded text-white text-[8px] font-semibold"
+                          style={{
+                            background: sale.profit >= 0 ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)',
+                            color: 'white',
+                            backdropFilter: 'blur(10px)'
+                          }}>
+                          {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(0) || '0'}
                         </div>
+                      </div>
                       </div>
                     </div>
 
                     {/* Details Section */}
-                    <div className="flex-1 flex flex-col justify-start px-2 sm:px-6 py-1.5 sm:py-6 border-r min-w-0 overflow-hidden relative"
+                    <div className="flex-1 flex flex-col justify-start px-1.5 sm:px-6 py-1 sm:py-6 border-r min-w-0 overflow-hidden relative"
                       style={{
                         borderColor: 'rgba(51, 65, 85, 0.6)',
                         flexShrink: 1,
@@ -1144,25 +1144,25 @@ export default function SalesHistory() {
                       </div>
 
                       {/* Title - Now starts right after image on mobile */}
-                      <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-1 sm:mb-3">
-                        <h3 className="text-xs sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2 sm:line-clamp-2"
-                          style={{ letterSpacing: '0.5px', lineHeight: '1.3' }}>
+                      <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-0.5 sm:mb-3">
+                        <h3 className="text-xs sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2"
+                          style={{ letterSpacing: '0.5px', lineHeight: '1.25' }}>
                           {sale.item_name || 'Untitled Item'}
                         </h3>
                       </Link>
 
                       {/* Sold Price - Under title on mobile */}
-                      <div className="mb-0.5 sm:hidden">
-                        <p className="text-gray-300 text-[10px] break-words leading-[14px]"
-                          style={{ letterSpacing: '0.5px' }}>
+                      <div className="mb-0 sm:hidden">
+                        <p className="text-gray-300 text-[9px] break-words leading-[12px]"
+                          style={{ letterSpacing: '0.4px' }}>
                           <span className="font-semibold">Sold Price:</span> ${sale.selling_price?.toFixed(2)}
                         </p>
                       </div>
 
                       {/* Date - Under sold price on mobile */}
-                      <div className="mb-1 sm:hidden">
-                        <p className="text-gray-300 text-[10px] break-words leading-[14px]"
-                          style={{ letterSpacing: '0.5px' }}>
+                      <div className="mb-0.5 sm:hidden">
+                        <p className="text-gray-300 text-[9px] break-words leading-[12px]"
+                          style={{ letterSpacing: '0.4px' }}>
                           {format(parseISO(sale.sale_date), 'MM/dd/yyyy')}
                         </p>
                       </div>
@@ -1196,7 +1196,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-1.5 sm:py-3 mr-2 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[90px] sm:w-[200px] min-w-[90px] sm:min-w-[200px] max-w-[90px] sm:max-w-[200px]"
+                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-1 sm:py-3 mr-1.5 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[75px] sm:w-[200px] min-w-[75px] sm:min-w-[200px] max-w-[75px] sm:max-w-[200px]"
                       style={{
                         background: 'rgb(51, 65, 85)',
                         flexShrink: 0
@@ -1216,8 +1216,8 @@ export default function SalesHistory() {
                       {/* View Details Button */}
                       <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full min-w-0 flex justify-center">
                         <Button 
-                          className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-0.5 sm:py-1.5 px-1.5 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-[8px] sm:text-xs"
-                          style={{ letterSpacing: '0.3px', fontSize: '8px', width: 'auto', minWidth: '70px', maxWidth: '80px', boxSizing: 'border-box' }}
+                          className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-0.5 sm:py-1.5 px-1 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-[7px] sm:text-xs"
+                          style={{ letterSpacing: '0.3px', fontSize: '7px', width: 'auto', minWidth: '60px', maxWidth: '70px', boxSizing: 'border-box' }}
                         >
                           <span className="whitespace-nowrap">
                             <span className="sm:hidden">Details</span>
