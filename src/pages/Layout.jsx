@@ -194,10 +194,6 @@ export default function Layout({ children }) {
           <SidebarContent className="px-3.5 pt-4 pb-6">
             {navigationCategories.map((category, categoryIndex) => (
               <React.Fragment key={category.title}>
-                {/* Divider line between sections */}
-                {categoryIndex > 0 && (
-                  <div className="h-px bg-gradient-to-r from-transparent via-slate-500/30 to-transparent mx-4 my-2" />
-                )}
                 {/* Category */}
                 <div className={categoryIndex === navigationCategories.length - 1 ? "" : "mb-0.5"}>
                   {/* Category Header */}
@@ -260,10 +256,6 @@ export default function Layout({ children }) {
                   </ul>
                 </div>
 
-                {/* Category Divider (except for last category) */}
-                {categoryIndex < navigationCategories.length - 1 && (
-                  <div className="h-px bg-gradient-to-r from-transparent via-slate-500/30 to-transparent mx-4 my-2" />
-                )}
               </React.Fragment>
             ))}
           </SidebarContent>
