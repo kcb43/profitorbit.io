@@ -441,6 +441,30 @@ export default function CrosslistComposer() {
   
   // eBay listing ID state
   const [ebayListingId, setEbayListingId] = useState(null);
+
+  // Facebook OAuth token state
+  const [facebookToken, setFacebookToken] = useState(() => {
+    // Load token from localStorage on mount
+    try {
+      const stored = localStorage.getItem('facebook_access_token');
+      if (stored) {
+        const tokenData = JSON.parse(stored);
+        // Check if token is expired
+        if (tokenData.expires_at && tokenData.expires_at > Date.now()) {
+          return tokenData;
+        }
+        // Token expired, remove it
+        localStorage.removeItem('facebook_access_token');
+      }
+    } catch (e) {
+      console.error('Error loading Facebook token:', e);
+    }
+    return null;
+  });
+
+  // Facebook pages state
+  const [facebookPages, setFacebookPages] = useState([]);
+  const [facebookSelectedPage, setFacebookSelectedPage] = useState(null);
   
   // Image Editor state
   const [editorOpen, setEditorOpen] = useState(false);
@@ -585,7 +609,164 @@ export default function CrosslistComposer() {
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [location, toast]);
+
+    // Handle Facebook OAuth callback
+    if (params.get('facebook_auth_success') === '1') {
+      const tokenParam = params.get('token');
+      if (tokenParam) {
+        try {
+          const tokenData = JSON.parse(decodeURIComponent(tokenParam));
+          
+          const tokenToStore = {
+            access_token: tokenData.access_token,
+            expires_at: tokenData.expires_at || (Date.now() + (tokenData.expires_in * 1000)),
+            expires_in: tokenData.expires_in,
+            token_type: tokenData.token_type || 'bearer',
+          };
+          
+          // Restore theme IMMEDIATELY before any other operations
+          const preservedTheme = sessionStorage.getItem('preserved_theme');
+          if (preservedTheme) {
+            // Restore theme to localStorage immediately
+            localStorage.setItem('theme', preservedTheme);
+            // Update DOM immediately
+            const root = document.documentElement;
+            root.setAttribute('data-theme', preservedTheme);
+            // Trigger theme update
+            window.dispatchEvent(new Event('storage'));
+            // Clean up sessionStorage
+            sessionStorage.removeItem('preserved_theme');
+          }
+          
+          // Store token securely
+          localStorage.setItem('facebook_access_token', JSON.stringify(tokenToStore));
+          setFacebookToken(tokenToStore);
+          
+          // Fetch pages after token is stored
+          // This will be done in a separate useEffect
+          
+          // Restore saved form state
+          const savedState = sessionStorage.getItem('facebook_oauth_state');
+          if (savedState) {
+            try {
+              const stateData = JSON.parse(savedState);
+              // Restore form state
+              if (stateData.templateForms) {
+                setTemplateForms(stateData.templateForms);
+              }
+              if (stateData.currentEditingItemId) {
+                setCurrentEditingItemId(stateData.currentEditingItemId);
+                // Reload item data if we have an item ID and it exists in inventory
+                if (stateData.itemIds) {
+                  const itemIdsArray = stateData.itemIds.split(',').filter(Boolean);
+                  if (itemIdsArray.length > 0) {
+                    // Update URL to include item IDs so the page knows which items to show
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('ids', stateData.itemIds);
+                    if (stateData.autoSelect !== undefined) {
+                      newUrl.searchParams.set('autoSelect', String(stateData.autoSelect));
+                    }
+                    
+                    // Use navigate instead of reload to preserve theme and other preferences
+                    navigate(newUrl.pathname + newUrl.search, { replace: true });
+                    
+                    // Don't reload - let React handle the state restoration
+                    return; // Exit early
+                  }
+                }
+              }
+              if (stateData.activeForm) {
+                setActiveForm(stateData.activeForm);
+              }
+              if (stateData.selectedCategoryPath) {
+                setSelectedCategoryPath(stateData.selectedCategoryPath);
+              }
+              if (stateData.generalCategoryPath) {
+                setGeneralCategoryPath(stateData.generalCategoryPath);
+              }
+              
+              // Clear saved state
+              sessionStorage.removeItem('facebook_oauth_state');
+            } catch (e) {
+              console.error('Error restoring saved state:', e);
+            }
+          }
+          
+          toast({
+            title: "Facebook account connected!",
+            description: "Your Facebook account has been successfully connected.",
+          });
+          
+          // Clean up URL
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch (e) {
+          console.error('Error parsing Facebook token:', e);
+          toast({
+            title: "Connection error",
+            description: "Failed to save Facebook connection. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+    
+    // Check for Facebook OAuth errors
+    const facebookAuthError = params.get('facebook_auth_error');
+    if (facebookAuthError) {
+      toast({
+        title: "Connection failed",
+        description: `Failed to connect Facebook account: ${decodeURIComponent(facebookAuthError)}`,
+        variant: "destructive",
+      });
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location, toast, navigate]);
+
+  // Fetch Facebook pages when token is available
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchFacebookPages = async () => {
+      if (facebookToken?.access_token) {
+        try {
+          // Check if token is expired
+          if (facebookToken.expires_at && facebookToken.expires_at <= Date.now()) {
+            console.warn('Facebook token expired, cannot fetch pages');
+            return;
+          }
+
+          // Import Facebook client functions
+          const { getUserPages } = await import('@/api/facebookClient');
+          const pages = await getUserPages();
+          
+          if (isMounted) {
+            setFacebookPages(pages);
+            
+            // Auto-select first page if available and none selected
+            if (pages.length > 0) {
+              setFacebookSelectedPage(prev => prev || pages[0]);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching Facebook pages:', error);
+          // Don't show error toast here, let the user see it in the UI
+        }
+      } else {
+        // Clear pages if token is removed
+        if (isMounted) {
+          setFacebookPages([]);
+          setFacebookSelectedPage(null);
+        }
+      }
+    };
+
+    fetchFacebookPages();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [facebookToken]);
 
   // Fetch eBay username when token is available
   useEffect(() => {
@@ -1446,6 +1627,9 @@ export default function CrosslistComposer() {
     if (templateKey === 'ebay') {
       // Initiate eBay OAuth flow
       window.location.href = '/api/ebay/auth';
+    } else if (templateKey === 'facebook') {
+      // Initiate Facebook OAuth flow
+      window.location.href = '/api/facebook/auth';
     } else {
       const label = TEMPLATE_DISPLAY_NAMES[templateKey] || "Marketplace";
       toast({
@@ -1485,6 +1669,40 @@ export default function CrosslistComposer() {
     
     // Initiate eBay OAuth flow
     window.location.href = '/api/ebay/auth';
+  };
+
+  const handleDisconnectFacebook = () => {
+    localStorage.removeItem('facebook_access_token');
+    setFacebookToken(null);
+    setFacebookPages([]);
+    setFacebookSelectedPage(null);
+    toast({
+      title: "Facebook account disconnected",
+      description: "Your Facebook account has been disconnected.",
+    });
+  };
+  
+  const handleConnectFacebook = () => {
+    // Save current theme to sessionStorage before OAuth redirect
+    const currentTheme = localStorage.getItem('theme') || 'default-light';
+    sessionStorage.setItem('preserved_theme', currentTheme);
+    
+    // Save current form state before redirecting to OAuth
+    const stateToSave = {
+      templateForms,
+      currentEditingItemId,
+      activeForm,
+      selectedCategoryPath,
+      generalCategoryPath,
+      itemIds: itemIds.join(','), // Save as comma-separated string
+      autoSelect,
+    };
+    
+    // Save to sessionStorage (cleared when tab closes)
+    sessionStorage.setItem('facebook_oauth_state', JSON.stringify(stateToSave));
+    
+    // Initiate Facebook OAuth flow
+    window.location.href = '/api/facebook/auth';
   };
 
   const handleTemplateSave = async (templateKey) => {
@@ -2389,6 +2607,111 @@ export default function CrosslistComposer() {
               </div>
             </div>
           </div>
+        </div>
+        )}
+
+        {/* Facebook Account Connection Section - At Top (Only show on Facebook form) */}
+        {activeForm === "facebook" && (
+        <div className="rounded-lg border border-muted-foreground/30 bg-card p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-5 h-5" />
+              <Label className="text-base font-semibold">Facebook Account</Label>
+            </div>
+            {facebookToken ? (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("facebook")}>
+                  <RefreshCw className="h-4 w-4" />
+                  Reconnect
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleDisconnectFacebook}>
+                  <X className="h-4 w-4" />
+                  Disconnect
+                </Button>
+              </div>
+            ) : (
+              <Button variant="default" size="sm" className="gap-2" onClick={handleConnectFacebook}>
+                <Check className="h-4 w-4" />
+                Connect Facebook Account
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t">
+            {/* Status */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">Status</Label>
+              <div className="flex items-center gap-2">
+                {facebookToken ? (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Token Expires */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">Token Expires</Label>
+              <div className="text-sm">
+                {facebookToken?.expires_at ? (
+                  <span>{new Date(facebookToken.expires_at).toLocaleDateString()}</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+
+            {/* Facebook Pages */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">Available Pages</Label>
+              <div className="text-sm">
+                {facebookPages.length > 0 ? (
+                  <span className="font-medium">{facebookPages.length} page{facebookPages.length !== 1 ? 's' : ''}</span>
+                ) : facebookToken ? (
+                  <span className="text-muted-foreground">Loading...</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Show selected page if available */}
+          {facebookPages.length > 0 && (
+            <div className="pt-2 border-t">
+              <Label className="text-xs text-muted-foreground mb-2 block">Selected Page</Label>
+              <Select
+                value={facebookSelectedPage?.id || ""}
+                onValueChange={(value) => {
+                  const page = facebookPages.find(p => p.id === value);
+                  setFacebookSelectedPage(page);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a page">
+                    {facebookSelectedPage?.name || "Select a page"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {facebookPages.map((page) => (
+                    <SelectItem key={page.id} value={page.id}>
+                      {page.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Listings will be posted on behalf of this page.
+              </p>
+            </div>
+          )}
         </div>
         )}
 

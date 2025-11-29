@@ -44,7 +44,9 @@ const navigationCategories = [
     title: "Tools",
     icon: Settings,
     items: [
+      { title: "Crosslist Dashboard", url: createPageUrl("CrosslistDashboard"), icon: CrossSquareIcon },
       { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
+      { title: "Marketplace Connect", url: createPageUrl("MarketplaceConnect"), icon: Settings },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
       { title: "Market Intelligence", url: createPageUrl("MarketIntelligence"), icon: TrendingUp },
       { title: "Settings", url: createPageUrl("Settings"), icon: Settings },

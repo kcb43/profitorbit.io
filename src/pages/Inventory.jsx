@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -36,6 +36,8 @@ import SoldLookupDialog from "../components/SoldLookupDialog";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { ImageEditor } from "@/components/ImageEditor";
 import { OptimizedImage } from "@/components/OptimizedImage";
+import { FacebookListingDialog } from "@/components/FacebookListingDialog";
+import { isConnected } from "@/api/facebookClient";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -88,6 +90,8 @@ export default function InventoryPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
   const [viewMode, setViewMode] = useState("grid"); // "list" or "grid"
+  const [facebookListingDialogOpen, setFacebookListingDialogOpen] = useState(false);
+  const [itemForFacebookListing, setItemForFacebookListing] = useState(null);
 
   const {
     toggleFavorite,
@@ -1235,6 +1239,22 @@ export default function InventoryPage() {
                             <Tag className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                             <span className="hidden sm:inline">{tagEditorFor === item.id ? "Close" : "Add Tag"}</span>
                           </Button>
+                          {isConnected() && !isSoldOut && item.status !== 'sold' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 w-6 sm:h-7 sm:px-2 text-xs gap-1 p-0 sm:p-2 border-blue-600/50 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                              onClick={() => {
+                                setItemForFacebookListing(item);
+                                setFacebookListingDialogOpen(true);
+                              }}
+                              title="List on Facebook Marketplace"
+                            >
+                              <Facebook className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              <span className="hidden sm:inline">List on FB</span>
+                            </Button>
+                          )}
                         </div>
                         <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="w-full min-w-0 flex justify-center mt-1 sm:mt-2">
                           <Button 
@@ -1556,6 +1576,20 @@ export default function InventoryPage() {
                                 Edit
                               </Button>
                             </Link>
+                            {isConnected() && !isSoldOut && item.status !== 'sold' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setItemForFacebookListing(item);
+                                  setFacebookListingDialogOpen(true);
+                                }}
+                                className="h-8 text-xs border-blue-600/50 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                              >
+                                <Facebook className="w-3 h-3 mr-1" />
+                                List on FB
+                              </Button>
+                            )}
                             <Button 
                               variant="outline" 
                               size="sm" 
@@ -1795,6 +1829,18 @@ export default function InventoryPage() {
         open={soldDialogOpen}
         onOpenChange={setSoldDialogOpen}
         itemName={soldDialogName}
+      />
+
+      <FacebookListingDialog
+        open={facebookListingDialogOpen}
+        onOpenChange={setFacebookListingDialogOpen}
+        item={itemForFacebookListing}
+        onSuccess={() => {
+          toast({
+            title: "Success",
+            description: "Item listed on Facebook Marketplace successfully.",
+          });
+        }}
       />
     </div>
   );

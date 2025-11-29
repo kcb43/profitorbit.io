@@ -15,6 +15,21 @@ export default defineConfig({
         target: 'https://profit-pulse-2.vercel.app',
         changeOrigin: true,
         secure: true,
+        // Log proxy errors for debugging
+        onError: (err, req, res) => {
+          console.error('Proxy error:', err.message);
+          console.error('Requested URL:', req.url);
+          console.error('If you see 404 errors, the API routes may not be deployed to Vercel yet.');
+          console.error('Solution: Push your code to trigger a Vercel deployment.');
+        },
+        // Handle 404s more gracefully
+        onProxyRes: (proxyRes, req, res) => {
+          if (proxyRes.statusCode === 404) {
+            console.error('API route not found:', req.url);
+            console.error('This route may not be deployed to Vercel yet.');
+            console.error('Please deploy your code to Vercel to make API routes available.');
+          }
+        }
       }
     }
   },

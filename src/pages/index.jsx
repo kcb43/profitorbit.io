@@ -22,6 +22,8 @@ import Crosslist from "./Crosslist";
 import CrosslistComposer from "./CrosslistComposer";
 import MarketIntelligence from "./MarketIntelligence";
 import Settings from "./Settings";
+import MarketplaceConnect from "./MarketplaceConnect";
+import CrosslistDashboard from "./CrosslistDashboard";
 import DevErrorBoundary from "../components/DevErrorBoundary";
 import ScrollToTop from "../components/ScrollToTop";
 
@@ -54,6 +56,10 @@ const PAGES = {
     MarketIntelligence: MarketIntelligence,
     
     Settings: Settings,
+    
+    MarketplaceConnect: MarketplaceConnect,
+    
+    CrosslistDashboard: CrosslistDashboard,
     
 }
 
@@ -121,6 +127,10 @@ function PagesContent() {
                 <Route path="/MarketIntelligence" element={<MarketIntelligence />} />
                 
                 <Route path="/Settings" element={<Settings />} />
+                
+                <Route path="/MarketplaceConnect" element={<MarketplaceConnect />} />
+                
+                <Route path="/CrosslistDashboard" element={<CrosslistDashboard />} />
                 
                 </Routes>
             </Layout>
