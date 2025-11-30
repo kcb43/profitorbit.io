@@ -713,10 +713,19 @@ export default function CrosslistComposer() {
     // Check for Facebook OAuth errors
     const facebookAuthError = params.get('facebook_auth_error');
     if (facebookAuthError) {
+      const errorMsg = decodeURIComponent(facebookAuthError);
+      console.error('Facebook OAuth error:', errorMsg);
+      
+      let description = errorMsg;
+      if (errorMsg.includes('redirect_uri')) {
+        description = `${errorMsg}\n\nQuick Fix: Visit /api/facebook/debug to see your redirect URI, then add it to Facebook App Settings > Valid OAuth Redirect URIs`;
+      }
+      
       toast({
-        title: "Connection failed",
-        description: `Failed to connect Facebook account: ${decodeURIComponent(facebookAuthError)}`,
+        title: "Facebook Connection Failed",
+        description: description,
         variant: "destructive",
+        duration: 10000,
       });
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
@@ -1916,6 +1925,44 @@ export default function CrosslistComposer() {
       try {
         setIsSaving(true);
 
+        // Upload any photos with blob: URLs to get proper HTTP/HTTPS URLs for eBay
+        const sourcePhotos = ebayForm.photos?.length > 0 ? ebayForm.photos : (generalForm.photos || []);
+        const photosToUse = [];
+        for (const photo of sourcePhotos) {
+          if (photo.file && photo.preview && photo.preview.startsWith('blob:')) {
+            // Photo needs to be uploaded
+            try {
+              const uploadPayload = photo.file instanceof File 
+                ? photo.file 
+                : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
+              
+              const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+              photosToUse.push({
+                ...photo,
+                preview: file_url,
+                imageUrl: file_url,
+              });
+            } catch (uploadError) {
+              console.error('Error uploading photo:', uploadError);
+              // Skip this photo if upload fails
+              continue;
+            }
+          } else if (photo.preview && (photo.preview.startsWith('http://') || photo.preview.startsWith('https://'))) {
+            // Photo already has a valid URL
+            photosToUse.push({
+              ...photo,
+              imageUrl: photo.preview,
+            });
+          } else if (photo.imageUrl && (photo.imageUrl.startsWith('http://') || photo.imageUrl.startsWith('https://'))) {
+            // Photo has imageUrl field with valid URL
+            photosToUse.push(photo);
+          }
+        }
+
+        if (photosToUse.length === 0 && sourcePhotos.length > 0) {
+          throw new Error('No valid photo URLs available. Please ensure photos are uploaded or use photos from inventory.');
+        }
+
         // Prepare listing data
         const listingData = {
           title: ebayForm.title || generalForm.title,
@@ -1923,7 +1970,7 @@ export default function CrosslistComposer() {
           categoryId: ebayForm.categoryId,
           price: ebayForm.buyItNowPrice || generalForm.price,
           quantity: parseInt(generalForm.quantity) || 1,
-          photos: ebayForm.photos?.length > 0 ? ebayForm.photos : (generalForm.photos || []),
+          photos: photosToUse,
           condition: ebayForm.condition || generalForm.condition || 'New',
           brand: ebayForm.ebayBrand || generalForm.brand || '',
           itemType: ebayForm.itemType || '',
@@ -2076,6 +2123,43 @@ export default function CrosslistComposer() {
       for (const marketplace of marketplacesToUse) {
         try {
           if (marketplace === "ebay") {
+            // Upload any photos with blob: URLs to get proper HTTP/HTTPS URLs for eBay
+            const photosToUse = [];
+            for (const photo of generalForm.photos || []) {
+              if (photo.file && photo.preview && photo.preview.startsWith('blob:')) {
+                // Photo needs to be uploaded
+                try {
+                  const uploadPayload = photo.file instanceof File 
+                    ? photo.file 
+                    : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
+                  
+                  const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+                  photosToUse.push({
+                    ...photo,
+                    preview: file_url,
+                    imageUrl: file_url,
+                  });
+                } catch (uploadError) {
+                  console.error('Error uploading photo:', uploadError);
+                  // Skip this photo if upload fails
+                  continue;
+                }
+              } else if (photo.preview && (photo.preview.startsWith('http://') || photo.preview.startsWith('https://'))) {
+                // Photo already has a valid URL
+                photosToUse.push({
+                  ...photo,
+                  imageUrl: photo.preview,
+                });
+              } else if (photo.imageUrl && (photo.imageUrl.startsWith('http://') || photo.imageUrl.startsWith('https://'))) {
+                // Photo has imageUrl field with valid URL
+                photosToUse.push(photo);
+              }
+            }
+
+            if (photosToUse.length === 0 && (generalForm.photos || []).length > 0) {
+              throw new Error('No valid photo URLs available. Please ensure photos are uploaded or use photos from inventory.');
+            }
+
             // Prepare eBay listing data
             const listingData = {
               title: generalForm.title,
@@ -2083,7 +2167,7 @@ export default function CrosslistComposer() {
               categoryId: ebayForm.categoryId,
               price: ebayForm.buyItNowPrice || generalForm.price,
               quantity: parseInt(generalForm.quantity) || 1,
-              photos: generalForm.photos || [],
+              photos: photosToUse,
               condition: generalForm.condition || 'new',
               brand: generalForm.brand || ebayForm.ebayBrand || '',
               itemType: ebayForm.itemType || '',

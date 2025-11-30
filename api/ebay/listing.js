@@ -393,8 +393,21 @@ function buildAddFixedPriceItemXML(listingData, token) {
     customItemSpecifics,
   } = listingData;
 
-  // Build photo URLs
-  const pictureUrls = photos.map(p => p.preview || p).filter(Boolean);
+  // Build photo URLs - filter out invalid URLs (blob:, data:, file://, etc.)
+  // eBay requires publicly accessible HTTP/HTTPS URLs
+  const pictureUrls = photos
+    .map(p => {
+      // Try different fields: imageUrl, preview, or the photo itself if it's a string
+      const url = p.imageUrl || p.preview || (typeof p === 'string' ? p : null);
+      return url;
+    })
+    .filter(Boolean)
+    .filter(url => {
+      // Only accept HTTP/HTTPS URLs - reject blob:, data:, file://, etc.
+      if (typeof url !== 'string') return false;
+      const trimmedUrl = url.trim();
+      return trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://');
+    });
 
   // Build condition ID (eBay condition codes)
   // Map our condition values to eBay condition IDs
