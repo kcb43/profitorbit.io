@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { createMarketplaceListing, getUserPages, isConnected } from "@/api/facebookClient";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -2089,6 +2090,118 @@ export default function CrosslistComposer() {
       return;
     }
 
+    if (marketplace === "facebook") {
+      // Check if Facebook is connected
+      if (!isConnected()) {
+        toast({
+          title: "Facebook Not Connected",
+          description: "Please connect your Facebook account in Settings first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        setIsSaving(true);
+
+        // Upload any photos with blob: URLs to get proper HTTP/HTTPS URLs for Facebook
+        const sourcePhotos = facebookForm.photos?.length > 0 ? facebookForm.photos : (generalForm.photos || []);
+        const photosToUse = [];
+        for (const photo of sourcePhotos) {
+          if (photo.file && photo.preview && photo.preview.startsWith('blob:')) {
+            // Photo needs to be uploaded
+            try {
+              const uploadPayload = photo.file instanceof File 
+                ? photo.file 
+                : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
+              
+              const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+              photosToUse.push(file_url);
+            } catch (uploadError) {
+              console.error('Error uploading photo:', uploadError);
+              // Skip this photo if upload fails
+              continue;
+            }
+          } else if (photo.preview && (photo.preview.startsWith('http://') || photo.preview.startsWith('https://'))) {
+            // Photo already has a valid URL
+            photosToUse.push(photo.preview);
+          } else if (photo.imageUrl && (photo.imageUrl.startsWith('http://') || photo.imageUrl.startsWith('https://'))) {
+            // Photo has imageUrl field with valid URL
+            photosToUse.push(photo.imageUrl);
+          }
+        }
+
+        if (photosToUse.length === 0) {
+          throw new Error('At least one photo is required for Facebook Marketplace listings.');
+        }
+
+        // Get user's Facebook pages
+        const pages = await getUserPages();
+        if (pages.length === 0) {
+          throw new Error('No Facebook Pages found. You must manage at least one Page to create Marketplace listings.');
+        }
+
+        // Use selected page or first available page
+        const pageId = facebookForm.facebookPageId || facebookSelectedPage?.id || pages[0].id;
+        const selectedPage = pages.find(p => p.id === pageId) || pages[0];
+
+        // Prepare Facebook listing data
+        const title = facebookForm.title || generalForm.title;
+        const description = facebookForm.description || generalForm.description || '';
+        const price = facebookForm.price || generalForm.price;
+
+        if (!title || !description || !price) {
+          throw new Error('Title, description, and price are required for Facebook Marketplace listings.');
+        }
+
+        // Convert price to cents
+        const priceInCents = Math.round(parseFloat(price) * 100);
+
+        // Create Facebook Marketplace listing
+        const result = await createMarketplaceListing({
+          pageId: selectedPage.id,
+          title: title,
+          description: description,
+          price: priceInCents,
+          currency: 'USD',
+          imageUrls: photosToUse,
+        });
+
+        if (result.success) {
+          toast({
+            title: "Facebook listing created successfully!",
+            description: result.message || `Your item has been listed on Facebook Marketplace (${selectedPage.name}).`,
+          });
+
+          // Update inventory item status if we have a current item
+          if (currentEditingItemId) {
+            try {
+              await base44.entities.InventoryItem.update(currentEditingItemId, {
+                status: 'listed',
+                facebook_listing_id: result.id || '',
+              });
+              queryClient.invalidateQueries(['inventoryItems']);
+            } catch (updateError) {
+              console.error('Error updating inventory item:', updateError);
+            }
+          }
+        } else {
+          throw new Error(result.message || 'Failed to create Facebook listing');
+        }
+      } catch (error) {
+        console.error('Error creating Facebook listing:', error);
+        toast({
+          title: "Failed to create listing",
+          description: error.message || "An error occurred while creating the listing. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+
+      return;
+    }
+
     // For other marketplaces, show coming soon
     toast({
       title: `List on ${TEMPLATE_DISPLAY_NAMES[marketplace] || marketplace}`,
@@ -2207,6 +2320,85 @@ export default function CrosslistComposer() {
               results.push({ marketplace, itemId: result.ItemID });
             } else {
               throw new Error(result.Errors?.join(', ') || 'Failed to create listing');
+            }
+          } else if (marketplace === "facebook") {
+            // Check if Facebook is connected
+            if (!isConnected()) {
+              throw new Error('Facebook account not connected. Please connect your Facebook account in Settings first.');
+            }
+
+            // Upload any photos with blob: URLs to get proper HTTP/HTTPS URLs for Facebook
+            const sourcePhotos = facebookForm.photos?.length > 0 ? facebookForm.photos : (generalForm.photos || []);
+            const photosToUse = [];
+            for (const photo of sourcePhotos) {
+              if (photo.file && photo.preview && photo.preview.startsWith('blob:')) {
+                // Photo needs to be uploaded
+                try {
+                  const uploadPayload = photo.file instanceof File 
+                    ? photo.file 
+                    : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
+                  
+                  const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+                  photosToUse.push(file_url);
+                } catch (uploadError) {
+                  console.error('Error uploading photo:', uploadError);
+                  // Skip this photo if upload fails
+                  continue;
+                }
+              } else if (photo.preview && (photo.preview.startsWith('http://') || photo.preview.startsWith('https://'))) {
+                // Photo already has a valid URL
+                photosToUse.push(photo.preview);
+              } else if (photo.imageUrl && (photo.imageUrl.startsWith('http://') || photo.imageUrl.startsWith('https://'))) {
+                // Photo has imageUrl field with valid URL
+                photosToUse.push(photo.imageUrl);
+              }
+            }
+
+            if (photosToUse.length === 0) {
+              throw new Error('At least one photo is required for Facebook Marketplace listings.');
+            }
+
+            // Get user's Facebook pages
+            const pages = await getUserPages();
+            if (pages.length === 0) {
+              throw new Error('No Facebook Pages found. You must manage at least one Page to create Marketplace listings.');
+            }
+
+            // Use selected page or first available page
+            const pageId = facebookForm.facebookPageId || facebookSelectedPage?.id || pages[0].id;
+            const selectedPage = pages.find(p => p.id === pageId) || pages[0];
+
+            // Prepare Facebook listing data
+            const title = facebookForm.title || generalForm.title;
+            const description = facebookForm.description || generalForm.description || '';
+            const price = facebookForm.price || generalForm.price;
+
+            if (!title || !description || !price) {
+              throw new Error('Title, description, and price are required for Facebook Marketplace listings.');
+            }
+
+            // Convert price to cents
+            const priceInCents = Math.round(parseFloat(price) * 100);
+
+            // Create Facebook Marketplace listing
+            const result = await createMarketplaceListing({
+              pageId: selectedPage.id,
+              title: title,
+              description: description,
+              price: priceInCents,
+              currency: 'USD',
+              imageUrls: photosToUse,
+            });
+
+            if (result.success) {
+              results.push({ 
+                marketplace, 
+                itemId: result.id,
+                listingUrl: `https://www.facebook.com/marketplace/item/${result.id}`,
+                pageName: selectedPage.name,
+              });
+            } else {
+              throw new Error(result.message || 'Failed to create Facebook listing');
             }
           } else {
             // For other marketplaces, just mark as coming soon for now
