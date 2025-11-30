@@ -500,6 +500,88 @@ export default function Crosslist() {
     return errors;
   };
 
+  // Check if Chrome extension API is available
+  const isChromeExtensionAvailable = () => {
+    return typeof chrome !== 'undefined' && 
+           chrome.runtime && 
+           typeof chrome.runtime.sendMessage === 'function';
+  };
+
+  // Build listing object from form data for Facebook Marketplace
+  const buildFacebookListingData = async () => {
+    const title = facebookForm.title || generalForm.title || '';
+    const description = facebookForm.description || generalForm.description || '';
+    const price = facebookForm.price || generalForm.price || '';
+    
+    // Get photo URLs - handle blob URLs by converting to data URLs
+    const photos = generalForm.photos || [];
+    const imageUrls = [];
+    
+    for (const photo of photos) {
+      let imageUrl = photo.preview || photo.imageUrl || photo;
+      
+      // If it's a blob URL, try to convert to data URL for the extension
+      if (typeof imageUrl === 'string' && imageUrl.startsWith('blob:')) {
+        try {
+          // For blob URLs, we can't directly convert, but we can pass the File object
+          // The extension will need to handle blob URLs or we could convert to data URL here
+          // For now, we'll skip blob URLs and only send valid HTTP/HTTPS URLs
+          if (photo.file) {
+            // Extension might need to handle files differently
+            // For now, skip blob URLs as they won't work cross-tab
+            console.warn('Blob URL detected, skipping. Upload photos first to get proper URLs.');
+            continue;
+          }
+        } catch (error) {
+          console.error('Error processing photo:', error);
+          continue;
+        }
+      } else if (typeof imageUrl === 'string' && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+        // Valid HTTP/HTTPS URL - use it
+        imageUrls.push(imageUrl);
+      }
+    }
+
+    return {
+      title,
+      description,
+      price: parseFloat(price) || 0,
+      images: imageUrls,
+      location: generalForm.zip || facebookForm.meetUpLocation || '',
+      category: generalForm.category || '',
+      condition: generalForm.condition || '',
+      brand: generalForm.brand || '',
+      // Add any other Facebook-specific fields
+      deliveryMethod: facebookForm.deliveryMethod || 'shipping_and_pickup',
+      shippingPrice: facebookForm.shippingPrice || '',
+      localPickup: facebookForm.localPickup !== undefined ? facebookForm.localPickup : true,
+      allowOffers: facebookForm.allowOffers !== undefined ? facebookForm.allowOffers : true,
+    };
+  };
+
+  // Send listing data to Chrome extension for autofill
+  const sendToExtension = async () => {
+    // Build listing data from form
+    const listing = await buildFacebookListingData();
+    
+    if (!listing) return;
+
+    chrome.runtime.sendMessage(
+      "dglckcnjkpikbnoeigncbfpjajjfangm",
+      {
+        type: "START_FACEBOOK_AUTOFILL",
+        payload: listing, // your listing object
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          alert("Extension not detected. Please make sure it is installed.");
+        } else {
+          alert("Listing sent! Open Facebook Marketplace to autofill.");
+        }
+      }
+    );
+  };
+
   const handleListOnMarketplace = (marketplace) => {
     if (marketplace === "ebay") {
       const errors = validateEbayForm();
@@ -513,7 +595,13 @@ export default function Crosslist() {
       }
     }
     
-    // TODO: Implement actual listing API call
+    if (marketplace === "facebook") {
+      // For Facebook, use Chrome extension autofill
+      sendToExtension();
+      return;
+    }
+    
+    // TODO: Implement actual listing API call for other marketplaces
     toast({
       title: `List on ${TEMPLATE_DISPLAY_NAMES[marketplace] || marketplace}`,
       description: "Listing functionality coming soon!",
@@ -1059,6 +1147,17 @@ export default function Crosslist() {
                       </span>
                     </Button>
 
+                    {/* Facebook Autofill Button */}
+                    <Button
+                      onClick={() => {
+                        populateTemplates(it);
+                        sendToExtension();
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 text-xs"
+                    >
+                      Send to Facebook Autofill
+                    </Button>
+
                     {/* Edit Button */}
                     <Button
                       variant="ghost"
@@ -1146,18 +1245,28 @@ export default function Crosslist() {
                         );
                       })}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <Button 
                         size="sm" 
-                        className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs" 
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs" 
                         onClick={() => openComposer([it.id], false)}
                       >
                         Crosslist
                       </Button>
                       <Button 
                         size="sm" 
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs" 
+                        onClick={() => {
+                          populateTemplates(it);
+                          sendToExtension();
+                        }}
+                      >
+                        Send to Facebook Autofill
+                      </Button>
+                      <Button 
+                        size="sm" 
                         variant="outline" 
-                        className="flex-1 border-slate-600 text-gray-300 hover:bg-slate-700/50 text-xs" 
+                        className="w-full border-slate-600 text-gray-300 hover:bg-slate-700/50 text-xs" 
                         onClick={() => navigate(createPageUrl(`AddInventoryItem?id=${it.id}`))}
                       >
                         Edit

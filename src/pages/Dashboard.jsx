@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router-dom";
@@ -67,6 +67,30 @@ const SUPPORTED_MARKETPLACES = [
 export default function Dashboard() {
   const location = useLocation();
   const [profitChartRange, setProfitChartRange] = useState('14d');
+
+  // Add Google site verification meta tag when Dashboard loads
+  useEffect(() => {
+    // Check if meta tag already exists
+    let metaTag = document.querySelector('meta[name="google-site-verification"]');
+    
+    if (!metaTag) {
+      // Create and add the meta tag if it doesn't exist
+      metaTag = document.createElement('meta');
+      metaTag.setAttribute('name', 'google-site-verification');
+      metaTag.setAttribute('content', 'BRiptYhcOdvXt3QZL7NfYmSEP0k0nMUOA2pRWrpqgCI');
+      document.head.appendChild(metaTag);
+    } else {
+      // Update existing meta tag
+      metaTag.setAttribute('content', 'BRiptYhcOdvXt3QZL7NfYmSEP0k0nMUOA2pRWrpqgCI');
+    }
+
+    // Cleanup function to remove meta tag when component unmounts (optional)
+    return () => {
+      // Only remove if we created it (check by content)
+      const tagToRemove = document.querySelector('meta[name="google-site-verification"][content="BRiptYhcOdvXt3QZL7NfYmSEP0k0nMUOA2pRWrpqgCI"]');
+      // Note: We'll leave it in the DOM since it's already in index.html for site-wide verification
+    };
+  }, []);
 
   const { data: rawSales, isLoading: isLoadingSales } = useQuery({
     queryKey: ['sales'],
