@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "ProfitPulse - FB Autofill",
+  "version": "1.0",
+  "permissions": ["scripting", "activeTab", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.facebook.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
