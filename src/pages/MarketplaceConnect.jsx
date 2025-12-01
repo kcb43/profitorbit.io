@@ -22,6 +22,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { crosslistingEngine } from '@/services/CrosslistingEngine';
+import { useFacebookSDK, launchFacebookSignup } from '@/hooks/useFacebookSDK';
 
 const MARKETPLACES = [
   {
@@ -66,9 +67,29 @@ export default function MarketplaceConnect() {
   const [accounts, setAccounts] = useState({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { sdkReady } = useFacebookSDK();
+  const [facebookConfigId, setFacebookConfigId] = useState('');
 
   useEffect(() => {
     loadAccounts();
+    
+    // Listen for embedded signup messages
+    const handleMessage = (event) => {
+      if (!event.origin.endsWith('facebook.com')) return;
+      
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log('Facebook embedded signup message:', data);
+          // Handle embedded signup event if needed
+        }
+      } catch (error) {
+        console.log('Facebook message event:', event.data);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   const loadAccounts = async () => {
@@ -82,9 +103,80 @@ export default function MarketplaceConnect() {
     }
   };
 
+  const handleFacebookConnect = async () => {
+    if (!sdkReady) {
+      toast({
+        title: 'Facebook SDK Loading',
+        description: 'Please wait for Facebook SDK to load...',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Get configuration ID from environment or prompt user
+    // For now, we'll use a fallback to redirect method if no config ID
+    const configId = facebookConfigId || import.meta.env.VITE_FACEBOOK_CONFIG_ID;
+    
+    if (!configId) {
+      // Fallback to redirect method if no config ID
+      window.location.href = '/api/facebook/auth';
+      return;
+    }
+
+    // Use embedded signup
+    launchFacebookSignup(
+      configId,
+      async (code) => {
+        // Exchange code for access token
+        try {
+          const response = await fetch('/api/facebook/exchange-code', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to exchange code');
+          }
+
+          const tokenData = await response.json();
+          
+          // Store token
+          localStorage.setItem('facebook_access_token', JSON.stringify(tokenData));
+          
+          // Reload accounts
+          await loadAccounts();
+          
+          toast({
+            title: 'Facebook Connected',
+            description: 'Your Facebook account has been successfully connected.',
+          });
+        } catch (error) {
+          console.error('Error exchanging code:', error);
+          toast({
+            title: 'Connection Failed',
+            description: error.message || 'Failed to connect Facebook account.',
+            variant: 'destructive',
+          });
+        }
+      },
+      (error) => {
+        console.error('Facebook login error:', error);
+        toast({
+          title: 'Connection Failed',
+          description: error.message || 'Facebook login was cancelled or failed.',
+          variant: 'destructive',
+        });
+      }
+    );
+  };
+
   const handleConnect = (marketplaceId) => {
     if (marketplaceId === 'facebook') {
-      window.location.href = '/api/facebook/auth';
+      handleFacebookConnect();
     } else if (marketplaceId === 'ebay') {
       window.location.href = '/api/ebay/auth';
     } else {
@@ -260,11 +352,11 @@ export default function MarketplaceConnect() {
                   ) : (
                     <Button
                       onClick={() => handleConnect(marketplace.id)}
-                      disabled={isComingSoon}
+                      disabled={isComingSoon || (marketplace.id === 'facebook' && !sdkReady)}
                       className="flex-1"
                     >
                       <Icon className="w-4 h-4 mr-2" />
-                      Connect {marketplace.name}
+                      {marketplace.id === 'facebook' && !sdkReady ? 'Loading...' : `Connect ${marketplace.name}`}
                     </Button>
                   )}
                 </div>

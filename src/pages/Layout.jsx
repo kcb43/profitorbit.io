@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import {
   Sidebar,
@@ -44,9 +44,7 @@ const navigationCategories = [
     title: "Tools",
     icon: Settings,
     items: [
-      { title: "Crosslist Dashboard", url: createPageUrl("CrosslistDashboard"), icon: CrossSquareIcon },
       { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
-      { title: "Marketplace Connect", url: createPageUrl("MarketplaceConnect"), icon: Settings },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
       { title: "Market Intelligence", url: createPageUrl("MarketIntelligence"), icon: TrendingUp },
       { title: "Settings", url: createPageUrl("Settings"), icon: Settings },
@@ -269,7 +267,7 @@ export default function Layout({ children }) {
             ))}
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-gray-100 dark:border-gray-800 p-4">
+          <SidebarFooter className="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-gradient-to-br from-gray-200 dark:from-gray-700 to-gray-300 dark:to-gray-800 rounded-full flex items-center justify-center">
@@ -300,6 +298,15 @@ export default function Layout({ children }) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
+            </div>
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <Link
+                to={createPageUrl("PrivacyPolicy")}
+                className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors"
+              >
+                <Shield className="w-3 h-3" />
+                <span>Privacy Policy</span>
+              </Link>
             </div>
           </SidebarFooter>
         </Sidebar>

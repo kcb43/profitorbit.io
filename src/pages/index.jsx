@@ -20,10 +20,10 @@ import ProfitCalendar from "./ProfitCalendar";
 
 import Crosslist from "./Crosslist";
 import CrosslistComposer from "./CrosslistComposer";
+import Crosslisting from "./Crosslisting";
 import MarketIntelligence from "./MarketIntelligence";
 import Settings from "./Settings";
-import MarketplaceConnect from "./MarketplaceConnect";
-import CrosslistDashboard from "./CrosslistDashboard";
+import PrivacyPolicy from "./PrivacyPolicy";
 import DevErrorBoundary from "../components/DevErrorBoundary";
 import ScrollToTop from "../components/ScrollToTop";
 
@@ -53,13 +53,14 @@ const PAGES = {
     
     CrosslistComposer: CrosslistComposer,
     
+    Crosslisting: Crosslisting,
+    
     MarketIntelligence: MarketIntelligence,
     
     Settings: Settings,
     
-    MarketplaceConnect: MarketplaceConnect,
     
-    CrosslistDashboard: CrosslistDashboard,
+    PrivacyPolicy: PrivacyPolicy,
     
 }
 
@@ -124,13 +125,15 @@ function PagesContent() {
                 
                 <Route path="/CrosslistComposer" element={<CrosslistComposer />} />
                 
+                <Route path="/crosslisting" element={<Crosslisting />} />
+                <Route path="/Crosslisting" element={<Crosslisting />} />
+                
                 <Route path="/MarketIntelligence" element={<MarketIntelligence />} />
                 
                 <Route path="/Settings" element={<Settings />} />
                 
-                <Route path="/MarketplaceConnect" element={<MarketplaceConnect />} />
                 
-                <Route path="/CrosslistDashboard" element={<CrosslistDashboard />} />
+                <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
                 
                 </Routes>
             </Layout>

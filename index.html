@@ -9,9 +9,23 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
     
-    <!-- Facebook SDK for Embedded Signup -->
+    <!-- Facebook SDK Initialization -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : '1855278678430851',
+          cookie     : true,
+          xfbml      : true,
+          version    : 'v17.0'
+        });
+        console.log('Facebook SDK initialized');
+      };
+    </script>
+    
+    <!-- Facebook SDK Script -->
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+    
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

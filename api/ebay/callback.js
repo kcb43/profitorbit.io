@@ -38,9 +38,9 @@ export default async function handler(req, res) {
     else if (req.headers.host) {
       const host = req.headers.host;
       // If it's a preview deployment, try to use production domain
-      if (host.includes('vercel.app') && host !== 'profit-pulse-2.vercel.app') {
-        // Extract production domain - remove the hash and team parts
-        const productionDomain = 'profit-pulse-2.vercel.app';
+      if (host.includes('vercel.app') && host !== 'profitorbit.io') {
+        // Use production domain
+        const productionDomain = 'profitorbit.io';
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         frontendUrl = `${protocol}://${productionDomain}`;
       } else {
@@ -52,8 +52,8 @@ export default async function handler(req, res) {
     else if (process.env.VERCEL_URL) {
       const vercelUrl = process.env.VERCEL_URL.replace(/^https?:\/\//, '');
       // If it's a preview deployment, use production domain instead
-      if (vercelUrl.includes('vercel.app') && !vercelUrl.startsWith('profit-pulse-2.vercel.app')) {
-        frontendUrl = 'https://profit-pulse-2.vercel.app';
+      if (vercelUrl.includes('vercel.app') && !vercelUrl.startsWith('profitorbit.io')) {
+        frontendUrl = 'https://profitorbit.io';
       } else {
         frontendUrl = `https://${vercelUrl}`;
       }
@@ -63,19 +63,19 @@ export default async function handler(req, res) {
       try {
         const refererUrl = new URL(req.headers.referer);
         // If referer is a preview deployment, use production domain
-        if (refererUrl.host.includes('vercel.app') && refererUrl.host !== 'profit-pulse-2.vercel.app') {
-          frontendUrl = 'https://profit-pulse-2.vercel.app';
+        if (refererUrl.host.includes('vercel.app') && refererUrl.host !== 'profitorbit.io') {
+          frontendUrl = 'https://profitorbit.io';
         } else {
           frontendUrl = refererUrl.origin;
         }
       } catch (e) {
         console.error('Error parsing referer:', e);
-        frontendUrl = 'https://profit-pulse-2.vercel.app'; // Fallback to production
+        frontendUrl = 'https://profitorbit.io'; // Fallback to production
       }
     }
     // 5. Last resort: use production domain
     else {
-      frontendUrl = 'https://profit-pulse-2.vercel.app';
+      frontendUrl = 'https://profitorbit.io';
     }
     
     console.log('Frontend URL for redirect:', {

@@ -36,9 +36,9 @@ export default async function handler(req, res) {
     else if (req.headers.host) {
       const host = req.headers.host;
       // If it's a preview deployment, try to use production domain
-      if (host.includes('vercel.app') && host !== 'profit-pulse-2.vercel.app') {
-        // Extract production domain - remove the hash and team parts
-        const productionDomain = 'profit-pulse-2.vercel.app';
+      if (host.includes('vercel.app') && host !== 'profitorbit.io') {
+        // Use production domain
+        const productionDomain = 'profitorbit.io';
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         frontendUrl = `${protocol}://${productionDomain}`;
       } else {
@@ -50,8 +50,8 @@ export default async function handler(req, res) {
     else if (process.env.VERCEL_URL) {
       const vercelUrl = process.env.VERCEL_URL.replace(/^https?:\/\//, '');
       // If it's a preview deployment, use production domain instead
-      if (vercelUrl.includes('vercel.app') && !vercelUrl.startsWith('profit-pulse-2.vercel.app')) {
-        frontendUrl = 'https://profit-pulse-2.vercel.app';
+      if (vercelUrl.includes('vercel.app') && !vercelUrl.startsWith('profitorbit.io')) {
+        frontendUrl = 'https://profitorbit.io';
       } else {
         frontendUrl = `https://${vercelUrl}`;
       }
@@ -61,19 +61,19 @@ export default async function handler(req, res) {
       try {
         const refererUrl = new URL(req.headers.referer);
         // If referer is a preview deployment, use production domain
-        if (refererUrl.host.includes('vercel.app') && refererUrl.host !== 'profit-pulse-2.vercel.app') {
-          frontendUrl = 'https://profit-pulse-2.vercel.app';
+        if (refererUrl.host.includes('vercel.app') && refererUrl.host !== 'profitorbit.io') {
+          frontendUrl = 'https://profitorbit.io';
         } else {
           frontendUrl = refererUrl.origin;
         }
       } catch (e) {
         console.error('Error parsing referer:', e);
-        frontendUrl = 'https://profit-pulse-2.vercel.app'; // Fallback to production
+        frontendUrl = 'https://profitorbit.io'; // Fallback to production
       }
     }
     // 5. Last resort: use production domain
     else {
-      frontendUrl = 'https://profit-pulse-2.vercel.app';
+      frontendUrl = 'https://profitorbit.io';
     }
     
     // Default redirect path - redirect to CrosslistComposer (where connect button is)
@@ -82,8 +82,25 @@ export default async function handler(req, res) {
 
     // Check for errors from Facebook
     if (error) {
-      console.error('Facebook OAuth error:', error, error_reason, error_description);
-      const errorMsg = error_description || error_reason || error || 'Unknown OAuth error';
+      console.error('Facebook OAuth error:', {
+        error,
+        error_reason,
+        error_description,
+        query: req.query,
+        redirectUri: redirectUri,
+      });
+      
+      let errorMsg = error_description || error_reason || error || 'Unknown OAuth error';
+      
+      // Provide helpful error messages for common issues
+      if (error === 'redirect_uri_mismatch') {
+        errorMsg = `Redirect URI mismatch. The redirect URI used (${redirectUri}) must match exactly what's configured in Facebook App Settings. Please check your Valid OAuth Redirect URIs in Facebook App Settings.`;
+      } else if (error === 'invalid_client_id') {
+        errorMsg = 'Invalid App ID. Please check that FACEBOOK_APP_ID is set correctly.';
+      } else if (error === 'access_denied') {
+        errorMsg = 'Access denied. You cancelled the authorization or did not grant the required permissions.';
+      }
+      
       return res.redirect(`${frontendUrl}${redirectPath}?facebook_auth_error=${encodeURIComponent(errorMsg)}`);
     }
 
@@ -160,14 +177,33 @@ export default async function handler(req, res) {
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Facebook OAuth token exchange error:', tokenResponse.status, errorText);
+      console.error('Facebook OAuth token exchange error:', {
+        status: tokenResponse.status,
+        errorText,
+        redirectUri,
+        code: code?.substring(0, 20) + '...',
+      });
+      
       let errorMsg = 'Failed to exchange authorization code for access token';
       try {
         const errorData = JSON.parse(errorText);
-        errorMsg = errorData.error?.message || errorData.error_description || errorData.error || errorMsg;
+        const fbError = errorData.error || {};
+        errorMsg = fbError.message || errorData.error_description || fbError.type || errorMsg;
+        
+        // Provide helpful messages for common errors
+        if (fbError.type === 'OAuthException') {
+          if (fbError.message?.includes('redirect_uri')) {
+            errorMsg = `Redirect URI mismatch: ${redirectUri}. This must match exactly what's configured in Facebook App Settings > Valid OAuth Redirect URIs.`;
+          } else if (fbError.message?.includes('code')) {
+            errorMsg = 'Invalid or expired authorization code. Please try connecting again.';
+          } else {
+            errorMsg = `Facebook OAuth error: ${fbError.message || errorMsg}`;
+          }
+        }
       } catch (e) {
         errorMsg = errorText || errorMsg;
       }
+      
       return res.redirect(`${frontendUrl}${redirectPath}?facebook_auth_error=${encodeURIComponent(errorMsg)}`);
     }
 

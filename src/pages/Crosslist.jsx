@@ -57,6 +57,9 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { useEbayCategoryTreeId, useEbayCategories } from "@/hooks/useEbayCategorySuggestions";
+import { crosslistingEngine } from "@/services/CrosslistingEngine";
+import { UnifiedListingForm } from "@/components/UnifiedListingForm";
+import { ExternalLink, List } from "lucide-react";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -262,6 +265,14 @@ export default function Crosslist() {
   const [selectedCategoryPath, setSelectedCategoryPath] = useState([]); // Array of {categoryId, categoryName} for the selected path
   const photoInputRef = React.useRef(null);
   
+  // Crosslisting state
+  const [marketplaceListings, setMarketplaceListings] = useState({});
+  const [showListDialog, setShowListDialog] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkAction, setBulkAction] = useState(null);
+  const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
+  const [crosslistLoading, setCrosslistLoading] = useState(false);
+  
   // Get eBay category tree ID
   const { data: categoryTreeData, isLoading: isLoadingCategoryTree } = useEbayCategoryTreeId('EBAY_US');
   const categoryTreeId = categoryTreeData?.categoryTreeId;
@@ -338,35 +349,17 @@ export default function Crosslist() {
   );
 
   // Compute which marketplaces an item is actually crosslisted to
-  // Items are only considered crosslisted when they've been explicitly listed on that marketplace
-  // "Listed" status from Add Inventory page alone doesn't count - need actual crosslisting
+  // Uses actual marketplace listings from crosslistingEngine
   const computeListingState = (item) => {
-    // For now, check if item has crosslisting data
-    // In the future, this will check actual crosslisting records/relationships
-    // Until we have crosslisting API integration, all icons will be grayed out by default
-    const hasCrosslistingData = item.crosslisted_marketplaces && Array.isArray(item.crosslisted_marketplaces);
+    const listings = getItemListings(item.id);
+    const activeListings = listings.filter(l => l.status === 'active');
     
-    if (!hasCrosslistingData) {
-      // No crosslisting data - all marketplaces grayed out
-      // Items that are just "in stock" or have "listed" status but haven't been crosslisted
-      // should show all grayed out icons
     return {
-        ebay:     false,
-      facebook: false,
-      mercari:  false,
-      etsy:     false,
-      poshmark: false,
-      };
-    }
-    
-    // Check which marketplaces are in the crosslisting array
-    const marketplaces = item.crosslisted_marketplaces;
-    return {
-      ebay:     marketplaces.includes("ebay"),
-      facebook: marketplaces.includes("facebook_marketplace") || marketplaces.includes("facebook"),
-      mercari:  marketplaces.includes("mercari"),
-      etsy:     marketplaces.includes("etsy"),
-      poshmark: marketplaces.includes("poshmark"),
+      ebay:     activeListings.some(l => l.marketplace === 'ebay'),
+      facebook: activeListings.some(l => l.marketplace === 'facebook'),
+      mercari:  activeListings.some(l => l.marketplace === 'mercari'),
+      etsy:     activeListings.some(l => l.marketplace === 'etsy'),
+      poshmark: activeListings.some(l => l.marketplace === 'poshmark'),
     };
   };
 
@@ -733,6 +726,230 @@ export default function Crosslist() {
     });
   };
 
+  // Load marketplace listings for all items
+  useEffect(() => {
+    const loadListings = async () => {
+      const listingsMap = {};
+      for (const item of inventory) {
+        try {
+          const listings = await crosslistingEngine.getMarketplaceListings(item.id);
+          listingsMap[item.id] = listings;
+        } catch (error) {
+          console.error(`Error loading listings for item ${item.id}:`, error);
+          listingsMap[item.id] = [];
+        }
+      }
+      setMarketplaceListings(listingsMap);
+    };
+
+    if (inventory.length > 0) {
+      loadListings();
+    }
+  }, [inventory]);
+
+  const getItemListings = (itemId) => {
+    return marketplaceListings[itemId] || [];
+  };
+
+  const getListingStatus = (itemId, marketplace) => {
+    const listings = getItemListings(itemId);
+    const listing = listings.find(l => l.marketplace === marketplace);
+    if (!listing) return 'not_listed';
+    return listing.status;
+  };
+
+  const handleListOnMarketplaceItem = async (itemId, marketplace) => {
+    setCrosslistLoading(true);
+    try {
+      const accounts = await crosslistingEngine.getMarketplaceAccounts();
+      const account = accounts[marketplace];
+
+      if (!account || !account.isActive) {
+        toast({
+          title: 'Account Not Connected',
+          description: `Please connect your ${marketplace} account first.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const result = await crosslistingEngine.listItemOnMarketplace(
+        itemId,
+        marketplace,
+        {
+          access_token: account.access_token,
+        }
+      );
+
+      toast({
+        title: 'Listed Successfully',
+        description: `Item listed on ${marketplace}.`,
+      });
+
+      // Refresh listings
+      const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+      setMarketplaceListings(prev => ({
+        ...prev,
+        [itemId]: listings,
+      }));
+
+      queryClient.invalidateQueries(['inventoryItems']);
+    } catch (error) {
+      toast({
+        title: 'Listing Failed',
+        description: error.message || `Failed to list on ${marketplace}.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setCrosslistLoading(false);
+    }
+  };
+
+  const handleDelistFromMarketplace = async (itemId, listingId, marketplace) => {
+    setCrosslistLoading(true);
+    try {
+      const accounts = await crosslistingEngine.getMarketplaceAccounts();
+      const account = accounts[marketplace];
+
+      if (!account || !account.isActive) {
+        toast({
+          title: 'Account Not Connected',
+          description: `Please connect your ${marketplace} account first.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await crosslistingEngine.delistItemFromMarketplace(
+        listingId,
+        marketplace,
+        {
+          access_token: account.access_token,
+        }
+      );
+
+      toast({
+        title: 'Delisted Successfully',
+        description: `Item removed from ${marketplace}.`,
+      });
+
+      // Refresh listings
+      const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+      setMarketplaceListings(prev => ({
+        ...prev,
+        [itemId]: listings,
+      }));
+
+      queryClient.invalidateQueries(['inventoryItems']);
+    } catch (error) {
+      toast({
+        title: 'Delisting Failed',
+        description: error.message || `Failed to delist from ${marketplace}.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setCrosslistLoading(false);
+    }
+  };
+
+  const handleBulkAction = async (action, marketplaces = []) => {
+    if (selected.length === 0) {
+      toast({
+        title: 'No Items Selected',
+        description: 'Please select items to perform bulk actions.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setCrosslistLoading(true);
+    try {
+      const accounts = await crosslistingEngine.getMarketplaceAccounts();
+      const userTokens = {};
+
+      // Get tokens for selected marketplaces
+      for (const marketplace of marketplaces) {
+        const account = accounts[marketplace];
+        if (account && account.isActive) {
+          userTokens[marketplace] = {
+            access_token: account.access_token,
+            refresh_token: account.refresh_token,
+          };
+        }
+      }
+
+      let result;
+      if (action === 'list') {
+        result = await crosslistingEngine.bulkListItems(
+          selected,
+          marketplaces,
+          userTokens,
+          { delayBetweenItems: 1000 }
+        );
+      } else if (action === 'delist') {
+        result = await crosslistingEngine.bulkDelistItems(
+          selected,
+          marketplaces,
+          userTokens
+        );
+      } else if (action === 'relist') {
+        result = await crosslistingEngine.bulkRelistItems(
+          selected,
+          marketplaces,
+          userTokens
+        );
+      }
+
+      toast({
+        title: 'Bulk Action Completed',
+        description: `${result.success.length} succeeded, ${result.errors.length} failed.`,
+      });
+
+      setSelected([]);
+      setShowBulkActions(false);
+      
+      // Refresh listings for all items
+      const listingsMap = {};
+      for (const itemId of selected) {
+        try {
+          const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+          listingsMap[itemId] = listings;
+        } catch (error) {
+          console.error(`Error refreshing listings for item ${itemId}:`, error);
+        }
+      }
+      setMarketplaceListings(prev => ({ ...prev, ...listingsMap }));
+      
+      queryClient.invalidateQueries(['inventoryItems']);
+    } catch (error) {
+      toast({
+        title: 'Bulk Action Failed',
+        description: error.message || 'Failed to perform bulk action.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCrosslistLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      active: { label: 'Active', color: 'bg-green-500' },
+      sold: { label: 'Sold', color: 'bg-gray-500' },
+      ended: { label: 'Ended', color: 'bg-yellow-500' },
+      removed: { label: 'Removed', color: 'bg-red-500' },
+      error: { label: 'Error', color: 'bg-red-500' },
+      not_listed: { label: 'Not Listed', color: 'bg-gray-300' },
+    };
+
+    const config = statusConfig[status] || statusConfig.not_listed;
+    return (
+      <Badge className={`${config.color} text-white text-xs`}>
+        {config.label}
+      </Badge>
+    );
+  };
+
   const filtered = useMemo(() => {
     return crosslistableItems.filter((it) => {
       // Text search filter
@@ -989,6 +1206,23 @@ export default function Crosslist() {
                   onActionComplete={() => setSelected([])}
                 />
                 <Button
+                  onClick={() => setShowListDialog(true)}
+                  className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap w-auto"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Item
+                </Button>
+                {selected.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowBulkActions(true)}
+                    className="whitespace-nowrap w-auto"
+                  >
+                    <List className="w-4 h-4 mr-2" />
+                    Bulk Actions ({selected.length})
+                  </Button>
+                )}
+                <Button
                   onClick={() => {
                     if (selected.length > 0) {
                       openComposer(selected);
@@ -1092,25 +1326,66 @@ export default function Crosslist() {
                       {it.purchase_date && ` • ${format(parseISO(it.purchase_date), "MMM d, yyyy")}`}
                     </p>
 
-                    {/* Marketplace Icons */}
+                    {/* Marketplace Icons with List/Delist Actions */}
                     <div className="mt-auto flex flex-wrap items-center gap-2">
                       {MARKETPLACES.map((m) => {
                         const isListed = map[m.id];
+                        const status = getListingStatus(it.id, m.id);
+                        const listings = getItemListings(it.id);
+                        const listing = listings.find(l => l.marketplace === m.id);
+                        
                         return (
                           <div
                             key={m.id}
-                            className={`glass inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
-                              isListed
-                                ? "bg-green-500/20 border-green-400/50 opacity-100"
-                                : "bg-gray-500/10 border-gray-600/50 opacity-40"
-                            }`}
-                            style={{
-                              backdropFilter: 'blur(10px)',
-                              borderRadius: '8px'
-                            }}
-                            title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
+                            className="flex flex-col items-center gap-1"
                           >
-                            {renderMarketplaceIcon(m, "w-4 h-4")}
+                            <div
+                              className={`glass inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
+                                isListed
+                                  ? "bg-green-500/20 border-green-400/50 opacity-100"
+                                  : "bg-gray-500/10 border-gray-600/50 opacity-40"
+                              }`}
+                              style={{
+                                backdropFilter: 'blur(10px)',
+                                borderRadius: '8px'
+                              }}
+                              title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
+                            >
+                              {renderMarketplaceIcon(m, "w-4 h-4")}
+                            </div>
+                            {status === 'not_listed' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
+                                disabled={crosslistLoading}
+                                className="text-xs h-6 px-2"
+                              >
+                                List
+                              </Button>
+                            ) : (
+                              <div className="flex gap-1">
+                                {listing?.marketplace_listing_url && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => window.open(listing.marketplace_listing_url, '_blank')}
+                                    className="text-xs h-6 px-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDelistFromMarketplace(it.id, listing?.marketplace_listing_id, m.id)}
+                                  disabled={crosslistLoading}
+                                  className="text-xs h-6 px-1 text-destructive"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1230,17 +1505,58 @@ export default function Crosslist() {
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {MARKETPLACES.map((m) => {
                         const isListed = map[m.id];
+                        const status = getListingStatus(it.id, m.id);
+                        const listings = getItemListings(it.id);
+                        const listing = listings.find(l => l.marketplace === m.id);
+                        
                         return (
                           <div
                             key={m.id}
-                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all backdrop-blur-sm ${
-                              isListed
-                                ? "bg-green-600/30 border-green-500/50 opacity-100"
-                                : "bg-slate-700/50 border-slate-600/50 opacity-40"
-                            }`}
-                            title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
+                            className="flex flex-col items-center gap-1"
                           >
-                            {renderMarketplaceIcon(m, "w-4 h-4")}
+                            <div
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all backdrop-blur-sm ${
+                                isListed
+                                  ? "bg-green-600/30 border-green-500/50 opacity-100"
+                                  : "bg-slate-700/50 border-slate-600/50 opacity-40"
+                              }`}
+                              title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
+                            >
+                              {renderMarketplaceIcon(m, "w-4 h-4")}
+                            </div>
+                            {status === 'not_listed' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
+                                disabled={crosslistLoading}
+                                className="text-xs h-6 px-2"
+                              >
+                                List
+                              </Button>
+                            ) : (
+                              <div className="flex gap-1">
+                                {listing?.marketplace_listing_url && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => window.open(listing.marketplace_listing_url, '_blank')}
+                                    className="text-xs h-6 px-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDelistFromMarketplace(it.id, listing?.marketplace_listing_id, m.id)}
+                                  disabled={crosslistLoading}
+                                  className="text-xs h-6 px-1 text-destructive"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1280,7 +1596,111 @@ export default function Crosslist() {
         )}
       </div>
 
-      {/* Sheet removed - composer is now a separate page */}
+      {/* New Item Dialog */}
+      <Dialog open={showListDialog} onOpenChange={setShowListDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Item</DialogTitle>
+            <DialogDescription>
+              Enter item details once, then crosslist to multiple marketplaces
+            </DialogDescription>
+          </DialogHeader>
+          <UnifiedListingForm
+            onSave={(item) => {
+              setShowListDialog(false);
+              queryClient.invalidateQueries(['inventoryItems']);
+              toast({
+                title: 'Item Created',
+                description: 'You can now crosslist this item to marketplaces.',
+              });
+            }}
+            onCancel={() => setShowListDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Actions Dialog */}
+      <Dialog open={showBulkActions} onOpenChange={(open) => {
+        setShowBulkActions(open);
+        if (!open) {
+          setBulkAction(null);
+          setSelectedMarketplaces([]);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Actions</DialogTitle>
+            <DialogDescription>
+              Perform actions on {selected.length} selected item(s)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Action</Label>
+              <Select value={bulkAction} onValueChange={setBulkAction}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="list">List on Marketplaces</SelectItem>
+                  <SelectItem value="delist">Delist from Marketplaces</SelectItem>
+                  <SelectItem value="relist">Relist on Marketplaces</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {bulkAction && (
+              <div className="space-y-2">
+                <Label>Select Marketplaces</Label>
+                <div className="space-y-2">
+                  {['facebook', 'ebay'].map((marketplace) => {
+                    const marketplaceData = MARKETPLACES.find(m => m.id === marketplace);
+                    return (
+                      <div key={marketplace} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={marketplace}
+                          checked={selectedMarketplaces.includes(marketplace)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedMarketplaces(prev => [...prev, marketplace]);
+                            } else {
+                              setSelectedMarketplaces(prev => prev.filter(m => m !== marketplace));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={marketplace} className="flex items-center gap-2 cursor-pointer">
+                          {marketplaceData && renderMarketplaceIcon(marketplaceData, "w-4 h-4")}
+                          {marketplaceData?.label || marketplace.charAt(0).toUpperCase() + marketplace.slice(1)}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkActions(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedMarketplaces.length === 0) {
+                  toast({
+                    title: 'No Marketplaces Selected',
+                    description: 'Please select at least one marketplace.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
+                handleBulkAction(bulkAction, selectedMarketplaces);
+              }}
+              disabled={!bulkAction || crosslistLoading || selectedMarketplaces.length === 0}
+            >
+              {crosslistLoading ? 'Processing...' : 'Execute'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

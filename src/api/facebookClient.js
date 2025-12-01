@@ -10,7 +10,7 @@
 // Facebook Configuration
 const FACEBOOK_CONFIG = {
   baseUrl: 'https://graph.facebook.com/v18.0',
-  appId: import.meta.env.VITE_FACEBOOK_APP_ID || '',
+  appId: import.meta.env.VITE_FACEBOOK_APP_ID || '1855278678430851',
 };
 
 /**

@@ -7,6 +7,9 @@ export const InventoryItem = base44.entities.InventoryItem;
 
 export const ImageEditorTemplate = base44.entities.ImageEditorTemplate;
 
+// Crosslisting entity - for Chrome extension integration
+export const Crosslisting = base44.entities.Crosslisting || null;
+
 
 
 // auth sdk:
