@@ -153,7 +153,7 @@ export default function ProfitCalendar() {
           </p>
         </div>
 
-        <Card className="border-0 shadow-lg mb-6 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden md:scale-[0.8] md:origin-top-left">
+        <Card className="border-0 shadow-lg mb-6 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden md:scale-[0.85] md:origin-top-left">
           <CardHeader className="border-b bg-gray-800 dark:bg-gray-800 p-4 md:bg-transparent md:border-b md:border-white/5 md:px-6 md:py-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle className="text-lg sm:text-xl text-white">
