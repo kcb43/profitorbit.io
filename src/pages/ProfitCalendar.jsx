@@ -153,7 +153,7 @@ export default function ProfitCalendar() {
           </p>
         </div>
 
-        <Card className="border-0 shadow-lg mb-6 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden md:scale-[0.85] md:origin-top-left">
+        <Card className="border-0 shadow-lg mb-4 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden md:scale-[0.85] md:origin-top-left">
           <CardHeader className="border-b bg-gray-800 dark:bg-gray-800 p-4 md:bg-transparent md:border-b md:border-white/5 md:px-6 md:py-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle className="text-lg sm:text-xl text-white">
@@ -262,7 +262,7 @@ export default function ProfitCalendar() {
             </div>
           </CardContent>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 md:px-6 md:pb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 md:px-6 md:pb-4">
             <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
               <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
                 <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg md:bg-emerald-500/10 md:border md:border-emerald-400/40">
