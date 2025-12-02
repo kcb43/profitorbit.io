@@ -1359,7 +1359,7 @@ export default function InventoryPage() {
                       src={item.image_url || DEFAULT_IMAGE_URL}
                       alt={item.item_name}
                       fallback={DEFAULT_IMAGE_URL}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      className="w-full h-full object-cover"
                       lazy={true}
                     />
                   </Link>

@@ -173,7 +173,7 @@ export default function GalleryPage() {
                       src={sale.image_url || DEFAULT_IMAGE_URL}
                       alt={sale.item_name}
                       fallback={DEFAULT_IMAGE_URL}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-cover"
                       lazy={true}
                     />
                     <div className="absolute top-2 right-2">

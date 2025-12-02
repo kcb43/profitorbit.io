@@ -1071,7 +1071,7 @@ export default function SalesHistory() {
                                 <OptimizedImage
                                   src={sale.image_url}
                                   alt={sale.item_name}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                  className="w-full h-full object-cover"
                                   lazy={true}
                                 />
                               ) : (

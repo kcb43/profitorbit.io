@@ -69,7 +69,7 @@ export default function RecentSales({ sales }) {
                               <img
                                 src={sale.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
                                 alt={sale.item_name}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                className="w-full h-full object-cover"
                               />
                             </div>
                             
