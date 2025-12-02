@@ -188,10 +188,28 @@ export default function Dashboard() {
     return { totalProfit, totalRevenue, totalSales: sales.length, avgProfit, profitMargin, averageSaleSpeed };
   }, [sales]);
 
-  // Calculation for inventory stats
+  // Calculation for inventory stats - matches Inventory page logic
   const inventoryStats = React.useMemo(() => {
-    const unsoldItems = inventoryItems.filter(item => item.status !== 'sold');
-    const totalQuantity = unsoldItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    if (!Array.isArray(inventoryItems)) return { totalQuantity: 0 };
+    
+    // Only count items with status "available" or "listed" (matches Inventory page)
+    const trackableItems = inventoryItems.filter(item => {
+      const status = (item.status || "").toLowerCase();
+      return status === "available" || status === "listed";
+    });
+
+    // Account for quantity_sold (matches Inventory page calculation)
+    const totalQuantity = trackableItems.reduce((sum, item) => {
+      const rawQuantity = Number(item.quantity ?? 1);
+      const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+
+      const rawSold = Number(item.quantity_sold ?? 0);
+      const quantitySold = Number.isFinite(rawSold) && rawSold >= 0 ? rawSold : 0;
+
+      const remaining = Math.max(quantity - quantitySold, 0);
+      return sum + remaining;
+    }, 0);
+    
     return { totalQuantity };
   }, [inventoryItems]);
   
