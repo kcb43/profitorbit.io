@@ -68,6 +68,8 @@ export default function InventoryPage() {
   const [sort, setSort] = useState("newest");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
+  const [itemToPermanentlyDelete, setItemToPermanentlyDelete] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
@@ -327,6 +329,34 @@ export default function InventoryPage() {
       toast({
         title: "Error Recovering Item",
         description: error.message || "Failed to recover item. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (itemId) => {
+      try {
+        await base44.entities.InventoryItem.delete(itemId);
+        return itemId;
+      } catch (error) {
+        throw new Error(`Failed to permanently delete item: ${error.message}`);
+      }
+    },
+    onSuccess: (deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      toast({
+        title: "Item Permanently Deleted",
+        description: "The item has been permanently removed and cannot be recovered.",
+      });
+      setPermanentDeleteDialogOpen(false);
+      setItemToPermanentlyDelete(null);
+    },
+    onError: (error) => {
+      console.error("Permanent delete error:", error);
+      toast({
+        title: "Error Permanently Deleting Item",
+        description: error.message || "Failed to permanently delete item. Please try again.",
         variant: "destructive",
       });
     },
@@ -1535,14 +1565,27 @@ export default function InventoryPage() {
                           </Button>
                         </Link>
                         {isDeleted ? (
-                          <Button 
-                            onClick={() => recoverItemMutation.mutate(item.id)} 
-                            disabled={recoverItemMutation.isPending}
-                            className="w-full bg-green-600 hover:bg-green-700 h-8 text-xs"
-                          >
-                            <ArchiveRestore className="w-3 h-3 mr-1.5" />
-                            {recoverItemMutation.isPending ? "Recovering..." : "Recover Item"}
-                          </Button>
+                          <>
+                            <Button 
+                              onClick={() => recoverItemMutation.mutate(item.id)} 
+                              disabled={recoverItemMutation.isPending}
+                              className="w-full bg-green-600 hover:bg-green-700 h-8 text-xs"
+                            >
+                              <ArchiveRestore className="w-3 h-3 mr-1.5" />
+                              {recoverItemMutation.isPending ? "Recovering..." : "Recover Item"}
+                            </Button>
+                            <Button 
+                              onClick={() => {
+                                setItemToPermanentlyDelete(item);
+                                setPermanentDeleteDialogOpen(true);
+                              }} 
+                              disabled={permanentDeleteMutation.isPending}
+                              className="w-full bg-red-600 hover:bg-red-700 h-8 text-xs"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1.5" />
+                              {permanentDeleteMutation.isPending ? "Deleting..." : "Permanently Delete"}
+                            </Button>
+                          </>
                         ) : (
                           <div className="grid grid-cols-2 gap-2">
                             {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
@@ -1643,6 +1686,35 @@ export default function InventoryPage() {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {deleteItemMutation.isPending ? 'Deleting...' : 'Yes, Delete Item'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* PERMANENT DELETE DIALOG */}
+      <AlertDialog open={permanentDeleteDialogOpen} onOpenChange={(open) => {
+        setPermanentDeleteDialogOpen(open);
+        if (!open) setItemToPermanentlyDelete(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">
+              ⚠️ Permanently Delete Item?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you absolutely sure you want to <strong>permanently delete</strong> <strong>"{itemToPermanentlyDelete?.item_name || 'this item'}"</strong>?
+              <br /><br />
+              <strong className="text-red-600 dark:text-red-400">This action cannot be undone.</strong> The item will be completely removed from your inventory and cannot be recovered.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => permanentDeleteMutation.mutate(itemToPermanentlyDelete?.id)}
+              disabled={permanentDeleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {permanentDeleteMutation.isPending ? 'Deleting...' : 'Yes, Permanently Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
