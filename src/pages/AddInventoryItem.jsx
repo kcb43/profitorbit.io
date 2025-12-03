@@ -485,9 +485,26 @@ export default function AddInventoryItem() {
       
       if (draggedIndex === -1 || targetIndex === -1) return prev;
 
-      // Reorder photos
-      const [draggedPhoto] = photos.splice(draggedIndex, 1);
-      photos.splice(targetIndex, 0, draggedPhoto);
+      const draggedPhoto = photos[draggedIndex];
+      const targetPhoto = photos[targetIndex];
+
+      // If swapping with main photo, swap the isMain status
+      if (draggedPhoto.isMain || targetPhoto.isMain) {
+        photos[draggedIndex] = { ...draggedPhoto, isMain: !draggedPhoto.isMain };
+        photos[targetIndex] = { ...targetPhoto, isMain: !targetPhoto.isMain };
+        
+        // Update image_url to the new main photo
+        const newMainPhoto = photos.find(p => p.isMain);
+        return {
+          ...prev,
+          photos,
+          image_url: newMainPhoto?.imageUrl || prev.image_url
+        };
+      }
+
+      // Otherwise just reorder
+      const [removed] = photos.splice(draggedIndex, 1);
+      photos.splice(targetIndex, 0, removed);
 
       return {
         ...prev,
@@ -626,11 +643,21 @@ export default function AddInventoryItem() {
                   
                   {/* Main Photo - Large */}
                   {formData.photos.length > 0 && formData.photos.find(p => p.isMain) && (
-                    <div className="relative group aspect-square w-full max-w-md rounded-lg border-2 border-blue-500 overflow-hidden">
+                    <div 
+                      className="relative group aspect-square w-full max-w-md rounded-lg border-2 border-blue-500 overflow-hidden cursor-move"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, formData.photos.find(p => p.isMain).id)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, formData.photos.find(p => p.isMain).id)}
+                      style={{
+                        opacity: draggedPhotoId === formData.photos.find(p => p.isMain).id ? 0.5 : 1,
+                        transition: 'opacity 0.2s'
+                      }}
+                    >
                       <img
                         src={formData.photos.find(p => p.isMain).imageUrl}
                         alt="Main photo"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover pointer-events-none"
                       />
                       <Badge className="absolute top-2 left-2">MAIN</Badge>
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
