@@ -596,8 +596,8 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 /* SortableJS styles */
 .sortable-ghost {
-  opacity: 0.4;
-  background: #c8ebfb;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
 
 .sortable-drag {
