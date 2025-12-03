@@ -1091,40 +1091,46 @@ export default function InventoryPage() {
           </Card>
 
           {(showDeletedOnly || showDismissedReturns) && (
-            <div className="sticky top-0 z-40 mb-4 p-4 bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 text-white rounded-lg shadow-lg border border-blue-400 dark:border-blue-500">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  {showDeletedOnly && (
-                    <>
-                      <Archive className="w-5 h-5 flex-shrink-0" />
-                      <span className="font-semibold text-sm sm:text-base">
-                        Viewing Deleted Items ({deletedCount})
-                      </span>
-                    </>
-                  )}
-                  {showDismissedReturns && !showDeletedOnly && (
-                    <>
-                      <AlarmClock className="w-5 h-5 flex-shrink-0" />
-                      <span className="font-semibold text-sm sm:text-base">
-                        Viewing Dismissed Return Reminders ({dismissedReturnsCount})
-                      </span>
-                    </>
-                  )}
+            <>
+              <div className="fixed top-16 left-0 right-0 z-50 px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+                <div className="max-w-[1800px] mx-auto p-4 bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 text-white rounded-lg shadow-xl border border-blue-400 dark:border-blue-500">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {showDeletedOnly && (
+                        <>
+                          <Archive className="w-5 h-5 flex-shrink-0" />
+                          <span className="font-semibold text-sm sm:text-base">
+                            Viewing Deleted Items ({deletedCount})
+                          </span>
+                        </>
+                      )}
+                      {showDismissedReturns && !showDeletedOnly && (
+                        <>
+                          <AlarmClock className="w-5 h-5 flex-shrink-0" />
+                          <span className="font-semibold text-sm sm:text-base">
+                            Viewing Dismissed Return Reminders ({dismissedReturnsCount})
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (showDeletedOnly) setShowDeletedOnly(false);
+                        if (showDismissedReturns) setShowDismissedReturns(false);
+                      }}
+                      className="text-white hover:bg-white/20 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline">Clear Filter</span>
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (showDeletedOnly) setShowDeletedOnly(false);
-                    if (showDismissedReturns) setShowDismissedReturns(false);
-                  }}
-                  className="text-white hover:bg-white/20 flex-shrink-0"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:inline">Clear Filter</span>
-                </Button>
               </div>
-            </div>
+              {/* Spacer to prevent content from being hidden under fixed banner */}
+              <div className="h-20 mb-4"></div>
+            </>
           )}
 
           {selectedItems.length > 0 && (
