@@ -36,8 +36,11 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
     ? `https://www.google.com/search?q=${encodeURIComponent(q + " site:etsy.com sold")}`
     : "https://www.google.com";
   const allMarkets = q
-    ? `https://www.google.com/shopping?q=${encodeURIComponent(q)}`
-    : "https://www.google.com/shopping";
+    ? `https://www.google.com/search?q=${encodeURIComponent(q)}`
+    : "https://www.google.com/search";
+  const comparePrices = q
+    ? `https://www.google.com/search?q=${encodeURIComponent(q)}`
+    : "https://www.google.com/search";
 
   const copyQuery = async () => {
     if (!q) return;
@@ -107,6 +110,13 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
             </a>
           </Button>
         </div>
+
+        <Button asChild variant="secondary" className="w-full">
+          <a href={comparePrices} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+            <GlobeIcon className="w-4 h-4" />
+            Compare Prices
+          </a>
+        </Button>
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button variant="outline" onClick={copyQuery} disabled={!q} className="flex-1 sm:flex-none">
