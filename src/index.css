@@ -593,3 +593,15 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .cropper-disabled .cropper-point {
   cursor: not-allowed;
 }
+
+/* SortableJS ghost element - overlays on target position */
+.sortable-ghost {
+  opacity: 0.4 !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 2px dashed rgb(59, 130, 246) !important;
+  border-radius: 0.5rem !important;
+}
+
+.sortable-ghost > * {
+  visibility: visible !important;
+}

@@ -608,6 +608,7 @@ export default function AddInventoryItem() {
                         setList={handlePhotoReorder}
                         animation={200}
                         swapThreshold={0.65}
+                        ghostClass="sortable-ghost"
                         className="grid grid-cols-4 md:grid-cols-6 gap-3"
                         style={{
                           display: 'grid',
