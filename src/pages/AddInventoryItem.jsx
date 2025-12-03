@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon } from "lucide-react";
+import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon, X, Loader2 } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import { ImageEditor } from "@/components/ImageEditor";
 import { scanReceiptPlaceholder } from "@/api/receiptScanner";
 import imageCompression from "browser-image-compression";
 
+const MAX_PHOTOS = 12;
 const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy"];
 const PREDEFINED_CATEGORIES = [
   "Antiques",
@@ -101,14 +102,17 @@ export default function AddInventoryItem() {
     notes: "",
     image_url: "",
     quantity: 1,
-    return_deadline: ""
+    return_deadline: "",
+    photos: []
   });
   const [isOtherSource, setIsOtherSource] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [soldDialogOpen, setSoldDialogOpen] = useState(false);
   const [soldDialogName, setSoldDialogName] = useState("");
   const imageInputRef = useRef(null);
+  const photoInputRef = useRef(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [isReceiptScanning, setIsReceiptScanning] = useState(false);
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
@@ -154,6 +158,14 @@ export default function AddInventoryItem() {
         setIsOtherCategory(false);
       }
 
+      // Load photos array or convert single image_url to photos array
+      let photos = [];
+      if (dataToLoad.images && Array.isArray(dataToLoad.images) && dataToLoad.images.length > 0) {
+        photos = dataToLoad.images;
+      } else if (dataToLoad.image_url) {
+        photos = [{ id: `photo_${Date.now()}`, imageUrl: dataToLoad.image_url, isMain: true }];
+      }
+
       setFormData({
         item_name: dataToLoad.item_name || "",
         purchase_price: String(dataToLoad.purchase_price) || "",
@@ -164,7 +176,8 @@ export default function AddInventoryItem() {
         notes: isCopying ? "" : (dataToLoad.notes || ""),
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,
-        return_deadline: isCopying ? "" : (dataToLoad.return_deadline || "")
+        return_deadline: isCopying ? "" : (dataToLoad.return_deadline || ""),
+        photos: photos
       });
     } else if (!itemId && !copyId) {
       const itemName = searchParams.get('itemName');
@@ -234,6 +247,8 @@ export default function AddInventoryItem() {
     purchase_price: parseFloat(data.purchase_price) || 0,
     quantity: parseInt(data.quantity, 10) || 1,
     return_deadline: data.return_deadline ? data.return_deadline : null,
+    images: data.photos || [],
+    image_url: data.photos?.find(p => p.isMain)?.imageUrl || data.photos?.[0]?.imageUrl || data.image_url || '',
   });
 
   const itemMutation = useMutation({
@@ -333,6 +348,90 @@ export default function AddInventoryItem() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Multiple photos handlers
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const remainingSlots = MAX_PHOTOS - formData.photos.length;
+    if (remainingSlots <= 0) {
+      alert(`Maximum ${MAX_PHOTOS} photos allowed`);
+      return;
+    }
+
+    const filesToUpload = files.slice(0, remainingSlots);
+    setUploadingPhotos(true);
+
+    try {
+      const uploadedPhotos = [];
+
+      for (const file of filesToUpload) {
+        const compressedFile = await imageCompression(file, {
+          maxSizeMB: 0.25,
+          maxWidthOrHeight: 1200,
+          useWebWorker: true,
+        });
+        const fileToUpload = compressedFile || file;
+        const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+
+        uploadedPhotos.push({
+          id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          imageUrl: file_url,
+          isMain: formData.photos.length === 0 && uploadedPhotos.length === 0
+        });
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...uploadedPhotos],
+        image_url: uploadedPhotos.find(p => p.isMain)?.imageUrl || prev.photos.find(p => p.isMain)?.imageUrl || prev.image_url
+      }));
+    } catch (error) {
+      console.error("Photo upload failed:", error);
+      alert("Failed to upload photos. Please try again.");
+    } finally {
+      setUploadingPhotos(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = null;
+      }
+    }
+  };
+
+  const handleSetMainPhoto = (photoId) => {
+    setFormData(prev => {
+      const updatedPhotos = prev.photos.map(p => ({
+        ...p,
+        isMain: p.id === photoId
+      }));
+      const mainPhoto = updatedPhotos.find(p => p.isMain);
+      return {
+        ...prev,
+        photos: updatedPhotos,
+        image_url: mainPhoto?.imageUrl || prev.image_url
+      };
+    });
+  };
+
+  const handleRemovePhoto = (photoId) => {
+    setFormData(prev => {
+      const updatedPhotos = prev.photos.filter(p => p.id !== photoId);
+      const removedPhoto = prev.photos.find(p => p.id === photoId);
+      
+      // If we removed the main photo, set the first remaining photo as main
+      if (removedPhoto?.isMain && updatedPhotos.length > 0) {
+        updatedPhotos[0].isMain = true;
+      }
+
+      const mainPhoto = updatedPhotos.find(p => p.isMain);
+      return {
+        ...prev,
+        photos: updatedPhotos,
+        image_url: mainPhoto?.imageUrl || ''
+      };
+    });
   };
 
   const handleReceiptScan = async (file) => {
@@ -451,82 +550,105 @@ export default function AddInventoryItem() {
                     </Alert>
                 )}
                 <div className="space-y-3">
-                  <Label htmlFor="image-upload-input" className="dark:text-gray-200 break-words">Item Image</Label>
-                  <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
-                    <button
-                      type="button"
-                      onClick={() => !isUploading && imageInputRef.current?.click()}
-                      disabled={isUploading}
-                      className={`relative aspect-square w-32 sm:w-40 md:w-52 rounded-2xl border-2 border-dashed border-muted-foreground/40 bg-muted/20 flex items-center justify-center overflow-hidden transition-all ${isUploading ? 'opacity-70 cursor-wait' : 'hover:border-primary hover:bg-primary/5 cursor-pointer'}`}
-                    >
-                      {formData.image_url ? (
-                        <img
-                          src={formData.image_url}
-                          alt="Inventory item"
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                          <Camera className="w-7 h-7 sm:w-9 sm:h-9" />
-                          <span className="text-xs sm:text-sm font-medium">Add item photo</span>
-                          <span className="text-[11px] sm:text-xs text-muted-foreground/70">Tap to upload</span>
+                  <div className="flex items-center justify-between">
+                    <Label className="dark:text-gray-200 break-words">Item Photos</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.photos.length} / {MAX_PHOTOS} photos
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Add up to {MAX_PHOTOS} photos. The main photo will have a blue border.
+                  </p>
+                  
+                  {formData.photos.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                      {formData.photos.map((photo, index) => (
+                        <div key={photo.id} className="relative group">
+                          <div className={`aspect-square rounded-lg border-2 overflow-hidden ${photo.isMain ? 'ring-2 ring-blue-500' : ''}`}
+                            style={{ borderColor: photo.isMain ? 'rgb(59, 130, 246)' : 'transparent' }}>
+                            <img
+                              src={photo.imageUrl}
+                              alt={`Photo ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          {photo.isMain && (
+                            <Badge className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5">Main</Badge>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            {!photo.isMain && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleSetMainPhoto(photo.id)}
+                                className="text-xs h-7 px-2"
+                              >
+                                Set Main
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRemovePhoto(photo.id)}
+                              className="h-7 w-7 p-0"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
-                      )}
-                      {isUploading && (
-                        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex items-center justify-center text-sm font-medium text-muted-foreground">
-                          Uploading...
-                        </div>
-                      )}
-                    </button>
-                    <div className="flex flex-col gap-2 text-xs sm:text-sm text-muted-foreground">
-                      <span>Include a photo so you know exactly which item this record refers to.</span>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => imageInputRef.current?.click()}
-                          disabled={isUploading}
-                        >
-                          {isUploading ? 'Uploading...' : formData.image_url ? 'Change image' : 'Upload image'}
-                        </Button>
-                        {formData.image_url && (
+                      ))}
+                    </div>
+                  )}
+
+                  {formData.photos.length < MAX_PHOTOS && (
+                    <div className="space-y-2">
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        disabled={uploadingPhotos}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={uploadingPhotos}
+                        className="w-full"
+                      >
+                        {uploadingPhotos ? (
                           <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleEditImage}
-                              className="flex items-center gap-2"
-                            >
-                              <ImageIcon className="w-4 h-4" />
-                              Edit Photo
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleChange('image_url', '')}
-                            >
-                              Remove
-                            </Button>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Uploading photos...
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-4 h-4 mr-2" />
+                            {formData.photos.length === 0 ? 'Upload Photos' : 'Add More Photos'}
                           </>
                         )}
+                      </Button>
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => setReceiptDialogOpen(true)}
-                          disabled={isUploading}
+                          disabled={uploadingPhotos}
                           className="flex items-center gap-2"
                         >
                           <Scan className="w-4 h-4" />
                           Scan Receipt
                         </Button>
                       </div>
-                      <span className="text-[11px] sm:text-xs text-muted-foreground/70">Supports JPG or PNG up to 5 MB.</span>
+                      <p className="text-[11px] text-muted-foreground">Supports JPG or PNG. Images will be compressed.</p>
                     </div>
-                  </div>
+                  )}
+                  {/* Keep old image input hidden for backward compatibility */}
                   <input
                     ref={imageInputRef}
                     id="image-upload-input"
