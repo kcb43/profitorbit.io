@@ -594,11 +594,29 @@ input[type="range"].slider::-moz-range-thumb:hover {
   cursor: not-allowed;
 }
 
-/* SortableJS ghost element - completely hidden */
+/* SortableJS ghost element - shows dragged image preview */
 .sortable-ghost {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  width: 0 !important;
-  display: none !important;
+  opacity: 0.6 !important;
+  position: relative !important;
+}
+
+.sortable-ghost img {
+  opacity: 1 !important;
+}
+
+.sortable-ghost::after {
+  content: 'Drop to set as main';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  z-index: 30;
+  pointer-events: none;
+  white-space: nowrap;
 }
