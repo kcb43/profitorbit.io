@@ -21,6 +21,7 @@ import EbaySearchDialog from "@/components/EbaySearchDialog";
 import { ImageEditor } from "@/components/ImageEditor";
 import { scanReceiptPlaceholder } from "@/api/receiptScanner";
 import imageCompression from "browser-image-compression";
+import { ReactSortable } from "react-sortablejs";
 
 const MAX_PHOTOS = 12;
 const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy"];
@@ -457,78 +458,20 @@ export default function AddInventoryItem() {
     }
   };
 
-  // Drag and drop handlers
-  const [draggedPhotoId, setDraggedPhotoId] = useState(null);
-  const [dragOverMainPhoto, setDragOverMainPhoto] = useState(false);
-
-  const handleDragStart = (e, photoId) => {
-    setDraggedPhotoId(photoId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDragEnterMain = (e) => {
-    e.preventDefault();
-    const mainPhoto = formData.photos.find(p => p.isMain);
-    // Only show preview if dragging a non-main photo over the main photo
-    if (draggedPhotoId && mainPhoto && draggedPhotoId !== mainPhoto.id) {
-      setDragOverMainPhoto(true);
-    }
-  };
-
-  const handleDragLeaveMain = (e) => {
-    e.preventDefault();
-    setDragOverMainPhoto(false);
-  };
-
-  const handleDrop = (e, targetPhotoId) => {
-    e.preventDefault();
-    setDragOverMainPhoto(false);
+  // Handle photo reordering with SortableJS
+  const handlePhotoReorder = (newPhotos) => {
+    // If first photo changed, update isMain status
+    const updatedPhotos = newPhotos.map((photo, index) => ({
+      ...photo,
+      isMain: index === 0
+    }));
     
-    if (!draggedPhotoId || draggedPhotoId === targetPhotoId) {
-      setDraggedPhotoId(null);
-      return;
-    }
-
-    setFormData(prev => {
-      const photos = [...prev.photos];
-      const draggedIndex = photos.findIndex(p => p.id === draggedPhotoId);
-      const targetIndex = photos.findIndex(p => p.id === targetPhotoId);
-      
-      if (draggedIndex === -1 || targetIndex === -1) return prev;
-
-      const draggedPhoto = photos[draggedIndex];
-      const targetPhoto = photos[targetIndex];
-
-      // If swapping with main photo, swap the isMain status
-      if (draggedPhoto.isMain || targetPhoto.isMain) {
-        photos[draggedIndex] = { ...draggedPhoto, isMain: !draggedPhoto.isMain };
-        photos[targetIndex] = { ...targetPhoto, isMain: !targetPhoto.isMain };
-        
-        // Update image_url to the new main photo
-        const newMainPhoto = photos.find(p => p.isMain);
-        return {
-          ...prev,
-          photos,
-          image_url: newMainPhoto?.imageUrl || prev.image_url
-        };
-      }
-
-      // Otherwise just reorder
-      const [removed] = photos.splice(draggedIndex, 1);
-      photos.splice(targetIndex, 0, removed);
-
-      return {
-        ...prev,
-        photos
-      };
-    });
-
-    setDraggedPhotoId(null);
+    const mainPhoto = updatedPhotos.find(p => p.isMain);
+    setFormData(prev => ({
+      ...prev,
+      photos: updatedPhotos,
+      image_url: mainPhoto?.imageUrl || prev.image_url
+    }));
   };
 
   const handleReceiptScan = async (file) => {
@@ -657,140 +600,137 @@ export default function AddInventoryItem() {
                     Upload up to {MAX_PHOTOS} photos. First photo will be the main image.
                   </p>
                   
-                  {/* Main Photo - Large */}
-                  {formData.photos.length > 0 && formData.photos.find(p => p.isMain) && (
-                    <div 
-                      className="relative group aspect-square w-full max-w-md rounded-lg border-2 border-blue-500 overflow-hidden cursor-move"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, formData.photos.find(p => p.isMain).id)}
-                      onDragOver={handleDragOver}
-                      onDragEnter={handleDragEnterMain}
-                      onDragLeave={handleDragLeaveMain}
-                      onDrop={(e) => handleDrop(e, formData.photos.find(p => p.isMain).id)}
-                      style={{
-                        opacity: draggedPhotoId === formData.photos.find(p => p.isMain).id ? 0.5 : 1,
-                        transition: 'opacity 0.2s'
-                      }}
-                    >
-                      <img
-                        src={formData.photos.find(p => p.isMain).imageUrl}
-                        alt="Main photo"
-                        className="h-full w-full object-cover pointer-events-none"
-                      />
-                      
-                      {/* Drag Preview Overlay */}
-                      {dragOverMainPhoto && draggedPhotoId && (
-                        <div className="absolute inset-0 bg-black/30 pointer-events-none">
-                          <img
-                            src={formData.photos.find(p => p.id === draggedPhotoId)?.imageUrl}
-                            alt="Preview"
-                            className="h-full w-full object-cover opacity-60"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Badge className="bg-blue-500 text-white text-sm px-3 py-1">
-                              Drop to set as main
-                            </Badge>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <Badge className="absolute top-2 left-2">MAIN</Badge>
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          onClick={handleEditImage}
-                        >
-                          <ImageIcon className="w-4 h-4 mr-1" />
-                          Edit photo
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleRemovePhoto(formData.photos.find(p => p.isMain).id)}
-                        >
-                          Remove photo
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Additional Photos Grid + Add Button */}
+                  {/* Photos with SortableJS */}
                   {formData.photos.length > 0 && (
-                    <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
-                      {formData.photos.filter(p => !p.isMain).map((photo, index) => (
-                        <div 
-                          key={photo.id} 
-                          className="relative group aspect-square cursor-move"
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, photo.id)}
-                          onDragOver={handleDragOver}
-                          onDrop={(e) => handleDrop(e, photo.id)}
-                          style={{
-                            opacity: draggedPhotoId === photo.id ? 0.5 : 1,
-                            transition: 'opacity 0.2s'
-                          }}
-                        >
-                          <div className="aspect-square rounded-lg border overflow-hidden">
-                            <img
-                              src={photo.imageUrl}
-                              alt={`Photo ${index + 2}`}
-                              className="w-full h-full object-cover pointer-events-none"
-                            />
+                    <>
+                      {/* Main Photo - Large (First in array) */}
+                      <ReactSortable
+                        list={formData.photos}
+                        setList={handlePhotoReorder}
+                        animation={200}
+                        swapThreshold={0.65}
+                        className="space-y-3"
+                        ghostClass="opacity-30"
+                        dragClass="opacity-50"
+                      >
+                        {formData.photos.map((photo, index) => (
+                          <div key={photo.id}>
+                            {photo.isMain && (
+                              <div className="relative group aspect-square w-full max-w-md rounded-lg border-2 border-blue-500 overflow-hidden cursor-move">
+                                <img
+                                  src={photo.imageUrl}
+                                  alt="Main photo"
+                                  className="h-full w-full object-cover"
+                                />
+                                <Badge className="absolute top-2 left-2 z-20 pointer-events-none">MAIN</Badge>
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditImage(e);
+                                    }}
+                                  >
+                                    <ImageIcon className="w-4 h-4 mr-1" />
+                                    Edit photo
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemovePhoto(photo.id);
+                                    }}
+                                  >
+                                    Remove photo
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          
-                          {/* Red X button - always visible in top-right */}
+                        ))}
+                      </ReactSortable>
+
+                      {/* Secondary Photos Grid with SortableJS */}
+                      <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
+                        <ReactSortable
+                          list={formData.photos}
+                          setList={handlePhotoReorder}
+                          animation={200}
+                          swapThreshold={0.65}
+                          className="contents"
+                          ghostClass="opacity-30"
+                          dragClass="opacity-50"
+                        >
+                          {formData.photos.map((photo, index) => (
+                            <div key={photo.id}>
+                              {!photo.isMain && (
+                                <div className="relative group aspect-square cursor-move">
+                                  <div className="aspect-square rounded-lg border overflow-hidden">
+                                    <img
+                                      src={photo.imageUrl}
+                                      alt={`Photo ${index + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  
+                                  {/* Red X button - always visible in top-right */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemovePhoto(photo.id);
+                                    }}
+                                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg z-20 transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+
+                                  {/* Edit button on hover */}
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditPhoto(photo.id);
+                                      }}
+                                      className="text-xs h-7 px-3"
+                                    >
+                                      <ImageIcon className="w-3 h-3 mr-1" />
+                                      Edit
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </ReactSortable>
+                        
+                        {/* Add Photos Button in Grid */}
+                        {formData.photos.length < MAX_PHOTOS && (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemovePhoto(photo.id);
-                            }}
-                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg z-10 transition-colors"
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={uploadingPhotos}
+                            className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50"
                           >
-                            <X className="w-4 h-4" />
+                            {uploadingPhotos ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <>
+                                <Camera className="w-5 h-5 mb-1" />
+                                <span className="text-[10px]">Add photos</span>
+                              </>
+                            )}
                           </button>
-
-                          {/* Edit button on hover */}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditPhoto(photo.id);
-                              }}
-                              className="text-xs h-7 px-3"
-                            >
-                              <ImageIcon className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Add Photos Button in Grid */}
-                      {formData.photos.length < MAX_PHOTOS && (
-                        <button
-                          type="button"
-                          onClick={() => photoInputRef.current?.click()}
-                          disabled={uploadingPhotos}
-                          className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50"
-                        >
-                          {uploadingPhotos ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <>
-                              <Camera className="w-5 h-5 mb-1" />
-                              <span className="text-[10px]">Add photos</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    </>
                   )}
 
                   {/* Initial Upload Button (when no photos) */}
