@@ -185,7 +185,7 @@ export default function Layout({ children }) {
                 <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="font-bold text-gray-900 dark:text-gray-100 text-lg">ProfitPulse</h2>
+                <h2 className="font-bold text-gray-900 dark:text-gray-100 text-lg">Profit Orbit</h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Reselling Analytics</p>
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function Layout({ children }) {
           <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 md:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors duration-200" />
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">ProfitPulse</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Profit Orbit</h1>
             </div>
           </header>
 
