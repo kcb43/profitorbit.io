@@ -120,7 +120,6 @@ export default function AddInventoryItem() {
   const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null });
-  const [dragPreview, setDragPreview] = useState({ show: false, imageUrl: null });
 
   const { data: existingItem, isLoading: isLoadingItem } = useQuery({
     queryKey: ['inventoryItem', itemId],
@@ -475,30 +474,6 @@ export default function AddInventoryItem() {
     }));
   };
 
-  // SortableJS event handlers for preview
-  const handleSortableStart = (evt) => {
-    const draggedPhoto = formData.photos[evt.oldIndex];
-    if (draggedPhoto && !draggedPhoto.isMain) {
-      setDragPreview({ show: false, imageUrl: draggedPhoto.imageUrl });
-    }
-  };
-
-  const handleSortableMove = (evt) => {
-    const draggedPhoto = formData.photos[evt.oldIndex];
-    const targetPhoto = formData.photos[evt.newIndex];
-    
-    // Show preview if dragging a secondary photo over the main photo
-    if (draggedPhoto && targetPhoto && !draggedPhoto.isMain && targetPhoto.isMain) {
-      setDragPreview({ show: true, imageUrl: draggedPhoto.imageUrl });
-    } else {
-      setDragPreview({ show: false, imageUrl: null });
-    }
-  };
-
-  const handleSortableEnd = () => {
-    setDragPreview({ show: false, imageUrl: null });
-  };
-
   const handleReceiptScan = async (file) => {
     setIsReceiptScanning(true);
     try {
@@ -633,10 +608,6 @@ export default function AddInventoryItem() {
                         setList={handlePhotoReorder}
                         animation={200}
                         swapThreshold={0.65}
-                        ghostClass="sortable-ghost"
-                        onStart={handleSortableStart}
-                        onMove={handleSortableMove}
-                        onEnd={handleSortableEnd}
                         className="grid grid-cols-4 md:grid-cols-6 gap-3 relative"
                         style={{
                           display: 'grid',
@@ -669,25 +640,7 @@ export default function AddInventoryItem() {
                             </div>
                             
                             {photo.isMain && (
-                              <>
-                                <Badge className="absolute top-2 left-2 z-20 pointer-events-none">MAIN</Badge>
-                                
-                                {/* Drag Preview Overlay */}
-                                {dragPreview.show && dragPreview.imageUrl && (
-                                  <div className="absolute inset-0 bg-black/20 z-30 pointer-events-none">
-                                    <img
-                                      src={dragPreview.imageUrl}
-                                      alt="Preview"
-                                      className="w-full h-full object-cover opacity-70"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <Badge className="bg-blue-500 text-white text-sm px-3 py-1.5 shadow-lg">
-                                        Drop to set as main
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                )}
-                              </>
+                              <Badge className="absolute top-2 left-2 z-20 pointer-events-none">MAIN</Badge>
                             )}
                             
                             {/* Red X button for secondary photos */}
