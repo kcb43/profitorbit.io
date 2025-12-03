@@ -341,15 +341,17 @@ export default function AddInventoryItem() {
       const uploadPayload = editedFile instanceof File ? editedFile : new File([editedFile], editedFile.name || 'edited-image.jpg', { type: editedFile.type || 'image/jpeg' });
       const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
       
-      // Update the main photo in the photos array
+      // Update the photo in the photos array (either main or secondary)
       setFormData(prev => {
+        const photoId = imageToEdit.photoId;
         const updatedPhotos = prev.photos.map(p => 
-          p.isMain ? { ...p, imageUrl: file_url } : p
+          (photoId ? p.id === photoId : p.isMain) ? { ...p, imageUrl: file_url } : p
         );
+        const mainPhoto = updatedPhotos.find(p => p.isMain);
         return {
           ...prev,
           photos: updatedPhotos,
-          image_url: file_url
+          image_url: mainPhoto?.imageUrl || file_url
         };
       });
       
@@ -445,6 +447,55 @@ export default function AddInventoryItem() {
         image_url: mainPhoto?.imageUrl || ''
       };
     });
+  };
+
+  const handleEditPhoto = (photoId) => {
+    const photoToEdit = formData.photos.find(p => p.id === photoId);
+    if (photoToEdit) {
+      setImageToEdit({ url: photoToEdit.imageUrl, photoId });
+      setEditorOpen(true);
+    }
+  };
+
+  // Drag and drop handlers
+  const [draggedPhotoId, setDraggedPhotoId] = useState(null);
+
+  const handleDragStart = (e, photoId) => {
+    setDraggedPhotoId(photoId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetPhotoId) => {
+    e.preventDefault();
+    
+    if (!draggedPhotoId || draggedPhotoId === targetPhotoId) {
+      setDraggedPhotoId(null);
+      return;
+    }
+
+    setFormData(prev => {
+      const photos = [...prev.photos];
+      const draggedIndex = photos.findIndex(p => p.id === draggedPhotoId);
+      const targetIndex = photos.findIndex(p => p.id === targetPhotoId);
+      
+      if (draggedIndex === -1 || targetIndex === -1) return prev;
+
+      // Reorder photos
+      const [draggedPhoto] = photos.splice(draggedIndex, 1);
+      photos.splice(targetIndex, 0, draggedPhoto);
+
+      return {
+        ...prev,
+        photos
+      };
+    });
+
+    setDraggedPhotoId(null);
   };
 
   const handleReceiptScan = async (file) => {
@@ -608,32 +659,52 @@ export default function AddInventoryItem() {
                   {formData.photos.length > 0 && (
                     <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
                       {formData.photos.filter(p => !p.isMain).map((photo, index) => (
-                        <div key={photo.id} className="relative group aspect-square">
+                        <div 
+                          key={photo.id} 
+                          className="relative group aspect-square cursor-move"
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, photo.id)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, photo.id)}
+                          style={{
+                            opacity: draggedPhotoId === photo.id ? 0.5 : 1,
+                            transition: 'opacity 0.2s'
+                          }}
+                        >
                           <div className="aspect-square rounded-lg border overflow-hidden">
                             <img
                               src={photo.imageUrl}
                               alt={`Photo ${index + 2}`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover pointer-events-none"
                             />
                           </div>
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                          
+                          {/* Red X button - always visible in top-right */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePhoto(photo.id);
+                            }}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg z-10 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+
+                          {/* Edit button on hover */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <Button
                               type="button"
                               size="sm"
                               variant="secondary"
-                              onClick={() => handleSetMainPhoto(photo.id)}
-                              className="text-[10px] h-6 px-2 w-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditPhoto(photo.id);
+                              }}
+                              className="text-xs h-7 px-3"
                             >
-                              Set Main
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleRemovePhoto(photo.id)}
-                              className="text-[10px] h-6 px-2 w-full"
-                            >
-                              Remove
+                              <ImageIcon className="w-3 h-3 mr-1" />
+                              Edit
                             </Button>
                           </div>
                         </div>
