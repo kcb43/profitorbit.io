@@ -600,30 +600,69 @@ export default function AddInventoryItem() {
                     Upload up to {MAX_PHOTOS} photos. First photo will be the main image.
                   </p>
                   
-                  {/* Photos with SortableJS */}
+                  {/* Photos with SortableJS - Single Unified List */}
                   {formData.photos.length > 0 && (
-                    <>
-                      {/* Main Photo - Large (First in array) */}
+                    <div className="space-y-3">
                       <ReactSortable
                         list={formData.photos}
                         setList={handlePhotoReorder}
                         animation={200}
                         swapThreshold={0.65}
-                        className="space-y-3"
-                        ghostClass="opacity-30"
-                        dragClass="opacity-50"
+                        ghostClass="sortable-ghost"
+                        dragClass="sortable-drag"
+                        className="grid grid-cols-4 md:grid-cols-6 gap-3"
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(4, 1fr)',
+                          gap: '0.75rem'
+                        }}
                       >
                         {formData.photos.map((photo, index) => (
-                          <div key={photo.id}>
+                          <div 
+                            key={photo.id}
+                            className={`relative group cursor-move ${
+                              photo.isMain 
+                                ? 'col-span-4 md:col-span-6 aspect-square max-w-md' 
+                                : 'aspect-square'
+                            }`}
+                            style={photo.isMain ? {
+                              gridColumn: '1 / -1',
+                              maxWidth: '28rem',
+                              marginBottom: index === 0 && formData.photos.length > 1 ? '0.75rem' : '0'
+                            } : {}}
+                          >
+                            <div className={`aspect-square rounded-lg border overflow-hidden ${
+                              photo.isMain ? 'border-2 border-blue-500' : 'border'
+                            }`}>
+                              <img
+                                src={photo.imageUrl}
+                                alt={photo.isMain ? 'Main photo' : `Photo ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            
                             {photo.isMain && (
-                              <div className="relative group aspect-square w-full max-w-md rounded-lg border-2 border-blue-500 overflow-hidden cursor-move">
-                                <img
-                                  src={photo.imageUrl}
-                                  alt="Main photo"
-                                  className="h-full w-full object-cover"
-                                />
-                                <Badge className="absolute top-2 left-2 z-20 pointer-events-none">MAIN</Badge>
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
+                              <Badge className="absolute top-2 left-2 z-20 pointer-events-none">MAIN</Badge>
+                            )}
+                            
+                            {/* Red X button for secondary photos */}
+                            {!photo.isMain && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePhoto(photo.id);
+                                }}
+                                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg z-20 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {/* Edit button on hover */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                              {photo.isMain ? (
+                                <div className="flex gap-2">
                                   <Button
                                     type="button"
                                     size="sm"
@@ -648,89 +687,45 @@ export default function AddInventoryItem() {
                                     Remove photo
                                   </Button>
                                 </div>
-                              </div>
-                            )}
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditPhoto(photo.id);
+                                  }}
+                                  className="text-xs h-7 px-3"
+                                >
+                                  <ImageIcon className="w-3 h-3 mr-1" />
+                                  Edit
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </ReactSortable>
-
-                      {/* Secondary Photos Grid with SortableJS */}
-                      <div className="grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
-                        <ReactSortable
-                          list={formData.photos}
-                          setList={handlePhotoReorder}
-                          animation={200}
-                          swapThreshold={0.65}
-                          className="contents"
-                          ghostClass="opacity-30"
-                          dragClass="opacity-50"
+                      
+                      {/* Add Photos Button in Grid */}
+                      {formData.photos.length < MAX_PHOTOS && (
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          disabled={uploadingPhotos}
+                          className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50"
                         >
-                          {formData.photos.map((photo, index) => (
-                            <div key={photo.id}>
-                              {!photo.isMain && (
-                                <div className="relative group aspect-square cursor-move">
-                                  <div className="aspect-square rounded-lg border overflow-hidden">
-                                    <img
-                                      src={photo.imageUrl}
-                                      alt={`Photo ${index + 1}`}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  
-                                  {/* Red X button - always visible in top-right */}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemovePhoto(photo.id);
-                                    }}
-                                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg z-20 transition-colors"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-
-                                  {/* Edit button on hover */}
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEditPhoto(photo.id);
-                                      }}
-                                      className="text-xs h-7 px-3"
-                                    >
-                                      <ImageIcon className="w-3 h-3 mr-1" />
-                                      Edit
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </ReactSortable>
-                        
-                        {/* Add Photos Button in Grid */}
-                        {formData.photos.length < MAX_PHOTOS && (
-                          <button
-                            type="button"
-                            onClick={() => photoInputRef.current?.click()}
-                            disabled={uploadingPhotos}
-                            className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50"
-                          >
-                            {uploadingPhotos ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <>
-                                <Camera className="w-5 h-5 mb-1" />
-                                <span className="text-[10px]">Add photos</span>
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </>
+                          {uploadingPhotos ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <>
+                              <Camera className="w-5 h-5 mb-1" />
+                              <span className="text-[10px]">Add photos</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {/* Initial Upload Button (when no photos) */}

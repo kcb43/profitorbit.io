@@ -593,3 +593,14 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .cropper-disabled .cropper-point {
   cursor: not-allowed;
 }
+
+/* SortableJS styles */
+.sortable-ghost {
+  opacity: 0.4;
+  background: #c8ebfb;
+}
+
+.sortable-drag {
+  opacity: 0.5;
+  cursor: grabbing !important;
+}
