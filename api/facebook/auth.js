@@ -79,16 +79,15 @@ export default async function handler(req, res) {
     const authUrl = 'https://www.facebook.com/v18.0/dialog/oauth';
 
     // OAuth scopes for Facebook integration
-    // NOTE: If your app is a "Business Type" app, Facebook requires at least one business permission
-    // We use pages_show_list as the minimal business permission (doesn't require app review in dev mode)
+    // Using minimal permissions - just public_profile for personal account connection
     // 
-    // Currently requesting:
-    // - public_profile: Basic profile info
-    // - pages_show_list: Minimal business permission (required for Business type apps)
+    // IMPORTANT: This requires a "Consumer" type Facebook app (not "Business" type)
+    // If you have a Business type app, you'll need to either:
+    // 1. Create a new Consumer type app (recommended), OR
+    // 2. Add 'pages_show_list' to the scope below
     // 
-    // RECOMMENDED: Create a new "Consumer" type app instead to avoid the page selection dialog
-    // Consumer apps only need public_profile and don't require business permissions
-    const scope = 'public_profile,pages_show_list';
+    // For now, keeping it simple with just public_profile
+    const scope = 'public_profile';
 
     // Build authorization URL with parameters
     const authParams = new URLSearchParams({
