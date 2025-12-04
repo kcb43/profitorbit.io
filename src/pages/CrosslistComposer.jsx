@@ -1639,7 +1639,7 @@ export default function CrosslistComposer() {
       window.location.href = '/api/ebay/auth';
     } else if (templateKey === 'facebook') {
       // Initiate Facebook OAuth flow
-      window.location.href = '/api/facebook/auth';
+      window.location.href = '/auth/facebook/auth';
     } else {
       const label = TEMPLATE_DISPLAY_NAMES[templateKey] || "Marketplace";
       toast({
@@ -1712,7 +1712,7 @@ export default function CrosslistComposer() {
     sessionStorage.setItem('facebook_oauth_state', JSON.stringify(stateToSave));
     
     // Initiate Facebook OAuth flow
-    window.location.href = '/api/facebook/auth';
+    window.location.href = '/auth/facebook/auth';
   };
 
   const handleTemplateSave = async (templateKey) => {

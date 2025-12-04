@@ -253,7 +253,7 @@ export default function Settings() {
 
   const loginWithFacebook = () => {
     // Use OAuth redirect method which has proper Marketplace scopes configured
-    // This redirects to /api/facebook/auth which has the correct scopes:
+    // This redirects to /auth/facebook/auth which has the correct scopes:
     // - pages_manage_metadata
     // - pages_manage_posts
     // - business_management
@@ -264,7 +264,7 @@ export default function Settings() {
     sessionStorage.setItem('preserved_theme', currentTheme);
     
     // Redirect to OAuth endpoint
-    window.location.href = '/api/facebook/auth';
+    window.location.href = '/auth/facebook/auth';
   };
 
   const handleMarketplaceConnect = (marketplaceId) => {

@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       baseUrl = 'http://localhost:5173';
     }
     
-    const redirectUri = `${baseUrl}/api/facebook/callback`;
+    const redirectUri = `${baseUrl}/auth/facebook/callback`;
     
     console.log('Facebook OAuth Redirect URI construction:', {
       BASE_URL: process.env.BASE_URL,
@@ -154,7 +154,7 @@ export default async function handler(req, res) {
     
     const baseUrl = process.env.BASE_URL || 
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'unknown');
-    const redirectUri = `${baseUrl}/api/facebook/callback`;
+    const redirectUri = `${baseUrl}/auth/facebook/callback`;
     
     res.status(500).json({ 
       error: 'Internal server error',

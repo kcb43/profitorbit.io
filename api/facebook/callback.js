@@ -158,7 +158,7 @@ export default async function handler(req, res) {
       baseUrl = 'http://localhost:5173';
     }
     
-    const redirectUri = `${baseUrl}/api/facebook/callback`;
+    const redirectUri = `${baseUrl}/auth/facebook/callback`;
 
     // Facebook OAuth token endpoint
     const tokenUrl = 'https://graph.facebook.com/v18.0/oauth/access_token';

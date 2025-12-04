@@ -119,7 +119,7 @@ export default function MarketplaceConnect() {
     
     if (!configId) {
       // Fallback to redirect method if no config ID
-      window.location.href = '/api/facebook/auth';
+      window.location.href = '/auth/facebook/auth';
       return;
     }
 

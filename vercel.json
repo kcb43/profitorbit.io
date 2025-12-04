@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/auth/facebook/callback",
+      "destination": "/api/facebook/callback"
+    },
+    {
+      "source": "/auth/facebook/auth",
+      "destination": "/api/facebook/auth"
+    },
+    {
       "source": "/((?!api).*)",
       "destination": "/index.html"
     }
