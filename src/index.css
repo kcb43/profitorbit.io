@@ -352,14 +352,19 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 .cropper-container img {
   backface-visibility: hidden;
-  max-height: none !important;
-  max-width: none !important;
   min-height: 0 !important;
   min-width: 0 !important;
   display: block;
   height: auto !important;
   image-orientation: 0deg;
   width: auto !important;
+}
+
+@media (min-width: 768px) {
+  .cropper-container img {
+    max-height: 600px !important;
+    max-width: 100% !important;
+  }
 }
 
 .cropper-wrap-box,
