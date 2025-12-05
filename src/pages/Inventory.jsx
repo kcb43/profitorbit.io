@@ -595,6 +595,35 @@ export default function InventoryPage() {
     }
   };
 
+  // Apply filters to all images for an inventory item
+  const handleApplyFiltersToAll = async (processedImages, filters) => {
+    if (!imageToEdit.itemId) return;
+    
+    try {
+      // Find the item from inventory
+      const item = inventoryItems.find(i => i.id === imageToEdit.itemId);
+      if (!item || !item.photos || item.photos.length === 0) {
+        alert('No images found for this item.');
+        return;
+      }
+
+      // Process each photo
+      for (let i = 0; i < processedImages.length; i++) {
+        const processedItem = processedImages[i];
+        await updateImageMutation.mutateAsync({ 
+          itemId: imageToEdit.itemId, 
+          file: processedItem.file,
+          photoIndex: i 
+        });
+      }
+      
+      alert(`✓ Successfully applied filters to ${processedImages.length} image(s)!`);
+    } catch (error) {
+      console.error("Error applying filters to all images:", error);
+      alert("Failed to apply filters to all images. Please try again.");
+    }
+  };
+
   const inventorySummary = React.useMemo(() => {
     const items = Array.isArray(inventoryItems) ? inventoryItems : [];
 
@@ -2037,6 +2066,8 @@ export default function InventoryPage() {
         imageSrc={imageToEdit.url}
         onSave={handleSaveEditedImage}
         fileName={`${imageToEdit.itemId}-edited.jpg`}
+        allImages={imageToEdit.itemId ? (inventoryItems.find(i => i.id === imageToEdit.itemId)?.photos || []) : []}
+        onApplyToAll={handleApplyFiltersToAll}
       />
 
       <SoldLookupDialog

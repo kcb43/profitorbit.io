@@ -366,6 +366,47 @@ export default function AddInventoryItem() {
     }
   };
 
+  // Apply filters to all images
+  const handleApplyFiltersToAll = async (processedImages, filters) => {
+    setIsUploading(true);
+    try {
+      const updatedPhotos = [];
+      
+      for (let i = 0; i < processedImages.length; i++) {
+        const processedItem = processedImages[i];
+        const originalPhoto = formData.photos[i];
+        
+        // Upload the filtered image
+        const { file_url } = await base44.integrations.Core.UploadFile({ 
+          file: processedItem.file 
+        });
+        
+        // Keep the photo structure but update the imageUrl
+        updatedPhotos.push({
+          ...originalPhoto,
+          imageUrl: file_url
+        });
+      }
+      
+      // Update all photos in the form
+      setFormData(prev => {
+        const mainPhoto = updatedPhotos.find(p => p.isMain);
+        return {
+          ...prev,
+          photos: updatedPhotos,
+          image_url: mainPhoto?.imageUrl || updatedPhotos[0]?.imageUrl || prev.image_url
+        };
+      });
+      
+      alert(`✓ Successfully applied filters to ${updatedPhotos.length} image(s)!`);
+    } catch (error) {
+      console.error("Error applying filters to all images:", error);
+      alert("Failed to apply filters to all images. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Multiple photos handlers
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -1001,6 +1042,8 @@ export default function AddInventoryItem() {
         imageSrc={imageToEdit.url}
         onSave={handleSaveEditedImage}
         fileName="inventory-item-edited.jpg"
+        allImages={formData.photos}
+        onApplyToAll={handleApplyFiltersToAll}
       />
     </div>
   );
