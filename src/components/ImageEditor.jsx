@@ -117,9 +117,16 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const initCropper = () => {
     if (imageRef.current && !cropperInstanceRef.current) {
       try {
+        // Wait for image to be fully loaded with dimensions
+        const img = imageRef.current;
+        if (!img.complete || !img.naturalWidth || !img.naturalHeight) {
+          img.onload = () => initCropper();
+          return;
+        }
+
         cropperInstanceRef.current = new Cropper(imageRef.current, {
           aspectRatio: getAspectRatioValue(),
-          viewMode: 1,
+          viewMode: 2,
           dragMode: 'move',
           autoCropArea: 0.7,
           restore: false,
@@ -129,7 +136,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           cropBoxMovable: true,
           cropBoxResizable: true,
           toggleDragModeOnDblclick: false,
-          responsive: false,
+          responsive: true,
           checkOrientation: false,
           modal: false,
           background: false,
@@ -140,6 +147,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           movable: false,
           rotatable: false,
           wheelZoomRatio: 0,
+          minContainerWidth: img.naturalWidth,
+          minContainerHeight: img.naturalHeight,
         });
         
         // Disable all wheel events on the cropper
