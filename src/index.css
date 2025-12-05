@@ -334,7 +334,7 @@ input[type="range"].slider::-moz-range-thumb:hover {
   transform: scale(1.2);
 }
 
-/* Cropper.js Styles */
+/* Cropper.js v1.x Styles */
 .cropper-container {
   direction: ltr;
   font-size: 0;

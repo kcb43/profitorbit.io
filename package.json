@@ -45,7 +45,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "cors": "^2.8.5",
-    "cropperjs": "^2.1.0",
+    "cropperjs": "^1.6.2",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
     "express": "^5.1.0",
