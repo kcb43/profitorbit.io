@@ -382,6 +382,12 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .cropper-crop-box {
   min-width: 200px !important;
   min-height: 200px !important;
+  pointer-events: all !important;
+}
+
+.cropper-face {
+  pointer-events: all !important;
+  cursor: default !important;
 }
 
 .cropper-wrap-box,
@@ -392,22 +398,27 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .cropper-canvas {
   width: 100% !important;
   height: 100% !important;
+  pointer-events: none !important;
 }
 
 .cropper-canvas > img {
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;
+  pointer-events: none !important;
+  user-select: none !important;
 }
 
 .cropper-drag-box {
   background-color: #fff;
   opacity: 0;
   overflow: hidden;
+  pointer-events: none !important;
 }
 
 .cropper-modal {
   overflow: hidden;
+  pointer-events: none !important;
 }
 
 .cropper-modal {
@@ -612,7 +623,8 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .cropper-move {
-  cursor: move;
+  cursor: default !important;
+  pointer-events: none !important;
 }
 
 .cropper-crop {
