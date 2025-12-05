@@ -346,6 +346,9 @@ input[type="range"].slider::-moz-range-thumb:hover {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  min-height: 400px !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .cropper-container img {
@@ -370,6 +373,11 @@ input[type="range"].slider::-moz-range-thumb:hover {
   position: absolute;
   right: 0;
   top: 0;
+}
+
+.cropper-crop-box {
+  min-width: 100px !important;
+  min-height: 100px !important;
 }
 
 .cropper-wrap-box,

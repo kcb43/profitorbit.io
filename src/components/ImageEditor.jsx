@@ -132,18 +132,30 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       try {
         cropperInstanceRef.current = new Cropper(imageRef.current, {
           aspectRatio: getAspectRatioValue(),
-          viewMode: 1,
-          dragMode: 'move',
-          autoCropArea: 0.95,
+          viewMode: 0,
+          dragMode: 'crop',
+          autoCropArea: 1,
           restore: false,
           guides: true,
           center: true,
-          highlight: false,
+          highlight: true,
           cropBoxMovable: true,
           cropBoxResizable: true,
           toggleDragModeOnDblclick: false,
-          minContainerWidth: 200,
-          minContainerHeight: 200,
+          responsive: true,
+          checkOrientation: false,
+          modal: true,
+          background: true,
+          ready() {
+            // Maximize the crop box on initialization
+            const containerData = this.cropper.getContainerData();
+            this.cropper.setCropBoxData({
+              left: 10,
+              top: 10,
+              width: containerData.width - 20,
+              height: containerData.height - 20
+            });
+          }
         });
         setCropper(cropperInstanceRef.current);
       } catch (error) {
@@ -281,23 +293,33 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         setTransform(prev => ({ ...prev, flip_y: prev.flip_y === 1 ? -1 : 1 }));
         break;
       case 'crop':
-        cropImage();
+        enableCropMode();
         break;
     }
   };
 
-  // Crop image
-  const cropImage = () => {
+  // Enable crop mode
+  const enableCropMode = () => {
+    setShowCropBtn(true);
+  };
+
+  // Apply the crop
+  const applyCrop = () => {
     if (!cropperInstanceRef.current) {
-      initCropper();
-      setShowCropBtn(true);
+      alert('Crop tool not initialized. Please try again.');
       return;
     }
     
     try {
-      const canvas = cropperInstanceRef.current.getCroppedCanvas();
+      const canvas = cropperInstanceRef.current.getCroppedCanvas({
+        maxWidth: 4096,
+        maxHeight: 4096,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      });
+      
       if (canvas) {
-        const dataUrl = canvas.toDataURL();
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
         const oldCropper = cropperInstanceRef.current;
         
         oldCropper.destroy();
@@ -305,7 +327,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         setShowCropBtn(false);
         
         setImgSrc(dataUrl);
-        setCroppedPreview(dataUrl);
         
         setTimeout(() => {
           if (imageRef.current) {
@@ -696,37 +717,32 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 bg-slate-900/50 overflow-hidden min-w-0 max-h-full">
-              <div className="w-full h-full max-h-full flex items-center justify-center overflow-hidden rounded-lg bg-slate-950 border border-slate-700 min-w-0">
+            <div className="flex-1 flex flex-col bg-slate-900/50 overflow-hidden min-w-0 max-h-full p-2 sm:p-4">
+              <div className="w-full flex-1 rounded-lg bg-slate-950 border border-slate-700 overflow-hidden" style={{ minHeight: '500px' }}>
                 {imgSrc && (
                 <img
                   ref={imageRef}
                   src={imgSrc}
                   alt="Editor Preview"
-                  className="max-w-full max-h-full object-contain min-w-0"
+                  className="block w-full h-auto"
                     style={{
                       filter: `brightness(${filters.brightness}%) 
                               contrast(${filters.contrast}%) 
                               saturate(${filters.saturate}%)`,
-                      transform: `rotate(${transform.rotate}deg) scale(${transform.flip_x}, ${transform.flip_y})`
+                      transform: `rotate(${transform.rotate}deg) scale(${transform.flip_x}, ${transform.flip_y})`,
+                      maxWidth: '100%',
+                      maxHeight: 'none'
                     }}
                   />
                 )}
               </div>
               {showCropBtn && (
                 <Button
-                  onClick={cropImage}
-                  className="mt-4 bg-green-600 hover:bg-green-500 text-white"
+                  onClick={applyCrop}
+                  className="mt-3 bg-green-600 hover:bg-green-500 text-white self-center px-8 text-base font-semibold"
                 >
-                  Apply Crop
+                  ✓ Apply Crop
                 </Button>
-              )}
-              {croppedPreview && (
-                <img
-                  src={croppedPreview}
-                  alt="Cropped Preview"
-                  className="mt-4 max-w-[200px] rounded-lg border-2 border-slate-600"
-                />
               )}
             </div>
           </div>
