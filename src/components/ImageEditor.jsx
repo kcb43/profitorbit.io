@@ -875,13 +875,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
 
             {/* Main Content */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 p-2 sm:p-4" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
+            <div className="w-full md:flex-1 flex flex-col min-w-0 p-2 sm:p-4 h-[350px] md:h-auto" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
               <div 
-                className="w-full rounded-lg overflow-hidden flex items-center justify-center" 
+                className="w-full h-full md:flex-1 rounded-lg overflow-hidden flex items-center justify-center" 
                 style={{ 
-                  minHeight: '350px',
-                  height: '350px',
-                  maxHeight: '500px',
                   background: isCropping ? '#ffffff' : '#0f172a',
                   border: isCropping ? '2px solid #e2e8f0' : '1px solid #334155'
                 }}
@@ -897,7 +894,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       ref={imageRef}
                       src={imgSrc}
                       alt="Editor Preview"
-                      className="max-w-full md:max-w-[calc(90vw-400px)] max-h-[300px] md:max-h-[calc(90vh-250px)] w-auto h-auto object-contain"
+                      className="max-w-full max-h-[300px] md:max-h-full w-auto h-auto object-contain"
                       style={{
                         display: 'block',
                         filter: `brightness(${filters.brightness}%) 
