@@ -630,37 +630,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 </div>
               </div>
 
-              {/* Adjustments Section */}
-              <div className="space-y-2 sm:space-y-3">
-                <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
-                  <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  Adjustments
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span className="capitalize">{activeFilter === 'shadows' ? 'Shadows' : activeFilter}</span>
-                    <span>
-                      {activeFilter === 'shadows' 
-                        ? `${sliderValue > 0 ? '+' : ''}${sliderValue}` 
-                        : `${sliderValue}%`}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={sliderMin}
-                    max={sliderMax}
-                    value={sliderValue}
-                    onChange={(e) => handleSliderChange(Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
-                    style={{
-                      background: sliderRange > 0
-                        ? `linear-gradient(to right, #475569 0%, #6c5ce7 ${((sliderValue - sliderMin) / sliderRange) * 100}%, #6c5ce7 ${((sliderValue - sliderMin) / sliderRange) * 100}%, #475569 100%)`
-                        : '#475569'
-                    }}
-                  />
-                </div>
-              </div>
-
               {/* Transform Section */}
               <div className="space-y-2 sm:space-y-3">
                 <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -740,6 +709,37 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     ))}
                   </div>
                 )}
+
+                {/* Adjustments Section */}
+                <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
+                  <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    Adjustments
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-slate-400">
+                      <span className="capitalize">{activeFilter === 'shadows' ? 'Shadows' : activeFilter}</span>
+                      <span>
+                        {activeFilter === 'shadows' 
+                          ? `${sliderValue > 0 ? '+' : ''}${sliderValue}` 
+                          : `${sliderValue}%`}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={sliderMin}
+                      max={sliderMax}
+                      value={sliderValue}
+                      onChange={(e) => handleSliderChange(Number(e.target.value))}
+                      className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
+                      style={{
+                        background: sliderRange > 0
+                          ? `linear-gradient(to right, #475569 0%, #6c5ce7 ${((sliderValue - sliderMin) / sliderRange) * 100}%, #6c5ce7 ${((sliderValue - sliderMin) / sliderRange) * 100}%, #475569 100%)`
+                          : '#475569'
+                      }}
+                    />
+                  </div>
+                </div>
 
                 {/* Filters Section */}
                 <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
