@@ -117,16 +117,15 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const initCropper = () => {
     if (imageRef.current && !cropperInstanceRef.current) {
       try {
-        const container = imageRef.current.parentElement;
         cropperInstanceRef.current = new Cropper(imageRef.current, {
           aspectRatio: getAspectRatioValue(),
-          viewMode: 0,
-          dragMode: 'move',
-          autoCropArea: 0.9,
+          viewMode: 1,
+          dragMode: 'none',
+          autoCropArea: 0.8,
           restore: false,
           guides: true,
           center: true,
-          highlight: true,
+          highlight: false,
           cropBoxMovable: true,
           cropBoxResizable: true,
           toggleDragModeOnDblclick: false,
@@ -134,22 +133,12 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           checkOrientation: false,
           modal: true,
           background: true,
-          zoomable: true,
-          scalable: true,
-          ready: function() {
-            // Force the cropper to fill the container
-            const cropper = this.cropper;
-            const containerData = cropper.getContainerData();
-            const imageData = cropper.getImageData();
-            
-            // Calculate scale to fill container
-            const scaleX = containerData.width / imageData.naturalWidth;
-            const scaleY = containerData.height / imageData.naturalHeight;
-            const scale = Math.max(scaleX, scaleY);
-            
-            // Zoom to fill
-            cropper.zoomTo(scale);
-          }
+          zoomable: false,
+          zoomOnTouch: false,
+          zoomOnWheel: false,
+          scalable: false,
+          movable: false,
+          rotatable: false,
         });
         setCropper(cropperInstanceRef.current);
         setIsCropping(true);
