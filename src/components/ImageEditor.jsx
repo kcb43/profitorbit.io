@@ -117,11 +117,12 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const initCropper = () => {
     if (imageRef.current && !cropperInstanceRef.current) {
       try {
+        const container = imageRef.current.parentElement;
         cropperInstanceRef.current = new Cropper(imageRef.current, {
           aspectRatio: getAspectRatioValue(),
-          viewMode: 1,
+          viewMode: 0,
           dragMode: 'move',
-          autoCropArea: 0.8,
+          autoCropArea: 0.9,
           restore: false,
           guides: true,
           center: true,
@@ -133,11 +134,28 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           checkOrientation: false,
           modal: true,
           background: true,
+          zoomable: true,
+          scalable: true,
+          ready: function() {
+            // Force the cropper to fill the container
+            const cropper = this.cropper;
+            const containerData = cropper.getContainerData();
+            const imageData = cropper.getImageData();
+            
+            // Calculate scale to fill container
+            const scaleX = containerData.width / imageData.naturalWidth;
+            const scaleY = containerData.height / imageData.naturalHeight;
+            const scale = Math.max(scaleX, scaleY);
+            
+            // Zoom to fill
+            cropper.zoomTo(scale);
+          }
         });
         setCropper(cropperInstanceRef.current);
         setIsCropping(true);
       } catch (error) {
         console.error('Error initializing cropper:', error);
+        alert('Failed to initialize crop tool: ' + error.message);
       }
     }
   };
@@ -299,25 +317,45 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       const canvas = cropperInstanceRef.current.getCroppedCanvas({
         maxWidth: 4096,
         maxHeight: 4096,
+        fillColor: '#fff',
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high',
       });
       
-      if (canvas) {
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-        
-        // Destroy cropper
-        cropperInstanceRef.current.destroy();
-        cropperInstanceRef.current = null;
-        setCropper(null);
-        setIsCropping(false);
-        
-        // Update image source
-        setImgSrc(dataUrl);
+      if (!canvas) {
+        throw new Error('Failed to generate cropped canvas');
       }
+      
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Failed to create image from crop. Please try again.');
+          return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target.result;
+          
+          // Destroy cropper
+          if (cropperInstanceRef.current) {
+            cropperInstanceRef.current.destroy();
+            cropperInstanceRef.current = null;
+          }
+          setCropper(null);
+          setIsCropping(false);
+          
+          // Update image source
+          setImgSrc(dataUrl);
+        };
+        reader.onerror = () => {
+          alert('Failed to read cropped image. Please try again.');
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.95);
+      
     } catch (error) {
       console.error('Error cropping image:', error);
-      alert('Failed to crop image. Please try again.');
+      alert('Failed to crop image: ' + error.message);
     }
   };
 
@@ -736,19 +774,22 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col bg-slate-900/50 overflow-hidden min-w-0 max-h-full p-2 sm:p-4">
-              <div className="w-full flex-1 rounded-lg bg-slate-950 border border-slate-700 overflow-hidden flex items-center justify-center" style={{ minHeight: '500px' }}>
+              <div className="w-full flex-1 rounded-lg bg-slate-950 border border-slate-700 overflow-hidden" style={{ position: 'relative', minHeight: '600px', height: '100%' }}>
                 {imgSrc && (
                 <img
                   ref={imageRef}
                   src={imgSrc}
                   alt="Editor Preview"
-                  className="block max-w-full max-h-full"
-                    style={{
-                      filter: isCropping ? 'none' : `brightness(${filters.brightness}%) 
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    filter: isCropping ? 'none' : `brightness(${filters.brightness}%) 
                               contrast(${filters.contrast}%) 
                               saturate(${filters.saturate}%)`,
-                      transform: isCropping ? 'none' : `rotate(${transform.rotate}deg) scale(${transform.flip_x}, ${transform.flip_y})`
-                    }}
+                    transform: isCropping ? 'none' : `rotate(${transform.rotate}deg) scale(${transform.flip_x}, ${transform.flip_y})`
+                  }}
                   />
                 )}
               </div>
