@@ -897,13 +897,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       ref={imageRef}
                       src={imgSrc}
                       alt="Editor Preview"
+                      className="max-w-full md:max-w-[calc(90vw-400px)] max-h-[300px] md:max-h-[calc(90vh-250px)] w-auto h-auto object-contain"
                       style={{
                         display: 'block',
-                        maxWidth: 'calc(90vw - 400px)',
-                        maxHeight: 'calc(90vh - 250px)',
-                        width: 'auto',
-                        height: 'auto',
-                        objectFit: 'contain',
                         filter: `brightness(${filters.brightness}%) 
                                   contrast(${filters.contrast}%) 
                                   saturate(${filters.saturate}%)`,
