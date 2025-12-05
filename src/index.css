@@ -379,8 +379,8 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .cropper-crop-box {
-  min-width: 100px !important;
-  min-height: 100px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
 }
 
 .cropper-wrap-box,
@@ -412,8 +412,8 @@ input[type="range"].slider::-moz-range-thumb:hover {
 .cropper-view-box {
   display: block;
   height: 100%;
-  outline: 2px solid #6366f1;
-  outline-color: rgba(99, 102, 241, 0.9);
+  outline: 4px solid #6366f1;
+  outline-color: rgba(99, 102, 241, 1);
   overflow: hidden;
   width: 100%;
 }
@@ -493,97 +493,97 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 .cropper-line {
   background-color: #39f;
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .cropper-line.line-e {
   cursor: ew-resize;
-  right: -4px;
+  right: -8px;
   top: 0;
-  width: 8px;
+  width: 16px;
 }
 
 .cropper-line.line-n {
   cursor: ns-resize;
-  height: 8px;
+  height: 16px;
   left: 0;
-  top: -4px;
+  top: -8px;
 }
 
 .cropper-line.line-w {
   cursor: ew-resize;
-  left: -4px;
+  left: -8px;
   top: 0;
-  width: 8px;
+  width: 16px;
 }
 
 .cropper-line.line-s {
-  bottom: -4px;
+  bottom: -8px;
   cursor: ns-resize;
-  height: 8px;
+  height: 16px;
   left: 0;
 }
 
 .cropper-point {
   background-color: #6366f1;
-  border: 2px solid #fff;
+  border: 3px solid #fff;
   border-radius: 50%;
-  height: 14px;
+  height: 30px;
   opacity: 1;
-  width: 14px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  width: 30px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
 }
 
 .cropper-point.point-e {
   cursor: ew-resize;
-  margin-top: -7px;
-  right: -7px;
+  margin-top: -15px;
+  right: -15px;
   top: 50%;
 }
 
 .cropper-point.point-n {
   cursor: ns-resize;
   left: 50%;
-  margin-left: -7px;
-  top: -7px;
+  margin-left: -15px;
+  top: -15px;
 }
 
 .cropper-point.point-w {
   cursor: ew-resize;
-  left: -7px;
-  margin-top: -7px;
+  left: -15px;
+  margin-top: -15px;
   top: 50%;
 }
 
 .cropper-point.point-s {
-  bottom: -7px;
+  bottom: -15px;
   cursor: ns-resize;
   left: 50%;
-  margin-left: -7px;
+  margin-left: -15px;
 }
 
 .cropper-point.point-ne {
   cursor: nesw-resize;
-  right: -7px;
-  top: -7px;
+  right: -15px;
+  top: -15px;
 }
 
 .cropper-point.point-nw {
   cursor: nwse-resize;
-  left: -7px;
-  top: -7px;
+  left: -15px;
+  top: -15px;
 }
 
 .cropper-point.point-sw {
-  bottom: -7px;
+  bottom: -15px;
   cursor: nesw-resize;
-  left: -7px;
+  left: -15px;
 }
 
 .cropper-point.point-se {
-  bottom: -7px;
+  bottom: -15px;
   cursor: nwse-resize;
-  right: -7px;
+  right: -15px;
 }
 
 .cropper-invisible {
