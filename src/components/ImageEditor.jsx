@@ -792,8 +792,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
               <div 
                 className="w-full flex-1 rounded-lg overflow-hidden flex items-center justify-center" 
                 style={{ 
-                  minHeight: '400px',
-                  maxHeight: isCropping ? 'calc(90vh - 200px)' : '100%',
+                  maxHeight: 'calc(90vh - 200px)',
                   background: isCropping ? '#ffffff' : '#0f172a',
                   border: isCropping ? '2px solid #e2e8f0' : '1px solid #334155'
                 }}
@@ -811,10 +810,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       alt="Editor Preview"
                       style={{
                         display: 'block',
-                        maxWidth: isCropping ? 'calc(90vw - 400px)' : '100%',
-                        maxHeight: isCropping ? 'calc(90vh - 250px)' : '100%',
-                        width: isCropping ? 'auto' : '100%',
-                        height: isCropping ? 'auto' : '100%',
+                        maxWidth: 'calc(90vw - 400px)',
+                        maxHeight: 'calc(90vh - 250px)',
+                        width: 'auto',
+                        height: 'auto',
+                        objectFit: 'contain',
                         filter: isCropping ? 'none' : `brightness(${filters.brightness}%) 
                                   contrast(${filters.contrast}%) 
                                   saturate(${filters.saturate}%)`,
