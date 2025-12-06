@@ -875,28 +875,23 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
 
             {/* Main Content */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 p-2 sm:p-4 h-[350px] md:h-auto" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
+            <div className="w-full md:flex-1 flex flex-col min-w-0 p-2 sm:p-4 h-[350px] md:h-auto overflow-hidden" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
               <div 
-                className="w-full h-full md:flex-1 rounded-lg overflow-hidden flex items-center justify-center" 
+                className="w-full h-full rounded-lg overflow-hidden flex items-center justify-center" 
                 style={{ 
+                  maxHeight: '600px',
                   background: isCropping ? '#ffffff' : '#0f172a',
                   border: isCropping ? '2px solid #e2e8f0' : '1px solid #334155'
                 }}
               >
                 {imgSrc && (
-                  <div style={{ 
-                    position: 'relative',
-                    display: 'inline-block',
-                    maxWidth: '100%',
-                    maxHeight: '100%'
-                  }}>
+                  <div className="relative inline-block max-w-full max-h-full">
                     <img
                       ref={imageRef}
                       src={imgSrc}
                       alt="Editor Preview"
-                      className="max-w-full max-h-[300px] md:max-h-[500px] md:max-w-[700px] w-auto h-auto object-contain"
+                      className="block w-auto h-auto object-contain max-w-full max-h-full"
                       style={{
-                        display: 'block',
                         filter: `brightness(${filters.brightness}%) 
                                   contrast(${filters.contrast}%) 
                                   saturate(${filters.saturate}%)`,
