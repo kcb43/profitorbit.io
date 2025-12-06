@@ -67,6 +67,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [editedImages, setEditedImages] = useState(new Set()); // Track which images have been edited
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [appliedToAll, setAppliedToAll] = useState(false); // Track if "Apply to All" was used
   
   const imageRef = useRef(null);
   const cropperInstanceRef = useRef(null);
@@ -121,6 +122,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const goToPrevImage = () => {
     if (currentImageIndex > 0) {
       setCurrentImageIndex(currentImageIndex - 1);
+      setAppliedToAll(false); // Reset when navigating
     }
   };
 
@@ -128,6 +130,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const goToNextImage = () => {
     if (currentImageIndex < normalizedImages.length - 1) {
       setCurrentImageIndex(currentImageIndex + 1);
+      setAppliedToAll(false); // Reset when navigating
     }
   };
 
@@ -227,34 +230,36 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       const data = imageData.data;
       
       // Shadow adjustment: -100 (darken shadows) to +100 (lighten shadows)
-      // This specifically targets darker pixels (shadows)
-      const adjustment = shadowValue / 100;
+      const adjustment = shadowValue / 100; // -1.0 to +1.0
       
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
         
-        // Calculate luminance (perceived brightness)
+        // Calculate luminance (perceived brightness) - 0 to 255
         const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
         
-        // Only affect darker pixels (shadows) - threshold at 128 (midpoint)
-        // The darker the pixel, the more it's affected
-        const shadowWeight = Math.max(0, (128 - luminance) / 128);
+        // Only affect darker pixels (shadows) - more aggressive threshold
+        // Pixels below 140 luminance are considered shadows
+        const shadowThreshold = 140;
         
-        if (shadowWeight > 0) {
+        if (luminance < shadowThreshold) {
+          // Calculate shadow weight (0 to 1) - darker = higher weight
+          const shadowWeight = 1 - (luminance / shadowThreshold);
+          
           if (adjustment < 0) {
-            // Darken shadows - multiply by factor
-            const factor = 1 + (adjustment * shadowWeight);
-            data[i] = Math.max(0, Math.min(255, r * factor));
-            data[i + 1] = Math.max(0, Math.min(255, g * factor));
-            data[i + 2] = Math.max(0, Math.min(255, b * factor));
+            // Darken shadows - more aggressive darkening
+            const darkenFactor = 1 + (adjustment * shadowWeight * 1.5);
+            data[i] = Math.max(0, r * darkenFactor);
+            data[i + 1] = Math.max(0, g * darkenFactor);
+            data[i + 2] = Math.max(0, b * darkenFactor);
           } else {
-            // Lighten shadows - add light
-            const lightBoost = adjustment * shadowWeight * 80; // Scale factor for visible effect
-            data[i] = Math.max(0, Math.min(255, r + lightBoost));
-            data[i + 1] = Math.max(0, Math.min(255, g + lightBoost));
-            data[i + 2] = Math.max(0, Math.min(255, b + lightBoost));
+            // Lighten shadows - more aggressive lightening
+            const lightenAmount = adjustment * shadowWeight * 150;
+            data[i] = Math.min(255, r + lightenAmount);
+            data[i + 1] = Math.min(255, g + lightenAmount);
+            data[i + 2] = Math.min(255, b + lightenAmount);
           }
         }
       }
@@ -455,6 +460,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     setActiveFilter('brightness');
     setSelectedTemplate(null);
     setAspectRatio('free');
+    setAppliedToAll(false); // Reset applied to all state
     
     // Cancel crop mode if active
     if (cropperInstanceRef.current) {
@@ -553,6 +559,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       const allIndices = Array.from({ length: normalizedImages.length }, (_, i) => i);
       setEditedImages(new Set(allIndices));
       setHasUnsavedChanges(false);
+      setAppliedToAll(true); // Mark that apply to all was used
       
       alert(`✓ Edits applied to ${processedImages.length} image(s)!`);
     } catch (error) {
@@ -1108,12 +1115,18 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </Button>
             {!isCropping && (
               <Button
-                onClick={handleSave}
+                onClick={appliedToAll ? () => onOpenChange(false) : handleSave}
                 className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
                 disabled={!imgSrc}
               >
                 <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-base">Save Image</span>
+                <span className="text-xs sm:text-base">
+                  {appliedToAll 
+                    ? 'Done' 
+                    : hasMultipleImages 
+                      ? `Save Image ${currentImageIndex + 1}` 
+                      : 'Save Image'}
+                </span>
               </Button>
             )}
           </div>
