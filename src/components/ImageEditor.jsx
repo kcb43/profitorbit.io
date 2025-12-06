@@ -22,7 +22,10 @@ import {
   Undo2,
   Download,
   Save,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle
 } from 'lucide-react';
 
 /**
@@ -60,9 +63,21 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('free');
   
+  // Multi-image support
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [editedImages, setEditedImages] = useState(new Set()); // Track which images have been edited
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
   const imageRef = useRef(null);
   const cropperInstanceRef = useRef(null);
   const queryClient = useQueryClient();
+  
+  // Normalize images array
+  const normalizedImages = allImages && allImages.length > 0 
+    ? allImages.map(img => typeof img === 'string' ? img : img.imageUrl || img.url || img)
+    : [imageSrc];
+  
+  const hasMultipleImages = normalizedImages.length > 1;
 
   // Fetch user's saved templates
   const { data: templates = [], refetch: refetchTemplates } = useQuery({
@@ -81,20 +96,60 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     enabled: open
   });
 
-  // Load image when component opens or imageSrc changes
+  // Check if any changes have been made
+  const checkForChanges = () => {
+    const hasFilterChanges = 
+      filters.brightness !== 100 || 
+      filters.contrast !== 100 || 
+      filters.saturate !== 100 || 
+      filters.shadows !== 0;
+    
+    const hasTransformChanges = 
+      transform.rotate !== 0 || 
+      transform.flip_x !== 1 || 
+      transform.flip_y !== 1;
+    
+    return hasFilterChanges || hasTransformChanges;
+  };
+
+  // Update hasUnsavedChanges when filters or transforms change
   useEffect(() => {
-    if (open && imageSrc) {
-      setImgSrc(imageSrc);
-      setOriginalImgSrc(imageSrc); // Store original for reset
-      
-      // Clean up existing cropper
-      if (cropperInstanceRef.current) {
-        cropperInstanceRef.current.destroy();
-        cropperInstanceRef.current = null;
+    setHasUnsavedChanges(checkForChanges());
+  }, [filters, transform]);
+
+  // Navigate to previous image
+  const goToPrevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
+  };
+
+  // Navigate to next image
+  const goToNextImage = () => {
+    if (currentImageIndex < normalizedImages.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  // Load image when component opens, imageSrc changes, or currentImageIndex changes
+  useEffect(() => {
+    if (open) {
+      const imageToLoad = normalizedImages[currentImageIndex];
+      if (imageToLoad) {
+        setImgSrc(imageToLoad);
+        setOriginalImgSrc(imageToLoad);
+        
+        // Clean up existing cropper
+        if (cropperInstanceRef.current) {
+          cropperInstanceRef.current.destroy();
+          cropperInstanceRef.current = null;
+        }
+        
+        // Reset settings when changing images
+        if (!editedImages.has(currentImageIndex)) {
+          resetAll();
+        }
       }
-      
-      // Reset all settings
-      resetAll();
     }
     return () => {
       if (cropperInstanceRef.current) {
@@ -102,7 +157,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         cropperInstanceRef.current = null;
       }
     };
-  }, [open, imageSrc]);
+  }, [open, currentImageIndex]);
 
   // Get aspect ratio value based on selection
   const getAspectRatioValue = () => {
@@ -493,6 +548,12 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       
       // Call the callback with all processed images
       onApplyToAll(processedImages, { filters, transform });
+      
+      // Mark all images as edited
+      const allIndices = Array.from({ length: normalizedImages.length }, (_, i) => i);
+      setEditedImages(new Set(allIndices));
+      setHasUnsavedChanges(false);
+      
       alert(`✓ Edits applied to ${processedImages.length} image(s)!`);
     } catch (error) {
       console.error('Error applying edits to all images:', error);
@@ -665,10 +726,19 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       canvas.toBlob((blob) => {
         if (blob) {
           const file = new File([blob], fileName, { type: 'image/jpeg' });
+          
+          // Mark this image as edited
+          setEditedImages(prev => new Set([...prev, currentImageIndex]));
+          setHasUnsavedChanges(false);
+          
           if (onSave) {
             onSave(file);
           }
-          onOpenChange(false);
+          
+          // Only close if single image, otherwise stay open for multi-image editing
+          if (!hasMultipleImages) {
+            onOpenChange(false);
+          }
         }
       }, 'image/jpeg', 0.9);
     } catch (error) {
@@ -792,26 +862,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   Transform
                 </h3>
                 
-                {/* Aspect Ratio Selector - shown when cropping or before cropping */}
-                {!isCropping && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">Crop Aspect Ratio</Label>
-                    <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
-                      <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-slate-300 text-xs sm:text-sm h-8 sm:h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="free">Free (No Constraint)</SelectItem>
-                        <SelectItem value="square">Square (1:1)</SelectItem>
-                        <SelectItem value="4:3">Landscape (4:3)</SelectItem>
-                        <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
-                        <SelectItem value="4:5">Portrait (4:5)</SelectItem>
-                        <SelectItem value="9:16">Vertical (9:16)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
                 {isCropping ? (
                   // When cropping, show aspect ratio selector and crop controls
                   <div className="space-y-2">
@@ -858,12 +908,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   </div>
                 )}
 
-                {/* Adjustments Section */}
-                <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
-                  <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
-                    <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Adjustments
-                  </h3>
+                {/* Adjustments Section - Hidden when cropping */}
+                {!isCropping && (
+                  <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
+                    <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                      <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      Adjustments
+                    </h3>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-slate-400">
                       <span className="capitalize">{activeFilter === 'shadows' ? 'Shadows' : activeFilter}</span>
@@ -889,7 +940,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   </div>
                 </div>
 
-                {/* Filters Section */}
+                {/* Filters Section - Hidden when cropping */}
                 <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
                   <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -916,15 +967,16 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       </button>
                     ))}
                   </div>
-                  {allImages && allImages.length > 0 && onApplyToAll && (
+                  {hasUnsavedChanges && hasMultipleImages && onApplyToAll && (
                     <Button
                       onClick={handleApplyFiltersToAll}
                       className="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs sm:text-sm h-8 sm:h-9 mt-3"
                     >
-                      ✨ Apply All Edits to {allImages.length} Image{allImages.length > 1 ? 's' : ''}
+                      ✨ Apply All Edits to {normalizedImages.length} Image{normalizedImages.length > 1 ? 's' : ''}
                     </Button>
                   )}
                 </div>
+                )}
               </div>
             </div>
 
@@ -939,6 +991,45 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
               >
                 {imgSrc && (
                   <div className="relative inline-block max-w-full max-h-full w-full h-full flex items-center justify-center">
+                    {/* Image edited checkmark - top right */}
+                    {editedImages.has(currentImageIndex) && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <CheckCircle className="w-8 h-8 text-green-500 fill-white drop-shadow-lg" />
+                      </div>
+                    )}
+
+                    {/* Multi-image navigation */}
+                    {hasMultipleImages && (
+                      <>
+                        {/* Previous button */}
+                        {currentImageIndex > 0 && (
+                          <button
+                            onClick={goToPrevImage}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110"
+                            title="Previous image"
+                          >
+                            <ChevronLeft className="w-6 h-6 text-gray-800" />
+                          </button>
+                        )}
+
+                        {/* Next button */}
+                        {currentImageIndex < normalizedImages.length - 1 && (
+                          <button
+                            onClick={goToNextImage}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110"
+                            title="Next image"
+                          >
+                            <ChevronRight className="w-6 h-6 text-gray-800" />
+                          </button>
+                        )}
+
+                        {/* Image counter */}
+                        <div className="absolute top-4 left-4 bg-black/60 text-white text-sm px-3 py-1.5 rounded-full z-10">
+                          {currentImageIndex + 1} / {normalizedImages.length}
+                        </div>
+                      </>
+                    )}
+
                     <img
                       ref={imageRef}
                       src={imgSrc}
@@ -1008,14 +1099,16 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             >
               <span className="text-xs sm:text-base">Cancel</span>
             </Button>
-            <Button
-              onClick={handleSave}
-              className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
-              disabled={!imgSrc}
-            >
-              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-base">Save Image</span>
-            </Button>
+            {!isCropping && (
+              <Button
+                onClick={handleSave}
+                className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                disabled={!imgSrc}
+              >
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-base">Save Image</span>
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
