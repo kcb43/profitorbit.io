@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Cropper from 'cropperjs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -73,10 +73,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const cropperInstanceRef = useRef(null);
   const queryClient = useQueryClient();
   
-  // Normalize images array
-  const normalizedImages = allImages && allImages.length > 0 
-    ? allImages.map(img => typeof img === 'string' ? img : img.imageUrl || img.url || img)
-    : [imageSrc];
+  // Normalize images array - memoized to prevent recalculation
+  const normalizedImages = useMemo(() => {
+    if (allImages && allImages.length > 0) {
+      return allImages.map(img => typeof img === 'string' ? img : img.imageUrl || img.url || img);
+    }
+    return [imageSrc];
+  }, [allImages, imageSrc]);
   
   const hasMultipleImages = normalizedImages.length > 1;
 
@@ -183,9 +186,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
   // Handle navigation between images in the carousel
   useEffect(() => {
-    if (open && currentImageIndex > 0) {
+    if (open && normalizedImages.length > 0) {
       const imageToLoad = normalizedImages[currentImageIndex];
-      if (imageToLoad) {
+      if (imageToLoad && imageToLoad !== imgSrc) {
+        console.log(`Loading image ${currentImageIndex + 1}/${normalizedImages.length}:`, imageToLoad);
         setImgSrc(imageToLoad);
         setOriginalImgSrc(imageToLoad);
         
@@ -193,6 +197,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         if (cropperInstanceRef.current) {
           cropperInstanceRef.current.destroy();
           cropperInstanceRef.current = null;
+          setCropper(null);
+          setIsCropping(false);
         }
         
         // Reset settings when changing to unedited images
@@ -211,11 +217,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           setActiveFilter('brightness');
           setSelectedTemplate(null);
           setAspectRatio('free');
-          setIsCropping(false);
         }
       }
     }
-  }, [currentImageIndex]);
+  }, [currentImageIndex, normalizedImages, open]);
 
   // Get aspect ratio value based on selection
   const getAspectRatioValue = () => {
