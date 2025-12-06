@@ -1175,13 +1175,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </Button>
             {!isCropping && (
               <Button
-                onClick={appliedToAll ? () => onOpenChange(false) : handleSave}
+                onClick={(appliedToAll || editedImages.has(currentImageIndex)) ? () => onOpenChange(false) : handleSave}
                 className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
                 disabled={!imgSrc}
               >
                 <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="text-xs sm:text-base">
-                  {appliedToAll 
+                  {appliedToAll || editedImages.has(currentImageIndex)
                     ? 'Done' 
                     : hasMultipleImages 
                       ? `Save Image ${currentImageIndex + 1}` 
