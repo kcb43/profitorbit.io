@@ -130,9 +130,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
         cropperInstanceRef.current = new Cropper(imageRef.current, {
           aspectRatio: getAspectRatioValue(),
-          viewMode: 1,
-          dragMode: 'crop',
-          autoCropArea: 0.6,
+          viewMode: 0,
+          dragMode: 'none',
+          autoCropArea: 0.5,
           restore: false,
           guides: true,
           center: true,
@@ -140,35 +140,21 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           cropBoxMovable: true,
           cropBoxResizable: true,
           toggleDragModeOnDblclick: false,
-          responsive: true,
+          responsive: false,
           checkOrientation: false,
           modal: true,
-          background: true,
+          background: false,
+          autoCrop: true,
+          movable: false,
           zoomable: false,
           zoomOnTouch: false,
           zoomOnWheel: false,
-          scalable: false,
-          movable: false,
-          rotatable: false,
           wheelZoomRatio: 0,
-          minCropBoxWidth: 50,
-          minCropBoxHeight: 50,
+          scalable: false,
+          rotatable: false,
+          minCropBoxWidth: 100,
+          minCropBoxHeight: 100,
         });
-        
-        // Disable all wheel events on the cropper
-        if (cropperInstanceRef.current && cropperInstanceRef.current.cropper) {
-          const container = cropperInstanceRef.current.cropper.containerData.element;
-          if (container) {
-            container.addEventListener('wheel', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }, { passive: false });
-            container.addEventListener('scroll', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }, { passive: false });
-          }
-        }
         
         setCropper(cropperInstanceRef.current);
         setIsCropping(true);
