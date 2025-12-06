@@ -396,16 +396,18 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .cropper-canvas {
-  width: 100% !important;
-  height: 100% !important;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .cropper-canvas > img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  pointer-events: none !important;
-  user-select: none !important;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  pointer-events: none;
+  user-select: none;
 }
 
 .cropper-drag-box {
@@ -416,33 +418,23 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .cropper-modal {
-  background-color: transparent !important;
-  opacity: 0 !important;
-  display: none !important;
-  overflow: hidden;
-  pointer-events: none !important;
-}
-
-.cropper-modal {
-  background-color: transparent !important;
-  opacity: 0 !important;
-  display: none !important;
+  background-color: #000;
+  opacity: 0.5;
 }
 
 .cropper-view-box {
   display: block;
   height: 100%;
-  outline: 3px solid #3b82f6;
-  outline-offset: -3px;
+  outline: 2px solid #3b82f6;
+  outline-offset: -1px;
   overflow: hidden;
   width: 100%;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
 }
 
 .cropper-dashed {
-  border: 0 !important;
-  display: none !important;
-  opacity: 0 !important;
+  border: 0 dashed #fff;
+  display: block;
+  opacity: 0.5;
   position: absolute;
 }
 
@@ -465,10 +457,10 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .cropper-center {
-  display: none !important;
+  display: block;
   height: 0;
   left: 50%;
-  opacity: 0 !important;
+  opacity: 0.75;
   position: absolute;
   top: 50%;
   width: 0;
@@ -507,9 +499,11 @@ input[type="range"].slider::-moz-range-thumb:hover {
 }
 
 .cropper-face {
-  background-color: transparent !important;
+  background-color: transparent;
   left: 0;
   top: 0;
+  cursor: move;
+  pointer-events: all;
 }
 
 .cropper-line {

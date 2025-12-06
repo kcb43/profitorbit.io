@@ -130,20 +130,20 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
         cropperInstanceRef.current = new Cropper(imageRef.current, {
           aspectRatio: getAspectRatioValue(),
-          viewMode: 2,
-          dragMode: 'move',
-          autoCropArea: 0.7,
+          viewMode: 1,
+          dragMode: 'crop',
+          autoCropArea: 0.6,
           restore: false,
-          guides: false,
-          center: false,
-          highlight: false,
+          guides: true,
+          center: true,
+          highlight: true,
           cropBoxMovable: true,
           cropBoxResizable: true,
           toggleDragModeOnDblclick: false,
           responsive: true,
           checkOrientation: false,
-          modal: false,
-          background: false,
+          modal: true,
+          background: true,
           zoomable: false,
           zoomOnTouch: false,
           zoomOnWheel: false,
@@ -151,7 +151,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           movable: false,
           rotatable: false,
           wheelZoomRatio: 0,
-          initialAspectRatio: NaN,
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
         });
         
         // Disable all wheel events on the cropper
