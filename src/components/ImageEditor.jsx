@@ -941,12 +941,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 </div>
 
                 {/* Filters Section - Hidden when cropping */}
-                <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
-                  <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Filters
-                  </h3>
-                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                {!isCropping && (
+                  <div className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
+                    <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      Filters
+                    </h3>
+                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                     {[
                       { id: 'brightness', icon: BrightnessIcon, label: 'Brightness' },
                       { id: 'contrast', icon: Contrast, label: 'Contrast' },
