@@ -134,9 +134,56 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     }
   };
 
-  // Load image when component opens, imageSrc changes, or currentImageIndex changes
+  // Reset everything when dialog opens with new item
   useEffect(() => {
-    if (open) {
+    if (open && imageSrc) {
+      // Reset all state for fresh editing session
+      setCurrentImageIndex(0);
+      setEditedImages(new Set());
+      setAppliedToAll(false);
+      setHasUnsavedChanges(false);
+      
+      // Load the first image
+      const imageToLoad = normalizedImages[0];
+      if (imageToLoad) {
+        setImgSrc(imageToLoad);
+        setOriginalImgSrc(imageToLoad);
+        
+        // Clean up existing cropper
+        if (cropperInstanceRef.current) {
+          cropperInstanceRef.current.destroy();
+          cropperInstanceRef.current = null;
+        }
+        
+        // Reset all settings
+        setFilters({
+          brightness: 100,
+          contrast: 100,
+          saturate: 100,
+          shadows: 0
+        });
+        setTransform({
+          rotate: 0,
+          flip_x: 1,
+          flip_y: 1
+        });
+        setActiveFilter('brightness');
+        setSelectedTemplate(null);
+        setAspectRatio('free');
+        setIsCropping(false);
+      }
+    }
+    return () => {
+      if (cropperInstanceRef.current) {
+        cropperInstanceRef.current.destroy();
+        cropperInstanceRef.current = null;
+      }
+    };
+  }, [open, imageSrc]);
+
+  // Handle navigation between images in the carousel
+  useEffect(() => {
+    if (open && currentImageIndex > 0) {
       const imageToLoad = normalizedImages[currentImageIndex];
       if (imageToLoad) {
         setImgSrc(imageToLoad);
@@ -148,19 +195,27 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           cropperInstanceRef.current = null;
         }
         
-        // Reset settings when changing images
+        // Reset settings when changing to unedited images
         if (!editedImages.has(currentImageIndex)) {
-          resetAll();
+          setFilters({
+            brightness: 100,
+            contrast: 100,
+            saturate: 100,
+            shadows: 0
+          });
+          setTransform({
+            rotate: 0,
+            flip_x: 1,
+            flip_y: 1
+          });
+          setActiveFilter('brightness');
+          setSelectedTemplate(null);
+          setAspectRatio('free');
+          setIsCropping(false);
         }
       }
     }
-    return () => {
-      if (cropperInstanceRef.current) {
-        cropperInstanceRef.current.destroy();
-        cropperInstanceRef.current = null;
-      }
-    };
-  }, [open, currentImageIndex]);
+  }, [currentImageIndex]);
 
   // Get aspect ratio value based on selection
   const getAspectRatioValue = () => {
