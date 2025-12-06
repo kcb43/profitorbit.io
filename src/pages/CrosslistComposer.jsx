@@ -1753,26 +1753,13 @@ export default function CrosslistComposer() {
       // Update state with copied fields
       setTemplateForms(updatedForms);
       
-      // If this is a new item (not editing an existing one), automatically save to inventory
-      if (!currentEditingItemId && generalForm.title && generalForm.title.trim()) {
+      // Auto-save to inventory when saving general template
+      if (generalForm.title && generalForm.title.trim()) {
         try {
           setIsSaving(true);
           
-          // Upload first photo if available
-          let imageUrl = "";
-          if (generalForm.photos && generalForm.photos.length > 0) {
-            const firstPhoto = generalForm.photos[0];
-            if (firstPhoto.file) {
-              const uploadPayload = firstPhoto.file instanceof File 
-                ? firstPhoto.file 
-                : new File([firstPhoto.file], firstPhoto.fileName, { type: firstPhoto.file.type });
-              
-              const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
-              imageUrl = file_url;
-            } else if (firstPhoto.preview && !firstPhoto.preview.startsWith('blob:')) {
-              imageUrl = firstPhoto.preview;
-            }
-          }
+          // Upload all photos
+          const { imageUrl, images } = await uploadAllPhotos(generalForm.photos);
 
           const customLabels = generalForm.customLabels
             ? generalForm.customLabels.split(',').map(label => label.trim()).filter(Boolean)
@@ -1806,44 +1793,54 @@ export default function CrosslistComposer() {
             package_height: generalForm.packageHeight || "",
             custom_labels: generalForm.customLabels || "",
             image_url: imageUrl,
+            images: images, // Save all images
             notes: generalForm.description || "",
           };
 
-          const createdItem = await base44.entities.InventoryItem.create(inventoryData);
+          let savedItem;
+          if (currentEditingItemId) {
+            // Update existing inventory item
+            savedItem = await base44.entities.InventoryItem.update(currentEditingItemId, inventoryData);
+          } else {
+            // Create new inventory item
+            savedItem = await base44.entities.InventoryItem.create(inventoryData);
+          }
 
-          if (createdItem?.id) {
+          if (savedItem?.id) {
             const allLabels = [...customLabels, ...tags];
             for (const label of allLabels) {
-              addTag(createdItem.id, label);
+              addTag(savedItem.id, label);
             }
             
-            // Update currentEditingItemId so future saves don't create duplicates
-            setCurrentEditingItemId(createdItem.id);
+            // Update currentEditingItemId so future saves update the same item
+            if (!currentEditingItemId) {
+              setCurrentEditingItemId(savedItem.id);
+            }
           }
 
           queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
 
           toast({
             title: "General template saved",
-            description: "Your preferences have been saved, synced to marketplace forms, and the item has been added to inventory.",
-            duration: 2000, // Auto-dismiss after 2 seconds
+            description: `Your preferences have been saved, synced to marketplace forms, and the item has been ${currentEditingItemId ? 'updated in' : 'added to'} inventory.`,
+            duration: 2000,
           });
         } catch (error) {
           console.error("Error saving item to inventory:", error);
           toast({
             title: "Template saved (inventory save failed)",
-            description: "Your preferences have been saved, but there was an error adding the item to inventory. You can add it manually later.",
+            description: "Your preferences have been saved, but there was an error with inventory. You can save it manually later.",
             variant: "destructive",
           });
         } finally {
           setIsSaving(false);
         }
       } else {
-        // Existing item - just show success message
+        // No title - just show success message
         toast({
           title: "General template saved",
           description: "Your preferences have been saved and automatically synced to all marketplace forms.",
-          duration: 2000, // Auto-dismiss after 2 seconds
+          duration: 2000,
         });
       }
     } else {
@@ -2705,24 +2702,55 @@ export default function CrosslistComposer() {
     });
   };
   
+  // Helper function to upload all photos and return images array
+  const uploadAllPhotos = async (photos) => {
+    if (!photos || photos.length === 0) return { imageUrl: "", images: [] };
+
+    const uploadedImages = [];
+    let mainImageUrl = "";
+
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      let imageUrl = "";
+
+      if (photo.file) {
+        const uploadPayload = photo.file instanceof File 
+          ? photo.file 
+          : new File([photo.file], photo.fileName || `photo_${i}.jpg`, { type: photo.file.type || 'image/jpeg' });
+        
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+        imageUrl = file_url;
+      } else if (photo.preview && !photo.preview.startsWith('blob:')) {
+        imageUrl = photo.preview;
+      } else if (photo.imageUrl) {
+        imageUrl = photo.imageUrl;
+      } else if (photo.url) {
+        imageUrl = photo.url;
+      }
+
+      if (imageUrl) {
+        const isMain = i === 0; // First photo is main
+        if (isMain) {
+          mainImageUrl = imageUrl;
+        }
+
+        uploadedImages.push({
+          id: photo.id || `photo_${Date.now()}_${i}`,
+          imageUrl: imageUrl,
+          url: imageUrl,
+          isMain: isMain
+        });
+      }
+    }
+
+    return { imageUrl: mainImageUrl, images: uploadedImages };
+  };
+
   const handleSaveToInventory = async () => {
     setIsSaving(true);
     try {
-      // Upload first photo if available
-      let imageUrl = "";
-      if (generalForm.photos && generalForm.photos.length > 0) {
-        const firstPhoto = generalForm.photos[0];
-        if (firstPhoto.file) {
-          const uploadPayload = firstPhoto.file instanceof File 
-            ? firstPhoto.file 
-            : new File([firstPhoto.file], firstPhoto.fileName, { type: firstPhoto.file.type });
-          
-          const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
-          imageUrl = file_url;
-        } else if (firstPhoto.preview && !firstPhoto.preview.startsWith('blob:')) {
-          imageUrl = firstPhoto.preview;
-        }
-      }
+      // Upload all photos
+      const { imageUrl, images } = await uploadAllPhotos(generalForm.photos);
 
       const customLabels = generalForm.customLabels
         ? generalForm.customLabels.split(',').map(label => label.trim()).filter(Boolean)
@@ -2756,15 +2784,28 @@ export default function CrosslistComposer() {
         package_height: generalForm.packageHeight || "",
         custom_labels: generalForm.customLabels || "",
         image_url: imageUrl,
+        images: images, // Save all images
         notes: generalForm.description || "",
       };
 
-      const createdItem = await base44.entities.InventoryItem.create(inventoryData);
+      let savedItem;
+      if (currentEditingItemId) {
+        // Update existing item
+        savedItem = await base44.entities.InventoryItem.update(currentEditingItemId, inventoryData);
+      } else {
+        // Create new item
+        savedItem = await base44.entities.InventoryItem.create(inventoryData);
+      }
 
-      if (createdItem?.id) {
+      if (savedItem?.id) {
         const allLabels = [...customLabels, ...tags];
         for (const label of allLabels) {
-          addTag(createdItem.id, label);
+          addTag(savedItem.id, label);
+        }
+        
+        // Update currentEditingItemId for future saves
+        if (!currentEditingItemId) {
+          setCurrentEditingItemId(savedItem.id);
         }
       }
 
@@ -2772,7 +2813,7 @@ export default function CrosslistComposer() {
 
       toast({
         title: "Item saved to inventory",
-        description: `${generalForm.title || "Item"} has been added to your inventory.`,
+        description: `${generalForm.title || "Item"} has been ${currentEditingItemId ? 'updated in' : 'added to'} your inventory.`,
       });
 
       navigate(createPageUrl("Crosslist"));
