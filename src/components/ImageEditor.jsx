@@ -190,7 +190,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           aspectRatio: getAspectRatioValue(),
           viewMode: 0,
           dragMode: 'none',
-          autoCropArea: 0.5,
+          autoCropArea: 0.9, // Start with crop box at 90% of image size
           restore: false,
           guides: true,
           center: true,
@@ -210,8 +210,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           wheelZoomRatio: 0,
           scalable: false,
           rotatable: false,
-          minCropBoxWidth: 100,
-          minCropBoxHeight: 100,
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
         });
         
         setCropper(cropperInstanceRef.current);
