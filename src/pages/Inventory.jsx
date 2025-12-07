@@ -1454,21 +1454,66 @@ export default function InventoryPage() {
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span>Qty:</span>
-                            <span className="font-medium text-white">
-                              {item.quantity}
-                              {quantitySold > 0 && (
-                                <span className={`ml-1 ${isSoldOut ? 'text-red-400 font-bold' : 'text-blue-400'}`}>
-                                  {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
-                                </span>
-                              )}
-                            </span>
+                            <span>Qty: {item.quantity}</span>
+                            {quantitySold > 0 && (
+                              <span className={`font-medium ${isSoldOut ? 'text-red-400 font-bold' : 'text-blue-400'}`}>
+                                {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
+                              </span>
+                            )}
                           </div>
                           <div className="flex justify-between">
                             <span>Purchase Date:</span>
                             <span className="font-medium text-white">
                               {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
                             </span>
+                          </div>
+                          
+                          {/* Action icons below Purchase Date - Desktop only */}
+                          <div className="flex items-center gap-2 mt-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleFavorite(item.id)}
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                                favoriteMarked
+                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                              }`}
+                            >
+                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                            </button>
+                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditImage(e, item);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setItemToView(item);
+                                setViewDialogOpen(true);
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                            >
+                              <Search className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteItem(item.id);
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </div>
 
@@ -1499,64 +1544,21 @@ export default function InventoryPage() {
                         )}
                       </div>
 
-                      <div className="hidden sm:flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 sm:py-3 mr-0 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[85px] sm:w-[200px] min-w-[85px] sm:min-w-[200px] max-w-[85px] sm:max-w-[200px]"
+                      <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[200px] min-w-[200px] max-w-[200px]"
                         style={{
                           background: 'rgb(51, 65, 85)',
                           flexShrink: 0
                         }}
                       >
-                        {/* Desktop buttons */}
-                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center w-full">
-                          <button
-                            type="button"
-                            onClick={() => toggleFavorite(item.id)}
-                            className={`inline-flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-md border border-transparent transition ${
-                              favoriteMarked
-                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                            }`}
-                          >
-                            <Star className={`h-3 w-3 sm:h-4 sm:w-4 ${favoriteMarked ? "fill-current" : ""}`} />
-                          </button>
-                          {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="h-6 w-6 sm:h-7 sm:px-2 text-xs gap-1 p-0 sm:p-2"
-                              onClick={(e) => handleEditImage(e, item)}
-                            >
-                              <ImageIcon className="h-3 w-3" />
-                              <span className="hidden sm:inline">Edit</span>
-                            </Button>
-                          )}
+                        {/* Desktop: Mark as Sold button */}
+                        {!isSoldOut && item.status !== 'sold' && (
                           <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-6 w-6 sm:h-7 sm:px-2 text-xs gap-1 p-0 sm:p-2"
-                            onClick={() => handleTagEditorToggle(item.id)}
+                            onClick={() => handleMarkAsSold(item)}
+                            className="w-full text-white font-semibold py-2 px-3 rounded-md text-center transition-all shadow-md leading-tight text-xs bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                           >
-                            <Tag className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                            <span className="hidden sm:inline">{tagEditorFor === item.id ? "Close" : "Add Tag"}</span>
+                            Mark as Sold
                           </Button>
-                          {isConnected() && !isSoldOut && item.status !== 'sold' && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-6 w-6 sm:h-7 sm:px-2 text-xs gap-1 p-0 sm:p-2 border-blue-600/50 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                              onClick={() => {
-                                setItemForFacebookListing(item);
-                                setFacebookListingDialogOpen(true);
-                              }}
-                              title="List on Facebook Marketplace"
-                            >
-                              <Facebook className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                              <span className="hidden sm:inline">List on FB</span>
-                            </Button>
-                          )}
-                        </div>
+                        )}
                         
                         {/* Desktop: View Details button */}
                         <Button
@@ -1564,7 +1566,7 @@ export default function InventoryPage() {
                             setItemToView(item);
                             setViewDialogOpen(true);
                           }}
-                          className={`text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-auto leading-tight text-xs ${
+                          className={`w-full text-white font-semibold py-2 px-3 rounded-md text-center transition-all shadow-md leading-tight text-xs ${
                             item.status === 'listed' 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
                               : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
