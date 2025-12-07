@@ -1241,7 +1241,10 @@ export default function InventoryPage() {
                   Select All ({sortedItems.length})
                 </label>
                 {viewMode === "list" && (
-                  <span className="text-xs text-gray-400 md:hidden">Tap image to select for bulk edit</span>
+                  <>
+                    <span className="text-xs text-gray-400 md:hidden">Tap image to select for bulk edit</span>
+                    <span className="text-xs text-gray-400 hidden md:block">Click image to select for bulk edit</span>
+                  </>
                 )}
               </div>
             </div>
@@ -1293,15 +1296,6 @@ export default function InventoryPage() {
                         paddingBottom: window.innerWidth < 768 ? '2.50rem' : '0'
                       }}
                     >
-                      {/* Desktop checkbox */}
-                      <div className="hidden sm:block absolute top-4 left-4 z-20">
-                        <Checkbox
-                          checked={selectedItems.includes(item.id)}
-                          onCheckedChange={() => handleSelect(item.id)}
-                          className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
-                        />
-                      </div>
-
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
