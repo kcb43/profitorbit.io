@@ -2246,9 +2246,18 @@ export default function InventoryPage() {
               images: updatedImages
             });
             
+            // Invalidate and refetch inventory items to update the UI
+            await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+            
             toast({
               title: "Image added",
-              description: "New image has been added successfully.",
+              description: `New image has been added successfully. Total: ${updatedImages.length} images.`,
+            });
+            
+            // Update the imageToEdit to point to the newly added image
+            setImageToEdit({
+              url: newImageUrl,
+              itemId: imageToEdit.itemId
             });
           } catch (error) {
             console.error('Error adding image:', error);
