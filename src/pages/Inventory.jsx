@@ -1352,36 +1352,6 @@ export default function InventoryPage() {
                             className="hidden sm:block absolute inset-0 z-5"
                           />
                         </div>
-                        
-                        {/* Mobile: Favorite and Edit Image icons below image */}
-                        <div className="md:hidden flex gap-1.5 mt-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(item.id);
-                            }}
-                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
-                              favoriteMarked
-                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                            }`}
-                          >
-                            <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
-                          </button>
-                          {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditImage(e, item);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 transition"
-                            >
-                              <ImageIcon className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
                       </div>
 
                       <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
