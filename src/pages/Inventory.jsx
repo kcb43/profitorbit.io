@@ -579,42 +579,16 @@ export default function InventoryPage() {
         console.error('Failed to update imageUrl in edit history:', e);
       }
       
-      // Update query cache immediately with new image URL
-      queryClient.setQueryData(['inventoryItem', variables.itemId], (oldData) => {
-        if (!oldData) {
-          console.log('No cached data for inventoryItem query');
-          return oldData;
-        }
-        console.log('Updating inventoryItem cache - old image_url:', oldData.image_url, '→ new:', fileUrl);
-        if (oldData.images && oldData.images.length > 1 && variables.imageIndex !== undefined) {
-          const updatedImages = [...oldData.images];
-          const oldUrl = updatedImages[variables.imageIndex];
-          updatedImages[variables.imageIndex] = fileUrl;
-          console.log('Updated images array - index', variables.imageIndex, 'from:', oldUrl, 'to:', fileUrl);
-          return { ...oldData, images: updatedImages, image_url: updatedImages[0] };
-        }
-        return { ...oldData, image_url: fileUrl };
-      });
-      
-      // Also update the list query cache
-      queryClient.setQueryData(['inventoryItems'], (oldData) => {
-        if (!Array.isArray(oldData)) return oldData;
-        return oldData.map(item => {
-          if (item.id === variables.itemId) {
-            if (item.images && item.images.length > 1 && variables.imageIndex !== undefined) {
-              const updatedImages = [...item.images];
-              updatedImages[variables.imageIndex] = fileUrl;
-              return { ...item, images: updatedImages, image_url: updatedImages[0] };
-            }
-            return { ...item, image_url: fileUrl };
-          }
-          return item;
-        });
-      });
-      
-      // Then invalidate to ensure fresh data
+      // Invalidate and refetch both queries to ensure Edit Item page updates
+      console.log('Invalidating queries for item:', variables.itemId);
       await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       await queryClient.invalidateQueries({ queryKey: ['inventoryItem', variables.itemId] });
+      
+      console.log('Forcing refetch of individual item query');
+      await queryClient.refetchQueries({ queryKey: ['inventoryItem', variables.itemId] });
+      await queryClient.refetchQueries({ queryKey: ['inventoryItems'] });
+      
+      console.log('Queries refetched - Edit Item page should now show edited image');
       
       // Update imageToEdit to point to new edited URL so editor shows correct image
       setImageToEdit({
