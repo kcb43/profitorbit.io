@@ -1255,7 +1255,7 @@ export default function InventoryPage() {
             <div className="p-12 text-center text-muted-foreground">Loading...</div>
           ) : sortedItems.length > 0 ? (
             viewMode === "list" ? (
-              <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full">
+              <div className="space-y-6 sm:space-y-6 overflow-x-hidden max-w-full">
                 {sortedItems.map(item => {
                   const today = new Date();
                   const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
@@ -1281,7 +1281,7 @@ export default function InventoryPage() {
                   return (
                     <div 
                       key={item.id} 
-                      className={`product-list-item relative flex flex-row flex-nowrap items-stretch sm:items-center mb-4 sm:mb-6 min-w-0 w-full ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                      className={`product-list-item relative flex flex-row flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
@@ -1293,7 +1293,8 @@ export default function InventoryPage() {
                         maxWidth: '100%',
                         width: '100%',
                         boxSizing: 'border-box',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        paddingBottom: window.innerWidth < 768 ? '0.75rem' : '0'
                       }}
                     >
                       {/* Desktop checkbox */}
@@ -1308,7 +1309,7 @@ export default function InventoryPage() {
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[100px] sm:w-[220px] min-w-[100px] sm:min-w-[220px] max-w-[100px] sm:max-w-[220px] h-[100px] sm:h-[210px] p-1 sm:p-4 transition-all duration-200 ${selectedItems.includes(item.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
+                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 transition-all duration-200 ${selectedItems.includes(item.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             background: 'rgba(255, 255, 255, 0.1)',
@@ -1363,8 +1364,8 @@ export default function InventoryPage() {
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-[60%] sm:h-full sm:top-0 sm:translate-y-0 bg-slate-600/60"></div>
                         
                         <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3">
-                          <h3 className="text-sm sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2 sm:line-clamp-2"
-                            style={{ letterSpacing: '0.3px', lineHeight: '1.3' }}>
+                          <h3 className="text-sm sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2"
+                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
                             {item.item_name || 'Untitled Item'}
                           </h3>
                         </Link>
