@@ -558,7 +558,7 @@ export default function InventoryPage() {
       console.log('Database update complete - new image should be visible');
       return file_url;
     },
-    onSuccess: (fileUrl, variables) => {
+    onSuccess: async (fileUrl, variables) => {
       console.log('Image update SUCCESS:', { fileUrl, itemId: variables.itemId, imageIndex: variables.imageIndex });
       
       // Update the stored imageUrl in edit history to the new uploaded URL
