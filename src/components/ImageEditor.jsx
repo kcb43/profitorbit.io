@@ -1190,17 +1190,17 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     }}>
                       <button
                         onClick={() => handleTransform('rotate_left')}
-                        className="w-10 h-10 rounded-full bg-white border-2 border-blue-500 shadow-lg hover:bg-blue-50 flex items-center justify-center transition-all hover:scale-110"
+                        className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white border-2 border-blue-500 shadow-lg hover:bg-blue-50 flex items-center justify-center transition-all hover:scale-110"
                         title="Rotate Left"
                       >
-                        <RotateCcw className="w-5 h-5 text-blue-600" />
+                        <RotateCcw className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-600" />
                       </button>
                       <button
                         onClick={() => handleTransform('rotate_right')}
-                        className="w-10 h-10 rounded-full bg-white border-2 border-blue-500 shadow-lg hover:bg-blue-50 flex items-center justify-center transition-all hover:scale-110"
+                        className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white border-2 border-blue-500 shadow-lg hover:bg-blue-50 flex items-center justify-center transition-all hover:scale-110"
                         title="Rotate Right"
                       >
-                        <RotateCw className="w-5 h-5 text-blue-600" />
+                        <RotateCw className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-600" />
                       </button>
                     </div>
                   </div>
