@@ -648,18 +648,13 @@ export default function AddInventoryItem() {
                   
                   {/* Photos with SortableJS - Single Unified List */}
                   {formData.photos.length > 0 && (
-                    <div className="space-y-3 relative">
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-3 relative">
                       <ReactSortable
                         list={formData.photos}
                         setList={handlePhotoReorder}
                         animation={200}
                         swapThreshold={0.65}
-                        className="grid grid-cols-4 md:grid-cols-6 gap-3 relative"
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(4, 1fr)',
-                          gap: '0.75rem'
-                        }}
+                        className="contents"
                       >
                         {formData.photos.map((photo, index) => (
                           <div 
