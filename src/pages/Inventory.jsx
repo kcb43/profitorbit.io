@@ -1281,7 +1281,7 @@ export default function InventoryPage() {
                   return (
                     <div 
                       key={item.id} 
-                      className={`product-list-item relative flex flex-row flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                      className={`product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
