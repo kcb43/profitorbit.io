@@ -1402,14 +1402,6 @@ export default function InventoryPage() {
 
                         <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
                           <p className="text-gray-300 text-[11px] break-words leading-[14px]">
-                            <span className="font-semibold">Price:</span> ${item.purchase_price.toFixed(2)}
-                          </p>
-                          {item.quantity > 1 && (
-                            <p className="text-gray-400 text-[10px] leading-[13px]">
-                              (${perItemPrice.toFixed(2)} ea)
-                            </p>
-                          )}
-                          <p className="text-gray-300 text-[11px] break-words leading-[14px]">
                             <span className="font-semibold">Qty:</span> {item.quantity}
                             {quantitySold > 0 && (
                               <span className={isSoldOut ? 'text-red-400' : 'text-blue-400'}>
@@ -1417,6 +1409,46 @@ export default function InventoryPage() {
                               </span>
                             )}
                           </p>
+                          
+                          {/* Price with icons on same row */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item.id);
+                              }}
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                                favoriteMarked
+                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                              }`}
+                            >
+                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                            </button>
+                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditImage(e, item);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 transition"
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <div className="flex-1">
+                              <p className="text-gray-300 text-[11px] break-words leading-[14px]">
+                                <span className="font-semibold">Price:</span> ${item.purchase_price.toFixed(2)}
+                                {item.quantity > 1 && (
+                                  <span className="text-gray-400 text-[10px] ml-1">
+                                    (${perItemPrice.toFixed(2)} ea)
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-300 break-words">
