@@ -558,6 +558,25 @@ export default function InventoryPage() {
     },
     onSuccess: (fileUrl, variables) => {
       console.log('Image update SUCCESS:', { fileUrl, itemId: variables.itemId, imageIndex: variables.imageIndex });
+      
+      // Update the stored imageUrl in edit history to the new uploaded URL
+      try {
+        const historyKey = `${variables.itemId}_${variables.imageIndex}`;
+        const stored = localStorage.getItem('imageEditHistory');
+        if (stored) {
+          const historyMap = new Map(JSON.parse(stored));
+          const settings = historyMap.get(historyKey);
+          if (settings) {
+            settings.imageUrl = fileUrl; // Update to new uploaded URL
+            historyMap.set(historyKey, settings);
+            localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(historyMap.entries())));
+            console.log('Updated imageUrl in edit history:', historyKey, fileUrl);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to update imageUrl in edit history:', e);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       toast({
         title: "Image Updated",

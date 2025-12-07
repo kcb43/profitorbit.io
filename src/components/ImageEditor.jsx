@@ -276,15 +276,27 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         
         const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
         
-        if (savedSettings) {
-          // For inventory items (with itemId), always load settings from position
-          // The imageUrl changes each time we save an edited version, so we rely on position
+        // Verify imageUrl matches for inventory items (to detect photo replacements)
+        const isNewImage = savedSettings && imageToLoad && !imageToLoad.includes('edited') && savedSettings.imageUrl !== imageToLoad;
+        console.log('Image check:', { savedUrl: savedSettings?.imageUrl, currentUrl: imageToLoad, isNewImage });
+        
+        if (savedSettings && !isNewImage) {
+          // Load previously saved settings for this image
           console.log(`Loading saved settings for image ${currentImageIndex}:`, savedSettings);
           setFilters(savedSettings.filters);
           setTransform(savedSettings.transform);
           setLoadedFilters(savedSettings.filters);
           setLoadedTransform(savedSettings.transform);
         } else {
+          if (isNewImage) {
+            console.log('NEW image detected - clearing old settings');
+            imageEditHistoryRef.current.delete(historyKey);
+            try {
+              localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(imageEditHistoryRef.current.entries())));
+            } catch (e) {
+              console.error('Failed to update localStorage:', e);
+            }
+          }
           // Reset to defaults for images without saved settings
           console.log('No saved settings found, using defaults');
           const defaultFilters = {
