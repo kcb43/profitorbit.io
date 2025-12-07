@@ -827,7 +827,9 @@ export default function AddInventoryItem() {
 
                 <div className="grid md:grid-cols-2 gap-6 min-w-0">
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="item_name" className="dark:text-gray-200 break-words">Item Name *</Label>
+                        <Label htmlFor="item_name" className="dark:text-gray-200 break-words">
+                          Item Name <span className="text-red-500">*</span>
+                        </Label>
                         <div className="flex gap-2">
                           <Input 
                             id="item_name" 
@@ -854,7 +856,9 @@ export default function AddInventoryItem() {
                         </div>
                     </div>
                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="purchase_price" className="dark:text-gray-200 break-words">Purchase Price *</Label>
+                        <Label htmlFor="purchase_price" className="dark:text-gray-200 break-words">
+                          Purchase Price <span className="text-red-500">*</span>
+                        </Label>
                         <Input 
                           id="purchase_price" 
                           type="number" 

@@ -742,7 +742,9 @@ export default function AddSale() {
                 )}
 
                 <div className="space-y-2 min-w-0">
-                   <Label htmlFor="quantity_sold" className="dark:text-gray-200">Quantity Sold *</Label>
+                   <Label htmlFor="quantity_sold" className="dark:text-gray-200">
+                     Quantity Sold <span className="text-red-500">*</span>
+                   </Label>
                    <Input 
                        id="quantity_sold" 
                        type="number" 
@@ -874,7 +876,9 @@ export default function AddSale() {
                 ) : null}
 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="selling_price" className="dark:text-gray-200">Selling Price *</Label>
+                  <Label htmlFor="selling_price" className="dark:text-gray-200">
+                    Selling Price <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="selling_price"
                     type="number"
