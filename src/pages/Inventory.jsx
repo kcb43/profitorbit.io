@@ -1345,6 +1345,36 @@ export default function InventoryPage() {
                             </Badge>
                           </div>
                           
+                          {/* Mobile: Favorite and Edit at bottom of image */}
+                          <div className="md:hidden absolute bottom-2 left-2 flex gap-1.5 z-10">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item.id);
+                              }}
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition backdrop-blur-sm ${
+                                favoriteMarked
+                                  ? "bg-amber-500/90 text-white hover:bg-amber-600/90"
+                                  : "bg-gray-800/80 text-gray-300 hover:text-amber-500 hover:bg-gray-700/90"
+                              }`}
+                            >
+                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                            </button>
+                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditImage(e, item);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 backdrop-blur-sm transition"
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          
                           {/* Desktop link overlay */}
                           <Link
                             to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
@@ -1354,7 +1384,7 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
-                      <div className="flex-1 flex flex-col justify-start px-2 sm:px-6 py-2 sm:py-6 border-r min-w-0 overflow-hidden relative"
+                      <div className="flex-1 flex flex-col justify-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
                         style={{
                           borderColor: 'rgba(51, 65, 85, 0.6)',
                           flexShrink: 1,
@@ -1379,7 +1409,7 @@ export default function InventoryPage() {
                               (${perItemPrice.toFixed(2)} ea)
                             </p>
                           )}
-                          <p className="text-gray-300 text-[11px] break-words leading-[14px]">
+                          <p className="text-gray-300 text-[11px] break-words leading-[14px] mb-2">
                             <span className="font-semibold">Qty:</span> {item.quantity}
                             {quantitySold > 0 && (
                               <span className={isSoldOut ? 'text-red-400' : 'text-blue-400'}>
@@ -1388,33 +1418,25 @@ export default function InventoryPage() {
                             )}
                           </p>
                           
-                          {/* Favorite and Edit Image buttons - Mobile only */}
-                          <div className="flex gap-1.5 pt-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item.id);
-                              }}
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded-md border border-transparent transition ${
-                                favoriteMarked
-                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                              }`}
-                            >
-                              <Star className={`h-3 w-3 ${favoriteMarked ? "fill-current" : ""}`} />
-                            </button>
-                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                          {/* Action buttons below Qty - Mobile only */}
+                          <div className="flex gap-1.5 pt-1 flex-wrap">
+                            {!isSoldOut && item.status !== 'sold' && (
                               <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                className="h-6 w-6 text-xs gap-1 p-0"
-                                onClick={(e) => handleEditImage(e, item)}
+                                onClick={() => handleMarkAsSold(item)}
+                                className="text-white font-semibold py-1.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                               >
-                                <ImageIcon className="h-3 w-3" />
+                                Mark Sold
                               </Button>
                             )}
+                            <Button
+                              onClick={() => {
+                                setItemToView(item);
+                                setViewDialogOpen(true);
+                              }}
+                              className="text-white font-semibold py-1.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[10px] bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                            >
+                              View Details
+                            </Button>
                           </div>
                         </div>
 
@@ -1472,14 +1494,14 @@ export default function InventoryPage() {
                         )}
                       </div>
 
-                      <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 sm:py-3 mr-0 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[85px] sm:w-[200px] min-w-[85px] sm:min-w-[200px] max-w-[85px] sm:max-w-[200px]"
+                      <div className="hidden sm:flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 sm:py-3 mr-0 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-700 w-[85px] sm:w-[200px] min-w-[85px] sm:min-w-[200px] max-w-[85px] sm:max-w-[200px]"
                         style={{
                           background: 'rgb(51, 65, 85)',
                           flexShrink: 0
                         }}
                       >
                         {/* Desktop buttons */}
-                        <div className="hidden sm:flex items-center gap-1 sm:gap-2 flex-wrap justify-center w-full">
+                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center w-full">
                           <button
                             type="button"
                             onClick={() => toggleFavorite(item.id)}
@@ -1531,29 +1553,19 @@ export default function InventoryPage() {
                           )}
                         </div>
                         
-                        {/* Mobile: Mark Sold button */}
-                        {!isSoldOut && item.status !== 'sold' && (
-                          <Button
-                            onClick={() => handleMarkAsSold(item)}
-                            className="md:hidden text-white font-semibold py-1.5 px-1 rounded-md text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-full leading-tight text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                          >
-                            Mark Sold
-                          </Button>
-                        )}
-                        
-                        {/* View Details button */}
+                        {/* Desktop: View Details button */}
                         <Button
                           onClick={() => {
                             setItemToView(item);
                             setViewDialogOpen(true);
                           }}
-                          className={`text-white font-semibold py-1.5 sm:py-1.5 px-1 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-full sm:w-auto leading-tight text-[10px] sm:text-xs ${
+                          className={`text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-auto leading-tight text-xs ${
                             item.status === 'listed' 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
                               : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
                           }`}
                         >
-                          <span className="text-[10px] sm:text-xs">View Details</span>
+                          View Details
                         </Button>
                       </div>
                     </div>
