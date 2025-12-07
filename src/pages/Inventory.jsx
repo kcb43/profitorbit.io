@@ -1316,7 +1316,7 @@ export default function InventoryPage() {
                           {item.images && item.images.length > 1 ? (
                             <ImageCarousel
                               images={item.images.map(img => img.imageUrl || img.url || img)}
-                              imageClassName="object-contain"
+                              imageClassName="object-contain rounded-lg"
                               counterPosition="bottom"
                             />
                           ) : (
@@ -1324,7 +1324,7 @@ export default function InventoryPage() {
                               src={item.image_url || DEFAULT_IMAGE_URL}
                               alt={item.item_name}
                               fallback={DEFAULT_IMAGE_URL}
-                              className="w-full h-full object-contain"
+                              className="w-full h-full object-contain rounded-lg"
                               style={{ maxHeight: '100%' }}
                               lazy={true}
                             />
@@ -1664,14 +1664,14 @@ export default function InventoryPage() {
                     {item.images && item.images.length > 1 ? (
                       <ImageCarousel
                         images={item.images.map(img => img.imageUrl || img.url || img)}
-                        imageClassName="object-cover"
+                        imageClassName="object-cover rounded-lg"
                       />
                     ) : (
                       <OptimizedImage
                         src={item.image_url || DEFAULT_IMAGE_URL}
                         alt={item.item_name}
                         fallback={DEFAULT_IMAGE_URL}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover rounded-lg"
                         lazy={true}
                       />
                     )}
