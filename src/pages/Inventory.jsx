@@ -1317,7 +1317,6 @@ export default function InventoryPage() {
                             <ImageCarousel
                               images={item.images.map(img => img.imageUrl || img.url || img)}
                               imageClassName="object-contain"
-                              hideDots={item.images.length > 5}
                             />
                           ) : (
                             <OptimizedImage
@@ -1501,13 +1500,13 @@ export default function InventoryPage() {
                           onClick={() => {
                             navigate(createPageUrl(`AddInventoryItem?id=${item.id}`), { state: returnStateForInventory });
                           }}
-                          className={`text-white font-semibold py-2 sm:py-1.5 px-2 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md text-[10px] sm:text-xs w-full sm:w-auto mt-1 sm:mt-2 leading-tight ${
+                          className={`text-white font-semibold py-2 sm:py-1.5 px-2 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-full sm:w-auto mt-1 sm:mt-2 leading-tight ${
                             item.status === 'listed' 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
                               : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
                           }`}
                         >
-                          <span className="whitespace-nowrap text-[10px] sm:text-xs">View Details</span>
+                          <span className="whitespace-nowrap text-xs sm:text-xs">View Details</span>
                         </Button>
                       </div>
                     </div>

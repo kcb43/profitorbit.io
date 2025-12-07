@@ -120,7 +120,7 @@ export function ImageCarousel({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative w-full h-full group", className)}
+      className={cn("relative w-full h-full group overflow-hidden", className)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -159,22 +159,61 @@ export function ImageCarousel({
         {currentIndex + 1} / {normalizedImages.length}
       </div>
 
-      {/* Dot Indicators */}
-      {!hideDots && normalizedImages.length > 1 && normalizedImages.length <= 10 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-          {normalizedImages.map((_, index) => (
-            <button
-              key={index}
-              onClick={(e) => goToIndex(index, e)}
-              className={cn(
-                "w-2 h-2 rounded-full transition-all duration-200",
-                index === currentIndex 
-                  ? "bg-white w-4" 
-                  : "bg-white/50 hover:bg-white/75"
-              )}
-              aria-label={`Go to image ${index + 1}`}
-            />
-          ))}
+      {/* Dot Indicators - Smart display: all dots for <=3 images, sliding window of 3 for 4+ images */}
+      {!hideDots && normalizedImages.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 max-w-[90%]">
+          {(() => {
+            // Show all dots if 3 or fewer images
+            if (normalizedImages.length <= 3) {
+              return normalizedImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => goToIndex(index, e)}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all duration-200",
+                    index === currentIndex 
+                      ? "bg-white w-4" 
+                      : "bg-white/50 hover:bg-white/75"
+                  )}
+                  aria-label={`Go to image ${index + 1}`}
+                />
+              ));
+            }
+            
+            // For 4+ images, show sliding window of 3 dots
+            const totalImages = normalizedImages.length;
+            let startIndex, endIndex;
+            
+            if (currentIndex === 0) {
+              startIndex = 0;
+              endIndex = 2;
+            } else if (currentIndex === totalImages - 1) {
+              startIndex = totalImages - 3;
+              endIndex = totalImages - 1;
+            } else {
+              startIndex = currentIndex - 1;
+              endIndex = currentIndex + 1;
+            }
+            
+            const visibleIndices = [];
+            for (let i = startIndex; i <= endIndex; i++) {
+              visibleIndices.push(i);
+            }
+            
+            return visibleIndices.map((index) => (
+              <button
+                key={index}
+                onClick={(e) => goToIndex(index, e)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-all duration-200",
+                  index === currentIndex 
+                    ? "bg-white w-4" 
+                    : "bg-white/50 hover:bg-white/75"
+                )}
+                aria-label={`Go to image ${index + 1}`}
+              />
+            ));
+          })()}
         </div>
       )}
     </div>
