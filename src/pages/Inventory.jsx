@@ -1317,7 +1317,7 @@ export default function InventoryPage() {
                             <ImageCarousel
                               images={item.images.map(img => img.imageUrl || img.url || img)}
                               imageClassName="object-contain"
-                              hideDots={true}
+                              hideDots={item.images.length > 5}
                             />
                           ) : (
                             <OptimizedImage
@@ -1355,8 +1355,7 @@ export default function InventoryPage() {
                         style={{
                           borderColor: 'rgba(51, 65, 85, 0.6)',
                           flexShrink: 1,
-                          minWidth: 0,
-                          flex: window.innerWidth < 768 ? '0 1 auto' : '1 1 0%'
+                          minWidth: 0
                         }}
                       >
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-[60%] sm:h-full sm:top-0 sm:translate-y-0 bg-slate-600/60"></div>

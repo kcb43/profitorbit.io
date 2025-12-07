@@ -159,8 +159,8 @@ export function ImageCarousel({
         {currentIndex + 1} / {normalizedImages.length}
       </div>
 
-      {/* Dot Indicators - only show for 2-3 images to prevent overflow */}
-      {!hideDots && normalizedImages.length > 1 && normalizedImages.length <= 3 && (
+      {/* Dot Indicators */}
+      {!hideDots && normalizedImages.length > 1 && normalizedImages.length <= 10 && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
           {normalizedImages.map((_, index) => (
             <button
