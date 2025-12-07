@@ -579,11 +579,21 @@ export default function InventoryPage() {
         console.error('Failed to update imageUrl in edit history:', e);
       }
       
-      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      // Force refetch with cache busting
+      await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      await queryClient.refetchQueries({ queryKey: ['inventoryItems'] });
+      
+      // Update imageToEdit to point to new edited URL so editor shows correct image
+      setImageToEdit({
+        url: fileUrl,
+        itemId: variables.itemId
+      });
+      
       toast({
         title: "Image Updated",
         description: "The item image has been successfully updated.",
       });
+      
       // Don't close editor if multiple images - let user continue editing
       const item = inventoryItems.find(i => i.id === variables.itemId);
       if (!item?.images || item.images.length <= 1) {
