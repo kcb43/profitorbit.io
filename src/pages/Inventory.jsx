@@ -1305,7 +1305,7 @@ export default function InventoryPage() {
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 transition-all duration-200 ${selectedItems.includes(item.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
+                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 ${selectedItems.includes(item.id) ? 'opacity-80 shadow-lg shadow-green-500/50' : 'hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             background: 'rgba(255, 255, 255, 0.1)',
@@ -1316,7 +1316,7 @@ export default function InventoryPage() {
                           {item.images && item.images.length > 1 ? (
                             <ImageCarousel
                               images={item.images.map(img => img.imageUrl || img.url || img)}
-                              imageClassName="object-cover"
+                              imageClassName="object-contain"
                               counterPosition="bottom"
                             />
                           ) : (
@@ -1324,7 +1324,7 @@ export default function InventoryPage() {
                               src={item.image_url || DEFAULT_IMAGE_URL}
                               alt={item.item_name}
                               fallback={DEFAULT_IMAGE_URL}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               style={{ maxHeight: '100%' }}
                               lazy={true}
                             />
