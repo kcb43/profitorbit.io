@@ -1446,8 +1446,8 @@ export default function InventoryPage() {
                         </div>
 
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-300 break-words">
-                          <div className="flex justify-between">
-                            <span>Price:</span>
+                          <div>
+                            <span>Price: </span>
                             <span className="font-medium text-white">
                               ${item.purchase_price.toFixed(2)}
                               {item.quantity > 1 && <span className="text-gray-400 ml-1">(${perItemPrice.toFixed(2)} ea)</span>}
@@ -1461,8 +1461,8 @@ export default function InventoryPage() {
                               </span>
                             )}
                           </div>
-                          <div className="flex justify-between">
-                            <span>Purchase Date:</span>
+                          <div>
+                            <span>Purchase Date: </span>
                             <span className="font-medium text-white">
                               {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
                             </span>
