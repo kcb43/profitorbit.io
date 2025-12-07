@@ -1421,9 +1421,11 @@ export default function InventoryPage() {
                           
                           {/* Status badge below Price - Mobile only */}
                           <div className="flex justify-end pt-3">
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5 relative`} style={{ top: '1rem' }}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
+                            <div style={{ paddingTop: '1rem' }}>
+                              <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
+                                {statusLabels[item.status] || statusLabels.available}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
 
