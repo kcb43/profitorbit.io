@@ -579,8 +579,9 @@ export default function InventoryPage() {
         console.error('Failed to update imageUrl in edit history:', e);
       }
       
-      // Force refetch with cache busting
+      // Force refetch with cache busting - invalidate both list and individual item queries
       await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      await queryClient.invalidateQueries({ queryKey: ['inventoryItem', variables.itemId] });
       await queryClient.refetchQueries({ queryKey: ['inventoryItems'] });
       
       // Update imageToEdit to point to new edited URL so editor shows correct image
