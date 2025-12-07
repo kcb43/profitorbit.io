@@ -256,10 +256,16 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   useEffect(() => {
     if (open && normalizedImages.length > 0) {
       const imageToLoad = normalizedImages[currentImageIndex];
-      if (imageToLoad && imageToLoad !== imgSrc) {
-        console.log(`Loading image ${currentImageIndex + 1}/${normalizedImages.length}:`, imageToLoad);
-        setImgSrc(imageToLoad);
-        setOriginalImgSrc(imageToLoad);
+      
+      // Check if there are saved settings with an original URL
+      const historyKey = itemId ? `${itemId}_${currentImageIndex}` : imageToLoad;
+      const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
+      const urlToLoad = savedSettings?.originalImageUrl || imageToLoad;
+      
+      if (urlToLoad && urlToLoad !== imgSrc) {
+        console.log(`Loading image ${currentImageIndex + 1}/${normalizedImages.length}:`, urlToLoad, savedSettings ? '(from original)' : '(current)');
+        setImgSrc(urlToLoad);
+        setOriginalImgSrc(urlToLoad);
         
         // Clean up existing cropper
         if (cropperInstanceRef.current) {
@@ -942,11 +948,17 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           // Store the editing settings for this image (keyed by itemId + index for stability)
           if (itemId !== undefined) {
             const historyKey = `${itemId}_${currentImageIndex}`;
+            
+            // Preserve original image URL (first time editing) for future edits
+            const existingSettings = imageEditHistoryRef.current.get(historyKey);
+            const originalImageUrl = existingSettings?.originalImageUrl || originalImgSrc || imgSrc;
+            
             const settingsToSave = {
               filters: { ...filters },
               transform: { ...transform },
               timestamp: Date.now(),
-              imageUrl: imgSrc // Store the URL for reference
+              imageUrl: imgSrc, // Current image URL
+              originalImageUrl: originalImageUrl // Always keep the original for re-editing
             };
             console.log('Saving settings with key:', historyKey, 'Settings:', settingsToSave);
             imageEditHistoryRef.current.set(historyKey, settingsToSave);
