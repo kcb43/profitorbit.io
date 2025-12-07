@@ -524,30 +524,40 @@ export default function InventoryPage() {
   // Mutation for updating item image
   const updateImageMutation = useMutation({
     mutationFn: async ({ itemId, file, imageIndex }) => {
+      console.log('Starting image update:', { itemId, imageIndex, fileSize: file?.size });
+      
       // Upload the edited image
       const uploadPayload = file instanceof File ? file : new File([file], file.name || 'edited-image.jpg', { type: file.type || 'image/jpeg' });
+      console.log('Uploading file...', { fileName: uploadPayload.name, size: uploadPayload.size });
+      
       const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+      console.log('File uploaded:', file_url);
       
       // Get the current item
       const item = inventoryItems.find(i => i.id === itemId);
+      console.log('Found item:', { itemId, hasImages: !!item?.images, imageCount: item?.images?.length });
       
       // If item has multiple images, update the images array
       if (item && item.images && item.images.length > 1 && imageIndex !== undefined) {
         const updatedImages = [...item.images];
         updatedImages[imageIndex] = file_url;
         
+        console.log('Updating multiple images:', { imageIndex, updatedCount: updatedImages.length });
         await base44.entities.InventoryItem.update(itemId, { 
           images: updatedImages,
           image_url: updatedImages[0] // First image is main
         });
       } else {
         // Single image - just update image_url
+        console.log('Updating single image');
         await base44.entities.InventoryItem.update(itemId, { image_url: file_url });
       }
       
+      console.log('Database update complete');
       return file_url;
     },
     onSuccess: (fileUrl, variables) => {
+      console.log('Image update SUCCESS:', { fileUrl, itemId: variables.itemId, imageIndex: variables.imageIndex });
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       toast({
         title: "Image Updated",

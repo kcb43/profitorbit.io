@@ -75,8 +75,15 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const cropperInstanceRef = useRef(null);
   const queryClient = useQueryClient();
   
-  // Store editing history per image URL to remember settings
-  const imageEditHistoryRef = useRef(new Map());
+  // Store editing history per image URL to remember settings - persisted to localStorage
+  const imageEditHistoryRef = useRef((() => {
+    try {
+      const stored = localStorage.getItem('imageEditHistory');
+      return stored ? new Map(JSON.parse(stored)) : new Map();
+    } catch {
+      return new Map();
+    }
+  })());
   
   // Normalize images array - memoized to prevent recalculation
   const normalizedImages = useMemo(() => {
@@ -856,6 +863,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
               transform: { ...transform },
               timestamp: Date.now()
             });
+            
+            // Persist to localStorage
+            try {
+              localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(imageEditHistoryRef.current.entries())));
+            } catch (e) {
+              console.error('Failed to save edit history to localStorage:', e);
+            }
           }
           
           // Mark this image as edited
