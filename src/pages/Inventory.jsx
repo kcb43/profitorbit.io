@@ -1686,7 +1686,7 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   )}
-                  <div className="absolute bottom-2 sm:top-2 right-2 z-10">
+                  <div className="absolute bottom-2 right-2 z-10">
                     <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5 backdrop-blur-sm`}>
                       {statusLabels[item.status] || statusLabels.available}
                     </Badge>
