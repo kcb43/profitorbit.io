@@ -1391,7 +1391,7 @@ export default function InventoryPage() {
                           minWidth: 0
                         }}
                       >
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-[60%] sm:h-full sm:top-0 sm:translate-y-0 bg-slate-600/60"></div>
+                        <div className="absolute left-0 top-0 w-px h-full bg-slate-600/60"></div>
                         
                         <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
                           <h3 className="text-sm sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2 text-left"
