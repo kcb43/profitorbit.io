@@ -336,7 +336,7 @@ export default function AddInventoryItem() {
     e?.stopPropagation?.();
     const mainPhoto = formData.photos.find(p => p.isMain);
     if (mainPhoto) {
-      setImageToEdit({ url: mainPhoto.imageUrl });
+      setImageToEdit({ url: mainPhoto.imageUrl, itemId: itemId });
       setEditorOpen(true);
     }
   };
@@ -499,7 +499,9 @@ export default function AddInventoryItem() {
   const handleEditPhoto = (photoId) => {
     const photoToEdit = formData.photos.find(p => p.id === photoId);
     if (photoToEdit) {
-      setImageToEdit({ url: photoToEdit.imageUrl, photoId });
+      // Find the index of this photo for proper history keying
+      const photoIndex = formData.photos.findIndex(p => p.id === photoId);
+      setImageToEdit({ url: photoToEdit.imageUrl, photoId, itemId: itemId, photoIndex });
       setEditorOpen(true);
     }
   };
@@ -1048,6 +1050,7 @@ export default function AddInventoryItem() {
         fileName="inventory-item-edited.jpg"
         allImages={formData.photos}
         onApplyToAll={handleApplyFiltersToAll}
+        itemId={itemId}
       />
     </div>
   );
