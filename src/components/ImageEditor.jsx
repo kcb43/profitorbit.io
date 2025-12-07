@@ -71,6 +71,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [appliedToAll, setAppliedToAll] = useState(false); // Track if "Apply to All" was used
   
+  // Track loaded baseline settings for comparison
+  const [loadedFilters, setLoadedFilters] = useState(null);
+  const [loadedTransform, setLoadedTransform] = useState(null);
+  
   const imageRef = useRef(null);
   const cropperInstanceRef = useRef(null);
   const queryClient = useQueryClient();
@@ -112,8 +116,41 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     enabled: open
   });
 
-  // Check if any changes have been made
+  // Check if any changes have been made from loaded state
   const checkForChanges = () => {
+    if (!loadedFilters || !loadedTransform) {
+      // If no loaded state yet, compare to defaults
+      const hasFilterChanges = 
+        filters.brightness !== 100 || 
+        filters.contrast !== 100 || 
+        filters.saturate !== 100 || 
+        filters.shadows !== 0;
+      
+      const hasTransformChanges = 
+        transform.rotate !== 0 || 
+        transform.flip_x !== 1 || 
+        transform.flip_y !== 1;
+      
+      return hasFilterChanges || hasTransformChanges;
+    }
+    
+    // Compare to loaded state
+    const hasFilterChanges = 
+      filters.brightness !== loadedFilters.brightness || 
+      filters.contrast !== loadedFilters.contrast || 
+      filters.saturate !== loadedFilters.saturate || 
+      filters.shadows !== loadedFilters.shadows;
+    
+    const hasTransformChanges = 
+      transform.rotate !== loadedTransform.rotate || 
+      transform.flip_x !== loadedTransform.flip_x || 
+      transform.flip_y !== loadedTransform.flip_y;
+    
+    return hasFilterChanges || hasTransformChanges;
+  };
+  
+  // Check if there are changes from ORIGINAL (for Reset All button)
+  const hasChangesFromOriginal = () => {
     const hasFilterChanges = 
       filters.brightness !== 100 || 
       filters.contrast !== 100 || 
@@ -234,19 +271,25 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           console.log(`Loading saved settings for image ${currentImageIndex}:`, savedSettings);
           setFilters(savedSettings.filters);
           setTransform(savedSettings.transform);
+          setLoadedFilters(savedSettings.filters);
+          setLoadedTransform(savedSettings.transform);
         } else {
           // Reset to defaults for images without saved settings
-          setFilters({
+          const defaultFilters = {
             brightness: 100,
             contrast: 100,
             saturate: 100,
             shadows: 0
-          });
-          setTransform({
+          };
+          const defaultTransform = {
             rotate: 0,
             flip_x: 1,
             flip_y: 1
-          });
+          };
+          setFilters(defaultFilters);
+          setTransform(defaultTransform);
+          setLoadedFilters(defaultFilters);
+          setLoadedTransform(defaultTransform);
         }
         
         setActiveFilter('brightness');
@@ -1230,16 +1273,19 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
           {/* Footer */}
           <div className="px-3 sm:px-5 pt-2 pb-6 sm:py-3 border-t border-slate-700/50 bg-slate-800/50 backdrop-blur-sm flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
-            {/* Show buttons only when changes are made in current session */}
+            {/* Show Save button when changes made or image has been edited */}
             {(hasUnsavedChanges || editedImages.has(currentImageIndex)) && (
               <>
-                <Button
-                  onClick={resetAll}
-                  className="flex-1 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
-                >
-                  <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-base">Reset All</span>
-                </Button>
+                {/* Reset All - only show when there are changes from ORIGINAL */}
+                {hasChangesFromOriginal() && (
+                  <Button
+                    onClick={resetAll}
+                    className="flex-1 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+                  >
+                    <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-base">Reset All</span>
+                  </Button>
+                )}
                 
                 {/* Apply to All button - Mobile only in footer */}
                 {!isCropping && hasUnsavedChanges && hasMultipleImages && onApplyToAll && (
@@ -1253,13 +1299,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 
                 {!isCropping && (
                   <Button
-                    onClick={(appliedToAll || editedImages.has(currentImageIndex)) ? () => onOpenChange(false) : handleSave}
+                    onClick={(appliedToAll || editedImages.has(currentImageIndex)) && !hasUnsavedChanges ? () => onOpenChange(false) : handleSave}
                     className="flex-1 bg-green-600 hover:bg-green-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
                     disabled={!imgSrc}
                   >
                     <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="text-xs sm:text-base">
-                      {appliedToAll || editedImages.has(currentImageIndex)
+                      {(appliedToAll || editedImages.has(currentImageIndex)) && !hasUnsavedChanges
                         ? 'Done' 
                         : hasMultipleImages 
                           ? `Save Image ${currentImageIndex + 1}` 
