@@ -1090,7 +1090,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           </div>
 
             {/* Main Content */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 pt-1 pb-2 px-2 sm:p-4 h-[350px] md:h-full overflow-hidden" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
+            <div className="w-full md:flex-1 flex flex-col min-w-0 px-2 sm:p-4 h-[350px] md:h-full overflow-hidden justify-end md:justify-center pb-4 md:pb-0" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
               <div 
                 className="w-full h-full rounded-lg overflow-hidden flex items-center justify-center" 
                 style={{ 
