@@ -1345,18 +1345,61 @@ export default function InventoryPage() {
                             </Badge>
                           </div>
                           
-                          {/* Mobile: Favorite and Edit at bottom of image */}
-                          <div className="md:hidden absolute bottom-2 left-2 flex gap-1.5 z-10">
+                          {/* Desktop link overlay */}
+                          <Link
+                            to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
+                            state={returnStateForInventory}
+                            className="hidden sm:block absolute inset-0 z-5"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
+                        style={{
+                          borderColor: 'rgba(51, 65, 85, 0.6)',
+                          flexShrink: 1,
+                          minWidth: 0
+                        }}
+                      >
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-[60%] sm:h-full sm:top-0 sm:translate-y-0 bg-slate-600/60"></div>
+                        
+                        <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
+                          <h3 className="text-sm sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2 text-left"
+                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                            {item.item_name || 'Untitled Item'}
+                          </h3>
+                        </Link>
+
+                        <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
+                          <p className="text-gray-300 text-[11px] break-words leading-[14px]">
+                            <span className="font-semibold">Price:</span> ${item.purchase_price.toFixed(2)}
+                          </p>
+                          {item.quantity > 1 && (
+                            <p className="text-gray-400 text-[10px] leading-[13px]">
+                              (${perItemPrice.toFixed(2)} ea)
+                            </p>
+                          )}
+                          <p className="text-gray-300 text-[11px] break-words leading-[14px]">
+                            <span className="font-semibold">Qty:</span> {item.quantity}
+                            {quantitySold > 0 && (
+                              <span className={isSoldOut ? 'text-red-400' : 'text-blue-400'}>
+                                {isSoldOut ? ' (Sold Out)' : ` (${quantitySold} sold)`}
+                              </span>
+                            )}
+                          </p>
+                          
+                          {/* Mobile: All action buttons below Qty */}
+                          <div className="flex gap-2 mt-2 flex-wrap">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFavorite(item.id);
                               }}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition backdrop-blur-sm ${
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
                                 favoriteMarked
-                                  ? "bg-amber-500/90 text-white hover:bg-amber-600/90"
-                                  : "bg-gray-800/80 text-gray-300 hover:text-amber-500 hover:bg-gray-700/90"
+                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
                               }`}
                             >
                               <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
@@ -1368,58 +1411,11 @@ export default function InventoryPage() {
                                   e.stopPropagation();
                                   handleEditImage(e, item);
                                 }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 backdrop-blur-sm transition"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 transition mr-3"
                               >
                                 <ImageIcon className="h-3.5 w-3.5" />
                               </button>
                             )}
-                          </div>
-                          
-                          {/* Desktop link overlay */}
-                          <Link
-                            to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
-                            state={returnStateForInventory}
-                            className="hidden sm:block absolute inset-0 z-5"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
-                        style={{
-                          borderColor: 'rgba(51, 65, 85, 0.6)',
-                          flexShrink: 1,
-                          minWidth: 0
-                        }}
-                      >
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-[60%] sm:h-full sm:top-0 sm:translate-y-0 bg-slate-600/60"></div>
-                        
-                        <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3">
-                          <h3 className="text-sm sm:text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2"
-                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
-                            {item.item_name || 'Untitled Item'}
-                          </h3>
-                        </Link>
-
-                        <div className="mb-1 sm:hidden space-y-0.5">
-                          <p className="text-gray-300 text-[11px] break-words leading-[14px]">
-                            <span className="font-semibold">Price:</span> ${item.purchase_price.toFixed(2)}
-                          </p>
-                          {item.quantity > 1 && (
-                            <p className="text-gray-400 text-[10px] leading-[13px]">
-                              (${perItemPrice.toFixed(2)} ea)
-                            </p>
-                          )}
-                          <p className="text-gray-300 text-[11px] break-words leading-[14px] mb-2">
-                            <span className="font-semibold">Qty:</span> {item.quantity}
-                            {quantitySold > 0 && (
-                              <span className={isSoldOut ? 'text-red-400' : 'text-blue-400'}>
-                                {isSoldOut ? ' (Sold Out)' : ` (${quantitySold} sold)`}
-                              </span>
-                            )}
-                          </p>
-                          
-                          {/* Action buttons below Qty - Mobile only */}
-                          <div className="flex gap-1.5 pt-1 flex-wrap">
                             {!isSoldOut && item.status !== 'sold' && (
                               <Button
                                 onClick={() => handleMarkAsSold(item)}
