@@ -1352,6 +1352,36 @@ export default function InventoryPage() {
                             className="hidden sm:block absolute inset-0 z-5"
                           />
                         </div>
+                        
+                        {/* Mobile: Favorite and Edit Image icons below image */}
+                        <div className="md:hidden flex gap-1.5 mt-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(item.id);
+                            }}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                              favoriteMarked
+                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                            }`}
+                          >
+                            <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                          </button>
+                          {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditImage(e, item);
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 transition"
+                            >
+                              <ImageIcon className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
@@ -1387,53 +1417,6 @@ export default function InventoryPage() {
                               </span>
                             )}
                           </p>
-                          
-                          {/* Mobile: All action buttons below Qty */}
-                          <div className="flex gap-2 mt-2 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item.id);
-                              }}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
-                                favoriteMarked
-                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                              }`}
-                            >
-                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
-                            </button>
-                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditImage(e, item);
-                                }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/90 text-white hover:bg-blue-700/90 transition mr-3"
-                              >
-                                <ImageIcon className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {!isSoldOut && item.status !== 'sold' && (
-                              <Button
-                                onClick={() => handleMarkAsSold(item)}
-                                className="text-white font-semibold py-1.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                              >
-                                Mark Sold
-                              </Button>
-                            )}
-                            <Button
-                              onClick={() => {
-                                setItemToView(item);
-                                setViewDialogOpen(true);
-                              }}
-                              className="text-white font-semibold py-1.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[10px] bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
-                            >
-                              View Details
-                            </Button>
-                          </div>
                         </div>
 
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-300 break-words">
@@ -1556,6 +1539,31 @@ export default function InventoryPage() {
                             setViewDialogOpen(true);
                           }}
                           className={`text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-auto leading-tight text-xs ${
+                            item.status === 'listed' 
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
+                              : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
+                          }`}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                      
+                      {/* Mobile: Mark Sold and View Details buttons at bottom */}
+                      <div className="md:hidden flex gap-2 px-2 pb-2 pt-3 border-t border-gray-700 w-full">
+                        {!isSoldOut && item.status !== 'sold' && (
+                          <Button
+                            onClick={() => handleMarkAsSold(item)}
+                            className="flex-1 text-white font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[11px] bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                          >
+                            Mark Sold
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => {
+                            setItemToView(item);
+                            setViewDialogOpen(true);
+                          }}
+                          className={`flex-1 text-white font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[11px] ${
                             item.status === 'listed' 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
                               : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
