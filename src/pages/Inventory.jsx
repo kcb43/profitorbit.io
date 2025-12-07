@@ -542,18 +542,20 @@ export default function InventoryPage() {
         const updatedImages = [...item.images];
         updatedImages[imageIndex] = file_url;
         
-        console.log('Updating multiple images:', { imageIndex, updatedCount: updatedImages.length });
-        await base44.entities.InventoryItem.update(itemId, { 
+        console.log('Updating multiple images:', { imageIndex, updatedCount: updatedImages.length, newImages: updatedImages });
+        const updatePayload = { 
           images: updatedImages,
           image_url: updatedImages[0] // First image is main
-        });
+        };
+        console.log('Update payload:', updatePayload);
+        await base44.entities.InventoryItem.update(itemId, updatePayload);
       } else {
         // Single image - just update image_url
-        console.log('Updating single image');
+        console.log('Updating single image with URL:', file_url);
         await base44.entities.InventoryItem.update(itemId, { image_url: file_url });
       }
       
-      console.log('Database update complete');
+      console.log('Database update complete - new image should be visible');
       return file_url;
     },
     onSuccess: (fileUrl, variables) => {

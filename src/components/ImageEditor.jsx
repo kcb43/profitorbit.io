@@ -277,8 +277,25 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
         
         // Verify imageUrl matches for inventory items (to detect photo replacements)
-        const isNewImage = savedSettings && imageToLoad && !imageToLoad.includes('edited') && savedSettings.imageUrl !== imageToLoad;
-        console.log('Image check:', { savedUrl: savedSettings?.imageUrl, currentUrl: imageToLoad, isNewImage });
+        // Extract filename without hash to compare base images
+        const extractBaseName = (url) => {
+          if (!url) return '';
+          const parts = url.split('/').pop(); // Get filename
+          const withoutHash = parts?.replace(/^[a-f0-9]+_/, ''); // Remove hash prefix
+          return withoutHash;
+        };
+        
+        const savedBaseName = extractBaseName(savedSettings?.imageUrl);
+        const currentBaseName = extractBaseName(imageToLoad);
+        const isNewImage = savedSettings && imageToLoad && savedBaseName !== currentBaseName;
+        
+        console.log('Image check:', { 
+          savedUrl: savedSettings?.imageUrl, 
+          currentUrl: imageToLoad, 
+          savedBaseName,
+          currentBaseName,
+          isNewImage 
+        });
         
         if (savedSettings && !isNewImage) {
           // Load previously saved settings for this image
