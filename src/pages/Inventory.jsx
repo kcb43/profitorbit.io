@@ -1868,17 +1868,19 @@ export default function InventoryPage() {
                       )}
 
                       <div className="space-y-2">
-                        <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block">
-                          <Button 
-                            className={`w-full text-white font-semibold text-xs shadow-md ${
-                              item.status === 'listed' 
-                                ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
-                                : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
-                            }`}
-                          >
-                            View Details
-                          </Button>
-                        </Link>
+                        <Button 
+                          onClick={() => {
+                            setItemToView(item);
+                            setViewDialogOpen(true);
+                          }}
+                          className={`w-full text-white font-semibold text-xs shadow-md ${
+                            item.status === 'listed' 
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
+                              : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
+                          }`}
+                        >
+                          View Details
+                        </Button>
                         {isDeleted ? (
                           <>
                             <Button 
