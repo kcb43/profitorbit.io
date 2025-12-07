@@ -69,6 +69,20 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
             </DialogHeader>
 
             <div className="space-y-3 text-sm">
+              {/* Edit Button - Mobile first */}
+              <div className="md:hidden">
+                <Button
+                  onClick={() => {
+                    onClose();
+                    navigate(createPageUrl(`AddInventoryItem?id=${item.id}`));
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <EditIcon className="w-4 h-4 mr-2" />
+                  Edit Item
+                </Button>
+              </div>
+
               {/* Purchase Price */}
               <div className="flex justify-between items-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
                 <span className="font-medium flex items-center gap-2">
@@ -155,8 +169,8 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                 </div>
               )}
 
-              {/* Edit Button */}
-              <div className="pt-4 border-t">
+              {/* Edit Button - Desktop only (mobile has it at top) */}
+              <div className="hidden md:block pt-4 border-t">
                 <Button
                   onClick={() => {
                     onClose();

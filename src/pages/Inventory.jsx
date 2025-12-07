@@ -1255,7 +1255,7 @@ export default function InventoryPage() {
             <div className="p-12 text-center text-muted-foreground">Loading...</div>
           ) : sortedItems.length > 0 ? (
             viewMode === "list" ? (
-              <div className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full">
                 {sortedItems.map(item => {
                   const today = new Date();
                   const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
@@ -1281,7 +1281,7 @@ export default function InventoryPage() {
                   return (
                     <div 
                       key={item.id} 
-                      className={`product-list-item relative flex flex-row flex-nowrap items-start sm:items-center mb-4 sm:mb-6 min-w-0 w-full max-w-full ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                      className={`product-list-item relative flex flex-row flex-nowrap items-stretch sm:items-center mb-4 sm:mb-6 min-w-0 w-full ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
@@ -1386,6 +1386,35 @@ export default function InventoryPage() {
                               </span>
                             )}
                           </p>
+                          
+                          {/* Favorite and Edit Image buttons - Mobile only */}
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item.id);
+                              }}
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-md border border-transparent transition ${
+                                favoriteMarked
+                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                              }`}
+                            >
+                              <Star className={`h-3 w-3 ${favoriteMarked ? "fill-current" : ""}`} />
+                            </button>
+                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="h-6 w-6 text-xs gap-1 p-0"
+                                onClick={(e) => handleEditImage(e, item)}
+                              >
+                                <ImageIcon className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-300 break-words">
@@ -1448,7 +1477,8 @@ export default function InventoryPage() {
                           flexShrink: 0
                         }}
                       >
-                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center w-full">
+                        {/* Desktop buttons */}
+                        <div className="hidden sm:flex items-center gap-1 sm:gap-2 flex-wrap justify-center w-full">
                           <button
                             type="button"
                             onClick={() => toggleFavorite(item.id)}
@@ -1476,7 +1506,7 @@ export default function InventoryPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="hidden sm:flex h-6 w-6 sm:h-7 sm:px-2 text-xs gap-1 p-0 sm:p-2"
+                            className="h-6 w-6 sm:h-7 sm:px-2 text-xs gap-1 p-0 sm:p-2"
                             onClick={() => handleTagEditorToggle(item.id)}
                           >
                             <Tag className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -1499,12 +1529,24 @@ export default function InventoryPage() {
                             </Button>
                           )}
                         </div>
+                        
+                        {/* Mobile: Mark Sold button */}
+                        {!isSoldOut && item.status !== 'sold' && (
+                          <Button
+                            onClick={() => handleMarkAsSold(item)}
+                            className="md:hidden text-white font-semibold py-2 px-2 rounded-md text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-full leading-tight bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                          >
+                            <span className="whitespace-nowrap text-xs">Mark Sold</span>
+                          </Button>
+                        )}
+                        
+                        {/* View Details button */}
                         <Button
                           onClick={() => {
                             setItemToView(item);
                             setViewDialogOpen(true);
                           }}
-                          className={`text-white font-semibold py-2 sm:py-1.5 px-2 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-full sm:w-auto mt-1 sm:mt-2 leading-tight ${
+                          className={`text-white font-semibold py-2 sm:py-1.5 px-2 sm:px-3 rounded-md sm:rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md w-full sm:w-auto leading-tight ${
                             item.status === 'listed' 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
                               : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
