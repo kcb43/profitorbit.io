@@ -1339,7 +1339,7 @@ export default function InventoryPage() {
                               </div>
                             </div>
                           )}
-                          <div className="absolute top-2 right-2 z-10">
+                          <div className="hidden sm:block absolute top-2 right-2 z-10">
                             <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] sm:text-[10px] px-1.5 sm:px-1.5 py-0.5`}>
                               {statusLabels[item.status] || statusLabels.available}
                             </Badge>
@@ -1418,6 +1418,13 @@ export default function InventoryPage() {
                                 )}
                               </p>
                             </div>
+                          </div>
+                          
+                          {/* Status badge below Price - Mobile only */}
+                          <div className="flex justify-end mt-1">
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
                           </div>
                         </div>
 
