@@ -537,12 +537,13 @@ export default function InventoryPage() {
       const item = inventoryItems.find(i => i.id === itemId);
       console.log('Found item:', { itemId, hasImages: !!item?.images, imageCount: item?.images?.length });
       
-      // If item has multiple images, update the images array
-      if (item && item.images && item.images.length > 1 && imageIndex !== undefined) {
+      // Update both image_url AND images array to ensure Edit page shows edited version
+      if (item && item.images && Array.isArray(item.images) && imageIndex !== undefined) {
+        // Item has images array - update the specific index
         const updatedImages = [...item.images];
         updatedImages[imageIndex] = file_url;
         
-        console.log('Updating multiple images:', { imageIndex, updatedCount: updatedImages.length, newImages: updatedImages });
+        console.log('Updating images array:', { imageIndex, updatedCount: updatedImages.length, newImages: updatedImages });
         const updatePayload = { 
           images: updatedImages,
           image_url: updatedImages[0] // First image is main
@@ -550,9 +551,14 @@ export default function InventoryPage() {
         console.log('Update payload:', updatePayload);
         await base44.entities.InventoryItem.update(itemId, updatePayload);
       } else {
-        // Single image - just update image_url
-        console.log('Updating single image with URL:', file_url);
-        await base44.entities.InventoryItem.update(itemId, { image_url: file_url });
+        // No images array or not specified - update both image_url and create/update images array
+        console.log('Updating single image - updating both image_url and images array');
+        const updatePayload = {
+          image_url: file_url,
+          images: [file_url] // Ensure images array is also updated
+        };
+        console.log('Update payload:', updatePayload);
+        await base44.entities.InventoryItem.update(itemId, updatePayload);
       }
       
       console.log('Database update complete - new image should be visible');
