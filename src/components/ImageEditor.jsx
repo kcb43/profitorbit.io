@@ -262,8 +262,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           setIsCropping(false);
         }
         
-        // Check if this image has saved editing settings (keyed by itemId + index)
-        const historyKey = itemId ? `${itemId}_${currentImageIndex}` : null;
+        // Check if this image has saved editing settings (keyed by image URL)
+        const historyKey = imageToLoad || null;
         const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
         
         if (savedSettings) {
@@ -898,9 +898,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         if (blob) {
           const file = new File([blob], fileName, { type: 'image/jpeg' });
           
-          // Store the editing settings for this image (keyed by itemId + index)
-          if (itemId) {
-            const historyKey = `${itemId}_${currentImageIndex}`;
+          // Store the editing settings for this image (keyed by image URL)
+          if (imgSrc) {
+            const historyKey = imgSrc;
             imageEditHistoryRef.current.set(historyKey, {
               filters: { ...filters },
               transform: { ...transform },
