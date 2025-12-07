@@ -861,15 +861,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     }
   };
 
-  // Handle cancel
-  const handleCancel = () => {
-    if (cropperInstanceRef.current) {
-      cropperInstanceRef.current.destroy();
-      cropperInstanceRef.current = null;
-    }
-    resetAll();
-    onOpenChange(false);
-  };
 
   // Clean up on close
   useEffect(() => {
@@ -1217,13 +1208,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             >
               <Undo2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span className="text-xs sm:text-base">Reset All</span>
-            </Button>
-            <Button
-              onClick={handleCancel}
-              variant="outline"
-              className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 text-sm sm:text-base"
-            >
-              <span className="text-xs sm:text-base">Cancel</span>
             </Button>
             {!isCropping && (
               <Button
