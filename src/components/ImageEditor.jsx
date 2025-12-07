@@ -902,9 +902,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
           </DialogHeader>
 
-          <div className="flex flex-col md:flex-row h-auto md:flex-1 overflow-y-auto md:overflow-hidden min-h-0">
+          <div className="flex flex-col md:flex-row h-auto md:flex-1 overflow-y-auto md:overflow-hidden min-h-0 pb-0">
             {/* Sidebar */}
-            <div className="w-full md:w-[300px] bg-slate-800/50 backdrop-blur-sm md:border-r border-slate-700/50 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-6 max-h-none md:max-h-full">
+            <div className="w-full md:w-[300px] bg-slate-800/50 backdrop-blur-sm md:border-r border-slate-700/50 overflow-y-auto overflow-x-hidden px-2 pt-2 pb-1 sm:p-4 space-y-2 sm:space-y-6 max-h-none md:max-h-full">
               {/* Template Section */}
               <div className="space-y-2 sm:space-y-3">
                 <h3 className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -1090,7 +1090,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           </div>
 
             {/* Main Content */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 px-2 sm:p-4 h-[350px] md:h-full overflow-hidden mt-auto md:mt-0" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
+            <div className="w-full md:flex-1 flex flex-col min-w-0 px-2 pb-1 sm:p-4 h-[250px] md:h-full overflow-hidden mt-auto md:mt-0 mb-0" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
               <div 
                 className="w-full h-full rounded-lg overflow-hidden flex items-center justify-center" 
                 style={{ 
@@ -1193,7 +1193,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           </div>
 
           {/* Footer */}
-          <div className="px-3 sm:px-5 py-3 border-t border-slate-700/50 bg-slate-800/50 backdrop-blur-sm flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
+          <div className="px-3 sm:px-5 py-2 sm:py-3 border-t border-slate-700/50 bg-slate-800/50 backdrop-blur-sm flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
             <Button
               onClick={resetAll}
               className="flex-1 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
