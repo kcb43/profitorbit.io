@@ -751,20 +751,20 @@ export default function AddInventoryItem() {
                         ))}
                       </ReactSortable>
                       
-                      {/* Add Photos Button in Grid */}
+                      {/* Add Photos Button in Grid - same size as photo tiles */}
                       {formData.photos.length < MAX_PHOTOS && (
                         <button
                           type="button"
                           onClick={() => photoInputRef.current?.click()}
                           disabled={uploadingPhotos}
-                          className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50"
+                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
                         >
                           {uploadingPhotos ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                           ) : (
                             <>
-                              <Camera className="w-5 h-5 mb-1" />
-                              <span className="text-[10px]">Add photos</span>
+                              <Camera className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground" />
+                              <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
                             </>
                           )}
                         </button>

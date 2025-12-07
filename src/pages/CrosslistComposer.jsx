@@ -3321,16 +3321,18 @@ export default function CrosslistComposer() {
                     </div>
                   ))}
                   
-                  {/* Add Photo Button */}
-                  <button
-                    type="button"
-                    onClick={() => photoInputRef.current?.click()}
-                    disabled={isUploadingPhotos || (generalForm.photos?.length || 0) >= MAX_PHOTOS}
-                    className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
-                    <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
-                  </button>
+                  {/* Add Photo Button - same size as photo tiles */}
+                  {(generalForm.photos?.length || 0) < MAX_PHOTOS && (
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={isUploadingPhotos}
+                      className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
+                    >
+                      <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
+                      <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
+                    </button>
+                  )}
                   <input
                     ref={photoInputRef}
                     type="file"
@@ -4010,16 +4012,18 @@ export default function CrosslistComposer() {
                       </div>
                     ))}
                     
-                    {/* Add Photo Button */}
-                    <button
-                      type="button"
-                      onClick={() => ebayPhotoInputRef.current?.click()}
-                      disabled={isUploadingPhotos || (ebayForm.photos?.length || 0) >= MAX_PHOTOS}
-                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
-                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
-                    </button>
+                    {/* Add Photo Button - same size as photo tiles */}
+                    {(ebayForm.photos?.length || 0) < MAX_PHOTOS && (
+                      <button
+                        type="button"
+                        onClick={() => ebayPhotoInputRef.current?.click()}
+                        disabled={isUploadingPhotos}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
+                      >
+                        <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
+                        <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
+                      </button>
+                    )}
                     <input
                       ref={ebayPhotoInputRef}
                       type="file"
@@ -5037,16 +5041,18 @@ export default function CrosslistComposer() {
                       </div>
                     ))}
                     
-                    {/* Add Photo Button */}
-                    <button
-                      type="button"
-                      onClick={() => etsyPhotoInputRef.current?.click()}
-                      disabled={isUploadingPhotos || (etsyForm.photos?.length || 0) >= MAX_PHOTOS}
-                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
-                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
-                    </button>
+                    {/* Add Photo Button - same size as photo tiles */}
+                    {(etsyForm.photos?.length || 0) < MAX_PHOTOS && (
+                      <button
+                        type="button"
+                        onClick={() => etsyPhotoInputRef.current?.click()}
+                        disabled={isUploadingPhotos}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
+                      >
+                        <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
+                        <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
+                      </button>
+                    )}
                     <input
                       ref={etsyPhotoInputRef}
                       type="file"
@@ -5452,16 +5458,18 @@ export default function CrosslistComposer() {
                       </div>
                     ))}
                     
-                    {/* Add Photo Button */}
-                    <button
-                      type="button"
-                      onClick={() => mercariPhotoInputRef.current?.click()}
-                      disabled={isUploadingPhotos || (mercariForm.photos?.length || 0) >= MAX_PHOTOS}
-                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
-                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
-                    </button>
+                    {/* Add Photo Button - same size as photo tiles */}
+                    {(mercariForm.photos?.length || 0) < MAX_PHOTOS && (
+                      <button
+                        type="button"
+                        onClick={() => mercariPhotoInputRef.current?.click()}
+                        disabled={isUploadingPhotos}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
+                      >
+                        <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
+                        <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
+                      </button>
+                    )}
                     <input
                       ref={mercariPhotoInputRef}
                       type="file"
@@ -5826,16 +5834,18 @@ export default function CrosslistComposer() {
                       </div>
                     ))}
                     
-                    {/* Add Photo Button */}
-                    <button
-                      type="button"
-                      onClick={() => facebookPhotoInputRef.current?.click()}
-                      disabled={isUploadingPhotos || (facebookForm.photos?.length || 0) >= MAX_PHOTOS}
-                      className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 text-muted-foreground transition hover:border-foreground/80 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ImagePlus className="h-3 w-3 md:h-5 md:w-5" />
-                      <span className="mt-0.5 text-[9px] md:text-[11px] font-medium">Add photos</span>
-                    </button>
+                    {/* Add Photo Button - same size as photo tiles */}
+                    {(facebookForm.photos?.length || 0) < MAX_PHOTOS && (
+                      <button
+                        type="button"
+                        onClick={() => facebookPhotoInputRef.current?.click()}
+                        disabled={isUploadingPhotos}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
+                      >
+                        <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
+                        <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
+                      </button>
+                    )}
                     <input
                       ref={facebookPhotoInputRef}
                       type="file"
