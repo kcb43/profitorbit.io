@@ -1353,34 +1353,39 @@ export default function InventoryPage() {
                           />
                         </div>
                         
-                        {/* Mobile: Favorite and Edit Image icons below image */}
-                        <div className="md:hidden flex gap-1.5 mt-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(item.id);
-                            }}
-                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
-                              favoriteMarked
-                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                            }`}
-                          >
-                            <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
-                          </button>
-                          {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                        {/* Mobile: Favorite, Edit Image icons, and Status badge below image */}
+                        <div className="md:hidden flex items-center justify-between gap-1.5 mt-2 w-full">
+                          <div className="flex gap-1.5">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditImage(e, item);
+                                toggleFavorite(item.id);
                               }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                                favoriteMarked
+                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                              }`}
                             >
-                              <ImageIcon className="h-3.5 w-3.5" />
+                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
                             </button>
-                          )}
+                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditImage(e, item);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
+                            {statusLabels[item.status] || statusLabels.available}
+                          </Badge>
                         </div>
                       </div>
 
@@ -1418,13 +1423,6 @@ export default function InventoryPage() {
                               </span>
                             )}
                           </p>
-                          
-                          {/* Status badge below Price - Mobile only */}
-                          <div className="flex justify-end" style={{ paddingTop: '6rem' }}>
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
-                          </div>
                         </div>
 
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-300 break-words">
