@@ -2413,6 +2413,114 @@ export default function CrosslistComposer() {
       return;
     }
 
+    if (marketplace === "mercari") {
+      try {
+        setIsSaving(true);
+
+        // Check if Mercari is connected via extension
+        const mercariConnected = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
+        
+        if (!mercariConnected) {
+          toast({
+            title: "Mercari Not Connected",
+            description: "Please connect your Mercari account in Settings first.",
+            variant: "destructive",
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        // Prepare listing data for extension
+        const listingData = {
+          title: mercariForm.title || generalForm.title,
+          description: mercariForm.description || generalForm.description || '',
+          price: mercariForm.price || generalForm.price,
+          category: mercariForm.category || generalForm.category,
+          condition: mercariForm.condition || generalForm.condition,
+          brand: mercariForm.brand || generalForm.brand,
+          size: mercariForm.size || generalForm.size,
+          photos: mercariForm.photos?.length > 0 ? mercariForm.photos : generalForm.photos || [],
+          shippingPayer: mercariForm.shippingCarrier === "Mercari Prepaid" ? "buyer" : "seller",
+        };
+
+        // Send to extension for automation
+        // The extension will handle the listing in a background tab
+        window.postMessage({
+          type: 'CREATE_MERCARI_LISTING',
+          listingData: listingData
+        }, '*');
+
+        toast({
+          title: "Creating Mercari Listing...",
+          description: "The extension is creating your listing in the background. This may take a few seconds.",
+          duration: 5000,
+        });
+
+        // Listen for completion message from extension
+        const handleListingComplete = (event) => {
+          if (event.data.type === 'MERCARI_LISTING_COMPLETE') {
+            window.removeEventListener('message', handleListingComplete);
+            
+            if (event.data.success) {
+              toast({
+                title: "Listed on Mercari!",
+                description: (
+                  <div>
+                    <p>Your item has been listed successfully.</p>
+                    {event.data.listingUrl && (
+                      <a 
+                        href={event.data.listingUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        View Listing →
+                      </a>
+                    )}
+                  </div>
+                ),
+              });
+
+              // Update inventory item if we have an ID
+              if (currentEditingItemId) {
+                base44.entities.InventoryItem.update(currentEditingItemId, {
+                  status: 'listed',
+                  mercari_listing_id: event.data.listingId || '',
+                }).catch(err => console.error('Error updating inventory:', err));
+              }
+            } else {
+              toast({
+                title: "Listing Failed",
+                description: event.data.error || "Failed to create Mercari listing. Please try manually.",
+                variant: "destructive",
+              });
+            }
+            
+            setIsSaving(false);
+          }
+        };
+
+        window.addEventListener('message', handleListingComplete);
+
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          window.removeEventListener('message', handleListingComplete);
+          setIsSaving(false);
+        }, 30000);
+
+      } catch (error) {
+        console.error('Error creating Mercari listing:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create listing.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+
+      return;
+    }
+
     // For other marketplaces, show coming soon
     toast({
       title: `List on ${TEMPLATE_DISPLAY_NAMES[marketplace] || marketplace}`,
