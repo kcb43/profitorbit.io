@@ -745,6 +745,16 @@ export default function Crosslist() {
     if (inventory.length > 0) {
       loadListings();
     }
+    
+    // Also refresh when window regains focus (user comes back from CrosslistComposer)
+    const handleFocus = () => {
+      if (inventory.length > 0) {
+        loadListings();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [inventory]);
 
   const getItemListings = (itemId) => {
