@@ -1309,8 +1309,8 @@ export default function Crosslist() {
                       {it.purchase_date && ` • ${format(parseISO(it.purchase_date), "MMM d, yyyy")}`}
                     </p>
 
-                    {/* Marketplace Icons with List/Delist Actions */}
-                    <div className="mt-auto flex flex-wrap items-center gap-2">
+                    {/* Marketplace Icons */}
+                    <div className="mt-auto flex flex-wrap items-center gap-3">
                       {MARKETPLACES.map((m) => {
                         const isListed = map[m.id];
                         const status = getListingStatus(it.id, m.id);
@@ -1320,55 +1320,18 @@ export default function Crosslist() {
                         return (
                           <div
                             key={m.id}
-                            className="flex flex-col items-center gap-1"
+                            className={`glass inline-flex items-center justify-center w-12 h-12 rounded-lg border-2 transition-all cursor-pointer hover:scale-110 ${
+                              isListed
+                                ? "bg-green-500/30 border-green-400 shadow-lg shadow-green-500/50 opacity-100"
+                                : "bg-gray-500/10 border-gray-600/50 opacity-40 hover:opacity-60"
+                            }`}
+                            style={{
+                              backdropFilter: 'blur(10px)',
+                              borderRadius: '10px'
+                            }}
+                            title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
                           >
-                            <div
-                              className={`glass inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
-                                isListed
-                                  ? "bg-green-500/20 border-green-400/50 opacity-100"
-                                  : "bg-gray-500/10 border-gray-600/50 opacity-40"
-                              }`}
-                              style={{
-                                backdropFilter: 'blur(10px)',
-                                borderRadius: '8px'
-                              }}
-                              title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
-                            >
-                              {renderMarketplaceIcon(m, "w-4 h-4")}
-                            </div>
-                            {status === 'not_listed' ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
-                                disabled={crosslistLoading}
-                                className="text-xs h-6 px-2"
-                              >
-                                List
-                              </Button>
-                            ) : (
-                              <div className="flex gap-1">
-                                {listing?.marketplace_listing_url && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => window.open(listing.marketplace_listing_url, '_blank')}
-                                    className="text-xs h-6 px-1"
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDelistFromMarketplace(it.id, listing?.marketplace_listing_id, m.id)}
-                                  disabled={crosslistLoading}
-                                  className="text-xs h-6 px-1 text-destructive"
-                                >
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            )}
+                            {renderMarketplaceIcon(m, "w-6 h-6")}
                           </div>
                         );
                       })}
