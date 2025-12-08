@@ -217,6 +217,9 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     brand: "",
     condition: "",
     size: "",
+    itemType: "",
+    color: "",
+    megapixels: "",
     quantity: "1",
     price: "",
     tags: "",
@@ -427,6 +430,7 @@ export default function CrosslistComposer() {
       return [];
     }
   });
+  const [showFacebookMoreDetails, setShowFacebookMoreDetails] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [editingColorField, setEditingColorField] = useState(null);
   const [selectedCategoryPath, setSelectedCategoryPath] = useState([]);
@@ -6270,91 +6274,6 @@ export default function CrosslistComposer() {
                     </p>
                   )}
                 </div>
-
-                {/* Brand Section */}
-                <div>
-                  <Label className="text-xs mb-1.5 block">Brand</Label>
-                  {brandIsCustom ? (
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter brand name and press Enter to save"
-                        value={facebookForm.brand || ""}
-                        onChange={(e) => handleMarketplaceChange("facebook", "brand", e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && facebookForm.brand?.trim()) {
-                            e.preventDefault();
-                            const savedBrand = addCustomBrand(facebookForm.brand);
-                            if (savedBrand) {
-                              setBrandIsCustom(false);
-                            }
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          if (facebookForm.brand?.trim()) {
-                            const savedBrand = addCustomBrand(facebookForm.brand);
-                            if (savedBrand) {
-                              setBrandIsCustom(false);
-                            }
-                          }
-                        }}
-                        disabled={!facebookForm.brand?.trim()}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setBrandIsCustom(false);
-                          handleMarketplaceChange("facebook", "brand", "");
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Select
-                      value={facebookForm.brand || generalForm.brand || undefined}
-                      onValueChange={(value) => {
-                        if (value === "custom") {
-                          setBrandIsCustom(true);
-                          handleMarketplaceChange("facebook", "brand", "");
-                        } else {
-                          handleMarketplaceChange("facebook", "brand", value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
-                        {customBrands.length > 0 && customBrands.map((brand) => (
-                          <SelectItem key={`custom-${brand}`} value={brand}>
-                            {brand} ⭐
-                          </SelectItem>
-                        ))}
-                        {POPULAR_BRANDS.map((brand) => (
-                          <SelectItem key={brand} value={brand}>
-                            {brand}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {generalForm.brand && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Inherited {generalForm.brand} from General form. You can edit this field.
-                    </p>
-                  )}
-                </div>
               </div>
 
               {/* Category Section */}
@@ -6370,12 +6289,50 @@ export default function CrosslistComposer() {
                   Category <span className="text-red-500">*</span>
                 </Label>
                 
-                {/* Show selected category with breadcrumb */}
+                {/* Breadcrumb navigation for category path */}
+                {generalCategoryPath.length > 0 && (
+                  <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGeneralCategoryPath([]);
+                        handleMarketplaceChange("facebook", "category", "");
+                        handleMarketplaceChange("facebook", "categoryId", "");
+                      }}
+                      className="hover:text-foreground underline"
+                    >
+                      Home
+                    </button>
+                    {generalCategoryPath.map((cat, index) => (
+                      <React.Fragment key={cat.categoryId}>
+                        <span>/</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newPath = generalCategoryPath.slice(0, index + 1);
+                            setGeneralCategoryPath(newPath);
+                            const lastCat = newPath[newPath.length - 1];
+                            const fullPath = newPath.map(c => c.categoryName).join(" > ");
+                            handleMarketplaceChange("facebook", "category", fullPath);
+                            if (lastCat?.categoryId) {
+                              handleMarketplaceChange("facebook", "categoryId", lastCat.categoryId);
+                            }
+                          }}
+                          className="hover:text-foreground underline"
+                        >
+                          {cat.categoryName}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Show selected category badge */}
                 {(facebookForm.category || generalForm.category) && (
                   <div className="mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
-                        {facebookForm.category || generalForm.category}
+                        Selected: {facebookForm.category || generalForm.category}
                       </Badge>
                       <Button
                         type="button"
@@ -6536,6 +6493,116 @@ export default function CrosslistComposer() {
                       </div>
                     )}
                   </div>
+
+                  {/* Show More Details Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFacebookMoreDetails(!showFacebookMoreDetails)}
+                    className="mt-4 mb-4"
+                  >
+                    {showFacebookMoreDetails ? 'Hide Optional Details' : 'Show More Details'}
+                  </Button>
+
+                  {/* Optional Details - Show when toggled */}
+                  {showFacebookMoreDetails && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-md border">
+                      {/* Brand */}
+                      <div>
+                        <Label className="text-xs mb-1.5 block">Brand</Label>
+                        {brandIsCustom ? (
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Enter brand and press Enter"
+                              value={facebookForm.brand || ""}
+                              onChange={(e) => handleMarketplaceChange("facebook", "brand", e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && facebookForm.brand?.trim()) {
+                                  e.preventDefault();
+                                  addCustomBrand(facebookForm.brand);
+                                  setBrandIsCustom(false);
+                                }
+                              }}
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setBrandIsCustom(false);
+                                handleMarketplaceChange("facebook", "brand", "");
+                              }}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Select
+                            value={facebookForm.brand || generalForm.brand || undefined}
+                            onValueChange={(value) => {
+                              if (value === "custom") {
+                                setBrandIsCustom(true);
+                                handleMarketplaceChange("facebook", "brand", "");
+                              } else {
+                                handleMarketplaceChange("facebook", "brand", value);
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select brand" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="custom">+ Add Custom Brand</SelectItem>
+                              {customBrands.map((brand) => (
+                                <SelectItem key={`custom-${brand}`} value={brand}>
+                                  {brand} ⭐
+                                </SelectItem>
+                              ))}
+                              {POPULAR_BRANDS.map((brand) => (
+                                <SelectItem key={brand} value={brand}>
+                                  {brand}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+
+                      {/* Type */}
+                      <div>
+                        <Label className="text-xs mb-1.5 block">Type</Label>
+                        <Input
+                          placeholder="e.g., DSLR, Point & Shoot, Mirrorless"
+                          value={facebookForm.itemType || ""}
+                          onChange={(e) => handleMarketplaceChange("facebook", "itemType", e.target.value)}
+                        />
+                      </div>
+
+                      {/* Color */}
+                      <div>
+                        <Label className="text-xs mb-1.5 block">Color</Label>
+                        <Input
+                          placeholder={generalForm.color1 ? `Inherited: ${generalForm.color1}` : "Primary color"}
+                          value={facebookForm.color || ""}
+                          onChange={(e) => handleMarketplaceChange("facebook", "color", e.target.value)}
+                        />
+                      </div>
+
+                      {/* Additional category-specific field examples */}
+                      {facebookForm.category?.toLowerCase().includes('camera') && (
+                        <div>
+                          <Label className="text-xs mb-1.5 block">Camera Megapixels</Label>
+                          <Input
+                            placeholder="e.g., 24 MP"
+                            value={facebookForm.megapixels || ""}
+                            onChange={(e) => handleMarketplaceChange("facebook", "megapixels", e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
