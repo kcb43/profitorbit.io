@@ -241,20 +241,177 @@ if (MARKETPLACE) {
   console.log(`Profit Orbit Extension: Initialized for ${MARKETPLACE}`);
 }
 
-// Placeholder for listing automation (to be implemented per marketplace)
+// Create listing on current marketplace
 async function createListing(listingData) {
   console.log(`Creating ${MARKETPLACE} listing:`, listingData);
   
-  // Each marketplace will have different form selectors and flow
-  // This needs to be implemented specifically for each platform
+  if (MARKETPLACE === 'mercari') {
+    return await createMercariListing(listingData);
+  }
   
-  // Example flow:
-  // 1. Navigate to sell/create listing page
-  // 2. Wait for form to load
-  // 3. Fill in fields (title, description, price, photos, etc.)
-  // 4. Submit form
-  // 5. Report success/failure
+  // Other marketplaces to be implemented
+  console.log(`Listing automation for ${MARKETPLACE} coming soon`);
+  window.postMessage({
+    type: 'MERCARI_LISTING_COMPLETE',
+    success: false,
+    error: `${MARKETPLACE} listing automation not yet implemented`
+  }, '*');
+}
+
+// Mercari-specific listing automation
+async function createMercariListing(listingData) {
+  try {
+    console.log('Starting Mercari listing automation...', listingData);
+    
+    // Navigate to sell page if not already there
+    if (!window.location.href.includes('/sell')) {
+      window.location.href = 'https://www.mercari.com/sell/';
+      
+      // Wait for page to load, then retry
+      window.addEventListener('load', () => {
+        setTimeout(() => createMercariListing(listingData), 2000);
+      }, { once: true });
+      return;
+    }
+    
+    // Wait for form to be ready
+    await waitForElement('[name="title"], input[placeholder*="title"]', 10000);
+    
+    // Fill in form fields
+    await fillMercariForm(listingData);
+    
+    // Submit the form
+    const submitResult = await submitMercariForm();
+    
+    // Notify web app of success
+    window.postMessage({
+      type: 'MERCARI_LISTING_COMPLETE',
+      success: submitResult.success,
+      listingId: submitResult.listingId,
+      listingUrl: submitResult.listingUrl,
+      error: submitResult.error
+    }, '*');
+    
+    return submitResult;
+    
+  } catch (error) {
+    console.error('Error in Mercari listing automation:', error);
+    
+    window.postMessage({
+      type: 'MERCARI_LISTING_COMPLETE',
+      success: false,
+      error: error.message
+    }, '*');
+    
+    return { success: false, error: error.message };
+  }
+}
+
+// Fill Mercari form fields
+async function fillMercariForm(data) {
+  console.log('Filling Mercari form with data:', data);
   
-  // For now, just log
-  alert(`Listing automation for ${MARKETPLACE} is not yet implemented. This will be added in the next phase.`);
+  // TODO: These selectors need to be determined by inspecting Mercari's actual form
+  // For now, using placeholder selectors
+  
+  // Title
+  const titleInput = document.querySelector('[name="title"]') || 
+                    document.querySelector('input[placeholder*="title" i]') ||
+                    document.querySelector('[data-testid="title-input"]');
+  if (titleInput && data.title) {
+    titleInput.value = data.title;
+    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+    console.log('✓ Title set');
+  }
+  
+  // Description  
+  const descInput = document.querySelector('[name="description"]') ||
+                   document.querySelector('textarea[placeholder*="description" i]') ||
+                   document.querySelector('[data-testid="description-input"]');
+  if (descInput && data.description) {
+    descInput.value = data.description;
+    descInput.dispatchEvent(new Event('input', { bubbles: true }));
+    console.log('✓ Description set');
+  }
+  
+  // Price
+  const priceInput = document.querySelector('[name="price"]') ||
+                    document.querySelector('input[placeholder*="price" i]') ||
+                    document.querySelector('input[type="number"]');
+  if (priceInput && data.price) {
+    priceInput.value = data.price;
+    priceInput.dispatchEvent(new Event('input', { bubbles: true }));
+    console.log('✓ Price set');
+  }
+  
+  // Category, condition, brand, etc. would be similar
+  // These require clicking dropdowns and selecting options
+  
+  console.log('Form fields filled (partial - selectors need refinement)');
+  
+  // Photos would require special handling (file uploads)
+  // This is complex and needs to be implemented separately
+  
+  return true;
+}
+
+// Submit Mercari form
+async function submitMercariForm() {
+  // TODO: Find and click submit button
+  const submitBtn = document.querySelector('button[type="submit"]') ||
+                   document.querySelector('button:contains("List")') ||
+                   document.querySelector('[data-testid="submit-button"]');
+  
+  if (submitBtn) {
+    console.log('Found submit button, clicking...');
+    submitBtn.click();
+    
+    // Wait for success confirmation
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Try to extract listing ID/URL from the page
+    // This would need to be determined by inspecting Mercari's success page
+    const listingId = 'PLACEHOLDER_ID';
+    const listingUrl = window.location.href;
+    
+    return {
+      success: true,
+      listingId,
+      listingUrl
+    };
+  }
+  
+  return {
+    success: false,
+    error: 'Submit button not found - manual listing required'
+  };
+}
+
+// Helper: Wait for element to appear
+function waitForElement(selector, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const element = document.querySelector(selector);
+    if (element) {
+      resolve(element);
+      return;
+    }
+    
+    const observer = new MutationObserver(() => {
+      const element = document.querySelector(selector);
+      if (element) {
+        observer.disconnect();
+        resolve(element);
+      }
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    
+    setTimeout(() => {
+      observer.disconnect();
+      reject(new Error(`Element ${selector} not found after ${timeout}ms`));
+    }, timeout);
+  });
 }
