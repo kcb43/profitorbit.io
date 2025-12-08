@@ -349,17 +349,35 @@ export default function Crosslist() {
   );
 
   // Compute which marketplaces an item is actually crosslisted to
-  // Checks both marketplace listings AND inventory item listing IDs
+  // Checks: marketplace listings, item listing IDs, and marketplace_listings object
   const computeListingState = (item) => {
     const listings = getItemListings(item.id);
     const activeListings = listings.filter(l => l.status === 'active');
     
+    // Check multiple sources for each marketplace
+    const checkListed = (marketplace) => {
+      // Check marketplace listing records
+      if (activeListings.some(l => l.marketplace === marketplace)) return true;
+      
+      // Check direct listing ID field (e.g., ebay_listing_id)
+      const listingIdField = `${marketplace}_listing_id`;
+      if (item[listingIdField] && String(item[listingIdField]).trim()) return true;
+      
+      // Check marketplace_listings object (e.g., marketplace_listings.ebay)
+      if (item.marketplace_listings?.[marketplace]?.listing_id) return true;
+      
+      // Check if status is 'listed' and this is the primary marketplace
+      if (item.status === 'listed' && item[listingIdField]) return true;
+      
+      return false;
+    };
+    
     return {
-      ebay:     activeListings.some(l => l.marketplace === 'ebay') || !!(item.ebay_listing_id && item.ebay_listing_id.trim()),
-      facebook: activeListings.some(l => l.marketplace === 'facebook') || !!(item.facebook_listing_id && item.facebook_listing_id.trim()),
-      mercari:  activeListings.some(l => l.marketplace === 'mercari') || !!(item.mercari_listing_id && item.mercari_listing_id.trim()),
-      etsy:     activeListings.some(l => l.marketplace === 'etsy') || !!(item.etsy_listing_id && item.etsy_listing_id.trim()),
-      poshmark: activeListings.some(l => l.marketplace === 'poshmark') || !!(item.poshmark_listing_id && item.poshmark_listing_id.trim()),
+      ebay:     checkListed('ebay'),
+      facebook: checkListed('facebook'),
+      mercari:  checkListed('mercari'),
+      etsy:     checkListed('etsy'),
+      poshmark: checkListed('poshmark'),
     };
   };
 
