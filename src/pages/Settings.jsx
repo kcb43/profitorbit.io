@@ -386,6 +386,13 @@ export default function Settings() {
       } else if (marketplaceId === 'ebay') {
         localStorage.removeItem('ebay_user_token');
         localStorage.removeItem('ebay_username');
+      } else if (marketplaceId === 'mercari') {
+        // Clear Mercari connection
+        setMercariConnected(false);
+        localStorage.removeItem('profit_orbit_mercari_connected');
+        localStorage.removeItem('profit_orbit_mercari_user');
+        localStorage.removeItem('mercari_session_detected');
+        localStorage.removeItem('mercari_user_info');
       }
 
       await loadMarketplaceAccounts();
