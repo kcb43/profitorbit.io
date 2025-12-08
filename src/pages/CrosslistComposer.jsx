@@ -224,9 +224,24 @@ const createInitialTemplateState = (item) => {
   const shouldClearCategory = itemCategory && PREDEFINED_CATEGORIES.includes(itemCategory);
   const category = shouldClearCategory ? "" : itemCategory;
   
+  // Load all images from inventory item
+  let photos = [];
+  if (item?.images && Array.isArray(item.images) && item.images.length > 0) {
+    // Use the images array if available
+    photos = item.images.map((img, index) => ({
+      id: `inventory-photo-${index}`,
+      preview: img.imageUrl || img.url || img,
+      fileName: `Inventory photo ${index + 1}`,
+      fromInventory: true
+    }));
+  } else if (item?.image_url) {
+    // Fallback to single image_url if images array not available
+    photos = [{ id: "inventory-photo", preview: item.image_url, fileName: "Inventory photo", fromInventory: true }];
+  }
+  
   const general = {
     ...GENERAL_TEMPLATE_DEFAULT,
-    photos: item?.image_url ? [{ id: "inventory-photo", preview: item.image_url, fileName: "Inventory photo", fromInventory: true }] : [],
+    photos: photos,
     title: item?.item_name || "",
     description: item?.notes || "",
     brand: item?.brand || "",
@@ -2513,10 +2528,16 @@ export default function CrosslistComposer() {
       setTemplateForms((prev) => {
         const updated = { ...prev };
         if (marketplace === 'general') {
+          const newGeneralPhotos = [...(prev.general.photos || []), ...processedPhotos];
           updated.general = {
             ...prev.general,
-            photos: [...(prev.general.photos || []), ...processedPhotos],
+            photos: newGeneralPhotos,
           };
+          // Sync photos to all marketplace forms
+          updated.ebay = { ...prev.ebay, photos: newGeneralPhotos };
+          updated.etsy = { ...prev.etsy, photos: newGeneralPhotos };
+          updated.mercari = { ...prev.mercari, photos: newGeneralPhotos };
+          updated.facebook = { ...prev.facebook, photos: newGeneralPhotos };
         } else {
           updated[marketplace] = {
             ...prev[marketplace],
@@ -2575,10 +2596,16 @@ export default function CrosslistComposer() {
       
       const updated = { ...prev };
       if (marketplace === 'general') {
+        const newGeneralPhotos = prev.general.photos.filter((photo) => photo.id !== photoId);
         updated.general = {
           ...prev.general,
-          photos: prev.general.photos.filter((photo) => photo.id !== photoId),
+          photos: newGeneralPhotos,
         };
+        // Sync photos to all marketplace forms
+        updated.ebay = { ...prev.ebay, photos: newGeneralPhotos };
+        updated.etsy = { ...prev.etsy, photos: newGeneralPhotos };
+        updated.mercari = { ...prev.mercari, photos: newGeneralPhotos };
+        updated.facebook = { ...prev.facebook, photos: newGeneralPhotos };
       } else {
         updated[marketplace] = {
           ...prev[marketplace],
@@ -2608,6 +2635,11 @@ export default function CrosslistComposer() {
           ...prev.general,
           photos: [],
         };
+        // Sync empty photos to all marketplace forms
+        updated.ebay = { ...prev.ebay, photos: [] };
+        updated.etsy = { ...prev.etsy, photos: [] };
+        updated.mercari = { ...prev.mercari, photos: [] };
+        updated.facebook = { ...prev.facebook, photos: [] };
       } else {
         updated[marketplace] = {
           ...prev[marketplace],
@@ -2648,6 +2680,11 @@ export default function CrosslistComposer() {
             ...updated.general,
             photos: updatedPhotos,
           };
+          // Sync edited photos to all marketplace forms
+          updated.ebay = { ...updated.ebay, photos: updatedPhotos };
+          updated.etsy = { ...updated.etsy, photos: updatedPhotos };
+          updated.mercari = { ...updated.mercari, photos: updatedPhotos };
+          updated.facebook = { ...updated.facebook, photos: updatedPhotos };
         } else {
           updated[imageToEdit.marketplace] = {
             ...updated[imageToEdit.marketplace],
@@ -2703,6 +2740,11 @@ export default function CrosslistComposer() {
             ...updated.general,
             photos: updatedPhotos,
           };
+          // Sync filter-applied photos to all marketplace forms
+          updated.ebay = { ...updated.ebay, photos: updatedPhotos };
+          updated.etsy = { ...updated.etsy, photos: updatedPhotos };
+          updated.mercari = { ...updated.mercari, photos: updatedPhotos };
+          updated.facebook = { ...updated.facebook, photos: updatedPhotos };
         } else {
           updated[imageToEdit.marketplace] = {
             ...updated[imageToEdit.marketplace],
@@ -2742,6 +2784,11 @@ export default function CrosslistComposer() {
             ...prev.general,
             photos,
           },
+          // Sync reordered photos to all marketplace forms
+          ebay: { ...prev.ebay, photos },
+          etsy: { ...prev.etsy, photos },
+          mercari: { ...prev.mercari, photos },
+          facebook: { ...prev.facebook, photos },
         };
       } else {
         return {
