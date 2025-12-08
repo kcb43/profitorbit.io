@@ -128,7 +128,25 @@ const MERCARI_CATEGORIES = {
           "11_all": { id: "11", name: "All Dresses" }
         }
       },
-      "12": { id: "12", name: "Tops & blouses" },
+      "12": { 
+        id: "12", 
+        name: "Tops & blouses",
+        subcategories: {
+          "155": { id: "155", name: "Blouse" },
+          "156": { id: "156", name: "Button down shirt" },
+          "157": { id: "157", name: "Halter" },
+          "158": { id: "158", name: "Knit top" },
+          "159": { id: "159", name: "Polo shirt" },
+          "161": { id: "161", name: "T-shirts" },
+          "162": { id: "162", name: "Tunic" },
+          "163": { id: "163", name: "Turtleneck" },
+          "164": { id: "164", name: "Wrap" },
+          "1955": { id: "1955", name: "Bodysuits" },
+          "1956": { id: "1956", name: "Camisoles" },
+          "1957": { id: "1957", name: "Tank Tops" },
+          "165": { id: "165", name: "Other" }
+        }
+      },
       "13": { 
         id: "13", 
         name: "Sweaters",
