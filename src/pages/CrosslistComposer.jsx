@@ -6190,6 +6190,31 @@ export default function CrosslistComposer() {
                     </div>
                   </div>
                 )}
+
+                {/* Size Field - Only shows for clothing/shoes/apparel categories */}
+                {((mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('clothing') ||
+                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('shoes') ||
+                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('apparel') ||
+                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('men') ||
+                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('women') ||
+                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('kids')) && (
+                  <div className="mt-4">
+                    <Label className="text-xs mb-1.5 block">
+                      Size <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      placeholder={generalForm.size ? `Inherited: ${generalForm.size}` : "e.g., M, L, XL, 32, 10"}
+                      value={mercariForm.size || ""}
+                      onChange={(e) => handleMarketplaceChange("mercari", "size", e.target.value)}
+                      required
+                    />
+                    {generalForm.size && !mercariForm.size && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Inherited from General form. You can edit this field.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Item Details Section */}
@@ -6291,24 +6316,6 @@ export default function CrosslistComposer() {
                   )}
                 </div>
 
-                {/* Size Section - Only shows if category is clothing/shoes/apparel */}
-                {((mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('clothing') ||
-                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('shoes') ||
-                  (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('apparel')) && (
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Size</Label>
-                    <Input
-                      placeholder={generalForm.size ? `Inherited: ${generalForm.size}` : "e.g., M, 10, 32W x 34L"}
-                      value={mercariForm.size || ""}
-                      onChange={(e) => handleMarketplaceChange("mercari", "size", e.target.value)}
-                    />
-                    {generalForm.size && !mercariForm.size && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Inherited from General form. You can edit this field.
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Pricing & Inventory Section */}
