@@ -70,15 +70,18 @@ window.addEventListener('message', async (event) => {
   
   if (event.data.type === 'CREATE_MERCARI_LISTING') {
     console.log('Forwarding Mercari listing request to extension...');
+    console.log('chrome.runtime available:', !!chrome.runtime);
+    console.log('Listing data to send:', event.data.listingData);
     
     try {
       // Forward to background script (Manifest V3 uses promises)
+      console.log('Calling chrome.runtime.sendMessage...');
       const response = await chrome.runtime.sendMessage({
         type: 'CREATE_MERCARI_LISTING',
         listingData: event.data.listingData
       });
       
-      console.log('Extension response:', response);
+      console.log('✅ Extension response received:', response);
       
       // Send response back to web app
       window.postMessage({
