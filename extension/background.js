@@ -108,45 +108,71 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
     console.log('Background received Mercari listing request');
     const listingData = message.listingData;
     
-    // Find Mercari tab or create new one
-    chrome.tabs.query({ url: 'https://www.mercari.com/*' }, (tabs) => {
-      if (tabs.length > 0) {
-        // Send to existing Mercari tab
-        const mercariTab = tabs[0];
-        chrome.tabs.sendMessage(mercariTab.id, {
-          type: 'CREATE_LISTING',
-          listingData: listingData
-        }, (response) => {
-          console.log('Mercari tab response:', response);
-          sendResponse(response || { success: false, error: 'No response from Mercari tab' });
-        });
-      } else {
-        // Open new Mercari sell page
-        chrome.tabs.create({
-          url: 'https://www.mercari.com/sell/',
-          active: false
-        }, (tab) => {
-          console.log('Opened new Mercari tab:', tab.id);
-          // Wait for page to load, then send listing data
-          chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-            if (tabId === tab.id && info.status === 'complete') {
-              chrome.tabs.onUpdated.removeListener(listener);
-              console.log('Mercari page loaded, sending listing data...');
-              setTimeout(() => {
-                chrome.tabs.sendMessage(tab.id, {
-                  type: 'CREATE_LISTING',
-                  listingData: listingData
-                }, (response) => {
-                  console.log('Mercari content script response:', response);
-                  sendResponse(response || { success: false, error: 'No response from Mercari tab' });
-                });
-              }, 2000); // Give Mercari extra time to initialize
-            }
+    // Handle async response
+    (async () => {
+      try {
+        // Find Mercari tab or create new one
+        const tabs = await chrome.tabs.query({ url: 'https://www.mercari.com/*' });
+        
+        if (tabs.length > 0) {
+          // Send to existing Mercari tab
+          console.log('Using existing Mercari tab:', tabs[0].id);
+          const mercariTab = tabs[0];
+          
+          try {
+            const response = await chrome.tabs.sendMessage(mercariTab.id, {
+              type: 'CREATE_LISTING',
+              listingData: listingData
+            });
+            console.log('Mercari tab response:', response);
+            sendResponse(response || { success: false, error: 'No response from Mercari tab' });
+          } catch (error) {
+            console.error('Error sending to Mercari tab:', error);
+            sendResponse({ success: false, error: 'Failed to communicate with Mercari tab' });
+          }
+        } else {
+          // Open new Mercari sell page
+          console.log('Opening new Mercari sell page...');
+          const tab = await chrome.tabs.create({
+            url: 'https://www.mercari.com/sell/',
+            active: false
           });
-        });
-        sendResponse({ success: true, message: 'Opening Mercari sell page...' });
+          
+          console.log('Opened new Mercari tab:', tab.id);
+          
+          // Wait for page to load
+          await new Promise((resolve) => {
+            chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+              if (tabId === tab.id && info.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                console.log('Mercari page loaded');
+                resolve();
+              }
+            });
+          });
+          
+          // Give Mercari extra time to initialize
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          console.log('Sending listing data to Mercari content script...');
+          try {
+            const response = await chrome.tabs.sendMessage(tab.id, {
+              type: 'CREATE_LISTING',
+              listingData: listingData
+            });
+            console.log('Mercari content script response:', response);
+            sendResponse(response || { success: false, error: 'No response from Mercari content script' });
+          } catch (error) {
+            console.error('Error sending to new Mercari tab:', error);
+            sendResponse({ success: false, error: 'Failed to communicate with Mercari content script' });
+          }
+        }
+      } catch (error) {
+        console.error('Error in Mercari listing flow:', error);
+        sendResponse({ success: false, error: error.message });
       }
-    });
+    })();
+    
     return true; // Keep channel open for async response
   }
   
