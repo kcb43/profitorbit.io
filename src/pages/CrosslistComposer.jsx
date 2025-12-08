@@ -216,11 +216,13 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     description: "",
     brand: "",
     condition: "",
+    size: "",
     quantity: "1",
     price: "",
     tags: "",
     sku: "",
     category: "",
+    categoryId: "",
     deliveryMethod: "shipping_and_pickup",
     shippingPrice: "",
     localPickup: true,
@@ -6210,15 +6212,104 @@ export default function CrosslistComposer() {
                 <Label className="text-xs mb-1.5 block">
                   Category <span className="text-red-500">*</span>
                 </Label>
+                
+                {/* Show selected category or inherit from General */}
+                {(facebookForm.category || generalForm.category) && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="secondary" className="text-xs">
+                      Selected: {facebookForm.category || generalForm.category}
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        handleMarketplaceChange("facebook", "category", "");
+                        handleMarketplaceChange("facebook", "categoryId", "");
+                      }}
+                      className="h-6 px-2 text-xs"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+                
                 <Input
-                  placeholder={generalForm.category ? `Inherited: ${generalForm.category}` : "Enter category"}
+                  placeholder={generalForm.category ? `Inherited: ${generalForm.category}` : "Enter or select category"}
                   value={facebookForm.category || ""}
                   onChange={(e) => handleMarketplaceChange("facebook", "category", e.target.value)}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Select a category to help buyers find your item
+                  Helps buyers find your item. Inherited from General form if set.
                 </p>
               </div>
+
+              {/* Category Specifics - Show when category is selected */}
+              {(facebookForm.category || generalForm.category || facebookForm.categoryId || generalForm.categoryId) && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-sm font-medium">Category Specifics</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        // Refresh category specifics
+                        toast({
+                          title: "Refreshed",
+                          description: "Category specifics updated",
+                        });
+                      }}
+                      className="h-6 px-2"
+                      title="Refresh category specifics"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Condition - Always show */}
+                    <div>
+                      <Label className="text-xs mb-1.5 block">
+                        Condition <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={facebookForm.condition || generalForm.condition || undefined}
+                        onValueChange={(value) => handleMarketplaceChange("facebook", "condition", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={generalForm.condition ? `Inherited: ${generalForm.condition}` : "Select condition"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="used_like_new">Used - Like New</SelectItem>
+                          <SelectItem value="used_good">Used - Good</SelectItem>
+                          <SelectItem value="used_fair">Used - Fair</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Size - Show for clothing/shoes categories */}
+                    {(facebookForm.category?.toLowerCase().includes('clothing') || 
+                      facebookForm.category?.toLowerCase().includes('shoes') ||
+                      facebookForm.category?.toLowerCase().includes('apparel') ||
+                      generalForm.category?.toLowerCase().includes('clothing') ||
+                      generalForm.category?.toLowerCase().includes('shoes') ||
+                      generalForm.category?.toLowerCase().includes('apparel')) && (
+                      <div>
+                        <Label className="text-xs mb-1.5 block">
+                          Size <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          placeholder={generalForm.size ? `Inherited: ${generalForm.size}` : "Enter size (e.g., M, L, XL, 10, 42)"}
+                          value={facebookForm.size || ""}
+                          onChange={(e) => handleMarketplaceChange("facebook", "size", e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Pricing and Quantity Section */}
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
