@@ -1332,8 +1332,8 @@ export default function Crosslist() {
                             key={m.id}
                             className={`glass inline-flex items-center justify-center w-12 h-12 rounded-lg border-2 transition-all cursor-pointer hover:scale-110 ${
                               isListed
-                                ? "bg-green-500/30 border-green-400 shadow-lg shadow-green-500/50 opacity-100"
-                                : "bg-white/90 border-gray-300 opacity-100 hover:bg-white hover:shadow-md"
+                                ? "bg-white border-white shadow-lg shadow-white/20 opacity-100"
+                                : "bg-gray-500/10 border-gray-600/50 opacity-40 hover:opacity-60"
                             }`}
                             style={{
                               backdropFilter: 'blur(10px)',

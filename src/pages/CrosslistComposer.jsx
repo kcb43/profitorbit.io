@@ -2113,13 +2113,35 @@ export default function CrosslistComposer() {
             }
           }
           
-          // Update inventory item status if we have a current item
+          // Update inventory item status and save marketplace listing
           if (currentEditingItemId) {
             try {
+              // Update inventory item status
               await base44.entities.InventoryItem.update(currentEditingItemId, {
                 status: 'listed',
                 ebay_listing_id: listingItemId || '',
               });
+              
+              // Save marketplace listing record
+              const listingData = {
+                inventory_item_id: currentEditingItemId,
+                marketplace: 'ebay',
+                marketplace_listing_id: listingItemId || '',
+                marketplace_listing_url: result.ListingURL || `https://www.ebay.com/itm/${listingItemId}`,
+                status: 'active',
+                listed_at: new Date().toISOString(),
+                metadata: result,
+              };
+              
+              // Save to localStorage (CrosslistingEngine method)
+              const listings = JSON.parse(localStorage.getItem('marketplace_listings') || '[]');
+              listings.push({
+                ...listingData,
+                id: `listing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                created_at: new Date().toISOString(),
+              });
+              localStorage.setItem('marketplace_listings', JSON.stringify(listings));
+              
               queryClient.invalidateQueries(['inventoryItems']);
             } catch (updateError) {
               console.error('Error updating inventory item:', updateError);
@@ -2231,13 +2253,35 @@ export default function CrosslistComposer() {
             description: result.message || `Your item has been listed on Facebook Marketplace (${selectedPage.name}).`,
           });
 
-          // Update inventory item status if we have a current item
+          // Update inventory item status and save marketplace listing
           if (currentEditingItemId) {
             try {
+              // Update inventory item status
               await base44.entities.InventoryItem.update(currentEditingItemId, {
                 status: 'listed',
                 facebook_listing_id: result.id || '',
               });
+              
+              // Save marketplace listing record
+              const listingData = {
+                inventory_item_id: currentEditingItemId,
+                marketplace: 'facebook',
+                marketplace_listing_id: result.id || '',
+                marketplace_listing_url: result.url || '',
+                status: 'active',
+                listed_at: new Date().toISOString(),
+                metadata: result,
+              };
+              
+              // Save to localStorage
+              const listings = JSON.parse(localStorage.getItem('marketplace_listings') || '[]');
+              listings.push({
+                ...listingData,
+                id: `listing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                created_at: new Date().toISOString(),
+              });
+              localStorage.setItem('marketplace_listings', JSON.stringify(listings));
+              
               queryClient.invalidateQueries(['inventoryItems']);
             } catch (updateError) {
               console.error('Error updating inventory item:', updateError);
