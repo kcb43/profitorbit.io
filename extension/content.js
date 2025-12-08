@@ -284,9 +284,16 @@ async function createMercariListing(listingData) {
     await waitForElement('[data-testid="Title"], #sellName', 10000);
     
     // Fill in form fields
-    await fillMercariForm(listingData);
+    console.log('📝 Starting to fill form fields...');
+    const fillResult = await fillMercariForm(listingData);
+    console.log('📝 Form fill result:', fillResult);
+    
+    // Wait a bit for all changes to take effect
+    console.log('⏳ Waiting 2s for form to update...');
+    await sleep(2000);
     
     // Submit the form
+    console.log('📤 Attempting to submit form...');
     const submitResult = await submitMercariForm();
     
     console.log('Mercari listing submit result:', submitResult);
@@ -550,12 +557,29 @@ function sleep(ms) {
 
 // Submit Mercari form
 async function submitMercariForm() {
+  console.log('🔍 Checking form before submit...');
+  
+  // Check what fields are filled
+  const titleInput = document.querySelector('[data-testid="Title"]') || document.querySelector('#sellName');
+  const descInput = document.querySelector('[data-testid="Description"]') || document.querySelector('#sellDescription');
+  const priceInput = document.querySelector('[data-testid="Price"]') || document.querySelector('#Price');
+  const categoryDropdown = document.querySelector('[data-testid="CategoryL0"]');
+  const conditionDropdown = document.querySelector('[data-testid="Condition"]');
+  
+  console.log('Form field check:', {
+    title: titleInput?.value || 'MISSING',
+    description: descInput?.value ? 'SET' : 'MISSING',
+    price: priceInput?.value || 'MISSING',
+    category: categoryDropdown?.textContent || 'MISSING',
+    condition: conditionDropdown?.textContent || 'MISSING'
+  });
+  
   // Find the List button using actual Mercari selector
   const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
                    document.querySelector('button[type="submit"]');
   
   if (!submitBtn) {
-    console.error('Submit button not found');
+    console.error('❌ Submit button not found');
     return {
       success: false,
       error: 'List button not found on page'
@@ -564,42 +588,61 @@ async function submitMercariForm() {
   
   // Check if button is enabled (Mercari disables it if form is invalid)
   if (submitBtn.disabled) {
-    console.error('Submit button is disabled - form may be incomplete');
+    console.error('❌ Submit button is disabled - checking for missing required fields...');
+    
+    // Try to identify what's missing
+    const missingFields = [];
+    if (!titleInput?.value) missingFields.push('Title');
+    if (!descInput?.value) missingFields.push('Description');
+    if (!priceInput?.value) missingFields.push('Price');
+    if (categoryDropdown?.textContent === 'Select category') missingFields.push('Category');
+    if (conditionDropdown?.textContent === 'Select condition') missingFields.push('Condition');
+    
+    // Check for photo requirement
+    const photoCount = document.querySelectorAll('[data-testid="Photo"]').length;
+    if (photoCount === 0) missingFields.push('Photos (at least 1 required)');
+    
     return {
       success: false,
-      error: 'Form incomplete - please fill in required fields (Category, Condition, etc.)'
+      error: `Form incomplete. Missing: ${missingFields.join(', ')}`
     };
   }
   
-  console.log('Clicking List button...');
+  console.log('✅ Submit button is enabled, clicking...');
   submitBtn.click();
   
   // Wait for navigation/success page
-  await sleep(3000);
+  console.log('⏳ Waiting for submission to complete...');
+  await sleep(5000);
   
   // Try to detect success and extract listing URL
-  // After successful listing, Mercari usually redirects to the item page
-  // or shows a success message
   const currentUrl = window.location.href;
+  console.log('Current URL after submit:', currentUrl);
   
   if (currentUrl.includes('/item/')) {
     // Successfully created - URL contains item ID
     const listingId = currentUrl.split('/item/')[1]?.split('/')[0] || '';
     
+    console.log('✅ SUCCESS! Listing created:', listingId);
     return {
       success: true,
       listingId: listingId,
       listingUrl: currentUrl
     };
   } else if (currentUrl.includes('/sell')) {
-    // Still on sell page - might have failed or validation error
+    // Still on sell page - check for error messages
+    const errorMsg = document.querySelector('[class*="error"], [class*="Error"], [role="alert"]');
+    const errorText = errorMsg?.textContent || 'Unknown validation error';
+    
+    console.error('❌ Still on sell page. Error:', errorText);
     return {
       success: false,
-      error: 'Listing may have failed - still on sell page. Check for validation errors.'
+      error: `Listing failed: ${errorText}`
     };
   }
   
   // Unknown state
+  console.warn('⚠️ Unknown state after submit');
   return {
     success: false,
     error: 'Unable to determine listing status'
