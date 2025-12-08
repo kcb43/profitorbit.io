@@ -46,11 +46,38 @@ const LOGIN_DETECTORS = {
   },
   
   ebay: () => {
-    return !!(
-      document.querySelector('#gh-ug') || // eBay user greeting
-      document.querySelector('[data-test="account-link"]') ||
-      document.querySelector('.gh-menu .gh-eb-li-a')
-    );
+    // Debug: log what we find
+    const debugSelectors = {
+      'gh-ug': document.querySelector('#gh-ug'),
+      'gh-eb-My': document.querySelector('[id="gh-eb-My"]'),
+      'myebay-link': document.querySelector('a[href*="/mye/myebay"]'),
+      'signin-link': document.querySelector('a[href*="/signin"]'),
+      'watchlist': document.querySelector('a[href*="/mye/myebay/watchlist"]'),
+      'account-button': document.querySelector('button[aria-label*="Account"]'),
+      'user-menu': document.querySelector('[data-test="user-menu"]')
+    };
+    
+    console.log('eBay selectors found:', debugSelectors);
+    
+    // Check multiple eBay login indicators
+    const hasUserGreeting = !!document.querySelector('#gh-ug');
+    const hasMyEbay = !!document.querySelector('[id*="gh-eb-My"]') || !!document.querySelector('a[href*="/mye/myebay"]');
+    const hasWatchlist = !!document.querySelector('a[href*="watchlist"]');
+    const noSignInLink = !document.querySelector('a[href="/signin/"]');
+    const hasAccountMenu = !!document.querySelector('button[aria-label*="Account"]');
+    
+    const isLoggedIn = hasUserGreeting || hasMyEbay || hasWatchlist || (noSignInLink && hasAccountMenu);
+    
+    console.log('eBay login indicators:', {
+      hasUserGreeting,
+      hasMyEbay,
+      hasWatchlist,
+      noSignInLink,
+      hasAccountMenu,
+      result: isLoggedIn
+    });
+    
+    return isLoggedIn;
   },
   
   etsy: () => {
@@ -135,10 +162,20 @@ function getUserInfo() {
   };
 }
 
-// Send login status to background script
+// Send login status to background script AND update localStorage for web app
 function updateLoginStatus() {
   const userInfo = getUserInfo();
   
+  // Update localStorage so Profit Orbit web app can read it
+  if (userInfo.loggedIn) {
+    localStorage.setItem(`${MARKETPLACE}_session_detected`, 'true');
+    localStorage.setItem(`${MARKETPLACE}_user_info`, JSON.stringify(userInfo));
+  } else {
+    localStorage.removeItem(`${MARKETPLACE}_session_detected`);
+    localStorage.removeItem(`${MARKETPLACE}_user_info`);
+  }
+  
+  // Send to background script
   chrome.runtime.sendMessage({
     type: `${MARKETPLACE?.toUpperCase()}_LOGIN_STATUS`,
     marketplace: MARKETPLACE,
