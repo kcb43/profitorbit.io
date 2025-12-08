@@ -359,28 +359,55 @@ export default function Crosslist() {
     // Check multiple sources for each marketplace
     const checkListed = (marketplace) => {
       // Check marketplace listing records
-      if (activeListings.some(l => l.marketplace === marketplace)) return true;
+      if (activeListings.some(l => l.marketplace === marketplace)) {
+        console.log(`✓ ${marketplace} listed (from marketplace records):`, item.item_name);
+        return true;
+      }
       
       // Check direct listing ID field (e.g., ebay_listing_id)
       const listingIdField = `${marketplace}_listing_id`;
-      if (item[listingIdField] && String(item[listingIdField]).trim()) return true;
+      if (item[listingIdField] && String(item[listingIdField]).trim()) {
+        console.log(`✓ ${marketplace} listed (from ${listingIdField}):`, item[listingIdField], item.item_name);
+        return true;
+      }
       
       // Check marketplace_listings object (e.g., marketplace_listings.ebay)
-      if (item.marketplace_listings?.[marketplace]?.listing_id) return true;
+      if (item.marketplace_listings?.[marketplace]?.listing_id) {
+        console.log(`✓ ${marketplace} listed (from marketplace_listings object):`, item.marketplace_listings[marketplace].listing_id, item.item_name);
+        return true;
+      }
       
       // Check if status is 'listed' and this is the primary marketplace
-      if (item.status === 'listed' && item[listingIdField]) return true;
+      if (item.status === 'listed' && item[listingIdField]) {
+        console.log(`✓ ${marketplace} listed (status + listing ID):`, item[listingIdField], item.item_name);
+        return true;
+      }
       
       return false;
     };
     
-    return {
+    const state = {
       ebay:     checkListed('ebay'),
       facebook: checkListed('facebook'),
       mercari:  checkListed('mercari'),
       etsy:     checkListed('etsy'),
       poshmark: checkListed('poshmark'),
     };
+    
+    // Log item details if it has listed status but no listings detected
+    if (item.status === 'listed' && !Object.values(state).some(Boolean)) {
+      console.warn('⚠️ Item marked as listed but no marketplace detected:', {
+        itemName: item.item_name,
+        itemId: item.id,
+        status: item.status,
+        ebay_listing_id: item.ebay_listing_id,
+        facebook_listing_id: item.facebook_listing_id,
+        marketplace_listings: item.marketplace_listings,
+        availableFields: Object.keys(item)
+      });
+    }
+    
+    return state;
   };
 
   const populateTemplates = React.useCallback(
