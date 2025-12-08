@@ -1922,11 +1922,12 @@ export default function CrosslistComposer() {
     if (!ebayForm.buyItNowPrice) errors.push("Buy It Now Price");
     if (!ebayForm.color) errors.push("Color");
     
-    // Check for valid category ID (not empty, not "0", not 0)
-    const hasValidCategory = ebayForm.categoryId && 
-                            String(ebayForm.categoryId).trim() !== '' && 
-                            ebayForm.categoryId !== '0' && 
-                            ebayForm.categoryId !== 0;
+    // Check for valid category ID from either eBay form or General form (since they sync)
+    const categoryIdToCheck = ebayForm.categoryId || generalForm.categoryId;
+    const hasValidCategory = categoryIdToCheck && 
+                            String(categoryIdToCheck).trim() !== '' && 
+                            categoryIdToCheck !== '0' && 
+                            categoryIdToCheck !== 0;
     
     if (!hasValidCategory) errors.push("Category");
     // Only require Type if category is selected and ebayTypeAspect exists with values
