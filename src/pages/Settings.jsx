@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Palette, 
@@ -77,9 +78,9 @@ const MARKETPLACES = [
     name: 'Mercari',
     icon: Package,
     color: 'bg-orange-500',
-    description: 'List items on Mercari',
-    requiredPermissions: ['API access'],
-    status: 'coming_soon',
+    description: 'List items on Mercari via browser extension',
+    requiredPermissions: ['Browser extension required'],
+    status: 'available',
   },
   {
     id: 'poshmark',
@@ -101,7 +102,14 @@ export default function Settings() {
   const [marketplaceAccounts, setMarketplaceAccounts] = useState({});
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [facebookConfigId, setFacebookConfigId] = useState('');
-  const { sdkReady, fbInstance } = useFacebookSDK();
+  const [mercariSaleDetection, setMercariSaleDetection] = useState(() => {
+    return localStorage.getItem('mercari_sale_detection') === 'true';
+  });
+  const [mercariEnhancedConnection, setMercariEnhancedConnection] = useState(() => {
+    return localStorage.getItem('mercari_enhanced_connection') === 'true';
+  });
+  const [mercariConnected, setMercariConnected] = useState(false);
+  const { sdkReady, fbInstance} = useFacebookSDK();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -267,6 +275,45 @@ export default function Settings() {
     window.location.href = '/auth/facebook/auth';
   };
 
+  const handleMercariLogin = () => {
+    // Open Mercari login in a popup window
+    const width = 500;
+    const height = 600;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    window.open(
+      'https://www.mercari.com/login/',
+      'MercariLogin',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+    
+    toast({
+      title: 'Mercari Login Opened',
+      description: 'Log into Mercari in the popup window, then close it and click "Connect Mercari".',
+    });
+  };
+
+  const handleMercariConnect = () => {
+    // Check if extension detected Mercari session
+    // For now, this is a placeholder - will need browser extension
+    const hasMercariSession = localStorage.getItem('mercari_session_detected') === 'true';
+    
+    if (hasMercariSession) {
+      setMercariConnected(true);
+      toast({
+        title: 'Mercari Connected!',
+        description: 'Your Mercari account is now connected.',
+      });
+    } else {
+      toast({
+        title: 'Not Logged In',
+        description: 'Please click "Mercari Login" first and log into your Mercari account.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleMarketplaceConnect = (marketplaceId) => {
     console.log('handleMarketplaceConnect called with:', marketplaceId);
     if (marketplaceId === 'facebook') {
@@ -274,6 +321,8 @@ export default function Settings() {
       loginWithFacebook();
     } else if (marketplaceId === 'ebay') {
       window.location.href = '/api/ebay/auth';
+    } else if (marketplaceId === 'mercari') {
+      handleMercariConnect();
     } else {
       toast({
         title: 'Coming Soon',
@@ -545,6 +594,60 @@ export default function Settings() {
                           </div>
                         )}
 
+                        {/* Mercari-specific options */}
+                        {marketplace.id === 'mercari' && (
+                          <div className="space-y-3 pt-2">
+                            {/* Sale Detection Toggle */}
+                            <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
+                              <div className="flex-1">
+                                <Label htmlFor="mercari-sale-detection" className="text-xs font-medium cursor-pointer">
+                                  Sale Detection
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  Auto-delist from other marketplaces when sold on Mercari
+                                </p>
+                              </div>
+                              <Switch
+                                id="mercari-sale-detection"
+                                checked={mercariSaleDetection}
+                                onCheckedChange={(checked) => {
+                                  setMercariSaleDetection(checked);
+                                  localStorage.setItem('mercari_sale_detection', checked);
+                                }}
+                                disabled={!mercariConnected}
+                              />
+                            </div>
+
+                            {/* Enhanced Connection Toggle */}
+                            <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
+                              <div className="flex-1">
+                                <Label htmlFor="mercari-enhanced" className="text-xs font-medium cursor-pointer">
+                                  Enhanced Connection
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  Improves connection stability, helps prevent listing failures
+                                </p>
+                              </div>
+                              <Switch
+                                id="mercari-enhanced"
+                                checked={mercariEnhancedConnection}
+                                onCheckedChange={(checked) => {
+                                  setMercariEnhancedConnection(checked);
+                                  localStorage.setItem('mercari_enhanced_connection', checked);
+                                }}
+                                disabled={!mercariConnected}
+                              />
+                            </div>
+
+                            {/* Account switch info */}
+                            {mercariConnected && (
+                              <p className="text-[10px] text-muted-foreground text-center px-2">
+                                To switch accounts, log into the different account directly on mercari.com
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         <div className="flex gap-2">
                           {status.connected ? (
                             <>
@@ -567,6 +670,26 @@ export default function Settings() {
                               >
                                 <XCircle className="w-3 h-3 mr-1" />
                                 Disconnect
+                              </Button>
+                            </>
+                          ) : marketplace.id === 'mercari' ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleMercariLogin}
+                                className="flex-1 text-xs"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Mercari Login
+                              </Button>
+                              <Button
+                                onClick={() => handleMarketplaceConnect(marketplace.id)}
+                                className="flex-1 text-xs"
+                                size="sm"
+                              >
+                                <Icon className="w-3 h-3 mr-1" />
+                                Connect Mercari
                               </Button>
                             </>
                           ) : (
