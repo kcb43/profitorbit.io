@@ -182,7 +182,32 @@ export default function Settings() {
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    
+    // Listen for extension marketplace status updates
+    const handleMarketplaceUpdate = (event) => {
+      console.log('Marketplace status update received:', event.detail);
+      
+      if (event.detail.marketplace === 'mercari' && event.detail.status.loggedIn) {
+        setMercariConnected(true);
+        toast({
+          title: 'Mercari Detected!',
+          description: `Logged in as ${event.detail.status.userName}`,
+        });
+      }
+    };
+    
+    window.addEventListener('marketplaceStatusUpdate', handleMarketplaceUpdate);
+    
+    // Check if already connected on mount
+    const mercariStatus = localStorage.getItem('profit_orbit_mercari_connected');
+    if (mercariStatus === 'true') {
+      setMercariConnected(true);
+    }
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('marketplaceStatusUpdate', handleMarketplaceUpdate);
+    };
   }, [searchParams, navigate, toast]);
 
   const checkFacebookStatus = async () => {
@@ -276,39 +301,50 @@ export default function Settings() {
   };
 
   const handleMercariLogin = () => {
-    // Open Mercari login in a popup window
-    const width = 500;
-    const height = 600;
-    const left = (window.screen.width / 2) - (width / 2);
-    const top = (window.screen.height / 2) - (height / 2);
-    
-    window.open(
-      'https://www.mercari.com/login/',
-      'MercariLogin',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
+    // Open Mercari login in a new tab (content script will detect login there)
+    window.open('https://www.mercari.com/login/', '_blank');
     
     toast({
       title: 'Mercari Login Opened',
-      description: 'Log into Mercari in the popup window, then close it and click "Connect Mercari".',
+      description: 'Log into Mercari in the new tab. Once logged in, come back here and click "Connect Mercari".',
+      duration: 6000,
     });
   };
 
-  const handleMercariConnect = () => {
-    // Check if extension detected Mercari session
-    // For now, this is a placeholder - will need browser extension
-    const hasMercariSession = localStorage.getItem('mercari_session_detected') === 'true';
-    
-    if (hasMercariSession) {
-      setMercariConnected(true);
+  const handleMercariConnect = async () => {
+    // Query ALL installed extensions for Profit Orbit extension
+    // This works because we added externally_connectable to manifest
+    try {
+      // Get list of all extensions (requires permission)
+      // Since we can't enumerate extensions, we'll try to communicate with our known extension
+      
+      // First, check if extension posted to localStorage on THIS domain
+      const mercariStatus = localStorage.getItem('profit_orbit_mercari_connected');
+      
+      if (mercariStatus === 'true') {
+        const userInfo = JSON.parse(localStorage.getItem('profit_orbit_mercari_user') || '{}');
+        setMercariConnected(true);
+        
+        toast({
+          title: 'Mercari Connected!',
+          description: userInfo.userName ? `Connected as ${userInfo.userName}` : 'Your Mercari account is connected.',
+        });
+        return;
+      }
+      
+      // If not in localStorage, show instructions
       toast({
-        title: 'Mercari Connected!',
-        description: 'Your Mercari account is now connected.',
+        title: 'Not Detected',
+        description: 'Please ensure: 1) Extension is installed and active 2) You\'re logged into Mercari 3) Refresh this page after logging in',
+        variant: 'destructive',
+        duration: 8000,
       });
-    } else {
+      
+    } catch (error) {
+      console.error('Error connecting Mercari:', error);
       toast({
-        title: 'Not Logged In',
-        description: 'Please click "Mercari Login" first and log into your Mercari account.',
+        title: 'Connection Error',
+        description: 'Failed to detect Mercari login. Make sure the extension is installed.',
         variant: 'destructive',
       });
     }
