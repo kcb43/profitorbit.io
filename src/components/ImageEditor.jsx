@@ -644,20 +644,21 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     
     try {
       // Get crop data (proportional coordinates) for applying to all images
+      const cropData = cropperInstanceRef.current.getData(); // Gets crop coordinates relative to natural image size
       const imageData = cropperInstanceRef.current.getImageData();
-      const cropBoxData = cropperInstanceRef.current.getCropBoxData();
       
-      // Calculate proportional crop coordinates (0-1 range)
+      // Calculate proportional crop coordinates (0-1 range) relative to natural image dimensions
       const proportionalCrop = {
-        left: (cropBoxData.left - imageData.left) / imageData.width,
-        top: (cropBoxData.top - imageData.top) / imageData.height,
-        width: cropBoxData.width / imageData.width,
-        height: cropBoxData.height / imageData.height
+        left: cropData.x / imageData.naturalWidth,
+        top: cropData.y / imageData.naturalHeight,
+        width: cropData.width / imageData.naturalWidth,
+        height: cropData.height / imageData.naturalHeight
       };
       
       // Store crop data for potential "Apply to All" use
       setCropData(proportionalCrop);
-      console.log('Stored crop data:', proportionalCrop);
+      console.log('Stored crop data (proportional):', proportionalCrop);
+      console.log('Natural image size:', imageData.naturalWidth, 'x', imageData.naturalHeight);
       
       const canvas = cropperInstanceRef.current.getCroppedCanvas({
         maxWidth: 4096,
