@@ -419,6 +419,14 @@ export default function CrosslistComposer() {
   const [currentEditingItemId, setCurrentEditingItemId] = useState(null);
   const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
   const [brandIsCustom, setBrandIsCustom] = useState(false);
+  const [customBrands, setCustomBrands] = useState(() => {
+    try {
+      const saved = localStorage.getItem('customBrands');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [editingColorField, setEditingColorField] = useState(null);
   const [selectedCategoryPath, setSelectedCategoryPath] = useState([]);
@@ -1393,6 +1401,35 @@ export default function CrosslistComposer() {
   // Show if: category is selected AND (ebayTypeAspect exists OR aspects are still loading)
   const shouldShowEbayType = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0;
   const shouldRequireEbayType = shouldShowEbayType && (isEbayTypeRequired || ebayTypeAspect);
+
+  const addCustomBrand = (brandName) => {
+    const trimmed = brandName.trim();
+    if (!trimmed) return;
+    
+    // Check if brand already exists (case-insensitive)
+    const exists = [...POPULAR_BRANDS, ...customBrands].some(
+      b => b.toLowerCase() === trimmed.toLowerCase()
+    );
+    
+    if (exists) {
+      toast({
+        title: "Brand already exists",
+        description: `"${trimmed}" is already in your brand list.`,
+      });
+      return;
+    }
+    
+    const updated = [...customBrands, trimmed];
+    setCustomBrands(updated);
+    localStorage.setItem('customBrands', JSON.stringify(updated));
+    
+    toast({
+      title: "Custom brand added",
+      description: `"${trimmed}" has been added to your brand list.`,
+    });
+    
+    return trimmed;
+  };
 
   const handleSaveShippingDefaults = () => {
     const defaults = {
@@ -3644,11 +3681,36 @@ export default function CrosslistComposer() {
                       <Input
                         id="general-brand"
                         name="general-brand"
-                        placeholder="Enter brand name"
+                        placeholder="Enter brand name and press Enter to save"
                         value={generalForm.brand || ""}
                         onChange={(e) => handleGeneralChange("brand", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && generalForm.brand?.trim()) {
+                            e.preventDefault();
+                            const savedBrand = addCustomBrand(generalForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
                         className="flex-1"
                       />
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (generalForm.brand?.trim()) {
+                            const savedBrand = addCustomBrand(generalForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
+                        disabled={!generalForm.brand?.trim()}
+                      >
+                        Save
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -4303,11 +4365,36 @@ export default function CrosslistComposer() {
                       <Input
                         id="ebay-brand"
                         name="ebay-brand"
-                        placeholder={generalForm.brand || "Enter brand name"}
+                        placeholder="Enter brand name and press Enter to save"
                         value={ebayForm.ebayBrand || ""}
                         onChange={(e) => handleMarketplaceChange("ebay", "ebayBrand", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && ebayForm.ebayBrand?.trim()) {
+                            e.preventDefault();
+                            const savedBrand = addCustomBrand(ebayForm.ebayBrand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
                         className="flex-1"
                       />
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (ebayForm.ebayBrand?.trim()) {
+                            const savedBrand = addCustomBrand(ebayForm.ebayBrand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
+                        disabled={!ebayForm.ebayBrand?.trim()}
+                      >
+                        Save
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -4336,12 +4423,17 @@ export default function CrosslistComposer() {
                         <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
+                        {customBrands.length > 0 && customBrands.map((brand) => (
+                          <SelectItem key={`custom-${brand}`} value={brand}>
+                            {brand} ⭐
+                          </SelectItem>
+                        ))}
                         {POPULAR_BRANDS.map((brand) => (
                           <SelectItem key={brand} value={brand}>
                             {brand}
                           </SelectItem>
                         ))}
-                        <SelectItem value="custom">Add Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -5331,11 +5423,36 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder={generalForm.brand || "Enter brand name"}
+                        placeholder="Enter brand name and press Enter to save"
                         value={etsyForm.brand || ""}
                         onChange={(e) => handleMarketplaceChange("etsy", "brand", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && etsyForm.brand?.trim()) {
+                            e.preventDefault();
+                            const savedBrand = addCustomBrand(etsyForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
                         className="flex-1"
                       />
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (etsyForm.brand?.trim()) {
+                            const savedBrand = addCustomBrand(etsyForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
+                        disabled={!etsyForm.brand?.trim()}
+                      >
+                        Save
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -5364,12 +5481,17 @@ export default function CrosslistComposer() {
                         <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
+                        {customBrands.length > 0 && customBrands.map((brand) => (
+                          <SelectItem key={`custom-${brand}`} value={brand}>
+                            {brand} ⭐
+                          </SelectItem>
+                        ))}
                         {POPULAR_BRANDS.map((brand) => (
                           <SelectItem key={brand} value={brand}>
                             {brand}
                           </SelectItem>
                         ))}
-                        <SelectItem value="custom">Add Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -5748,11 +5870,36 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder={generalForm.brand || "Enter brand name"}
+                        placeholder="Enter brand name and press Enter to save"
                         value={mercariForm.brand || ""}
                         onChange={(e) => handleMarketplaceChange("mercari", "brand", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && mercariForm.brand?.trim()) {
+                            e.preventDefault();
+                            const savedBrand = addCustomBrand(mercariForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
                         className="flex-1"
                       />
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (mercariForm.brand?.trim()) {
+                            const savedBrand = addCustomBrand(mercariForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
+                        disabled={!mercariForm.brand?.trim()}
+                      >
+                        Save
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -5781,12 +5928,17 @@ export default function CrosslistComposer() {
                         <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
+                        {customBrands.length > 0 && customBrands.map((brand) => (
+                          <SelectItem key={`custom-${brand}`} value={brand}>
+                            {brand} ⭐
+                          </SelectItem>
+                        ))}
                         {POPULAR_BRANDS.map((brand) => (
                           <SelectItem key={brand} value={brand}>
                             {brand}
                           </SelectItem>
                         ))}
-                        <SelectItem value="custom">Add Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -6124,11 +6276,36 @@ export default function CrosslistComposer() {
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder={generalForm.brand || "Enter brand name"}
+                        placeholder="Enter brand name and press Enter to save"
                         value={facebookForm.brand || ""}
                         onChange={(e) => handleMarketplaceChange("facebook", "brand", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && facebookForm.brand?.trim()) {
+                            e.preventDefault();
+                            const savedBrand = addCustomBrand(facebookForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
                         className="flex-1"
                       />
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (facebookForm.brand?.trim()) {
+                            const savedBrand = addCustomBrand(facebookForm.brand);
+                            if (savedBrand) {
+                              setBrandIsCustom(false);
+                            }
+                          }
+                        }}
+                        disabled={!facebookForm.brand?.trim()}
+                      >
+                        Save
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -6157,12 +6334,17 @@ export default function CrosslistComposer() {
                         <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
+                        {customBrands.length > 0 && customBrands.map((brand) => (
+                          <SelectItem key={`custom-${brand}`} value={brand}>
+                            {brand} ⭐
+                          </SelectItem>
+                        ))}
                         {POPULAR_BRANDS.map((brand) => (
                           <SelectItem key={brand} value={brand}>
                             {brand}
                           </SelectItem>
                         ))}
-                        <SelectItem value="custom">Add Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
