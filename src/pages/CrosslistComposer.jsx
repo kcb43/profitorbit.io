@@ -6172,32 +6172,6 @@ export default function CrosslistComposer() {
                     </p>
                   )}
                 </div>
-
-                {/* Condition */}
-                <div>
-                  <Label className="text-xs mb-1.5 block">
-                    Condition <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={facebookForm.condition || generalForm.condition || undefined}
-                    onValueChange={(value) => handleMarketplaceChange("facebook", "condition", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={generalForm.condition ? `Inherited: ${generalForm.condition}` : "Select condition"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="used_like_new">Used - Like New</SelectItem>
-                      <SelectItem value="used_good">Used - Good</SelectItem>
-                      <SelectItem value="used_fair">Used - Fair</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {generalForm.condition && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Inherited from General form
-                    </p>
-                  )}
-                </div>
               </div>
 
               {/* Category Section */}
