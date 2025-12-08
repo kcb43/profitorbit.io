@@ -6040,11 +6040,11 @@ export default function CrosslistComposer() {
                 )}
                 
                 {/* Show selected category badge */}
-                {(mercariForm.category || generalForm.category) && (
+                {((mercariForm.category !== undefined ? mercariForm.category : generalForm.category) || generalCategoryPath.length > 0) && (
                   <div className="mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
-                        Selected: {mercariForm.category || generalForm.category}
+                        Selected: {mercariForm.category !== undefined ? mercariForm.category : generalForm.category}
                       </Badge>
                       <Button
                         type="button"
@@ -6068,7 +6068,7 @@ export default function CrosslistComposer() {
                   generalCategoryPath.length > 0 && sortedCategories.length === 0 ? (
                     <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-md">
                       <p className="text-sm text-green-700 dark:text-green-400">
-                        ✓ Category selected: {mercariForm.category || generalForm.category}
+                        ✓ Category selected: {mercariForm.category !== undefined ? mercariForm.category : generalForm.category}
                       </p>
                     </div>
                   ) : sortedCategories.length > 0 ? (
@@ -6103,7 +6103,13 @@ export default function CrosslistComposer() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={generalForm.category ? `Inherited: ${generalForm.category}` : "Select a category"} />
+                        <SelectValue placeholder={
+                          mercariForm.category !== undefined 
+                            ? "Select a category" 
+                            : generalForm.category 
+                              ? `Inherited: ${generalForm.category}` 
+                              : "Select a category"
+                        } />
                       </SelectTrigger>
                       <SelectContent>
                         {sortedCategories.map((cat) => (
@@ -6119,7 +6125,10 @@ export default function CrosslistComposer() {
                     </Select>
                   ) : (
                     <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                      {generalForm.category ? `Using category from General: ${generalForm.category}` : "Select a category from the dropdown"}
+                      {mercariForm.category !== undefined 
+                        ? (mercariForm.category || "Select a category from the dropdown")
+                        : (generalForm.category ? `Using category from General: ${generalForm.category}` : "Select a category from the dropdown")
+                      }
                     </div>
                   )
                 ) : (
