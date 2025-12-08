@@ -878,43 +878,75 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       
       img.onload = () => {
         try {
-          let sourceImg = img;
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
           
-          // Step 1: Apply crop if cropData exists
+          let sourceWidth = img.naturalWidth;
+          let sourceHeight = img.naturalHeight;
+          let sourceX = 0;
+          let sourceY = 0;
+          
+          // Step 1: Calculate crop if cropData exists
           if (cropData) {
-            const cropCanvas = document.createElement('canvas');
-            const cropCtx = cropCanvas.getContext('2d');
-            
-            // Calculate crop dimensions based on proportional crop data
-            const cropX = img.naturalWidth * cropData.left;
-            const cropY = img.naturalHeight * cropData.top;
-            const cropWidth = img.naturalWidth * cropData.width;
-            const cropHeight = img.naturalHeight * cropData.height;
-            
-            cropCanvas.width = cropWidth;
-            cropCanvas.height = cropHeight;
-            
-            // Draw cropped portion
-            cropCtx.drawImage(
-              img,
-              cropX, cropY, cropWidth, cropHeight,
-              0, 0, cropWidth, cropHeight
-            );
-            
-            // Create a new image from the cropped canvas
-            const croppedImg = new Image();
-            croppedImg.src = cropCanvas.toDataURL('image/jpeg', 0.95);
-            
-            // Wait for cropped image to load, then continue with filters/transforms
-            croppedImg.onload = () => {
-              applyTransformsAndFilters(croppedImg, resolve, reject);
-            };
-            croppedImg.onerror = () => reject(new Error('Failed to create cropped image'));
-          } else {
-            // No crop, proceed directly to transforms and filters
-            applyTransformsAndFilters(sourceImg, resolve, reject);
+            console.log('Applying crop to image:', cropData);
+            sourceX = sourceWidth * cropData.left;
+            sourceY = sourceHeight * cropData.top;
+            sourceWidth = sourceWidth * cropData.width;
+            sourceHeight = sourceHeight * cropData.height;
+            console.log('Crop dimensions:', { sourceX, sourceY, sourceWidth, sourceHeight });
           }
+          
+          // Step 2: Calculate rotated dimensions
+          const rotation = (transform.rotate % 360) * Math.PI / 180;
+          const isRotated90 = Math.abs(transform.rotate % 180) === 90;
+          
+          if (isRotated90) {
+            canvas.width = sourceHeight;
+            canvas.height = sourceWidth;
+          } else {
+            canvas.width = sourceWidth;
+            canvas.height = sourceHeight;
+          }
+          
+          console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+
+          // Step 3: Apply transforms
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.scale(transform.flip_x, transform.flip_y);
+          ctx.rotate(rotation);
+
+          // Step 4: Apply filters
+          ctx.filter = `brightness(${filters.brightness}%) 
+                       contrast(${filters.contrast}%) 
+                       saturate(${filters.saturate}%)`;
+
+          // Step 5: Draw the image (cropped if needed)
+          ctx.drawImage(
+            img,
+            sourceX, sourceY, sourceWidth, sourceHeight,  // Source (crop area)
+            -sourceWidth / 2, -sourceHeight / 2, sourceWidth, sourceHeight  // Destination
+          );
+
+          // Reset transforms for shadow application
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          
+          // Step 6: Apply shadows if needed
+          if (filters.shadows !== 0) {
+            applyShadows(ctx, canvas.width, canvas.height, filters.shadows);
+          }
+
+          // Step 7: Convert to blob and create File
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `edited-${Date.now()}.jpg`, { type: 'image/jpeg' });
+              console.log('Successfully created file with crop');
+              resolve(file);
+            } else {
+              reject(new Error('Failed to create blob'));
+            }
+          }, 'image/jpeg', 0.9);
         } catch (error) {
+          console.error('Error in applyFiltersToImage:', error);
           reject(error);
         }
       };
@@ -922,67 +954,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       img.onerror = () => reject(new Error('Failed to load image'));
       img.src = imageUrl;
     });
-  };
-  
-  // Helper function to apply transforms and filters to an image
-  const applyTransformsAndFilters = (img, resolve, reject) => {
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Calculate rotated dimensions
-      const rotation = (transform.rotate % 360) * Math.PI / 180;
-      const isRotated90 = Math.abs(transform.rotate % 180) === 90;
-      
-      if (isRotated90) {
-        canvas.width = img.naturalHeight || img.height;
-        canvas.height = img.naturalWidth || img.width;
-      } else {
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-      }
-
-      // Apply transforms
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.scale(transform.flip_x, transform.flip_y);
-      ctx.rotate(rotation);
-
-      // Apply filters
-      ctx.filter = `brightness(${filters.brightness}%) 
-                   contrast(${filters.contrast}%) 
-                   saturate(${filters.saturate}%)`;
-
-      const imgWidth = img.naturalWidth || img.width;
-      const imgHeight = img.naturalHeight || img.height;
-
-      ctx.drawImage(
-        img,
-        -imgWidth / 2,
-        -imgHeight / 2,
-        imgWidth,
-        imgHeight
-      );
-
-      // Reset transforms for shadow application
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      
-      // Apply shadows if needed
-      if (filters.shadows !== 0) {
-        applyShadows(ctx, canvas.width, canvas.height, filters.shadows);
-      }
-
-      // Convert to blob and create File
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], `edited-${Date.now()}.jpg`, { type: 'image/jpeg' });
-          resolve(file);
-        } else {
-          reject(new Error('Failed to create blob'));
-        }
-      }, 'image/jpeg', 0.9);
-    } catch (error) {
-      reject(error);
-    }
   };
 
   // Save template to database
