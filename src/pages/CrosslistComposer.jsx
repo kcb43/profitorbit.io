@@ -6040,11 +6040,17 @@ export default function CrosslistComposer() {
                 )}
                 
                 {/* Show selected category badge */}
-                {((mercariForm.category !== undefined ? mercariForm.category : generalForm.category) || generalCategoryPath.length > 0) && (
+                {((mercariForm.category !== undefined && mercariForm.category !== "") || (generalCategoryPath.length > 0 && mercariForm.category === undefined && generalForm.category)) && (
                   <div className="mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
-                        Selected: {mercariForm.category !== undefined ? mercariForm.category : generalForm.category}
+                        Selected: {
+                          mercariForm.category !== undefined && mercariForm.category !== "" 
+                            ? mercariForm.category 
+                            : generalCategoryPath.length > 0 && mercariForm.category === undefined
+                              ? generalCategoryPath.map(c => c.categoryName).join(" > ")
+                              : generalForm.category
+                        }
                       </Badge>
                       <Button
                         type="button"
@@ -6134,60 +6140,6 @@ export default function CrosslistComposer() {
                 ) : (
                   <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
                     Loading categories...
-                  </div>
-                )}
-
-                {/* Category Specifics - Shows when category is selected on Mercari form */}
-                {(generalCategoryPath.length > 0 || mercariForm.categoryId) && categoryAspects.length > 0 && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-xs font-medium">Category Specifics</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          // Refresh category aspects
-                          queryClient.invalidateQueries(['ebayCategoryAspects', categoryTreeId, mercariForm.categoryId || generalForm.categoryId]);
-                        }}
-                        className="h-6 w-6 p-0"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-muted/20 rounded-md border">
-                      {categoryAspects.slice(0, 4).map((aspect) => (
-                        <div key={aspect.localizedAspectName}>
-                          <Label className="text-xs mb-1.5 block">
-                            {aspect.localizedAspectName}
-                            {aspect.aspectConstraint?.aspectRequired && <span className="text-red-500 ml-1">*</span>}
-                          </Label>
-                          {aspect.aspectValues && aspect.aspectValues.length > 0 ? (
-                            <Select
-                              value={mercariForm[`aspect_${aspect.localizedAspectName}`] || ""}
-                              onValueChange={(value) => handleMarketplaceChange("mercari", `aspect_${aspect.localizedAspectName}`, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={`Select ${aspect.localizedAspectName.toLowerCase()}`} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {aspect.aspectValues.map((value) => (
-                                  <SelectItem key={value.localizedValue} value={value.localizedValue}>
-                                    {value.localizedValue}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input
-                              placeholder={`Enter ${aspect.localizedAspectName.toLowerCase()}`}
-                              value={mercariForm[`aspect_${aspect.localizedAspectName}`] || ""}
-                              onChange={(e) => handleMarketplaceChange("mercari", `aspect_${aspect.localizedAspectName}`, e.target.value)}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
 
