@@ -5932,8 +5932,61 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              {/* Category Section */}
+              {/* Item Details Section */}
               <div className="flex items-center justify-between pb-2 border-b mb-4">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Item Details</Label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Title Section */}
+                <div className="md:col-span-2">
+                  <Label className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder={generalForm.title ? `Inherited: ${generalForm.title}` : "What are you selling?"}
+                    value={mercariForm.title || ""}
+                    onChange={(e) => handleMarketplaceChange("mercari", "title", e.target.value)}
+                  />
+                  {generalForm.title && !mercariForm.title && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Inherited from General form. You can edit this field.
+                    </p>
+                  )}
+                </div>
+
+                {/* Description Section */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-xs">Description <span className="text-red-500">*</span></Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDescriptionGeneratorOpen(true)}
+                      className="gap-2 h-7 text-xs"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      AI Generate
+                    </Button>
+                  </div>
+                  <RichTextarea
+                    placeholder={generalForm.description ? `Inherited from General` : "Describe your item (5+ words)"}
+                    value={mercariForm.description || ""}
+                    onChange={(e) => handleMarketplaceChange("mercari", "description", e.target.value)}
+                    className="min-h-[120px]"
+                  />
+                  {generalForm.description && !mercariForm.description && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Inherited from General form. You can edit this field.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Section */}
+              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Category</Label>
@@ -6126,7 +6179,7 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Item Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-4">
+              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Item Details</Label>
@@ -6134,49 +6187,6 @@ export default function CrosslistComposer() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {/* Title Section */}
-                <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder={generalForm.title ? `Inherited: ${generalForm.title}` : "What are you selling?"}
-                    value={mercariForm.title || ""}
-                    onChange={(e) => handleMarketplaceChange("mercari", "title", e.target.value)}
-                  />
-                  {generalForm.title && !mercariForm.title && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Inherited from General form. You can edit this field.
-                    </p>
-                  )}
-                </div>
-
-                {/* Description Section */}
-                <div className="md:col-span-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Label className="text-xs">Description <span className="text-red-500">*</span></Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDescriptionGeneratorOpen(true)}
-                      className="gap-2 h-7 text-xs"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      AI Generate
-                    </Button>
-                  </div>
-                  <RichTextarea
-                    placeholder={generalForm.description ? `Inherited from General` : "Describe your item (5+ words)"}
-                    value={mercariForm.description || ""}
-                    onChange={(e) => handleMarketplaceChange("mercari", "description", e.target.value)}
-                    className="min-h-[120px]"
-                  />
-                  {generalForm.description && !mercariForm.description && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Inherited from General form. You can edit this field.
-                    </p>
-                  )}
-                </div>
-
                 {/* Brand Section */}
                 <div>
                   <Label className="text-xs mb-1.5 block">Brand</Label>
