@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextarea } from "@/components/ui/rich-textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -3471,10 +3472,10 @@ export default function CrosslistComposer() {
                       AI Generate
                     </Button>
                   </div>
-                  <Textarea
+                  <RichTextarea
                     id="general-description"
                     name="general-description"
-                    placeholder=""
+                    placeholder="Enter a detailed description of your item..."
                     value={generalForm.description || ""}
                     onChange={(e) => handleGeneralChange("description", e.target.value)}
                     className="min-h-[120px]"
@@ -4122,10 +4123,10 @@ export default function CrosslistComposer() {
                       AI Generate
                     </Button>
                   </div>
-                  <Textarea
+                  <RichTextarea
                     id="ebay-description"
                     name="ebay-description"
-                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
+                    placeholder={generalForm.description ? `Inherited from General` : "Enter eBay-specific description..."}
                     value={ebayForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "description", e.target.value)}
                     className="min-h-[120px]"
@@ -5150,8 +5151,8 @@ export default function CrosslistComposer() {
                       AI Generate
                     </Button>
                   </div>
-                  <Textarea
-                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
+                  <RichTextarea
+                    placeholder={generalForm.description ? `Inherited from General` : "Enter Etsy-specific description..."}
                     value={etsyForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("etsy", "description", e.target.value)}
                     className="min-h-[120px]"
@@ -5567,8 +5568,8 @@ export default function CrosslistComposer() {
                       AI Generate
                     </Button>
                   </div>
-                  <Textarea
-                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
+                  <RichTextarea
+                    placeholder={generalForm.description ? `Inherited from General` : "Enter Mercari-specific description..."}
                     value={mercariForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("mercari", "description", e.target.value)}
                     className="min-h-[120px]"
@@ -5943,8 +5944,8 @@ export default function CrosslistComposer() {
                       AI Generate
                     </Button>
                   </div>
-                  <Textarea
-                    placeholder={generalForm.description ? `Inherited: ${generalForm.description.substring(0, 50)}...` : ""}
+                  <RichTextarea
+                    placeholder={generalForm.description ? `Inherited from General` : "Enter Facebook-specific description..."}
                     value={facebookForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("facebook", "description", e.target.value)}
                     className="min-h-[120px]"
