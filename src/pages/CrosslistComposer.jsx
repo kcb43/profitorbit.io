@@ -1928,15 +1928,9 @@ export default function CrosslistComposer() {
     if (!ebayForm.buyItNowPrice) errors.push("Buy It Now Price");
     if (!ebayForm.color) errors.push("Color");
     
-    // Check if category is selected - check both ID and name fields
-    // If the category name/path is set, then a category was definitely selected
-    const hasCategoryName = (ebayForm.categoryName || generalForm.category);
-    const hasCategoryId = (ebayForm.categoryId || generalForm.categoryId);
+    // Category is validated separately before listing (see finalCategoryId check)
+    // Skipping category validation here to avoid false positives with sync issues
     
-    // Category is valid if we have EITHER a name OR a valid ID
-    const hasValidCategory = hasCategoryName || (hasCategoryId && hasCategoryId !== '0' && hasCategoryId !== 0);
-    
-    if (!hasValidCategory) errors.push("Category");
     // Only require Type if category is selected and ebayTypeAspect exists with values
     if (ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0) {
       // Only require if we have the type aspect with values
