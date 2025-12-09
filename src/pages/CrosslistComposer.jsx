@@ -2651,7 +2651,292 @@ const MERCARI_CATEGORIES = {
       }
     }
   },
-  "8": { id: "8", name: "Sports & outdoors" },
+  "8": {
+    id: "8",
+    name: "Sports & outdoors",
+    subcategories: {
+      "72": {
+        id: "72",
+        name: "Team sports",
+        subcategories: {
+          "703": { id: "703", name: "Soccer" },
+          "704": { id: "704", name: "Lacrosse" },
+          "706": { id: "706", name: "Hockey" },
+          "707": { id: "707", name: "Football" },
+          "708": { id: "708", name: "Tennis & racquets" },
+          "709": { id: "709", name: "Badminton" },
+          "710": { id: "710", name: "Volleyball" },
+          "711": { id: "711", name: "Rugby" },
+          "712": { id: "712", name: "All other sports" },
+          "2127": { id: "2127", name: "Softball Equipment" }
+        }
+      },
+      "73": {
+        id: "73",
+        name: "Exercise",
+        subcategories: {
+          "713": { id: "713", name: "Strength training" },
+          "714": { id: "714", name: "Fitness accessories" },
+          "715": { id: "715", name: "Boxing & mma" },
+          "716": { id: "716", name: "Fitness technology" },
+          "717": { id: "717", name: "Athletic training" },
+          "719": { id: "719", name: "Bowling" },
+          "720": { id: "720", name: "Dance/ballet" },
+          "721": { id: "721", name: "Track & field" },
+          "722": { id: "722", name: "Other" },
+          "2128": { id: "2128", name: "Pilates Equipment" },
+          "2539": { id: "2539", name: "Ballet Shoes" },
+          "2540": { id: "2540", name: "Dance Leotards" },
+          "2541": { id: "2541", name: "Tap Shoes" }
+        }
+      },
+      "74": {
+        id: "74",
+        name: "Footwear",
+        subcategories: {
+          "723": { id: "723", name: "Cleats" },
+          "724": { id: "724", name: "Men" },
+          "725": { id: "725", name: "Women" },
+          "726": { id: "726", name: "Kids" },
+          "727": { id: "727", name: "Other" }
+        }
+      },
+      "75": {
+        id: "75",
+        name: "Apparel",
+        subcategories: {
+          "728": { id: "728", name: "Men" },
+          "729": { id: "729", name: "Women" },
+          "730": { id: "730", name: "Boys" },
+          "731": { id: "731", name: "Girls" },
+          "732": { id: "732", name: "Accessories" },
+          "733": { id: "733", name: "Other" }
+        }
+      },
+      "76": {
+        id: "76",
+        name: "Golf",
+        subcategories: {
+          "734": { id: "734", name: "Men's golf clubs" },
+          "735": { id: "735", name: "Women's golf clubs" },
+          "736": { id: "736", name: "Golf apparel" },
+          "737": { id: "737", name: "Golf shoes" },
+          "738": { id: "738", name: "Golf bags" },
+          "739": { id: "739", name: "Golf balls" },
+          "740": { id: "740", name: "Electronics" },
+          "741": { id: "741", name: "Other" }
+        }
+      },
+      "77": {
+        id: "77",
+        name: "Outdoors",
+        subcategories: {
+          "745": { id: "745", name: "Water sports" },
+          "746": { id: "746", name: "Indoor/outdoor games" },
+          "747": { id: "747", name: "Boating" },
+          "751": { id: "751", name: "Other" },
+          "2130": { id: "2130", name: "Biking Equipment" },
+          "2131": { id: "2131", name: "Skating Equipment" },
+          "2133": { id: "2133", name: "Hiking Equipment" },
+          "3156": { id: "3156", name: "Electric Scooters" }
+        }
+      },
+      "78": {
+        id: "78",
+        name: "Fan shop",
+        subcategories: {
+          "752": { id: "752", name: "MLB" },
+          "753": { id: "753", name: "NFL" },
+          "754": { id: "754", name: "NHL" },
+          "755": { id: "755", name: "NBA" },
+          "756": { id: "756", name: "NCAA" },
+          "757": { id: "757", name: "Other" }
+        }
+      },
+      "79": { id: "79", name: "Other" },
+      "705": {
+        id: "705",
+        name: "Basketball Equipment",
+        subcategories: {
+          "3114": { id: "3114", name: "Basketball Accessories" },
+          "3115": { id: "3115", name: "Basketball Headbands" },
+          "3116": { id: "3116", name: "Basketball Hoops" },
+          "3117": { id: "3117", name: "Basketball Protective Gear" },
+          "3118": { id: "3118", name: "Basketball Shirts & Jerseys" },
+          "3119": { id: "3119", name: "Basketball Sleeves" },
+          "3120": { id: "3120", name: "Basketball Socks" },
+          "3121": { id: "3121", name: "Basketball Training Equipment" },
+          "3122": { id: "3122", name: "Basketballs" },
+          "3123": { id: "3123", name: "Other Basketball Equipment" }
+        }
+      },
+      "744": {
+        id: "744",
+        name: "Fishing Gear",
+        subcategories: {
+          "2542": { id: "2542", name: "Fishing Apparel" },
+          "2543": { id: "2543", name: "Fishing Bait Buckets" },
+          "2544": { id: "2544", name: "Fishing Floats" },
+          "2545": { id: "2545", name: "Fishing Hooks" },
+          "2546": { id: "2546", name: "Fishing Jig Heads" },
+          "2547": { id: "2547", name: "Fishing Line" },
+          "2548": { id: "2548", name: "Fishing Lures" },
+          "2549": { id: "2549", name: "Fishing Nets" },
+          "2550": { id: "2550", name: "Fishing Reels" },
+          "2551": { id: "2551", name: "Fishing Rod & Reel Combos" },
+          "2552": { id: "2552", name: "Fishing Rod Holders" },
+          "2553": { id: "2553", name: "Fishing Rod Racks" },
+          "2554": { id: "2554", name: "Fishing Rods" },
+          "2555": { id: "2555", name: "Fishing Sinkers" },
+          "2556": { id: "2556", name: "Fishing Tackle Bags" },
+          "2557": { id: "2557", name: "Fishing Tackle Boxes" },
+          "2558": { id: "2558", name: "Fishing Weights" },
+          "2559": { id: "2559", name: "Fly Fishing Flies" }
+        }
+      },
+      "749": {
+        id: "749",
+        name: "Snowboarding Gear",
+        subcategories: {
+          "2588": { id: "2588", name: "Snowboard Accessories" },
+          "2589": { id: "2589", name: "Snowboard Bags" },
+          "2590": { id: "2590", name: "Snowboard Bindings" },
+          "2591": { id: "2591", name: "Snowboard Boots" },
+          "2592": { id: "2592", name: "Snowboard Gloves" },
+          "2593": { id: "2593", name: "Snowboard Goggles" },
+          "2594": { id: "2594", name: "Snowboard Helmets" },
+          "2595": { id: "2595", name: "Snowboards" }
+        }
+      },
+      "750": {
+        id: "750",
+        name: "Skateboard Gear",
+        subcategories: {
+          "2560": { id: "2560", name: "Complete Skateboards" },
+          "2561": { id: "2561", name: "Skateboard Bearings" },
+          "2562": { id: "2562", name: "Skateboard Bushings" },
+          "2563": { id: "2563", name: "Skateboard Decks" },
+          "2564": { id: "2564", name: "Skateboard Griptape" },
+          "2565": { id: "2565", name: "Skateboard Hardware" },
+          "2566": { id: "2566", name: "Skateboard Helmets" },
+          "2567": { id: "2567", name: "Skateboard Pads" },
+          "2568": { id: "2568", name: "Skateboard Risers" },
+          "2569": { id: "2569", name: "Skateboard Trucks" },
+          "2570": { id: "2570", name: "Skateboard Wheels" },
+          "3157": { id: "3157", name: "Electric Skateboards" }
+        }
+      },
+      "2126": {
+        id: "2126",
+        name: "Baseball Equipment",
+        subcategories: {
+          "3092": { id: "3092", name: "Base Sets & Homeplates" },
+          "3093": { id: "3093", name: "Baseball Accessories" },
+          "3094": { id: "3094", name: "Baseball Bat Racks" },
+          "3095": { id: "3095", name: "Baseball Bats" },
+          "3096": { id: "3096", name: "Baseball Belts" },
+          "3097": { id: "3097", name: "Baseball Cleats" },
+          "3098": { id: "3098", name: "Baseball Equipment Bags" },
+          "3099": { id: "3099", name: "Baseball Face Guards" },
+          "3100": { id: "3100", name: "Baseball Gloves & Mitts" },
+          "3101": { id: "3101", name: "Baseball Helmets" },
+          "3102": { id: "3102", name: "Baseball Jackets" },
+          "3103": { id: "3103", name: "Baseball Pants" },
+          "3104": { id: "3104", name: "Baseball Protective Gear" },
+          "3105": { id: "3105", name: "Baseball Shirts & Jerseys" },
+          "3106": { id: "3106", name: "Baseball Socks" },
+          "3107": { id: "3107", name: "Baseball Uniforms" },
+          "3108": { id: "3108", name: "Baseballs" },
+          "3109": { id: "3109", name: "Batting Cages & Netting" },
+          "3110": { id: "3110", name: "Batting Gloves" },
+          "3111": { id: "3111", name: "Batting Tees" },
+          "3112": { id: "3112", name: "Pitching Machines" },
+          "3113": { id: "3113", name: "Other Baseball Equipment" }
+        }
+      },
+      "2129": {
+        id: "2129",
+        name: "Yoga Equipment",
+        subcategories: {
+          "3158": { id: "3158", name: "Yoga Blankets" },
+          "3159": { id: "3159", name: "Yoga Blocks" },
+          "3160": { id: "3160", name: "Yoga Bolsters & Cushions" },
+          "3161": { id: "3161", name: "Yoga Mat Bags" },
+          "3162": { id: "3162", name: "Yoga Mat Cleaners" },
+          "3163": { id: "3163", name: "Yoga Mats" },
+          "3164": { id: "3164", name: "Yoga Sandbags" },
+          "3165": { id: "3165", name: "Yoga Straps" },
+          "3166": { id: "3166", name: "Yoga Wheels" },
+          "3167": { id: "3167", name: "Other Yoga Equipment" }
+        }
+      },
+      "2132": {
+        id: "2132",
+        name: "Camping Equipment",
+        subcategories: {
+          "3124": { id: "3124", name: "Camping Canopies" },
+          "3125": { id: "3125", name: "Camping Chairs" },
+          "3126": { id: "3126", name: "Camping Coolers & Ice Chests" },
+          "3127": { id: "3127", name: "Camping Tables" },
+          "3128": { id: "3128", name: "Camping Tents" },
+          "3129": { id: "3129", name: "Inflatable Beds" },
+          "3130": { id: "3130", name: "Insect Repellant Candles" },
+          "3131": { id: "3131", name: "Insect Repellant Sprays" },
+          "3132": { id: "3132", name: "Insect Repellant Torches" },
+          "3133": { id: "3133", name: "Outdoor Flashlights" },
+          "3134": { id: "3134", name: "Outdoor Headlamps" },
+          "3135": { id: "3135", name: "Camping Lanterns" },
+          "3136": { id: "3136", name: "Portable Grills" },
+          "3137": { id: "3137", name: "Sleeping Bags" },
+          "3138": { id: "3138", name: "Camping Sleeping Pads" },
+          "3139": { id: "3139", name: "Camping Tools" },
+          "3140": { id: "3140", name: "Other Camping Equipment" }
+        }
+      },
+      "2571": {
+        id: "2571",
+        name: "Ski Gear",
+        subcategories: {
+          "2572": { id: "2572", name: "Ski Body Armor" },
+          "2573": { id: "2573", name: "Cross Country Skis" },
+          "2574": { id: "2574", name: "Downhill Skis" },
+          "2575": { id: "2575", name: "Ski Bags" },
+          "2576": { id: "2576", name: "Ski Bindings" },
+          "2577": { id: "2577", name: "Ski Boots" },
+          "2578": { id: "2578", name: "Ski Face Masks" },
+          "2579": { id: "2579", name: "Ski Gloves" },
+          "2580": { id: "2580", name: "Ski Goggles" },
+          "2581": { id: "2581", name: "Ski Hats" },
+          "2582": { id: "2582", name: "Ski Helmets" },
+          "2583": { id: "2583", name: "Ski Mittens" },
+          "2584": { id: "2584", name: "Ski Poles" },
+          "2585": { id: "2585", name: "Ski Racks" },
+          "2586": { id: "2586", name: "Ski Socks" },
+          "2587": { id: "2587", name: "Ski Tuning Tools" }
+        }
+      },
+      "3141": {
+        id: "3141",
+        name: "Cycling Equipment",
+        subcategories: {
+          "3142": { id: "3142", name: "Complete BMX Bikes" },
+          "3143": { id: "3143", name: "Complete Mountain Bikes" },
+          "3144": { id: "3144", name: "Complete Road Bikes" },
+          "3145": { id: "3145", name: "Complete Cyclocross Bikes" },
+          "3146": { id: "3146", name: "Complete Gravel Bikes" },
+          "3147": { id: "3147", name: "Complete Triathlon Bikes" },
+          "3148": { id: "3148", name: "Mountain Bike Frames" },
+          "3149": { id: "3149", name: "Mountain Bike Handle Bars" },
+          "3150": { id: "3150", name: "Mountain Bike Drivetrains" },
+          "3151": { id: "3151", name: "Mountain Bike Wheels" },
+          "3152": { id: "3152", name: "Road Bike Frames" },
+          "3153": { id: "3153", name: "Cyclocross Bike Frames" },
+          "3154": { id: "3154", name: "Gravel Bike Frames" },
+          "3155": { id: "3155", name: "Triathlon Bike Frames" }
+        }
+      }
+    }
+  },
   "9": { id: "9", name: "Handmade" },
   "113": { id: "113", name: "Arts & Crafts" },
   "143": { id: "143", name: "Pet Supplies" },
