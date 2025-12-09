@@ -1304,7 +1304,656 @@ const MERCARI_CATEGORIES = {
       }
     }
   },
-  "4": { id: "4", name: "Home" },
+  "4": {
+    id: "4",
+    name: "Home",
+    subcategories: {
+      "60": {
+        id: "60",
+        name: "Kids' home store",
+        subcategories: {
+          "567": { id: "567", name: "Kids' bedding" },
+          "568": { id: "568", name: "Kids' flatware" },
+          "569": { id: "569", name: "Kids' furniture" },
+          "570": { id: "570", name: "Kids' room décor" },
+          "571": { id: "571", name: "Nursery décor" },
+          "574": { id: "574", name: "Kids' bath" },
+          "575": { id: "575", name: "Other" },
+          "1862": { id: "1862", name: "Kids' Storage" }
+        }
+      },
+      "61": {
+        id: "61",
+        name: "Kitchen & dining",
+        subcategories: {
+          "589": { id: "589", name: "Other" },
+          "2069": { id: "2069", name: "Home Brewing Supplies" },
+          "2070": { id: "2070", name: "Wine Making Supplies" },
+          "2071": { id: "2071", name: "Cutlery Accessories" },
+          "2073": { id: "2073", name: "Water Coolers" },
+          "2074": { id: "2074", name: "Water Filters" }
+        }
+      },
+      "62": {
+        id: "62",
+        name: "Bedding",
+        subcategories: {
+          "593": { id: "593", name: "Quilts" },
+          "594": { id: "594", name: "Bed pillows" },
+          "596": { id: "596", name: "Bed in a bag" },
+          "600": { id: "600", name: "Mattress pads" },
+          "601": { id: "601", name: "Inflatable beds" },
+          "602": { id: "602", name: "Feather beds" },
+          "603": { id: "603", name: "Other" },
+          "2075": { id: "2075", name: "Bedspreads" },
+          "2076": { id: "2076", name: "Coverlets" },
+          "2077": { id: "2077", name: "Comforter Sets" },
+          "2078": { id: "2078", name: "Comforters" },
+          "2079": { id: "2079", name: "Duvet Covers" },
+          "2080": { id: "2080", name: "Duvet Sets" },
+          "2081": { id: "2081", name: "Bed Sheets" },
+          "2082": { id: "2082", name: "Pillowcases" },
+          "2083": { id: "2083", name: "Bed Skirts" },
+          "2084": { id: "2084", name: "Shams" },
+          "2085": { id: "2085", name: "Decorative Pillows" },
+          "2086": { id: "2086", name: "Pillow Covers" },
+          "2087": { id: "2087", name: "Pillow Inserts" },
+          "2088": { id: "2088", name: "Blankets" },
+          "2089": { id: "2089", name: "Throws" }
+        }
+      },
+      "63": {
+        id: "63",
+        name: "Bath",
+        subcategories: {
+          "604": { id: "604", name: "Bath linen sets" },
+          "605": { id: "605", name: "Bath rugs" },
+          "606": { id: "606", name: "Bathroom accessories" },
+          "607": { id: "607", name: "Bathroom furniture sets" },
+          "608": { id: "608", name: "Towels" },
+          "610": { id: "610", name: "Other" }
+        }
+      },
+      "64": {
+        id: "64",
+        name: "Furniture",
+        subcategories: {
+          "613": { id: "613", name: "Home bar furniture" },
+          "614": { id: "614", name: "Entertainment Centers & TV Stands" }
+        }
+      },
+      "65": {
+        id: "65",
+        name: "Home decor",
+        subcategories: {
+          "622": { id: "622", name: "Baskets" },
+          "624": { id: "624", name: "Clocks" },
+          "625": { id: "625", name: "Decorative pillows" },
+          "626": { id: "626", name: "Doormats" },
+          "627": { id: "627", name: "Doorstops" },
+          "628": { id: "628", name: "Draft stoppers" },
+          "630": { id: "630", name: "Home decor accents" },
+          "631": { id: "631", name: "Home fragrance" },
+          "633": { id: "633", name: "Mirrors" },
+          "635": { id: "635", name: "Slipcovers" },
+          "636": { id: "636", name: "Tapestries" },
+          "637": { id: "637", name: "Window treatments" },
+          "638": { id: "638", name: "Vases" },
+          "639": { id: "639", name: "Other" },
+          "2090": { id: "2090", name: "Area Rugs" },
+          "2091": { id: "2091", name: "Rug Pads" },
+          "2092": { id: "2092", name: "Candle Holders" },
+          "2093": { id: "2093", name: "Candle Warmers" },
+          "2094": { id: "2094", name: "Fragrance Oils" },
+          "2095": { id: "2095", name: "Home Candles" },
+          "2096": { id: "2096", name: "Other Candle Accessories" },
+          "2097": { id: "2097", name: "Wax Melts" },
+          "2098": { id: "2098", name: "Fireplace Accessories" },
+          "2099": { id: "2099", name: "Fireplaces" },
+          "2100": { id: "2100", name: "Home Decor Lamps" },
+          "2101": { id: "2101", name: "Home Decor Lighting" },
+          "2102": { id: "2102", name: "Home Decor Lamp Accessories" },
+          "2103": { id: "2103", name: "Photo Albums" },
+          "2104": { id: "2104", name: "Picture Frames" },
+          "2825": { id: "2825", name: "Aromatherapy Diffusers" }
+        }
+      },
+      "66": {
+        id: "66",
+        name: "Artwork",
+        subcategories: {
+          "640": { id: "640", name: "Drawings" },
+          "642": { id: "642", name: "Paintings" },
+          "643": { id: "643", name: "Photographs" },
+          "645": { id: "645", name: "Other" },
+          "2105": { id: "2105", name: "Etchings" },
+          "2106": { id: "2106", name: "Lithographs" },
+          "2107": { id: "2107", name: "Woodcuts" },
+          "2108": { id: "2108", name: "Art Prints" },
+          "2109": { id: "2109", name: "Posters" }
+        }
+      },
+      "67": {
+        id: "67",
+        name: "Seasonal decor",
+        subcategories: {
+          "646": { id: "646", name: "Christmas" },
+          "647": { id: "647", name: "Easter" },
+          "648": { id: "648", name: "Halloween" },
+          "649": { id: "649", name: "Valentine" },
+          "650": { id: "650", name: "Patriotic" },
+          "651": { id: "651", name: "Thanksgiving" },
+          "652": { id: "652", name: "Birthday" },
+          "653": { id: "653", name: "St patrick's" },
+          "654": { id: "654", name: "Hanukkah" },
+          "655": { id: "655", name: "Day of the dead" },
+          "656": { id: "656", name: "New year's" },
+          "657": { id: "657", name: "Other" }
+        }
+      },
+      "68": {
+        id: "68",
+        name: "Home appliances",
+        subcategories: {
+          "658": { id: "658", name: "Air conditioners" },
+          "659": { id: "659", name: "Air purifiers" },
+          "660": { id: "660", name: "Dehumidifiers" },
+          "661": { id: "661", name: "Dishwashers" },
+          "662": { id: "662", name: "Garbage disposals" },
+          "663": { id: "663", name: "Fans" },
+          "665": { id: "665", name: "Garment steamers" },
+          "666": { id: "666", name: "Humidifiers" },
+          "668": { id: "668", name: "Kitchen appliances" },
+          "669": { id: "669", name: "Microwaves" },
+          "670": { id: "670", name: "Refrigerators" },
+          "671": { id: "671", name: "Space heaters" },
+          "2110": { id: "2110", name: "Freezers" },
+          "2111": { id: "2111", name: "Ice Makers" },
+          "2112": { id: "2112", name: "Ironing Boards" },
+          "2113": { id: "2113", name: "Irons" },
+          "2114": { id: "2114", name: "Home Floor Care" },
+          "2115": { id: "2115", name: "Vacuums" },
+          "2116": { id: "2116", name: "Dryers" },
+          "2117": { id: "2117", name: "Washer & Dryer Sets" },
+          "2118": { id: "2118", name: "Washers" },
+          "2119": { id: "2119", name: "Beverage Coolers" },
+          "2120": { id: "2120", name: "Wine Coolers" }
+        }
+      },
+      "69": {
+        id: "69",
+        name: "Storage & organization",
+        subcategories: {
+          "677": { id: "677", name: "Bathroom storage & organization" },
+          "678": { id: "678", name: "Clothing & closet storage" },
+          "679": { id: "679", name: "Garage storage & organization" },
+          "680": { id: "680", name: "Holiday decor storage" },
+          "682": { id: "682", name: "Laundry storage & organization" },
+          "684": { id: "684", name: "Trash & recycling" },
+          "685": { id: "685", name: "Storage cabinets" },
+          "686": { id: "686", name: "Jewelry boxes & organizers" },
+          "687": { id: "687", name: "Other" },
+          "2121": { id: "2121", name: "Storage Baskets" },
+          "2122": { id: "2122", name: "Storage Bins" },
+          "2123": { id: "2123", name: "Storage Drawers" },
+          "2124": { id: "2124", name: "Storage Racks" },
+          "2125": { id: "2125", name: "Storage Shelves" }
+        }
+      },
+      "70": {
+        id: "70",
+        name: "Cleaning supplies",
+        subcategories: {
+          "688": { id: "688", name: "Air fresheners" },
+          "689": { id: "689", name: "Brushes" },
+          "690": { id: "690", name: "Dusting" },
+          "691": { id: "691", name: "Gloves" },
+          "692": { id: "692", name: "Household cleaners" },
+          "693": { id: "693", name: "Mopping" },
+          "694": { id: "694", name: "Paper towels" },
+          "695": { id: "695", name: "Sponges" },
+          "696": { id: "696", name: "Squeegees" },
+          "697": { id: "697", name: "Sweeping" },
+          "698": { id: "698", name: "Trash bags" },
+          "700": { id: "700", name: "Other" }
+        }
+      },
+      "71": { id: "71", name: "Other" },
+      "576": {
+        id: "576",
+        name: "Kitchen Bakeware",
+        subcategories: {
+          "2297": { id: "2297", name: "Bakeware Sets" },
+          "2298": { id: "2298", name: "Baking Sheets" },
+          "2299": { id: "2299", name: "Bundt Pans" },
+          "2300": { id: "2300", name: "Cake Pans" },
+          "2301": { id: "2301", name: "Cookie Sheets" },
+          "2302": { id: "2302", name: "Cupcake & Muffin Pans" },
+          "2303": { id: "2303", name: "Loaf Pans" },
+          "2304": { id: "2304", name: "Pie Tins" }
+        }
+      },
+      "577": {
+        id: "577",
+        name: "Kitchen Coffee & Espresso Makers",
+        subcategories: {
+          "2340": { id: "2340", name: "Coffee Drippers" },
+          "2341": { id: "2341", name: "Coffee Grinders" },
+          "2342": { id: "2342", name: "Coffee Roasters" },
+          "2343": { id: "2343", name: "Espresso & Cappuccino Machines" },
+          "2344": { id: "2344", name: "Filter Coffee Machines" },
+          "2345": { id: "2345", name: "French Presses" },
+          "2346": { id: "2346", name: "Milk Frothers" }
+        }
+      },
+      "578": {
+        id: "578",
+        name: "Kitchen Cookware",
+        subcategories: {
+          "2347": { id: "2347", name: "Casserole Pans" },
+          "2348": { id: "2348", name: "Cookware Sets" },
+          "2349": { id: "2349", name: "Dutch Ovens" },
+          "2350": { id: "2350", name: "Fry Pans" },
+          "2351": { id: "2351", name: "Griddle Pans" },
+          "2352": { id: "2352", name: "Grill Pans" },
+          "2353": { id: "2353", name: "Saucepans" },
+          "2354": { id: "2354", name: "Saut Pans" },
+          "2355": { id: "2355", name: "Skillets" },
+          "2356": { id: "2356", name: "Steamers" },
+          "2357": { id: "2357", name: "Stock Pots & Multipots" },
+          "2358": { id: "2358", name: "Tagines" },
+          "2359": { id: "2359", name: "Woks" },
+          "2360": { id: "2360", name: "Other Cookware" }
+        }
+      },
+      "579": {
+        id: "579",
+        name: "Kitchen Dinnerware",
+        subcategories: {
+          "2377": { id: "2377", name: "Appetizer Plates" },
+          "2378": { id: "2378", name: "Bowls" },
+          "2379": { id: "2379", name: "Dinner Plates" },
+          "2380": { id: "2380", name: "Dinnerware Sets" },
+          "2381": { id: "2381", name: "Salad Plates" },
+          "2382": { id: "2382", name: "Other Dinnerware" }
+        }
+      },
+      "580": {
+        id: "580",
+        name: "Kitchen Serveware",
+        subcategories: {
+          "2432": { id: "2432", name: "Beverage Dispensers" },
+          "2433": { id: "2433", name: "Butter Dishes" },
+          "2434": { id: "2434", name: "Cheese Boards" },
+          "2435": { id: "2435", name: "Dessert & Cake Stands" },
+          "2436": { id: "2436", name: "Gravy Boats" },
+          "2437": { id: "2437", name: "Jugs" },
+          "2438": { id: "2438", name: "Pitchers" },
+          "2439": { id: "2439", name: "Salad Bowls" },
+          "2440": { id: "2440", name: "Serving Baskets" },
+          "2441": { id: "2441", name: "Serving Bowls" },
+          "2442": { id: "2442", name: "Serving Platters" },
+          "2443": { id: "2443", name: "Serving Trays" },
+          "2444": { id: "2444", name: "Trivets" }
+        }
+      },
+      "582": {
+        id: "582",
+        name: "Kitchen & Table Linens",
+        subcategories: {
+          "2284": { id: "2284", name: "Kitchen Aprons" },
+          "2285": { id: "2285", name: "Kitchen Cloth Napkins" },
+          "2286": { id: "2286", name: "Kitchen Napkin Holders" },
+          "2287": { id: "2287", name: "Kitchen Napkin Rings" },
+          "2288": { id: "2288", name: "Kitchen Oven Mitts" },
+          "2289": { id: "2289", name: "Kitchen Potholders" },
+          "2290": { id: "2290", name: "Kitchen Table Chargers" },
+          "2291": { id: "2291", name: "Kitchen Table Linen Sets" },
+          "2292": { id: "2292", name: "Kitchen Table Placemats" },
+          "2293": { id: "2293", name: "Kitchen Table Runners" },
+          "2294": { id: "2294", name: "Kitchen Tablecloths" },
+          "2295": { id: "2295", name: "Kitchen Towels" },
+          "2296": { id: "2296", name: "Other Kitchen Linens" }
+        }
+      },
+      "584": {
+        id: "584",
+        name: "Kitchen Utensils",
+        subcategories: {
+          "2493": { id: "2493", name: "Cooking Food Turners" },
+          "2494": { id: "2494", name: "Cooking Ladles" },
+          "2495": { id: "2495", name: "Kitchen Basting Brushes" },
+          "2496": { id: "2496", name: "Kitchen Choppers" },
+          "2497": { id: "2497", name: "Kitchen Colanders" },
+          "2498": { id: "2498", name: "Kitchen Graters" },
+          "2499": { id: "2499", name: "Kitchen Peelers" },
+          "2500": { id: "2500", name: "Kitchen Scoops" },
+          "2501": { id: "2501", name: "Kitchen Sifters" },
+          "2502": { id: "2502", name: "Kitchen Slicers & Mandolines" },
+          "2503": { id: "2503", name: "Kitchen Spatulas" },
+          "2504": { id: "2504", name: "Kitchen Spiralizers" },
+          "2505": { id: "2505", name: "Kitchen Strainers" },
+          "2506": { id: "2506", name: "Kitchen Tongs" },
+          "2507": { id: "2507", name: "Kitchen Utensil Sets" },
+          "2508": { id: "2508", name: "Kitchen Whisks" },
+          "2509": { id: "2509", name: "Kitchen Zesters" },
+          "2510": { id: "2510", name: "Lemon Squeezers" },
+          "2511": { id: "2511", name: "Measuring Cups" },
+          "2512": { id: "2512", name: "Measuring Spoons" },
+          "2513": { id: "2513", name: "Pasta Servers" },
+          "2514": { id: "2514", name: "Pizza Cutter" },
+          "2515": { id: "2515", name: "Potato Mashers" },
+          "2516": { id: "2516", name: "Salad Spinners" },
+          "2517": { id: "2517", name: "Slotted Spoons" },
+          "2518": { id: "2518", name: "Other Kitchen Utensils" }
+        }
+      },
+      "585": {
+        id: "585",
+        name: "Kitchen Small Appliances",
+        subcategories: {
+          "2445": { id: "2445", name: "Air Fryers" },
+          "2446": { id: "2446", name: "Blenders" },
+          "2447": { id: "2447", name: "Chafing Dishes" },
+          "2448": { id: "2448", name: "Chocolate Fountains" },
+          "2449": { id: "2449", name: "Contact Grills" },
+          "2450": { id: "2450", name: "Deep Fryers" },
+          "2451": { id: "2451", name: "Electric Griddles" },
+          "2452": { id: "2452", name: "Electric Skillets" },
+          "2453": { id: "2453", name: "Food Processors" },
+          "2454": { id: "2454", name: "Food Warming Trays" },
+          "2455": { id: "2455", name: "Hand Blenders" },
+          "2456": { id: "2456", name: "Hand Mixers" },
+          "2457": { id: "2457", name: "Ice Cream Makers" },
+          "2458": { id: "2458", name: "Juicers" },
+          "2459": { id: "2459", name: "Kitchen Burners" },
+          "2460": { id: "2460", name: "Kitchen Hot Plates" },
+          "2461": { id: "2461", name: "Pasta Makers" },
+          "2462": { id: "2462", name: "Popcorn Makers" },
+          "2463": { id: "2463", name: "Pressure Cookers" },
+          "2464": { id: "2464", name: "Rice Cookers" },
+          "2465": { id: "2465", name: "Slow Cookers" },
+          "2466": { id: "2466", name: "Soda Makers" },
+          "2467": { id: "2467", name: "Sous Vide" },
+          "2468": { id: "2468", name: "Stand Mixers" },
+          "2470": { id: "2470", name: "Toaster Ovens" },
+          "2471": { id: "2471", name: "Toasters" },
+          "2472": { id: "2472", name: "Waffle Makers" },
+          "2473": { id: "2473", name: "Other Small Appliances" }
+        }
+      },
+      "586": {
+        id: "586",
+        name: "Kitchen Storage",
+        subcategories: {
+          "2474": { id: "2474", name: "Food Storage Bags" },
+          "2475": { id: "2475", name: "Food Storage Containers" },
+          "2476": { id: "2476", name: "Fruit Baskets" },
+          "2477": { id: "2477", name: "Kitchen Bread Boxes" },
+          "2478": { id: "2478", name: "Kitchen Canisters" },
+          "2479": { id: "2479", name: "Kitchen Cling Films" },
+          "2480": { id: "2480", name: "Kitchen Drawers Organizers" },
+          "2481": { id: "2481", name: "Kitchen Foils" },
+          "2482": { id: "2482", name: "Kitchen Jars" },
+          "2483": { id: "2483", name: "Kitchen Pantry Organizers" },
+          "2484": { id: "2484", name: "Kitchen Spice Jars" },
+          "2485": { id: "2485", name: "Kitchen Spice Racks" },
+          "2486": { id: "2486", name: "Kitchen Tote Bags" },
+          "2487": { id: "2487", name: "Other Kitchen Storage" }
+        }
+      },
+      "588": {
+        id: "588",
+        name: "Kitchen Bar & Wine Accessories",
+        subcategories: {
+          "2315": { id: "2315", name: "Bar Tool Sets" },
+          "2316": { id: "2316", name: "Bottle Holders" },
+          "2317": { id: "2317", name: "Bottle Openers" },
+          "2318": { id: "2318", name: "Coasters" },
+          "2319": { id: "2319", name: "Cocktail Shakers" },
+          "2320": { id: "2320", name: "Decanters" },
+          "2321": { id: "2321", name: "Flasks" },
+          "2322": { id: "2322", name: "Ice Buckets" },
+          "2323": { id: "2323", name: "Liquor Dispensers" },
+          "2324": { id: "2324", name: "Wine Bottle Stoppers" },
+          "2325": { id: "2325", name: "Wine Boxes" },
+          "2326": { id: "2326", name: "Wine Openers & Corkscrews" },
+          "2327": { id: "2327", name: "Wine Racks" },
+          "2328": { id: "2328", name: "Other Bar & Wine Accessories" }
+        }
+      },
+      "611": {
+        id: "611",
+        name: "Bedroom Furniture",
+        subcategories: {
+          "2833": { id: "2833", name: "Bedroom Benches" },
+          "2834": { id: "2834", name: "Bedroom Sets" },
+          "2835": { id: "2835", name: "Beds" },
+          "2836": { id: "2836", name: "Dressers" },
+          "2837": { id: "2837", name: "Headboards" },
+          "2838": { id: "2838", name: "Mattresses" },
+          "2839": { id: "2839", name: "Nightstands" },
+          "2840": { id: "2840", name: "Vanities" },
+          "2841": { id: "2841", name: "Vanity Stools" },
+          "2842": { id: "2842", name: "Wardrobes & Armoires" },
+          "2843": { id: "2843", name: "Other Bedroom Furniture" }
+        }
+      },
+      "612": {
+        id: "612",
+        name: "Kitchen Furniture",
+        subcategories: {
+          "2407": { id: "2407", name: "Dining Benches" },
+          "2408": { id: "2408", name: "Dining Chairs" },
+          "2409": { id: "2409", name: "Dining Sets" },
+          "2410": { id: "2410", name: "Dining Tables" },
+          "2411": { id: "2411", name: "Kitchen Bar Stools" },
+          "2412": { id: "2412", name: "Other Dining Furniture" }
+        }
+      },
+      "615": {
+        id: "615",
+        name: "Home Office Furniture",
+        subcategories: {
+          "2852": { id: "2852", name: "Bookcases" },
+          "2853": { id: "2853", name: "Desks" },
+          "2854": { id: "2854", name: "Filing Cabinets" },
+          "2855": { id: "2855", name: "Office Cabinets" },
+          "2856": { id: "2856", name: "Office Chairs" },
+          "2857": { id: "2857", name: "Office Chair Mats" },
+          "2858": { id: "2858", name: "Office Shelves" },
+          "2859": { id: "2859", name: "Other Home Office Furniture" }
+        }
+      },
+      "616": {
+        id: "616",
+        name: "Living Room Furniture",
+        subcategories: {
+          "2860": { id: "2860", name: "Accent Chairs" },
+          "2861": { id: "2861", name: "Cabinets" },
+          "2862": { id: "2862", name: "Coffee Tables" },
+          "2863": { id: "2863", name: "Console Tables" },
+          "2864": { id: "2864", name: "Futons" },
+          "2865": { id: "2865", name: "Living Room Sets" },
+          "2867": { id: "2867", name: "Ottomans" },
+          "2868": { id: "2868", name: "Recliners" },
+          "2871": { id: "2871", name: "Sofas" },
+          "2872": { id: "2872", name: "TV Mounts" },
+          "2873": { id: "2873", name: "Other Living Room Furniture" }
+        }
+      },
+      "617": {
+        id: "617",
+        name: "Bathroom Furniture",
+        subcategories: {
+          "2826": { id: "2826", name: "Bathroom Cabinets" },
+          "2827": { id: "2827", name: "Bathroom Etagere" },
+          "2828": { id: "2828", name: "Bathroom Organizers" },
+          "2829": { id: "2829", name: "Bathroom Shelves" },
+          "2830": { id: "2830", name: "Bathroom Vanities" },
+          "2831": { id: "2831", name: "Hampers" },
+          "2832": { id: "2832", name: "Other Bathroom Storage" }
+        }
+      },
+      "618": {
+        id: "618",
+        name: "Other Furniture",
+        subcategories: {
+          "620": { id: "620", name: "Other Furniture Accessories" }
+        }
+      },
+      "619": {
+        id: "619",
+        name: "Furniture Hardware & Parts",
+        subcategories: {
+          "2844": { id: "2844", name: "Backplates" },
+          "2845": { id: "2845", name: "Drawer Slides" },
+          "2846": { id: "2846", name: "Furniture Legs" },
+          "2847": { id: "2847", name: "Hinges" },
+          "2848": { id: "2848", name: "Knobs" },
+          "2849": { id: "2849", name: "Latches" },
+          "2850": { id: "2850", name: "Pulls & Handles" },
+          "2851": { id: "2851", name: "Other Furniture Hardware & Parts" }
+        }
+      },
+      "1853": {
+        id: "1853",
+        name: "Party Supplies",
+        subcategories: {
+          "1854": { id: "1854", name: "Greeting Cards & Invitations" },
+          "1855": { id: "1855", name: "Gift Wrapping Supplies" },
+          "1856": { id: "1856", name: "Party Decorations" },
+          "1857": { id: "1857", name: "Balloons" },
+          "1858": { id: "1858", name: "Party Tableware" },
+          "1859": { id: "1859", name: "Piñatas" },
+          "1860": { id: "1860", name: "Party Favors" },
+          "2244": { id: "2244", name: "Party Hats" },
+          "2245": { id: "2245", name: "Party Masks" }
+        }
+      },
+      "2072": {
+        id: "2072",
+        name: "Kitchen Cutlery",
+        subcategories: {
+          "2361": { id: "2361", name: "Cheese Knives" },
+          "2362": { id: "2362", name: "Chef's Knives" },
+          "2363": { id: "2363", name: "Kitchen Boning Knives" },
+          "2364": { id: "2364", name: "Kitchen Bread Knives" },
+          "2365": { id: "2365", name: "Kitchen Carving Knives" },
+          "2366": { id: "2366", name: "Kitchen Cleavers" },
+          "2367": { id: "2367", name: "Kitchen Knife Blocks" },
+          "2368": { id: "2368", name: "Kitchen Knife Sets" },
+          "2369": { id: "2369", name: "Kitchen Knife Sharpeners" },
+          "2370": { id: "2370", name: "Kitchen Knife Storage" },
+          "2371": { id: "2371", name: "Kitchen Paring Knives" },
+          "2372": { id: "2372", name: "Kitchen Scissors & Shears" },
+          "2373": { id: "2373", name: "Kitchen Steak Knives" },
+          "2374": { id: "2374", name: "Kitchen Utility Knives" },
+          "2375": { id: "2375", name: "Nakiri Knives" },
+          "2376": { id: "2376", name: "Santoku Knives" }
+        }
+      },
+      "2305": {
+        id: "2305",
+        name: "Kitchen Baking & Cake Accessories",
+        subcategories: {
+          "2306": { id: "2306", name: "Cake Boards" },
+          "2307": { id: "2307", name: "Cake Candles" },
+          "2308": { id: "2308", name: "Cake Levelers" },
+          "2309": { id: "2309", name: "Cake Scrapers" },
+          "2310": { id: "2310", name: "Cake Toppers" },
+          "2311": { id: "2311", name: "Cookie Cutters" },
+          "2312": { id: "2312", name: "Icing Bags" },
+          "2313": { id: "2313", name: "Icing Nozzles" },
+          "2314": { id: "2314", name: "Rolling Pins" }
+        }
+      },
+      "2329": {
+        id: "2329",
+        name: "Kitchen Barware",
+        subcategories: {
+          "2330": { id: "2330", name: "Bar Glasses" },
+          "2331": { id: "2331", name: "Beer Glasses" },
+          "2332": { id: "2332", name: "Champagne Flutes" },
+          "2333": { id: "2333", name: "Cocktail Glasses" },
+          "2334": { id: "2334", name: "Highball Glasses" },
+          "2335": { id: "2335", name: "Margarita Glasses" },
+          "2336": { id: "2336", name: "Martini Glasses" },
+          "2337": { id: "2337", name: "Old-Fashioned Glasses" },
+          "2338": { id: "2338", name: "Shot Glasses" },
+          "2339": { id: "2339", name: "Wine Glasses" }
+        }
+      },
+      "2383": {
+        id: "2383",
+        name: "Kitchen Drinkware",
+        subcategories: {
+          "2384": { id: "2384", name: "Coffee Mugs" },
+          "2385": { id: "2385", name: "Drinking Glasses" },
+          "2386": { id: "2386", name: "Glassware Collections" },
+          "2387": { id: "2387", name: "Straws" },
+          "2388": { id: "2388", name: "Tea Cups" },
+          "2389": { id: "2389", name: "Travel Mugs" },
+          "2390": { id: "2390", name: "Tumblers" },
+          "2391": { id: "2391", name: "Water Bottles" },
+          "2392": { id: "2392", name: "Other Drinkware Accessories" }
+        }
+      },
+      "2393": {
+        id: "2393",
+        name: "Kitchen Flatware",
+        subcategories: {
+          "2394": { id: "2394", name: "Butter Knives" },
+          "2395": { id: "2395", name: "Chopstick Holders" },
+          "2396": { id: "2396", name: "Chopsticks" },
+          "2397": { id: "2397", name: "Dinner Knives" },
+          "2398": { id: "2398", name: "Flatware Sets" },
+          "2399": { id: "2399", name: "Forks" },
+          "2400": { id: "2400", name: "Pie Servers" },
+          "2401": { id: "2401", name: "Salad Servers" },
+          "2402": { id: "2402", name: "Serving Forks" },
+          "2403": { id: "2403", name: "Serving Sets" },
+          "2404": { id: "2404", name: "Serving Spoons" },
+          "2405": { id: "2405", name: "Table Spoons" },
+          "2406": { id: "2406", name: "Teaspoons" }
+        }
+      },
+      "2413": {
+        id: "2413",
+        name: "Kitchen Gadgets & Tools",
+        subcategories: {
+          "2414": { id: "2414", name: "Can Openers" },
+          "2415": { id: "2415", name: "Cooking Funnels" },
+          "2416": { id: "2416", name: "Cooking Thermometers" },
+          "2417": { id: "2417", name: "Garlic Presses" },
+          "2418": { id: "2418", name: "Ice Cube Trays" },
+          "2419": { id: "2419", name: "Kitchen Cutting Boards" },
+          "2420": { id: "2420", name: "Kitchen Mortar & Pestles" },
+          "2421": { id: "2421", name: "Kitchen Scales" },
+          "2422": { id: "2422", name: "Kitchen Timers" },
+          "2423": { id: "2423", name: "Manual Juicers" },
+          "2424": { id: "2424", name: "Mixing Bowls" },
+          "2425": { id: "2425", name: "Nut & Shell Crackers" },
+          "2426": { id: "2426", name: "Oil & Vinegar Dispensers" },
+          "2427": { id: "2427", name: "Salt & Pepper Mills" },
+          "2428": { id: "2428", name: "Salt & Pepper Shakers" },
+          "2429": { id: "2429", name: "Spoon Rests" },
+          "2430": { id: "2430", name: "Stove Burner Covers" },
+          "2431": { id: "2431", name: "Other Kitchen Gadgets & Tools" }
+        }
+      },
+      "2488": {
+        id: "2488",
+        name: "Kitchen Tea & Accessories",
+        subcategories: {
+          "2489": { id: "2489", name: "Electric Kettles" },
+          "2490": { id: "2490", name: "Stovetop Kettles" },
+          "2491": { id: "2491", name: "Tea Infusers" },
+          "2492": { id: "2492", name: "Teapots" }
+        }
+      }
+    }
+  },
   "6": { id: "6", name: "Beauty" },
   "3": { id: "3", name: "Kids" },
   "5": { id: "5", name: "Vintage & collectibles" },
