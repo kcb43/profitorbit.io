@@ -5551,6 +5551,31 @@ export default function CrosslistComposer() {
                                categorySuggestionsData?.suggestions || 
                                (Array.isArray(categorySuggestionsData) ? categorySuggestionsData : []);
 
+  // Helper function to flatten Mercari categories for searching
+  const flattenMercariCategories = (categories, parentPath = []) => {
+    const flattened = [];
+    for (const [id, cat] of Object.entries(categories)) {
+      const currentPath = [...parentPath, cat.name];
+      const fullPath = currentPath.join(" > ");
+      flattened.push({
+        id: cat.id,
+        name: cat.name,
+        fullPath: fullPath,
+        path: currentPath,
+        hasSubcategories: cat.subcategories && Object.keys(cat.subcategories).length > 0
+      });
+      if (cat.subcategories) {
+        flattened.push(...flattenMercariCategories(cat.subcategories, currentPath));
+      }
+    }
+    return flattened;
+  };
+
+  // Flatten all Mercari categories for search
+  const allMercariCategories = React.useMemo(() => {
+    return flattenMercariCategories(MERCARI_CATEGORIES);
+  }, []);
+
   // eBay shipping defaults storage
   const EBAY_DEFAULTS_KEY = 'ebay-shipping-defaults';
   const loadEbayDefaults = () => {
@@ -11536,64 +11561,170 @@ export default function CrosslistComposer() {
                   </div>
                 )}
                 
-                {/* Mercari Category Dropdown - Multi-level */}
-                <Select
-                  value=""
-                  onValueChange={(value) => {
-                    // Get current level categories
-                    let currentLevel = MERCARI_CATEGORIES;
-                    
-                    // Navigate to current path's subcategories
-                    for (const pathItem of mercariCategoryPath) {
-                      currentLevel = currentLevel[pathItem.id]?.subcategories || {};
-                    }
-                    
-                    // Find selected category
-                    const selected = currentLevel[value];
-                    if (selected) {
-                      const newPath = [...mercariCategoryPath, { id: selected.id, name: selected.name }];
-                      
-                      // Check if has subcategories
-                      if (selected.subcategories && Object.keys(selected.subcategories).length > 0) {
-                        // Has subcategories - navigate deeper
-                        setMercariCategoryPath(newPath);
-                      } else {
-                        // Leaf node - select it
-                        const fullPath = newPath.map(c => c.name).join(" > ");
-                        handleMarketplaceChange("mercari", "mercariCategory", fullPath);
-                        handleMarketplaceChange("mercari", "mercariCategoryId", selected.id);
-                        setMercariCategoryPath(newPath);
+                {/* Mercari Category Dropdown - Searchable with Popover */}
+                <Popover 
+                  open={categorySearchOpen && activeForm === "mercari"} 
+                  onOpenChange={(open) => {
+                    if (activeForm === "mercari") {
+                      setCategorySearchOpen(open);
+                      if (!open) {
+                        setMercariCategorySearchValue("");
                       }
                     }
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      mercariCategoryPath.length > 0 
-                        ? `Select ${mercariCategoryPath[mercariCategoryPath.length - 1].name} subcategory...`
-                        : "Select category"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(() => {
-                      // Get categories for current level
-                      let currentLevel = MERCARI_CATEGORIES;
-                      
-                      // Navigate to current path
-                      for (const pathItem of mercariCategoryPath) {
-                        currentLevel = currentLevel[pathItem.id]?.subcategories || {};
-                      }
-                      
-                      // Render options
-                      return Object.values(currentLevel).map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                          {cat.subcategories && Object.keys(cat.subcategories).length > 0 ? ' →' : ''}
-                        </SelectItem>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={categorySearchOpen && activeForm === "mercari"}
+                      className="w-full justify-between"
+                    >
+                      {mercariForm.mercariCategory || mercariCategoryPath.length > 0
+                        ? (mercariForm.mercariCategory || mercariCategoryPath.map(c => c.name).join(" > "))
+                        : (mercariCategoryPath.length > 0 ? "Select subcategory" : "Search category...")}
+                      <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput 
+                        placeholder="Search all categories..." 
+                        value={mercariCategorySearchValue}
+                        onValueChange={setMercariCategorySearchValue}
+                      />
+                      <CommandList>
+                        <CommandGroup>
+                          {/* Show search results from all categories when typing */}
+                          {mercariCategorySearchValue.trim().length >= 2 && (
+                            <>
+                              {allMercariCategories
+                                .filter((cat) => {
+                                  const searchLower = mercariCategorySearchValue.toLowerCase();
+                                  return cat.name.toLowerCase().includes(searchLower) || 
+                                         cat.fullPath.toLowerCase().includes(searchLower);
+                                })
+                                .map((cat) => (
+                                  <CommandItem
+                                    key={`search-${cat.id}`}
+                                    value={`search-${cat.id}`}
+                                    onSelect={() => {
+                                      // Navigate to this category by building the path
+                                      const pathParts = cat.path;
+                                      const newPath = pathParts.map((name, index) => {
+                                        // Find the ID for this path part
+                                        let currentLevel = MERCARI_CATEGORIES;
+                                        let foundId = "";
+                                        for (let i = 0; i <= index; i++) {
+                                          for (const [id, category] of Object.entries(currentLevel)) {
+                                            if (category.name === pathParts[i]) {
+                                              foundId = id;
+                                              if (i < index && category.subcategories) {
+                                                currentLevel = category.subcategories;
+                                              }
+                                              break;
+                                            }
+                                          }
+                                        }
+                                        return { id: foundId, name: name };
+                                      });
+                                      
+                                      if (cat.hasSubcategories) {
+                                        setMercariCategoryPath(newPath);
+                                      } else {
+                                        handleMarketplaceChange("mercari", "mercariCategory", cat.fullPath);
+                                        handleMarketplaceChange("mercari", "mercariCategoryId", cat.id);
+                                        setMercariCategoryPath(newPath);
+                                      }
+                                      setMercariCategorySearchValue("");
+                                      setCategorySearchOpen(false);
+                                    }}
+                                  >
+                                    <Check className="mr-2 h-4 w-4 opacity-0" />
+                                    {cat.fullPath}
+                                    {cat.hasSubcategories && (
+                                      <ArrowRight className="ml-auto w-3 h-3 text-muted-foreground" />
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              {allMercariCategories.filter((cat) => {
+                                const searchLower = mercariCategorySearchValue.toLowerCase();
+                                return cat.name.toLowerCase().includes(searchLower) || 
+                                       cat.fullPath.toLowerCase().includes(searchLower);
+                              }).length > 0 && (
+                                <div className="border-t my-1" />
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Current level categories */}
+                          {(() => {
+                            // Get categories for current level
+                            let currentLevel = MERCARI_CATEGORIES;
+                            
+                            // Navigate to current path
+                            for (const pathItem of mercariCategoryPath) {
+                              currentLevel = currentLevel[pathItem.id]?.subcategories || {};
+                            }
+                            
+                            // Filter by search if provided
+                            const filteredCategories = Object.values(currentLevel).filter((cat) => {
+                              if (!mercariCategorySearchValue.trim()) return true;
+                              const searchLower = mercariCategorySearchValue.toLowerCase();
+                              const fullPath = [...mercariCategoryPath.map(c => c.name), cat.name].join(" > ");
+                              return cat.name.toLowerCase().includes(searchLower) || fullPath.toLowerCase().includes(searchLower);
+                            });
+                            
+                            return filteredCategories.map((cat) => (
+                              <CommandItem
+                                key={cat.id}
+                                value={cat.id}
+                                onSelect={() => {
+                                  const newPath = [...mercariCategoryPath, { id: cat.id, name: cat.name }];
+                                  
+                                  // Check if has subcategories
+                                  if (cat.subcategories && Object.keys(cat.subcategories).length > 0) {
+                                    // Has subcategories - navigate deeper
+                                    setMercariCategoryPath(newPath);
+                                  } else {
+                                    // Leaf node - select it
+                                    const fullPath = newPath.map(c => c.name).join(" > ");
+                                    handleMarketplaceChange("mercari", "mercariCategory", fullPath);
+                                    handleMarketplaceChange("mercari", "mercariCategoryId", cat.id);
+                                    setMercariCategoryPath(newPath);
+                                  }
+                                  setMercariCategorySearchValue("");
+                                  setCategorySearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    mercariForm.mercariCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="flex-1">{cat.name}</span>
+                                  {cat.subcategories && Object.keys(cat.subcategories).length > 0 && (
+                                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ));
+                          })()}
+                        </CommandGroup>
+                        {mercariCategorySearchValue.trim().length >= 2 && 
+                         allMercariCategories.filter((cat) => {
+                           const searchLower = mercariCategorySearchValue.toLowerCase();
+                           return cat.name.toLowerCase().includes(searchLower) || 
+                                  cat.fullPath.toLowerCase().includes(searchLower);
+                         }).length === 0 && (
+                          <CommandEmpty>No category found. Try a different search term.</CommandEmpty>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 
                 {/* Auto-suggest based on General form category */}
                 {generalForm.category && !mercariForm.mercariCategory && (
@@ -12233,7 +12364,7 @@ export default function CrosslistComposer() {
                   </div>
                 )}
                 
-                {/* Category Dropdown - Inherits from General or allows selection */}
+                {/* Category Dropdown - Searchable with Popover */}
                 {!isLoadingCategoryTree && categoryTreeId ? (
                   generalCategoryPath.length > 0 && sortedCategories.length === 0 ? (
                     <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-md">
@@ -12242,59 +12373,152 @@ export default function CrosslistComposer() {
                       </p>
                     </div>
                   ) : sortedCategories.length > 0 ? (
-                    <Select
-                      value={undefined}
-                      onValueChange={(value) => {
-                        const selectedCategory = sortedCategories.find(
-                          cat => cat.category?.categoryId === value
-                        );
-                        
-                        if (selectedCategory) {
-                          const category = selectedCategory.category;
-                          const newPath = [...generalCategoryPath, {
-                            categoryId: category.categoryId,
-                            categoryName: category.categoryName,
-                          }];
-                          
-                          // Check if this category has children
-                          const hasChildren = selectedCategory.childCategoryTreeNodes && 
-                            selectedCategory.childCategoryTreeNodes.length > 0 &&
-                            !selectedCategory.leafCategoryTreeNode;
-                          
-                          if (hasChildren) {
-                            // Navigate deeper into the tree
-                            setGeneralCategoryPath(newPath);
-                          } else {
-                            // This is a leaf node - select it
-                            const fullPath = newPath.map(c => c.categoryName).join(" > ");
-                            const categoryId = category.categoryId;
-                            handleMarketplaceChange("facebook", "category", fullPath);
-                            handleMarketplaceChange("facebook", "categoryId", categoryId);
-                            setGeneralCategoryPath(newPath);
+                    <Popover 
+                      open={categorySearchOpen && activeForm === "facebook"} 
+                      onOpenChange={(open) => {
+                        if (activeForm === "facebook") {
+                          setCategorySearchOpen(open);
+                          if (!open) {
+                            setFacebookCategorySearchValue("");
                           }
                         }
                       }}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder={generalCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {sortedCategories.map((categoryNode) => {
-                          const category = categoryNode.category;
-                          if (!category || !category.categoryId) return null;
-                          
-                          const hasChildren = categoryNode.childCategoryTreeNodes && 
-                            categoryNode.childCategoryTreeNodes.length > 0 &&
-                            !categoryNode.leafCategoryTreeNode;
-                          
-                          return (
-                            <SelectItem key={category.categoryId} value={category.categoryId}>
-                              {category.categoryName} {hasChildren && '›'}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={categorySearchOpen && activeForm === "facebook"}
+                          className="w-full justify-between"
+                        >
+                          {facebookForm.category || generalForm.category || generalCategoryPath.length > 0
+                            ? (facebookForm.category || generalForm.category || generalCategoryPath.map(c => c.categoryName).join(" > "))
+                            : (generalCategoryPath.length > 0 ? "Select subcategory" : "Search category...")}
+                          <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput 
+                            placeholder="Search all categories..." 
+                            value={facebookCategorySearchValue}
+                            onValueChange={setFacebookCategorySearchValue}
+                          />
+                          <CommandList>
+                            <CommandGroup>
+                              {/* Show category suggestions from API when searching - at the top */}
+                              {facebookCategorySearchValue.trim().length >= 2 && categorySuggestions.length > 0 && (
+                                <>
+                                  {categorySuggestions.map((suggestion, index) => {
+                                    const categoryNode = suggestion.categoryTreeNode || suggestion;
+                                    const category = categoryNode?.category || categoryNode;
+                                    const categoryName = category?.categoryName || suggestion.categoryName || "";
+                                    const categoryId = category?.categoryId || suggestion.categoryId || String(index);
+                                    
+                                    let fullPath = suggestion.categoryPath || "";
+                                    if (!fullPath && categoryNode?.categoryPath) {
+                                      fullPath = categoryNode.categoryPath;
+                                    }
+                                    if (!fullPath && categoryName) {
+                                      fullPath = categoryName;
+                                    }
+                                    
+                                    return (
+                                      <CommandItem
+                                        key={`suggestion-${categoryId}-${index}`}
+                                        value={`suggestion-${categoryId}`}
+                                        onSelect={() => {
+                                          handleMarketplaceChange("facebook", "category", fullPath);
+                                          handleMarketplaceChange("facebook", "categoryId", categoryId);
+                                          setGeneralCategoryPath([]);
+                                          setFacebookCategorySearchValue("");
+                                          setCategorySearchOpen(false);
+                                        }}
+                                      >
+                                        <Check className="mr-2 h-4 w-4 opacity-0" />
+                                        {fullPath}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                  <div className="border-t my-1" />
+                                </>
+                              )}
+                              
+                              {/* Current level categories */}
+                              {sortedCategories
+                                .filter((categoryNode) => {
+                                  if (!facebookCategorySearchValue.trim() || categorySuggestions.length === 0) return true;
+                                  const category = categoryNode.category;
+                                  if (!category) return false;
+                                  const searchLower = facebookCategorySearchValue.toLowerCase();
+                                  const categoryName = category.categoryName?.toLowerCase() || "";
+                                  const fullPath = [...generalCategoryPath.map(c => c.categoryName), category.categoryName].join(" > ").toLowerCase();
+                                  return categoryName.includes(searchLower) || fullPath.includes(searchLower);
+                                })
+                                .map((categoryNode) => {
+                                  const category = categoryNode.category;
+                                  if (!category || !category.categoryId) return null;
+                                  
+                                  const hasChildren = categoryNode.childCategoryTreeNodes && 
+                                    categoryNode.childCategoryTreeNodes.length > 0 &&
+                                    !categoryNode.leafCategoryTreeNode;
+                                  
+                                  const fullPath = generalCategoryPath.length > 0
+                                    ? [...generalCategoryPath.map(c => c.categoryName), category.categoryName].join(" > ")
+                                    : category.categoryName;
+                                  
+                                  return (
+                                    <CommandItem
+                                      key={category.categoryId}
+                                      value={category.categoryId}
+                                      onSelect={() => {
+                                        const newPath = [...generalCategoryPath, {
+                                          categoryId: category.categoryId,
+                                          categoryName: category.categoryName,
+                                        }];
+                                        
+                                        if (hasChildren) {
+                                          setGeneralCategoryPath(newPath);
+                                        } else {
+                                          const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
+                                          handleMarketplaceChange("facebook", "category", fullPathStr);
+                                          handleMarketplaceChange("facebook", "categoryId", category.categoryId);
+                                          setGeneralCategoryPath(newPath);
+                                        }
+                                        setFacebookCategorySearchValue("");
+                                        setCategorySearchOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          facebookForm.categoryId === category.categoryId ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span className="flex-1">{fullPath}</span>
+                                        {hasChildren && (
+                                          <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  );
+                                })}
+                            </CommandGroup>
+                            {facebookCategorySearchValue.trim().length >= 2 && categorySuggestions.length === 0 && 
+                             sortedCategories.filter((categoryNode) => {
+                               if (!categoryNode.category) return false;
+                               const searchLower = facebookCategorySearchValue.toLowerCase();
+                               const categoryName = categoryNode.category.categoryName?.toLowerCase() || "";
+                               const fullPath = [...generalCategoryPath.map(c => c.categoryName), categoryNode.category.categoryName].join(" > ").toLowerCase();
+                               return categoryName.includes(searchLower) || fullPath.includes(searchLower);
+                             }).length === 0 && (
+                              <CommandEmpty>No category found. Try a different search term.</CommandEmpty>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   ) : (
                     <div className="p-3 bg-muted/50 border rounded-md text-sm text-muted-foreground">
                       {generalForm.category 
