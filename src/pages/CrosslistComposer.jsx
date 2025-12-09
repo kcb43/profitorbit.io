@@ -2054,7 +2054,339 @@ const MERCARI_CATEGORIES = {
       "94": { id: "94", name: "Other" }
     }
   },
-  "3": { id: "3", name: "Kids" },
+  "3": {
+    id: "3",
+    name: "Kids",
+    subcategories: {
+      "48": {
+        id: "48",
+        name: "Bathing & skin care",
+        subcategories: {
+          "472": { id: "472", name: "Bubble bath" },
+          "473": { id: "473", name: "Conditioners" },
+          "475": { id: "475", name: "Non-slip bath mats" },
+          "476": { id: "476", name: "Shampoo" },
+          "477": { id: "477", name: "Skin care" },
+          "479": { id: "479", name: "Travel bathing kits" },
+          "481": { id: "481", name: "Other" },
+          "2031": { id: "2031", name: "Kids Bathing Seats" },
+          "2032": { id: "2032", name: "Kids Bathing Tubs" },
+          "2033": { id: "2033", name: "Kids Grooming Kits" },
+          "2034": { id: "2034", name: "Baby Care Kits" },
+          "2035": { id: "2035", name: "Kids Bath Soaps" },
+          "2036": { id: "2036", name: "Kids Facial Cleansers" },
+          "2037": { id: "2037", name: "Kids Bathing Towels" },
+          "2038": { id: "2038", name: "Kids Washcloths" }
+        }
+      },
+      "49": {
+        id: "49",
+        name: "Car seats & accessories",
+        subcategories: {
+          "482": { id: "482", name: "Car seats" },
+          "483": { id: "483", name: "Accessories" },
+          "484": { id: "484", name: "Other" }
+        }
+      },
+      "50": {
+        id: "50",
+        name: "Diapering",
+        subcategories: {
+          "485": { id: "485", name: "Disposable diapers" },
+          "486": { id: "486", name: "Cloth diapers" },
+          "488": { id: "488", name: "Changing tables" },
+          "490": { id: "490", name: "Diaper bags" },
+          "491": { id: "491", name: "Changing kits" },
+          "493": { id: "493", name: "Diaper stackers & caddies" },
+          "496": { id: "496", name: "Other" },
+          "2039": { id: "2039", name: "Baby Changing Pad Covers" },
+          "2040": { id: "2040", name: "Baby Changing Pads" },
+          "2041": { id: "2041", name: "Baby Wipe Holders" },
+          "2042": { id: "2042", name: "Baby Wipes" },
+          "2043": { id: "2043", name: "Diaper Pail Refills" },
+          "2044": { id: "2044", name: "Diaper Pails" },
+          "2045": { id: "2045", name: "Baby Lotions" },
+          "2046": { id: "2046", name: "Baby Powders" }
+        }
+      },
+      "51": {
+        id: "51",
+        name: "Feeding",
+        subcategories: {
+          "499": { id: "499", name: "Storage & containers" },
+          "500": { id: "500", name: "Gift sets" },
+          "506": { id: "506", name: "Other" },
+          "2047": { id: "2047", name: "Kids Booster Seats" },
+          "2048": { id: "2048", name: "Kids Highchairs" },
+          "2049": { id: "2049", name: "Baby Bottles" },
+          "2050": { id: "2050", name: "Feeding Bibs" },
+          "2051": { id: "2051", name: "Kids Feeding Accessories" },
+          "2052": { id: "2052", name: "Kids Sippy Cups" },
+          "2053": { id: "2053", name: "Pacifiers" }
+        }
+      },
+      "52": {
+        id: "52",
+        name: "Gear",
+        subcategories: {
+          "507": { id: "507", name: "Baby Activity Centers" },
+          "509": { id: "509", name: "Baby seats" },
+          "513": { id: "513", name: "Playard bedding" },
+          "514": { id: "514", name: "Playards" },
+          "515": { id: "515", name: "Shopping cart covers" },
+          "517": { id: "517", name: "Travel beds" },
+          "518": { id: "518", name: "Walkers" },
+          "519": { id: "519", name: "Other" },
+          "2054": { id: "2054", name: "Baby Gyms" },
+          "2055": { id: "2055", name: "Baby Playmats" },
+          "2056": { id: "2056", name: "Baby Carriers" },
+          "2057": { id: "2057", name: "Baby Carrier Backpacks" },
+          "2058": { id: "2058", name: "Bicycle Child Seats" },
+          "2059": { id: "2059", name: "Bicycle Child Trailers" },
+          "2060": { id: "2060", name: "Baby Bouncers" },
+          "2061": { id: "2061", name: "Baby Jumpers" },
+          "2062": { id: "2062", name: "Baby Swings" }
+        }
+      },
+      "53": {
+        id: "53",
+        name: "Health & baby care",
+        subcategories: {
+          "520": { id: "520", name: "Humidifiers" },
+          "521": { id: "521", name: "Nail care" },
+          "522": { id: "522", name: "Nasal aspirators" },
+          "523": { id: "523", name: "Sun protection" },
+          "524": { id: "524", name: "Teethers" },
+          "525": { id: "525", name: "Teething relief" },
+          "526": { id: "526", name: "Thermometers" },
+          "527": { id: "527", name: "Toothbrushes" },
+          "528": { id: "528", name: "Other" }
+        }
+      },
+      "54": {
+        id: "54",
+        name: "Nursery",
+        subcategories: {
+          "529": { id: "529", name: "Bedding" },
+          "530": { id: "530", name: "Furniture" },
+          "531": { id: "531", name: "Nursery decor" },
+          "532": { id: "532", name: "Other" }
+        }
+      },
+      "55": {
+        id: "55",
+        name: "Potty training",
+        subcategories: {
+          "533": { id: "533", name: "Seat covers" },
+          "535": { id: "535", name: "Step stools" },
+          "536": { id: "536", name: "Training pants" },
+          "537": { id: "537", name: "Travel potties" },
+          "538": { id: "538", name: "Other" },
+          "2063": { id: "2063", name: "Potty Training Seats" },
+          "2064": { id: "2064", name: "Potty Training Chairs" }
+        }
+      },
+      "56": {
+        id: "56",
+        name: "Pregnancy & maternity",
+        subcategories: {
+          "540": { id: "540", name: "Family planning tests" },
+          "541": { id: "541", name: "Maternity pillows" },
+          "542": { id: "542", name: "Prenatal monitoring devices" },
+          "543": { id: "543", name: "Other" },
+          "2065": { id: "2065", name: "Breastfeeding Pillows" },
+          "2066": { id: "2066", name: "Breastfeeding Stools" }
+        }
+      },
+      "57": {
+        id: "57",
+        name: "Safety",
+        subcategories: {
+          "544": { id: "544", name: "Bathroom safety" },
+          "545": { id: "545", name: "Cabinet locks & straps" },
+          "546": { id: "546", name: "Crib netting" },
+          "547": { id: "547", name: "Edge & corner guards" },
+          "548": { id: "548", name: "Electrical safety" },
+          "549": { id: "549", name: "Gates & doorways" },
+          "551": { id: "551", name: "Kitchen safety" },
+          "552": { id: "552", name: "Monitors" },
+          "553": { id: "553", name: "Outdoor safety" },
+          "554": { id: "554", name: "Rails & rail guards" },
+          "555": { id: "555", name: "Safety caps" },
+          "556": { id: "556", name: "Sleep positioners" },
+          "557": { id: "557", name: "Other" },
+          "2067": { id: "2067", name: "Kids Safety Harnesses" },
+          "2068": { id: "2068", name: "Kids Safety Leashes" }
+        }
+      },
+      "58": {
+        id: "58",
+        name: "Strollers",
+        subcategories: {
+          "558": { id: "558", name: "Accessories" },
+          "559": { id: "559", name: "Joggers" },
+          "560": { id: "560", name: "Lightweight" },
+          "561": { id: "561", name: "Prams" },
+          "562": { id: "562", name: "Standard" },
+          "563": { id: "563", name: "Tandem" },
+          "564": { id: "564", name: "Travel systems" },
+          "565": { id: "565", name: "Other" }
+        }
+      },
+      "59": { id: "59", name: "Other" },
+      "1870": {
+        id: "1870",
+        name: "Girls accessories",
+        subcategories: {
+          "1887": { id: "1887", name: "Girls 0-24 mos" },
+          "1896": { id: "1896", name: "Girls 2T-5T" },
+          "1905": { id: "1905", name: "Girls (4+)" }
+        }
+      },
+      "1871": {
+        id: "1871",
+        name: "Girls bottoms",
+        subcategories: {
+          "1888": { id: "1888", name: "Girls 0-24 mos" },
+          "1897": { id: "1897", name: "Girls 2T-5T" },
+          "1906": { id: "1906", name: "Girls (4+)" }
+        }
+      },
+      "1872": {
+        id: "1872",
+        name: "Girls coats & jackets",
+        subcategories: {
+          "1889": { id: "1889", name: "Girls 0-24 mos" },
+          "1898": { id: "1898", name: "Girls 2T-5T" },
+          "1907": { id: "1907", name: "Girls (4+)" }
+        }
+      },
+      "1873": {
+        id: "1873",
+        name: "Girls dresses",
+        subcategories: {
+          "1890": { id: "1890", name: "Girls 0-24 mos" },
+          "1899": { id: "1899", name: "Girls 2T-5T" },
+          "1908": { id: "1908", name: "Girls (4+)" }
+        }
+      },
+      "1874": {
+        id: "1874",
+        name: "Girls one-pieces",
+        subcategories: {
+          "1891": { id: "1891", name: "Girls 0-24 mos" },
+          "1900": { id: "1900", name: "Girls 2T-5T" }
+        }
+      },
+      "1875": {
+        id: "1875",
+        name: "Girls shoes",
+        subcategories: {
+          "1892": { id: "1892", name: "Girls 0-24 mos" },
+          "1901": { id: "1901", name: "Girls 2T-5T" },
+          "1909": { id: "1909", name: "Girls (4+)" }
+        }
+      },
+      "1876": {
+        id: "1876",
+        name: "Girls swimwear",
+        subcategories: {
+          "1893": { id: "1893", name: "Girls 0-24 mos" },
+          "1902": { id: "1902", name: "Girls 2T-5T" },
+          "1910": { id: "1910", name: "Girls (4+)" }
+        }
+      },
+      "1877": {
+        id: "1877",
+        name: "Girls tops & t-shirts",
+        subcategories: {
+          "1894": { id: "1894", name: "Girls 0-24 mos" },
+          "1903": { id: "1903", name: "Girls 2T-5T" },
+          "1911": { id: "1911", name: "Girls (4+)" }
+        }
+      },
+      "1878": {
+        id: "1878",
+        name: "Girls other",
+        subcategories: {
+          "1895": { id: "1895", name: "Girls 0-24 mos" },
+          "1904": { id: "1904", name: "Girls 2T-5T" },
+          "1912": { id: "1912", name: "Girls (4+)" }
+        }
+      },
+      "1879": {
+        id: "1879",
+        name: "Boys accessories",
+        subcategories: {
+          "1913": { id: "1913", name: "Boys 0-24 mos" },
+          "1921": { id: "1921", name: "Boys 2T-5T" },
+          "1929": { id: "1929", name: "Boys (4+)" }
+        }
+      },
+      "1880": {
+        id: "1880",
+        name: "Boys bottoms",
+        subcategories: {
+          "1914": { id: "1914", name: "Boys 0-24 mos" },
+          "1922": { id: "1922", name: "Boys 2T-5T" },
+          "1930": { id: "1930", name: "Boys (4+)" }
+        }
+      },
+      "1881": {
+        id: "1881",
+        name: "Boys coats & jackets",
+        subcategories: {
+          "1915": { id: "1915", name: "Boys 0-24 mos" },
+          "1923": { id: "1923", name: "Boys 2T-5T" },
+          "1931": { id: "1931", name: "Boys (4+)" }
+        }
+      },
+      "1882": {
+        id: "1882",
+        name: "Boys one-pieces",
+        subcategories: {
+          "1916": { id: "1916", name: "Boys 0-24 mos" },
+          "1924": { id: "1924", name: "Boys 2T-5T" }
+        }
+      },
+      "1883": {
+        id: "1883",
+        name: "Boys swimwear",
+        subcategories: {
+          "1918": { id: "1918", name: "Boys 0-24 mos" },
+          "1926": { id: "1926", name: "Boys 2T-5T" },
+          "1933": { id: "1933", name: "Boys (4+)" }
+        }
+      },
+      "1884": {
+        id: "1884",
+        name: "Boys shoes",
+        subcategories: {
+          "1917": { id: "1917", name: "Boys 0-24 mos" },
+          "1925": { id: "1925", name: "Boys 2T-5T" },
+          "1932": { id: "1932", name: "Boys (4+)" }
+        }
+      },
+      "1885": {
+        id: "1885",
+        name: "Boys tops & t-shirts",
+        subcategories: {
+          "1919": { id: "1919", name: "Boys 0-24 mos" },
+          "1927": { id: "1927", name: "Boys 2T-5T" },
+          "1934": { id: "1934", name: "Boys (4+)" }
+        }
+      },
+      "1886": {
+        id: "1886",
+        name: "Boys other",
+        subcategories: {
+          "1920": { id: "1920", name: "Boys 0-24 mos" },
+          "1928": { id: "1928", name: "Boys 2T-5T" },
+          "1935": { id: "1935", name: "Boys (4+)" }
+        }
+      }
+    }
+  },
   "5": { id: "5", name: "Vintage & collectibles" },
   "8": { id: "8", name: "Sports & outdoors" },
   "9": { id: "9", name: "Handmade" },
