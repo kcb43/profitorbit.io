@@ -1954,7 +1954,106 @@ const MERCARI_CATEGORIES = {
       }
     }
   },
-  "6": { id: "6", name: "Beauty" },
+  "6": {
+    id: "6",
+    name: "Beauty",
+    subcategories: {
+      "88": {
+        id: "88",
+        name: "Bath & body",
+        subcategories: {
+          "820": { id: "820", name: "Bath" },
+          "821": { id: "821", name: "Bathing accessories" },
+          "822": { id: "822", name: "Cleansers" },
+          "824": { id: "824", name: "Sets" },
+          "825": { id: "825", name: "Other" },
+          "2172": { id: "2172", name: "Body Scrubs" },
+          "2173": { id: "2173", name: "Body Care" }
+        }
+      },
+      "89": {
+        id: "89",
+        name: "Fragrance",
+        subcategories: {
+          "826": { id: "826", name: "Women" },
+          "827": { id: "827", name: "Men" },
+          "828": { id: "828", name: "Kids" },
+          "830": { id: "830", name: "Sets" },
+          "831": { id: "831", name: "Other" }
+        }
+      },
+      "90": {
+        id: "90",
+        name: "Hair care",
+        subcategories: {
+          "832": { id: "832", name: "Conditioners" },
+          "833": { id: "833", name: "Hair & scalp treatments" },
+          "834": { id: "834", name: "Hair color" },
+          "835": { id: "835", name: "Hair loss products" },
+          "837": { id: "837", name: "Hair relaxers" },
+          "838": { id: "838", name: "Shampoos" },
+          "839": { id: "839", name: "Shampoo plus conditioner" },
+          "840": { id: "840", name: "Shampoo & conditioner sets" },
+          "841": { id: "841", name: "Styling products" },
+          "843": { id: "843", name: "Other" },
+          "2174": { id: "2174", name: "Hair Perms" },
+          "2175": { id: "2175", name: "Hair Texturizers" }
+        }
+      },
+      "91": {
+        id: "91",
+        name: "Makeup",
+        subcategories: {
+          "844": { id: "844", name: "Body" },
+          "845": { id: "845", name: "Eyes" },
+          "846": { id: "846", name: "Face" },
+          "847": { id: "847", name: "Lips" },
+          "848": { id: "848", name: "Makeup palettes" },
+          "849": { id: "849", name: "Makeup remover" },
+          "850": { id: "850", name: "Makeup sets" },
+          "851": { id: "851", name: "Nails" },
+          "853": { id: "853", name: "Other" }
+        }
+      },
+      "92": {
+        id: "92",
+        name: "Skin care",
+        subcategories: {
+          "854": { id: "854", name: "Body" },
+          "855": { id: "855", name: "Eyes" },
+          "856": { id: "856", name: "Face" },
+          "857": { id: "857", name: "Feet" },
+          "859": { id: "859", name: "Lips" },
+          "860": { id: "860", name: "Maternity" },
+          "861": { id: "861", name: "Sets & kits" },
+          "862": { id: "862", name: "Sun" },
+          "863": { id: "863", name: "Other" },
+          "2176": { id: "2176", name: "Hand Care" },
+          "2177": { id: "2177", name: "Nail Care" }
+        }
+      },
+      "93": {
+        id: "93",
+        name: "Tools & accessories",
+        subcategories: {
+          "866": { id: "866", name: "Cotton & swabs" },
+          "867": { id: "867", name: "Epilators" },
+          "868": { id: "868", name: "Hair coloring tools" },
+          "869": { id: "869", name: "Hair styling tools" },
+          "871": { id: "871", name: "Mirrors" },
+          "872": { id: "872", name: "Nail tools" },
+          "873": { id: "873", name: "Toiletry kits" },
+          "874": { id: "874", name: "Tweezers" },
+          "875": { id: "875", name: "Waxing" },
+          "876": { id: "876", name: "Other" },
+          "2179": { id: "2179", name: "Cosmetic Cases" },
+          "2180": { id: "2180", name: "Makeup Brushes" },
+          "2181": { id: "2181", name: "Makeup Sponges" }
+        }
+      },
+      "94": { id: "94", name: "Other" }
+    }
+  },
   "3": { id: "3", name: "Kids" },
   "5": { id: "5", name: "Vintage & collectibles" },
   "8": { id: "8", name: "Sports & outdoors" },
