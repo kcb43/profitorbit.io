@@ -52,7 +52,7 @@ import EbaySearchDialog from "../components/EbaySearchDialog";
 import imageCompression from "browser-image-compression";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
-import { useEbayCategoryTreeId, useEbayCategories, useEbayCategoryAspects } from "@/hooks/useEbayCategorySuggestions";
+import { useEbayCategoryTreeId, useEbayCategories, useEbayCategoryAspects, useEbayCategorySuggestions } from "@/hooks/useEbayCategorySuggestions";
 import { TagInput } from "@/components/TagInput";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
 import { getEbayItemUrl } from "@/utils/ebayHelpers";
@@ -4965,7 +4965,18 @@ export default function CrosslistComposer() {
   const [mercariCategoryPath, setMercariCategoryPath] = useState([]);
   const [descriptionGeneratorOpen, setDescriptionGeneratorOpen] = useState(false);
   const [brandSearchOpen, setBrandSearchOpen] = useState(false);
+  const [brandSearchValue, setBrandSearchValue] = useState("");
+  const [ebayBrandSearchOpen, setEbayBrandSearchOpen] = useState(false);
+  const [ebayBrandSearchValue, setEbayBrandSearchValue] = useState("");
+  const [facebookBrandSearchOpen, setFacebookBrandSearchOpen] = useState(false);
+  const [mercariBrandSearchOpen, setMercariBrandSearchOpen] = useState(false);
+  const [etsyBrandSearchOpen, setEtsyBrandSearchOpen] = useState(false);
   const [categorySearchOpen, setCategorySearchOpen] = useState(false);
+  const [generalCategorySearchValue, setGeneralCategorySearchValue] = useState("");
+  const [ebayCategorySearchValue, setEbayCategorySearchValue] = useState("");
+  const [facebookCategorySearchValue, setFacebookCategorySearchValue] = useState("");
+  const [mercariCategorySearchValue, setMercariCategorySearchValue] = useState("");
+  const [etsyCategorySearchValue, setEtsyCategorySearchValue] = useState("");
   const photoInputRef = React.useRef(null);
   const ebayPhotoInputRef = React.useRef(null);
   const etsyPhotoInputRef = React.useRef(null);
@@ -5035,7 +5046,7 @@ export default function CrosslistComposer() {
   // Facebook pages state
   const [facebookPages, setFacebookPages] = useState([]);
   const [facebookSelectedPage, setFacebookSelectedPage] = useState(null);
-  
+
   // Mercari connection state
   const [mercariConnected, setMercariConnected] = useState(() => {
     return localStorage.getItem('profit_orbit_mercari_connected') === 'true';
@@ -5520,6 +5531,26 @@ export default function CrosslistComposer() {
     return nameA.localeCompare(nameB);
   });
 
+  // Category search suggestions - search all categories, not just current level
+  const getSearchValue = () => {
+    if (activeForm === "general") return generalCategorySearchValue;
+    if (activeForm === "facebook") return facebookCategorySearchValue;
+    if (activeForm === "mercari") return mercariCategorySearchValue;
+    if (activeForm === "ebay") return ebayCategorySearchValue;
+    return "";
+  };
+
+  const { data: categorySuggestionsData } = useEbayCategorySuggestions(
+    categoryTreeId,
+    getSearchValue(),
+    !!categoryTreeId && getSearchValue().trim().length >= 2
+  );
+
+  // Flatten suggestions for display - handle different response structures
+  const categorySuggestions = categorySuggestionsData?.categorySuggestions || 
+                               categorySuggestionsData?.suggestions || 
+                               (Array.isArray(categorySuggestionsData) ? categorySuggestionsData : []);
+
   // eBay shipping defaults storage
   const EBAY_DEFAULTS_KEY = 'ebay-shipping-defaults';
   const loadEbayDefaults = () => {
@@ -5975,6 +6006,33 @@ export default function CrosslistComposer() {
   const shouldShowEbayType = ebayForm.categoryId && ebayForm.categoryId !== '0' && ebayForm.categoryId !== 0;
   const shouldRequireEbayType = shouldShowEbayType && (isEbayTypeRequired || ebayTypeAspect);
 
+  // Function to find similar brand matches (fuzzy matching)
+  const findSimilarBrand = (brandName, brandList) => {
+    const normalized = brandName.toLowerCase().trim();
+    // Exact match
+    const exactMatch = brandList.find(b => b.toLowerCase() === normalized);
+    if (exactMatch) return exactMatch;
+    
+    // Partial match (contains)
+    const partialMatch = brandList.find(b => 
+      b.toLowerCase().includes(normalized) || normalized.includes(b.toLowerCase())
+    );
+    if (partialMatch) return partialMatch;
+    
+    // Levenshtein-like matching for similar names (e.g., "Nike" vs "Nike Inc")
+    const similarityMatch = brandList.find(b => {
+      const bLower = b.toLowerCase();
+      // Check if one is a substring of the other (with at least 3 chars overlap)
+      if (normalized.length >= 3 && bLower.length >= 3) {
+        return bLower.includes(normalized.substring(0, 3)) || 
+               normalized.includes(bLower.substring(0, 3));
+      }
+      return false;
+    });
+    
+    return similarityMatch || null;
+  };
+
   const addCustomBrand = (brandName) => {
     const trimmed = brandName.trim();
     if (!trimmed) return;
@@ -5996,13 +6054,107 @@ export default function CrosslistComposer() {
     setCustomBrands(updated);
     localStorage.setItem('customBrands', JSON.stringify(updated));
     
-    toast({
-      title: "Custom brand added",
-      description: `"${trimmed}" has been added to your brand list.`,
-    });
+    // Check for matches in other forms and apply if found
+    const matchedBrand = findSimilarBrand(trimmed, POPULAR_BRANDS);
+    if (matchedBrand) {
+      // Apply to forms that support this brand
+      // Note: We'll let each form handle its own brand matching on load
+      toast({
+        title: "Custom brand added",
+        description: `"${trimmed}" has been added. Similar brand "${matchedBrand}" found in brand list.`,
+      });
+    } else {
+      toast({
+        title: "Custom brand added",
+        description: `"${trimmed}" has been added to your brand list.`,
+      });
+    }
     
     return trimmed;
   };
+
+  const deleteCustomBrand = (brandName) => {
+    const updated = customBrands.filter(b => b !== brandName);
+    setCustomBrands(updated);
+    localStorage.setItem('customBrands', JSON.stringify(updated));
+    
+    // Clear brand from forms if it was set to this custom brand
+    if (generalForm.brand === brandName) {
+      handleGeneralChange("brand", "");
+    }
+    if (ebayForm.ebayBrand === brandName) {
+      handleMarketplaceChange("ebay", "ebayBrand", "");
+    }
+    if (etsyForm.brand === brandName) {
+      handleMarketplaceChange("etsy", "brand", "");
+    }
+    if (facebookForm.brand === brandName) {
+      handleMarketplaceChange("facebook", "brand", "");
+    }
+    if (mercariForm.brand === brandName) {
+      handleMarketplaceChange("mercari", "brand", "");
+    }
+    
+    toast({
+      title: "Brand deleted",
+      description: `"${brandName}" has been removed from your custom brands.`,
+    });
+  };
+
+  // Auto-match brands across forms when generalForm.brand changes
+  // Only applies if forms don't already have a brand set (doesn't override user choices)
+  useEffect(() => {
+    if (!generalForm.brand) return;
+    
+    const generalBrand = generalForm.brand.trim();
+    if (!generalBrand) return;
+
+    // Check if brand exists in popular brands (exact match)
+    const exactMatch = POPULAR_BRANDS.find(b => b.toLowerCase() === generalBrand.toLowerCase());
+    
+    if (exactMatch) {
+      // Exact match found - apply to all forms that don't have a brand set
+      if (!ebayForm.ebayBrand || ebayForm.ebayBrand === generalBrand) {
+        handleMarketplaceChange("ebay", "ebayBrand", exactMatch);
+      }
+      if (!etsyForm.brand || etsyForm.brand === generalBrand) {
+        handleMarketplaceChange("etsy", "brand", exactMatch);
+      }
+      if (!facebookForm.brand || facebookForm.brand === generalBrand) {
+        handleMarketplaceChange("facebook", "brand", exactMatch);
+      }
+      // For Mercari, only apply if it's in the popular brands list
+      if (!mercariForm.brand || mercariForm.brand === generalBrand) {
+        handleMarketplaceChange("mercari", "brand", exactMatch);
+      }
+    } else {
+      // Check for similar matches
+      const similarMatch = findSimilarBrand(generalBrand, POPULAR_BRANDS);
+      
+      if (similarMatch) {
+        // Similar match found - apply to forms that support it (only if they don't have a brand or have the same brand)
+        if (!ebayForm.ebayBrand || ebayForm.ebayBrand === generalBrand) {
+          handleMarketplaceChange("ebay", "ebayBrand", similarMatch);
+        }
+        if (!etsyForm.brand || etsyForm.brand === generalBrand) {
+          handleMarketplaceChange("etsy", "brand", similarMatch);
+        }
+        if (!facebookForm.brand || facebookForm.brand === generalBrand) {
+          handleMarketplaceChange("facebook", "brand", similarMatch);
+        }
+        // For Mercari, apply the similar match
+        if (!mercariForm.brand || mercariForm.brand === generalBrand) {
+          handleMarketplaceChange("mercari", "brand", similarMatch);
+        }
+      } else {
+        // No match found - for Mercari, clear if it was set to a non-matching custom brand
+        if (mercariForm.brand && mercariForm.brand === generalBrand && !POPULAR_BRANDS.includes(mercariForm.brand) && !customBrands.includes(mercariForm.brand)) {
+          handleMarketplaceChange("mercari", "brand", "");
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generalForm.brand]); // Only run when generalForm.brand changes
 
   const handleSaveShippingDefaults = () => {
     const defaults = {
@@ -8508,7 +8660,15 @@ export default function CrosslistComposer() {
                       </Button>
                     </div>
                   ) : (
-                    <Popover open={brandSearchOpen} onOpenChange={setBrandSearchOpen}>
+                    <Popover 
+                      open={brandSearchOpen} 
+                      onOpenChange={(open) => {
+                        setBrandSearchOpen(open);
+                        if (!open) {
+                          setBrandSearchValue("");
+                        }
+                      }}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -8523,46 +8683,133 @@ export default function CrosslistComposer() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-full p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search brand..." />
+                        <Command shouldFilter={false}>
+                          <CommandInput 
+                            placeholder="Search brand..." 
+                            value={brandSearchValue}
+                            onValueChange={setBrandSearchValue}
+                          />
                           <CommandList>
-                            <CommandEmpty>No brand found.</CommandEmpty>
                             <CommandGroup>
-                              {POPULAR_BRANDS.map((brand) => (
+                              {/* Show "Add as custom" option at top if search doesn't match any brands */}
+                              {brandSearchValue.trim() && 
+                               !POPULAR_BRANDS.some(b => b.toLowerCase().includes(brandSearchValue.toLowerCase())) &&
+                               !customBrands.some(b => b.toLowerCase().includes(brandSearchValue.toLowerCase())) && (
                                 <CommandItem
-                                  key={brand}
-                                  value={brand}
+                                  value={`add-custom-${brandSearchValue}`}
                                   onSelect={() => {
-                                    handleGeneralChange("brand", brand);
+                                    const trimmed = brandSearchValue.trim();
+                                    if (trimmed) {
+                                      const savedBrand = addCustomBrand(trimmed);
+                                      if (savedBrand) {
+                                        handleGeneralChange("brand", savedBrand);
+                                        setBrandSearchValue("");
+                                        setBrandSearchOpen(false);
+                                      }
+                                    }
+                                  }}
+                                  className="bg-primary/5 font-medium"
+                                >
+                                  <span className="mr-2">+</span>
+                                  Add "{brandSearchValue.trim()}" as custom brand
+                                </CommandItem>
+                              )}
+                              {/* Custom brands at the top with delete buttons */}
+                              {customBrands
+                                .filter(brand => 
+                                  !brandSearchValue.trim() || 
+                                  brand.toLowerCase().includes(brandSearchValue.toLowerCase())
+                                )
+                                .map((brand) => (
+                                  <CommandItem
+                                    key={`custom-${brand}`}
+                                    value={brand}
+                                    onSelect={() => {
+                                      handleGeneralChange("brand", brand);
+                                      setBrandSearchValue("");
+                                      setBrandSearchOpen(false);
+                                    }}
+                                    className="flex items-center justify-between group"
+                                  >
+                                    <div className="flex items-center flex-1">
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          generalForm.brand === brand ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <span className="flex-1">{brand}</span>
+                                      <span className="text-xs text-muted-foreground ml-2">⭐</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteCustomBrand(brand);
+                                      }}
+                                      className="ml-2 h-5 w-5 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                      title="Delete custom brand"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </CommandItem>
+                                ))}
+                              {customBrands.some(brand => 
+                                !brandSearchValue.trim() || 
+                                brand.toLowerCase().includes(brandSearchValue.toLowerCase())
+                              ) && <div className="border-t my-1" />}
+                              {/* Popular brands */}
+                              {POPULAR_BRANDS
+                                .filter(brand => 
+                                  !brandSearchValue.trim() || 
+                                  brand.toLowerCase().includes(brandSearchValue.toLowerCase())
+                                )
+                                .map((brand) => (
+                                  <CommandItem
+                                    key={brand}
+                                    value={brand}
+                                    onSelect={() => {
+                                      handleGeneralChange("brand", brand);
+                                      setBrandSearchValue("");
+                                      setBrandSearchOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        generalForm.brand === brand ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {brand}
+                                  </CommandItem>
+                                ))}
+                              {/* Add Custom option - only show if no search value */}
+                              {!brandSearchValue.trim() && (
+                                <CommandItem
+                                  value="custom"
+                                  onSelect={() => {
+                                    setBrandIsCustom(true);
+                                    setBrandSearchValue("");
                                     setBrandSearchOpen(false);
+                                    handleGeneralChange("brand", "");
                                   }}
                                 >
                                   <Check
                                     className={cn(
                                       "mr-2 h-4 w-4",
-                                      generalForm.brand === brand ? "opacity-100" : "opacity-0"
+                                      "opacity-0"
                                     )}
                                   />
-                                  {brand}
+                                  Add Custom...
                                 </CommandItem>
-                              ))}
-                              <CommandItem
-                                value="custom"
-                                onSelect={() => {
-                                  setBrandIsCustom(true);
-                                  setBrandSearchOpen(false);
-                                  handleGeneralChange("brand", "");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    "opacity-0"
-                                  )}
-                                />
-                                Add Custom...
-                              </CommandItem>
+                              )}
                             </CommandGroup>
+                            {brandSearchValue.trim() && 
+                             POPULAR_BRANDS.filter(b => b.toLowerCase().includes(brandSearchValue.toLowerCase())).length === 0 &&
+                             customBrands.filter(b => b.toLowerCase().includes(brandSearchValue.toLowerCase())).length === 0 &&
+                             !brandSearchValue.trim().match(/^add-custom-/) && (
+                              <CommandEmpty>No brand found. Use the option above to add it as a custom brand.</CommandEmpty>
+                            )}
                           </CommandList>
                         </Command>
                       </PopoverContent>
@@ -8710,64 +8957,253 @@ export default function CrosslistComposer() {
                       )}
                     </div>
                   ) : sortedCategories.length > 0 ? (
-                    <Select
-                      value={undefined}
-                      onValueChange={(value) => {
-                        const selectedCategory = sortedCategories.find(
-                          cat => cat.category?.categoryId === value
-                        );
-                        
-                        if (selectedCategory) {
-                          const category = selectedCategory.category;
-                          const newPath = [...generalCategoryPath, {
-                            categoryId: category.categoryId,
-                            categoryName: category.categoryName,
-                          }];
-                          
-                          // Check if this category has children
-                          const hasChildren = selectedCategory.childCategoryTreeNodes && 
-                            selectedCategory.childCategoryTreeNodes.length > 0 &&
-                            !selectedCategory.leafCategoryTreeNode;
-                          
-                          if (hasChildren) {
-                            // Navigate deeper into the tree
-                            setGeneralCategoryPath(newPath);
-                          } else {
-                            // This is a leaf node - select it
-                            const fullPath = newPath.map(c => c.categoryName).join(" > ");
-                            const categoryId = category.categoryId;
-                            handleGeneralChange("category", fullPath);
-                            handleGeneralChange("categoryId", categoryId);
-                            setGeneralCategoryPath(newPath);
+                    (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari") ? (
+                      <Popover 
+                        open={categorySearchOpen && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")} 
+                        onOpenChange={(open) => {
+                          if (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari") {
+                            setCategorySearchOpen(open);
+                            if (!open) {
+                              setGeneralCategorySearchValue("");
+                              setFacebookCategorySearchValue("");
+                              setMercariCategorySearchValue("");
+                            }
                           }
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={generalCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {sortedCategories.map((categoryNode) => {
-                          const category = categoryNode.category;
-                          if (!category || !category.categoryId) return null;
-                          
-                          const hasChildren = categoryNode.childCategoryTreeNodes && 
-                            categoryNode.childCategoryTreeNodes.length > 0 &&
-                            !categoryNode.leafCategoryTreeNode;
-                          
-                          return (
-                            <SelectItem key={category.categoryId} value={category.categoryId}>
-                              <div className="flex items-center gap-2">
-                                <span>{category.categoryName}</span>
-                                {hasChildren && (
-                                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={categorySearchOpen && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")}
+                            className="w-full justify-between"
+                          >
+                            {(activeForm === "general" ? generalForm.category : activeForm === "facebook" ? facebookForm.category : mercariForm.category) || generalCategoryPath.length > 0
+                              ? ((activeForm === "general" ? generalForm.category : activeForm === "facebook" ? facebookForm.category : mercariForm.category) || generalCategoryPath.map(c => c.categoryName).join(" > "))
+                              : (generalCategoryPath.length > 0 ? "Select subcategory" : "Search category...")}
+                            <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput 
+                              placeholder="Search all categories..." 
+                              value={activeForm === "general" ? generalCategorySearchValue : 
+                                     activeForm === "facebook" ? facebookCategorySearchValue : 
+                                     mercariCategorySearchValue}
+                              onValueChange={(value) => {
+                                if (activeForm === "general") {
+                                  setGeneralCategorySearchValue(value);
+                                } else if (activeForm === "facebook") {
+                                  setFacebookCategorySearchValue(value);
+                                } else if (activeForm === "mercari") {
+                                  setMercariCategorySearchValue(value);
+                                }
+                              }}
+                            />
+                            <CommandList>
+                              <CommandGroup>
+                                {/* Show category suggestions from API when searching - at the top */}
+                                {getSearchValue().trim().length >= 2 && categorySuggestions.length > 0 && (
+                                  <>
+                                    {categorySuggestions.map((suggestion, index) => {
+                                      const categoryNode = suggestion.categoryTreeNode || suggestion;
+                                      const category = categoryNode?.category || categoryNode;
+                                      const categoryName = category?.categoryName || suggestion.categoryName || "";
+                                      const categoryId = category?.categoryId || suggestion.categoryId || String(index);
+                                      
+                                      let fullPath = suggestion.categoryPath || "";
+                                      if (!fullPath && categoryNode?.categoryPath) {
+                                        fullPath = categoryNode.categoryPath;
+                                      }
+                                      if (!fullPath && categoryName) {
+                                        fullPath = categoryName;
+                                      }
+                                      
+                                      return (
+                                        <CommandItem
+                                          key={`suggestion-${categoryId}-${index}`}
+                                          value={`suggestion-${categoryId}`}
+                                          onSelect={() => {
+                                            if (activeForm === "general") {
+                                              handleGeneralChange("category", fullPath);
+                                              handleGeneralChange("categoryId", categoryId);
+                                              setGeneralCategoryPath([]);
+                                            } else if (activeForm === "facebook") {
+                                              handleMarketplaceChange("facebook", "category", fullPath);
+                                              handleMarketplaceChange("facebook", "categoryId", categoryId);
+                                              setGeneralCategoryPath([]);
+                                            } else if (activeForm === "mercari") {
+                                              handleMarketplaceChange("mercari", "category", fullPath);
+                                              handleMarketplaceChange("mercari", "categoryId", categoryId);
+                                              setGeneralCategoryPath([]);
+                                            }
+                                            setGeneralCategorySearchValue("");
+                                            setFacebookCategorySearchValue("");
+                                            setMercariCategorySearchValue("");
+                                            setCategorySearchOpen(false);
+                                          }}
+                                        >
+                                          <Check className="mr-2 h-4 w-4 opacity-0" />
+                                          {fullPath}
+                                        </CommandItem>
+                                      );
+                                    })}
+                                    <div className="border-t my-1" />
+                                  </>
                                 )}
-                              </div>
-                            </SelectItem>
+                                
+                                {/* Current level categories */}
+                                {sortedCategories
+                                  .filter((categoryNode) => {
+                                    const searchValue = getSearchValue();
+                                    if (!searchValue.trim() || categorySuggestions.length === 0) return true;
+                                    const category = categoryNode.category;
+                                    if (!category) return false;
+                                    const searchLower = searchValue.toLowerCase();
+                                    const categoryName = category.categoryName?.toLowerCase() || "";
+                                    const fullPath = [...generalCategoryPath.map(c => c.categoryName), category.categoryName].join(" > ").toLowerCase();
+                                    return categoryName.includes(searchLower) || fullPath.includes(searchLower);
+                                  })
+                                  .map((categoryNode) => {
+                                    const category = categoryNode.category;
+                                    if (!category || !category.categoryId) return null;
+                                    
+                                    const hasChildren = categoryNode.childCategoryTreeNodes && 
+                                      categoryNode.childCategoryTreeNodes.length > 0 &&
+                                      !categoryNode.leafCategoryTreeNode;
+                                    
+                                    const fullPath = generalCategoryPath.length > 0
+                                      ? [...generalCategoryPath.map(c => c.categoryName), category.categoryName].join(" > ")
+                                      : category.categoryName;
+                                    
+                                    return (
+                                      <CommandItem
+                                        key={category.categoryId}
+                                        value={category.categoryId}
+                                        onSelect={() => {
+                                          const newPath = [...generalCategoryPath, {
+                                            categoryId: category.categoryId,
+                                            categoryName: category.categoryName,
+                                          }];
+                                          
+                                          if (hasChildren) {
+                                            setGeneralCategoryPath(newPath);
+                                          } else {
+                                            const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
+                                            if (activeForm === "general") {
+                                              handleGeneralChange("category", fullPathStr);
+                                              handleGeneralChange("categoryId", category.categoryId);
+                                            } else if (activeForm === "facebook") {
+                                              handleMarketplaceChange("facebook", "category", fullPathStr);
+                                              handleMarketplaceChange("facebook", "categoryId", category.categoryId);
+                                            } else if (activeForm === "mercari") {
+                                              handleMarketplaceChange("mercari", "category", fullPathStr);
+                                              handleMarketplaceChange("mercari", "categoryId", category.categoryId);
+                                            }
+                                            setGeneralCategoryPath(newPath);
+                                          }
+                                          setGeneralCategorySearchValue("");
+                                          setFacebookCategorySearchValue("");
+                                          setMercariCategorySearchValue("");
+                                          setCategorySearchOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            (activeForm === "general" ? generalForm.categoryId : activeForm === "facebook" ? facebookForm.categoryId : mercariForm.categoryId) === category.categoryId ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <span className="flex-1">{fullPath}</span>
+                                          {hasChildren && (
+                                            <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                      </CommandItem>
+                                    );
+                                  })}
+                              </CommandGroup>
+                              {getSearchValue().trim().length >= 2 && categorySuggestions.length === 0 && 
+                               sortedCategories.filter((categoryNode) => {
+                                 const searchValue = getSearchValue();
+                                 if (!categoryNode.category) return false;
+                                 const searchLower = searchValue.toLowerCase();
+                                 const categoryName = categoryNode.category.categoryName?.toLowerCase() || "";
+                                 const fullPath = [...generalCategoryPath.map(c => c.categoryName), categoryNode.category.categoryName].join(" > ").toLowerCase();
+                                 return categoryName.includes(searchLower) || fullPath.includes(searchLower);
+                               }).length === 0 && (
+                                <CommandEmpty>No category found. Try a different search term.</CommandEmpty>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Select
+                        value={undefined}
+                        onValueChange={(value) => {
+                          const selectedCategory = sortedCategories.find(
+                            cat => cat.category?.categoryId === value
                           );
-                        })}
-                      </SelectContent>
-                    </Select>
+                          
+                          if (selectedCategory) {
+                            const category = selectedCategory.category;
+                            const newPath = [...generalCategoryPath, {
+                              categoryId: category.categoryId,
+                              categoryName: category.categoryName,
+                            }];
+                            
+                            const hasChildren = selectedCategory.childCategoryTreeNodes && 
+                              selectedCategory.childCategoryTreeNodes.length > 0 &&
+                              !selectedCategory.leafCategoryTreeNode;
+                            
+                            if (hasChildren) {
+                              setGeneralCategoryPath(newPath);
+                            } else {
+                              const fullPath = newPath.map(c => c.categoryName).join(" > ");
+                              if (activeForm === "general") {
+                                handleGeneralChange("category", fullPath);
+                                handleGeneralChange("categoryId", category.categoryId);
+                              } else if (activeForm === "facebook") {
+                                handleMarketplaceChange("facebook", "category", fullPath);
+                                handleMarketplaceChange("facebook", "categoryId", category.categoryId);
+                              } else if (activeForm === "mercari") {
+                                handleMarketplaceChange("mercari", "category", fullPath);
+                                handleMarketplaceChange("mercari", "categoryId", category.categoryId);
+                              }
+                              setGeneralCategoryPath(newPath);
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={generalCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {sortedCategories.map((categoryNode) => {
+                            const category = categoryNode.category;
+                            if (!category || !category.categoryId) return null;
+                            
+                            const hasChildren = categoryNode.childCategoryTreeNodes && 
+                              categoryNode.childCategoryTreeNodes.length > 0 &&
+                              !categoryNode.leafCategoryTreeNode;
+                            
+                            return (
+                              <SelectItem key={category.categoryId} value={category.categoryId}>
+                                <div className="flex items-center gap-2">
+                                  <span>{category.categoryName}</span>
+                                  {hasChildren && (
+                                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )
                   ) : (
                     <div className="p-3 border rounded-md">
                       <p className="text-sm text-muted-foreground">No subcategories available.</p>
@@ -9192,34 +9628,160 @@ export default function CrosslistComposer() {
                       </Button>
                     </div>
                   ) : (
-                    <Select
-                      value={ebayForm.ebayBrand || generalForm.brand ? String(ebayForm.ebayBrand || generalForm.brand) : undefined}
-                      onValueChange={(value) => {
-                        if (value === "custom") {
-                          setBrandIsCustom(true);
-                          handleMarketplaceChange("ebay", "ebayBrand", "");
-                        } else {
-                          handleMarketplaceChange("ebay", "ebayBrand", value);
+                    <Popover 
+                      open={ebayBrandSearchOpen} 
+                      onOpenChange={(open) => {
+                        setEbayBrandSearchOpen(open);
+                        if (!open) {
+                          setEbayBrandSearchValue("");
                         }
                       }}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
-                        {customBrands.length > 0 && customBrands.map((brand) => (
-                          <SelectItem key={`custom-${brand}`} value={brand}>
-                            {brand} ⭐
-                          </SelectItem>
-                        ))}
-                        {POPULAR_BRANDS.map((brand) => (
-                          <SelectItem key={brand} value={brand}>
-                            {brand}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={ebayBrandSearchOpen}
+                          className="w-full justify-between"
+                        >
+                          {ebayForm.ebayBrand || generalForm.brand
+                            ? (POPULAR_BRANDS.find((brand) => brand === (ebayForm.ebayBrand || generalForm.brand)) || customBrands.find((brand) => brand === (ebayForm.ebayBrand || generalForm.brand)) || (ebayForm.ebayBrand || generalForm.brand))
+                            : "Search brand..."}
+                          <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput 
+                            placeholder="Search brand..." 
+                            value={ebayBrandSearchValue}
+                            onValueChange={setEbayBrandSearchValue}
+                          />
+                          <CommandList>
+                            <CommandGroup>
+                              {/* Show "Add as custom" option at top if search doesn't match any brands */}
+                              {ebayBrandSearchValue.trim() && 
+                               !POPULAR_BRANDS.some(b => b.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())) &&
+                               !customBrands.some(b => b.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())) && (
+                                <CommandItem
+                                  value={`add-custom-${ebayBrandSearchValue}`}
+                                  onSelect={() => {
+                                    const trimmed = ebayBrandSearchValue.trim();
+                                    if (trimmed) {
+                                      const savedBrand = addCustomBrand(trimmed);
+                                      if (savedBrand) {
+                                        handleMarketplaceChange("ebay", "ebayBrand", savedBrand);
+                                        setEbayBrandSearchValue("");
+                                        setEbayBrandSearchOpen(false);
+                                      }
+                                    }
+                                  }}
+                                  className="bg-primary/5 font-medium"
+                                >
+                                  <span className="mr-2">+</span>
+                                  Add "{ebayBrandSearchValue.trim()}" as custom brand
+                                </CommandItem>
+                              )}
+                              {/* Custom brands at the top with delete buttons */}
+                              {customBrands
+                                .filter(brand => 
+                                  !ebayBrandSearchValue.trim() || 
+                                  brand.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())
+                                )
+                                .map((brand) => (
+                                  <CommandItem
+                                    key={`custom-${brand}`}
+                                    value={brand}
+                                    onSelect={() => {
+                                      handleMarketplaceChange("ebay", "ebayBrand", brand);
+                                      setEbayBrandSearchValue("");
+                                      setEbayBrandSearchOpen(false);
+                                    }}
+                                    className="flex items-center justify-between group"
+                                  >
+                                    <div className="flex items-center flex-1">
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          (ebayForm.ebayBrand || generalForm.brand) === brand ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <span className="flex-1">{brand}</span>
+                                      <span className="text-xs text-muted-foreground ml-2">⭐</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteCustomBrand(brand);
+                                      }}
+                                      className="ml-2 h-5 w-5 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                      title="Delete custom brand"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </CommandItem>
+                                ))}
+                              {customBrands.some(brand => 
+                                !ebayBrandSearchValue.trim() || 
+                                brand.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())
+                              ) && <div className="border-t my-1" />}
+                              {/* Popular brands */}
+                              {POPULAR_BRANDS
+                                .filter(brand => 
+                                  !ebayBrandSearchValue.trim() || 
+                                  brand.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())
+                                )
+                                .map((brand) => (
+                                  <CommandItem
+                                    key={brand}
+                                    value={brand}
+                                    onSelect={() => {
+                                      handleMarketplaceChange("ebay", "ebayBrand", brand);
+                                      setEbayBrandSearchValue("");
+                                      setEbayBrandSearchOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        (ebayForm.ebayBrand || generalForm.brand) === brand ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {brand}
+                                  </CommandItem>
+                                ))}
+                              {/* Add Custom option - only show if no search value */}
+                              {!ebayBrandSearchValue.trim() && (
+                                <CommandItem
+                                  value="custom"
+                                  onSelect={() => {
+                                    setBrandIsCustom(true);
+                                    setEbayBrandSearchValue("");
+                                    setEbayBrandSearchOpen(false);
+                                    handleMarketplaceChange("ebay", "ebayBrand", "");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      "opacity-0"
+                                    )}
+                                  />
+                                  Add Custom...
+                                </CommandItem>
+                              )}
+                            </CommandGroup>
+                            {ebayBrandSearchValue.trim() && 
+                             POPULAR_BRANDS.filter(b => b.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())).length === 0 &&
+                             customBrands.filter(b => b.toLowerCase().includes(ebayBrandSearchValue.toLowerCase())).length === 0 &&
+                             !ebayBrandSearchValue.trim().match(/^add-custom-/) && (
+                              <CommandEmpty>No brand found. Use the option above to add it as a custom brand.</CommandEmpty>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
 
@@ -9278,65 +9840,209 @@ export default function CrosslistComposer() {
                         )}
                       </div>
                     ) : sortedCategories.length > 0 ? (
-                      <Select
-                        id="ebay-category"
-                        name="ebay-category"
-                        value={ebayForm.categoryId ? String(ebayForm.categoryId) : undefined}
-                        onValueChange={(value) => {
-                          const selectedCategory = sortedCategories.find(
-                            cat => cat.category?.categoryId === value
-                          );
-                          
-                          if (selectedCategory) {
-                            const category = selectedCategory.category;
-                            const newPath = [...selectedCategoryPath, {
-                              categoryId: category.categoryId,
-                              categoryName: category.categoryName,
-                            }];
-                            
-                            // Check if this category has children
-                            const hasChildren = selectedCategory.childCategoryTreeNodes && 
-                              selectedCategory.childCategoryTreeNodes.length > 0 &&
-                              !selectedCategory.leafCategoryTreeNode;
-                            
-                            if (hasChildren) {
-                              // Navigate deeper into the tree
-                              setSelectedCategoryPath(newPath);
-                            } else {
-                              // This is a leaf node - select it
-                              const fullPath = newPath.map(c => c.categoryName).join(" > ");
-                              handleMarketplaceChange("ebay", "categoryId", category.categoryId);
-                              handleMarketplaceChange("ebay", "categoryName", fullPath);
-                              setSelectedCategoryPath(newPath);
+                      activeForm === "ebay" ? (
+                        <Popover 
+                          open={categorySearchOpen && activeForm === "ebay"} 
+                          onOpenChange={(open) => {
+                            if (activeForm === "ebay") {
+                              setCategorySearchOpen(open);
+                              if (!open) {
+                                setEbayCategorySearchValue("");
+                              }
                             }
-                          }
-                        }}
-                      >
-                        <SelectTrigger id="ebay-category-trigger">
-                          <SelectValue placeholder={selectedCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                          {sortedCategories.map((categoryNode) => {
-                            const category = categoryNode.category;
-                            if (!category || !category.categoryId) return null;
-                            
-                            const hasChildren = categoryNode.childCategoryTreeNodes && 
-                              categoryNode.childCategoryTreeNodes.length > 0 &&
-                              !categoryNode.leafCategoryTreeNode;
-                            
-                            return (
-                              <SelectItem key={category.categoryId} value={category.categoryId}>
-                                <div className="flex items-center gap-2">
-                                  <span>{category.categoryName}</span>
-                                  {hasChildren && (
-                                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                          }}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={categorySearchOpen && activeForm === "ebay"}
+                              className="w-full justify-between"
+                            >
+                              {ebayForm.categoryName || selectedCategoryPath.length > 0
+                                ? (ebayForm.categoryName || selectedCategoryPath.map(c => c.categoryName).join(" > "))
+                                : (selectedCategoryPath.length > 0 ? "Select subcategory" : "Search category...")}
+                              <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command shouldFilter={false}>
+                              <CommandInput 
+                                placeholder="Search all categories..." 
+                                value={ebayCategorySearchValue}
+                                onValueChange={setEbayCategorySearchValue}
+                              />
+                              <CommandList>
+                                <CommandGroup>
+                                  {/* Show category suggestions from API when searching - at the top */}
+                                  {ebayCategorySearchValue.trim().length >= 2 && categorySuggestions.length > 0 && (
+                                    <>
+                                      {categorySuggestions.map((suggestion, index) => {
+                                        const categoryNode = suggestion.categoryTreeNode || suggestion;
+                                        const category = categoryNode?.category || categoryNode;
+                                        const categoryName = category?.categoryName || suggestion.categoryName || "";
+                                        const categoryId = category?.categoryId || suggestion.categoryId || String(index);
+                                        
+                                        let fullPath = suggestion.categoryPath || "";
+                                        if (!fullPath && categoryNode?.categoryPath) {
+                                          fullPath = categoryNode.categoryPath;
+                                        }
+                                        if (!fullPath && categoryName) {
+                                          fullPath = categoryName;
+                                        }
+                                        
+                                        return (
+                                          <CommandItem
+                                            key={`suggestion-${categoryId}-${index}`}
+                                            value={`suggestion-${categoryId}`}
+                                            onSelect={() => {
+                                              handleMarketplaceChange("ebay", "categoryId", categoryId);
+                                              handleMarketplaceChange("ebay", "categoryName", fullPath);
+                                              setSelectedCategoryPath([]);
+                                              setEbayCategorySearchValue("");
+                                              setCategorySearchOpen(false);
+                                            }}
+                                          >
+                                            <Check className="mr-2 h-4 w-4 opacity-0" />
+                                            {fullPath}
+                                          </CommandItem>
+                                        );
+                                      })}
+                                      <div className="border-t my-1" />
+                                    </>
                                   )}
-                                </div>
-                              </SelectItem>
+                                  
+                                  {/* Current level categories */}
+                                  {sortedCategories
+                                    .filter((categoryNode) => {
+                                      if (!ebayCategorySearchValue.trim() || categorySuggestions.length === 0) return true;
+                                      const category = categoryNode.category;
+                                      if (!category) return false;
+                                      const searchLower = ebayCategorySearchValue.toLowerCase();
+                                      const categoryName = category.categoryName?.toLowerCase() || "";
+                                      const fullPath = [...selectedCategoryPath.map(c => c.categoryName), category.categoryName].join(" > ").toLowerCase();
+                                      return categoryName.includes(searchLower) || fullPath.includes(searchLower);
+                                    })
+                                    .map((categoryNode) => {
+                                      const category = categoryNode.category;
+                                      if (!category || !category.categoryId) return null;
+                                      
+                                      const hasChildren = categoryNode.childCategoryTreeNodes && 
+                                        categoryNode.childCategoryTreeNodes.length > 0 &&
+                                        !categoryNode.leafCategoryTreeNode;
+                                      
+                                      const fullPath = selectedCategoryPath.length > 0
+                                        ? [...selectedCategoryPath.map(c => c.categoryName), category.categoryName].join(" > ")
+                                        : category.categoryName;
+                                      
+                                      return (
+                                        <CommandItem
+                                          key={category.categoryId}
+                                          value={category.categoryId}
+                                          onSelect={() => {
+                                            const newPath = [...selectedCategoryPath, {
+                                              categoryId: category.categoryId,
+                                              categoryName: category.categoryName,
+                                            }];
+                                            
+                                            if (hasChildren) {
+                                              setSelectedCategoryPath(newPath);
+                                            } else {
+                                              const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
+                                              handleMarketplaceChange("ebay", "categoryId", category.categoryId);
+                                              handleMarketplaceChange("ebay", "categoryName", fullPathStr);
+                                              setSelectedCategoryPath(newPath);
+                                            }
+                                            setEbayCategorySearchValue("");
+                                            setCategorySearchOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              ebayForm.categoryId === category.categoryId ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <span className="flex-1">{fullPath}</span>
+                                            {hasChildren && (
+                                              <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                            )}
+                                          </div>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                </CommandGroup>
+                                {ebayCategorySearchValue.trim().length >= 2 && categorySuggestions.length === 0 && 
+                                 sortedCategories.filter((categoryNode) => {
+                                   if (!categoryNode.category) return false;
+                                   const searchLower = ebayCategorySearchValue.toLowerCase();
+                                   const categoryName = categoryNode.category.categoryName?.toLowerCase() || "";
+                                   const fullPath = [...selectedCategoryPath.map(c => c.categoryName), categoryNode.category.categoryName].join(" > ").toLowerCase();
+                                   return categoryName.includes(searchLower) || fullPath.includes(searchLower);
+                                 }).length === 0 && (
+                                  <CommandEmpty>No category found. Try a different search term.</CommandEmpty>
+                                )}
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <Select
+                          value={undefined}
+                          onValueChange={(value) => {
+                            const selectedCategory = sortedCategories.find(
+                              cat => cat.category?.categoryId === value
                             );
-                          })}
-                        </SelectContent>
-                      </Select>
+                            
+                            if (selectedCategory) {
+                              const category = selectedCategory.category;
+                              const newPath = [...selectedCategoryPath, {
+                                categoryId: category.categoryId,
+                                categoryName: category.categoryName,
+                              }];
+                              
+                              const hasChildren = selectedCategory.childCategoryTreeNodes && 
+                                selectedCategory.childCategoryTreeNodes.length > 0 &&
+                                !selectedCategory.leafCategoryTreeNode;
+                              
+                              if (hasChildren) {
+                                setSelectedCategoryPath(newPath);
+                              } else {
+                                const fullPath = newPath.map(c => c.categoryName).join(" > ");
+                                handleMarketplaceChange("ebay", "categoryId", category.categoryId);
+                                handleMarketplaceChange("ebay", "categoryName", fullPath);
+                                setSelectedCategoryPath(newPath);
+                              }
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={selectedCategoryPath.length > 0 ? "Select subcategory" : "Select a category"} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            {sortedCategories.map((categoryNode) => {
+                              const category = categoryNode.category;
+                              if (!category || !category.categoryId) return null;
+                              
+                              const hasChildren = categoryNode.childCategoryTreeNodes && 
+                                categoryNode.childCategoryTreeNodes.length > 0 &&
+                                !categoryNode.leafCategoryTreeNode;
+                              
+                              return (
+                                <SelectItem key={category.categoryId} value={category.categoryId}>
+                                  <div className="flex items-center gap-2">
+                                    <span>{category.categoryName}</span>
+                                    {hasChildren && (
+                                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      )
                     ) : (
                       <div className="p-3 border rounded-md">
                         <p className="text-sm text-muted-foreground">No subcategories available.</p>
@@ -10066,17 +10772,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                           Main
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(etsyForm.photos[0].id, 'etsy');
-                          }}
-                          className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: etsyForm.photos[0].preview || etsyForm.photos[0].imageUrl, 
+                                photoId: etsyForm.photos[0].id, 
+                                marketplace: 'etsy',
+                                index: 0
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(etsyForm.photos[0].id, 'etsy');
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                     
@@ -10112,17 +10838,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
                           <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(photo.id, 'etsy');
-                          }}
-                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                        >
-                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: photo.preview || photo.imageUrl, 
+                                photoId: photo.id, 
+                                marketplace: 'etsy',
+                                index: index + 1
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(photo.id, 'etsy');
+                            }}
+                            className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                     
@@ -10250,34 +10996,75 @@ export default function CrosslistComposer() {
                       </Button>
                     </div>
                   ) : (
-                    <Select
-                      value={etsyForm.brand || generalForm.brand || undefined}
-                      onValueChange={(value) => {
-                        if (value === "custom") {
-                          setBrandIsCustom(true);
-                          handleMarketplaceChange("etsy", "brand", "");
-                        } else {
-                          handleMarketplaceChange("etsy", "brand", value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select or Custom"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="custom">+ Add Custom Brand</SelectItem>
-                        {customBrands.length > 0 && customBrands.map((brand) => (
-                          <SelectItem key={`custom-${brand}`} value={brand}>
-                            {brand} ⭐
-                          </SelectItem>
-                        ))}
-                        {POPULAR_BRANDS.map((brand) => (
-                          <SelectItem key={brand} value={brand}>
-                            {brand}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={etsyBrandSearchOpen} onOpenChange={setEtsyBrandSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={etsyBrandSearchOpen}
+                          className="w-full justify-between"
+                        >
+                          {etsyForm.brand || generalForm.brand
+                            ? (POPULAR_BRANDS.find((brand) => brand === (etsyForm.brand || generalForm.brand)) || customBrands.find((brand) => brand === (etsyForm.brand || generalForm.brand)) || (etsyForm.brand || generalForm.brand))
+                            : "Search brand..."}
+                          <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search brand..." />
+                          <CommandList>
+                            <CommandEmpty>No brand found.</CommandEmpty>
+                            <CommandGroup>
+                              {/* Custom brands at the top */}
+                              {customBrands.length > 0 && (
+                                <>
+                                  {customBrands.map((brand) => (
+                                    <CommandItem
+                                      key={`custom-${brand}`}
+                                      value={brand}
+                                      onSelect={() => {
+                                        handleMarketplaceChange("etsy", "brand", brand);
+                                        setEtsyBrandSearchOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          (etsyForm.brand || generalForm.brand) === brand ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <span>{brand}</span>
+                                      <span className="text-xs text-muted-foreground ml-2">⭐</span>
+                                    </CommandItem>
+                                  ))}
+                                  <div className="border-t my-1" />
+                                </>
+                              )}
+                              {/* Popular brands */}
+                              {POPULAR_BRANDS.map((brand) => (
+                                <CommandItem
+                                  key={brand}
+                                  value={brand}
+                                  onSelect={() => {
+                                    handleMarketplaceChange("etsy", "brand", brand);
+                                    setEtsyBrandSearchOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      (etsyForm.brand || generalForm.brand) === brand ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {brand}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
 
@@ -10513,17 +11300,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                           Main
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(mercariForm.photos[0].id, 'mercari');
-                          }}
-                          className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: mercariForm.photos[0].preview || mercariForm.photos[0].imageUrl, 
+                                photoId: mercariForm.photos[0].id, 
+                                marketplace: 'mercari',
+                                index: 0
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(mercariForm.photos[0].id, 'mercari');
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                     
@@ -10559,17 +11366,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
                           <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(photo.id, 'mercari');
-                          }}
-                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                        >
-                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: photo.preview || photo.imageUrl, 
+                                photoId: photo.id, 
+                                marketplace: 'mercari',
+                                index: index + 1
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(photo.id, 'mercari');
+                            }}
+                            className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                     
@@ -10829,29 +11656,90 @@ export default function CrosslistComposer() {
                 {/* Brand Section - No custom brand for Mercari */}
                 <div>
                   <Label className="text-xs mb-1.5 block">Brand</Label>
-                  <Select
-                    value={mercariForm.brand || generalForm.brand || ""}
-                    onValueChange={(value) => handleMarketplaceChange("mercari", "brand", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={generalForm.brand ? `Inherited: ${generalForm.brand}` : "Select brand"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customBrands.length > 0 && customBrands.map((brand) => (
-                        <SelectItem key={`custom-${brand}`} value={brand}>
-                          {brand} ⭐
-                        </SelectItem>
-                      ))}
-                      {POPULAR_BRANDS.map((brand) => (
-                        <SelectItem key={brand} value={brand}>
-                          {brand}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={mercariBrandSearchOpen} onOpenChange={setMercariBrandSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={mercariBrandSearchOpen}
+                        className="w-full justify-between"
+                      >
+                        {mercariForm.brand || generalForm.brand
+                          ? (POPULAR_BRANDS.find((brand) => brand === (mercariForm.brand || generalForm.brand)) || customBrands.find((brand) => brand === (mercariForm.brand || generalForm.brand)) || (mercariForm.brand || generalForm.brand))
+                          : "Search brand..."}
+                        <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search brand..." />
+                        <CommandList>
+                          <CommandEmpty>No brand found.</CommandEmpty>
+                          <CommandGroup>
+                            {/* Custom brands at the top */}
+                            {customBrands.length > 0 && (
+                              <>
+                                {customBrands.map((brand) => {
+                                  // Check if this custom brand matches any popular brand
+                                  const matchedBrand = findSimilarBrand(brand, POPULAR_BRANDS);
+                                  return (
+                                    <CommandItem
+                                      key={`custom-${brand}`}
+                                      value={matchedBrand || brand}
+                                      onSelect={() => {
+                                        // Only set if there's a match, otherwise leave blank for Mercari
+                                        if (matchedBrand) {
+                                          handleMarketplaceChange("mercari", "brand", matchedBrand);
+                                        }
+                                        setMercariBrandSearchOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          mercariForm.brand === (matchedBrand || brand) ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <span>{matchedBrand || brand}</span>
+                                      {!matchedBrand && <span className="text-xs text-muted-foreground ml-2">⭐</span>}
+                                    </CommandItem>
+                                  );
+                                })}
+                                <div className="border-t my-1" />
+                              </>
+                            )}
+                            {/* Popular brands */}
+                            {POPULAR_BRANDS.map((brand) => (
+                              <CommandItem
+                                key={brand}
+                                value={brand}
+                                onSelect={() => {
+                                  handleMarketplaceChange("mercari", "brand", brand);
+                                  setMercariBrandSearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    mercariForm.brand === brand ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {brand}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {generalForm.brand && !mercariForm.brand && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Inherited {generalForm.brand} from General form. You can edit this field.
+                      {(() => {
+                        const matched = findSimilarBrand(generalForm.brand, POPULAR_BRANDS);
+                        return matched 
+                          ? `Brand "${generalForm.brand}" not found in Mercari list. Similar brand "${matched}" available.`
+                          : `Brand "${generalForm.brand}" not available in Mercari brand list.`;
+                      })()}
                     </p>
                   )}
                 </div>
@@ -11094,17 +11982,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                           Main
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(facebookForm.photos[0].id, 'facebook');
-                          }}
-                          className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: facebookForm.photos[0].preview || facebookForm.photos[0].imageUrl, 
+                                photoId: facebookForm.photos[0].id, 
+                                marketplace: 'facebook',
+                                index: 0
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(facebookForm.photos[0].id, 'facebook');
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                     
@@ -11140,17 +12048,37 @@ export default function CrosslistComposer() {
                         <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
                           <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(photo.id, 'facebook');
-                          }}
-                          className="absolute top-1 right-1 inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 z-10"
-                        >
-                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: photo.preview || photo.imageUrl, 
+                                photoId: photo.id, 
+                                marketplace: 'facebook',
+                                index: index + 1
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(photo.id, 'facebook');
+                            }}
+                            className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                     
@@ -11493,34 +12421,75 @@ export default function CrosslistComposer() {
                             </Button>
                           </div>
                         ) : (
-                          <Select
-                            value={facebookForm.brand || generalForm.brand || undefined}
-                            onValueChange={(value) => {
-                              if (value === "custom") {
-                                setBrandIsCustom(true);
-                                handleMarketplaceChange("facebook", "brand", "");
-                              } else {
-                                handleMarketplaceChange("facebook", "brand", value);
-                              }
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select brand" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="custom">+ Add Custom Brand</SelectItem>
-                              {customBrands.map((brand) => (
-                                <SelectItem key={`custom-${brand}`} value={brand}>
-                                  {brand} ⭐
-                                </SelectItem>
-                              ))}
-                              {POPULAR_BRANDS.map((brand) => (
-                                <SelectItem key={brand} value={brand}>
-                                  {brand}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={facebookBrandSearchOpen} onOpenChange={setFacebookBrandSearchOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={facebookBrandSearchOpen}
+                                className="w-full justify-between"
+                              >
+                                {facebookForm.brand || generalForm.brand
+                                  ? (POPULAR_BRANDS.find((brand) => brand === (facebookForm.brand || generalForm.brand)) || customBrands.find((brand) => brand === (facebookForm.brand || generalForm.brand)) || (facebookForm.brand || generalForm.brand))
+                                  : "Search brand..."}
+                                <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search brand..." />
+                                <CommandList>
+                                  <CommandEmpty>No brand found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {/* Custom brands at the top */}
+                                    {customBrands.length > 0 && (
+                                      <>
+                                        {customBrands.map((brand) => (
+                                          <CommandItem
+                                            key={`custom-${brand}`}
+                                            value={brand}
+                                            onSelect={() => {
+                                              handleMarketplaceChange("facebook", "brand", brand);
+                                              setFacebookBrandSearchOpen(false);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                (facebookForm.brand || generalForm.brand) === brand ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            <span>{brand}</span>
+                                            <span className="text-xs text-muted-foreground ml-2">⭐</span>
+                                          </CommandItem>
+                                        ))}
+                                        <div className="border-t my-1" />
+                                      </>
+                                    )}
+                                    {/* Popular brands */}
+                                    {POPULAR_BRANDS.map((brand) => (
+                                      <CommandItem
+                                        key={brand}
+                                        value={brand}
+                                        onSelect={() => {
+                                          handleMarketplaceChange("facebook", "brand", brand);
+                                          setFacebookBrandSearchOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            (facebookForm.brand || generalForm.brand) === brand ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {brand}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         )}
                       </div>
 

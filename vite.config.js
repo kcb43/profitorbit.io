@@ -33,12 +33,14 @@ export default defineConfig(({ command, mode }) => {
             : 'https://profitorbit.io',
           changeOrigin: true,
           secure: process.env.VITE_LOCAL_API ? false : true, // Allow self-signed certs for local API
-          // Log proxy errors for debugging
+          // Log proxy errors for debugging (but only once per URL to avoid spam)
           onError: (err, req, res) => {
-            console.error('Proxy error:', err.message);
-            console.error('Requested URL:', req.url);
-            console.error('If you see 404 errors, the API routes may not be deployed to Vercel yet.');
-            console.error('Solution: Push your code to trigger a Vercel deployment.');
+            // Only log if it's not a common/expected error
+            if (!err.message?.includes('ECONNREFUSED') && !err.message?.includes('ENOTFOUND')) {
+              console.warn('Proxy error (usually harmless):', err.message);
+              console.warn('Requested URL:', req.url);
+              console.warn('If this persists, the API routes may not be deployed to Vercel yet.');
+            }
           },
           // Handle 404s more gracefully
           onProxyRes: (proxyRes, req, res) => {

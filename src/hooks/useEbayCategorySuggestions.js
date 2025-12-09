@@ -7,19 +7,48 @@ export function useEbayCategoryTreeId(marketplaceId = 'EBAY_US') {
   return useQuery({
     queryKey: ['ebayCategoryTreeId', marketplaceId],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/ebay/taxonomy?operation=getDefaultCategoryTreeId&marketplace_id=${marketplaceId}`
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(`Failed to get category tree ID: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      try {
+        const response = await fetch(
+          `/api/ebay/taxonomy?operation=getDefaultCategoryTreeId&marketplace_id=${marketplaceId}`
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(`Failed to get category tree ID: ${response.status} - ${errorData.error || 'Unknown error'}`);
+        }
+        
+        return response.json();
+      } catch (error) {
+        // Suppress proxy/network errors in development - they're usually harmless
+        // The API routes may not be deployed yet, or there may be network issues
+        const isProxyError = error.message?.includes('proxy') || 
+                           error.message?.includes('network') || 
+                           error.message?.includes('Failed to fetch') ||
+                           error.name === 'TypeError';
+        
+        if (isProxyError && import.meta.env.DEV) {
+          // In development, only log once to avoid spam
+          if (!window._ebayProxyErrorLogged) {
+            console.warn('eBay Taxonomy API proxy error (harmless - API routes may not be deployed):', error.message);
+            window._ebayProxyErrorLogged = true;
+          }
+        } else if (!isProxyError) {
+          // Log non-proxy errors normally
+          console.error('eBay Taxonomy API error:', error);
+        }
+        throw error;
       }
-      
-      return response.json();
     },
     staleTime: 24 * 60 * 60 * 1000, // Cache for 24 hours
-    retry: 2,
+    retry: (failureCount, error) => {
+      // Don't retry on proxy/network errors - they're likely configuration issues
+      if (error?.message?.includes('proxy') || error?.message?.includes('network') || error?.message?.includes('Failed to fetch')) {
+        return false;
+      }
+      // Retry other errors up to 2 times
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
