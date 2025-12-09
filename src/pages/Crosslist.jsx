@@ -79,9 +79,9 @@ const MARKETPLACES = [
 ];
 
 const STATUS_COLORS = {
-  available: "bg-blue-100 text-blue-800 border border-blue-200",
-  listed:    "bg-green-100 text-green-800 border border-green-200",
-  sold:      "bg-gray-100 text-gray-800 border border-gray-200",
+  available: "bg-blue-100 text-blue-600 border border-blue-200",
+  listed:    "bg-green-100 text-green-600 border border-green-200",
+  sold:      "bg-gray-100 text-gray-600 border border-gray-200",
 };
 
 const STATUS_LABELS = {
@@ -1417,7 +1417,7 @@ export default function Crosslist() {
                     {/* Crosslist Button */}
                     <Button
                       onClick={() => openComposer([it.id], false)}
-                      className="w-full bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-500 hover:via-indigo-600 hover:to-purple-500 text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 text-xs"
+                      className="w-full bg-gradient-to-r from-green-600 via-green-600 to-green-600 hover:from-green-500 hover:via-green-600 hover:to-green-500 text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-sm shadow-green-500/20 hover:shadow-md hover:shadow-green-500/25 text-xs"
                       style={{ letterSpacing: '1px' }}
                     >
                       <span className="flex justify-center items-center gap-1">
@@ -1557,7 +1557,7 @@ export default function Crosslist() {
                     <div className="flex flex-col gap-2">
                       <Button 
                         size="sm" 
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs" 
+                        className="w-full bg-gradient-to-r from-green-600 to-green-600 hover:from-green-500 hover:to-green-500 text-white font-semibold text-xs" 
                         onClick={() => openComposer([it.id], false)}
                       >
                         Crosslist
