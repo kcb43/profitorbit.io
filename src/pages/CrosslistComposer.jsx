@@ -938,7 +938,372 @@ const MERCARI_CATEGORIES = {
       }
     }
   },
-  "1611": { id: "1611", name: "Toys & Collectibles" },
+  "1611": {
+    id: "1611",
+    name: "Toys & Collectibles",
+    subcategories: {
+      "1612": {
+        id: "1612",
+        name: "Action Figures & Accessories",
+        subcategories: {
+          "1613": { id: "1613", name: "Action Figures" },
+          "1616": { id: "1616", name: "Action Figure Accessories" },
+          "1618": { id: "1618", name: "Action Figure Playsets" }
+        }
+      },
+      "1619": {
+        id: "1619",
+        name: "Dolls & Accessories",
+        subcategories: {
+          "1620": { id: "1620", name: "Fashion Dolls" },
+          "1621": { id: "1621", name: "Baby Dolls" },
+          "1622": { id: "1622", name: "Interactive Dolls & Pets" },
+          "1623": { id: "1623", name: "Dollhouses & Play Sets" },
+          "1624": { id: "1624", name: "Dollhouse Furniture & Accessories" },
+          "1625": { id: "1625", name: "Doll Clothes" },
+          "1626": { id: "1626", name: "Doll Accessories" },
+          "1627": { id: "1627", name: "Mini Dolls & Playsets" },
+          "1628": { id: "1628", name: "Play Animals" }
+        }
+      },
+      "1629": {
+        id: "1629",
+        name: "Collectibles & Hobbies",
+        subcategories: {
+          "1631": { id: "1631", name: "Model Vehicles" },
+          "1632": { id: "1632", name: "Model Kits" },
+          "1633": { id: "1633", name: "Squishies" },
+          "1634": { id: "1634", name: "Figurines" },
+          "1635": { id: "1635", name: "Glass" },
+          "1636": { id: "1636", name: "Souvenirs & Memorabilia" },
+          "1637": { id: "1637", name: "Porcelain" },
+          "1638": { id: "1638", name: "Dolls" },
+          "1639": { id: "1639", name: "Arcade" },
+          "1640": { id: "1640", name: "Autographs" },
+          "1641": { id: "1641", name: "Comics" },
+          "1642": { id: "1642", name: "Paper Collectibles" },
+          "1643": { id: "1643", name: "Keychains" },
+          "1644": { id: "1644", name: "Pins" },
+          "1645": { id: "1645", name: "Rocks, Fossils & Minerals" },
+          "1646": { id: "1646", name: "Bags & Totes" },
+          "1647": { id: "1647", name: "Other" },
+          "2209": { id: "2209", name: "Bobbleheads" },
+          "2210": { id: "2210", name: "Toy Statues" },
+          "3569": { id: "3569", name: "Photocards" }
+        }
+      },
+      "1648": {
+        id: "1648",
+        name: "Building Toys",
+        subcategories: {
+          "1650": { id: "1650", name: "Stacking Blocks" },
+          "1651": { id: "1651", name: "Wooden Blocks" },
+          "1652": { id: "1652", name: "Magnetic Construction" },
+          "1653": { id: "1653", name: "Building Kit Accessories" },
+          "2211": { id: "2211", name: "LEGO Toys" },
+          "2212": { id: "2212", name: "Toy Building Blocks" }
+        }
+      },
+      "1654": {
+        id: "1654",
+        name: "Electronics for Kids",
+        subcategories: {
+          "1656": { id: "1656", name: "Electronic Games" },
+          "1657": { id: "1657", name: "Kids Headphones" },
+          "1660": { id: "1660", name: "Toy Walkie Talkies" },
+          "1661": { id: "1661", name: "Kids Computer & Tablet Accessories" },
+          "1663": { id: "1663", name: "Kids Telescopes" },
+          "1664": { id: "1664", name: "Wind-Up & Walking Toys" },
+          "1665": { id: "1665", name: "Toy Cameras" },
+          "1666": { id: "1666", name: "Kids Watches" },
+          "1667": { id: "1667", name: "Other" },
+          "2213": { id: "2213", name: "Kids Computers" },
+          "2214": { id: "2214", name: "Kids Tablets" },
+          "2215": { id: "2215", name: "Kids Karaoke" },
+          "2216": { id: "2216", name: "Kids Music Players" },
+          "2217": { id: "2217", name: "Toy Electric Pets" },
+          "2218": { id: "2218", name: "Toy Robots" },
+          "2219": { id: "2219", name: "Toy Alarm Clocks" },
+          "2220": { id: "2220", name: "Toy Phones" }
+        }
+      },
+      "1668": {
+        id: "1668",
+        name: "Games & Puzzles",
+        subcategories: {
+          "1669": { id: "1669", name: "Board Games" },
+          "1670": { id: "1670", name: "Card Games" },
+          "1671": { id: "1671", name: "Chess & Checkers" },
+          "1673": { id: "1673", name: "Tile Games" },
+          "1674": { id: "1674", name: "Stacking Games" },
+          "1675": { id: "1675", name: "Game Tables" },
+          "1676": { id: "1676", name: "Game Accessories" },
+          "1677": { id: "1677", name: "Jigsaw Puzzles" },
+          "1678": { id: "1678", name: "Wooden Puzzles" },
+          "1679": { id: "1679", name: "3-D Puzzles" },
+          "1680": { id: "1680", name: "Dice Games" },
+          "1681": { id: "1681", name: "Sudoku Puzzles" },
+          "1682": { id: "1682", name: "Handheld Games" },
+          "1683": { id: "1683", name: "Lawn Games" }
+        }
+      },
+      "1684": {
+        id: "1684",
+        name: "Sports & Outdoor Play",
+        subcategories: {
+          "1686": { id: "1686", name: "Bubble Toys" },
+          "1687": { id: "1687", name: "NERF & Blaster Guns" },
+          "1688": { id: "1688", name: "NERF & Blaster Darts" },
+          "1689": { id: "1689", name: "Bounce Houses" },
+          "1690": { id: "1690", name: "Toy Kites" },
+          "1692": { id: "1692", name: "Sand & Water Toys" },
+          "1693": { id: "1693", name: "Play Sets & Playhouses" },
+          "1694": { id: "1694", name: "Swing Sets" },
+          "1695": { id: "1695", name: "Swing Set Accessories" },
+          "1696": { id: "1696", name: "Trampolines" },
+          "1697": { id: "1697", name: "Nature Exploration Toys" },
+          "1700": { id: "1700", name: "Sleds & Snow Toys" },
+          "1701": { id: "1701", name: "Ball Pits" },
+          "1702": { id: "1702", name: "Pogo Sticks & Hoppers" },
+          "1703": { id: "1703", name: "Other Outdoor Toys" },
+          "2221": { id: "2221", name: "Playground Balls" },
+          "2222": { id: "2222", name: "Toy Boomerangs" },
+          "2223": { id: "2223", name: "Toy Frisbees" },
+          "2224": { id: "2224", name: "Kids Wagons" },
+          "2225": { id: "2225", name: "Scooters" },
+          "2226": { id: "2226", name: "Tricycles" },
+          "2227": { id: "2227", name: "Kids Helmets" },
+          "2228": { id: "2228", name: "Kids Protective Pads" },
+          "2229": { id: "2229", name: "Kids Hoverboards" },
+          "2230": { id: "2230", name: "Kids Skateboards" },
+          "2231": { id: "2231", name: "Kids Skates" }
+        }
+      },
+      "1704": {
+        id: "1704",
+        name: "Remote Control Toys & Vehicles",
+        subcategories: {
+          "1705": { id: "1705", name: "Remote Control Vehicles & Animals" },
+          "1706": { id: "1706", name: "Kids Drones & Flying Toys" },
+          "1707": { id: "1707", name: "Play Vehicles" },
+          "1708": { id: "1708", name: "Racetracks & Playsets" },
+          "1709": { id: "1709", name: "Robotics" },
+          "1710": { id: "1710", name: "Trains & Train Sets" },
+          "1711": { id: "1711", name: "Toy Vehicle Accessories" }
+        }
+      },
+      "1712": {
+        id: "1712",
+        name: "Stuffed Animals & Plush",
+        subcategories: {
+          "1713": { id: "1713", name: "Stuffed Animals" },
+          "1714": { id: "1714", name: "Stuffed Animal Accessories" },
+          "1715": { id: "1715", name: "Beanbag Plushies" },
+          "1716": { id: "1716", name: "Plush Puppets" },
+          "1717": { id: "1717", name: "Plush Figures" },
+          "1719": { id: "1719", name: "Plush Purses & Accessories" },
+          "2232": { id: "2232", name: "Character Blankets" },
+          "2233": { id: "2233", name: "Character Pillows" }
+        }
+      },
+      "1720": {
+        id: "1720",
+        name: "Arts & Crafts",
+        subcategories: {
+          "1721": { id: "1721", name: "Craft Kits" },
+          "1722": { id: "1722", name: "Clay, Dough & Pottery Kits" },
+          "1723": { id: "1723", name: "Drawing & Coloring" },
+          "1724": { id: "1724", name: "Easels & Art Tables" },
+          "1725": { id: "1725", name: "Jewelry & Bead Kits" },
+          "1727": { id: "1727", name: "Stickers" },
+          "1729": { id: "1729", name: "Kids Scissors" },
+          "1730": { id: "1730", name: "Aprons & Smocks" },
+          "2234": { id: "2234", name: "Glue" },
+          "2235": { id: "2235", name: "Paste" }
+        }
+      },
+      "1731": {
+        id: "1731",
+        name: "Baby & Toddler Toys",
+        subcategories: {
+          "1733": { id: "1733", name: "Soft & Plush Toys" },
+          "1734": { id: "1734", name: "Soothers" },
+          "1735": { id: "1735", name: "Car Seat & Stroller Toys" },
+          "1736": { id: "1736", name: "Baby Learning Toys" },
+          "1737": { id: "1737", name: "Push & Pull Toys" },
+          "1738": { id: "1738", name: "Baby & Toddler Books" },
+          "1739": { id: "1739", name: "Baby & Toddler Blocks" },
+          "1740": { id: "1740", name: "Shape & Color Sorters" },
+          "1741": { id: "1741", name: "Bath Toys" },
+          "1742": { id: "1742", name: "Baby Music & Sound Toys" },
+          "1743": { id: "1743", name: "Crib Toys" },
+          "1744": { id: "1744", name: "Other" },
+          "2237": { id: "2237", name: "Baby Rattles" },
+          "2238": { id: "2238", name: "Baby Teethers" }
+        }
+      },
+      "1745": {
+        id: "1745",
+        name: "Learning & Education Toys",
+        subcategories: {
+          "1746": { id: "1746", name: "Music & Art Learning Toys" },
+          "1747": { id: "1747", name: "Math Toys" },
+          "1748": { id: "1748", name: "Counting Toys" },
+          "1749": { id: "1749", name: "Alphabet Toys" },
+          "1750": { id: "1750", name: "Reading & Writing Toys" },
+          "1751": { id: "1751", name: "Geography & History Toys" },
+          "1752": { id: "1752", name: "Engineering Toys" },
+          "1753": { id: "1753", name: "STEM Toys" },
+          "1754": { id: "1754", name: "Science Toys" },
+          "1755": { id: "1755", name: "Bilingual Toys" },
+          "1756": { id: "1756", name: "Special Needs Learning Toys" },
+          "1757": { id: "1757", name: "Learning & Development Toys" },
+          "1758": { id: "1758", name: "Electronic Learning Toys" }
+        }
+      },
+      "1759": {
+        id: "1759",
+        name: "Dress Up & Pretend Play",
+        subcategories: {
+          "1760": { id: "1760", name: "Play Cooking & Baking" },
+          "1762": { id: "1762", name: "Play Tool Sets" },
+          "1763": { id: "1763", name: "Toddler & Baby Costumes" },
+          "1764": { id: "1764", name: "Kids Costumes" },
+          "1765": { id: "1765", name: "Playhouses" },
+          "1766": { id: "1766", name: "Spy Gear" },
+          "1767": { id: "1767", name: "Puppets" },
+          "1768": { id: "1768", name: "Play Medical Toys" },
+          "1769": { id: "1769", name: "Play Gardening Toys" },
+          "1770": { id: "1770", name: "Other" },
+          "2239": { id: "2239", name: "Play Teepees" },
+          "2240": { id: "2240", name: "Play Tents" },
+          "2241": { id: "2241", name: "Play Tunnels" }
+        }
+      },
+      "1771": {
+        id: "1771",
+        name: "Novelty & Gag Toys",
+        subcategories: {
+          "1772": { id: "1772", name: "Fidget Toys" },
+          "1773": { id: "1773", name: "Fortune Telling Toys" },
+          "1774": { id: "1774", name: "Gag Toys & Practical Jokes" },
+          "1775": { id: "1775", name: "Juggling Sets" },
+          "1776": { id: "1776", name: "Magic Kits & Accessories" },
+          "1777": { id: "1777", name: "Novelty Spinning Tops" },
+          "1779": { id: "1779", name: "Novelty Surprise Toys" },
+          "2242": { id: "2242", name: "Toy Putty" },
+          "2243": { id: "2243", name: "Toy Slime" }
+        }
+      },
+      "1780": {
+        id: "1780",
+        name: "Trading Cards",
+        subcategories: {
+          "1789": { id: "1789", name: "Other Trading Cards" },
+          "3506": { id: "3506", name: "Booster Packs" },
+          "3507": { id: "3507", name: "Trading Card Boxes" },
+          "3508": { id: "3508", name: "Trading Card Decks" },
+          "3509": { id: "3509", name: "Single Cards" },
+          "3510": { id: "3510", name: "Trading Card Tins" }
+        }
+      },
+      "1790": {
+        id: "1790",
+        name: "Vintage & Antique Toys",
+        subcategories: {
+          "1791": { id: "1791", name: "Dolls" },
+          "1792": { id: "1792", name: "Games" },
+          "1793": { id: "1793", name: "Animals" },
+          "1794": { id: "1794", name: "Action Figures" },
+          "1795": { id: "1795", name: "Children" },
+          "1796": { id: "1796", name: "Cars" },
+          "1797": { id: "1797", name: "Puzzles" },
+          "1798": { id: "1798", name: "Sports" },
+          "1799": { id: "1799", name: "Blocks" },
+          "1800": { id: "1800", name: "Electronics" },
+          "1801": { id: "1801", name: "Antique Toys" },
+          "1802": { id: "1802", name: "Other" }
+        }
+      },
+      "1803": {
+        id: "1803",
+        name: "Vintage & Antique Collectibles",
+        subcategories: {
+          "1804": { id: "1804", name: "Model Vehicles" },
+          "1805": { id: "1805", name: "Model Kits" },
+          "1806": { id: "1806", name: "Figurines" },
+          "1807": { id: "1807", name: "Glass" },
+          "1808": { id: "1808", name: "Souvenirs & Memorabilia" },
+          "1809": { id: "1809", name: "Porcelain" },
+          "1810": { id: "1810", name: "Arcade" },
+          "1811": { id: "1811", name: "Paper Collectibles" },
+          "1812": { id: "1812", name: "Antique Collectibles" },
+          "1813": { id: "1813", name: "Other" }
+        }
+      },
+      "1814": {
+        id: "1814",
+        name: "Handmade Toys",
+        subcategories: {
+          "1815": { id: "1815", name: "Plush" },
+          "1816": { id: "1816", name: "Children" },
+          "1817": { id: "1817", name: "Waldorf" },
+          "1818": { id: "1818", name: "Dolls" },
+          "1820": { id: "1820", name: "Food" },
+          "1821": { id: "1821", name: "Puzzles" },
+          "1822": { id: "1822", name: "Baby" },
+          "1823": { id: "1823", name: "Pretend" },
+          "1824": { id: "1824", name: "Bears" },
+          "1825": { id: "1825", name: "Amigurumi" },
+          "1826": { id: "1826", name: "Games" },
+          "1828": { id: "1828", name: "Doll clothes" },
+          "1829": { id: "1829", name: "Sports" },
+          "1830": { id: "1830", name: "Blythe" },
+          "1831": { id: "1831", name: "Other" }
+        }
+      },
+      "1832": {
+        id: "1832",
+        name: "Handmade Dolls & Miniatures",
+        subcategories: {
+          "1833": { id: "1833", name: "Scale dollhouse miniatures" },
+          "1834": { id: "1834", name: "Miniatures" },
+          "1835": { id: "1835", name: "Primitive" },
+          "1836": { id: "1836", name: "Art dolls" },
+          "1837": { id: "1837", name: "Animals" },
+          "1838": { id: "1838", name: "Waldorf" },
+          "1839": { id: "1839", name: "Plush" },
+          "1840": { id: "1840", name: "Soft Sculptures" },
+          "1841": { id: "1841", name: "Fantasy" },
+          "1842": { id: "1842", name: "Figurines" },
+          "1843": { id: "1843", name: "Child friendly" },
+          "1844": { id: "1844", name: "Artist bears" },
+          "1845": { id: "1845", name: "Amigurumi" },
+          "1846": { id: "1846", name: "Human Figure Dolls" },
+          "1847": { id: "1847", name: "Scale Models" },
+          "1848": { id: "1848", name: "Fashion Doll Apparel" },
+          "1849": { id: "1849", name: "Puppets" },
+          "1850": { id: "1850", name: "Other" }
+        }
+      },
+      "1851": { id: "1851", name: "Other" },
+      "3511": {
+        id: "3511",
+        name: "Sports Trading Cards",
+        subcategories: {
+          "1787": { id: "1787", name: "Other Sports Trading Cards" },
+          "2596": { id: "2596", name: "Auto Racing Trading Cards" },
+          "2597": { id: "2597", name: "Baseball Trading Cards" },
+          "2598": { id: "2598", name: "Basketball Trading Cards" },
+          "2599": { id: "2599", name: "Boxing Trading Cards" },
+          "2600": { id: "2600", name: "Football Trading Cards" },
+          "2601": { id: "2601", name: "Hockey Trading Cards" },
+          "2602": { id: "2602", name: "Soccer Trading Cards" },
+          "3512": { id: "3512", name: "Wrestling Trading Cards" }
+        }
+      }
+    }
+  },
   "4": { id: "4", name: "Home" },
   "6": { id: "6", name: "Beauty" },
   "3": { id: "3", name: "Kids" },
