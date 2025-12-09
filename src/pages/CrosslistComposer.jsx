@@ -3384,7 +3384,186 @@ const MERCARI_CATEGORIES = {
       "140": { id: "140", name: "Other" }
     }
   },
-  "113": { id: "113", name: "Arts & Crafts" },
+  "113": {
+    id: "113",
+    name: "Arts & Crafts",
+    subcategories: {
+      "1101": { id: "1101", name: "Photography" },
+      "1103": { id: "1103", name: "Handmade Paintings" },
+      "1104": { id: "1104", name: "Mixed media" },
+      "1105": { id: "1105", name: "Sculptures" },
+      "1106": { id: "1106", name: "Illustration" },
+      "1107": { id: "1107", name: "Collages" },
+      "1108": { id: "1108", name: "Drawing Supplies" },
+      "1109": { id: "1109", name: "Fiber art" },
+      "1110": { id: "1110", name: "Printmaking" },
+      "1111": { id: "1111", name: "Aceo" },
+      "1112": { id: "1112", name: "Other Arts & Crafts" },
+      "1726": {
+        id: "1726",
+        name: "Paint",
+        subcategories: {
+          "3414": { id: "3414", name: "Acrylic Paint" },
+          "3415": { id: "3415", name: "Craft Paint" },
+          "3416": { id: "3416", name: "Gouache" },
+          "3417": { id: "3417", name: "Oil Paint" },
+          "3418": { id: "3418", name: "Spray Paint" },
+          "3419": { id: "3419", name: "Watercolor Paint" },
+          "3420": { id: "3420", name: "Other Paint" }
+        }
+      },
+      "2630": { id: "2630", name: "Native American Arts & Crafts" },
+      "3371": {
+        id: "3371",
+        name: "Art Paper & Surfaces",
+        subcategories: {
+          "3372": { id: "3372", name: "Acrylic Painting Paper" },
+          "3373": { id: "3373", name: "Artist Tiles" },
+          "3374": { id: "3374", name: "Canvas Pads" },
+          "3375": { id: "3375", name: "Canvas Rolls" },
+          "3376": { id: "3376", name: "Charcoal Paper" },
+          "3377": { id: "3377", name: "Colored Pencil Paper" },
+          "3378": { id: "3378", name: "Foam Boards" },
+          "3379": { id: "3379", name: "Illustration Boards" },
+          "3380": { id: "3380", name: "Ink & Marker Paper" },
+          "3381": { id: "3381", name: "Newsprint Paper" },
+          "3382": { id: "3382", name: "Oil Painting Paper" },
+          "3383": { id: "3383", name: "Oil Pastel Paper" },
+          "3384": { id: "3384", name: "Paint Canvas" },
+          "3385": { id: "3385", name: "Paper Rolls" },
+          "3387": { id: "3387", name: "Poster Boards" },
+          "3388": { id: "3388", name: "Printmaking Paper" },
+          "3389": { id: "3389", name: "Sketch Paper" },
+          "3390": { id: "3390", name: "Soft Pastel Paper" },
+          "3391": { id: "3391", name: "Tracing Pads" },
+          "3392": { id: "3392", name: "Tracing Paper" },
+          "3393": { id: "3393", name: "Watercolor Paper" },
+          "3394": { id: "3394", name: "Other Art Paper & Surfaces" }
+        }
+      },
+      "3395": {
+        id: "3395",
+        name: "Art Pencils",
+        subcategories: {
+          "3396": { id: "3396", name: "Colored Pencils" },
+          "3397": { id: "3397", name: "Charcoal Pencils" },
+          "3398": { id: "3398", name: "Charcoal Sticks" },
+          "3399": { id: "3399", name: "Watercolor Pencils" },
+          "3400": { id: "3400", name: "Other Art Pencils" }
+        }
+      },
+      "3401": {
+        id: "3401",
+        name: "Art Studio Furniture",
+        subcategories: {
+          "3402": { id: "3402", name: "Drafting Tables" },
+          "3403": { id: "3403", name: "Easels" },
+          "3404": { id: "3404", name: "Studio Furniture" },
+          "3405": { id: "3405", name: "Other Art Studio Furniture" }
+        }
+      },
+      "3406": {
+        id: "3406",
+        name: "Ink & Calligraphy",
+        subcategories: {
+          "3407": { id: "3407", name: "Alcohol Ink" },
+          "3408": { id: "3408", name: "Calligraphy Ink Sets" },
+          "3409": { id: "3409", name: "Drawing & Calligraphy Ink" },
+          "3410": { id: "3410", name: "India Ink" },
+          "3411": { id: "3411", name: "Pigment Powders" },
+          "3412": { id: "3412", name: "Sumi Ink" },
+          "3413": { id: "3413", name: "Other Ink & Calligraphy" }
+        }
+      },
+      "3421": {
+        id: "3421",
+        name: "Paint Accessories",
+        subcategories: {
+          "3422": { id: "3422", name: "Artist Palettes" },
+          "3423": { id: "3423", name: "Brush Cleaners" },
+          "3424": { id: "3424", name: "Color Wheels" },
+          "3425": { id: "3425", name: "Paint Droppers" },
+          "3426": { id: "3426", name: "Paint Nozzles" },
+          "3427": { id: "3427", name: "Paint Sponges" },
+          "3428": { id: "3428", name: "Paint Storage Containers" },
+          "3429": { id: "3429", name: "Paint Syringes" },
+          "3430": { id: "3430", name: "Palette Knives" },
+          "3431": { id: "3431", name: "Spray Lacquers & Sealers" },
+          "3432": { id: "3432", name: "Other Paint Accessories" }
+        }
+      },
+      "3433": {
+        id: "3433",
+        name: "Paint Brushes",
+        subcategories: {
+          "3434": { id: "3434", name: "Acrylic Brushes" },
+          "3435": { id: "3435", name: "Airbrushes" },
+          "3436": { id: "3436", name: "Brush Sets" },
+          "3437": { id: "3437", name: "Multi-Purpose Brushes" },
+          "3438": { id: "3438", name: "Oil Brushes" },
+          "3439": { id: "3439", name: "Specialty Brushes" },
+          "3440": { id: "3440", name: "Watercolor Brushes" },
+          "3441": { id: "3441", name: "Other Paint Brushes" }
+        }
+      },
+      "3442": {
+        id: "3442",
+        name: "Pastels",
+        subcategories: {
+          "3443": { id: "3443", name: "Oil Pastels" },
+          "3444": { id: "3444", name: "Pastel Pencils" },
+          "3445": { id: "3445", name: "Soft Pastels" },
+          "3446": { id: "3446", name: "Wax Pastels & Crayons" },
+          "3447": { id: "3447", name: "Other Pastels" }
+        }
+      },
+      "3448": {
+        id: "3448",
+        name: "Mediums & Varnishes",
+        subcategories: {
+          "3449": { id: "3449", name: "Acrylic Mediums" },
+          "3450": { id: "3450", name: "Gessoes & Primers" },
+          "3451": { id: "3451", name: "Masking Fluids & Frisket" },
+          "3452": { id: "3452", name: "Oil Mediums" },
+          "3453": { id: "3453", name: "Oil Painting Solvents" },
+          "3454": { id: "3454", name: "Pouring Mediums" },
+          "3455": { id: "3455", name: "Varnishes & Topcoats" },
+          "3456": { id: "3456", name: "Watercolor Mediums" },
+          "3457": { id: "3457", name: "Other Mediums & Varnishes" }
+        }
+      },
+      "3458": {
+        id: "3458",
+        name: "Resin Art Supplies",
+        subcategories: {
+          "3459": { id: "3459", name: "Epoxy Resin" },
+          "3460": { id: "3460", name: "Resin Fillers" },
+          "3461": { id: "3461", name: "Resin Glitter" },
+          "3462": { id: "3462", name: "Resin Molds" },
+          "3463": { id: "3463", name: "Resin Pigments" },
+          "3464": { id: "3464", name: "Other Resin Art" }
+        }
+      },
+      "3465": {
+        id: "3465",
+        name: "Stamping & Embossing",
+        subcategories: {
+          "3466": { id: "3466", name: "Cling Stamps" },
+          "3467": { id: "3467", name: "Embossing Powders" },
+          "3468": { id: "3468", name: "Rubber Stamps" },
+          "3469": { id: "3469", name: "Sealing Wax" },
+          "3470": { id: "3470", name: "Stamp Handles" },
+          "3471": { id: "3471", name: "Stamp Ink Pads" },
+          "3472": { id: "3472", name: "Stamp Ink Refills" },
+          "3473": { id: "3473", name: "Stamp Mounts" },
+          "3474": { id: "3474", name: "Stamping Collections" },
+          "3475": { id: "3475", name: "Stamping Kits" },
+          "3476": { id: "3476", name: "Wax Seal Stamps" },
+          "3477": { id: "3477", name: "Other Stamping & Embossing" }
+        }
+      }
+    }
+  },
   "143": { id: "143", name: "Pet Supplies" },
   "2633": { id: "2633", name: "Garden & Outdoor" },
   "2882": { id: "2882", name: "Office" },
