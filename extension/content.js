@@ -310,8 +310,17 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
   try {
     console.log(`Selecting from dropdown [${testId}]: ${optionText}`);
     
-    // Find and click the dropdown trigger
-    const dropdown = document.querySelector(`[data-testid="${testId}"]`);
+    // Find and click the dropdown trigger - try multiple selectors
+    let dropdown = document.querySelector(`[data-testid="${testId}"]`);
+    
+    // Fallback: if testId not found, try to find any category dropdown that's visible/active
+    if (!dropdown && testId.startsWith('Category')) {
+      // Try finding by aria attributes or class names
+      dropdown = document.querySelector('[data-testid*="Category"]') ||
+                 document.querySelector('[aria-haspopup="listbox"][id*="category"]') ||
+                 document.querySelector('.SelectInputEl-sc-1buwe9t');
+    }
+    
     if (!dropdown) {
       console.warn(`Dropdown [${testId}] not found`);
       return false;
@@ -319,35 +328,48 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     
     // Click to open dropdown
     dropdown.click();
-    await sleep(500);
+    await sleep(600); // Increased wait time for dropdown to fully open
     
     // Wait for options to appear (they usually appear in a portal/overlay)
     // Mercari dropdowns render options in the DOM after clicking
-    await sleep(300);
+    await sleep(400);
     
     // Try to find the option - Mercari uses various patterns
     // Look for elements with role="option" or in a listbox
-    const options = Array.from(document.querySelectorAll('[role="option"]'));
+    let options = Array.from(document.querySelectorAll('[role="option"]'));
+    
+    // If no options found, try alternative selectors
+    if (options.length === 0) {
+      options = Array.from(document.querySelectorAll('[data-testid*="Option"]')) ||
+                Array.from(document.querySelectorAll('.SelectOption-sc-')) ||
+                Array.from(document.querySelectorAll('li[class*="Option"]'));
+    }
+    
+    // Clean option text for matching (remove extra whitespace, special chars)
+    const cleanOptionText = optionText.trim().toLowerCase();
     
     let matchedOption = null;
     
     if (partialMatch) {
-      matchedOption = options.find(opt => 
-        opt.textContent.toLowerCase().includes(optionText.toLowerCase())
-      );
+      matchedOption = options.find(opt => {
+        const optText = opt.textContent.trim().toLowerCase();
+        return optText.includes(cleanOptionText) || cleanOptionText.includes(optText);
+      });
     } else {
-      matchedOption = options.find(opt => 
-        opt.textContent.trim().toLowerCase() === optionText.toLowerCase()
-      );
+      matchedOption = options.find(opt => {
+        const optText = opt.textContent.trim().toLowerCase();
+        return optText === cleanOptionText;
+      });
     }
     
     if (matchedOption) {
-      console.log(`✓ Found option: ${matchedOption.textContent}`);
+      console.log(`✓ Found option: "${matchedOption.textContent.trim()}"`);
       matchedOption.click();
-      await sleep(500);
+      await sleep(600); // Increased wait time after selection
       return true;
     } else {
       console.warn(`Option "${optionText}" not found in dropdown [${testId}]`);
+      console.log(`Available options:`, options.slice(0, 5).map(opt => opt.textContent.trim()));
       // Click outside to close dropdown
       document.body.click();
       await sleep(300);
@@ -427,21 +449,83 @@ async function fillMercariForm(data) {
       console.log('✓ Description set');
     }
     
-    // 3. CATEGORY - Mercari-specific category
+    // 3. CATEGORY - Mercari-specific category (multi-level selection)
     if (data.mercariCategory) {
       console.log('🔍 Attempting Mercari category selection:', data.mercariCategory);
-      const categorySuccess = await selectMercariDropdown('CategoryL0', data.mercariCategory, false);
-      if (categorySuccess) {
-        console.log('✓ Mercari category selected:', data.mercariCategory);
-      } else {
-        console.warn('⚠️ Category selection failed - trying partial match');
-        // Try partial match as fallback
-        const partialSuccess = await selectMercariDropdown('CategoryL0', data.mercariCategory, true);
-        if (partialSuccess) {
-          console.log('✓ Category selected with partial match');
-        } else {
-          console.error('❌ Category selection failed completely');
+      
+      // Split category path by " > " to get individual levels
+      const categoryParts = data.mercariCategory.split(' > ').map(part => part.trim());
+      console.log('📋 Category levels:', categoryParts);
+      
+      let categorySuccess = false;
+      
+      // Select each level sequentially
+      for (let level = 0; level < categoryParts.length; level++) {
+        const categoryPart = categoryParts[level];
+        
+        // Try multiple testId patterns - Mercari might reuse CategoryL0 or use CategoryL1, CategoryL2, etc.
+        const possibleTestIds = level === 0 
+          ? ['CategoryL0'] 
+          : [`CategoryL${level}`, 'CategoryL0', `CategoryL${level - 1}`]; // Try level-specific first, then fallback
+        
+        console.log(`  → Selecting level ${level}: "${categoryPart}"`);
+        
+        let success = false;
+        let usedTestId = null;
+        
+        // Try each possible testId
+        for (const testId of possibleTestIds) {
+          console.log(`    Trying dropdown [${testId}]...`);
+          
+          // Try exact match first
+          success = await selectMercariDropdown(testId, categoryPart, false);
+          
+          if (!success) {
+            console.warn(`    Exact match failed, trying partial match...`);
+            // Try partial match
+            success = await selectMercariDropdown(testId, categoryPart, true);
+          }
+          
+          if (success) {
+            usedTestId = testId;
+            break; // Found it, stop trying other testIds
+          }
         }
+        
+        if (success) {
+          console.log(`  ✓ Level ${level} selected: ${categoryPart} (using ${usedTestId})`);
+          
+          // Wait for next level dropdown to appear (if not the last level)
+          if (level < categoryParts.length - 1) {
+            await sleep(1000); // Give Mercari time to load next level
+            // Check if any category dropdown is available for next level
+            const nextLevelTestId = `CategoryL${level + 1}`;
+            let nextDropdown = document.querySelector(`[data-testid="${nextLevelTestId}"]`);
+            if (!nextDropdown) {
+              // Try to find any category dropdown that might be the next level
+              nextDropdown = document.querySelector('[data-testid*="Category"]') ||
+                           document.querySelector('[aria-haspopup="listbox"][id*="category"]');
+              if (nextDropdown) {
+                console.log(`  → Found next level dropdown (using fallback selector)`);
+              } else {
+                console.warn(`  ⚠️ Next level dropdown not found yet, waiting...`);
+                await sleep(1000);
+              }
+            }
+          } else {
+            // Last level selected successfully
+            categorySuccess = true;
+          }
+        } else {
+          console.error(`  ❌ Failed to select level ${level}: ${categoryPart}`);
+          break; // Stop if any level fails
+        }
+      }
+      
+      if (categorySuccess) {
+        console.log('✓ Mercari category fully selected:', data.mercariCategory);
+      } else {
+        console.error('❌ Category selection failed - could not complete all levels');
       }
     } else {
       console.warn('⚠️ No Mercari category provided - skipping category selection');
