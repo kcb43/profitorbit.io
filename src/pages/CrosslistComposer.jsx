@@ -114,8 +114,8 @@ const MERCARI_CATEGORIES = {
     id: "1",
     name: "Women",
     subcategories: {
-      "11": { 
-        id: "11", 
+      "11": {
+        id: "11",
         name: "Dresses",
         subcategories: {
           "149": { id: "149", name: "Above knee, mini" },
@@ -123,13 +123,12 @@ const MERCARI_CATEGORIES = {
           "151": { id: "151", name: "Midi" },
           "152": { id: "152", name: "Maxi" },
           "153": { id: "153", name: "High Low" },
-          "1866": { id: "1866", name: "Jumpsuits & Rompers" },
           "154": { id: "154", name: "Other" },
-          "11_all": { id: "11", name: "All Dresses" }
+          "1866": { id: "1866", name: "Jumpsuits & Rompers" }
         }
       },
-      "12": { 
-        id: "12", 
+      "12": {
+        id: "12",
         name: "Tops & blouses",
         subcategories: {
           "155": { id: "155", name: "Blouse" },
@@ -141,14 +140,14 @@ const MERCARI_CATEGORIES = {
           "162": { id: "162", name: "Tunic" },
           "163": { id: "163", name: "Turtleneck" },
           "164": { id: "164", name: "Wrap" },
+          "165": { id: "165", name: "Other" },
           "1955": { id: "1955", name: "Bodysuits" },
           "1956": { id: "1956", name: "Camisoles" },
-          "1957": { id: "1957", name: "Tank Tops" },
-          "165": { id: "165", name: "Other" }
+          "1957": { id: "1957", name: "Tank Tops" }
         }
       },
-      "13": { 
-        id: "13", 
+      "13": {
+        id: "13",
         name: "Sweaters",
         subcategories: {
           "166": { id: "166", name: "Cardigan" },
@@ -165,16 +164,15 @@ const MERCARI_CATEGORIES = {
           "177": { id: "177", name: "Tunic" },
           "180": { id: "180", name: "V-neck" },
           "181": { id: "181", name: "Wrap" },
+          "182": { id: "182", name: "Other" },
           "1958": { id: "1958", name: "Mock Sweaters" },
           "1959": { id: "1959", name: "Turtleneck Sweaters" },
           "1960": { id: "1960", name: "Sleeveless Sweaters" },
-          "1961": { id: "1961", name: "Sweater Vests" },
-          "182": { id: "182", name: "Other" },
-          "13_all": { id: "13", name: "All Sweaters" }
+          "1961": { id: "1961", name: "Sweater Vests" }
         }
       },
-      "14": { 
-        id: "14", 
+      "14": {
+        id: "14",
         name: "Jeans",
         subcategories: {
           "183": { id: "183", name: "Boot cut" },
@@ -186,34 +184,497 @@ const MERCARI_CATEGORIES = {
           "190": { id: "190", name: "Relaxed" },
           "192": { id: "192", name: "Straight leg" },
           "193": { id: "193", name: "Wide leg" },
+          "194": { id: "194", name: "Other" },
           "1962": { id: "1962", name: "Capri Jeans" },
           "1963": { id: "1963", name: "Cropped Jeans" },
           "1964": { id: "1964", name: "Skinny Jeans" },
-          "1965": { id: "1965", name: "Slim Jeans" },
-          "194": { id: "194", name: "Other" },
-          "14_all": { id: "14", name: "All Jeans" }
+          "1965": { id: "1965", name: "Slim Jeans" }
         }
       },
-      "15": { id: "15", name: "Pants" },
-      "16": { id: "16", name: "Skirts" },
-      "17": { id: "17", name: "Coats & jackets" },
-      "18": { id: "18", name: "Suits & blazers" },
-      "19": { id: "19", name: "Athletic apparel" },
-      "20": { id: "20", name: "Swimwear" },
-      "21": { id: "21", name: "Women's handbags" },
-      "22": { id: "22", name: "Women's accessories" },
-      "23": { id: "23", name: "Jewelry" },
-      "24": { id: "24", name: "Maternity" },
-      "25": { id: "25", name: "Shoes" },
-      "1561": { id: "1561", name: "Underwear" },
-      "1936": { id: "1936", name: "Shorts" },
-      "1947": { id: "1947", name: "Sleepwear & robes" },
-      "3550": { id: "3550", name: "Kimono / Yukata" },
-      "3551": { id: "3551", name: "School Uniform" },
-      "26": { id: "26", name: "Other" }
+      "15": {
+        id: "15",
+        name: "Pants",
+        subcategories: {
+          "196": { id: "196", name: "Cargo" },
+          "197": { id: "197", name: "Casual pants" },
+          "198": { id: "198", name: "Corduroys" },
+          "199": { id: "199", name: "Dress pants" },
+          "200": { id: "200", name: "Khakis, chinos" },
+          "201": { id: "201", name: "Leather" },
+          "202": { id: "202", name: "Linen" },
+          "203": { id: "203", name: "Other" },
+          "1966": { id: "1966", name: "Capri Pants" },
+          "1967": { id: "1967", name: "Cropped Pants" }
+        }
+      },
+      "16": {
+        id: "16",
+        name: "Skirts",
+        subcategories: {
+          "204": { id: "204", name: "A-line" },
+          "205": { id: "205", name: "Asymmetrical" },
+          "206": { id: "206", name: "Bubble" },
+          "207": { id: "207", name: "Full skirt" },
+          "208": { id: "208", name: "Maxi" },
+          "209": { id: "209", name: "Mini" },
+          "210": { id: "210", name: "Peasant" },
+          "211": { id: "211", name: "Pleated" },
+          "212": { id: "212", name: "Straight, pencil" },
+          "213": { id: "213", name: "Tiered" },
+          "214": { id: "214", name: "Wrap" },
+          "215": { id: "215", name: "Other" }
+        }
+      },
+      "17": {
+        id: "17",
+        name: "Coats & jackets",
+        subcategories: {
+          "216": { id: "216", name: "Cape" },
+          "217": { id: "217", name: "Fleece jacket" },
+          "218": { id: "218", name: "Jean jacket" },
+          "219": { id: "219", name: "Military" },
+          "220": { id: "220", name: "Motorcycle" },
+          "221": { id: "221", name: "Parka" },
+          "222": { id: "222", name: "Peacoat" },
+          "223": { id: "223", name: "Poncho" },
+          "224": { id: "224", name: "Puffer" },
+          "225": { id: "225", name: "Raincoat" },
+          "226": { id: "226", name: "Trench" },
+          "227": { id: "227", name: "Vest" },
+          "228": { id: "228", name: "Windbreaker" },
+          "229": { id: "229", name: "Wool" },
+          "230": { id: "230", name: "Other" }
+        }
+      },
+      "18": {
+        id: "18",
+        name: "Suits & blazers",
+        subcategories: {
+          "231": { id: "231", name: "Blazer" },
+          "232": { id: "232", name: "Dress suit" },
+          "233": { id: "233", name: "Pant suit" },
+          "234": { id: "234", name: "Skirt suit" },
+          "235": { id: "235", name: "Other" }
+        }
+      },
+      "19": {
+        id: "19",
+        name: "Athletic apparel",
+        subcategories: {
+          "236": { id: "236", name: "Jackets" },
+          "237": { id: "237", name: "Jerseys" },
+          "240": { id: "240", name: "Shorts" },
+          "243": { id: "243", name: "Socks" },
+          "244": { id: "244", name: "Sports bras" },
+          "246": { id: "246", name: "Vests" },
+          "247": { id: "247", name: "Other" },
+          "1968": { id: "1968", name: "Athletic Leggings" },
+          "1969": { id: "1969", name: "Athletic Pants" },
+          "1970": { id: "1970", name: "Athletic Tights" },
+          "1971": { id: "1971", name: "Athletic Polos" },
+          "1972": { id: "1972", name: "Athletic T-Shirts" },
+          "1973": { id: "1973", name: "Athletic Tank Tops" },
+          "1974": { id: "1974", name: "Athletic Dresses" },
+          "1975": { id: "1975", name: "Athletic Skirts" },
+          "1976": { id: "1976", name: "Athletic Skorts" },
+          "1977": { id: "1977", name: "Snow Bibs" },
+          "1978": { id: "1978", name: "Snow Pants" },
+          "1979": { id: "1979", name: "Snowsuits" },
+          "1980": { id: "1980", name: "Athletic Hoodies" },
+          "1981": { id: "1981", name: "Athletic Sweat Pants" },
+          "1982": { id: "1982", name: "Athletic Sweatshirts" },
+          "1983": { id: "1983", name: "Athletic Sweatsuits" },
+          "1984": { id: "1984", name: "Track Jackets" },
+          "1985": { id: "1985", name: "Track Pants" },
+          "1986": { id: "1986", name: "Tracksuits" }
+        }
+      },
+      "20": {
+        id: "20",
+        name: "Swimwear",
+        subcategories: {
+          "248": { id: "248", name: "One-piece" },
+          "249": { id: "249", name: "Two-piece" },
+          "250": { id: "250", name: "Cover-ups" },
+          "251": { id: "251", name: "Beach accessories" }
+        }
+      },
+      "21": {
+        id: "21",
+        name: "Women's handbags",
+        subcategories: {
+          "252": { id: "252", name: "Shoulder Bags" },
+          "253": { id: "253", name: "Tote Bags" },
+          "254": { id: "254", name: "Crossbody Bags" },
+          "255": { id: "255", name: "Satchel" },
+          "256": { id: "256", name: "Hobo Bags" },
+          "258": { id: "258", name: "Backpacks" },
+          "259": { id: "259", name: "Cosmetic bags" },
+          "260": { id: "260", name: "Other" },
+          "1863": { id: "1863", name: "Waist Bags & Fanny Packs" },
+          "1864": { id: "1864", name: "Messenger Bags" },
+          "1865": { id: "1865", name: "Bucket Bags" }
+        }
+      },
+      "22": {
+        id: "22",
+        name: "Women's accessories",
+        subcategories: {
+          "261": { id: "261", name: "Sunglasses" },
+          "262": { id: "262", name: "Wallets" },
+          "264": { id: "264", name: "Belts" },
+          "265": { id: "265", name: "Hats" },
+          "266": { id: "266", name: "Hair accessories" },
+          "267": { id: "267", name: "Watches" },
+          "268": { id: "268", name: "Other" },
+          "1987": { id: "1987", name: "Scarves" },
+          "1988": { id: "1988", name: "Wraps" },
+          "2624": { id: "2624", name: "Bandanas" },
+          "2625": { id: "2625", name: "Fascinators" },
+          "2626": { id: "2626", name: "Fashion Gloves" },
+          "2627": { id: "2627", name: "Headbands" },
+          "2628": { id: "2628", name: "Hijabs" },
+          "2629": { id: "2629", name: "Umbrellas" },
+          "3169": { id: "3169", name: "Cardholders" }
+        }
+      },
+      "23": {
+        id: "23",
+        name: "Jewelry",
+        subcategories: {
+          "269": { id: "269", name: "Rings" },
+          "270": { id: "270", name: "Necklaces" },
+          "271": { id: "271", name: "Earrings" },
+          "272": { id: "272", name: "Bracelets" },
+          "2622": { id: "2622", name: "Nose Rings" },
+          "2623": { id: "2623", name: "Toe Rings" },
+          "3168": { id: "3168", name: "Pins" }
+        }
+      },
+      "24": {
+        id: "24",
+        name: "Maternity",
+        subcategories: {
+          "273": { id: "273", name: "Dresses" },
+          "275": { id: "275", name: "Sweaters" },
+          "276": { id: "276", name: "Jeans" },
+          "277": { id: "277", name: "Pants" },
+          "278": { id: "278", name: "Skirts" },
+          "279": { id: "279", name: "Coats & jackets" },
+          "281": { id: "281", name: "Athletic apparel" },
+          "282": { id: "282", name: "Other" },
+          "1989": { id: "1989", name: "Maternity Blouses" },
+          "1990": { id: "1990", name: "Maternity Button-Ups" },
+          "1991": { id: "1991", name: "Maternity Camisoles" },
+          "1992": { id: "1992", name: "Maternity Polos" },
+          "1993": { id: "1993", name: "Maternity T-Shirts" },
+          "1994": { id: "1994", name: "Maternity Tank Tops" },
+          "1995": { id: "1995", name: "Maternity Blazers" },
+          "1996": { id: "1996", name: "Maternity Suit Jackets" },
+          "1997": { id: "1997", name: "Maternity Suit Pants" },
+          "1998": { id: "1998", name: "Maternity Suits" },
+          "1999": { id: "1999", name: "Maternity Suit Skirts" },
+          "2000": { id: "2000", name: "Maternity Suit Vests" }
+        }
+      },
+      "25": {
+        id: "25",
+        name: "Shoes",
+        subcategories: {
+          "283": { id: "283", name: "Athletic" },
+          "284": { id: "284", name: "Boots" },
+          "285": { id: "285", name: "Fashion sneakers" },
+          "286": { id: "286", name: "Flats" },
+          "289": { id: "289", name: "Outdoor" },
+          "290": { id: "290", name: "Oxfords" },
+          "291": { id: "291", name: "Heels" },
+          "292": { id: "292", name: "Sandals" },
+          "293": { id: "293", name: "Slippers" },
+          "294": { id: "294", name: "Work & safety" },
+          "295": { id: "295", name: "Other" },
+          "2001": { id: "2001", name: "Loafers" },
+          "2002": { id: "2002", name: "Slip-Ons" },
+          "2003": { id: "2003", name: "Clogs" },
+          "2004": { id: "2004", name: "Mules" }
+        }
+      },
+      "26": { id: "26", name: "Other" },
+      "1561": {
+        id: "1561",
+        name: "Underwear",
+        subcategories: {
+          "1562": { id: "1562", name: "G-strings & thongs" },
+          "1563": { id: "1563", name: "Panties" },
+          "1564": { id: "1564", name: "Thermal underwear" },
+          "1565": { id: "1565", name: "Bras" },
+          "1566": { id: "1566", name: "Other" }
+        }
+      },
+      "1936": {
+        id: "1936",
+        name: "Shorts",
+        subcategories: {
+          "1937": { id: "1937", name: "Bermuda" },
+          "1938": { id: "1938", name: "Bike" },
+          "1939": { id: "1939", name: "Cargo" },
+          "1940": { id: "1940", name: "Chino & khaki" },
+          "1941": { id: "1941", name: "Denim" },
+          "1942": { id: "1942", name: "High-waisted" },
+          "1943": { id: "1943", name: "Pull-on" },
+          "1944": { id: "1944", name: "Short shorts" },
+          "1945": { id: "1945", name: "Skort" },
+          "1946": { id: "1946", name: "Other" }
+        }
+      },
+      "1947": {
+        id: "1947",
+        name: "Sleepwear & robes",
+        subcategories: {
+          "1948": { id: "1948", name: "Nightgowns & sleep shirts" },
+          "1949": { id: "1949", name: "Pajama pants" },
+          "1950": { id: "1950", name: "Pajama sets" },
+          "1951": { id: "1951", name: "Pajama shorts" },
+          "1952": { id: "1952", name: "Pajama tops" },
+          "1953": { id: "1953", name: "Robes" },
+          "1954": { id: "1954", name: "Other" }
+        }
+      }
     }
   },
-  "2": { id: "2", name: "Men" },
+  "2": {
+    id: "2",
+    name: "Men",
+    subcategories: {
+      "27": {
+        id: "27",
+        name: "Tops",
+        subcategories: {
+          "297": { id: "297", name: "Button-front" },
+          "298": { id: "298", name: "Dress shirts" },
+          "299": { id: "299", name: "Hawaiian" },
+          "300": { id: "300", name: "Henley" },
+          "302": { id: "302", name: "Tank" },
+          "303": { id: "303", name: "T-shirts" },
+          "304": { id: "304", name: "Turtleneck" },
+          "305": { id: "305", name: "Other" },
+          "2005": { id: "2005", name: "Polos" },
+          "2006": { id: "2006", name: "Rugby Shirts" }
+        }
+      },
+      "28": {
+        id: "28",
+        name: "Sweats & hoodies",
+        subcategories: {
+          "306": { id: "306", name: "Hoodie" },
+          "307": { id: "307", name: "Sweatshirt, pullover" },
+          "308": { id: "308", name: "Sweat Pants" },
+          "309": { id: "309", name: "Sweatsuits" },
+          "310": { id: "310", name: "Track jacket" },
+          "311": { id: "311", name: "Other" }
+        }
+      },
+      "29": {
+        id: "29",
+        name: "Sweaters",
+        subcategories: {
+          "312": { id: "312", name: "Cardigan" },
+          "313": { id: "313", name: "Crewneck" },
+          "314": { id: "314", name: "Full zip" },
+          "315": { id: "315", name: "Polo" },
+          "316": { id: "316", name: "Turtleneck" },
+          "317": { id: "317", name: "Vest" },
+          "318": { id: "318", name: "V-neck" },
+          "319": { id: "319", name: "Other" }
+        }
+      },
+      "30": {
+        id: "30",
+        name: "Jeans",
+        subcategories: {
+          "320": { id: "320", name: "Baggy, loose" },
+          "321": { id: "321", name: "Boot cut" },
+          "322": { id: "322", name: "Cargo" },
+          "323": { id: "323", name: "Carpenter" },
+          "324": { id: "324", name: "Classic, straight leg" },
+          "325": { id: "325", name: "Overalls" },
+          "326": { id: "326", name: "Relaxed" },
+          "328": { id: "328", name: "Other" },
+          "2007": { id: "2007", name: "Skinny Jeans" },
+          "2008": { id: "2008", name: "Slim Jeans" }
+        }
+      },
+      "31": {
+        id: "31",
+        name: "Pants",
+        subcategories: {
+          "329": { id: "329", name: "Cargo" },
+          "330": { id: "330", name: "Carpenter" },
+          "331": { id: "331", name: "Casual pants" },
+          "332": { id: "332", name: "Corduroys" },
+          "333": { id: "333", name: "Dress - flat front" },
+          "334": { id: "334", name: "Dress - pleat" },
+          "335": { id: "335", name: "Khakis, chinos" },
+          "336": { id: "336", name: "Other" }
+        }
+      },
+      "32": {
+        id: "32",
+        name: "Shorts",
+        subcategories: {
+          "337": { id: "337", name: "Athletic" },
+          "338": { id: "338", name: "Board, surf" },
+          "339": { id: "339", name: "Cargo" },
+          "340": { id: "340", name: "Carpenter, utility" },
+          "341": { id: "341", name: "Casual shorts" },
+          "342": { id: "342", name: "Corduroys" },
+          "343": { id: "343", name: "Denim" },
+          "344": { id: "344", name: "Dress shorts" },
+          "345": { id: "345", name: "Khakis, chinos" },
+          "346": { id: "346", name: "Other" }
+        }
+      },
+      "33": {
+        id: "33",
+        name: "Coats & jackets",
+        subcategories: {
+          "347": { id: "347", name: "Fleece jacket" },
+          "348": { id: "348", name: "Flight/bomber" },
+          "349": { id: "349", name: "Jean jacket" },
+          "350": { id: "350", name: "Military" },
+          "351": { id: "351", name: "Motorcycle" },
+          "352": { id: "352", name: "Parka" },
+          "353": { id: "353", name: "Peacoat" },
+          "354": { id: "354", name: "Poncho" },
+          "355": { id: "355", name: "Puffer" },
+          "356": { id: "356", name: "Rainwear" },
+          "357": { id: "357", name: "Trench" },
+          "358": { id: "358", name: "Varsity/baseball" },
+          "359": { id: "359", name: "Vest" },
+          "360": { id: "360", name: "Windbreaker" },
+          "361": { id: "361", name: "Wool" },
+          "362": { id: "362", name: "Other" }
+        }
+      },
+      "34": {
+        id: "34",
+        name: "Blazers & sport coats",
+        subcategories: {
+          "363": { id: "363", name: "Double breasted" },
+          "364": { id: "364", name: "Four button" },
+          "365": { id: "365", name: "One button" },
+          "366": { id: "366", name: "Three button" },
+          "367": { id: "367", name: "Two button" },
+          "368": { id: "368", name: "Other" }
+        }
+      },
+      "35": {
+        id: "35",
+        name: "Suits",
+        subcategories: {
+          "369": { id: "369", name: "One button" },
+          "370": { id: "370", name: "Two button" },
+          "371": { id: "371", name: "Three button" },
+          "372": { id: "372", name: "Four button" },
+          "373": { id: "373", name: "Double breasted" },
+          "374": { id: "374", name: "Tuxedo" },
+          "375": { id: "375", name: "Other" }
+        }
+      },
+      "36": {
+        id: "36",
+        name: "Athletic apparel",
+        subcategories: {
+          "376": { id: "376", name: "Competitive swimwear" },
+          "377": { id: "377", name: "Jackets" },
+          "378": { id: "378", name: "Jerseys" },
+          "379": { id: "379", name: "Pants" },
+          "381": { id: "381", name: "Shorts" },
+          "383": { id: "383", name: "Socks" },
+          "385": { id: "385", name: "Vests" },
+          "386": { id: "386", name: "Other" },
+          "2009": { id: "2009", name: "Athletic Polos" },
+          "2010": { id: "2010", name: "Athletic Long Sleeve Shirts" },
+          "2011": { id: "2011", name: "Athletic Short Sleeve Shirts" },
+          "2012": { id: "2012", name: "Jerseys" },
+          "2013": { id: "2013", name: "Athletic T-Shirts" },
+          "2014": { id: "2014", name: "Athletic Tank Tops" },
+          "2015": { id: "2015", name: "Snow Bibs" },
+          "2016": { id: "2016", name: "Snow Pants" },
+          "2017": { id: "2017", name: "Snowsuits" },
+          "2018": { id: "2018", name: "Athletic Hoodies" },
+          "2019": { id: "2019", name: "Athletic Sweat Pants" },
+          "2020": { id: "2020", name: "Athletic Sweatshirts" },
+          "2022": { id: "2022", name: "Track Pants" },
+          "2023": { id: "2023", name: "Tracksuits" }
+        }
+      },
+      "37": {
+        id: "37",
+        name: "Swimwear",
+        subcategories: {
+          "387": { id: "387", name: "Board shorts" },
+          "388": { id: "388", name: "Swim briefs" },
+          "389": { id: "389", name: "Swim trunks" }
+        }
+      },
+      "38": {
+        id: "38",
+        name: "Men's accessories",
+        subcategories: {
+          "391": { id: "391", name: "Belts" },
+          "392": { id: "392", name: "Hats" },
+          "393": { id: "393", name: "Sunglasses" },
+          "394": { id: "394", name: "Ties" },
+          "395": { id: "395", name: "Watches" },
+          "396": { id: "396", name: "Other" },
+          "1560": { id: "1560", name: "Wallets" },
+          "2024": { id: "2024", name: "Backpacks" },
+          "2025": { id: "2025", name: "Bags" },
+          "2026": { id: "2026", name: "Briefcases" },
+          "2519": { id: "2519", name: "Bandanas" },
+          "2520": { id: "2520", name: "Bow Ties" },
+          "2521": { id: "2521", name: "Collar Stays" },
+          "2522": { id: "2522", name: "Fashion Gloves" },
+          "2523": { id: "2523", name: "Handkerchiefs" },
+          "2524": { id: "2524", name: "Scarves" },
+          "2525": { id: "2525", name: "Turbans" },
+          "2526": { id: "2526", name: "Umbrellas" },
+          "2881": { id: "2881", name: "Cardholders" }
+        }
+      },
+      "39": {
+        id: "39",
+        name: "Shoes",
+        subcategories: {
+          "397": { id: "397", name: "Athletic" },
+          "398": { id: "398", name: "Boots" },
+          "399": { id: "399", name: "Fashion sneakers" },
+          "402": { id: "402", name: "Outdoor" },
+          "403": { id: "403", name: "Oxfords" },
+          "404": { id: "404", name: "Sandals" },
+          "405": { id: "405", name: "Slippers" },
+          "406": { id: "406", name: "Work & safety" },
+          "2027": { id: "2027", name: "Loafers" },
+          "2028": { id: "2028", name: "Slip-Ons" },
+          "2029": { id: "2029", name: "Clogs" },
+          "2030": { id: "2030", name: "Mules" }
+        }
+      },
+      "40": { id: "40", name: "Other" },
+      "2874": {
+        id: "2874",
+        name: "Jewelry",
+        subcategories: {
+          "2875": { id: "2875", name: "Bracelets" },
+          "2876": { id: "2876", name: "Cufflinks" },
+          "2877": { id: "2877", name: "Earrings" },
+          "2878": { id: "2878", name: "Necklaces" },
+          "2879": { id: "2879", name: "Pins" },
+          "2880": { id: "2880", name: "Rings" }
+        }
+      }
+    }
+  },
   "7": { id: "7", name: "Electronics" },
   "1611": { id: "1611", name: "Toys & Collectibles" },
   "4": { id: "4", name: "Home" },
