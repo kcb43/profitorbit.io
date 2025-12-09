@@ -3681,7 +3681,267 @@ const MERCARI_CATEGORIES = {
       }
     }
   },
-  "2633": { id: "2633", name: "Garden & Outdoor" },
+  "2633": {
+    id: "2633",
+    name: "Garden & Outdoor",
+    subcategories: {
+      "2634": {
+        id: "2634",
+        name: "Garden Decor",
+        subcategories: {
+          "2635": { id: "2635", name: "Bird Feeders" },
+          "2636": { id: "2636", name: "Birdbaths" },
+          "2637": { id: "2637", name: "Birdhouses" },
+          "2638": { id: "2638", name: "Pathway Lights" },
+          "2639": { id: "2639", name: "Landscape Flood Lights" },
+          "2640": { id: "2640", name: "Outdoor Spotlights" },
+          "2641": { id: "2641", name: "Flag Poles" },
+          "2642": { id: "2642", name: "Flags" },
+          "2643": { id: "2643", name: "Outdoor Fountains" },
+          "2644": { id: "2644", name: "Garden Statues" },
+          "2645": { id: "2645", name: "Garden Gazing Balls" },
+          "2646": { id: "2646", name: "Outdoor Lanterns" },
+          "2647": { id: "2647", name: "Patio Torches" },
+          "2648": { id: "2648", name: "Landscape Rocks" },
+          "2649": { id: "2649", name: "Plant Stands" },
+          "2650": { id: "2650", name: "Outdoor Plant Vases" },
+          "2651": { id: "2651", name: "Rain Gauges" },
+          "2652": { id: "2652", name: "Outdoor String Lights" },
+          "2653": { id: "2653", name: "Sundials" },
+          "2654": { id: "2654", name: "Outdoor Thermometers" },
+          "2655": { id: "2655", name: "Patio Umbrella Lights" },
+          "2656": { id: "2656", name: "Weathervanes" },
+          "2657": { id: "2657", name: "Wind Chimes" },
+          "2658": { id: "2658", name: "Wind Spinners" },
+          "2659": { id: "2659", name: "Other Outdoor Decor" }
+        }
+      },
+      "2660": {
+        id: "2660",
+        name: "Garden Hand Tools & Equipment",
+        subcategories: {
+          "2661": { id: "2661", name: "Garden Axes" },
+          "2662": { id: "2662", name: "Fruit Pickers" },
+          "2663": { id: "2663", name: "Garden Augers" },
+          "2664": { id: "2664", name: "Garden Carts" },
+          "2665": { id: "2665", name: "Garden Forks" },
+          "2666": { id: "2666", name: "Garden Hoes" },
+          "2667": { id: "2667", name: "Garden Picks" },
+          "2668": { id: "2668", name: "Garden Scythes" },
+          "2669": { id: "2669", name: "Garden Seeders" },
+          "2670": { id: "2670", name: "Garden Sickles" },
+          "2671": { id: "2671", name: "Garden Tool Racks" },
+          "2672": { id: "2672", name: "Garden Wagons" },
+          "2673": { id: "2673", name: "Garden Wheelbarrows" },
+          "2674": { id: "2674", name: "Grass Shears" },
+          "2675": { id: "2675", name: "Garden Hatchets" },
+          "2676": { id: "2676", name: "Hedge Shears" },
+          "2677": { id: "2677", name: "Lawn Aerators" },
+          "2678": { id: "2678", name: "Lawn Rollers" },
+          "2679": { id: "2679", name: "Loppers" },
+          "2680": { id: "2680", name: "Manual Edgers" },
+          "2681": { id: "2681", name: "Mattocks" },
+          "2682": { id: "2682", name: "Post Hole Diggers" },
+          "2683": { id: "2683", name: "Pruning Shears" },
+          "2684": { id: "2684", name: "Pruning Snips" },
+          "2685": { id: "2685", name: "Garden Rakes" },
+          "2686": { id: "2686", name: "Pruning Saws" },
+          "2687": { id: "2687", name: "Shovels" },
+          "2688": { id: "2688", name: "Trowels" },
+          "2689": { id: "2689", name: "Weeders" },
+          "2690": { id: "2690", name: "Other Garden Hand Tools & Equipment" }
+        }
+      },
+      "2691": {
+        id: "2691",
+        name: "Garden Protective Gear",
+        subcategories: {
+          "2692": { id: "2692", name: "Garden Aprons" },
+          "2693": { id: "2693", name: "Garden Kneelers" },
+          "2694": { id: "2694", name: "Gardening Boots" },
+          "2695": { id: "2695", name: "Gardening Gloves" },
+          "2696": { id: "2696", name: "Other Garden Protective Gear" }
+        }
+      },
+      "2697": {
+        id: "2697",
+        name: "Garden Structures & Shades",
+        subcategories: {
+          "2698": { id: "2698", name: "Arbors & Arches" },
+          "2699": { id: "2699", name: "Awnings" },
+          "2700": { id: "2700", name: "Canopies" },
+          "2701": { id: "2701", name: "Gazebos" },
+          "2702": { id: "2702", name: "Outdoor Carports" },
+          "2703": { id: "2703", name: "Outdoor Sheds" },
+          "2704": { id: "2704", name: "Patio Umbrella Stands" },
+          "2705": { id: "2705", name: "Patio Umbrellas" },
+          "2706": { id: "2706", name: "Pergolas" },
+          "2707": { id: "2707", name: "Tarps" },
+          "2708": { id: "2708", name: "Tents" },
+          "2709": { id: "2709", name: "Other Structures & Shades" }
+        }
+      },
+      "2710": {
+        id: "2710",
+        name: "Outdoor Heating & Cooking",
+        subcategories: {
+          "2711": { id: "2711", name: "Barbecue Grills" },
+          "2712": { id: "2712", name: "Charcoal" },
+          "2713": { id: "2713", name: "Fire Pits" },
+          "2714": { id: "2714", name: "Firewood" },
+          "2715": { id: "2715", name: "Patio Heaters" },
+          "2716": { id: "2716", name: "Picnic Baskets" },
+          "2717": { id: "2717", name: "Smokers" },
+          "2718": { id: "2718", name: "Other Heating & Cooking" }
+        }
+      },
+      "2719": {
+        id: "2719",
+        name: "Outdoor Power Equipment",
+        subcategories: {
+          "2720": { id: "2720", name: "Chainsaws" },
+          "2721": { id: "2721", name: "Chippers" },
+          "2722": { id: "2722", name: "Power Edgers" },
+          "2724": { id: "2724", name: "Generators" },
+          "2725": { id: "2725", name: "Hedge Trimmers" },
+          "2726": { id: "2726", name: "Lawn Mowers" },
+          "2727": { id: "2727", name: "Leaf Blowers" },
+          "2728": { id: "2728", name: "Log Splitters" },
+          "2729": { id: "2729", name: "Mulchers" },
+          "2730": { id: "2730", name: "Pressure Washers" },
+          "2731": { id: "2731", name: "Shredders" },
+          "2732": { id: "2732", name: "Snow Blowers" },
+          "2733": { id: "2733", name: "String Trimmers" },
+          "2734": { id: "2734", name: "Sweepers" },
+          "2735": { id: "2735", name: "Tillers" },
+          "2736": { id: "2736", name: "Other Outdoor Power Equipment" }
+        }
+      },
+      "2737": {
+        id: "2737",
+        name: "Outdoor Waste & Composting",
+        subcategories: {
+          "2738": { id: "2738", name: "Compost Accelerators" },
+          "2739": { id: "2739", name: "Compost Aerators" },
+          "2740": { id: "2740", name: "Garden Compost Bins" },
+          "2741": { id: "2741", name: "Garden Waste Bags" },
+          "2742": { id: "2742", name: "Garden Waste Bins" },
+          "2743": { id: "2743", name: "Other Composting & Yard Waste" }
+        }
+      },
+      "2744": {
+        id: "2744",
+        name: "Patio Furniture",
+        subcategories: {
+          "2745": { id: "2745", name: "Hammocks" },
+          "2746": { id: "2746", name: "Patio Loungers" },
+          "2747": { id: "2747", name: "Outdoor Daybeds" },
+          "2748": { id: "2748", name: "Outdoor Furniture Covers" },
+          "2749": { id: "2749", name: "Patio Benches" },
+          "2750": { id: "2750", name: "Patio Chairs" },
+          "2751": { id: "2751", name: "Patio Furniture Cushions" },
+          "2752": { id: "2752", name: "Patio Furniture Sets" },
+          "2753": { id: "2753", name: "Patio Tables" },
+          "2754": { id: "2754", name: "Porch Swings" },
+          "2755": { id: "2755", name: "Storage Deck Boxes" },
+          "2756": { id: "2756", name: "Other Patio Furniture" }
+        }
+      },
+      "2757": {
+        id: "2757",
+        name: "Planting Accessories",
+        subcategories: {
+          "2758": { id: "2758", name: "Garden Fertilizers" },
+          "2759": { id: "2759", name: "Garden Hangers" },
+          "2760": { id: "2760", name: "Garden Hooks" },
+          "2761": { id: "2761", name: "Garden Saucers" },
+          "2762": { id: "2762", name: "Garden Sprayers" },
+          "2763": { id: "2763", name: "Mulch" },
+          "2764": { id: "2764", name: "Plant Labels" },
+          "2765": { id: "2765", name: "Plant Ties & Supports" },
+          "2766": { id: "2766", name: "Gardening Planters" },
+          "2767": { id: "2767", name: "Gardening Pots" },
+          "2768": { id: "2768", name: "Seed Starter Pots" },
+          "2769": { id: "2769", name: "Soil" },
+          "2770": { id: "2770", name: "Window Planting Boxes" },
+          "2771": { id: "2771", name: "Other Planting Accessories" }
+        }
+      },
+      "2772": {
+        id: "2772",
+        name: "Live Plants",
+        subcategories: {
+          "2773": { id: "2773", name: "Annual Plants" },
+          "2774": { id: "2774", name: "Flower Bulbs" },
+          "2775": { id: "2775", name: "Fruit Plants" },
+          "2776": { id: "2776", name: "Garden Bushes" },
+          "2777": { id: "2777", name: "Hanging Plants" },
+          "2778": { id: "2778", name: "Indoor Plants" },
+          "2779": { id: "2779", name: "Perennial Plants" },
+          "2780": { id: "2780", name: "Seeds" },
+          "2781": { id: "2781", name: "Succulents" },
+          "2782": { id: "2782", name: "Vegetable Plants" },
+          "2783": { id: "2783", name: "Other Live Plants" }
+        }
+      },
+      "2784": {
+        id: "2784",
+        name: "Pool Equipment",
+        subcategories: {
+          "2785": { id: "2785", name: "Above-Ground Pools" },
+          "2786": { id: "2786", name: "Inflatable Pools" },
+          "2787": { id: "2787", name: "Pool Brushes" },
+          "2788": { id: "2788", name: "Pool Clarifiers" },
+          "2789": { id: "2789", name: "Pool Cleaners" },
+          "2790": { id: "2790", name: "Pool Covers & Reels" },
+          "2791": { id: "2791", name: "Pool Diving Boards" },
+          "2792": { id: "2792", name: "Pool Fences" },
+          "2793": { id: "2793", name: "Pool Filters" },
+          "2794": { id: "2794", name: "Pool Heaters" },
+          "2795": { id: "2795", name: "Pool Hoses" },
+          "2796": { id: "2796", name: "Pool Ladders & Steps" },
+          "2797": { id: "2797", name: "Pool Lights" },
+          "2798": { id: "2798", name: "Pool Liners" },
+          "2799": { id: "2799", name: "Pool Nets" },
+          "2800": { id: "2800", name: "Pool Pumps" },
+          "2801": { id: "2801", name: "Pool Slides" },
+          "2802": { id: "2802", name: "Pool Thermometers" },
+          "2803": { id: "2803", name: "Pool Vacuums" },
+          "2804": { id: "2804", name: "Pool Water Levelers" },
+          "2805": { id: "2805", name: "Other Pool Equipment" }
+        }
+      },
+      "2806": {
+        id: "2806",
+        name: "Sauna & Hot Tub Equipment",
+        subcategories: {
+          "2807": { id: "2807", name: "Hot Tubs" },
+          "2808": { id: "2808", name: "Sauna Heaters" },
+          "2809": { id: "2809", name: "Sauna Theromometers" },
+          "2810": { id: "2810", name: "Saunas" },
+          "2811": { id: "2811", name: "Spa & Hot Tub Covers" },
+          "2812": { id: "2812", name: "Other Sauna & Hot Tub Equipment" }
+        }
+      },
+      "2813": {
+        id: "2813",
+        name: "Watering Equipment",
+        subcategories: {
+          "2814": { id: "2814", name: "Hose Nozzles" },
+          "2815": { id: "2815", name: "Hose Reels" },
+          "2816": { id: "2816", name: "Water Hoses" },
+          "2817": { id: "2817", name: "Lawn Sprinklers" },
+          "2818": { id: "2818", name: "Rain Barrels" },
+          "2819": { id: "2819", name: "Spigots" },
+          "2820": { id: "2820", name: "Spray Guns" },
+          "2821": { id: "2821", name: "Sprinkler Heads" },
+          "2822": { id: "2822", name: "Water Pumps" },
+          "2823": { id: "2823", name: "Watering Cans" },
+          "2824": { id: "2824", name: "Other Watering Equipment" }
+        }
+      }
+    }
+  },
   "2882": { id: "2882", name: "Office" },
   "3170": { id: "3170", name: "Tools" },
   "141": { id: "141", name: "Books" },
