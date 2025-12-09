@@ -2937,7 +2937,453 @@ const MERCARI_CATEGORIES = {
       }
     }
   },
-  "9": { id: "9", name: "Handmade" },
+  "9": {
+    id: "9",
+    name: "Handmade",
+    subcategories: {
+      "112": {
+        id: "112",
+        name: "Housewares",
+        subcategories: {
+          "1084": { id: "1084", name: "Home decor" },
+          "1085": { id: "1085", name: "Pillows" },
+          "1086": { id: "1086", name: "Wall decor" },
+          "1087": { id: "1087", name: "Lighting" },
+          "1088": { id: "1088", name: "Kitchen" },
+          "1089": { id: "1089", name: "Entertaining/serving" },
+          "1090": { id: "1090", name: "Bedroom" },
+          "1091": { id: "1091", name: "Frames" },
+          "1092": { id: "1092", name: "Clocks" },
+          "1093": { id: "1093", name: "Magnets" },
+          "1094": { id: "1094", name: "Rugs" },
+          "1095": { id: "1095", name: "Bathroom" },
+          "1096": { id: "1096", name: "Outdoor" },
+          "1097": { id: "1097", name: "Office" },
+          "1098": { id: "1098", name: "Storage solutions" },
+          "1099": { id: "1099", name: "Cleaning" },
+          "1100": { id: "1100", name: "Other" }
+        }
+      },
+      "114": {
+        id: "114",
+        name: "Woodworking",
+        subcategories: {
+          "1113": { id: "1113", name: "Home decor" },
+          "1114": { id: "1114", name: "Signs" },
+          "1115": { id: "1115", name: "Boxes" },
+          "1116": { id: "1116", name: "Fretwork" },
+          "1117": { id: "1117", name: "Burning" },
+          "1118": { id: "1118", name: "Sculptures" },
+          "1119": { id: "1119", name: "Kitchen" },
+          "1120": { id: "1120", name: "Carving" },
+          "1121": { id: "1121", name: "Outdoor" },
+          "1122": { id: "1122", name: "Clocks" },
+          "1123": { id: "1123", name: "Seasonal" },
+          "1124": { id: "1124", name: "Toys" },
+          "1125": { id: "1125", name: "Supplies" },
+          "1126": { id: "1126", name: "Accessories" },
+          "1127": { id: "1127", name: "Jewelry" },
+          "1128": { id: "1128", name: "Office" },
+          "1129": { id: "1129", name: "Sports" },
+          "1130": { id: "1130", name: "Miniature" },
+          "1131": { id: "1131", name: "Inlay" },
+          "1132": { id: "1132", name: "Other" }
+        }
+      },
+      "115": {
+        id: "115",
+        name: "Ceramics and pottery",
+        subcategories: {
+          "1133": { id: "1133", name: "Home decor" },
+          "1134": { id: "1134", name: "Vases" },
+          "1135": { id: "1135", name: "Bowls" },
+          "1136": { id: "1136", name: "Tiles" },
+          "1137": { id: "1137", name: "Sculptures" },
+          "1138": { id: "1138", name: "Planters" },
+          "1139": { id: "1139", name: "Kitchen" },
+          "1140": { id: "1140", name: "Jars" },
+          "1141": { id: "1141", name: "Coasters" },
+          "1142": { id: "1142", name: "Miniature" },
+          "1143": { id: "1143", name: "Soap dish" },
+          "1144": { id: "1144", name: "Teapots" },
+          "1145": { id: "1145", name: "Jewelry" },
+          "1146": { id: "1146", name: "Supplies" },
+          "1147": { id: "1147", name: "Other" }
+        }
+      },
+      "116": {
+        id: "116",
+        name: "Glass",
+        subcategories: {
+          "1148": { id: "1148", name: "Home decor" },
+          "1149": { id: "1149", name: "Stained glass" },
+          "1150": { id: "1150", name: "Glassware" },
+          "1151": { id: "1151", name: "Vases" },
+          "1152": { id: "1152", name: "Bottles" },
+          "1153": { id: "1153", name: "Dishes" },
+          "1154": { id: "1154", name: "Bowls" },
+          "1155": { id: "1155", name: "Paperweights" },
+          "1156": { id: "1156", name: "Sculptures" },
+          "1157": { id: "1157", name: "Ornaments" },
+          "1158": { id: "1158", name: "Windchimes" },
+          "1159": { id: "1159", name: "Mirrors" },
+          "1160": { id: "1160", name: "Beads" },
+          "1161": { id: "1161", name: "Supplies" },
+          "1162": { id: "1162", name: "Jewelry" },
+          "1163": { id: "1163", name: "Marbles" },
+          "1164": { id: "1164", name: "Other" }
+        }
+      },
+      "118": {
+        id: "118",
+        name: "Weddings",
+        subcategories: {
+          "1172": { id: "1172", name: "Decorations" },
+          "1173": { id: "1173", name: "Favors" },
+          "1174": { id: "1174", name: "Cake toppers" },
+          "1175": { id: "1175", name: "Frames" },
+          "1176": { id: "1176", name: "Accessories" },
+          "1177": { id: "1177", name: "Bouquets" },
+          "1178": { id: "1178", name: "Just married" },
+          "1179": { id: "1179", name: "Candles" },
+          "1180": { id: "1180", name: "Guest books" },
+          "1181": { id: "1181", name: "Pillows" },
+          "1182": { id: "1182", name: "Invitations" },
+          "1183": { id: "1183", name: "Albums" },
+          "1184": { id: "1184", name: "Cards" },
+          "1185": { id: "1185", name: "Something blue" },
+          "1186": { id: "1186", name: "Portraits" },
+          "1187": { id: "1187", name: "Men" },
+          "1188": { id: "1188", name: "Jewelry" },
+          "1189": { id: "1189", name: "Bags and purses" },
+          "1190": { id: "1190", name: "Clothing" },
+          "1191": { id: "1191", name: "Other" }
+        }
+      },
+      "119": {
+        id: "119",
+        name: "Holidays",
+        subcategories: {
+          "1192": { id: "1192", name: "Christmas" },
+          "1193": { id: "1193", name: "Easter" },
+          "1194": { id: "1194", name: "Halloween" },
+          "1195": { id: "1195", name: "Valentine" },
+          "1196": { id: "1196", name: "Patriotic" },
+          "1197": { id: "1197", name: "Thanksgiving" },
+          "1198": { id: "1198", name: "Birthday" },
+          "1199": { id: "1199", name: "St Patricks" },
+          "1200": { id: "1200", name: "Hanukkah" },
+          "1201": { id: "1201", name: "Day of the dead" },
+          "1202": { id: "1202", name: "New years" },
+          "1203": { id: "1203", name: "Other" }
+        }
+      },
+      "121": {
+        id: "121",
+        name: "Children",
+        subcategories: {
+          "1222": { id: "1222", name: "Housewares" },
+          "1223": { id: "1223", name: "Art" },
+          "1224": { id: "1224", name: "Baby" },
+          "1225": { id: "1225", name: "Toy" },
+          "1226": { id: "1226", name: "Accessories" },
+          "1227": { id: "1227", name: "Furniture" },
+          "1228": { id: "1228", name: "Toddler" },
+          "1229": { id: "1229", name: "Clothing" },
+          "1230": { id: "1230", name: "Bath" },
+          "1231": { id: "1231", name: "Jewelry" },
+          "1232": { id: "1232", name: "Other" }
+        }
+      },
+      "122": {
+        id: "122",
+        name: "Needlecraft",
+        subcategories: {
+          "1233": { id: "1233", name: "Embroidery" },
+          "1234": { id: "1234", name: "Pillow" },
+          "1235": { id: "1235", name: "Cross stitch" },
+          "1236": { id: "1236", name: "Needlepoint" },
+          "1237": { id: "1237", name: "Felted" },
+          "1238": { id: "1238", name: "Pincushion" },
+          "1239": { id: "1239", name: "Pattern" },
+          "1240": { id: "1240", name: "Holidays" },
+          "1241": { id: "1241", name: "Accessories" },
+          "1242": { id: "1242", name: "Doll" },
+          "1243": { id: "1243", name: "Supplies" },
+          "1244": { id: "1244", name: "Clothing" },
+          "1245": { id: "1245", name: "Other" }
+        }
+      },
+      "123": {
+        id: "123",
+        name: "Geekery",
+        subcategories: {
+          "1246": { id: "1246", name: "Housewares" },
+          "1247": { id: "1247", name: "Humor" },
+          "1248": { id: "1248", name: "Kitsch" },
+          "1249": { id: "1249", name: "Science" },
+          "1250": { id: "1250", name: "Electronic" },
+          "1251": { id: "1251", name: "Accessory" },
+          "1252": { id: "1252", name: "Computer" },
+          "1253": { id: "1253", name: "Gadget" },
+          "1254": { id: "1254", name: "Videogame" },
+          "1255": { id: "1255", name: "Fantasy" },
+          "1256": { id: "1256", name: "Robot" },
+          "1257": { id: "1257", name: "Horror" },
+          "1259": { id: "1259", name: "Magic" },
+          "1260": { id: "1260", name: "Toy" },
+          "1261": { id: "1261", name: "Jewelry" },
+          "1262": { id: "1262", name: "Other" }
+        }
+      },
+      "124": {
+        id: "124",
+        name: "Paper goods",
+        subcategories: {
+          "1263": { id: "1263", name: "Sticker" },
+          "1264": { id: "1264", name: "Cards" },
+          "1265": { id: "1265", name: "Origami" },
+          "1266": { id: "1266", name: "Scrapbooking" },
+          "1267": { id: "1267", name: "Papermaking" },
+          "1268": { id: "1268", name: "Stationery" },
+          "1269": { id: "1269", name: "Tag" },
+          "1270": { id: "1270", name: "Calendar" },
+          "1271": { id: "1271", name: "Gift wrap" },
+          "1272": { id: "1272", name: "Journal" },
+          "1273": { id: "1273", name: "Notebook" },
+          "1274": { id: "1274", name: "Bookplate" },
+          "1275": { id: "1275", name: "Pad" },
+          "1276": { id: "1276", name: "Bookmark" },
+          "1277": { id: "1277", name: "Other" }
+        }
+      },
+      "125": { id: "125", name: "Candles" },
+      "126": {
+        id: "126",
+        name: "Patterns",
+        subcategories: {
+          "1293": { id: "1293", name: "Crochet" },
+          "1294": { id: "1294", name: "Beading" },
+          "1295": { id: "1295", name: "Cross stitch" },
+          "1297": { id: "1297", name: "Embroidery" },
+          "1298": { id: "1298", name: "Sewing" },
+          "1299": { id: "1299", name: "Home" },
+          "1300": { id: "1300", name: "Quilt" },
+          "1301": { id: "1301", name: "Holiday" },
+          "1302": { id: "1302", name: "Painting" },
+          "1303": { id: "1303", name: "Knitting" },
+          "1304": { id: "1304", name: "Amigurumi" },
+          "1305": { id: "1305", name: "Plushie" },
+          "1306": { id: "1306", name: "Accessories" },
+          "1307": { id: "1307", name: "Baby" },
+          "1308": { id: "1308", name: "Clothing" },
+          "1309": { id: "1309", name: "Doll clothing" },
+          "1310": { id: "1310", name: "Other" }
+        }
+      },
+      "127": {
+        id: "127",
+        name: "Crochet",
+        subcategories: {
+          "1311": { id: "1311", name: "Housewares" },
+          "1312": { id: "1312", name: "Afghan" },
+          "1313": { id: "1313", name: "Supplies" },
+          "1314": { id: "1314", name: "Accessories" },
+          "1315": { id: "1315", name: "Doll" },
+          "1316": { id: "1316", name: "Hat" },
+          "1317": { id: "1317", name: "Bags and purses" },
+          "1318": { id: "1318", name: "Scarf" },
+          "1319": { id: "1319", name: "Clothing" },
+          "1320": { id: "1320", name: "Jewelry" },
+          "1321": { id: "1321", name: "Other" }
+        }
+      },
+      "128": {
+        id: "128",
+        name: "Furniture",
+        subcategories: {
+          "1322": { id: "1322", name: "Shelf" },
+          "1323": { id: "1323", name: "Table" },
+          "1324": { id: "1324", name: "Fixture" },
+          "1325": { id: "1325", name: "Chair" },
+          "1326": { id: "1326", name: "Mirror" },
+          "1327": { id: "1327", name: "Storage" },
+          "1328": { id: "1328", name: "Bench" },
+          "1329": { id: "1329", name: "Dresser" },
+          "1330": { id: "1330", name: "Bookcase" },
+          "1331": { id: "1331", name: "Bed" },
+          "1332": { id: "1332", name: "Desk" },
+          "1333": { id: "1333", name: "Entertainment" },
+          "1334": { id: "1334", name: "Other" }
+        }
+      },
+      "129": {
+        id: "129",
+        name: "Quilts",
+        subcategories: {
+          "1335": { id: "1335", name: "Table runner" },
+          "1336": { id: "1336", name: "Wall hanging" },
+          "1337": { id: "1337", name: "Bed" },
+          "1338": { id: "1338", name: "Patchwork" },
+          "1339": { id: "1339", name: "Pillow" },
+          "1340": { id: "1340", name: "Traditional" },
+          "1341": { id: "1341", name: "Mini" },
+          "1342": { id: "1342", name: "Baby" },
+          "1343": { id: "1343", name: "Applique" },
+          "1344": { id: "1344", name: "Geometric" },
+          "1345": { id: "1345", name: "Rag" },
+          "1346": { id: "1346", name: "Fabric postcard" },
+          "1347": { id: "1347", name: "Patch" },
+          "1349": { id: "1349", name: "Trim" },
+          "1350": { id: "1350", name: "Other" }
+        }
+      },
+      "130": {
+        id: "130",
+        name: "Accessories",
+        subcategories: {
+          "1351": { id: "1351", name: "Women" },
+          "1352": { id: "1352", name: "Apron" },
+          "1353": { id: "1353", name: "Case" },
+          "1354": { id: "1354", name: "Keychain" },
+          "1355": { id: "1355", name: "Mirror" },
+          "1356": { id: "1356", name: "Cozy" },
+          "1357": { id: "1357", name: "Patch" },
+          "1358": { id: "1358", name: "Pin" },
+          "1359": { id: "1359", name: "Scarf" },
+          "1360": { id: "1360", name: "Charm" },
+          "1361": { id: "1361", name: "Hair" },
+          "1362": { id: "1362", name: "Shawl" },
+          "1363": { id: "1363", name: "Men" },
+          "1364": { id: "1364", name: "Leg warmers" },
+          "1365": { id: "1365", name: "Eyewear" },
+          "1366": { id: "1366", name: "Pinback button" },
+          "1367": { id: "1367", name: "Hat" },
+          "1368": { id: "1368", name: "Belt" },
+          "1369": { id: "1369", name: "Gloves" },
+          "1370": { id: "1370", name: "Cuff" },
+          "1371": { id: "1371", name: "Wallet" },
+          "1372": { id: "1372", name: "Lanyard" },
+          "1373": { id: "1373", name: "Watch" },
+          "1374": { id: "1374", name: "Necktie" },
+          "1375": { id: "1375", name: "Other" }
+        }
+      },
+      "131": {
+        id: "131",
+        name: "Pets",
+        subcategories: {
+          "1376": { id: "1376", name: "Pet lover" },
+          "1377": { id: "1377", name: "Bed" },
+          "1378": { id: "1378", name: "Portrait" },
+          "1379": { id: "1379", name: "Bowl" },
+          "1380": { id: "1380", name: "Feeding" },
+          "1381": { id: "1381", name: "House" },
+          "1382": { id: "1382", name: "Accessories" },
+          "1383": { id: "1383", name: "Pillow" },
+          "1384": { id: "1384", name: "Blanket" },
+          "1385": { id: "1385", name: "Small animal" },
+          "1386": { id: "1386", name: "Toy" },
+          "1387": { id: "1387", name: "Grooming" },
+          "1388": { id: "1388", name: "Collar" },
+          "1389": { id: "1389", name: "Leash" },
+          "1391": { id: "1391", name: "Clothing" },
+          "1392": { id: "1392", name: "Tag" },
+          "1393": { id: "1393", name: "Other" }
+        }
+      },
+      "134": {
+        id: "134",
+        name: "Knitting",
+        subcategories: {
+          "1419": { id: "1419", name: "Housewares" },
+          "1420": { id: "1420", name: "Blanket" },
+          "1421": { id: "1421", name: "Knitting supplies" },
+          "1422": { id: "1422", name: "Cozy" },
+          "1423": { id: "1423", name: "Accessories" },
+          "1424": { id: "1424", name: "Sweater" },
+          "1425": { id: "1425", name: "Children" },
+          "1426": { id: "1426", name: "Doll" },
+          "1427": { id: "1427", name: "Clothing" },
+          "1428": { id: "1428", name: "Baby" },
+          "1429": { id: "1429", name: "Bags and purses" },
+          "1430": { id: "1430", name: "Hat" },
+          "1431": { id: "1431", name: "Women" },
+          "1432": { id: "1432", name: "Men" },
+          "1433": { id: "1433", name: "Scarf" },
+          "1434": { id: "1434", name: "Other" }
+        }
+      },
+      "135": {
+        id: "135",
+        name: "Bags and purses",
+        subcategories: {
+          "1435": { id: "1435", name: "Tote" },
+          "1436": { id: "1436", name: "Purse" },
+          "1437": { id: "1437", name: "Pouch" },
+          "1438": { id: "1438", name: "Novelty" },
+          "1439": { id: "1439", name: "Messenger" },
+          "1440": { id: "1440", name: "Wristlet" },
+          "1441": { id: "1441", name: "Clutch" },
+          "1443": { id: "1443", name: "Diaper bag" },
+          "1444": { id: "1444", name: "Laptop" },
+          "1445": { id: "1445", name: "Backpack" },
+          "1446": { id: "1446", name: "Hip bag" },
+          "1447": { id: "1447", name: "Other" }
+        }
+      },
+      "136": {
+        id: "136",
+        name: "Jewelry",
+        subcategories: {
+          "1449": { id: "1449", name: "Books and zines" },
+          "1452": { id: "1452", name: "Other" }
+        }
+      },
+      "137": {
+        id: "137",
+        name: "Books and zines",
+        subcategories: {
+          "1453": { id: "1453", name: "Book" },
+          "1456": { id: "1456", name: "Album" },
+          "1457": { id: "1457", name: "Zine" },
+          "1458": { id: "1458", name: "Comic" },
+          "1459": { id: "1459", name: "Other" }
+        }
+      },
+      "138": {
+        id: "138",
+        name: "Clothing",
+        subcategories: {
+          "1460": { id: "1460", name: "Shoes" },
+          "1461": { id: "1461", name: "Tshirt" },
+          "1462": { id: "1462", name: "Women" },
+          "1463": { id: "1463", name: "Costume" },
+          "1464": { id: "1464", name: "Children" },
+          "1465": { id: "1465", name: "Shirt" },
+          "1467": { id: "1467", name: "Men" },
+          "1468": { id: "1468", name: "Lingerie" },
+          "1469": { id: "1469", name: "Dress" },
+          "1470": { id: "1470", name: "Corset" },
+          "1471": { id: "1471", name: "Other" }
+        }
+      },
+      "139": {
+        id: "139",
+        name: "Music",
+        subcategories: {
+          "1472": { id: "1472", name: "Vinyl" },
+          "1473": { id: "1473", name: "Poster" },
+          "1474": { id: "1474", name: "Instrument" },
+          "1475": { id: "1475", name: "Equipment" },
+          "1476": { id: "1476", name: "Case" },
+          "1477": { id: "1477", name: "Tape" },
+          "1478": { id: "1478", name: "Other" }
+        }
+      },
+      "140": { id: "140", name: "Other" }
+    }
+  },
   "113": { id: "113", name: "Arts & Crafts" },
   "143": { id: "143", name: "Pet Supplies" },
   "2633": { id: "2633", name: "Garden & Outdoor" },
