@@ -4502,7 +4502,135 @@ const MERCARI_CATEGORIES = {
       "1494": { id: "1494", name: "Other Books" }
     }
   },
-  "10": { id: "10", name: "Other" }
+  "10": {
+    id: "10",
+    name: "Other",
+    subcategories: {
+      "144": {
+        id: "144",
+        name: "Daily & travel items",
+        subcategories: {
+          "1509": { id: "1509", name: "Baby & child care" },
+          "1510": { id: "1510", name: "Health care" },
+          "1511": { id: "1511", name: "Household supplies" },
+          "1512": { id: "1512", name: "Medical supplies & equipment" },
+          "1513": { id: "1513", name: "Personal care" },
+          "1514": { id: "1514", name: "Sports Shaker Bottles" },
+          "1516": { id: "1516", name: "Other" },
+          "2187": { id: "2187", name: "Stationery" }
+        }
+      },
+      "145": {
+        id: "145",
+        name: "Automotive",
+        subcategories: {
+          "1517": { id: "1517", name: "Car care" },
+          "1518": { id: "1518", name: "Car electronics & accessories" },
+          "1519": { id: "1519", name: "Exterior accessories" },
+          "1520": { id: "1520", name: "Interior accessories" },
+          "1522": { id: "1522", name: "Motorcycle & powersports" },
+          "1524": { id: "1524", name: "Paint, body & trim" },
+          "1525": { id: "1525", name: "Performance parts & accessories" },
+          "1526": { id: "1526", name: "Replacement parts" },
+          "1527": { id: "1527", name: "RV parts & accessories" },
+          "1529": { id: "1529", name: "Tools & equipment" },
+          "1530": { id: "1530", name: "Automotive enthusiast merchandise" },
+          "1531": { id: "1531", name: "Other" },
+          "2188": { id: "2188", name: "Automotive Lighting Accessories" },
+          "2189": { id: "2189", name: "Automotive Lights" },
+          "2190": { id: "2190", name: "Automotive Tire & Wheel Accessories" },
+          "2191": { id: "2191", name: "Automotive Tires" },
+          "2192": { id: "2192", name: "Automotive Wheels & Rims" }
+        }
+      },
+      "146": {
+        id: "146",
+        name: "Office Supplies",
+        subcategories: {
+          "1532": { id: "1532", name: "Basic supplies" },
+          "1540": { id: "1540", name: "Desk Calendars" },
+          "1541": { id: "1541", name: "Presentation" },
+          "1542": { id: "1542", name: "Furniture" },
+          "1543": { id: "1543", name: "Other Office Supplies" },
+          "2919": { id: "2919", name: "Binder Clips" },
+          "2920": { id: "2920", name: "Clipboards" },
+          "2921": { id: "2921", name: "Correction Fluid" },
+          "2922": { id: "2922", name: "Dry Erase Calendar Boards" },
+          "2923": { id: "2923", name: "Paper Clips" },
+          "2924": { id: "2924", name: "Paper Cutters" },
+          "2925": { id: "2925", name: "Paper Punchers" },
+          "2926": { id: "2926", name: "Planners" },
+          "2927": { id: "2927", name: "Post-it Sticky Notes" },
+          "2928": { id: "2928", name: "Push Pins" },
+          "2929": { id: "2929", name: "Rubber Bands" },
+          "2930": { id: "2930", name: "Scotch Tape" },
+          "2931": { id: "2931", name: "Sheet Protectors" },
+          "2932": { id: "2932", name: "Staple Removers" },
+          "2933": { id: "2933", name: "Staplers" },
+          "2934": { id: "2934", name: "Staples" },
+          "2935": { id: "2935", name: "Tab Dividers" },
+          "2936": { id: "2936", name: "Tape Dispensers" },
+          "2937": { id: "2937", name: "Wall Calendars" },
+          "2938": { id: "2938", name: "Wall Clips" },
+          "2939": { id: "2939", name: "Wall Hooks" },
+          "2940": { id: "2940", name: "Whiteboards" }
+        }
+      },
+      "147": {
+        id: "147",
+        name: "Musical instruments",
+        subcategories: {
+          "1544": { id: "1544", name: "Guitars" },
+          "1545": { id: "1545", name: "Bass guitars" },
+          "1547": { id: "1547", name: "Keyboards" },
+          "1550": { id: "1550", name: "Brass instruments" },
+          "1551": { id: "1551", name: "Stringed instruments" },
+          "1552": { id: "1552", name: "Wind & woodwind instruments" },
+          "1553": { id: "1553", name: "Band & orchestra" },
+          "1554": { id: "1554", name: "Instrument accessories" },
+          "1555": { id: "1555", name: "Live sound & stage" },
+          "1558": { id: "1558", name: "Other" },
+          "2193": { id: "2193", name: "Drums" },
+          "2194": { id: "2194", name: "Percussion Instruments" },
+          "2195": { id: "2195", name: "Musical Instrument Amplifiers" },
+          "2196": { id: "2196", name: "Music Effects" }
+        }
+      },
+      "148": { id: "148", name: "Other" },
+      "1033": {
+        id: "1033",
+        name: "Travel & Luggage",
+        subcategories: {
+          "3495": { id: "3495", name: "Carry-On Luggage" },
+          "3496": { id: "3496", name: "Luggage Carts" },
+          "3497": { id: "3497", name: "Luggage Scales" },
+          "3498": { id: "3498", name: "Luggage Straps" },
+          "3499": { id: "3499", name: "Luggage Tags" },
+          "3500": { id: "3500", name: "Suitcases" },
+          "3501": { id: "3501", name: "Travel Bags" },
+          "3502": { id: "3502", name: "Other Travel & Luggage" }
+        }
+      },
+      "1523": {
+        id: "1523",
+        name: "Automotive Oils & Fluids",
+        subcategories: {
+          "2527": { id: "2527", name: "Automotive Additives" },
+          "2528": { id: "2528", name: "Automotive Antifreezes & Coolants" },
+          "2529": { id: "2529", name: "Automotive Brake Fluids" },
+          "2530": { id: "2530", name: "Automotive Cleaners" },
+          "2531": { id: "2531", name: "Automotive Greases" },
+          "2532": { id: "2532", name: "Automotive Lubricants" },
+          "2533": { id: "2533", name: "Automotive Motor Oils" },
+          "2534": { id: "2534", name: "Automotive Power Steering Fluids" },
+          "2535": { id: "2535", name: "Automotive Refrigerants" },
+          "2536": { id: "2536", name: "Automotive Transmission Fluids" },
+          "2537": { id: "2537", name: "Automotive Windshield Fluids" },
+          "2538": { id: "2538", name: "Other Automotive Fluids" }
+        }
+      }
+    }
+  }
 };
 
 const MARKETPLACES = [
