@@ -269,6 +269,17 @@ async function createMercariListing(listingData) {
   try {
     console.log('Starting Mercari listing automation...', listingData);
     
+    // Check if photos are present - if so, use Puppeteer API (can handle photo uploads)
+    const hasPhotos = listingData.photos && listingData.photos.length > 0;
+    
+    if (hasPhotos) {
+      console.log('📸 Photos detected - using Puppeteer API for full automation including photo uploads');
+      return await createMercariListingWithPuppeteer(listingData);
+    }
+    
+    // No photos - use extension method (faster, works for everything except photos)
+    console.log('📝 No photos - using extension method for form filling');
+    
     // Navigate to sell page if not already there
     if (!window.location.href.includes('/sell')) {
       window.location.href = 'https://www.mercari.com/sell/';
@@ -302,6 +313,59 @@ async function createMercariListing(listingData) {
   } catch (error) {
     console.error('Error in Mercari listing automation:', error);
     return { success: false, error: error.message };
+  }
+}
+
+// Use Puppeteer API for listings with photos
+async function createMercariListingWithPuppeteer(listingData) {
+  try {
+    console.log('🤖 Calling Puppeteer API for Mercari listing...');
+    
+    // Get the API URL from environment or use default
+    // In production, this should be your Vercel/deployed API URL
+    const apiUrl = process.env.VITE_API_URL || 
+                   window.location.origin.includes('localhost') 
+                     ? 'http://localhost:3000' 
+                     : 'https://your-api-domain.com';
+    
+    const response = await fetch(`${apiUrl}/api/mercari-puppeteer`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        listingData: listingData
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('❌ Puppeteer API error:', result);
+      return {
+        success: false,
+        error: result.error || result.message || 'Puppeteer API request failed'
+      };
+    }
+    
+    if (result.success) {
+      console.log('✅ Puppeteer automation completed successfully!');
+      console.log('Listing ID:', result.listingId);
+      console.log('Listing URL:', result.listingUrl);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error calling Puppeteer API:', error);
+    
+    // Fallback: try extension method anyway (user can upload photos manually)
+    console.log('⚠️ Falling back to extension method (photos will need manual upload)');
+    return {
+      success: false,
+      error: `Puppeteer API failed: ${error.message}. Please try again or upload photos manually.`,
+      fallback: true
+    };
   }
 }
 
