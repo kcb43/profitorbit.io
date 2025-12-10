@@ -1050,7 +1050,7 @@ export default function InventoryPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
       <div className="p-4 md:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto min-w-0">
+        <div className="max-w-7xl mx-auto space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 min-w-0">
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Inventory</h1>
@@ -1250,7 +1250,7 @@ export default function InventoryPage() {
           )}
 
           {selectedItems.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mb-4 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg min-w-0">
               <span className="text-sm font-medium min-w-0 break-words">
                 {selectedItems.length} item{selectedItems.length === 1 ? "" : "s"} selected
               </span>

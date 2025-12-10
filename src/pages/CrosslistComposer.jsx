@@ -33127,6 +33127,7 @@ export default function CrosslistComposer() {
   const [facebookBrandSearchOpen, setFacebookBrandSearchOpen] = useState(false);
   const [mercariBrandSearchOpen, setMercariBrandSearchOpen] = useState(false);
   const [mercariBrandSearchValue, setMercariBrandSearchValue] = useState("");
+  const [mercariBrandSearchDebounced, setMercariBrandSearchDebounced] = useState("");
   const [etsyBrandSearchOpen, setEtsyBrandSearchOpen] = useState(false);
   const [categorySearchOpen, setCategorySearchOpen] = useState(false);
   const [generalCategorySearchValue, setGeneralCategorySearchValue] = useState("");
@@ -34215,36 +34216,76 @@ export default function CrosslistComposer() {
     return similarityMatch || null;
   };
 
-  // Filter Mercari brands based on search value for performance
+  // Debounce search value to reduce filtering frequency
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMercariBrandSearchDebounced(mercariBrandSearchValue);
+    }, 150); // 150ms debounce
+
+    return () => clearTimeout(timer);
+  }, [mercariBrandSearchValue]);
+
+  // Filter Mercari brands based on debounced search value for performance
   const filteredMercariBrands = useMemo(() => {
-    const searchLower = mercariBrandSearchValue.toLowerCase().trim();
+    const searchLower = mercariBrandSearchDebounced.toLowerCase().trim();
+    const MAX_RESULTS = 100; // Limit results to prevent memory issues
     
-    // Filter custom brands that match Mercari brands
+    // Filter custom brands that match Mercari brands (limit to first 20 custom brands)
+    const customBrandMatches = new Map(); // Cache to avoid calling findSimilarBrand multiple times
     const filteredCustomBrands = customBrands
+      .slice(0, 50) // Only check first 50 custom brands for performance
       .filter(brand => {
-        const matched = findSimilarBrand(brand, MERCARI_BRANDS);
+        if (!customBrandMatches.has(brand)) {
+          customBrandMatches.set(brand, findSimilarBrand(brand, MERCARI_BRANDS));
+        }
+        const matched = customBrandMatches.get(brand);
         if (!matched) return false;
         if (!searchLower) return true;
         return matched.toLowerCase().includes(searchLower);
       })
+      .slice(0, 20) // Limit custom brands to 20
       .map(brand => ({
         original: brand,
-        matched: findSimilarBrand(brand, MERCARI_BRANDS)
+        matched: customBrandMatches.get(brand)
       }));
 
-    // Filter Mercari brands
-    const filteredBrands = searchLower
-      ? MERCARI_BRANDS.filter(brand => 
-          brand.toLowerCase().includes(searchLower)
-        )
-      : MERCARI_BRANDS.slice(0, 50); // Limit to first 50 if no search
+    // Filter Mercari brands with result limit
+    let filteredBrands;
+    if (!searchLower) {
+      filteredBrands = MERCARI_BRANDS.slice(0, 50); // Limit to first 50 if no search
+    } else {
+      // Use a more efficient filtering approach
+      const results = [];
+      const searchLowerLength = searchLower.length;
+      
+      // First, try exact prefix matches (most relevant)
+      for (let i = 0; i < MERCARI_BRANDS.length && results.length < MAX_RESULTS; i++) {
+        const brand = MERCARI_BRANDS[i];
+        if (brand.toLowerCase().startsWith(searchLower)) {
+          results.push(brand);
+        }
+      }
+      
+      // Then, try contains matches if we haven't reached the limit
+      if (results.length < MAX_RESULTS) {
+        for (let i = 0; i < MERCARI_BRANDS.length && results.length < MAX_RESULTS; i++) {
+          const brand = MERCARI_BRANDS[i];
+          if (!results.includes(brand) && brand.toLowerCase().includes(searchLower)) {
+            results.push(brand);
+          }
+        }
+      }
+      
+      filteredBrands = results;
+    }
 
     return {
       customBrands: filteredCustomBrands,
       mercariBrands: filteredBrands,
-      hasMore: !searchLower && MERCARI_BRANDS.length > 50
+      hasMore: !searchLower && MERCARI_BRANDS.length > 50,
+      totalMatches: searchLower ? (filteredBrands.length >= MAX_RESULTS ? `100+` : filteredBrands.length.toString()) : null
     };
-  }, [mercariBrandSearchValue, customBrands]);
+  }, [mercariBrandSearchDebounced, customBrands]);
 
   const addCustomBrand = (brandName) => {
     const trimmed = brandName.trim();
@@ -34339,9 +34380,12 @@ export default function CrosslistComposer() {
         handleMarketplaceChange("facebook", "brand", exactMatch);
       }
       // For Mercari, only apply if it's in the Mercari brands list
-      const mercariExactMatch = MERCARI_BRANDS.find(b => b.toLowerCase() === generalBrand.toLowerCase());
-      if (mercariExactMatch && (!mercariForm.brand || mercariForm.brand === generalBrand)) {
-        handleMarketplaceChange("mercari", "brand", mercariExactMatch);
+      // But don't auto-set if inheritGeneral is true - let the display logic handle it
+      if (!mercariForm.inheritGeneral) {
+        const mercariExactMatch = MERCARI_BRANDS.find(b => b.toLowerCase() === generalBrand.toLowerCase());
+        if (mercariExactMatch && (!mercariForm.brand || mercariForm.brand === generalBrand)) {
+          handleMarketplaceChange("mercari", "brand", mercariExactMatch);
+        }
       }
     } else {
       // Check for similar matches
@@ -34359,10 +34403,12 @@ export default function CrosslistComposer() {
           handleMarketplaceChange("facebook", "brand", similarMatch);
         }
         // For Mercari, check if similar match exists in Mercari brands
-        // If there is a similar name, it will auto-select it. The user can change it if it's not what they want anyway.
-        const mercariSimilarMatch = findSimilarBrand(generalBrand, MERCARI_BRANDS);
-        if (mercariSimilarMatch && (!mercariForm.brand || mercariForm.brand === generalBrand)) {
-          handleMarketplaceChange("mercari", "brand", mercariSimilarMatch);
+        // But don't auto-set if inheritGeneral is true - let the display logic handle it
+        if (!mercariForm.inheritGeneral) {
+          const mercariSimilarMatch = findSimilarBrand(generalBrand, MERCARI_BRANDS);
+          if (mercariSimilarMatch && (!mercariForm.brand || mercariForm.brand === generalBrand)) {
+            handleMarketplaceChange("mercari", "brand", mercariSimilarMatch);
+          }
         }
       } else {
         // No match found - for Mercari, clear if it was set to a non-matching custom brand
@@ -40184,7 +40230,11 @@ export default function CrosslistComposer() {
                     open={mercariBrandSearchOpen} 
                     onOpenChange={(open) => {
                       setMercariBrandSearchOpen(open);
-                      if (!open) {
+                      if (open) {
+                        // Clear search when opening
+                        setMercariBrandSearchValue("");
+                      } else {
+                        // Clear search when closing
                         setMercariBrandSearchValue("");
                       }
                     }}
@@ -40197,33 +40247,42 @@ export default function CrosslistComposer() {
                         className="w-full justify-between"
                       >
                         {(() => {
-                          // Only show brand if it's explicitly set in mercariForm, or if inheritGeneral is true and generalForm has a brand
-                          const brandToShow = mercariForm.brand || (mercariForm.inheritGeneral && generalForm.brand ? generalForm.brand : null);
-                          if (!brandToShow) {
+                          // If inheritGeneral is true, prioritize showing the inherited brand
+                          if (mercariForm.inheritGeneral && generalForm.brand) {
+                            const matched = findSimilarBrand(generalForm.brand, MERCARI_BRANDS);
+                            if (matched) {
+                              return matched;
+                            }
+                            // If no match, show placeholder (don't show non-matching general brand)
                             return "Search brand...";
                           }
-                          // Check if the brand exists in Mercari brands list
-                          const exactMatch = MERCARI_BRANDS.find((brand) => brand === brandToShow);
-                          if (exactMatch) {
-                            return exactMatch;
+                          // Only show brand if it's explicitly set in mercariForm (when inheritGeneral is false)
+                          if (mercariForm.brand) {
+                            // Check if the brand exists in Mercari brands list
+                            const exactMatch = MERCARI_BRANDS.find((brand) => brand === mercariForm.brand);
+                            if (exactMatch) {
+                              return exactMatch;
+                            }
+                            // Check if it matches any Mercari brand
+                            const matched = findSimilarBrand(mercariForm.brand, MERCARI_BRANDS);
+                            return matched || mercariForm.brand;
                           }
-                          // Check if general form brand matches any Mercari brand
-                          const matched = findSimilarBrand(brandToShow, MERCARI_BRANDS);
-                          return matched || brandToShow;
+                          // Otherwise show placeholder
+                          return "Search brand...";
                         })()}
                         <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-0" align="start">
                       <Command 
-                        value={mercariBrandSearchValue}
-                        onValueChange={setMercariBrandSearchValue}
                         shouldFilter={false}
                       >
                         <CommandInput 
                           placeholder="Search brand..." 
                           value={mercariBrandSearchValue}
-                          onValueChange={setMercariBrandSearchValue}
+                          onValueChange={(value) => {
+                            setMercariBrandSearchValue(value);
+                          }}
                         />
                         <CommandList>
                           <CommandEmpty>No brand found.</CommandEmpty>
@@ -40277,6 +40336,11 @@ export default function CrosslistComposer() {
                             {filteredMercariBrands.hasMore && (
                               <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
                                 Type to search {MERCARI_BRANDS.length.toLocaleString()} brands...
+                              </div>
+                            )}
+                            {filteredMercariBrands.totalMatches && filteredMercariBrands.mercariBrands.length >= 100 && (
+                              <div className="px-2 py-1.5 text-xs text-muted-foreground text-center border-t">
+                                Showing first 100 results. Refine your search for more specific results.
                               </div>
                             )}
                           </CommandGroup>
