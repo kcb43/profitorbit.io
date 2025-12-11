@@ -269,29 +269,49 @@ async function createMercariListing(listingData) {
   try {
     console.log('Starting Mercari listing automation...', listingData);
     
-    // Check if photos are present - if so, use Puppeteer API (can handle photo uploads)
+    // Check if photos are present - if so, try Puppeteer API first (can handle photo uploads)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
     
     if (hasPhotos) {
-      console.log('📸 Photos detected - using Puppeteer API for full automation including photo uploads');
-      return await createMercariListingWithPuppeteer(listingData);
+      console.log('📸 Photos detected - attempting Puppeteer API first...');
+      try {
+        const puppeteerResult = await createMercariListingWithPuppeteer(listingData);
+        // If Puppeteer succeeded, return early
+        if (puppeteerResult.success && !puppeteerResult.requiresManualPhotoUpload) {
+          return puppeteerResult;
+        }
+        // If Puppeteer failed but provided fallback, continue with extension method
+        if (puppeteerResult.requiresManualPhotoUpload) {
+          console.log('📝 Continuing with extension method (photos need manual upload)');
+          // Continue to extension method below
+        } else {
+          // Puppeteer failed completely, fall through to extension method
+          console.log('⚠️ Puppeteer failed, using extension method');
+        }
+      } catch (error) {
+        console.error('Puppeteer error:', error);
+        console.log('⚠️ Falling back to extension method');
+        // Fall through to extension method
+      }
     }
     
-    // No photos - use extension method (faster, works for everything except photos)
-    console.log('📝 No photos - using extension method for form filling');
+    // Use extension method (works for everything except photo uploads)
+    console.log('📝 Using extension method for form filling');
     
     // Navigate to sell page if not already there
     if (!window.location.href.includes('/sell')) {
+      console.log('🌐 Navigating to Mercari sell page...');
       window.location.href = 'https://www.mercari.com/sell/';
       
       // Wait for page to load, then retry
       window.addEventListener('load', () => {
         setTimeout(() => createMercariListing(listingData), 2000);
       }, { once: true });
-      return;
+      return { success: false, error: 'Navigating to sell page...', retrying: true };
     }
     
     // Wait for form to be ready (use actual Mercari selectors)
+    console.log('⏳ Waiting for form to load...');
     await waitForElement('[data-testid="Title"], #sellName', 10000);
     
     // Fill in form fields
@@ -303,7 +323,34 @@ async function createMercariListing(listingData) {
     console.log('⏳ Waiting 2s for form to update...');
     await sleep(2000);
     
-    // Submit the form
+    // Check if photos are required but not uploaded
+    const photoCount = document.querySelectorAll('[data-testid="Photo"]').length;
+    const photosInData = listingData.photos && listingData.photos.length > 0;
+    
+    if (photoCount === 0 && !photosInData) {
+      console.log('⚠️ No photos detected - Mercari requires at least one photo');
+      console.log('✅ Form filled successfully! Please upload photos manually and click the List button.');
+      return {
+        success: true,
+        message: 'Form filled successfully. Please upload at least one photo manually and click the List button.',
+        requiresManualPhotoUpload: true,
+        filled: true
+      };
+    }
+    
+    // If photos are in listingData but not uploaded yet, don't submit
+    if (photosInData && photoCount === 0) {
+      console.log('⚠️ Photos are in listing data but not uploaded yet');
+      console.log('✅ Form filled! Please wait for photos to upload or upload manually, then click List button.');
+      return {
+        success: true,
+        message: 'Form filled successfully. Photos need to be uploaded. Please upload photos manually and click the List button.',
+        requiresManualPhotoUpload: true,
+        filled: true
+      };
+    }
+    
+    // Submit the form (only if photos are present)
     console.log('📤 Attempting to submit form...');
     const submitResult = await submitMercariForm();
     
@@ -321,14 +368,31 @@ async function createMercariListingWithPuppeteer(listingData) {
   try {
     console.log('🤖 Calling Puppeteer API for Mercari listing...');
     
-    // Get the API URL from environment or use default
-    // In production, this should be your Vercel/deployed API URL
-    const apiUrl = process.env.VITE_API_URL || 
-                   window.location.origin.includes('localhost') 
-                     ? 'http://localhost:3000' 
-                     : 'https://your-api-domain.com';
+    // Get the API URL - try to get from storage or use default
+    // For now, we'll use a configurable approach
+    let apiUrl = 'https://profitorbit.io'; // Default to production
     
-    const response = await fetch(`${apiUrl}/api/mercari-puppeteer`, {
+    // Try to get from chrome.storage if available
+    try {
+      const stored = await new Promise((resolve) => {
+        chrome.storage.sync.get(['puppeteerApiUrl'], (result) => {
+          resolve(result.puppeteerApiUrl);
+        });
+      });
+      if (stored) {
+        apiUrl = stored;
+      }
+    } catch (e) {
+      // If storage fails, use default
+      console.log('Using default API URL');
+    }
+    
+    // Check if we're in development (this won't work on Mercari page, but that's okay)
+    // The API should be accessible from the extension
+    const fullApiUrl = `${apiUrl}/api/mercari-puppeteer`;
+    console.log('Calling Puppeteer API at:', fullApiUrl);
+    
+    const response = await fetch(fullApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -338,35 +402,66 @@ async function createMercariListingWithPuppeteer(listingData) {
       })
     });
     
-    const result = await response.json();
-    
     if (!response.ok) {
-      console.error('❌ Puppeteer API error:', result);
-      return {
-        success: false,
-        error: result.error || result.message || 'Puppeteer API request failed'
-      };
+      throw new Error(`API returned ${response.status}: ${response.statusText}`);
     }
+    
+    const result = await response.json();
     
     if (result.success) {
       console.log('✅ Puppeteer automation completed successfully!');
       console.log('Listing ID:', result.listingId);
       console.log('Listing URL:', result.listingUrl);
+      return result;
+    } else {
+      throw new Error(result.error || result.message || 'Puppeteer API request failed');
     }
-    
-    return result;
     
   } catch (error) {
     console.error('❌ Error calling Puppeteer API:', error);
+    console.log('⚠️ Puppeteer API failed, falling back to extension method');
+    console.log('⚠️ Note: Photos will need to be uploaded manually');
     
-    // Fallback: try extension method anyway (user can upload photos manually)
-    console.log('⚠️ Falling back to extension method (photos will need manual upload)');
-    return {
-      success: false,
-      error: `Puppeteer API failed: ${error.message}. Please try again or upload photos manually.`,
-      fallback: true
-    };
+    // Fallback to extension method - continue with form filling but skip photo upload
+    // This allows the form to be filled, user can upload photos manually
+    return await createMercariListingExtensionFallback(listingData);
   }
+}
+
+// Fallback to extension method when Puppeteer fails
+async function createMercariListingExtensionFallback(listingData) {
+  console.log('📝 Using extension fallback method (photos will need manual upload)');
+  
+  // Navigate to sell page if not already there
+  if (!window.location.href.includes('/sell')) {
+    window.location.href = 'https://www.mercari.com/sell/';
+    
+    // Wait for page to load, then retry
+    window.addEventListener('load', () => {
+      setTimeout(() => createMercariListingExtensionFallback(listingData), 2000);
+    }, { once: true });
+    return { success: false, error: 'Navigating to sell page...', retrying: true };
+  }
+  
+  // Wait for form to be ready
+  await waitForElement('[data-testid="Title"], #sellName', 10000);
+  
+  // Fill in form fields (without photos)
+  console.log('📝 Starting to fill form fields (extension method)...');
+  const fillResult = await fillMercariForm(listingData);
+  console.log('📝 Form fill result:', fillResult);
+  
+  // Wait a bit for all changes to take effect
+  console.log('⏳ Waiting 2s for form to update...');
+  await sleep(2000);
+  
+  // Don't auto-submit - let user review and upload photos manually
+  console.log('✅ Form filled! Please upload photos manually and click List button.');
+  return {
+    success: true,
+    message: 'Form filled successfully. Please upload photos manually and click the List button.',
+    requiresManualPhotoUpload: true
+  };
 }
 
 // Helper: Click Mercari custom dropdown and select option
