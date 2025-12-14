@@ -478,6 +478,23 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     // Find and click the dropdown trigger - try multiple selectors
     let dropdown = document.querySelector(`[data-testid="${testId}"]`);
     
+    // Try alternative selectors if exact testId not found
+    if (!dropdown) {
+      // Try case-insensitive attribute selector
+      dropdown = document.querySelector(`[data-testid*="${testId}" i]`);
+    }
+    
+    // Try finding by label or aria-label
+    if (!dropdown) {
+      const labels = Array.from(document.querySelectorAll('label'));
+      const matchingLabel = labels.find(label => 
+        label.textContent?.toLowerCase().includes(testId.toLowerCase())
+      );
+      if (matchingLabel) {
+        dropdown = matchingLabel.closest('div')?.querySelector('[role="button"], [role="combobox"], button, input');
+      }
+    }
+    
     // Fallback: if testId not found, try to find any category dropdown that's visible/active
     if (!dropdown && testId.startsWith('Category')) {
       // Try finding by aria attributes or class names
@@ -487,54 +504,89 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     }
     
     if (!dropdown) {
-      console.warn(`Dropdown [${testId}] not found`);
+      console.warn(`Dropdown [${testId}] not found. Available testIds:`, 
+        Array.from(document.querySelectorAll('[data-testid]')).slice(0, 10).map(el => el.getAttribute('data-testid'))
+      );
       return false;
     }
     
+    // Scroll into view if needed
+    dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await sleep(200);
+    
     // Click to open dropdown
     dropdown.click();
-    await sleep(600); // Increased wait time for dropdown to fully open
+    await sleep(800); // Wait for dropdown to fully open
     
     // Wait for options to appear (they usually appear in a portal/overlay)
     // Mercari dropdowns render options in the DOM after clicking
-    await sleep(400);
+    // Try multiple times to find options
+    let options = [];
+    for (let attempt = 0; attempt < 5; attempt++) {
+      // Try to find the option - Mercari uses various patterns
+      // Look for elements with role="option" or in a listbox
+      options = Array.from(document.querySelectorAll('[role="option"]'));
+      
+      // If no options found, try alternative selectors
+      if (options.length === 0) {
+        options = Array.from(document.querySelectorAll('[data-testid*="Option"]')) ||
+                  Array.from(document.querySelectorAll('[data-testid*="option"]')) ||
+                  Array.from(document.querySelectorAll('.SelectOption-sc-')) ||
+                  Array.from(document.querySelectorAll('li[class*="Option"]')) ||
+                  Array.from(document.querySelectorAll('div[class*="option" i]'));
+      }
+      
+      // Also try finding options in any visible listbox or menu
+      if (options.length === 0) {
+        const listbox = document.querySelector('[role="listbox"]');
+        if (listbox) {
+          options = Array.from(listbox.querySelectorAll('*'));
+        }
+      }
+      
+      if (options.length > 0) {
+        break;
+      }
+      
+      await sleep(300);
+    }
     
-    // Try to find the option - Mercari uses various patterns
-    // Look for elements with role="option" or in a listbox
-    let options = Array.from(document.querySelectorAll('[role="option"]'));
-    
-    // If no options found, try alternative selectors
     if (options.length === 0) {
-      options = Array.from(document.querySelectorAll('[data-testid*="Option"]')) ||
-                Array.from(document.querySelectorAll('.SelectOption-sc-')) ||
-                Array.from(document.querySelectorAll('li[class*="Option"]'));
+      console.warn(`No options found in dropdown [${testId}] after waiting`);
+      // Click outside to close dropdown
+      document.body.click();
+      await sleep(300);
+      return false;
     }
     
     // Clean option text for matching (remove extra whitespace, special chars)
-    const cleanOptionText = optionText.trim().toLowerCase();
+    const cleanOptionText = optionText.trim().toLowerCase().replace(/[^\w\s]/g, '');
     
     let matchedOption = null;
     
     if (partialMatch) {
       matchedOption = options.find(opt => {
-        const optText = opt.textContent.trim().toLowerCase();
+        const optText = opt.textContent?.trim().toLowerCase().replace(/[^\w\s]/g, '') || '';
         return optText.includes(cleanOptionText) || cleanOptionText.includes(optText);
       });
     } else {
       matchedOption = options.find(opt => {
-        const optText = opt.textContent.trim().toLowerCase();
+        const optText = opt.textContent?.trim().toLowerCase().replace(/[^\w\s]/g, '') || '';
         return optText === cleanOptionText;
       });
     }
     
     if (matchedOption) {
-      console.log(`✓ Found option: "${matchedOption.textContent.trim()}"`);
+      console.log(`✓ Found option: "${matchedOption.textContent?.trim()}"`);
+      matchedOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await sleep(200);
       matchedOption.click();
-      await sleep(600); // Increased wait time after selection
+      await sleep(600); // Wait after selection
       return true;
     } else {
       console.warn(`Option "${optionText}" not found in dropdown [${testId}]`);
-      console.log(`Available options:`, options.slice(0, 5).map(opt => opt.textContent.trim()));
+      const availableOptions = options.slice(0, 10).map(opt => opt.textContent?.trim() || '').filter(Boolean);
+      console.log(`Available options (first 10):`, availableOptions);
       // Click outside to close dropdown
       document.body.click();
       await sleep(300);
@@ -542,6 +594,10 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     }
   } catch (error) {
     console.error(`Error selecting dropdown [${testId}]:`, error);
+    // Try to close dropdown if open
+    try {
+      document.body.click();
+    } catch (e) {}
     return false;
   }
 }
@@ -551,35 +607,84 @@ async function typeIntoMercariDropdown(testId, text) {
   try {
     console.log(`Typing into dropdown [${testId}]: ${text}`);
     
-    const dropdown = document.querySelector(`[data-testid="${testId}"]`);
+    let dropdown = document.querySelector(`[data-testid="${testId}"]`);
+    
+    // Try alternative selectors
+    if (!dropdown) {
+      dropdown = document.querySelector(`[data-testid*="${testId}" i]`);
+    }
+    
     if (!dropdown) {
       console.warn(`Dropdown [${testId}] not found`);
       return false;
     }
     
+    // Scroll into view
+    dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await sleep(200);
+    
     // Click to open/focus
     dropdown.click();
-    await sleep(300);
+    await sleep(500); // Wait for dropdown to open
     
     // Try to find an input field within or after the dropdown
-    const input = dropdown.querySelector('input') || 
-                  document.querySelector(`[data-testid="${testId}"] + input`) ||
-                  document.activeElement;
+    let input = dropdown.querySelector('input[type="text"]') ||
+                dropdown.querySelector('input') ||
+                document.querySelector(`[data-testid="${testId}"] input`) ||
+                document.activeElement;
     
-    if (input && input.tagName === 'INPUT') {
-      input.value = text;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      await sleep(500);
-      
-      // Press Enter to select
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      await sleep(300);
-      
-      console.log(`✓ Typed and selected: ${text}`);
-      return true;
+    // If still no input, try to find any input in the dropdown area
+    if (!input || input.tagName !== 'INPUT') {
+      const dropdownContainer = dropdown.closest('div') || dropdown.parentElement;
+      if (dropdownContainer) {
+        input = dropdownContainer.querySelector('input[type="text"]') || 
+                dropdownContainer.querySelector('input');
+      }
     }
     
+    if (input && input.tagName === 'INPUT') {
+      // Focus the input
+      input.focus();
+      await sleep(200);
+      
+      // Clear and set value
+      input.value = '';
+      input.value = text;
+      
+      // Dispatch events to trigger autocomplete
+      input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
+      
+      await sleep(800); // Wait for autocomplete suggestions
+      
+      // Try to find and click the matching option
+      const options = Array.from(document.querySelectorAll('[role="option"]'));
+      const matchingOption = options.find(opt => 
+        opt.textContent?.toLowerCase().includes(text.toLowerCase())
+      );
+      
+      if (matchingOption) {
+        matchingOption.click();
+        await sleep(300);
+        console.log(`✓ Typed and selected: ${text}`);
+        return true;
+      }
+      
+      // If no matching option found, try pressing Enter
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
+      await sleep(300);
+      
+      // Check if value was accepted
+      if (input.value.toLowerCase().includes(text.toLowerCase())) {
+        console.log(`✓ Typed and selected: ${text}`);
+        return true;
+      }
+    }
+    
+    console.warn(`Could not type into dropdown [${testId}] - input not found or not accessible`);
     return false;
   } catch (error) {
     console.error(`Error typing into dropdown [${testId}]:`, error);
@@ -699,16 +804,36 @@ async function fillMercariForm(data) {
     // 4. BRAND
     if (data.brand) {
       console.log('🔍 Attempting brand selection...');
-      // Try typing first (Mercari brand is searchable)
-      let brandSuccess = await typeIntoMercariDropdown('Brand', data.brand);
+      let brandSuccess = false;
+      
+      // Try multiple approaches
+      // 1. Try typing first (Mercari brand is searchable)
+      brandSuccess = await typeIntoMercariDropdown('Brand', data.brand);
+      
+      // 2. If typing failed, try dropdown selection with exact match
       if (!brandSuccess) {
-        // Fallback to dropdown selection
+        console.log('  → Typing failed, trying dropdown selection...');
+        brandSuccess = await selectMercariDropdown('Brand', data.brand, false);
+      }
+      
+      // 3. If exact match failed, try partial match
+      if (!brandSuccess) {
+        console.log('  → Exact match failed, trying partial match...');
         brandSuccess = await selectMercariDropdown('Brand', data.brand, true);
       }
+      
+      // 4. Try with just the first word if brand has multiple words
+      if (!brandSuccess && data.brand.includes(' ')) {
+        const firstWord = data.brand.split(' ')[0];
+        console.log(`  → Trying with first word only: "${firstWord}"...`);
+        brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
+      }
+      
       if (brandSuccess) {
         console.log('✓ Brand set:', data.brand);
       } else {
-        console.warn('⚠️ Brand selection failed');
+        console.warn('⚠️ Brand selection failed - brand may need manual selection');
+        console.warn(`  Attempted brand: "${data.brand}"`);
       }
     }
     
@@ -730,24 +855,50 @@ async function fillMercariForm(data) {
         'Pre - Owned - Good': 'Good',
         'Pre - Owned - Fair': 'Fair',
         'Poor (Major flaws)': 'Poor',
+        // Additional variations
+        'Excellent': 'Like New',
+        'Very Good': 'Good',
+        'Acceptable': 'Fair',
+        'Damaged': 'Poor',
       };
       
       const mercariCondition = conditionMap[data.condition] || data.condition;
       console.log(`  Mapping condition: "${data.condition}" → "${mercariCondition}"`);
       
-      // Try exact match first
-      let conditionSuccess = await selectMercariDropdown('Condition', mercariCondition, false);
+      let conditionSuccess = false;
       
+      // Try exact match first
+      conditionSuccess = await selectMercariDropdown('Condition', mercariCondition, false);
+      
+      // If exact match failed, try partial match
       if (!conditionSuccess) {
-        console.warn('  ⚠️ Exact match failed, trying partial match...');
-        // Try partial match as fallback
+        console.log('  → Exact match failed, trying partial match...');
         conditionSuccess = await selectMercariDropdown('Condition', mercariCondition, true);
+      }
+      
+      // Try common Mercari condition variations
+      if (!conditionSuccess) {
+        const conditionVariations = [
+          mercariCondition,
+          mercariCondition.toLowerCase(),
+          mercariCondition.toUpperCase(),
+          mercariCondition.charAt(0).toUpperCase() + mercariCondition.slice(1).toLowerCase()
+        ];
+        
+        for (const variation of conditionVariations) {
+          if (variation !== mercariCondition) {
+            console.log(`  → Trying variation: "${variation}"...`);
+            conditionSuccess = await selectMercariDropdown('Condition', variation, true);
+            if (conditionSuccess) break;
+          }
+        }
       }
       
       if (conditionSuccess) {
         console.log('✓ Condition set:', mercariCondition);
       } else {
         console.warn('⚠️ Condition selection failed - condition may need manual selection');
+        console.warn(`  Attempted condition: "${data.condition}" → "${mercariCondition}"`);
       }
     }
     
@@ -816,41 +967,87 @@ async function fillMercariForm(data) {
     
     // 10.5. SMART PRICING & SMART OFFERS (after price is set)
     if (data.smartPricing !== undefined || data.smartOffers !== undefined) {
-      await sleep(500); // Wait for price to process and toggles to appear
+      await sleep(1000); // Wait for price to process and toggles to appear
       
       // Smart Pricing toggle
       if (data.smartPricing !== undefined) {
-        const smartPricingToggle = document.querySelector('[data-testid*="SmartPricing"]') ||
-                                  document.querySelector('input[type="checkbox"][name*="smart" i][name*="pricing" i]') ||
-                                  document.querySelector('input[type="checkbox"][aria-label*="Smart Pricing" i]') ||
-                                  document.querySelector('button[aria-label*="Smart Pricing" i]');
+        // Try multiple selectors for Smart Pricing toggle
+        let smartPricingToggle = document.querySelector('[data-testid*="SmartPricing" i]') ||
+                                 document.querySelector('[data-testid*="smart" i][data-testid*="pricing" i]') ||
+                                 document.querySelector('input[type="checkbox"][name*="smart" i][name*="pricing" i]') ||
+                                 document.querySelector('input[type="checkbox"][aria-label*="Smart Pricing" i]') ||
+                                 document.querySelector('button[aria-label*="Smart Pricing" i]') ||
+                                 document.querySelector('label:has-text("Smart Pricing") + * input[type="checkbox"]') ||
+                                 document.querySelector('*:has-text("Smart Pricing") input[type="checkbox"]');
+        
+        // Try finding by text content
+        if (!smartPricingToggle) {
+          const labels = Array.from(document.querySelectorAll('label, span, div'));
+          const pricingLabel = labels.find(el => 
+            el.textContent?.toLowerCase().includes('smart pricing')
+          );
+          if (pricingLabel) {
+            smartPricingToggle = pricingLabel.closest('div')?.querySelector('input[type="checkbox"], button, [role="switch"]') ||
+                                pricingLabel.nextElementSibling?.querySelector('input[type="checkbox"], button, [role="switch"]');
+          }
+        }
+        
         if (smartPricingToggle) {
-          const isChecked = smartPricingToggle.checked || smartPricingToggle.getAttribute('aria-checked') === 'true';
+          const isChecked = smartPricingToggle.checked || 
+                          smartPricingToggle.getAttribute('aria-checked') === 'true' ||
+                          smartPricingToggle.classList.contains('checked');
           if (data.smartPricing !== isChecked) {
+            smartPricingToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            await sleep(200);
             smartPricingToggle.click();
             await sleep(300);
             console.log(`✓ Smart Pricing ${data.smartPricing ? 'enabled' : 'disabled'}`);
+          } else {
+            console.log(`✓ Smart Pricing already ${data.smartPricing ? 'enabled' : 'disabled'}`);
           }
         } else {
-          console.warn('⚠️ Smart Pricing toggle not found');
+          console.warn('⚠️ Smart Pricing toggle not found - may not be available for this item');
         }
       }
       
       // Smart Offers toggle
       if (data.smartOffers !== undefined) {
-        const smartOffersToggle = document.querySelector('[data-testid*="SmartOffers"]') ||
-                                 document.querySelector('input[type="checkbox"][name*="smart" i][name*="offers" i]') ||
-                                 document.querySelector('input[type="checkbox"][aria-label*="Smart Offers" i]') ||
-                                 document.querySelector('button[aria-label*="Smart Offers" i]');
+        // Try multiple selectors for Smart Offers toggle
+        let smartOffersToggle = document.querySelector('[data-testid*="SmartOffers" i]') ||
+                               document.querySelector('[data-testid*="smart" i][data-testid*="offers" i]') ||
+                               document.querySelector('input[type="checkbox"][name*="smart" i][name*="offers" i]') ||
+                               document.querySelector('input[type="checkbox"][aria-label*="Smart Offers" i]') ||
+                               document.querySelector('button[aria-label*="Smart Offers" i]') ||
+                               document.querySelector('label:has-text("Smart Offers") + * input[type="checkbox"]') ||
+                               document.querySelector('*:has-text("Smart Offers") input[type="checkbox"]');
+        
+        // Try finding by text content
+        if (!smartOffersToggle) {
+          const labels = Array.from(document.querySelectorAll('label, span, div'));
+          const offersLabel = labels.find(el => 
+            el.textContent?.toLowerCase().includes('smart offers')
+          );
+          if (offersLabel) {
+            smartOffersToggle = offersLabel.closest('div')?.querySelector('input[type="checkbox"], button, [role="switch"]') ||
+                               offersLabel.nextElementSibling?.querySelector('input[type="checkbox"], button, [role="switch"]');
+          }
+        }
+        
         if (smartOffersToggle) {
-          const isChecked = smartOffersToggle.checked || smartOffersToggle.getAttribute('aria-checked') === 'true';
+          const isChecked = smartOffersToggle.checked || 
+                          smartOffersToggle.getAttribute('aria-checked') === 'true' ||
+                          smartOffersToggle.classList.contains('checked');
           if (data.smartOffers !== isChecked) {
+            smartOffersToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            await sleep(200);
             smartOffersToggle.click();
             await sleep(300);
             console.log(`✓ Smart Offers ${data.smartOffers ? 'enabled' : 'disabled'}`);
+          } else {
+            console.log(`✓ Smart Offers already ${data.smartOffers ? 'enabled' : 'disabled'}`);
           }
         } else {
-          console.warn('⚠️ Smart Offers toggle not found');
+          console.warn('⚠️ Smart Offers toggle not found - may not be available for this item');
         }
       }
     }
@@ -858,10 +1055,27 @@ async function fillMercariForm(data) {
     // 11. PHOTOS - Complex file upload
     // This requires special handling and may not work due to security restrictions
     if (data.photos && data.photos.length > 0) {
-      console.warn('⚠️ Photo upload attempted but may require manual intervention');
-      console.log(`Photos to upload: ${data.photos.length} files`);
-      // Photo upload via extension is very limited due to security
-      // User will likely need to upload photos manually
+      console.log(`📸 Attempting to handle ${data.photos.length} photo(s)...`);
+      
+      // Try to find the photo upload area
+      const photoUploadArea = document.querySelector('[data-testid*="Photo"]') ||
+                             document.querySelector('[data-testid*="photo"]') ||
+                             document.querySelector('input[type="file"][accept*="image"]') ||
+                             document.querySelector('button[aria-label*="photo" i]') ||
+                             document.querySelector('button[aria-label*="image" i]') ||
+                             document.querySelector('div[class*="photo" i]') ||
+                             document.querySelector('div[class*="upload" i]');
+      
+      if (photoUploadArea) {
+        console.log('✓ Photo upload area found');
+        console.warn('⚠️ Photo upload via extension is limited due to browser security restrictions');
+        console.warn('⚠️ Please upload photos manually using the photo upload button');
+      } else {
+        console.warn('⚠️ Photo upload area not found - photos will need to be uploaded manually');
+      }
+      
+      // Note: Direct file upload from extension is not possible due to security restrictions
+      // The user will need to upload photos manually
     }
     
     console.log('✅ Form filling complete - check for any warnings above');
