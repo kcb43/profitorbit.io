@@ -812,33 +812,30 @@ async function fillMercariForm(data) {
       brandSuccess = await typeIntoMercariDropdown('Brand', data.brand);
       if (brandSuccess) {
         console.log('✓ Brand set via typing:', data.brand);
-      }
-      
-      // 2. If typing failed, try dropdown selection with exact match
-      if (!brandSuccess) {
+        // STOP HERE - don't try other methods if typing succeeded
+      } else {
+        // 2. If typing failed, try dropdown selection with exact match
         console.log('  → Typing failed, trying dropdown selection...');
         brandSuccess = await selectMercariDropdown('Brand', data.brand, false);
         if (brandSuccess) {
           console.log('✓ Brand set via exact match:', data.brand);
-        }
-      }
-      
-      // 3. If exact match failed, try partial match
-      if (!brandSuccess) {
-        console.log('  → Exact match failed, trying partial match...');
-        brandSuccess = await selectMercariDropdown('Brand', data.brand, true);
-        if (brandSuccess) {
-          console.log('✓ Brand set via partial match:', data.brand);
-        }
-      }
-      
-      // 4. Try with just the first word if brand has multiple words
-      if (!brandSuccess && data.brand.includes(' ')) {
-        const firstWord = data.brand.split(' ')[0];
-        console.log(`  → Trying with first word only: "${firstWord}"...`);
-        brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
-        if (brandSuccess) {
-          console.log(`✓ Brand set via first word: "${firstWord}"`);
+          // STOP HERE - don't try other methods if exact match succeeded
+        } else {
+          // 3. If exact match failed, try partial match
+          console.log('  → Exact match failed, trying partial match...');
+          brandSuccess = await selectMercariDropdown('Brand', data.brand, true);
+          if (brandSuccess) {
+            console.log('✓ Brand set via partial match:', data.brand);
+            // STOP HERE - don't try other methods if partial match succeeded
+          } else if (data.brand.includes(' ')) {
+            // 4. Try with just the first word if brand has multiple words
+            const firstWord = data.brand.split(' ')[0];
+            console.log(`  → Trying with first word only: "${firstWord}"...`);
+            brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
+            if (brandSuccess) {
+              console.log(`✓ Brand set via first word: "${firstWord}"`);
+            }
+          }
         }
       }
       
