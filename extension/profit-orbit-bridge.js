@@ -37,9 +37,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // On page load, query extension for all marketplace statuses
 window.addEventListener('load', () => {
   setTimeout(() => {
+    // Check if extension context is still valid before sending message
+    if (!chrome.runtime?.id) {
+      console.log('Extension context invalidated on page load - page may need refresh');
+      return;
+    }
+    
     chrome.runtime.sendMessage(
       { type: 'GET_ALL_STATUS' },
       (response) => {
+        // Check for runtime errors
+        if (chrome.runtime.lastError) {
+          console.log('Extension context changed on page load:', chrome.runtime.lastError.message);
+          return;
+        }
+        
         if (response && response.status) {
           console.log('Initial marketplace statuses:', response.status);
           
@@ -73,6 +85,17 @@ window.addEventListener('message', async (event) => {
     console.log('chrome.runtime available:', !!chrome.runtime);
     console.log('Listing data to send:', event.data.listingData);
     
+    // Check if extension context is still valid before sending message
+    if (!chrome.runtime?.id) {
+      console.error('Extension context invalidated - extension may have been reloaded');
+      window.postMessage({
+        type: 'MERCARI_LISTING_RESPONSE',
+        success: false,
+        error: 'Extension context invalidated. Please refresh this page and try again. If the issue persists, reload the extension.'
+      }, '*');
+      return;
+    }
+    
     try {
       // Forward to background script (Manifest V3 uses promises)
       console.log('Calling chrome.runtime.sendMessage...');
@@ -94,11 +117,18 @@ window.addEventListener('message', async (event) => {
     } catch (error) {
       console.error('Error communicating with extension:', error);
       
+      // Check if it's a context invalidated error
+      const isContextInvalidated = error.message?.includes('Extension context invalidated') || 
+                                   error.message?.includes('message port closed') ||
+                                   !chrome.runtime?.id;
+      
       // Send error back to web app
       window.postMessage({
         type: 'MERCARI_LISTING_RESPONSE',
         success: false,
-        error: error.message || 'Failed to communicate with extension'
+        error: isContextInvalidated 
+          ? 'Extension context invalidated. Please refresh this page and try again. If the issue persists, reload the extension.'
+          : (error.message || 'Failed to communicate with extension')
       }, '*');
     }
   }
