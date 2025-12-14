@@ -61,8 +61,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   
   // Handle Mercari listing request from bridge script
   if (message.type === 'CREATE_MERCARI_LISTING') {
-    console.log('✅ Background received CREATE_MERCARI_LISTING request');
-    console.log('Listing data:', message.listingData);
     const listingData = message.listingData;
     
     // Handle async response - Manifest V3 pattern
@@ -109,59 +107,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 return { success: false, error: error.message };
               }
               
-              // Wait before retrying
-              console.log(`⏳ Retry ${i + 1}/${maxRetries} - waiting for content script...`);
+              // Wait before retrying (silently)
               await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
             }
           }
         };
         
-        // Find Mercari tab or create new one
-        console.log('Querying for Mercari tabs...');
+        // Find Mercari tab or create new one (work silently like Vendoo)
         const tabs = await chrome.tabs.query({ url: 'https://www.mercari.com/*' });
-        console.log('Found Mercari tabs:', tabs.length);
         
         let targetTab = null;
         
         if (tabs.length > 0) {
           // Try to use existing Mercari tab
-          console.log('✅ Found existing Mercari tab:', tabs[0].id);
           const mercariTab = tabs[0];
           
           // Check if tab is in a valid state
           const tabInfo = await chrome.tabs.get(mercariTab.id);
           if (tabInfo.status === 'complete' && tabInfo.url?.startsWith('https://www.mercari.com')) {
-            console.log('✅ Tab is ready, checking if content script is loaded...');
-            
             // Check if content script is ready
             const isReady = await isContentScriptReady(mercariTab.id);
             if (isReady) {
-              console.log('✅ Content script is ready');
               targetTab = mercariTab;
-            } else {
-              console.log('⚠️ Content script not ready, will create new tab');
             }
-          } else {
-            console.log('⚠️ Tab not in valid state, will create new tab');
           }
         }
         
-        // If no valid tab found, create a new one
+        // If no valid tab found, create a new one (hidden in background like Vendoo)
         if (!targetTab) {
-          console.log('📂 Opening new Mercari sell page...');
           targetTab = await chrome.tabs.create({
             url: 'https://www.mercari.com/sell/',
             active: false
           });
           
-          console.log('✅ Opened new Mercari tab:', targetTab.id);
-          
-          // Wait for page to load
+          // Wait for page to load (silently, like Vendoo)
           await new Promise((resolve) => {
             const listener = (tabId, info) => {
               if (tabId === targetTab.id && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(listener);
-                console.log('✅ Mercari page loaded');
                 resolve();
               }
             };
@@ -169,22 +152,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           
           // Give Mercari extra time to initialize and content script to load
-          console.log('⏳ Waiting 3s for Mercari to initialize...');
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
         
-        // Send listing data with retry logic
-        console.log('📤 Sending listing data to Mercari content script...');
+        // Send listing data with retry logic (silently, like Vendoo)
         const result = await sendMessageWithRetry(targetTab.id, {
           type: 'CREATE_LISTING',
           listingData: listingData
         });
         
         if (result.success) {
-          console.log('✅ Mercari content script response:', result.response);
           sendResponse(result.response || { success: false, error: 'No response from Mercari content script' });
         } else {
-          console.error('❌ Failed to communicate with Mercari tab after retries:', result.error);
           sendResponse({ 
             success: false, 
             error: 'Failed to communicate with Mercari tab. Please ensure you have a Mercari tab open and try again. Error: ' + result.error 

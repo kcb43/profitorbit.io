@@ -458,19 +458,45 @@ async function fillMercariFormWithPuppeteer(page, data) {
         if (photoPaths.length > 0) {
           console.log(`  → Uploading ${photoPaths.length} photo file(s)...`);
           
-          // Puppeteer's uploadFile can handle multiple files
-          await fileInput.uploadFile(...photoPaths);
+          // Puppeteer's uploadFile method - correct syntax: element.uploadFile(filePath)
+          // For multiple files, Mercari file input should support multiple file selection
+          // Upload all files at once if possible, otherwise one by one
+          try {
+            // Try uploading all files at once (if Mercari input supports multiple)
+            if (photoPaths.length === 1) {
+              await fileInput.uploadFile(photoPaths[0]);
+            } else {
+              // For multiple files, try uploading all at once
+              // Some file inputs support multiple files via array
+              await fileInput.uploadFile(...photoPaths);
+            }
+          } catch (error) {
+            // If that fails, upload one by one
+            for (const photoPath of photoPaths) {
+              const currentFileInput = await page.$('input[type="file"]');
+              if (currentFileInput) {
+                await currentFileInput.uploadFile(photoPath);
+                await page.waitForTimeout(500); // Small delay between uploads
+              }
+            }
+          }
           
           // Wait for uploads to process - Mercari shows upload progress
           console.log('  → Waiting for photos to upload...');
-          await page.waitForTimeout(3000); // Give Mercari time to process uploads
+          await page.waitForTimeout(4000); // Give Mercari more time to process uploads
           
-          // Verify photos were uploaded by checking for image previews
-          const photoPreviews = await page.$$('[data-testid*="Photo"] img, [data-testid*="photo"] img, .photo-preview img');
+          // Verify photos were uploaded by checking for image previews or upload indicators
+          const photoPreviews = await page.$$('[data-testid*="Photo"] img, [data-testid*="photo"] img, .photo-preview img, img[alt*="photo" i]');
           if (photoPreviews.length > 0) {
             console.log(`  ✓ ${photoPreviews.length} photo(s) uploaded successfully`);
           } else {
-            console.log('  ✓ Photos uploaded (verification pending)');
+            // Also check for upload progress indicators
+            const uploadIndicators = await page.$$('[class*="upload"], [class*="progress"], [aria-label*="upload" i]');
+            if (uploadIndicators.length === 0) {
+              console.log('  ✓ Photos uploaded (verification pending)');
+            } else {
+              console.log('  → Photos are uploading...');
+            }
           }
         } else {
           console.warn('  ⚠️ No valid photo paths found after processing');

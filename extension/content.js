@@ -3,8 +3,6 @@
  * Detects login and automates listings across multiple platforms
  */
 
-console.log('Profit Orbit Extension: Content script loaded');
-
 // Detect which marketplace we're on
 const MARKETPLACE = (() => {
   const hostname = window.location.hostname;
@@ -15,8 +13,6 @@ const MARKETPLACE = (() => {
   if (hostname.includes('etsy.com')) return 'etsy';
   return null;
 })();
-
-console.log(`Profit Orbit Extension: Running on ${MARKETPLACE}`);
 
 // Marketplace-specific login detection
 const LOGIN_DETECTORS = {
@@ -141,8 +137,6 @@ function checkLogin() {
   }
   
   const isLoggedIn = LOGIN_DETECTORS[MARKETPLACE]();
-  console.log(`${MARKETPLACE} login check:`, isLoggedIn ? 'Logged in' : 'Not logged in');
-  
   return isLoggedIn;
 }
 
@@ -233,14 +227,10 @@ if (MARKETPLACE) {
     }
     
     if (message.type === 'CREATE_LISTING') {
-      console.log(`Creating ${MARKETPLACE} listing with data:`, message.listingData);
-      
       // Run async listing creation
       createListing(message.listingData).then((result) => {
-        console.log('Listing creation result:', result);
         sendResponse(result);
       }).catch((error) => {
-        console.error('Listing creation error:', error);
         sendResponse({ success: false, error: error.message });
       });
       
@@ -250,20 +240,15 @@ if (MARKETPLACE) {
 
   // Initial check
   updateLoginStatus();
-  
-  console.log(`Profit Orbit Extension: Initialized for ${MARKETPLACE}`);
 }
 
 // Create listing on current marketplace
 async function createListing(listingData) {
-  console.log(`Creating ${MARKETPLACE} listing:`, listingData);
-  
   if (MARKETPLACE === 'mercari') {
     return await createMercariListing(listingData);
   }
   
   // Other marketplaces to be implemented
-  console.log(`Listing automation for ${MARKETPLACE} coming soon`);
   return {
     success: false,
     error: `${MARKETPLACE} listing automation not yet implemented`
@@ -273,13 +258,10 @@ async function createListing(listingData) {
 // Mercari-specific listing automation
 async function createMercariListing(listingData) {
   try {
-    console.log('Starting Mercari listing automation...', listingData);
-    
     // Check if photos are present - if so, try Puppeteer API first (can handle photo uploads)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
     
     if (hasPhotos) {
-      console.log('📸 Photos detected - attempting Puppeteer API first...');
       try {
         const puppeteerResult = await createMercariListingWithPuppeteer(listingData);
         // If Puppeteer succeeded, return early
@@ -288,25 +270,19 @@ async function createMercariListing(listingData) {
         }
         // If Puppeteer failed but provided fallback, continue with extension method
         if (puppeteerResult.requiresManualPhotoUpload) {
-          console.log('📝 Continuing with extension method (photos need manual upload)');
           // Continue to extension method below
         } else {
           // Puppeteer failed completely, fall through to extension method
-          console.log('⚠️ Puppeteer failed, using extension method');
         }
       } catch (error) {
-        console.error('Puppeteer error:', error);
-        console.log('⚠️ Falling back to extension method');
         // Fall through to extension method
       }
     }
     
     // Use extension method (works for everything except photo uploads)
-    console.log('📝 Using extension method for form filling');
     
     // Navigate to sell page if not already there
     if (!window.location.href.includes('/sell')) {
-      console.log('🌐 Navigating to Mercari sell page...');
       window.location.href = 'https://www.mercari.com/sell/';
       
       // Wait for page to load, then retry
@@ -317,16 +293,12 @@ async function createMercariListing(listingData) {
     }
     
     // Wait for form to be ready (use actual Mercari selectors)
-    console.log('⏳ Waiting for form to load...');
     await waitForElement('[data-testid="Title"], #sellName', 10000);
     
     // Fill in form fields
-    console.log('📝 Starting to fill form fields...');
     const fillResult = await fillMercariForm(listingData);
-    console.log('📝 Form fill result:', fillResult);
     
     // Wait a bit for all changes to take effect
-    console.log('⏳ Waiting 2s for form to update...');
     await sleep(2000);
     
     // Check if photos are required but not uploaded
@@ -334,8 +306,6 @@ async function createMercariListing(listingData) {
     const photosInData = listingData.photos && listingData.photos.length > 0;
     
     if (photoCount === 0 && !photosInData) {
-      console.log('⚠️ No photos detected - Mercari requires at least one photo');
-      console.log('✅ Form filled successfully! Please upload photos manually and click the List button.');
       return {
         success: true,
         message: 'Form filled successfully. Please upload at least one photo manually and click the List button.',
@@ -346,8 +316,6 @@ async function createMercariListing(listingData) {
     
     // If photos are in listingData but not uploaded yet, don't submit
     if (photosInData && photoCount === 0) {
-      console.log('⚠️ Photos are in listing data but not uploaded yet');
-      console.log('✅ Form filled! Please wait for photos to upload or upload manually, then click List button.');
       return {
         success: true,
         message: 'Form filled successfully. Photos need to be uploaded. Please upload photos manually and click the List button.',
@@ -357,14 +325,11 @@ async function createMercariListing(listingData) {
     }
     
     // Submit the form (only if photos are present)
-    console.log('📤 Attempting to submit form...');
     const submitResult = await submitMercariForm();
     
-    console.log('Mercari listing submit result:', submitResult);
     return submitResult;
     
   } catch (error) {
-    console.error('Error in Mercari listing automation:', error);
     return { success: false, error: error.message };
   }
 }
@@ -372,10 +337,7 @@ async function createMercariListing(listingData) {
 // Use Puppeteer API for listings with photos
 async function createMercariListingWithPuppeteer(listingData) {
   try {
-    console.log('🤖 Calling Puppeteer API for Mercari listing...');
-    
     // Get the API URL - try to get from storage or use default
-    // For now, we'll use a configurable approach
     let apiUrl = 'https://profitorbit.io'; // Default to production
     
     // Try to get from chrome.storage if available
@@ -390,13 +352,9 @@ async function createMercariListingWithPuppeteer(listingData) {
       }
     } catch (e) {
       // If storage fails, use default
-      console.log('Using default API URL');
     }
     
-    // Check if we're in development (this won't work on Mercari page, but that's okay)
-    // The API should be accessible from the extension
     const fullApiUrl = `${apiUrl}/api/mercari-puppeteer`;
-    console.log('Calling Puppeteer API at:', fullApiUrl);
     
     const response = await fetch(fullApiUrl, {
       method: 'POST',
@@ -415,29 +373,19 @@ async function createMercariListingWithPuppeteer(listingData) {
     const result = await response.json();
     
     if (result.success) {
-      console.log('✅ Puppeteer automation completed successfully!');
-      console.log('Listing ID:', result.listingId);
-      console.log('Listing URL:', result.listingUrl);
       return result;
     } else {
       throw new Error(result.error || result.message || 'Puppeteer API request failed');
     }
     
   } catch (error) {
-    console.error('❌ Error calling Puppeteer API:', error);
-    console.log('⚠️ Puppeteer API failed, falling back to extension method');
-    console.log('⚠️ Note: Photos will need to be uploaded manually');
-    
     // Fallback to extension method - continue with form filling but skip photo upload
-    // This allows the form to be filled, user can upload photos manually
     return await createMercariListingExtensionFallback(listingData);
   }
 }
 
 // Fallback to extension method when Puppeteer fails
 async function createMercariListingExtensionFallback(listingData) {
-  console.log('📝 Using extension fallback method (photos will need manual upload)');
-  
   // Navigate to sell page if not already there
   if (!window.location.href.includes('/sell')) {
     window.location.href = 'https://www.mercari.com/sell/';
@@ -453,16 +401,12 @@ async function createMercariListingExtensionFallback(listingData) {
   await waitForElement('[data-testid="Title"], #sellName', 10000);
   
   // Fill in form fields (without photos)
-  console.log('📝 Starting to fill form fields (extension method)...');
   const fillResult = await fillMercariForm(listingData);
-  console.log('📝 Form fill result:', fillResult);
   
   // Wait a bit for all changes to take effect
-  console.log('⏳ Waiting 2s for form to update...');
   await sleep(2000);
   
   // Don't auto-submit - let user review and upload photos manually
-  console.log('✅ Form filled! Please upload photos manually and click List button.');
   return {
     success: true,
     message: 'Form filled successfully. Please upload photos manually and click the List button.',
@@ -473,7 +417,6 @@ async function createMercariListingExtensionFallback(listingData) {
 // Helper: Click Mercari custom dropdown and select option
 async function selectMercariDropdown(testId, optionText, partialMatch = false) {
   try {
-    console.log(`Selecting from dropdown [${testId}]: ${optionText}`);
     
     // Find and click the dropdown trigger - try multiple selectors
     let dropdown = document.querySelector(`[data-testid="${testId}"]`);
@@ -504,9 +447,6 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     }
     
     if (!dropdown) {
-      console.warn(`Dropdown [${testId}] not found. Available testIds:`, 
-        Array.from(document.querySelectorAll('[data-testid]')).slice(0, 10).map(el => el.getAttribute('data-testid'))
-      );
       return false;
     }
     
@@ -552,7 +492,6 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     }
     
     if (options.length === 0) {
-      console.warn(`No options found in dropdown [${testId}] after waiting`);
       // Click outside to close dropdown
       document.body.click();
       await sleep(300);
@@ -577,16 +516,12 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     }
     
     if (matchedOption) {
-      console.log(`✓ Found option: "${matchedOption.textContent?.trim()}"`);
       matchedOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
       await sleep(200);
       matchedOption.click();
       await sleep(600); // Wait after selection
       return true;
     } else {
-      console.warn(`Option "${optionText}" not found in dropdown [${testId}]`);
-      const availableOptions = options.slice(0, 10).map(opt => opt.textContent?.trim() || '').filter(Boolean);
-      console.log(`Available options (first 10):`, availableOptions);
       // Click outside to close dropdown
       document.body.click();
       await sleep(300);
@@ -605,8 +540,6 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
 // Helper: Type into autocomplete/searchable dropdown
 async function typeIntoMercariDropdown(testId, text) {
   try {
-    console.log(`Typing into dropdown [${testId}]: ${text}`);
-    
     let dropdown = document.querySelector(`[data-testid="${testId}"]`);
     
     // Try alternative selectors
@@ -615,7 +548,6 @@ async function typeIntoMercariDropdown(testId, text) {
     }
     
     if (!dropdown) {
-      console.warn(`Dropdown [${testId}] not found`);
       return false;
     }
     
@@ -668,7 +600,6 @@ async function typeIntoMercariDropdown(testId, text) {
       if (matchingOption) {
         matchingOption.click();
         await sleep(300);
-        console.log(`✓ Typed and selected: ${text}`);
         return true;
       }
       
@@ -679,12 +610,10 @@ async function typeIntoMercariDropdown(testId, text) {
       
       // Check if value was accepted
       if (input.value.toLowerCase().includes(text.toLowerCase())) {
-        console.log(`✓ Typed and selected: ${text}`);
         return true;
       }
     }
     
-    console.warn(`Could not type into dropdown [${testId}] - input not found or not accessible`);
     return false;
   } catch (error) {
     console.error(`Error typing into dropdown [${testId}]:`, error);
@@ -694,8 +623,6 @@ async function typeIntoMercariDropdown(testId, text) {
 
 // Fill Mercari form fields
 async function fillMercariForm(data) {
-  console.log('Filling Mercari form with data:', data);
-  
   try {
     // Wrap entire form fill in try-catch to prevent errors from stopping the process
     // 1. TITLE
@@ -706,7 +633,6 @@ async function fillMercariForm(data) {
       titleInput.dispatchEvent(new Event('input', { bubbles: true }));
       titleInput.dispatchEvent(new Event('change', { bubbles: true }));
       await sleep(300);
-      console.log('✓ Title set:', data.title);
     }
     
     // 2. DESCRIPTION
@@ -717,16 +643,12 @@ async function fillMercariForm(data) {
       descInput.dispatchEvent(new Event('input', { bubbles: true }));
       descInput.dispatchEvent(new Event('change', { bubbles: true }));
       await sleep(300);
-      console.log('✓ Description set');
     }
     
     // 3. CATEGORY - Mercari-specific category (multi-level selection)
     if (data.mercariCategory) {
-      console.log('🔍 Attempting Mercari category selection:', data.mercariCategory);
-      
       // Split category path by " > " to get individual levels
       const categoryParts = data.mercariCategory.split(' > ').map(part => part.trim());
-      console.log('📋 Category levels:', categoryParts);
       
       let categorySuccess = false;
       
@@ -739,20 +661,15 @@ async function fillMercariForm(data) {
           ? ['CategoryL0'] 
           : [`CategoryL${level}`, 'CategoryL0', `CategoryL${level - 1}`]; // Try level-specific first, then fallback
         
-        console.log(`  → Selecting level ${level}: "${categoryPart}"`);
-        
         let success = false;
         let usedTestId = null;
         
         // Try each possible testId
         for (const testId of possibleTestIds) {
-          console.log(`    Trying dropdown [${testId}]...`);
-          
           // Try exact match first
           success = await selectMercariDropdown(testId, categoryPart, false);
           
           if (!success) {
-            console.warn(`    Exact match failed, trying partial match...`);
             // Try partial match
             success = await selectMercariDropdown(testId, categoryPart, true);
           }
@@ -764,8 +681,6 @@ async function fillMercariForm(data) {
         }
         
         if (success) {
-          console.log(`  ✓ Level ${level} selected: ${categoryPart} (using ${usedTestId})`);
-          
           // Wait for next level dropdown to appear (if not the last level)
           if (level < categoryParts.length - 1) {
             await sleep(1000); // Give Mercari time to load next level
@@ -776,10 +691,7 @@ async function fillMercariForm(data) {
               // Try to find any category dropdown that might be the next level
               nextDropdown = document.querySelector('[data-testid*="Category"]') ||
                            document.querySelector('[aria-haspopup="listbox"][id*="category"]');
-              if (nextDropdown) {
-                console.log(`  → Found next level dropdown (using fallback selector)`);
-              } else {
-                console.warn(`  ⚠️ Next level dropdown not found yet, waiting...`);
+              if (!nextDropdown) {
                 await sleep(1000);
               }
             }
@@ -788,67 +700,37 @@ async function fillMercariForm(data) {
             categorySuccess = true;
           }
         } else {
-          console.error(`  ❌ Failed to select level ${level}: ${categoryPart}`);
           break; // Stop if any level fails
         }
       }
       
-      if (categorySuccess) {
-        console.log('✓ Mercari category fully selected:', data.mercariCategory);
-      } else {
-        console.error('❌ Category selection failed - could not complete all levels');
-      }
-    } else {
-      console.warn('⚠️ No Mercari category provided - skipping category selection');
+      // Category selection completed (or failed silently)
     }
     
     // 4. BRAND
     if (data.brand) {
-      console.log('🔍 Attempting brand selection...');
       let brandSuccess = false;
       
       // Try multiple approaches - but stop as soon as one succeeds
       // 1. Try typing first (Mercari brand is searchable)
       brandSuccess = await typeIntoMercariDropdown('Brand', data.brand);
-      if (brandSuccess) {
-        console.log('✓ Brand set via typing:', data.brand);
-        // STOP HERE - don't try other methods if typing succeeded
-      } else {
+      if (!brandSuccess) {
         // 2. If typing failed, try dropdown selection with exact match
-        console.log('  → Typing failed, trying dropdown selection...');
         brandSuccess = await selectMercariDropdown('Brand', data.brand, false);
-        if (brandSuccess) {
-          console.log('✓ Brand set via exact match:', data.brand);
-          // STOP HERE - don't try other methods if exact match succeeded
-        } else {
+        if (!brandSuccess) {
           // 3. If exact match failed, try partial match
-          console.log('  → Exact match failed, trying partial match...');
           brandSuccess = await selectMercariDropdown('Brand', data.brand, true);
-          if (brandSuccess) {
-            console.log('✓ Brand set via partial match:', data.brand);
-            // STOP HERE - don't try other methods if partial match succeeded
-          } else if (data.brand.includes(' ')) {
+          if (!brandSuccess && data.brand.includes(' ')) {
             // 4. Try with just the first word if brand has multiple words
             const firstWord = data.brand.split(' ')[0];
-            console.log(`  → Trying with first word only: "${firstWord}"...`);
             brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
-            if (brandSuccess) {
-              console.log(`✓ Brand set via first word: "${firstWord}"`);
-            }
           }
         }
-      }
-      
-      if (!brandSuccess) {
-        console.warn('⚠️ Brand selection failed - brand may need manual selection');
-        console.warn(`  Attempted brand: "${data.brand}"`);
       }
     }
     
     // 5. CONDITION
     if (data.condition) {
-      console.log('🔍 Attempting condition selection...');
-      
       // Map condition values to Mercari's expected format
       const conditionMap = {
         'New': 'New',
@@ -871,8 +753,6 @@ async function fillMercariForm(data) {
       };
       
       const mercariCondition = conditionMap[data.condition] || data.condition;
-      console.log(`  Mapping condition: "${data.condition}" → "${mercariCondition}"`);
-      
       let conditionSuccess = false;
       
       // Try exact match first
@@ -880,7 +760,6 @@ async function fillMercariForm(data) {
       
       // If exact match failed, try partial match
       if (!conditionSuccess) {
-        console.log('  → Exact match failed, trying partial match...');
         conditionSuccess = await selectMercariDropdown('Condition', mercariCondition, true);
       }
       
@@ -895,41 +774,16 @@ async function fillMercariForm(data) {
         
         for (const variation of conditionVariations) {
           if (variation !== mercariCondition) {
-            console.log(`  → Trying variation: "${variation}"...`);
             conditionSuccess = await selectMercariDropdown('Condition', variation, true);
             if (conditionSuccess) break;
           }
         }
       }
-      
-      if (conditionSuccess) {
-        // Wait a bit for UI to update, then verify (but don't fail if verification is unclear)
-        await sleep(500);
-        const conditionDropdown = document.querySelector('[data-testid="Condition"]');
-        const conditionValue = conditionDropdown?.textContent?.trim() || '';
-        
-        // Log the result - if we got true from selection, trust it
-        if (conditionValue && (conditionValue.toLowerCase().includes(mercariCondition.toLowerCase()) || 
-            mercariCondition.toLowerCase().includes(conditionValue.toLowerCase()))) {
-          console.log(`✓ Condition set: "${conditionValue}" (matched "${mercariCondition}")`);
-        } else if (conditionValue) {
-          console.log(`✓ Condition selection completed: "${conditionValue}"`);
-        } else {
-          console.log(`✓ Condition selection completed (value: "${mercariCondition}")`);
-        }
-      } else {
-        console.warn('⚠️ Condition selection failed - condition may need manual selection');
-        console.warn(`  Attempted condition: "${data.condition}" → "${mercariCondition}"`);
-      }
     }
     
     // 6. COLOR (if available)
     if (data.color) {
-      console.log('🔍 Attempting color selection...');
-      const colorSuccess = await selectMercariDropdown('Color', data.color, false);
-      if (colorSuccess) {
-        console.log('✓ Color set:', data.color);
-      }
+      await selectMercariDropdown('Color', data.color, false);
     }
     
     // 7. SIZE (text input)
@@ -940,7 +794,6 @@ async function fillMercariForm(data) {
         sizeInput.value = data.size;
         sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
         await sleep(300);
-        console.log('✓ Size set:', data.size);
       }
     }
     
@@ -959,18 +812,13 @@ async function fillMercariForm(data) {
         zipInput.value = data.shipsFrom;
         zipInput.dispatchEvent(new Event('input', { bubbles: true }));
         await sleep(300);
-        console.log('✓ Ships from set:', data.shipsFrom);
       }
     }
     
     // 9. DELIVERY METHOD
     if (data.deliveryMethod) {
-      console.log('🔍 Attempting delivery method selection...');
       const deliveryText = data.deliveryMethod === 'prepaid' ? 'Prepaid' : 'Ship on your own';
-      const deliverySuccess = await selectMercariDropdown('ShippingMethod', deliveryText, true);
-      if (deliverySuccess) {
-        console.log('✓ Delivery method set');
-      }
+      await selectMercariDropdown('ShippingMethod', deliveryText, true);
     }
     
     // 10. PRICE (do this last as it often triggers validation)
@@ -983,7 +831,6 @@ async function fillMercariForm(data) {
       priceInput.dispatchEvent(new Event('change', { bubbles: true }));
       priceInput.dispatchEvent(new Event('blur', { bubbles: true }));
       await sleep(500);
-      console.log('✓ Price set:', data.price);
     }
     
     // 10.5. SMART PRICING & SMART OFFERS (after price is set)
@@ -993,136 +840,103 @@ async function fillMercariForm(data) {
       // Smart Pricing toggle
       if (data.smartPricing !== undefined) {
         try {
-        console.log('🔍 Looking for Smart Pricing toggle...');
-        // Try multiple selectors for Smart Pricing toggle
-        let smartPricingToggle = document.querySelector('[data-testid*="SmartPricing" i]') ||
-                                 document.querySelector('[data-testid*="smart" i][data-testid*="pricing" i]') ||
-                                 document.querySelector('input[type="checkbox"][name*="smart" i][name*="pricing" i]') ||
-                                 document.querySelector('input[type="checkbox"][aria-label*="Smart Pricing" i]') ||
-                                 document.querySelector('button[aria-label*="Smart Pricing" i]');
-        
-        // Try finding by text content - search more broadly
-        if (!smartPricingToggle) {
-          const allElements = Array.from(document.querySelectorAll('*'));
-          const pricingElement = allElements.find(el => {
-            const text = el.textContent?.toLowerCase() || '';
-            return text.includes('smart pricing') && 
-                   (el.tagName === 'LABEL' || el.tagName === 'SPAN' || el.tagName === 'DIV');
-          });
+          // Try multiple selectors for Smart Pricing toggle
+          let smartPricingToggle = document.querySelector('[data-testid*="SmartPricing" i]') ||
+                                   document.querySelector('[data-testid*="smart" i][data-testid*="pricing" i]') ||
+                                   document.querySelector('input[type="checkbox"][name*="smart" i][name*="pricing" i]') ||
+                                   document.querySelector('input[type="checkbox"][aria-label*="Smart Pricing" i]') ||
+                                   document.querySelector('button[aria-label*="Smart Pricing" i]');
           
-          if (pricingElement) {
-            // Look for toggle near the text
-            const container = pricingElement.closest('div, label, form');
-            if (container) {
-              smartPricingToggle = container.querySelector('input[type="checkbox"], button, [role="switch"], [role="button"]') ||
-                                  container.querySelector('[data-testid*="toggle"], [data-testid*="switch"]');
-            }
+          // Try finding by text content - search more broadly
+          if (!smartPricingToggle) {
+            const allElements = Array.from(document.querySelectorAll('*'));
+            const pricingElement = allElements.find(el => {
+              const text = el.textContent?.toLowerCase() || '';
+              return text.includes('smart pricing') && 
+                     (el.tagName === 'LABEL' || el.tagName === 'SPAN' || el.tagName === 'DIV');
+            });
             
-            // Also try sibling elements
-            if (!smartPricingToggle) {
-              let sibling = pricingElement.nextElementSibling;
-              for (let i = 0; i < 3 && sibling; i++) {
-                smartPricingToggle = sibling.querySelector('input[type="checkbox"], button, [role="switch"]');
-                if (smartPricingToggle) break;
-                sibling = sibling.nextElementSibling;
+            if (pricingElement) {
+              // Look for toggle near the text
+              const container = pricingElement.closest('div, label, form');
+              if (container) {
+                smartPricingToggle = container.querySelector('input[type="checkbox"], button, [role="switch"], [role="button"]') ||
+                                    container.querySelector('[data-testid*="toggle"], [data-testid*="switch"]');
               }
-            }
-          }
-        }
-        
-        if (smartPricingToggle) {
-          // Check current state - Smart Pricing is ON by default on Mercari
-          const isChecked = smartPricingToggle.checked || 
-                          smartPricingToggle.getAttribute('aria-checked') === 'true' ||
-                          smartPricingToggle.classList.contains('checked') ||
-                          smartPricingToggle.getAttribute('aria-pressed') === 'true' ||
-                          smartPricingToggle.getAttribute('data-state') === 'checked';
-          
-          console.log(`  Current Smart Pricing state: ${isChecked ? 'ON' : 'OFF'}, Desired: ${data.smartPricing ? 'ON' : 'OFF'}`);
-          
-          // Only toggle if state doesn't match desired state
-          if (data.smartPricing !== isChecked) {
-            smartPricingToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            await sleep(200);
-            smartPricingToggle.click();
-            await sleep(500); // Wait for toggle to activate and UI to update
-            
-            // Verify the toggle actually changed
-            const newState = smartPricingToggle.checked || 
-                           smartPricingToggle.getAttribute('aria-checked') === 'true' ||
-                           smartPricingToggle.classList.contains('checked') ||
-                           smartPricingToggle.getAttribute('aria-pressed') === 'true' ||
-                           smartPricingToggle.getAttribute('data-state') === 'checked';
-            
-            if (newState === data.smartPricing) {
-              console.log(`✓ Smart Pricing ${data.smartPricing ? 'enabled' : 'disabled'}`);
-            } else {
-              console.warn(`⚠️ Smart Pricing toggle may not have changed - current state: ${newState ? 'ON' : 'OFF'}`);
-            }
-            
-            // If enabling Smart Pricing, look for Floor Price input
-            if (data.smartPricing && data.floorPrice) {
-              console.log('🔍 Looking for Floor Price input...');
-              await sleep(500); // Wait for input field to appear
               
-              // Try to find floor price input
-              let floorPriceInput = document.querySelector('input[placeholder*="floor" i]') ||
-                                   document.querySelector('input[placeholder*="minimum" i]') ||
-                                   document.querySelector('input[name*="floor" i]') ||
-                                   document.querySelector('input[name*="minimum" i]') ||
-                                   document.querySelector('[data-testid*="Floor" i]') ||
-                                   document.querySelector('[data-testid*="floor" i]');
-              
-              // Try finding by label text
-              if (!floorPriceInput) {
-                const labels = Array.from(document.querySelectorAll('label, span, div'));
-                const floorLabel = labels.find(el => {
-                  const text = el.textContent?.toLowerCase() || '';
-                  return text.includes('floor') && text.includes('price');
-                });
-                
-                if (floorLabel) {
-                  const container = floorLabel.closest('div, form');
-                  if (container) {
-                    floorPriceInput = container.querySelector('input[type="text"], input[type="number"]');
-                  }
+              // Also try sibling elements
+              if (!smartPricingToggle) {
+                let sibling = pricingElement.nextElementSibling;
+                for (let i = 0; i < 3 && sibling; i++) {
+                  smartPricingToggle = sibling.querySelector('input[type="checkbox"], button, [role="switch"]');
+                  if (smartPricingToggle) break;
+                  sibling = sibling.nextElementSibling;
                 }
               }
+            }
+          }
+          
+          if (smartPricingToggle) {
+            // Check current state - Smart Pricing is ON by default on Mercari
+            const isChecked = smartPricingToggle.checked || 
+                            smartPricingToggle.getAttribute('aria-checked') === 'true' ||
+                            smartPricingToggle.classList.contains('checked') ||
+                            smartPricingToggle.getAttribute('aria-pressed') === 'true' ||
+                            smartPricingToggle.getAttribute('data-state') === 'checked';
+            
+            // Only toggle if state doesn't match desired state
+            if (data.smartPricing !== isChecked) {
+              smartPricingToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              await sleep(200);
+              smartPricingToggle.click();
+              await sleep(500); // Wait for toggle to activate and UI to update
               
-              if (floorPriceInput) {
-                floorPriceInput.focus();
-                floorPriceInput.value = String(data.floorPrice);
-                floorPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
-                floorPriceInput.dispatchEvent(new Event('change', { bubbles: true }));
-                await sleep(300);
-                console.log(`✓ Floor Price set: ${data.floorPrice}`);
-              } else {
-                console.warn('⚠️ Floor Price input not found after enabling Smart Pricing');
+              // If enabling Smart Pricing, look for Floor Price input
+              if (data.smartPricing && data.floorPrice) {
+                await sleep(500); // Wait for input field to appear
+                
+                // Try to find floor price input
+                let floorPriceInput = document.querySelector('input[placeholder*="floor" i]') ||
+                                     document.querySelector('input[placeholder*="minimum" i]') ||
+                                     document.querySelector('input[name*="floor" i]') ||
+                                     document.querySelector('input[name*="minimum" i]') ||
+                                     document.querySelector('[data-testid*="Floor" i]') ||
+                                     document.querySelector('[data-testid*="floor" i]');
+                
+                // Try finding by label text
+                if (!floorPriceInput) {
+                  const labels = Array.from(document.querySelectorAll('label, span, div'));
+                  const floorLabel = labels.find(el => {
+                    const text = el.textContent?.toLowerCase() || '';
+                    return text.includes('floor') && text.includes('price');
+                  });
+                  
+                  if (floorLabel) {
+                    const container = floorLabel.closest('div, form');
+                    if (container) {
+                      floorPriceInput = container.querySelector('input[type="text"], input[type="number"]');
+                    }
+                  }
+                }
+                
+                if (floorPriceInput) {
+                  floorPriceInput.focus();
+                  floorPriceInput.value = String(data.floorPrice);
+                  floorPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  floorPriceInput.dispatchEvent(new Event('change', { bubbles: true }));
+                  await sleep(300);
+                }
               }
             }
-          } else {
-            console.log(`✓ Smart Pricing already ${data.smartPricing ? 'enabled' : 'disabled'}`);
           }
-        } else {
-          console.warn('⚠️ Smart Pricing toggle not found - may not be available for this item');
-          console.log('  Available testIds near price:', Array.from(document.querySelectorAll('[data-testid]'))
-            .filter(el => {
-              const testId = el.getAttribute('data-testid') || '';
-              return testId.toLowerCase().includes('price') || testId.toLowerCase().includes('smart');
-            })
-            .slice(0, 5)
-            .map(el => el.getAttribute('data-testid'))
-          );
         } catch (error) {
-          console.error('❌ Error handling Smart Pricing:', error);
-          console.warn('⚠️ Smart Pricing toggle failed - continuing with form fill');
+          // Silently continue if Smart Pricing fails
         }
       }
       
       // Smart Offers toggle
       if (data.smartOffers !== undefined) {
         try {
-          console.log('🔍 Looking for Smart Offers toggle...');
           // Try multiple selectors for Smart Offers toggle
           let smartOffersToggle = document.querySelector('[data-testid*="SmartOffers" i]') ||
                                  document.querySelector('[data-testid*="smart" i][data-testid*="offers" i]') ||
@@ -1166,39 +980,23 @@ async function fillMercariForm(data) {
                             smartOffersToggle.getAttribute('aria-pressed') === 'true' ||
                             smartOffersToggle.getAttribute('data-state') === 'checked';
             
-            console.log(`  Current Smart Offers state: ${isChecked ? 'ON' : 'OFF'}, Desired: ${data.smartOffers ? 'ON' : 'OFF'}`);
-            
             if (data.smartOffers !== isChecked) {
               smartOffersToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
               await sleep(200);
               smartOffersToggle.click();
               await sleep(500); // Wait for toggle to activate and UI to update
               
-              // Verify the toggle actually changed
-              const newState = smartOffersToggle.checked || 
-                             smartOffersToggle.getAttribute('aria-checked') === 'true' ||
-                             smartOffersToggle.classList.contains('checked') ||
-                             smartOffersToggle.getAttribute('aria-pressed') === 'true' ||
-                             smartOffersToggle.getAttribute('data-state') === 'checked';
-              
-              if (newState === data.smartOffers) {
-                console.log(`✓ Smart Offers ${data.smartOffers ? 'enabled' : 'disabled'}`);
-              } else {
-                console.warn(`⚠️ Smart Offers toggle may not have changed - current state: ${newState ? 'ON' : 'OFF'}`);
-              }
-              
               // If enabling Smart Offers, look for Minimum Price input
               if (data.smartOffers && data.minimumPrice) {
-                console.log('🔍 Looking for Minimum Price input...');
                 await sleep(500); // Wait for input field to appear
                 
                 // Try to find minimum price input
                 let minimumPriceInput = document.querySelector('input[placeholder*="minimum" i]') ||
-                                       document.querySelector('input[placeholder*="lowest" i]') ||
-                                       document.querySelector('input[name*="minimum" i]') ||
-                                       document.querySelector('input[name*="min" i]') ||
-                                       document.querySelector('[data-testid*="Minimum" i]') ||
-                                       document.querySelector('[data-testid*="minimum" i]');
+                                     document.querySelector('input[placeholder*="lowest" i]') ||
+                                     document.querySelector('input[name*="minimum" i]') ||
+                                     document.querySelector('input[name*="min" i]') ||
+                                     document.querySelector('[data-testid*="Minimum" i]') ||
+                                     document.querySelector('[data-testid*="minimum" i]');
                 
                 // Try finding by label text
                 if (!minimumPriceInput) {
@@ -1222,59 +1020,19 @@ async function fillMercariForm(data) {
                   minimumPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
                   minimumPriceInput.dispatchEvent(new Event('change', { bubbles: true }));
                   await sleep(300);
-                  console.log(`✓ Minimum Price set: ${data.minimumPrice}`);
-                } else {
-                  console.warn('⚠️ Minimum Price input not found after enabling Smart Offers');
                 }
               }
-            } else {
-              console.log(`✓ Smart Offers already ${data.smartOffers ? 'enabled' : 'disabled'}`);
             }
-          } else {
-            console.warn('⚠️ Smart Offers toggle not found - may not be available for this item');
-            console.log('  Available testIds near price:', Array.from(document.querySelectorAll('[data-testid]'))
-              .filter(el => {
-                const testId = el.getAttribute('data-testid') || '';
-                return testId.toLowerCase().includes('offer') || testId.toLowerCase().includes('smart');
-              })
-              .slice(0, 5)
-              .map(el => el.getAttribute('data-testid'))
-            );
           }
         } catch (error) {
-          console.error('❌ Error handling Smart Offers:', error);
-          console.warn('⚠️ Smart Offers toggle failed - continuing with form fill');
+          // Silently continue if Smart Offers fails
         }
       }
     }
     
-    // 11. PHOTOS - Complex file upload
-    // This requires special handling and may not work due to security restrictions
-    if (data.photos && data.photos.length > 0) {
-      console.log(`📸 Attempting to handle ${data.photos.length} photo(s)...`);
-      
-      // Try to find the photo upload area
-      const photoUploadArea = document.querySelector('[data-testid*="Photo"]') ||
-                             document.querySelector('[data-testid*="photo"]') ||
-                             document.querySelector('input[type="file"][accept*="image"]') ||
-                             document.querySelector('button[aria-label*="photo" i]') ||
-                             document.querySelector('button[aria-label*="image" i]') ||
-                             document.querySelector('div[class*="photo" i]') ||
-                             document.querySelector('div[class*="upload" i]');
-      
-      if (photoUploadArea) {
-        console.log('✓ Photo upload area found');
-        console.warn('⚠️ Photo upload via extension is limited due to browser security restrictions');
-        console.warn('⚠️ Please upload photos manually using the photo upload button');
-      } else {
-        console.warn('⚠️ Photo upload area not found - photos will need to be uploaded manually');
-      }
-      
-      // Note: Direct file upload from extension is not possible due to security restrictions
-      // The user will need to upload photos manually
-    }
+    // 11. PHOTOS - Handled by Puppeteer API, skip here
+    // Extension method cannot upload photos due to browser security restrictions
     
-    console.log('✅ Form filling complete - check for any warnings above');
     return true;
     
   } catch (error) {
@@ -1290,29 +1048,11 @@ function sleep(ms) {
 
 // Submit Mercari form
 async function submitMercariForm() {
-  console.log('🔍 Checking form before submit...');
-  
-  // Check what fields are filled
-  const titleInput = document.querySelector('[data-testid="Title"]') || document.querySelector('#sellName');
-  const descInput = document.querySelector('[data-testid="Description"]') || document.querySelector('#sellDescription');
-  const priceInput = document.querySelector('[data-testid="Price"]') || document.querySelector('#Price');
-  const categoryDropdown = document.querySelector('[data-testid="CategoryL0"]');
-  const conditionDropdown = document.querySelector('[data-testid="Condition"]');
-  
-  console.log('Form field check:', {
-    title: titleInput?.value || 'MISSING',
-    description: descInput?.value ? 'SET' : 'MISSING',
-    price: priceInput?.value || 'MISSING',
-    category: categoryDropdown?.textContent || 'MISSING',
-    condition: conditionDropdown?.textContent || 'MISSING'
-  });
-  
   // Find the List button using actual Mercari selector
   const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
                    document.querySelector('button[type="submit"]');
   
   if (!submitBtn) {
-    console.error('❌ Submit button not found');
     return {
       success: false,
       error: 'List button not found on page'
@@ -1321,9 +1061,13 @@ async function submitMercariForm() {
   
   // Check if button is enabled (Mercari disables it if form is invalid)
   if (submitBtn.disabled) {
-    console.error('❌ Submit button is disabled - checking for missing required fields...');
-    
     // Try to identify what's missing
+    const titleInput = document.querySelector('[data-testid="Title"]') || document.querySelector('#sellName');
+    const descInput = document.querySelector('[data-testid="Description"]') || document.querySelector('#sellDescription');
+    const priceInput = document.querySelector('[data-testid="Price"]') || document.querySelector('#Price');
+    const categoryDropdown = document.querySelector('[data-testid="CategoryL0"]');
+    const conditionDropdown = document.querySelector('[data-testid="Condition"]');
+    
     const missingFields = [];
     if (!titleInput?.value) missingFields.push('Title');
     if (!descInput?.value) missingFields.push('Description');
@@ -1341,22 +1085,18 @@ async function submitMercariForm() {
     };
   }
   
-  console.log('✅ Submit button is enabled, clicking...');
   submitBtn.click();
   
   // Wait for navigation/success page
-  console.log('⏳ Waiting for submission to complete...');
   await sleep(5000);
   
   // Try to detect success and extract listing URL
   const currentUrl = window.location.href;
-  console.log('Current URL after submit:', currentUrl);
   
   if (currentUrl.includes('/item/')) {
     // Successfully created - URL contains item ID
     const listingId = currentUrl.split('/item/')[1]?.split('/')[0] || '';
     
-    console.log('✅ SUCCESS! Listing created:', listingId);
     return {
       success: true,
       listingId: listingId,
@@ -1367,7 +1107,6 @@ async function submitMercariForm() {
     const errorMsg = document.querySelector('[class*="error"], [class*="Error"], [role="alert"]');
     const errorText = errorMsg?.textContent || 'Unknown validation error';
     
-    console.error('❌ Still on sell page. Error:', errorText);
     return {
       success: false,
       error: `Listing failed: ${errorText}`
@@ -1375,7 +1114,6 @@ async function submitMercariForm() {
   }
   
   // Unknown state
-  console.warn('⚠️ Unknown state after submit');
   return {
     success: false,
     error: 'Unable to determine listing status'
