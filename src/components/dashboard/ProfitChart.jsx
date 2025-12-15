@@ -85,16 +85,6 @@ export default function ProfitChart({ sales, range, onRangeChange, totalProfit, 
               ) : null}
             </CardTitle>
             <div className="flex items-center gap-3">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="end">
-                  <ReportsExportPopup sales={sales} totalProfit={totalProfit} totalSales={totalSales} />
-                </PopoverContent>
-              </Popover>
               <Tabs value={range} onValueChange={onRangeChange}>
                 <TabsList>
                   <TabsTrigger value="14d">14 Days</TabsTrigger>
@@ -102,6 +92,16 @@ export default function ProfitChart({ sales, range, onRangeChange, totalProfit, 
                   <TabsTrigger value="yearly">Yearly</TabsTrigger>
                 </TabsList>
               </Tabs>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-auto sm:w-9 px-3 sm:px-0 -ml-[0.10rem]">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="end">
+                  <ReportsExportPopup sales={sales} totalProfit={totalProfit} totalSales={totalSales} />
+                </PopoverContent>
+              </Popover>
             </div>
         </div>
       </CardHeader>
