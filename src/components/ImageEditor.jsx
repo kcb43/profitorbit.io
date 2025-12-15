@@ -1210,6 +1210,24 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       <span className="text-slate-300 font-semibold">{sliderValue}%</span>
                     </div>
                     <div className="relative py-1">
+                      {/* Tick marks */}
+                      <div className="absolute top-0 left-0 right-0 h-1 flex items-center justify-between pointer-events-none z-0" style={{ marginTop: '6px' }}>
+                        {[0, 25, 50, 75, 100, 125, 150, 175, 200].map((tick) => {
+                          if (tick < sliderMin || tick > sliderMax) return null;
+                          const position = ((tick - sliderMin) / sliderRange) * 100;
+                          return (
+                            <div
+                              key={tick}
+                              className="w-0.5 h-1 bg-slate-500/40"
+                              style={{
+                                position: 'absolute',
+                                left: `${position}%`,
+                                transform: 'translateX(-50%)'
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
                       <input
                         type="range"
                         min={sliderMin}
