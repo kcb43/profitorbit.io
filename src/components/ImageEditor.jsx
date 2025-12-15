@@ -1355,9 +1355,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       alt="Editor Preview"
                       className="block object-contain"
                       style={{
-                        width: '501px',
+                        width: '100%',
                         height: 'auto',
-                        maxWidth: '95%',
+                        maxWidth: '100%',
                         maxHeight: '95%',
                         filter: `brightness(${filters.brightness}%) 
                                   contrast(${filters.contrast}%) 
@@ -1369,7 +1369,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     {/* Rotate buttons overlay - always visible */}
                     <div style={{
                       position: 'absolute',
-                      bottom: '12px',
+                      bottom: '24px',
                       left: '50%',
                       transform: 'translateX(-50%)',
                       display: 'flex',
