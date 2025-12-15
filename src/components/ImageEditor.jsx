@@ -1194,7 +1194,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 ) : (
                   <button
                     onClick={() => handleTransform('crop')}
-                    className="w-full p-2 rounded-md border bg-slate-700/40 border-slate-600/50 text-slate-300 hover:bg-indigo-600/50 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs md:h-[53px]"
+                    className="w-full p-2 rounded-md border bg-slate-700/40 border-slate-600/50 text-slate-300 hover:bg-indigo-600/50 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs h-[53px]"
                   >
                     <Crop className="w-3.5 h-3.5" />
                     <span>Crop</span>
@@ -1351,7 +1351,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       ref={imageRef}
                       src={imgSrc}
                       alt="Editor Preview"
-                      className="block object-contain md:w-[502px]"
+                      className="block object-contain md:w-[590px]"
                       style={{
                         height: 'auto',
                         maxWidth: '95%',
