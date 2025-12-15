@@ -44,33 +44,16 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="overflow-hidden p-0 w-auto max-w-[95vw]"
-        style={{ 
-          position: 'fixed !important',
-          left: '50% !important',
-          top: '50% !important',
-          transform: 'translate(-50%, -50%) !important',
-          margin: '0 !important',
-          maxHeight: '95vh'
-        }}
-      >
-        <div 
-          className="flex flex-col md:flex-row h-auto" 
-          style={{ 
-            userSelect: 'text',
-            touchAction: 'pan-y',
-            maxHeight: '95vh'
-          }}
-        >
-          {/* Image Section - No padding, image dictates size */}
-          <div className="order-1 md:order-2 min-h-[256px] md:min-h-0 md:flex-shrink-0 md:flex md:items-center md:justify-center" style={{ padding: 0, margin: 0, lineHeight: 0 }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
+        <div className="flex flex-col md:grid md:grid-cols-2">
+          {/* Image Section */}
+          <div className="order-1 md:order-2 min-h-[340px] md:min-h-0">
             {item.images && item.images.length > 1 ? (
-              <div className="w-full h-64 md:w-auto md:h-auto md:max-w-none" style={{ lineHeight: 0, maxHeight: '95vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="w-full h-[340px] md:h-full">
                 <ImageCarousel
                   images={item.images}
-                  className="md:w-auto md:h-auto"
-                  imageClassName="object-contain md:max-h-[95vh] md:w-auto md:h-auto md:max-w-none"
+                  className="w-full h-full"
+                  imageClassName="object-cover md:rounded-r-lg w-full h-full"
                   counterPosition="bottom"
                 />
               </div>
@@ -79,20 +62,13 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                 src={item.image_url || DEFAULT_IMAGE_URL}
                 alt={item.item_name}
                 fallback={DEFAULT_IMAGE_URL}
-                className="w-full h-64 md:w-auto md:h-auto md:max-w-none"
-                style={{ 
-                  objectFit: 'contain', 
-                  display: 'block', 
-                  lineHeight: 0,
-                  maxHeight: '95vh',
-                  maxWidth: 'none'
-                }}
+                className="w-full h-[340px] md:h-full object-cover md:rounded-r-lg"
               />
             )}
           </div>
 
-          {/* Details Section - Scrollable, matches image height */}
-          <div className="p-4 md:p-6 order-2 md:order-1 overflow-y-auto md:w-[400px] md:flex-shrink-0 md:h-auto" style={{ maxHeight: '95vh' }}>
+          {/* Details Section */}
+          <div className="p-4 md:p-6 order-2 md:order-1">
             <DialogHeader className="mb-4">
               <div className="flex items-start justify-between gap-2">
                 <DialogTitle className="text-lg font-bold pr-6 break-words">{item.item_name}</DialogTitle>
