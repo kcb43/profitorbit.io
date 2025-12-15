@@ -197,7 +197,7 @@ export default function Layout({ children }) {
                 {/* Category */}
                 <div className={categoryIndex === navigationCategories.length - 1 ? "" : categoryIndex === 0 ? "-mb-2 md:mb-0" : categoryIndex === 1 ? "-mb-2 md:mb-0" : ""}>
                   {/* Category Header */}
-                  <div className={`flex items-center gap-2.5 px-3.5 py-2 mb-1.5 border-l-[3px] border-transparent bg-gradient-to-r from-green-500/10 dark:from-green-500/10 to-transparent transition-all duration-300 ${categoryIndex === 1 ? "mt-0 md:mt-0" : ""}`}>
+                  <div className={`flex items-center gap-2.5 px-3.5 py-2 mb-1.5 border-l-[3px] border-transparent bg-gradient-to-r from-green-500/10 dark:from-green-500/10 to-transparent transition-all duration-300 ${categoryIndex === 1 ? "mt-0 md:mt-0" : ""}`} style={{ marginBottom: '0px' }}>
                     <div className="w-5 h-5 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center p-1 shadow-lg shadow-green-500/30">
                       <category.icon className="w-3 h-3 text-white stroke-[2.5]" />
                     </div>

@@ -20,7 +20,6 @@ import {
   Sun as BrightnessIcon,
   Contrast,
   Palette,
-  Droplets,
   Undo2,
   Download,
   Save,
@@ -50,8 +49,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [filters, setFilters] = useState({
     brightness: 100,
     contrast: 100,
-    saturate: 100,
-    shadows: 0  // -100 to 100, 0 = normal
+    saturate: 100
   });
   const [transform, setTransform] = useState({
     rotate: 0,
@@ -132,8 +130,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       const hasFilterChanges = 
         filters.brightness !== 100 || 
         filters.contrast !== 100 || 
-        filters.saturate !== 100 || 
-        filters.shadows !== 0;
+        filters.saturate !== 100;
       
       const hasTransformChanges = 
         transform.rotate !== 0 || 
@@ -147,8 +144,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     const hasFilterChanges = 
       filters.brightness !== loadedFilters.brightness || 
       filters.contrast !== loadedFilters.contrast || 
-      filters.saturate !== loadedFilters.saturate || 
-      filters.shadows !== loadedFilters.shadows;
+      filters.saturate !== loadedFilters.saturate;
     
     const hasTransformChanges = 
       transform.rotate !== loadedTransform.rotate || 
@@ -163,8 +159,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     const hasFilterChanges = 
       filters.brightness !== 100 || 
       filters.contrast !== 100 || 
-      filters.saturate !== 100 || 
-      filters.shadows !== 0;
+      filters.saturate !== 100;
     
     const hasTransformChanges = 
       transform.rotate !== 0 || 
@@ -257,8 +252,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           setFilters({
             brightness: 100,
             contrast: 100,
-            saturate: 100,
-            shadows: 0
+            saturate: 100
           });
           setTransform({
             rotate: 0,
@@ -390,8 +384,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           const defaultFilters = {
             brightness: 100,
             contrast: 100,
-            saturate: 100,
-            shadows: 0
+            saturate: 100
           };
           const defaultTransform = {
             rotate: 0,
@@ -472,52 +465,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     }
   };
 
-  // Apply shadows using canvas manipulation - targets darker areas of the image
-  const applyShadows = (ctx, width, height, shadowValue) => {
-    try {
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const data = imageData.data;
-      
-      // Shadow adjustment: -100 (darken shadows) to +100 (lighten shadows)
-      const adjustment = shadowValue / 100; // -1.0 to +1.0
-      
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        
-        // Calculate luminance (perceived brightness) - 0 to 255
-        const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-        
-        // Only affect darker pixels (shadows) - more aggressive threshold
-        // Pixels below 140 luminance are considered shadows
-        const shadowThreshold = 140;
-        
-        if (luminance < shadowThreshold) {
-          // Calculate shadow weight (0 to 1) - darker = higher weight
-          const shadowWeight = 1 - (luminance / shadowThreshold);
-          
-          if (adjustment < 0) {
-            // Darken shadows - more aggressive darkening
-            const darkenFactor = 1 + (adjustment * shadowWeight * 1.5);
-            data[i] = Math.max(0, r * darkenFactor);
-            data[i + 1] = Math.max(0, g * darkenFactor);
-            data[i + 2] = Math.max(0, b * darkenFactor);
-          } else {
-            // Lighten shadows - more aggressive lightening
-            const lightenAmount = adjustment * shadowWeight * 150;
-            data[i] = Math.min(255, r + lightenAmount);
-            data[i + 1] = Math.min(255, g + lightenAmount);
-            data[i + 2] = Math.min(255, b + lightenAmount);
-          }
-        }
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
-    } catch (error) {
-      console.warn('Could not apply shadow adjustment:', error);
-    }
-  };
 
   // Update image filter styles (for preview only)
   useEffect(() => {
@@ -542,8 +489,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       case 'contrast':
       case 'saturate':
         return 200;
-      case 'shadows':
-        return 100;
       default:
         return 100;
     }
@@ -551,9 +496,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
   // Get slider min value
   const getSliderMin = () => {
-    if (activeFilter === 'shadows') {
-      return -100;
-    }
     return 0;
   };
 
@@ -718,8 +660,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     setFilters({
       brightness: 100,
       contrast: 100,
-      saturate: 100,
-      shadows: 0
+      saturate: 100
     });
     setTransform({
       rotate: 0,
@@ -791,8 +732,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       setFilters({
         brightness: template.settings.brightness ?? 100,
         contrast: template.settings.contrast ?? 100,
-        saturate: template.settings.saturate ?? 100,
-        shadows: template.settings.shadows ?? 0
+        saturate: template.settings.saturate ?? 100
       });
       setTransform({
         rotate: template.settings.rotate ?? 0,
@@ -819,8 +759,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     const hasChanges = 
       filters.brightness !== 100 || 
       filters.contrast !== 100 || 
-      filters.saturate !== 100 || 
-      filters.shadows !== 0 ||
+      filters.saturate !== 100 ||
       transform.rotate !== 0 ||
       transform.flip_x !== 1 ||
       transform.flip_y !== 1 ||
@@ -928,13 +867,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             -sourceWidth / 2, -sourceHeight / 2, sourceWidth, sourceHeight  // Destination
           );
 
-          // Reset transforms for shadow application
+          // Reset transforms for final output
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          
-          // Step 6: Apply shadows if needed
-          if (filters.shadows !== 0) {
-            applyShadows(ctx, canvas.width, canvas.height, filters.shadows);
-          }
 
           // Step 7: Convert to blob and create File
           canvas.toBlob((blob) => {
@@ -976,7 +910,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           brightness: filters.brightness,
           contrast: filters.contrast,
           saturate: filters.saturate,
-          shadows: filters.shadows,
           rotate: transform.rotate,
           flip_x: transform.flip_x,
           flip_y: transform.flip_y
@@ -1054,13 +987,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         img.naturalHeight
       );
 
-      // Reset transforms for shadow application
+      // Reset transforms for final output
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-      // Apply shadows
-      if (filters.shadows !== 0) {
-        applyShadows(ctx, canvas.width, canvas.height, filters.shadows);
-      }
 
       // Convert to blob and create File
       canvas.toBlob((blob) => {
@@ -1174,7 +1102,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
           </DialogHeader>
 
-          <div className="flex flex-col md:flex-row h-auto md:flex-1 overflow-y-auto md:overflow-hidden min-h-0 pb-0">
+          <div className="ant-modal-body flex flex-col md:flex-row h-auto md:flex-1 overflow-y-auto md:overflow-hidden min-h-0 pb-0" style={{ scale: 1, outline: 'none' }}>
             {/* Sidebar */}
             <div className="w-full md:w-[300px] bg-slate-800/50 backdrop-blur-sm md:border-r border-slate-700/50 overflow-y-auto overflow-x-hidden px-2 pt-2 pb-1 sm:p-4 space-y-2 sm:space-y-6 max-h-none md:max-h-full">
               {/* Template Section */}
@@ -1304,12 +1232,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     </h3>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-slate-400">
-                      <span className="capitalize">{activeFilter === 'shadows' ? 'Shadows' : activeFilter}</span>
-                      <span>
-                        {activeFilter === 'shadows' 
-                          ? `${sliderValue > 0 ? '+' : ''}${sliderValue}` 
-                          : `${sliderValue}%`}
-                      </span>
+                      <span className="capitalize">{activeFilter}</span>
+                      <span>{sliderValue}%</span>
                     </div>
                     <div className="relative">
                       {/* Tick marks */}
@@ -1368,7 +1292,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       { id: 'brightness', icon: BrightnessIcon, label: 'Brightness' },
                       { id: 'contrast', icon: Contrast, label: 'Contrast' },
                       { id: 'saturate', icon: Palette, label: 'Saturation' },
-                      { id: 'shadows', icon: Droplets, label: 'Shadows' },
                     ].map(({ id, icon: Icon, label }) => (
                       <button
                         key={id}
@@ -1390,10 +1313,12 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           </div>
 
             {/* Main Content */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 px-2 pt-6 pb-[0.10rem] sm:p-4 h-[400px] md:h-full overflow-hidden mt-auto md:mt-0 mb-0" style={{ background: isCropping ? '#f8fafc' : 'transparent' }}>
+            <div className="ant-col ant-col-10 w-full md:flex-1 flex flex-col min-w-0 h-[400px] md:h-full overflow-hidden mt-auto md:mt-0 mb-0" style={{ paddingLeft: '8px', paddingRight: '8px', scale: 1, outline: 'none', background: isCropping ? '#f8fafc' : 'transparent' }}>
               <div 
-                className="w-full h-full rounded-lg overflow-hidden flex items-center justify-center" 
+                className="image-edit-container w-full h-full rounded-lg overflow-hidden flex items-center justify-center" 
                 style={{ 
+                  scale: 1,
+                  outline: 'none',
                   background: isCropping ? '#ffffff' : '#0f172a',
                   border: isCropping ? '2px solid #e2e8f0' : '1px solid #334155'
                 }}

@@ -36351,7 +36351,7 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
             ) : (
-              <Button variant="default" size="sm" className="gap-2 w-fit" onClick={handleConnectEbay}>
+              <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectEbay}>
                 <Check className="h-4 w-4" />
                 Connect eBay Account
               </Button>
@@ -36424,7 +36424,7 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
             ) : (
-              <Button variant="default" size="sm" className="gap-2 w-fit" onClick={handleConnectFacebook}>
+              <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectFacebook}>
                 <Check className="h-4 w-4" />
                 Connect Facebook Account
               </Button>
@@ -36593,7 +36593,7 @@ export default function CrosslistComposer() {
                 <Button 
                   variant="default" 
                   size="sm" 
-                  className="gap-2 w-fit" 
+                  className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" 
                   onClick={() => {
                     // Open Mercari login popup via extension
                     window.open('https://www.mercari.com/mypage/', 'mercari-login', 'width=600,height=700');
@@ -41653,30 +41653,48 @@ export default function CrosslistComposer() {
                 <button
                   type="button"
                   onClick={() => setActiveForm("general")}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all cursor-pointer ${
                     activeForm === "general"
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-foreground"
+                      ? "text-primary-foreground shadow-md"
+                      : "bg-gray-50 dark:bg-gray-800 text-foreground"
                   }`}
+                  style={activeForm === "general" ? { backgroundColor: "rgba(34, 197, 94, 1)" } : undefined}
+                  onMouseEnter={(e) => {
+                    if (activeForm !== "general") {
+                      e.currentTarget.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeForm !== "general") {
+                      e.currentTarget.style.backgroundColor = "";
+                    }
+                  }}
                 >
                   <span className="font-medium">Universal Form</span>
                 </button>
                 {MARKETPLACES.map((m) => {
                   const active = activeForm === m.id;
-                  const isFacebook = m.id === "facebook";
                   return (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() => setActiveForm(m.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all cursor-pointer ${
                         active
-                          ? isFacebook
-                            ? "text-primary-foreground shadow-md"
-                            : "bg-primary text-primary-foreground shadow-md"
-                          : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-foreground"
+                          ? "text-primary-foreground shadow-md"
+                          : "bg-gray-50 dark:bg-gray-800 text-foreground"
                       }`}
-                      style={active && isFacebook ? { backgroundColor: "rgba(34, 197, 94, 1)" } : undefined}
+                      style={active ? { backgroundColor: "rgba(34, 197, 94, 1)" } : undefined}
+                      onMouseEnter={(e) => {
+                        if (!active) {
+                          e.currentTarget.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) {
+                          e.currentTarget.style.backgroundColor = "";
+                        }
+                      }}
                     >
                       <img src={m.icon} alt={m.label} className="w-5 h-5" />
                       <span className="font-medium">{m.label}</span>
@@ -41740,7 +41758,7 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="default" size="sm" className="gap-2 w-fit" onClick={handleConnectEbay}>
+                        <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectEbay}>
                           <Check className="h-4 w-4" />
                           Connect eBay Account
                         </Button>
@@ -41807,7 +41825,7 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="default" size="sm" className="gap-2 w-fit" onClick={handleConnectFacebook}>
+                        <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectFacebook}>
                           <Check className="h-4 w-4" />
                           Connect Facebook Account
                         </Button>
@@ -41918,7 +41936,7 @@ export default function CrosslistComposer() {
                         <Button 
                           variant="default" 
                           size="sm" 
-                          className="gap-2 w-fit" 
+                          className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" 
                           onClick={() => {
                             window.open('https://www.mercari.com/mypage/', 'mercari-login', 'width=600,height=700');
                             toast({
