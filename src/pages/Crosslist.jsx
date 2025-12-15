@@ -79,9 +79,9 @@ const MARKETPLACES = [
 ];
 
 const STATUS_COLORS = {
-  available: "bg-blue-100 text-blue-600 border border-blue-200",
-  listed:    "bg-green-100 text-green-600 border border-green-200",
-  sold:      "bg-gray-100 text-gray-600 border border-gray-200",
+  available: "bg-blue-100 text-blue-600 border border-blue-200 hover:bg-blue-100",
+  listed:    "bg-green-100 text-green-600 border border-green-200 hover:bg-green-100",
+  sold:      "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-100",
 };
 
 const STATUS_LABELS = {

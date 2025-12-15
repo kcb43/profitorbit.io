@@ -47,9 +47,9 @@ const sourceIcons = {
 };
 
 const statusColors = {
-  available: "bg-blue-100 text-blue-800 border border-blue-200",
-  listed: "bg-green-100 text-green-800 border border-green-200",
-  sold: "bg-gray-100 text-gray-800 border border-gray-200",
+  available: "bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-100",
+  listed: "bg-green-100 text-green-800 border border-green-200 hover:bg-green-100",
+  sold: "bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-100",
 };
 
 const statusLabels = {
