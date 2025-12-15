@@ -45,7 +45,7 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="overflow-hidden p-0 w-[1079px] max-w-[95vw]"
+        className="overflow-hidden p-0 w-auto max-w-[95vw]"
         style={{ 
           position: 'fixed !important',
           left: '50% !important',
@@ -66,10 +66,11 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
           {/* Image Section - No padding, image dictates size */}
           <div className="order-1 md:order-2 min-h-[256px] md:min-h-0 md:flex-shrink-0 md:flex md:items-center md:justify-center" style={{ padding: 0, margin: 0, lineHeight: 0 }}>
             {item.images && item.images.length > 1 ? (
-              <div className="w-full h-64 md:w-auto md:h-auto" style={{ lineHeight: 0, maxHeight: '95vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="w-full h-64 md:w-auto md:h-auto md:max-w-none" style={{ lineHeight: 0, maxHeight: '95vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ImageCarousel
                   images={item.images}
-                  imageClassName="object-contain md:max-h-[95vh] md:w-auto md:h-auto"
+                  className="md:w-auto md:h-auto"
+                  imageClassName="object-contain md:max-h-[95vh] md:w-auto md:h-auto md:max-w-none"
                   counterPosition="bottom"
                 />
               </div>
@@ -78,13 +79,13 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                 src={item.image_url || DEFAULT_IMAGE_URL}
                 alt={item.item_name}
                 fallback={DEFAULT_IMAGE_URL}
-                className="w-full h-64 md:w-auto md:h-auto"
+                className="w-full h-64 md:w-auto md:h-auto md:max-w-none"
                 style={{ 
                   objectFit: 'contain', 
                   display: 'block', 
                   lineHeight: 0,
                   maxHeight: '95vh',
-                  maxWidth: 'calc(95vw - 450px)'
+                  maxWidth: 'none'
                 }}
               />
             )}
