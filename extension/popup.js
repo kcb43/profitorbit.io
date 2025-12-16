@@ -59,8 +59,16 @@ function renderMarketplaces(status) {
         <div class="marketplace-name" style="color: ${marketplace.color}">
           ${marketplace.name}
         </div>
-        <div class="status-badge ${isConnected ? 'status-connected' : 'status-disconnected'}">
-          ${isConnected ? '✓ Connected' : '✗ Not Connected'}
+        <div class="status-section">
+          ${!isConnected ? `
+            <button class="connect-button" data-marketplace="${marketplace.id}">
+              Connect
+            </button>
+          ` : `
+            <div class="status-badge status-connected">
+              ✓ Connected
+            </div>
+          `}
         </div>
       </div>
       ${isConnected && marketplaceStatus.userName ? `
@@ -70,6 +78,38 @@ function renderMarketplaces(status) {
       ` : ''}
     `;
     
+    // Add click handler for connect button
+    const connectButton = card.querySelector('.connect-button');
+    if (connectButton) {
+      connectButton.addEventListener('click', () => {
+        handleConnectMarketplace(marketplace.id);
+      });
+    }
+    
     marketplacesDiv.appendChild(card);
   });
+}
+
+function handleConnectMarketplace(marketplaceId) {
+  // Get the marketplace URL based on ID
+  const marketplaceUrls = {
+    mercari: 'https://www.mercari.com',
+    facebook: 'https://www.facebook.com',
+    poshmark: 'https://www.poshmark.com',
+    ebay: 'https://www.ebay.com',
+    etsy: 'https://www.etsy.com'
+  };
+  
+  const url = marketplaceUrls[marketplaceId] || 'https://www.mercari.com';
+  
+  // Open marketplace in a new tab
+  chrome.tabs.create({
+    url: url,
+    active: true
+  });
+  
+  // Refresh status after a short delay to check if user logged in
+  setTimeout(() => {
+    checkAllStatus();
+  }, 2000);
 }
