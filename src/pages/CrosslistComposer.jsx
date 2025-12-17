@@ -33132,6 +33132,10 @@ export default function CrosslistComposer() {
   const [mercariBrandSearchDebounced, setMercariBrandSearchDebounced] = useState("");
   const [etsyBrandSearchOpen, setEtsyBrandSearchOpen] = useState(false);
   const [categorySearchOpen, setCategorySearchOpen] = useState(false);
+  const [categorySearchOpenMobile, setCategorySearchOpenMobile] = useState(false);
+  const [categorySearchOpenDesktop, setCategorySearchOpenDesktop] = useState(false);
+  const [generalCategorySearchOpenMobile, setGeneralCategorySearchOpenMobile] = useState(false);
+  const [generalCategorySearchOpenDesktop, setGeneralCategorySearchOpenDesktop] = useState(false);
   const [generalCategorySearchValue, setGeneralCategorySearchValue] = useState("");
   const [ebayCategorySearchValue, setEbayCategorySearchValue] = useState("");
   const [facebookCategorySearchValue, setFacebookCategorySearchValue] = useState("");
@@ -37330,10 +37334,11 @@ export default function CrosslistComposer() {
                   ) : sortedCategories.length > 0 ? (
                     (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari") ? (
                       <Popover 
-                        open={categorySearchOpen && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")} 
+                        open={generalCategorySearchOpenMobile && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")} 
                         onOpenChange={(open) => {
                           if (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari") {
-                            setCategorySearchOpen(open);
+                            setGeneralCategorySearchOpenMobile(open);
+                            setGeneralCategorySearchOpenDesktop(false); // Close desktop if mobile opens
                             if (!open) {
                               setGeneralCategorySearchValue("");
                               setFacebookCategorySearchValue("");
@@ -37341,12 +37346,13 @@ export default function CrosslistComposer() {
                             }
                           }
                         }}
+                        modal={true}
                       >
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             role="combobox"
-                            aria-expanded={categorySearchOpen && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")}
+                            aria-expanded={generalCategorySearchOpenMobile && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")}
                             className="w-full justify-between"
                           >
                             {(activeForm === "general" ? generalForm.category : activeForm === "facebook" ? facebookForm.category : mercariForm.category) || generalCategoryPath.length > 0
@@ -37412,7 +37418,8 @@ export default function CrosslistComposer() {
                                             setGeneralCategorySearchValue("");
                                             setFacebookCategorySearchValue("");
                                             setMercariCategorySearchValue("");
-                                            setCategorySearchOpen(false);
+                                            setGeneralCategorySearchOpenMobile(false);
+                                            setGeneralCategorySearchOpenDesktop(false);
                                           }}
                                         >
                                           <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -37477,7 +37484,8 @@ export default function CrosslistComposer() {
                                           setGeneralCategorySearchValue("");
                                           setFacebookCategorySearchValue("");
                                           setMercariCategorySearchValue("");
-                                          setCategorySearchOpen(false);
+                                          setGeneralCategorySearchOpenMobile(false);
+                                          setGeneralCategorySearchOpenDesktop(false);
                                         }}
                                       >
                                         <Check
@@ -38247,21 +38255,23 @@ export default function CrosslistComposer() {
                     ) : sortedCategories.length > 0 ? (
                       activeForm === "ebay" ? (
                         <Popover 
-                          open={categorySearchOpen && activeForm === "ebay"} 
+                          open={categorySearchOpenMobile && activeForm === "ebay"} 
                           onOpenChange={(open) => {
                             if (activeForm === "ebay") {
-                              setCategorySearchOpen(open);
+                              setCategorySearchOpenMobile(open);
+                              setCategorySearchOpenDesktop(false); // Close desktop if mobile opens
                               if (!open) {
                                 setEbayCategorySearchValue("");
                               }
                             }
                           }}
+                          modal={true}
                         >
                           <PopoverTrigger asChild>
                             <Button
                               variant="outline"
                               role="combobox"
-                              aria-expanded={categorySearchOpen && activeForm === "ebay"}
+                              aria-expanded={categorySearchOpenMobile && activeForm === "ebay"}
                               className="w-full justify-between"
                             >
                               {ebayForm.categoryName || selectedCategoryPath.length > 0
@@ -38305,7 +38315,8 @@ export default function CrosslistComposer() {
                                               handleMarketplaceChange("ebay", "categoryName", fullPath);
                                               setSelectedCategoryPath([]);
                                               setEbayCategorySearchValue("");
-                                              setCategorySearchOpen(false);
+                                              setCategorySearchOpenMobile(false);
+                                              setCategorySearchOpenDesktop(false);
                                             }}
                                           >
                                             <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -38359,7 +38370,8 @@ export default function CrosslistComposer() {
                                               setSelectedCategoryPath(newPath);
                                             }
                                             setEbayCategorySearchValue("");
-                                            setCategorySearchOpen(false);
+                                            setCategorySearchOpenMobile(false);
+                                            setCategorySearchOpenDesktop(false);
                                           }}
                                         >
                                           <Check
@@ -40011,21 +40023,23 @@ export default function CrosslistComposer() {
                 
                 {/* Mercari Category Dropdown - Searchable with Popover */}
                 <Popover 
-                  open={categorySearchOpen && activeForm === "mercari"} 
+                  open={generalCategorySearchOpenMobile && activeForm === "mercari"} 
                   onOpenChange={(open) => {
                     if (activeForm === "mercari") {
-                      setCategorySearchOpen(open);
+                      setGeneralCategorySearchOpenMobile(open);
+                      setGeneralCategorySearchOpenDesktop(false); // Close desktop if mobile opens
                       if (!open) {
                         setMercariCategorySearchValue("");
                       }
                     }
                   }}
+                  modal={true}
                 >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
-                      aria-expanded={categorySearchOpen && activeForm === "mercari"}
+                      aria-expanded={generalCategorySearchOpenMobile && activeForm === "mercari"}
                       className="w-full justify-between"
                     >
                       {mercariForm.mercariCategory || mercariCategoryPath.length > 0
@@ -40085,7 +40099,8 @@ export default function CrosslistComposer() {
                                         setMercariCategoryPath(newPath);
                                       }
                                       setMercariCategorySearchValue("");
-                                      setCategorySearchOpen(false);
+                                      setGeneralCategorySearchOpenMobile(false);
+                                      setGeneralCategorySearchOpenDesktop(false);
                                     }}
                                   >
                                     <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -40142,7 +40157,8 @@ export default function CrosslistComposer() {
                                     setMercariCategoryPath(newPath);
                                   }
                                   setMercariCategorySearchValue("");
-                                  setCategorySearchOpen(false);
+                                  setGeneralCategorySearchOpenMobile(false);
+                                  setGeneralCategorySearchOpenDesktop(false);
                                 }}
                               >
                                 <Check
@@ -40978,21 +40994,23 @@ export default function CrosslistComposer() {
                     </div>
                   ) : sortedCategories.length > 0 ? (
                     <Popover 
-                      open={categorySearchOpen && activeForm === "facebook"} 
+                      open={generalCategorySearchOpenMobile && activeForm === "facebook"} 
                       onOpenChange={(open) => {
                         if (activeForm === "facebook") {
-                          setCategorySearchOpen(open);
+                          setGeneralCategorySearchOpenMobile(open);
+                          setGeneralCategorySearchOpenDesktop(false); // Close desktop if mobile opens
                           if (!open) {
                             setFacebookCategorySearchValue("");
                           }
                         }
                       }}
+                      modal={true}
                     >
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           role="combobox"
-                          aria-expanded={categorySearchOpen && activeForm === "facebook"}
+                          aria-expanded={generalCategorySearchOpenMobile && activeForm === "facebook"}
                           className="w-full justify-between"
                         >
                           {facebookForm.category || generalForm.category || generalCategoryPath.length > 0
@@ -41036,7 +41054,8 @@ export default function CrosslistComposer() {
                                           handleMarketplaceChange("facebook", "categoryId", categoryId);
                                           setGeneralCategoryPath([]);
                                           setFacebookCategorySearchValue("");
-                                          setCategorySearchOpen(false);
+                                          setGeneralCategorySearchOpenMobile(false);
+                                          setGeneralCategorySearchOpenDesktop(false);
                                         }}
                                       >
                                         <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -41090,7 +41109,8 @@ export default function CrosslistComposer() {
                                           setGeneralCategoryPath(newPath);
                                         }
                                         setFacebookCategorySearchValue("");
-                                        setCategorySearchOpen(false);
+                                        setGeneralCategorySearchOpenMobile(false);
+                                        setGeneralCategorySearchOpenDesktop(false);
                                       }}
                                     >
                                       <Check
@@ -42665,10 +42685,11 @@ export default function CrosslistComposer() {
                           ) : sortedCategories.length > 0 ? (
                             (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari") ? (
                               <Popover 
-                                open={categorySearchOpen && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")} 
+                                open={generalCategorySearchOpenDesktop && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")} 
                                 onOpenChange={(open) => {
                                   if (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari") {
-                                    setCategorySearchOpen(open);
+                                    setGeneralCategorySearchOpenDesktop(open);
+                                    setGeneralCategorySearchOpenMobile(false); // Close mobile if desktop opens
                                     if (!open) {
                                       setGeneralCategorySearchValue("");
                                       setFacebookCategorySearchValue("");
@@ -42676,12 +42697,13 @@ export default function CrosslistComposer() {
                                     }
                                   }
                                 }}
+                                modal={true}
                               >
                                 <PopoverTrigger asChild>
                                   <Button
                                     variant="outline"
                                     role="combobox"
-                                    aria-expanded={categorySearchOpen && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")}
+                                    aria-expanded={generalCategorySearchOpenDesktop && (activeForm === "general" || activeForm === "facebook" || activeForm === "mercari")}
                                     className="w-full justify-between"
                                   >
                                     {(activeForm === "general" ? generalForm.category : activeForm === "facebook" ? facebookForm.category : mercariForm.category) || generalCategoryPath.length > 0
@@ -42746,7 +42768,8 @@ export default function CrosslistComposer() {
                                                     setGeneralCategorySearchValue("");
                                                     setFacebookCategorySearchValue("");
                                                     setMercariCategorySearchValue("");
-                                                    setCategorySearchOpen(false);
+                                                    setGeneralCategorySearchOpenMobile(false);
+                                                    setGeneralCategorySearchOpenDesktop(false);
                                                   }}
                                                 >
                                                   <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -42810,7 +42833,8 @@ export default function CrosslistComposer() {
                                                   setGeneralCategorySearchValue("");
                                                   setFacebookCategorySearchValue("");
                                                   setMercariCategorySearchValue("");
-                                                  setCategorySearchOpen(false);
+                                                  setGeneralCategorySearchOpenMobile(false);
+                                                  setGeneralCategorySearchOpenDesktop(false);
                                                 }}
                                               >
                                                 <Check
@@ -43571,21 +43595,23 @@ export default function CrosslistComposer() {
                             ) : sortedCategories.length > 0 ? (
                               activeForm === "ebay" ? (
                                 <Popover 
-                                  open={categorySearchOpen && activeForm === "ebay"} 
+                                  open={categorySearchOpenDesktop && activeForm === "ebay"} 
                                   onOpenChange={(open) => {
                                     if (activeForm === "ebay") {
-                                      setCategorySearchOpen(open);
+                                      setCategorySearchOpenDesktop(open);
+                                      setCategorySearchOpenMobile(false); // Close mobile if desktop opens
                                       if (!open) {
                                         setEbayCategorySearchValue("");
                                       }
                                     }
                                   }}
+                                  modal={true}
                                 >
                                   <PopoverTrigger asChild>
                                     <Button
                                       variant="outline"
                                       role="combobox"
-                                      aria-expanded={categorySearchOpen && activeForm === "ebay"}
+                                      aria-expanded={categorySearchOpenDesktop && activeForm === "ebay"}
                                       className="w-full justify-between"
                                     >
                                       {ebayForm.categoryName || selectedCategoryPath.length > 0
@@ -43628,7 +43654,8 @@ export default function CrosslistComposer() {
                                                       handleMarketplaceChange("ebay", "categoryName", fullPath);
                                                       setSelectedCategoryPath([]);
                                                       setEbayCategorySearchValue("");
-                                                      setCategorySearchOpen(false);
+                                                      setCategorySearchOpenMobile(false);
+                                                      setCategorySearchOpenDesktop(false);
                                                     }}
                                                   >
                                                     <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -43681,7 +43708,8 @@ export default function CrosslistComposer() {
                                                       setSelectedCategoryPath(newPath);
                                                     }
                                                     setEbayCategorySearchValue("");
-                                                    setCategorySearchOpen(false);
+                                                    setCategorySearchOpenMobile(false);
+                                                    setCategorySearchOpenDesktop(false);
                                                   }}
                                                 >
                                                   <Check
@@ -45296,21 +45324,23 @@ export default function CrosslistComposer() {
                         )}
                         
                         <Popover 
-                          open={categorySearchOpen && activeForm === "mercari"} 
+                          open={generalCategorySearchOpenDesktop && activeForm === "mercari"} 
                           onOpenChange={(open) => {
                             if (activeForm === "mercari") {
-                              setCategorySearchOpen(open);
+                              setGeneralCategorySearchOpenDesktop(open);
+                              setGeneralCategorySearchOpenMobile(false); // Close mobile if desktop opens
                               if (!open) {
                                 setMercariCategorySearchValue("");
                               }
                             }
                           }}
+                          modal={true}
                         >
                           <PopoverTrigger asChild>
                             <Button
                               variant="outline"
                               role="combobox"
-                              aria-expanded={categorySearchOpen && activeForm === "mercari"}
+                              aria-expanded={generalCategorySearchOpenDesktop && activeForm === "mercari"}
                               className="w-full justify-between"
                             >
                               {mercariForm.mercariCategory || mercariCategoryPath.length > 0
@@ -45367,7 +45397,8 @@ export default function CrosslistComposer() {
                                                 setMercariCategoryPath(newPath);
                                               }
                                               setMercariCategorySearchValue("");
-                                              setCategorySearchOpen(false);
+                                              setGeneralCategorySearchOpenMobile(false);
+                                              setGeneralCategorySearchOpenDesktop(false);
                                             }}
                                           >
                                             <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -45417,7 +45448,8 @@ export default function CrosslistComposer() {
                                             setMercariCategoryPath(newPath);
                                           }
                                           setMercariCategorySearchValue("");
-                                          setCategorySearchOpen(false);
+                                          setGeneralCategorySearchOpenMobile(false);
+                                          setGeneralCategorySearchOpenDesktop(false);
                                         }}
                                       >
                                         <Check
@@ -46220,21 +46252,23 @@ export default function CrosslistComposer() {
                             </div>
                           ) : sortedCategories.length > 0 ? (
                             <Popover 
-                              open={categorySearchOpen && activeForm === "facebook"} 
+                              open={generalCategorySearchOpenDesktop && activeForm === "facebook"} 
                               onOpenChange={(open) => {
                                 if (activeForm === "facebook") {
-                                  setCategorySearchOpen(open);
+                                  setGeneralCategorySearchOpenDesktop(open);
+                                  setGeneralCategorySearchOpenMobile(false); // Close mobile if desktop opens
                                   if (!open) {
                                     setFacebookCategorySearchValue("");
                                   }
                                 }
                               }}
+                              modal={true}
                             >
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="outline"
                                   role="combobox"
-                                  aria-expanded={categorySearchOpen && activeForm === "facebook"}
+                                  aria-expanded={generalCategorySearchOpenDesktop && activeForm === "facebook"}
                                   className="w-full justify-between"
                                 >
                                   {facebookForm.category || generalForm.category || generalCategoryPath.length > 0
@@ -46277,7 +46311,8 @@ export default function CrosslistComposer() {
                                                   handleMarketplaceChange("facebook", "categoryId", categoryId);
                                                   setGeneralCategoryPath([]);
                                                   setFacebookCategorySearchValue("");
-                                                  setCategorySearchOpen(false);
+                                                  setGeneralCategorySearchOpenMobile(false);
+                                                  setGeneralCategorySearchOpenDesktop(false);
                                                 }}
                                               >
                                                 <Check className="mr-2 h-4 w-4 opacity-0" />
@@ -46330,7 +46365,8 @@ export default function CrosslistComposer() {
                                                   setGeneralCategoryPath(newPath);
                                                 }
                                                 setFacebookCategorySearchValue("");
-                                                setCategorySearchOpen(false);
+                                                setGeneralCategorySearchOpenMobile(false);
+                                                setGeneralCategorySearchOpenDesktop(false);
                                               }}
                                             >
                                               <Check
