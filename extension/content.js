@@ -198,35 +198,92 @@ function updateLoginStatus() {
 // Store captured Mercari API headers (from webRequest API in background script)
 let capturedMercariHeaders = null;
 
+// Helper to check if extension context is still valid
+const checkExtensionContext = () => {
+  try {
+    // Try to access chrome.runtime.id - if context is invalidated, this will throw
+    if (chrome && chrome.runtime && chrome.runtime.id) {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
+// Helper to safely access chrome.storage with invalidated context handling
+const safeChromeStorageGet = (keys, callback) => {
+  if (!checkExtensionContext()) {
+    console.warn('⚠️ [CHROME STORAGE] Extension context invalidated');
+    if (callback) callback(null);
+    return;
+  }
+  
+  try {
+    if (!chrome || !chrome.storage || !chrome.storage.local) {
+      console.warn('⚠️ [CHROME STORAGE] chrome.storage.local not available');
+      if (callback) callback(null);
+      return;
+    }
+    
+    chrome.storage.local.get(keys, (result) => {
+      try {
+        if (chrome.runtime.lastError) {
+          const errorMsg = chrome.runtime.lastError.message || '';
+          if (errorMsg.includes('invalidated') || errorMsg.includes('Extension context')) {
+            console.warn('⚠️ [CHROME STORAGE] Extension context invalidated');
+            if (callback) callback(null);
+            return;
+          }
+          console.warn('⚠️ [CHROME STORAGE] Error:', errorMsg);
+          if (callback) callback(null);
+          return;
+        }
+        
+        if (callback) callback(result);
+      } catch (error) {
+        if (error.message && error.message.includes('invalidated')) {
+          console.warn('⚠️ [CHROME STORAGE] Extension context invalidated');
+        } else {
+          console.error('❌ [CHROME STORAGE] Error processing result:', error);
+        }
+        if (callback) callback(null);
+      }
+    });
+  } catch (error) {
+    if (error.message && error.message.includes('invalidated')) {
+      console.warn('⚠️ [CHROME STORAGE] Extension context invalidated');
+    } else {
+      console.error('❌ [CHROME STORAGE] Error accessing chrome.storage:', error);
+    }
+    if (callback) callback(null);
+  }
+};
+
 // Load headers from chrome.storage on startup and periodically refresh
 if (MARKETPLACE === 'mercari') {
+  let headerRefreshInterval = null;
+  let extensionContextValid = true;
+  
   const loadHeadersFromStorage = () => {
-    try {
-      if (!chrome || !chrome.storage || !chrome.storage.local) {
-        console.warn('⚠️ [HEADER LOAD] chrome.storage.local not available');
+    safeChromeStorageGet(['mercariApiHeaders'], (result) => {
+      if (!result) {
+        // Context invalidated or error - stop refreshing
+        extensionContextValid = false;
+        if (headerRefreshInterval) {
+          clearInterval(headerRefreshInterval);
+          headerRefreshInterval = null;
+        }
         return;
       }
       
-      chrome.storage.local.get(['mercariApiHeaders'], (result) => {
-        try {
-          if (chrome.runtime.lastError) {
-            console.warn('⚠️ [HEADER LOAD] Error loading headers:', chrome.runtime.lastError.message);
-            return;
-          }
-          
-          if (result && result.mercariApiHeaders) {
-            capturedMercariHeaders = result.mercariApiHeaders;
-            console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
-          } else {
-            console.log('📡 [HEADER LOAD] No headers found in storage yet');
-          }
-        } catch (error) {
-          console.error('❌ [HEADER LOAD] Error processing headers:', error);
-        }
-      });
-    } catch (error) {
-      console.error('❌ [HEADER LOAD] Error accessing chrome.storage:', error);
-    }
+      if (result.mercariApiHeaders) {
+        capturedMercariHeaders = result.mercariApiHeaders;
+        console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
+      } else {
+        console.log('📡 [HEADER LOAD] No headers found in storage yet');
+      }
+    });
   };
   
   // Load on startup (with a small delay to ensure chrome.storage is available)
@@ -239,7 +296,17 @@ if (MARKETPLACE === 'mercari') {
   }
   
   // Refresh headers every 5 seconds (in case new requests come in)
-  setInterval(loadHeadersFromStorage, 5000);
+  // Only set interval if extension context is valid
+  if (checkExtensionContext()) {
+    headerRefreshInterval = setInterval(() => {
+      if (extensionContextValid) {
+        loadHeadersFromStorage();
+      } else {
+        clearInterval(headerRefreshInterval);
+        headerRefreshInterval = null;
+      }
+    }, 5000);
+  }
   
   console.log('📡 [HEADER INTERCEPT] Ready to receive headers from webRequest API');
 }
@@ -790,8 +857,8 @@ async function uploadMercariPhotos(photos) {
     console.log('🔍 [PHOTO UPLOAD] Loading headers from storage...');
     let mercariHeaders = null;
     await new Promise((resolve) => {
-      chrome.storage.local.get(['mercariApiHeaders'], (result) => {
-        if (result.mercariApiHeaders) {
+      safeChromeStorageGet(['mercariApiHeaders'], (result) => {
+        if (result && result.mercariApiHeaders) {
           mercariHeaders = result.mercariApiHeaders;
           console.log('📡 [PHOTO UPLOAD] Loaded Mercari API headers from storage:', mercariHeaders);
         } else {
@@ -951,8 +1018,8 @@ async function uploadMercariPhotos(photos) {
             // Reload headers from storage
             let retryHeaders = null;
             await new Promise((resolve) => {
-              chrome.storage.local.get(['mercariApiHeaders'], (result) => {
-                if (result.mercariApiHeaders) {
+              safeChromeStorageGet(['mercariApiHeaders'], (result) => {
+                if (result && result.mercariApiHeaders) {
                   retryHeaders = { ...result.mercariApiHeaders };
                   delete retryHeaders['content-type'];
                   console.log(`📡 [PHOTO UPLOAD] Reloaded headers from storage for retry`);
@@ -1054,8 +1121,8 @@ async function uploadMercariPhotos(photos) {
             // Reload headers from storage to ensure we have the latest
             let kandoHeaders = null;
             await new Promise((resolve) => {
-              chrome.storage.local.get(['mercariApiHeaders'], (result) => {
-                if (result.mercariApiHeaders) {
+              safeChromeStorageGet(['mercariApiHeaders'], (result) => {
+                if (result && result.mercariApiHeaders) {
                   kandoHeaders = { ...result.mercariApiHeaders };
                   delete kandoHeaders['content-type'];
                 }
@@ -1144,8 +1211,8 @@ async function uploadMercariPhotos(photos) {
         // Reload headers from storage to ensure we have the latest
         let sellQueryHeaders = null;
         await new Promise((resolve) => {
-          chrome.storage.local.get(['mercariApiHeaders'], (result) => {
-            if (result.mercariApiHeaders) {
+          safeChromeStorageGet(['mercariApiHeaders'], (result) => {
+            if (result && result.mercariApiHeaders) {
               sellQueryHeaders = { ...result.mercariApiHeaders };
               // Set content-type to application/json for GET request
               sellQueryHeaders['content-type'] = 'application/json';
