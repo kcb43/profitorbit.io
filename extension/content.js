@@ -258,8 +258,17 @@ async function createListing(listingData) {
 // Mercari-specific listing automation
 async function createMercariListing(listingData) {
   try {
+    console.log('🚀 [MERCARI] Starting listing creation...');
+    console.log('📋 [MERCARI] Listing data:', {
+      title: listingData.title,
+      price: listingData.price,
+      photosCount: listingData.photos?.length || 0,
+      category: listingData.mercariCategory
+    });
+    
     // Navigate to sell page if not already there
     if (!window.location.href.includes('/sell')) {
+      console.log('🌐 [MERCARI] Navigating to sell page...');
       window.location.href = 'https://www.mercari.com/sell/';
       
       // Wait for page to load, then retry
@@ -269,11 +278,14 @@ async function createMercariListing(listingData) {
       return { success: false, error: 'Navigating to sell page...', retrying: true };
     }
     
+    console.log('⏳ [MERCARI] Waiting for form to load...');
     // Wait for form to be ready (use actual Mercari selectors)
     await waitForElement('[data-testid="Title"], #sellName', 10000);
+    console.log('✅ [MERCARI] Form loaded, starting to fill fields...');
     
     // Fill in form fields
     const fillResult = await fillMercariForm(listingData);
+    console.log('✅ [MERCARI] Form fields filled successfully');
     
     // Wait a bit for all changes to take effect
     await sleep(2000);
@@ -281,17 +293,21 @@ async function createMercariListing(listingData) {
     // Upload photos if present (using extension method with Mercari's GraphQL API)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
     if (hasPhotos) {
+      console.log(`📸 [MERCARI] Starting photo upload for ${listingData.photos.length} photo(s)...`);
       try {
         const uploadResult = await uploadMercariPhotos(listingData.photos);
         if (!uploadResult.success) {
+          console.error('❌ [MERCARI] Photo upload failed:', uploadResult.error);
           return {
             success: false,
             error: `Photo upload failed: ${uploadResult.error}`,
             requiresManualPhotoUpload: true
           };
         }
+        console.log(`✅ [MERCARI] All photos uploaded successfully! Upload IDs: ${uploadResult.uploadIds.join(', ')}`);
         // Upload IDs are stored in window.__mercariUploadIds for form submission
       } catch (error) {
+        console.error('❌ [MERCARI] Photo upload error:', error);
         return {
           success: false,
           error: `Photo upload error: ${error.message}`,
@@ -305,6 +321,7 @@ async function createMercariListing(listingData) {
     const photosInData = listingData.photos && listingData.photos.length > 0;
     
     if (photoCount === 0 && !photosInData) {
+      console.log('⚠️ [MERCARI] No photos provided, manual upload required');
       return {
         success: true,
         message: 'Form filled successfully. Please upload at least one photo manually and click the List button.',
@@ -313,12 +330,20 @@ async function createMercariListing(listingData) {
       };
     }
     
+    console.log('📤 [MERCARI] Submitting form...');
     // Submit the form (only if photos are present)
     const submitResult = await submitMercariForm();
+    
+    if (submitResult.success) {
+      console.log('✅ [MERCARI] Listing created successfully!', submitResult.listingUrl);
+    } else {
+      console.error('❌ [MERCARI] Form submission failed:', submitResult.error);
+    }
     
     return submitResult;
     
   } catch (error) {
+    console.error('❌ [MERCARI] Error during listing creation:', error);
     return { success: false, error: error.message };
   }
 }
@@ -613,10 +638,14 @@ async function typeIntoMercariDropdown(testId, text) {
 // Upload photos to Mercari using GraphQL API
 async function uploadMercariPhotos(photos) {
   try {
+    console.log('📸 [PHOTO UPLOAD] Starting photo upload process...');
+    
     if (!photos || photos.length === 0) {
+      console.log('⚠️ [PHOTO UPLOAD] No photos to upload');
       return { success: true, uploadIds: [] };
     }
 
+    console.log(`🔍 [PHOTO UPLOAD] Extracting authentication tokens...`);
     // Extract auth tokens from page
     let authToken = localStorage.getItem('auth_token') ||
                    localStorage.getItem('token') ||
@@ -626,6 +655,7 @@ async function uploadMercariPhotos(photos) {
 
     // If not found, check cookies for JWT tokens (they start with 'eyJ')
     if (!authToken) {
+      console.log('🔍 [PHOTO UPLOAD] Checking cookies for auth token...');
       const cookies = document.cookie.split(';');
       for (const cookie of cookies) {
         const [name, value] = cookie.trim().split('=');
@@ -635,24 +665,34 @@ async function uploadMercariPhotos(photos) {
                      name.toLowerCase().includes('auth') ||
                      name.toLowerCase().includes('access'))) {
           authToken = value;
+          console.log(`🔑 [PHOTO UPLOAD] Found auth token in cookie: ${name.substring(0, 20)}...`);
           break;
         }
       }
+    } else {
+      console.log(`🔑 [PHOTO UPLOAD] Found auth token in storage`);
     }
 
     // Get CSRF token
+    console.log('🔍 [PHOTO UPLOAD] Extracting CSRF token...');
     let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                    document.cookie.match(/csrf-token=([^;]+)/)?.[1] ||
                    document.cookie.match(/X-CSRF-Token=([^;]+)/)?.[1] ||
                    document.cookie.match(/csrf_token=([^;]+)/)?.[1];
 
     if (!authToken) {
+      console.error('❌ [PHOTO UPLOAD] Could not find authorization token');
       return { success: false, error: 'Could not find authorization token. Please ensure you are logged into Mercari.' };
     }
 
     if (!csrfToken) {
+      console.error('❌ [PHOTO UPLOAD] Could not find CSRF token');
       return { success: false, error: 'Could not find CSRF token. Please ensure you are logged into Mercari.' };
     }
+
+    console.log(`✅ [PHOTO UPLOAD] Tokens extracted successfully`);
+    console.log(`   Auth token: ${authToken.substring(0, 20)}...`);
+    console.log(`   CSRF token: ${csrfToken.substring(0, 10)}...`);
 
     const uploadIds = [];
 
@@ -664,11 +704,12 @@ async function uploadMercariPhotos(photos) {
       const photoUrl = typeof photo === 'string' ? photo : (photo.preview || photo.url);
       
       if (!photoUrl) {
-        console.warn(`Photo ${i + 1} has no URL, skipping`);
+        console.warn(`⚠️ [PHOTO UPLOAD] Photo ${i + 1} has no URL, skipping`);
         continue;
       }
 
       try {
+        console.log(`📥 [PHOTO UPLOAD ${i + 1}/${photos.length}] Fetching image from: ${photoUrl.substring(0, 50)}...`);
         // Fetch the image
         const imageResponse = await fetch(photoUrl);
         if (!imageResponse.ok) {
@@ -676,7 +717,9 @@ async function uploadMercariPhotos(photos) {
         }
 
         const imageBlob = await imageResponse.blob();
+        console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Image fetched (${(imageBlob.size / 1024).toFixed(2)} KB)`);
 
+        console.log(`🖼️ [PHOTO UPLOAD ${i + 1}/${photos.length}] Converting to JPG format...`);
         // Convert image to JPG format using Canvas API (Mercari requires .jpg)
         const img = await new Promise((resolve, reject) => {
           const img = new Image();
@@ -701,6 +744,7 @@ async function uploadMercariPhotos(photos) {
 
         // Clean up object URL
         URL.revokeObjectURL(img.src);
+        console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Converted to JPG (${(jpgBlob.size / 1024).toFixed(2)} KB)`);
 
         // Create FormData
         const formData = new FormData();
@@ -744,6 +788,7 @@ async function uploadMercariPhotos(photos) {
           'authorization': `Bearer ${authToken}`
         };
 
+        console.log(`📤 [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploading to Mercari API...`);
         // Make fetch request
         // Browser will automatically set Content-Type with boundary for FormData
         const response = await fetch('https://www.mercari.com/v1/api', {
@@ -755,6 +800,7 @@ async function uploadMercariPhotos(photos) {
 
         if (!response.ok) {
           const errorText = await response.text();
+          console.error(`❌ [PHOTO UPLOAD ${i + 1}/${photos.length}] Upload failed: ${response.status} ${response.statusText}`);
           throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 200)}`);
         }
 
@@ -762,30 +808,33 @@ async function uploadMercariPhotos(photos) {
 
         if (result.data?.uploadTempListingPhotos?.uploadIds?.[0]) {
           uploadIds.push(result.data.uploadTempListingPhotos.uploadIds[0]);
-          console.log(`✓ Photo ${i + 1} uploaded successfully (ID: ${result.data.uploadTempListingPhotos.uploadIds[0]})`);
+          console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploaded successfully! Upload ID: ${result.data.uploadTempListingPhotos.uploadIds[0]}`);
         } else {
-          console.error('Upload response:', result);
+          console.error(`❌ [PHOTO UPLOAD ${i + 1}/${photos.length}] Unexpected response:`, result);
           throw new Error('No uploadId in response: ' + JSON.stringify(result));
         }
 
         // Small delay between uploads
         if (i < photos.length - 1) {
+          console.log(`⏳ [PHOTO UPLOAD] Waiting 500ms before next upload...`);
           await sleep(500);
         }
 
       } catch (error) {
-        console.error(`Error uploading photo ${i + 1}:`, error);
+        console.error(`❌ [PHOTO UPLOAD ${i + 1}/${photos.length}] Error:`, error);
         return { success: false, error: `Failed to upload photo ${i + 1}: ${error.message}` };
       }
     }
 
     // Store uploadIds in window for form submission
     window.__mercariUploadIds = uploadIds;
+    console.log(`✅ [PHOTO UPLOAD] All ${uploadIds.length} photo(s) uploaded successfully!`);
+    console.log(`📋 [PHOTO UPLOAD] Upload IDs stored: ${uploadIds.join(', ')}`);
 
     return { success: true, uploadIds };
 
   } catch (error) {
-    console.error('Error in uploadMercariPhotos:', error);
+    console.error('❌ [PHOTO UPLOAD] Fatal error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -793,8 +842,10 @@ async function uploadMercariPhotos(photos) {
 // Fill Mercari form fields
 async function fillMercariForm(data) {
   try {
+    console.log('📝 [FORM FILL] Starting to fill form fields...');
     // Wrap entire form fill in try-catch to prevent errors from stopping the process
     // 1. TITLE
+    console.log(`📝 [FORM FILL] Setting title: "${data.title}"`);
     const titleInput = document.querySelector('[data-testid="Title"]') || 
                       document.querySelector('#sellName');
     if (titleInput && data.title) {
@@ -802,9 +853,11 @@ async function fillMercariForm(data) {
       titleInput.dispatchEvent(new Event('input', { bubbles: true }));
       titleInput.dispatchEvent(new Event('change', { bubbles: true }));
       await sleep(300);
+      console.log(`✅ [FORM FILL] Title set`);
     }
     
     // 2. DESCRIPTION
+    console.log(`📝 [FORM FILL] Setting description...`);
     const descInput = document.querySelector('[data-testid="Description"]') ||
                      document.querySelector('#sellDescription');
     if (descInput && data.description) {
@@ -812,10 +865,12 @@ async function fillMercariForm(data) {
       descInput.dispatchEvent(new Event('input', { bubbles: true }));
       descInput.dispatchEvent(new Event('change', { bubbles: true }));
       await sleep(300);
+      console.log(`✅ [FORM FILL] Description set`);
     }
     
     // 3. CATEGORY - Mercari-specific category (multi-level selection)
     if (data.mercariCategory) {
+      console.log(`📝 [FORM FILL] Setting category: "${data.mercariCategory}"`);
       // Split category path by " > " to get individual levels
       const categoryParts = data.mercariCategory.split(' > ').map(part => part.trim());
       
@@ -878,6 +933,7 @@ async function fillMercariForm(data) {
     
     // 4. BRAND
     if (data.brand) {
+      console.log(`📝 [FORM FILL] Setting brand: "${data.brand}"`);
       let brandSuccess = false;
       
       // Try multiple approaches - but stop as soon as one succeeds
@@ -900,6 +956,7 @@ async function fillMercariForm(data) {
     
     // 5. CONDITION
     if (data.condition) {
+      console.log(`📝 [FORM FILL] Setting condition: "${data.condition}"`);
       // Map condition values to Mercari's expected format
       const conditionMap = {
         'New': 'New',
@@ -991,6 +1048,7 @@ async function fillMercariForm(data) {
     }
     
     // 10. PRICE (do this last as it often triggers validation)
+    console.log(`📝 [FORM FILL] Setting price: $${data.price}`);
     const priceInput = document.querySelector('[data-testid="Price"]') ||
                       document.querySelector('#Price') ||
                       document.querySelector('[name="sellPrice"]');
@@ -1000,6 +1058,7 @@ async function fillMercariForm(data) {
       priceInput.dispatchEvent(new Event('change', { bubbles: true }));
       priceInput.dispatchEvent(new Event('blur', { bubbles: true }));
       await sleep(500);
+      console.log(`✅ [FORM FILL] Price set`);
     }
     
     // 10.5. SMART PRICING & SMART OFFERS (after price is set)
@@ -1146,6 +1205,7 @@ async function fillMercariForm(data) {
     
     // 11. PHOTOS - Uploaded via uploadMercariPhotos() function before form submission
     
+    console.log('✅ [FORM FILL] All form fields filled successfully!');
     return true;
     
   } catch (error) {
@@ -1161,19 +1221,24 @@ function sleep(ms) {
 
 // Submit Mercari form
 async function submitMercariForm() {
+  console.log('📤 [FORM SUBMIT] Looking for List button...');
   // Find the List button using actual Mercari selector
   const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
                    document.querySelector('button[type="submit"]');
   
   if (!submitBtn) {
+    console.error('❌ [FORM SUBMIT] List button not found');
     return {
       success: false,
       error: 'List button not found on page'
     };
   }
   
+  console.log('✅ [FORM SUBMIT] List button found');
+  
   // Check if button is enabled (Mercari disables it if form is invalid)
   if (submitBtn.disabled) {
+    console.warn('⚠️ [FORM SUBMIT] List button is disabled - checking form validation...');
     // Try to identify what's missing
     const titleInput = document.querySelector('[data-testid="Title"]') || document.querySelector('#sellName');
     const descInput = document.querySelector('[data-testid="Description"]') || document.querySelector('#sellDescription');
