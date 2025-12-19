@@ -379,9 +379,30 @@ async function createMercariListing(listingData) {
       };
     }
     
+    // Handle any popups that might have appeared after photo upload
+    console.log('🔍 [MERCARI] Checking for popups after photo upload...');
+    await handleMercariPopups();
+    await sleep(1000); // Wait for popup to fully close
+    
+    // Verify and re-set brand if needed (popups might have cleared it)
+    if (listingData.brand) {
+      console.log('🔍 [MERCARI] Verifying brand is still set...');
+      const brandDropdown = document.querySelector('[data-testid="Brand"]');
+      const brandValue = brandDropdown?.textContent?.trim() || brandDropdown?.value?.trim() || '';
+      
+      // Check if brand is empty or shows placeholder
+      if (!brandValue || brandValue === 'Select brand' || brandValue === 'Brand' || brandValue.length < 2) {
+        console.log('⚠️ [MERCARI] Brand appears to be missing, re-setting...');
+        await setMercariBrand(listingData.brand);
+        await sleep(1000); // Wait for brand to be set
+      } else {
+        console.log(`✅ [MERCARI] Brand is still set: "${brandValue}"`);
+      }
+    }
+    
     console.log('📤 [MERCARI] Submitting form...');
     // Submit the form (only if photos are present)
-    const submitResult = await submitMercariForm();
+    const submitResult = await submitMercariForm(listingData.brand);
     
     if (submitResult.success) {
       console.log('✅ [MERCARI] Listing created successfully!', submitResult.listingUrl);
@@ -1263,25 +1284,7 @@ async function fillMercariForm(data) {
     
     // 4. BRAND
     if (data.brand) {
-      console.log(`📝 [FORM FILL] Setting brand: "${data.brand}"`);
-      let brandSuccess = false;
-      
-      // Try multiple approaches - but stop as soon as one succeeds
-      // 1. Try typing first (Mercari brand is searchable)
-      brandSuccess = await typeIntoMercariDropdown('Brand', data.brand);
-      if (!brandSuccess) {
-        // 2. If typing failed, try dropdown selection with exact match
-        brandSuccess = await selectMercariDropdown('Brand', data.brand, false);
-        if (!brandSuccess) {
-          // 3. If exact match failed, try partial match
-          brandSuccess = await selectMercariDropdown('Brand', data.brand, true);
-          if (!brandSuccess && data.brand.includes(' ')) {
-            // 4. Try with just the first word if brand has multiple words
-            const firstWord = data.brand.split(' ')[0];
-            brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
-          }
-        }
-      }
+      await setMercariBrand(data.brand);
     }
     
     // 5. CONDITION
@@ -1550,7 +1553,140 @@ function sleep(ms) {
 }
 
 // Submit Mercari form
-async function submitMercariForm() {
+// Helper function to set brand (reusable)
+async function setMercariBrand(brand) {
+  if (!brand) return false;
+  
+  console.log(`📝 [BRAND] Setting brand: "${brand}"`);
+  let brandSuccess = false;
+  
+  // Try multiple approaches - but stop as soon as one succeeds
+  // 1. Try typing first (Mercari brand is searchable)
+  brandSuccess = await typeIntoMercariDropdown('Brand', brand);
+  if (!brandSuccess) {
+    // 2. If typing failed, try dropdown selection with exact match
+    brandSuccess = await selectMercariDropdown('Brand', brand, false);
+    if (!brandSuccess) {
+      // 3. If exact match failed, try partial match
+      brandSuccess = await selectMercariDropdown('Brand', brand, true);
+      if (!brandSuccess && brand.includes(' ')) {
+        // 4. Try with just the first word if brand has multiple words
+        const firstWord = brand.split(' ')[0];
+        brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
+      }
+    }
+  }
+  
+  if (brandSuccess) {
+    console.log(`✅ [BRAND] Brand set successfully: "${brand}"`);
+  } else {
+    console.warn(`⚠️ [BRAND] Failed to set brand: "${brand}"`);
+  }
+  
+  return brandSuccess;
+}
+
+// Helper function to wait for and close popups
+async function handleMercariPopups() {
+  console.log('🔍 [POPUP] Checking for popups...');
+  
+  // Common popup selectors in Mercari
+  const popupSelectors = [
+    '[role="dialog"]',
+    '[class*="modal"]',
+    '[class*="Modal"]',
+    '[class*="popup"]',
+    '[class*="Popup"]',
+    '[class*="overlay"]',
+    '[class*="Overlay"]',
+    'div[aria-modal="true"]',
+    '[data-testid*="modal"]',
+    '[data-testid*="Modal"]',
+    '[data-testid*="popup"]',
+    '[data-testid*="Popup"]'
+  ];
+  
+  let popupFound = false;
+  let popupElement = null;
+  
+  // Check for existing popups
+  for (const selector of popupSelectors) {
+    popupElement = document.querySelector(selector);
+    if (popupElement && window.getComputedStyle(popupElement).display !== 'none') {
+      popupFound = true;
+      console.log(`🔍 [POPUP] Found popup with selector: ${selector}`);
+      break;
+    }
+  }
+  
+  // If no popup found, wait a bit and check again (popup might be appearing)
+  if (!popupFound) {
+    await sleep(500);
+    for (const selector of popupSelectors) {
+      popupElement = document.querySelector(selector);
+      if (popupElement && window.getComputedStyle(popupElement).display !== 'none') {
+        popupFound = true;
+        console.log(`🔍 [POPUP] Found popup with selector: ${selector} (after wait)`);
+        break;
+      }
+    }
+  }
+  
+  if (popupFound && popupElement) {
+    console.log('🔍 [POPUP] Popup detected, looking for close button...');
+    
+    // Try to find close button
+    const closeButtonSelectors = [
+      'button[aria-label*="close" i]',
+      'button[aria-label*="Close" i]',
+      'button[aria-label*="dismiss" i]',
+      '[class*="close"]',
+      '[class*="Close"]',
+      '[data-testid*="close"]',
+      '[data-testid*="Close"]',
+      'button:has(svg[class*="close"])',
+      'button:has(svg[class*="Close"])'
+    ];
+    
+    let closeButton = null;
+    for (const selector of closeButtonSelectors) {
+      closeButton = popupElement.querySelector(selector) || document.querySelector(selector);
+      if (closeButton) {
+        console.log(`✅ [POPUP] Found close button with selector: ${selector}`);
+        break;
+      }
+    }
+    
+    // If no close button found, try clicking outside or pressing Escape
+    if (!closeButton) {
+      console.log('⚠️ [POPUP] No close button found, trying Escape key...');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await sleep(300);
+    } else {
+      closeButton.click();
+      console.log('✅ [POPUP] Close button clicked');
+      await sleep(500);
+    }
+    
+    // Wait for popup to disappear
+    let attempts = 0;
+    while (attempts < 10) {
+      const stillVisible = popupElement && window.getComputedStyle(popupElement).display !== 'none';
+      if (!stillVisible) {
+        console.log('✅ [POPUP] Popup closed');
+        break;
+      }
+      await sleep(200);
+      attempts++;
+    }
+    
+    return true;
+  }
+  
+  return false;
+}
+
+async function submitMercariForm(brandToVerify = null) {
   console.log('📤 [FORM SUBMIT] Looking for List button...');
   // Find the List button using actual Mercari selector
   const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
@@ -1565,6 +1701,28 @@ async function submitMercariForm() {
   }
   
   console.log('✅ [FORM SUBMIT] List button found');
+  
+  // Handle any popups before submission
+  await handleMercariPopups();
+  await sleep(500);
+  
+  // Verify and re-set brand if needed (popups might have cleared it)
+  if (brandToVerify) {
+    console.log('🔍 [FORM SUBMIT] Verifying brand before submission...');
+    const brandDropdown = document.querySelector('[data-testid="Brand"]');
+    const brandValue = brandDropdown?.textContent?.trim() || brandDropdown?.value?.trim() || '';
+    
+    // Check if brand is empty or shows placeholder
+    if (!brandValue || brandValue === 'Select brand' || brandValue === 'Brand' || brandValue.length < 2) {
+      console.log('⚠️ [FORM SUBMIT] Brand appears to be missing, re-setting before submission...');
+      const brandSet = await setMercariBrand(brandToVerify);
+      if (brandSet) {
+        await sleep(1000); // Wait for brand to be set
+      }
+    } else {
+      console.log(`✅ [FORM SUBMIT] Brand is set: "${brandValue}"`);
+    }
+  }
   
   // Check if button is enabled (Mercari disables it if form is invalid)
   if (submitBtn.disabled) {
