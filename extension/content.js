@@ -201,16 +201,42 @@ let capturedMercariHeaders = null;
 // Load headers from chrome.storage on startup and periodically refresh
 if (MARKETPLACE === 'mercari') {
   const loadHeadersFromStorage = () => {
-    chrome.storage.local.get(['mercariApiHeaders'], (result) => {
-      if (result.mercariApiHeaders) {
-        capturedMercariHeaders = result.mercariApiHeaders;
-        console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
+    try {
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ [HEADER LOAD] chrome.storage.local not available');
+        return;
       }
-    });
+      
+      chrome.storage.local.get(['mercariApiHeaders'], (result) => {
+        try {
+          if (chrome.runtime.lastError) {
+            console.warn('⚠️ [HEADER LOAD] Error loading headers:', chrome.runtime.lastError.message);
+            return;
+          }
+          
+          if (result && result.mercariApiHeaders) {
+            capturedMercariHeaders = result.mercariApiHeaders;
+            console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
+          } else {
+            console.log('📡 [HEADER LOAD] No headers found in storage yet');
+          }
+        } catch (error) {
+          console.error('❌ [HEADER LOAD] Error processing headers:', error);
+        }
+      });
+    } catch (error) {
+      console.error('❌ [HEADER LOAD] Error accessing chrome.storage:', error);
+    }
   };
   
-  // Load on startup
-  loadHeadersFromStorage();
+  // Load on startup (with a small delay to ensure chrome.storage is available)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(loadHeadersFromStorage, 100);
+    });
+  } else {
+    setTimeout(loadHeadersFromStorage, 100);
+  }
   
   // Refresh headers every 5 seconds (in case new requests come in)
   setInterval(loadHeadersFromStorage, 5000);
