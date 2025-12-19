@@ -115,19 +115,87 @@ export default async function handler(req, res) {
     page.setDefaultTimeout(30000);
     page.setDefaultNavigationTimeout(30000);
 
+    // Intercept network requests to capture auth tokens
+    let capturedAuthToken = null;
+    let capturedCsrfToken = null;
+    
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      const url = request.url();
+      const headers = request.headers();
+      
+      // Capture tokens from requests to Mercari API
+      if (url.includes('mercari.com/v1/api') || url.includes('mercari.com/api')) {
+        const authHeader = headers['authorization'] || headers['Authorization'];
+        const csrfHeader = headers['x-csrf-token'] || headers['X-CSRF-Token'] || headers['x-csrf-token'];
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          capturedAuthToken = authHeader.replace('Bearer ', '').trim();
+          console.log('🔑 Captured auth token from network request');
+        }
+        
+        if (csrfHeader) {
+          capturedCsrfToken = csrfHeader.trim();
+          console.log('🔑 Captured CSRF token from network request');
+        }
+      }
+      
+      // Continue with the request
+      request.continue();
+    });
+    
+    // Also intercept responses to capture tokens from response headers
+    page.on('response', (response) => {
+      const url = response.url();
+      const headers = response.headers();
+      
+      // Capture CSRF token from response headers (sometimes set via Set-Cookie)
+      if (url.includes('mercari.com')) {
+        const setCookieHeader = headers['set-cookie'];
+        if (setCookieHeader) {
+          const csrfMatch = setCookieHeader.match(/csrf-token=([^;]+)/i) || 
+                           setCookieHeader.match(/X-CSRF-Token=([^;]+)/i);
+          if (csrfMatch && !capturedCsrfToken) {
+            capturedCsrfToken = csrfMatch[1];
+            console.log('🔑 Captured CSRF token from response header');
+          }
+        }
+      }
+    });
+
     // Navigate to Mercari sell page
     console.log('🌐 Navigating to Mercari sell page...');
     await page.goto('https://www.mercari.com/sell/', {
       waitUntil: 'networkidle2',
       timeout: 30000
     });
+    
+    // Wait for API calls to complete and capture tokens
+    console.log('⏳ Waiting for API calls to capture authentication tokens...');
+    await page.waitForTimeout(3000);
+    
+    // Log captured tokens (without exposing full token)
+    if (capturedAuthToken) {
+      console.log(`✓ Auth token captured: ${capturedAuthToken.substring(0, 20)}...`);
+    } else {
+      console.warn('⚠️ Auth token not captured from network requests');
+    }
+    
+    if (capturedCsrfToken) {
+      console.log(`✓ CSRF token captured: ${capturedCsrfToken.substring(0, 10)}...`);
+    } else {
+      console.warn('⚠️ CSRF token not captured from network requests');
+    }
 
     // Wait for form to be ready
     console.log('⏳ Waiting for form to load...');
     await page.waitForSelector('[data-testid="Title"], #sellName', { timeout: 10000 });
 
     // Fill in the form fields using Puppeteer
-    await fillMercariFormWithPuppeteer(page, listingData);
+    await fillMercariFormWithPuppeteer(page, listingData, {
+      authToken: capturedAuthToken,
+      csrfToken: capturedCsrfToken
+    });
 
     // Wait for form to update
     console.log('⏳ Waiting for form to update...');
@@ -186,7 +254,7 @@ export default async function handler(req, res) {
 /**
  * Fill Mercari form using Puppeteer
  */
-async function fillMercariFormWithPuppeteer(page, data) {
+async function fillMercariFormWithPuppeteer(page, data, capturedTokens = {}) {
   console.log('📝 Starting to fill form fields...');
 
   try {
@@ -417,28 +485,63 @@ async function fillMercariFormWithPuppeteer(page, data) {
         return;
       }
       
-      // Get cookies and headers from the page
-      const cookies = await page.cookies();
-      const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+      // Use captured tokens from network interception, or extract from page as fallback
+      let authToken = capturedTokens.authToken;
+      let csrfToken = capturedTokens.csrfToken;
       
-      // Extract headers from the page context
-      const pageHeaders = await page.evaluate(() => {
-        // Try to get authorization token from localStorage or sessionStorage
-        const authToken = localStorage.getItem('auth_token') || 
+      // If tokens weren't captured, try to extract from page
+      if (!authToken || !csrfToken) {
+        console.log('  → Tokens not captured from network, extracting from page...');
+        const pageHeaders = await page.evaluate(() => {
+          // Try to get authorization token from localStorage or sessionStorage
+          let authToken = localStorage.getItem('auth_token') || 
+                         localStorage.getItem('token') ||
+                         localStorage.getItem('accessToken') ||
                          sessionStorage.getItem('auth_token') ||
-                         document.cookie.match(/auth_token=([^;]+)/)?.[1];
+                         sessionStorage.getItem('token');
+          
+          // If not found, check all cookies for JWT tokens (they start with 'eyJ')
+          if (!authToken) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+              const [name, value] = cookie.trim().split('=');
+              // Check for JWT tokens (start with 'eyJ') or common token cookie names
+              if (value && (value.startsWith('eyJ') || 
+                           name.toLowerCase().includes('token') || 
+                           name.toLowerCase().includes('auth') || 
+                           name.toLowerCase().includes('access'))) {
+                authToken = value;
+                break;
+              }
+            }
+          }
+          
+          // Try to get CSRF token from meta tag or cookie
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                           document.cookie.match(/csrf-token=([^;]+)/)?.[1] ||
+                           document.cookie.match(/X-CSRF-Token=([^;]+)/)?.[1] ||
+                           document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+          
+          return {
+            authToken,
+            csrfToken,
+            userAgent: navigator.userAgent
+          };
+        });
         
-        // Try to get CSRF token from meta tag or cookie
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                         document.cookie.match(/csrf-token=([^;]+)/)?.[1] ||
-                         document.cookie.match(/X-CSRF-Token=([^;]+)/)?.[1];
-        
-        return {
-          authToken,
-          csrfToken,
-          userAgent: navigator.userAgent
-        };
-      });
+        if (!authToken) authToken = pageHeaders.authToken;
+        if (!csrfToken) csrfToken = pageHeaders.csrfToken;
+      } else {
+        console.log('  → Using tokens captured from network requests');
+      }
+      
+      if (!authToken) {
+        throw new Error('Could not find authorization token. Please ensure you are logged into Mercari.');
+      }
+      
+      if (!csrfToken) {
+        throw new Error('Could not find CSRF token. Please ensure you are logged into Mercari.');
+      }
       
       // Upload each photo using Mercari's GraphQL API
       const uploadIds = [];
@@ -468,7 +571,7 @@ async function fillMercariFormWithPuppeteer(page, data) {
                           ext === 'webp' ? 'image/webp' : 'image/jpeg';
           
           // Upload using page.evaluate to make fetch call in browser context
-          const uploadResult = await page.evaluate(async ({ fileBase64, fileName, mimeType, headers }) => {
+          const uploadResult = await page.evaluate(async ({ fileBase64, fileName, mimeType, authToken, csrfToken }) => {
             // Convert base64 to Blob
             const byteCharacters = atob(fileBase64);
             const byteNumbers = new Array(byteCharacters.length);
@@ -481,18 +584,18 @@ async function fillMercariFormWithPuppeteer(page, data) {
             // Create FormData
             const formData = new FormData();
             
-            // GraphQL operation
+            // GraphQL operation - matching Mercari's exact format
             const operations = {
               operationName: "uploadTempListingPhotos",
               variables: {
                 input: {
                   photos: [null]
-                },
-                extensions: {
-                  persistedQuery: {
-                    version: 1,
-                    sha256Hash: "9aa889ac01e549a01c66c7baabc968b0e4a7fa4cd0b6bd32b7599ce10ca09a10"
-                  }
+                }
+              },
+              extensions: {
+                persistedQuery: {
+                  version: 1,
+                  sha256Hash: "9aa889ac01e549a01c66c7baabc968b0e4a7fa4cd0b6bd32b7599ce10ca09a10"
                 }
               }
             };
@@ -504,32 +607,10 @@ async function fillMercariFormWithPuppeteer(page, data) {
             
             formData.append('operations', JSON.stringify(operations));
             formData.append('map', JSON.stringify(map));
-            formData.append('1', blob, fileName);
+            // Mercari expects filename to be "blob" in the FormData
+            formData.append('1', blob, 'blob');
             
-            // Get CSRF token from meta tag or cookie if not provided
-            let csrfToken = headers.csrfToken;
-            if (!csrfToken) {
-              const metaTag = document.querySelector('meta[name="csrf-token"]');
-              csrfToken = metaTag?.content || 
-                         document.cookie.match(/csrf-token=([^;]+)/)?.[1] ||
-                         document.cookie.match(/X-CSRF-Token=([^;]+)/)?.[1];
-            }
-            
-            // Get authorization token from cookie if not provided
-            let authToken = headers.authToken;
-            if (!authToken) {
-              // Try to extract from cookies
-              const cookies = document.cookie.split(';');
-              for (const cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
-                if (name.includes('token') || name.includes('auth')) {
-                  authToken = value;
-                  break;
-                }
-              }
-            }
-            
-            // Build headers
+            // Build headers with the provided tokens
             const fetchHeaders = {
               'accept': '*/*',
               'accept-language': 'en-US,en;q=0.9',
@@ -575,7 +656,8 @@ async function fillMercariFormWithPuppeteer(page, data) {
             fileBase64,
             fileName,
             mimeType,
-            headers: pageHeaders
+            authToken,
+            csrfToken
           });
           
           if (uploadResult.success) {
