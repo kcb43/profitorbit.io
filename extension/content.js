@@ -734,6 +734,7 @@ async function uploadMercariPhotos(photos) {
     }
 
     const uploadIds = [];
+    const photoBlobs = []; // Store JPG blobs for file input
 
     // Upload each photo
     for (let i = 0; i < photos.length; i++) {
@@ -782,6 +783,9 @@ async function uploadMercariPhotos(photos) {
         // Clean up object URL
         URL.revokeObjectURL(img.src);
         console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Converted to JPG (${(jpgBlob.size / 1024).toFixed(2)} KB)`);
+        
+        // Store blob for file input
+        photoBlobs.push(jpgBlob);
 
         // Create FormData
         const formData = new FormData();
@@ -887,8 +891,59 @@ async function uploadMercariPhotos(photos) {
               if (retryResponse.ok) {
                 const retryResult = await retryResponse.json();
                 if (retryResult.data?.uploadTempListingPhotos?.uploadIds?.[0]) {
-                  uploadIds.push(retryResult.data.uploadTempListingPhotos.uploadIds[0]);
-                  console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploaded successfully after retry! Upload ID: ${retryResult.data.uploadTempListingPhotos.uploadIds[0]}`);
+                  const uploadId = retryResult.data.uploadTempListingPhotos.uploadIds[0];
+                  uploadIds.push(uploadId);
+                  console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploaded successfully after retry! Upload ID: ${uploadId}`);
+                  
+                  // Make kandoSuggestQuery request right after successful retry upload
+                  try {
+                    console.log(`🤖 [KANDO SUGGEST ${i + 1}/${photos.length}] Making kandoSuggestQuery request after retry...`);
+                    
+                    // Use the retry headers we already have
+                    const kandoFormData = new FormData();
+                    const kandoOperations = {
+                      operationName: "kandoSuggestQuery",
+                      variables: {
+                        input: {
+                          photoId: uploadId,
+                          photo: null
+                        }
+                      },
+                      extensions: {
+                        persistedQuery: {
+                          version: 1,
+                          sha256Hash: "5311dbb78d8a2b30d218c0a1899d7b9948a4f3ee1ddd5fbd9807595c30109980"
+                        }
+                      }
+                    };
+                    const kandoMap = { "1": ["variables.input.photo"] };
+                    kandoFormData.append('operations', JSON.stringify(kandoOperations));
+                    kandoFormData.append('map', JSON.stringify(kandoMap));
+                    kandoFormData.append('1', jpgBlob, 'blob');
+                    
+                    const kandoResponse = await fetch('https://www.mercari.com/v1/api', {
+                      method: 'POST',
+                      headers: retryHeaders,
+                      referrer: 'https://www.mercari.com/sell/',
+                      mode: 'cors',
+                      credentials: 'include',
+                      body: kandoFormData
+                    });
+                    
+                    console.log(`📥 [KANDO SUGGEST ${i + 1}/${photos.length}] Response: ${kandoResponse.status} ${kandoResponse.statusText}`);
+                    
+                    if (kandoResponse.ok) {
+                      const kandoResult = await kandoResponse.json();
+                      console.log(`✅ [KANDO SUGGEST ${i + 1}/${photos.length}] Success:`, kandoResult);
+                    } else {
+                      const kandoErrorText = await kandoResponse.text();
+                      console.warn(`⚠️ [KANDO SUGGEST ${i + 1}/${photos.length}] Failed: ${kandoResponse.status} - ${kandoErrorText.substring(0, 200)}`);
+                    }
+                  } catch (kandoError) {
+                    console.warn(`⚠️ [KANDO SUGGEST ${i + 1}/${photos.length}] Error:`, kandoError);
+                    // Don't fail the upload if kandoSuggestQuery fails
+                  }
+                  
                   continue; // Skip to next photo
                 }
               }
@@ -902,8 +957,77 @@ async function uploadMercariPhotos(photos) {
         console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Response data:`, result);
 
         if (result.data?.uploadTempListingPhotos?.uploadIds?.[0]) {
-          uploadIds.push(result.data.uploadTempListingPhotos.uploadIds[0]);
-          console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploaded successfully! Upload ID: ${result.data.uploadTempListingPhotos.uploadIds[0]}`);
+          const uploadId = result.data.uploadTempListingPhotos.uploadIds[0];
+          uploadIds.push(uploadId);
+          console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploaded successfully! Upload ID: ${uploadId}`);
+          
+          // Make kandoSuggestQuery request right after successful upload
+          try {
+            console.log(`🤖 [KANDO SUGGEST ${i + 1}/${photos.length}] Making kandoSuggestQuery request...`);
+            
+            // Reload headers from storage to ensure we have the latest
+            let kandoHeaders = null;
+            await new Promise((resolve) => {
+              chrome.storage.local.get(['mercariApiHeaders'], (result) => {
+                if (result.mercariApiHeaders) {
+                  kandoHeaders = { ...result.mercariApiHeaders };
+                  delete kandoHeaders['content-type'];
+                }
+                resolve();
+              });
+            });
+            
+            if (!kandoHeaders || Object.keys(kandoHeaders).length === 0) {
+              console.warn(`⚠️ [KANDO SUGGEST ${i + 1}/${photos.length}] No headers found, skipping kandoSuggestQuery`);
+            } else {
+              const kandoFormData = new FormData();
+              const kandoOperations = {
+                operationName: "kandoSuggestQuery",
+                variables: {
+                  input: {
+                    photoId: uploadId,
+                    photo: null
+                  }
+                },
+                extensions: {
+                  persistedQuery: {
+                    version: 1,
+                    sha256Hash: "5311dbb78d8a2b30d218c0a1899d7b9948a4f3ee1ddd5fbd9807595c30109980"
+                  }
+                }
+              };
+              const kandoMap = { "1": ["variables.input.photo"] };
+              kandoFormData.append('operations', JSON.stringify(kandoOperations));
+              kandoFormData.append('map', JSON.stringify(kandoMap));
+              kandoFormData.append('1', jpgBlob, 'blob');
+              
+              console.log(`📋 [KANDO SUGGEST ${i + 1}/${photos.length}] Request URL: https://www.mercari.com/v1/api`);
+              console.log(`📋 [KANDO SUGGEST ${i + 1}/${photos.length}] Operations:`, JSON.stringify(kandoOperations, null, 2));
+              console.log(`📋 [KANDO SUGGEST ${i + 1}/${photos.length}] Map:`, JSON.stringify(kandoMap, null, 2));
+              
+              const kandoResponse = await fetch('https://www.mercari.com/v1/api', {
+                method: 'POST',
+                headers: kandoHeaders,
+                referrer: 'https://www.mercari.com/sell/',
+                mode: 'cors',
+                credentials: 'include',
+                body: kandoFormData
+              });
+              
+              console.log(`📥 [KANDO SUGGEST ${i + 1}/${photos.length}] Response: ${kandoResponse.status} ${kandoResponse.statusText}`);
+              
+              if (kandoResponse.ok) {
+                const kandoResult = await kandoResponse.json();
+                console.log(`✅ [KANDO SUGGEST ${i + 1}/${photos.length}] Success:`, kandoResult);
+              } else {
+                const kandoErrorText = await kandoResponse.text();
+                console.warn(`⚠️ [KANDO SUGGEST ${i + 1}/${photos.length}] Failed: ${kandoResponse.status} - ${kandoErrorText.substring(0, 200)}`);
+              }
+            }
+          } catch (kandoError) {
+            console.warn(`⚠️ [KANDO SUGGEST ${i + 1}/${photos.length}] Error:`, kandoError);
+            // Don't fail the upload if kandoSuggestQuery fails
+          }
         } else {
           console.error(`❌ [PHOTO UPLOAD ${i + 1}/${photos.length}] Unexpected response:`, result);
           throw new Error('No uploadId in response: ' + JSON.stringify(result));
@@ -925,6 +1049,117 @@ async function uploadMercariPhotos(photos) {
     window.__mercariUploadIds = uploadIds;
     console.log(`✅ [PHOTO UPLOAD] All ${uploadIds.length} photo(s) uploaded successfully!`);
     console.log(`📋 [PHOTO UPLOAD] Upload IDs stored: ${uploadIds.join(', ')}`);
+
+    // Make sellQuery request after all photos are uploaded
+    if (uploadIds.length > 0) {
+      try {
+        console.log(`📋 [SELL QUERY] Making sellQuery request with ${uploadIds.length} photo ID(s)...`);
+        
+        // Reload headers from storage to ensure we have the latest
+        let sellQueryHeaders = null;
+        await new Promise((resolve) => {
+          chrome.storage.local.get(['mercariApiHeaders'], (result) => {
+            if (result.mercariApiHeaders) {
+              sellQueryHeaders = { ...result.mercariApiHeaders };
+              // Set content-type to application/json for GET request
+              sellQueryHeaders['content-type'] = 'application/json';
+            }
+            resolve();
+          });
+        });
+        
+        if (!sellQueryHeaders || Object.keys(sellQueryHeaders).length === 0) {
+          console.warn(`⚠️ [SELL QUERY] No headers found, skipping sellQuery`);
+        } else {
+          // Build query parameters
+          const variables = {
+            sellInput: {
+              shippingPayerId: 2,
+              photoIds: uploadIds
+            },
+            shouldFetchSuggestedPrice: true,
+            includeSuggestedShippingOptions: false
+          };
+          
+          const extensions = {
+            persistedQuery: {
+              version: 1,
+              sha256Hash: "563d5747ce3413a076648387bb173b383ba91fd31fc933ddf561d5eb37b4a1a5"
+            }
+          };
+          
+          const queryParams = new URLSearchParams({
+            operationName: "sellQuery",
+            variables: JSON.stringify(variables),
+            extensions: JSON.stringify(extensions)
+          });
+          
+          const sellQueryUrl = `https://www.mercari.com/v1/api?${queryParams.toString()}`;
+          
+          console.log(`📋 [SELL QUERY] Request URL: ${sellQueryUrl}`);
+          console.log(`📋 [SELL QUERY] Variables:`, JSON.stringify(variables, null, 2));
+          
+          const sellQueryResponse = await fetch(sellQueryUrl, {
+            method: 'GET',
+            headers: sellQueryHeaders,
+            referrer: 'https://www.mercari.com/sell/',
+            mode: 'cors',
+            credentials: 'include'
+          });
+          
+          console.log(`📥 [SELL QUERY] Response: ${sellQueryResponse.status} ${sellQueryResponse.statusText}`);
+          
+          if (sellQueryResponse.ok) {
+            const sellQueryResult = await sellQueryResponse.json();
+            console.log(`✅ [SELL QUERY] Success:`, sellQueryResult);
+          } else {
+            const sellQueryErrorText = await sellQueryResponse.text();
+            console.warn(`⚠️ [SELL QUERY] Failed: ${sellQueryResponse.status} - ${sellQueryErrorText.substring(0, 200)}`);
+          }
+        }
+      } catch (sellQueryError) {
+        console.warn(`⚠️ [SELL QUERY] Error:`, sellQueryError);
+        // Don't fail the upload if sellQuery fails
+      }
+    }
+
+    // Set uploaded photos to file input and trigger change event
+    if (photoBlobs.length > 0) {
+      try {
+        console.log(`📁 [FILE INPUT] Setting ${photoBlobs.length} photo(s) to file input...`);
+        
+        // Find the file input element
+        const fileInput = document.querySelector('input[data-testid="SellPhotoInput"]');
+        
+        if (!fileInput) {
+          console.warn(`⚠️ [FILE INPUT] File input not found with data-testid="SellPhotoInput"`);
+        } else {
+          // Create a DataTransfer object to hold the files
+          const dataTransfer = new DataTransfer();
+          
+          // Add each blob as a file to the DataTransfer
+          photoBlobs.forEach((blob, index) => {
+            // Create a File object from the blob with a proper name
+            const file = new File([blob], `photo-${index + 1}.jpg`, { type: 'image/jpeg' });
+            dataTransfer.items.add(file);
+          });
+          
+          // Set the files to the input
+          fileInput.files = dataTransfer.files;
+          
+          console.log(`✅ [FILE INPUT] Set ${fileInput.files.length} file(s) to input`);
+          
+          // Trigger change event
+          const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+          fileInput.dispatchEvent(changeEvent);
+          
+          console.log(`✅ [FILE INPUT] Change event triggered`);
+        }
+      } catch (fileInputError) {
+        console.warn(`⚠️ [FILE INPUT] Error setting files to input:`, fileInputError);
+        // Don't fail the upload if file input fails
+      }
+    }
 
     return { success: true, uploadIds };
 
