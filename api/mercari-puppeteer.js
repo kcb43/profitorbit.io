@@ -26,13 +26,29 @@
  */
 
 // Note: Puppeteer needs to be installed in the Vercel environment
-// For Vercel, you may need to use @sparticuz/chromium instead of full Puppeteer
+// For Vercel, we use @sparticuz/chromium instead of full Puppeteer
 // See: https://github.com/Sparticuz/chromium
+
+// Check if we're running on Vercel (serverless environment)
+const isVercel = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
 
 // Dynamic import for Puppeteer (works in both ES modules and CommonJS)
 async function getPuppeteer() {
+  // On Vercel/serverless, use puppeteer-core with @sparticuz/chromium
+  if (isVercel) {
+    try {
+      console.log('🔧 Using @sparticuz/chromium for Vercel serverless environment');
+      const puppeteerCore = await import('puppeteer-core');
+      return puppeteerCore.default || puppeteerCore;
+    } catch (error) {
+      console.error('Failed to import puppeteer-core:', error);
+      return null;
+    }
+  }
+  
+  // For local development, use full puppeteer
   try {
-    // Try ES module import (for Vercel/serverless)
+    // Try ES module import first
     const puppeteerModule = await import('puppeteer');
     return puppeteerModule.default || puppeteerModule;
   } catch (error) {
@@ -45,6 +61,20 @@ async function getPuppeteer() {
       return null;
     }
   }
+}
+
+// Get Chromium executable path for Vercel
+async function getChromiumExecutablePath() {
+  if (isVercel) {
+    try {
+      const chromium = await import('@sparticuz/chromium');
+      return chromium.executablePath();
+    } catch (error) {
+      console.error('Failed to get Chromium executable path:', error);
+      return null;
+    }
+  }
+  return null; // Use default for local development
 }
 
 export default async function handler(req, res) {
@@ -95,8 +125,11 @@ export default async function handler(req, res) {
 
   let browser;
   try {
-    // Launch Puppeteer browser
-    browser = await puppeteer.launch({
+    // Get Chromium executable path for Vercel
+    const executablePath = await getChromiumExecutablePath();
+    
+    // Configure launch options
+    const launchOptions = {
       headless: true, // Use headless in production
       args: [
         '--no-sandbox',
@@ -105,9 +138,22 @@ export default async function handler(req, res) {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--single-process', // Required for Vercel serverless
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding'
       ]
-    });
+    };
+    
+    // On Vercel, use the Chromium executable path
+    if (executablePath) {
+      launchOptions.executablePath = executablePath;
+      console.log('🔧 Using Chromium executable from @sparticuz/chromium');
+    }
+    
+    // Launch Puppeteer browser
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     

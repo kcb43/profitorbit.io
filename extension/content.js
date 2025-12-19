@@ -258,29 +258,6 @@ async function createListing(listingData) {
 // Mercari-specific listing automation
 async function createMercariListing(listingData) {
   try {
-    // Check if photos are present - if so, try Puppeteer API first (can handle photo uploads)
-    const hasPhotos = listingData.photos && listingData.photos.length > 0;
-    
-    if (hasPhotos) {
-      try {
-        const puppeteerResult = await createMercariListingWithPuppeteer(listingData);
-        // If Puppeteer succeeded, return early
-        if (puppeteerResult.success && !puppeteerResult.requiresManualPhotoUpload) {
-          return puppeteerResult;
-        }
-        // If Puppeteer failed but provided fallback, continue with extension method
-        if (puppeteerResult.requiresManualPhotoUpload) {
-          // Continue to extension method below
-        } else {
-          // Puppeteer failed completely, fall through to extension method
-        }
-      } catch (error) {
-        // Fall through to extension method
-      }
-    }
-    
-    // Use extension method (works for everything except photo uploads)
-    
     // Navigate to sell page if not already there
     if (!window.location.href.includes('/sell')) {
       window.location.href = 'https://www.mercari.com/sell/';
@@ -301,6 +278,28 @@ async function createMercariListing(listingData) {
     // Wait a bit for all changes to take effect
     await sleep(2000);
     
+    // Upload photos if present (using extension method with Mercari's GraphQL API)
+    const hasPhotos = listingData.photos && listingData.photos.length > 0;
+    if (hasPhotos) {
+      try {
+        const uploadResult = await uploadMercariPhotos(listingData.photos);
+        if (!uploadResult.success) {
+          return {
+            success: false,
+            error: `Photo upload failed: ${uploadResult.error}`,
+            requiresManualPhotoUpload: true
+          };
+        }
+        // Upload IDs are stored in window.__mercariUploadIds for form submission
+      } catch (error) {
+        return {
+          success: false,
+          error: `Photo upload error: ${error.message}`,
+          requiresManualPhotoUpload: true
+        };
+      }
+    }
+    
     // Check if photos are required but not uploaded
     const photoCount = document.querySelectorAll('[data-testid="Photo"]').length;
     const photosInData = listingData.photos && listingData.photos.length > 0;
@@ -309,16 +308,6 @@ async function createMercariListing(listingData) {
       return {
         success: true,
         message: 'Form filled successfully. Please upload at least one photo manually and click the List button.',
-        requiresManualPhotoUpload: true,
-        filled: true
-      };
-    }
-    
-    // If photos are in listingData but not uploaded yet, don't submit
-    if (photosInData && photoCount === 0) {
-      return {
-        success: true,
-        message: 'Form filled successfully. Photos need to be uploaded. Please upload photos manually and click the List button.',
         requiresManualPhotoUpload: true,
         filled: true
       };
@@ -618,6 +607,186 @@ async function typeIntoMercariDropdown(testId, text) {
   } catch (error) {
     console.error(`Error typing into dropdown [${testId}]:`, error);
     return false;
+  }
+}
+
+// Upload photos to Mercari using GraphQL API
+async function uploadMercariPhotos(photos) {
+  try {
+    if (!photos || photos.length === 0) {
+      return { success: true, uploadIds: [] };
+    }
+
+    // Extract auth tokens from page
+    let authToken = localStorage.getItem('auth_token') ||
+                   localStorage.getItem('token') ||
+                   localStorage.getItem('accessToken') ||
+                   sessionStorage.getItem('auth_token') ||
+                   sessionStorage.getItem('token');
+
+    // If not found, check cookies for JWT tokens (they start with 'eyJ')
+    if (!authToken) {
+      const cookies = document.cookie.split(';');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        // Check for JWT tokens (start with 'eyJ') or common token cookie names
+        if (value && (value.startsWith('eyJ') ||
+                     name.toLowerCase().includes('token') ||
+                     name.toLowerCase().includes('auth') ||
+                     name.toLowerCase().includes('access'))) {
+          authToken = value;
+          break;
+        }
+      }
+    }
+
+    // Get CSRF token
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                   document.cookie.match(/csrf-token=([^;]+)/)?.[1] ||
+                   document.cookie.match(/X-CSRF-Token=([^;]+)/)?.[1] ||
+                   document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+
+    if (!authToken) {
+      return { success: false, error: 'Could not find authorization token. Please ensure you are logged into Mercari.' };
+    }
+
+    if (!csrfToken) {
+      return { success: false, error: 'Could not find CSRF token. Please ensure you are logged into Mercari.' };
+    }
+
+    const uploadIds = [];
+
+    // Upload each photo
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      
+      // Get photo URL (handle both string URLs and object with preview property)
+      const photoUrl = typeof photo === 'string' ? photo : (photo.preview || photo.url);
+      
+      if (!photoUrl) {
+        console.warn(`Photo ${i + 1} has no URL, skipping`);
+        continue;
+      }
+
+      try {
+        // Fetch the image
+        const imageResponse = await fetch(photoUrl);
+        if (!imageResponse.ok) {
+          throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+        }
+
+        const imageBlob = await imageResponse.blob();
+
+        // Convert image to JPG format using Canvas API (Mercari requires .jpg)
+        const img = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = URL.createObjectURL(imageBlob);
+        });
+
+        // Create canvas and draw image
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        // Convert canvas to JPG Blob
+        const jpgBlob = await new Promise((resolve) => {
+          canvas.toBlob((blob) => {
+            resolve(blob);
+          }, 'image/jpeg', 0.95); // 95% quality
+        });
+
+        // Clean up object URL
+        URL.revokeObjectURL(img.src);
+
+        // Create FormData
+        const formData = new FormData();
+
+        // GraphQL operation - matching Mercari's exact format
+        const operations = {
+          operationName: "uploadTempListingPhotos",
+          variables: {
+            input: {
+              photos: [null]
+            }
+          },
+          extensions: {
+            persistedQuery: {
+              version: 1,
+              sha256Hash: "9aa889ac01e549a01c66c7baabc968b0e4a7fa4cd0b6bd32b7599ce10ca09a10"
+            }
+          }
+        };
+
+        // Map file to operation
+        const map = {
+          "1": ["variables.input.photos.0"]
+        };
+
+        formData.append('operations', JSON.stringify(operations));
+        formData.append('map', JSON.stringify(map));
+        // Mercari expects filename to be "blob" in the FormData, and file must be .jpg
+        formData.append('1', jpgBlob, 'blob');
+
+        // Build headers
+        // NOTE: Do NOT set Content-Type header - let FormData/browser set it automatically with boundary
+        const fetchHeaders = {
+          'accept': '*/*',
+          'accept-language': 'en-US,en;q=0.9',
+          'apollo-require-preflight': 'true',
+          'x-platform': 'web',
+          'x-double-web': '1',
+          'x-app-version': '1',
+          'x-csrf-token': csrfToken,
+          'authorization': `Bearer ${authToken}`
+        };
+
+        // Make fetch request
+        // Browser will automatically set Content-Type with boundary for FormData
+        const response = await fetch('https://www.mercari.com/v1/api', {
+          method: 'POST',
+          headers: fetchHeaders,
+          credentials: 'include',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 200)}`);
+        }
+
+        const result = await response.json();
+
+        if (result.data?.uploadTempListingPhotos?.uploadIds?.[0]) {
+          uploadIds.push(result.data.uploadTempListingPhotos.uploadIds[0]);
+          console.log(`✓ Photo ${i + 1} uploaded successfully (ID: ${result.data.uploadTempListingPhotos.uploadIds[0]})`);
+        } else {
+          console.error('Upload response:', result);
+          throw new Error('No uploadId in response: ' + JSON.stringify(result));
+        }
+
+        // Small delay between uploads
+        if (i < photos.length - 1) {
+          await sleep(500);
+        }
+
+      } catch (error) {
+        console.error(`Error uploading photo ${i + 1}:`, error);
+        return { success: false, error: `Failed to upload photo ${i + 1}: ${error.message}` };
+      }
+    }
+
+    // Store uploadIds in window for form submission
+    window.__mercariUploadIds = uploadIds;
+
+    return { success: true, uploadIds };
+
+  } catch (error) {
+    console.error('Error in uploadMercariPhotos:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -975,8 +1144,7 @@ async function fillMercariForm(data) {
       }
     }
     
-    // 11. PHOTOS - Handled by Puppeteer API, skip here
-    // Extension method cannot upload photos due to browser security restrictions
+    // 11. PHOTOS - Uploaded via uploadMercariPhotos() function before form submission
     
     return true;
     
