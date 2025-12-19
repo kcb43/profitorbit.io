@@ -204,7 +204,7 @@ if (MARKETPLACE === 'mercari') {
     chrome.storage.local.get(['mercariApiHeaders'], (result) => {
       if (result.mercariApiHeaders) {
         capturedMercariHeaders = result.mercariApiHeaders;
-        console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', Object.keys(capturedMercariHeaders));
+        console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
       }
     });
   };
@@ -262,7 +262,7 @@ if (MARKETPLACE) {
     
     if (message.type === 'MERCARI_HEADERS_CAPTURED') {
       capturedMercariHeaders = message.headers;
-      console.log('📡 [HEADER UPDATE] Received Mercari API headers from background:', Object.keys(capturedMercariHeaders));
+      console.log('📡 [HEADER UPDATE] Received Mercari API headers from background:', capturedMercariHeaders);
       return false; // No response needed
     }
   });
@@ -693,169 +693,44 @@ async function uploadMercariPhotos(photos) {
       console.log('⚠️ [PHOTO UPLOAD] No photos to upload');
       return { success: true, uploadIds: [] };
     }
-
-    console.log(`🔍 [PHOTO UPLOAD] Extracting authentication tokens...`);
     
-    // Wait a bit for page to fully load and make initial API calls (CSRF token might be set during this)
+    console.log(`📸 [PHOTO UPLOAD] Processing ${photos.length} photo(s)...`);
+    
+    // Wait a bit for page to fully load and make initial API calls
     console.log('⏳ [PHOTO UPLOAD] Waiting for page to initialize...');
     await sleep(2000);
     
-    // Extract auth tokens from page
-    let authToken = localStorage.getItem('auth_token') ||
-                   localStorage.getItem('token') ||
-                   localStorage.getItem('accessToken') ||
-                   sessionStorage.getItem('auth_token') ||
-                   sessionStorage.getItem('token');
-
-    // If not found, check cookies for JWT tokens (they start with 'eyJ')
-    if (!authToken) {
-      console.log('🔍 [PHOTO UPLOAD] Checking cookies for auth token...');
-      const cookies = document.cookie.split(';');
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        // Check for JWT tokens (start with 'eyJ') or common token cookie names
-        if (value && (value.startsWith('eyJ') ||
-                     name.toLowerCase().includes('token') ||
-                     name.toLowerCase().includes('auth') ||
-                     name.toLowerCase().includes('access'))) {
-          authToken = value;
-          console.log(`🔑 [PHOTO UPLOAD] Found auth token in cookie: ${name.substring(0, 20)}...`);
-          break;
-        }
-      }
-    } else {
-      console.log(`🔑 [PHOTO UPLOAD] Found auth token in storage`);
-    }
-
-    // Get CSRF token - try multiple methods
-    console.log('🔍 [PHOTO UPLOAD] Extracting CSRF token...');
-    
-    // Method 1: Check meta tag
-    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                   document.querySelector('meta[name="csrf_token"]')?.content ||
-                   document.querySelector('meta[name="X-CSRF-Token"]')?.content;
-    
-    // Method 2: Check cookies (multiple patterns)
-    if (!csrfToken) {
-      const cookiePatterns = [
-        /csrf-token=([^;]+)/i,
-        /csrf_token=([^;]+)/i,
-        /X-CSRF-Token=([^;]+)/i,
-        /x-csrf-token=([^;]+)/i,
-        /_csrf=([^;]+)/i,
-        /csrf=([^;]+)/i
-      ];
-      
-      for (const pattern of cookiePatterns) {
-        const match = document.cookie.match(pattern);
-        if (match && match[1]) {
-          csrfToken = match[1];
-          console.log(`🔑 [PHOTO UPLOAD] Found CSRF token in cookie: ${csrfToken.substring(0, 10)}...`);
-          break;
-        }
-      }
-    }
-    
-    // Method 3: Check localStorage/sessionStorage
-    if (!csrfToken) {
-      csrfToken = localStorage.getItem('csrf-token') ||
-                 localStorage.getItem('csrf_token') ||
-                 localStorage.getItem('X-CSRF-Token') ||
-                 sessionStorage.getItem('csrf-token') ||
-                 sessionStorage.getItem('csrf_token') ||
-                 sessionStorage.getItem('X-CSRF-Token');
-    }
-    
-    // Method 4: Try to get CSRF token from existing fetch interceptors or make a test call
-    if (!csrfToken) {
-      console.log('🔍 [PHOTO UPLOAD] Attempting to get CSRF token from API call...');
-      try {
-        // Try to get from window if it was stored by interceptors
-        if (window.__mercariCsrfToken) {
-          csrfToken = window.__mercariCsrfToken;
-          console.log(`🔑 [PHOTO UPLOAD] Found CSRF token from window cache`);
+    // Load headers from storage using the same pattern as loadHeadersFromStorage
+    console.log('🔍 [PHOTO UPLOAD] Loading headers from storage...');
+    let mercariHeaders = null;
+    await new Promise((resolve) => {
+      chrome.storage.local.get(['mercariApiHeaders'], (result) => {
+        if (result.mercariApiHeaders) {
+          mercariHeaders = result.mercariApiHeaders;
+          console.log('📡 [PHOTO UPLOAD] Loaded Mercari API headers from storage:', mercariHeaders);
         } else {
-          // Make a lightweight API call - Mercari might return CSRF token in response
-          // Use OPTIONS preflight which is less likely to fail
-          const testResponse = await fetch('https://www.mercari.com/v1/api', {
-            method: 'OPTIONS',
-            headers: {
-              'apollo-require-preflight': 'true',
-              'x-platform': 'web'
-            },
-            credentials: 'include'
-          });
-          
-          // Wait a moment for cookies to be set
-          await sleep(500);
-          
-          // Re-check cookies after the API call
-          for (const pattern of [
-            /csrf-token=([^;]+)/i,
-            /csrf_token=([^;]+)/i,
-            /X-CSRF-Token=([^;]+)/i,
-            /x-csrf-token=([^;]+)/i
-          ]) {
-            const match = document.cookie.match(pattern);
-            if (match && match[1]) {
-              csrfToken = match[1];
-              console.log(`🔑 [PHOTO UPLOAD] Found CSRF token in cookies after API call`);
-              break;
-            }
-          }
+          console.log('⚠️ [PHOTO UPLOAD] No headers found in storage');
         }
-      } catch (error) {
-        console.warn('⚠️ [PHOTO UPLOAD] Could not get CSRF token from test API call:', error.message);
-      }
+        resolve();
+      });
+    });
+    
+    if (!mercariHeaders || Object.keys(mercariHeaders).length === 0) {
+      console.error('❌ [PHOTO UPLOAD] No headers found in storage. Please navigate to Mercari and wait for headers to be captured.');
+      return { success: false, error: 'No headers found. Please ensure you are on a Mercari page and headers have been captured.' };
     }
     
-    // Method 5: Check all cookies more thoroughly
-    if (!csrfToken) {
-      console.log('🔍 [PHOTO UPLOAD] Checking all cookies for CSRF token...');
-      const allCookies = document.cookie.split(';');
-      for (const cookie of allCookies) {
-        const [name, value] = cookie.trim().split('=');
-        const nameLower = name.toLowerCase();
-        if (value && (
-          nameLower.includes('csrf') ||
-          nameLower.includes('token') ||
-          (nameLower.includes('x') && nameLower.includes('csrf'))
-        )) {
-          // Check if it looks like a CSRF token (not too short, not too long)
-          if (value.length > 10 && value.length < 200) {
-            csrfToken = value;
-            console.log(`🔑 [PHOTO UPLOAD] Found potential CSRF token in cookie: ${name}`);
-            break;
-          }
-        }
-      }
+    // Verify required headers are present
+    if (!mercariHeaders['authorization']) {
+      console.error('❌ [PHOTO UPLOAD] Authorization header not found in stored headers');
+      return { success: false, error: 'Authorization header not found. Please ensure you are logged into Mercari and headers have been captured.' };
     }
-
-    if (!authToken) {
-      console.error('❌ [PHOTO UPLOAD] Could not find authorization token');
-      return { success: false, error: 'Could not find authorization token. Please ensure you are logged into Mercari.' };
-    }
-
-    if (!csrfToken) {
-      console.warn('⚠️ [PHOTO UPLOAD] Could not find CSRF token initially');
-      console.warn('🔍 [PHOTO UPLOAD] Debug info:', {
-        cookies: document.cookie.substring(0, 500),
-        metaTags: Array.from(document.querySelectorAll('meta[name*="csrf" i]')).map(m => ({ name: m.name, content: m.content?.substring(0, 20) })),
-        localStorage: Object.keys(localStorage).filter(k => k.toLowerCase().includes('csrf')),
-        sessionStorage: Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('csrf'))
-      });
-      
-      // Try to proceed without CSRF token - browser might include it automatically
-      // or we'll extract it from error response
-      console.log('⚠️ [PHOTO UPLOAD] Proceeding without CSRF token - will try to extract from error if needed');
-    }
-
-    console.log(`✅ [PHOTO UPLOAD] Tokens extracted successfully`);
-    console.log(`   Auth token: ${authToken.substring(0, 20)}...`);
-    if (csrfToken) {
-      console.log(`   CSRF token: ${csrfToken.substring(0, 10)}...`);
-    } else {
-      console.log(`   CSRF token: Not found (will try without it)`);
+    
+    console.log(`✅ [PHOTO UPLOAD] Headers loaded from storage`);
+    console.log(`   Headers count: ${Object.keys(mercariHeaders).length} headers`);
+    console.log(`   Authorization: ${mercariHeaders['authorization']?.substring(0, 30)}...`);
+    if (mercariHeaders['x-csrf-token']) {
+      console.log(`   CSRF token: ${mercariHeaders['x-csrf-token']?.substring(0, 10)}...`);
     }
 
     const uploadIds = [];
@@ -868,7 +743,7 @@ async function uploadMercariPhotos(photos) {
       const photoUrl = typeof photo === 'string' ? photo : (photo.preview || photo.url);
       
       if (!photoUrl) {
-        console.warn(`⚠️ [PHOTO UPLOAD] Photo ${i + 1} has no URL, skipping`);
+        console.warn(`⚠️ [PHOTO UPLOAD ${i + 1}/${photos.length}] Photo has no URL, skipping`);
         continue;
       }
 
@@ -882,8 +757,6 @@ async function uploadMercariPhotos(photos) {
 
         const imageBlob = await imageResponse.blob();
         console.log(`✅ [PHOTO UPLOAD ${i + 1}/${photos.length}] Image fetched (${(imageBlob.size / 1024).toFixed(2)} KB)`);
-
-        console.log(`🖼️ [PHOTO UPLOAD ${i + 1}/${photos.length}] Converting to JPG format...`);
         // Convert image to JPG format using Canvas API (Mercari requires .jpg)
         const img = await new Promise((resolve, reject) => {
           const img = new Image();
@@ -939,123 +812,37 @@ async function uploadMercariPhotos(photos) {
         // Mercari expects filename to be "blob" in the FormData, and file must be .jpg
         formData.append('1', jpgBlob, 'blob');
 
-        // Build headers - use intercepted headers if available, otherwise fallback to manual construction
-        let fetchHeaders = {};
+        // Build headers - use headers from loadHeadersFromStorage (mercariHeaders)
+        // Start with headers loaded from storage (captured by background script's webRequest API)
+        const fetchHeaders = { ...mercariHeaders };
         
-        if (capturedMercariHeaders && Object.keys(capturedMercariHeaders).length > 0) {
-          // Use intercepted headers as base
-          fetchHeaders = { ...capturedMercariHeaders };
-          console.log(`📡 [PHOTO UPLOAD ${i + 1}/${photos.length}] Using intercepted headers (${Object.keys(fetchHeaders).length} headers)`);
-          
-          // Ensure authorization token is set (use intercepted or extracted)
-          if (authToken) {
-            fetchHeaders['authorization'] = `Bearer ${authToken}`;
-          }
-          
-          // Ensure CSRF token is set (use intercepted or extracted)
-          if (csrfToken) {
-            fetchHeaders['x-csrf-token'] = csrfToken;
-          }
-          
-          // Remove content-type if present (browser will set it with boundary for FormData)
-          delete fetchHeaders['content-type'];
-        } else {
-          // Fallback to manual header construction if interception didn't capture headers
-          console.log(`⚠️ [PHOTO UPLOAD ${i + 1}/${photos.length}] No intercepted headers found, using fallback headers`);
-          fetchHeaders = {
-            'accept': '*/*',
-            'accept-language': 'en-US,en;q=0.9',
-            'apollo-require-preflight': 'true',
-            'x-platform': 'web',
-            'x-double-web': '1',
-            'x-app-version': '1',
-            'authorization': `Bearer ${authToken}`
-          };
-          
-          // Only add CSRF token if we found it
-          if (csrfToken) {
-            fetchHeaders['x-csrf-token'] = csrfToken;
-          }
-        }
-
+        console.log(`📡 [PHOTO UPLOAD ${i + 1}/${photos.length}] Using headers from storage (${Object.keys(fetchHeaders).length} headers)`);
+        
+        // Remove content-type if present (browser will set it with boundary for FormData)
+        delete fetchHeaders['content-type'];
+        
+        // Log the complete request with all headers and parameters
         console.log(`📤 [PHOTO UPLOAD ${i + 1}/${photos.length}] Uploading to Mercari API...`);
-        console.log(`   JPG size: ${(jpgBlob.size / 1024).toFixed(2)} KB`);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Request URL: https://www.mercari.com/v1/api`);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Request Method: POST`);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Request Headers (${Object.keys(fetchHeaders).length}):`, fetchHeaders);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Operations:`, JSON.stringify(operations, null, 2));
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Map:`, JSON.stringify(map, null, 2));
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] File: blob (${(jpgBlob.size / 1024).toFixed(2)} KB, type: image/jpeg)`);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Referrer: https://www.mercari.com/sell/`);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Mode: cors`);
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Credentials: include`);
         
-        // Log the complete fetch request details
-        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Fetch Request Details:`);
-        console.log(`   URL: https://www.mercari.com/v1/api`);
-        console.log(`   Method: POST`);
-        console.log(`   Headers:`, JSON.stringify(fetchHeaders, null, 2));
-        console.log(`   Operations:`, JSON.stringify(operations, null, 2));
-        console.log(`   Map:`, JSON.stringify(map, null, 2));
-        console.log(`   File: blob (${(jpgBlob.size / 1024).toFixed(2)} KB, type: image/jpeg)`);
-        console.log(`   Credentials: include`);
-        
-        // Store blob reference for testing BEFORE making the request
-        window[`__testBlob${i}`] = jpgBlob;
-        
-        // Log copyable fetch request for testing
-        const operationsStr = JSON.stringify(operations);
-        const mapStr = JSON.stringify(map);
-        const headersStr = JSON.stringify(fetchHeaders, null, 2);
-        
-        // Create a properly formatted headers object string for copy-paste
-        const headersForCopy = Object.entries(fetchHeaders).map(([key, value]) => {
-          return `    '${key}': ${JSON.stringify(value)}`;
-        }).join(',\n');
-        
-        const copyableRequest = `// ========================================
-// COPY-PASTE THIS INTO CONSOLE TO TEST:
-// ========================================
-const formData = new FormData();
-formData.append('operations', ${JSON.stringify(operationsStr)});
-formData.append('map', ${JSON.stringify(mapStr)});
-formData.append('1', window.__testBlob${i}, 'blob');
-
-fetch('https://www.mercari.com/v1/api', {
-  method: 'POST',
-  headers: {
-${headersForCopy}
-  },
-  credentials: 'include',
-  body: formData
-})
-.then(r => {
-  console.log('Response status:', r.status, r.statusText);
-  return r.json();
-})
-.then(data => {
-  console.log('Response data:', data);
-  return data;
-})
-.catch(err => {
-  console.error('Error:', err);
-});
-// ========================================`;
-        
-        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Copy-paste ready fetch request:`);
-        console.log(copyableRequest);
-        
-        // Log which headers were intercepted vs manually set
-        const interceptedCount = capturedMercariHeaders ? Object.keys(capturedMercariHeaders).length : 0;
-        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Header source: ${interceptedCount > 0 ? `${interceptedCount} intercepted + manual` : 'manual fallback'}`);
-        
-        // Also log individual components for easier debugging
-        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Request components:`);
-        console.log(`   Operations JSON:`, operationsStr);
-        console.log(`   Map JSON:`, mapStr);
-        console.log(`   Headers object:`, fetchHeaders);
-        console.log(`   Blob available as: window.__testBlob${i} (${(jpgBlob.size / 1024).toFixed(2)} KB)`);
-        
-        // Make fetch request
-        // Browser will automatically set Content-Type with boundary for FormData
+        // Make fetch request with ALL headers included
         const response = await fetch('https://www.mercari.com/v1/api', {
           method: 'POST',
           headers: fetchHeaders,
+          referrer: 'https://www.mercari.com/sell/',
+          mode: 'cors',
           credentials: 'include',
           body: formData
         });
-        
+
         console.log(`📥 [PHOTO UPLOAD ${i + 1}/${photos.length}] Response received:`);
         console.log(`   Status: ${response.status} ${response.statusText}`);
         console.log(`   Headers:`, Object.fromEntries(response.headers.entries()));
@@ -1063,28 +850,39 @@ ${headersForCopy}
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`❌ [PHOTO UPLOAD ${i + 1}/${photos.length}] Upload failed: ${response.status} ${response.statusText}`);
+          console.error(`   Error text: ${errorText.substring(0, 500)}`);
           
-          // If CSRF error and we didn't have token, try to extract it and retry
-          if ((response.status === 403 || response.status === 401) && !csrfToken && errorText.includes('csrf')) {
-            console.log('🔄 [PHOTO UPLOAD] CSRF error detected, attempting to extract token and retry...');
-            
-            // Wait a moment and re-check cookies
+          // If CSRF error, reload headers from storage and retry
+          if ((response.status === 403 || response.status === 401) && errorText.includes('csrf')) {
+            console.log('🔄 [PHOTO UPLOAD] CSRF error detected, reloading headers from storage and retrying...');
+            // Wait a moment for headers to be updated
             await sleep(1000);
-            const retryCsrfToken = document.cookie.match(/csrf-token=([^;]+)/i)?.[1] ||
-                                  document.cookie.match(/X-CSRF-Token=([^;]+)/i)?.[1];
             
-            if (retryCsrfToken) {
-              console.log(`🔑 [PHOTO UPLOAD] Found CSRF token after error, retrying upload...`);
-              csrfToken = retryCsrfToken;
-              
-              // Retry the upload with CSRF token
-              const retryHeaders = { ...fetchHeaders, 'x-csrf-token': csrfToken };
+            // Reload headers from storage
+            let retryHeaders = null;
+            await new Promise((resolve) => {
+              chrome.storage.local.get(['mercariApiHeaders'], (result) => {
+                if (result.mercariApiHeaders) {
+                  retryHeaders = { ...result.mercariApiHeaders };
+                  delete retryHeaders['content-type'];
+                  console.log(`📡 [PHOTO UPLOAD] Reloaded headers from storage for retry`);
+                }
+                resolve();
+              });
+            });
+            
+            if (retryHeaders && retryHeaders['x-csrf-token']) {
+              console.log(`📤 [PHOTO UPLOAD ${i + 1}/${photos.length}] Retrying with updated headers...`);
               const retryResponse = await fetch('https://www.mercari.com/v1/api', {
                 method: 'POST',
                 headers: retryHeaders,
+                referrer: 'https://www.mercari.com/sell/',
+                mode: 'cors',
                 credentials: 'include',
                 body: formData
               });
+              
+              console.log(`📥 [PHOTO UPLOAD ${i + 1}/${photos.length}] Retry response: ${retryResponse.status} ${retryResponse.statusText}`);
               
               if (retryResponse.ok) {
                 const retryResult = await retryResponse.json();
@@ -1101,6 +899,7 @@ ${headersForCopy}
         }
 
         const result = await response.json();
+        console.log(`📋 [PHOTO UPLOAD ${i + 1}/${photos.length}] Response data:`, result);
 
         if (result.data?.uploadTempListingPhotos?.uploadIds?.[0]) {
           uploadIds.push(result.data.uploadTempListingPhotos.uploadIds[0]);
