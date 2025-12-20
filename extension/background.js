@@ -309,14 +309,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!targetTab) {
           targetTab = await chrome.tabs.create({
             url: 'https://www.mercari.com/sell/',
-            active: false
+            active: false, // Keep tab hidden
+            pinned: false // Don't pin it
           });
+          
+          // Ensure tab stays hidden by updating it
+          await chrome.tabs.update(targetTab.id, { active: false });
           
           // Wait for page to load (silently, like Vendoo)
           await new Promise((resolve) => {
             const listener = (tabId, info) => {
               if (tabId === targetTab.id && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(listener);
+                // Ensure tab stays hidden after load
+                chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
                 resolve();
               }
             };
@@ -324,7 +330,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           
           // Reduced wait time - content script should be ready faster
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 3000ms to 1000ms
+          await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
         }
         
         // Send listing data with retry logic (silently, like Vendoo)

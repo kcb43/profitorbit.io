@@ -463,8 +463,22 @@ async function createListing(listingData) {
   };
 }
 
+// Prevent multiple simultaneous listing creations
+let isCreatingMercariListing = false;
+
 // Mercari-specific listing automation
 async function createMercariListing(listingData) {
+  // Prevent multiple simultaneous calls
+  if (isCreatingMercariListing) {
+    console.warn('⚠️ [MERCARI] Listing creation already in progress, skipping...');
+    return {
+      success: false,
+      error: 'Listing creation already in progress'
+    };
+  }
+  
+  isCreatingMercariListing = true;
+  
   try {
     console.log('🚀 [MERCARI] Starting listing creation...');
     const summaryData = {
@@ -515,10 +529,10 @@ async function createMercariListing(listingData) {
     if (hasPhotos) {
       console.log(`📸 [MERCARI] Starting photo upload for ${listingData.photos.length} photo(s)...`);
       
-      // Reduced wait time for headers - they should already be captured from page load
+      // Headers should already be captured from page load - minimal wait
       if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
         console.log('⏳ [MERCARI] Waiting for API headers to be captured...');
-        await sleep(1000); // Reduced from 3000ms to 1000ms - headers should be ready faster
+        await sleep(500); // Reduced from 1000ms - headers should be ready very quickly
         
         // Check again
         if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
@@ -567,10 +581,9 @@ async function createMercariListing(listingData) {
       };
     }
     
-    // Handle any popups that might have appeared after photo upload
-    console.log('🔍 [MERCARI] Checking for popups after photo upload...');
-    await handleMercariPopups();
-    await sleep(300); // Reduced wait time
+    // Handle any popups that might have appeared after photo upload (non-blocking)
+    handleMercariPopups().catch(() => {}); // Don't wait for this
+    await sleep(100); // Minimal wait
     
     // Verify and re-set brand if needed (popups might have cleared it)
     if (listingData.brand) {
@@ -582,7 +595,7 @@ async function createMercariListing(listingData) {
       if (!brandValue || brandValue === 'Select brand' || brandValue === 'Brand' || brandValue.length < 2) {
         console.log('⚠️ [MERCARI] Brand appears to be missing, re-setting...');
         await setMercariBrand(listingData.brand);
-        await sleep(500); // Reduced wait time
+        await sleep(200); // Reduced wait time
       } else {
         console.log(`✅ [MERCARI] Brand is still set: "${brandValue}"`);
       }
@@ -598,10 +611,14 @@ async function createMercariListing(listingData) {
       console.error('❌ [MERCARI] Form submission failed:', submitResult.error);
     }
     
+    // Reset flag on completion
+    isCreatingMercariListing = false;
     return submitResult;
     
   } catch (error) {
     console.error('❌ [MERCARI] Error during listing creation:', error);
+    // Reset flag on error
+    isCreatingMercariListing = false;
     return { success: false, error: error.message };
   }
 }
@@ -2285,131 +2302,150 @@ async function handleMercariPopups() {
   return false;
 }
 
+// Prevent multiple submissions
+let isSubmittingMercariForm = false;
+
 async function submitMercariForm(brandToVerify = null) {
-  console.log('📤 [FORM SUBMIT] Looking for List button...');
-  // Find the List button using actual Mercari selector
-  const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
-                   document.querySelector('button[type="submit"]');
-  
-  if (!submitBtn) {
-    console.error('❌ [FORM SUBMIT] List button not found');
+  // Prevent multiple simultaneous submissions
+  if (isSubmittingMercariForm) {
+    console.warn('⚠️ [FORM SUBMIT] Form submission already in progress, skipping...');
     return {
       success: false,
-      error: 'List button not found on page'
+      error: 'Form submission already in progress'
     };
   }
   
-  console.log('✅ [FORM SUBMIT] List button found');
+  isSubmittingMercariForm = true;
   
-  // Quick popup check (non-blocking)
-  handleMercariPopups().catch(() => {}); // Don't wait for this
-  
-  // Quick brand verification (only if needed)
-  if (brandToVerify) {
-    const brandDropdown = document.querySelector('[data-testid="Brand"]');
-    const brandValue = brandDropdown?.textContent?.trim() || brandDropdown?.value?.trim() || '';
+  try {
+    console.log('📤 [FORM SUBMIT] Looking for List button...');
+    // Find the List button using actual Mercari selector
+    const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
+                     document.querySelector('button[type="submit"]');
     
-    // Only re-set if brand is actually missing
-    if (!brandValue || brandValue === 'Select brand' || brandValue === 'Brand' || brandValue.length < 2) {
-      console.log('⚠️ [FORM SUBMIT] Brand missing, re-setting quickly...');
-      await setMercariBrand(brandToVerify);
-      await sleep(300); // Minimal wait
+    if (!submitBtn) {
+      console.error('❌ [FORM SUBMIT] List button not found');
+      return {
+        success: false,
+        error: 'List button not found on page'
+      };
     }
-  }
-  
-  // Re-fetch button right before clicking to ensure we have the latest state
-  const finalSubmitBtn = document.querySelector('[data-testid="ListButton"]') ||
-                         document.querySelector('button[type="submit"]');
-  
-  if (!finalSubmitBtn) {
-    console.error('❌ [FORM SUBMIT] List button disappeared');
+    
+    console.log('✅ [FORM SUBMIT] List button found');
+    
+    // Quick popup check (non-blocking)
+    handleMercariPopups().catch(() => {}); // Don't wait for this
+    
+    // Quick brand verification (only if needed)
+    if (brandToVerify) {
+      const brandDropdown = document.querySelector('[data-testid="Brand"]');
+      const brandValue = brandDropdown?.textContent?.trim() || brandDropdown?.value?.trim() || '';
+      
+      // Only re-set if brand is actually missing
+      if (!brandValue || brandValue === 'Select brand' || brandValue === 'Brand' || brandValue.length < 2) {
+        console.log('⚠️ [FORM SUBMIT] Brand missing, re-setting quickly...');
+        await setMercariBrand(brandToVerify);
+        await sleep(200); // Reduced wait
+      }
+    }
+    
+    // Re-fetch button right before clicking to ensure we have the latest state
+    const finalSubmitBtn = document.querySelector('[data-testid="ListButton"]') ||
+                           document.querySelector('button[type="submit"]');
+    
+    if (!finalSubmitBtn) {
+      console.error('❌ [FORM SUBMIT] List button disappeared');
+      return {
+        success: false,
+        error: 'List button not found on page'
+      };
+    }
+    
+    // Check if button is enabled (Mercari disables it if form is invalid)
+    if (finalSubmitBtn.disabled) {
+      console.warn('⚠️ [FORM SUBMIT] List button is disabled - checking form validation...');
+      // Try to identify what's missing
+      const titleInput = document.querySelector('[data-testid="Title"]') || document.querySelector('#sellName');
+      const descInput = document.querySelector('[data-testid="Description"]') || document.querySelector('#sellDescription');
+      const priceInput = document.querySelector('[data-testid="Price"]') || document.querySelector('#Price');
+      const categoryDropdown = document.querySelector('[data-testid="CategoryL0"]');
+      const conditionDropdown = document.querySelector('[data-testid="Condition"]');
+      
+      const missingFields = [];
+      if (!titleInput?.value) missingFields.push('Title');
+      if (!descInput?.value) missingFields.push('Description');
+      if (!priceInput?.value) missingFields.push('Price');
+      if (categoryDropdown?.textContent === 'Select category') missingFields.push('Category');
+      if (conditionDropdown?.textContent === 'Select condition') missingFields.push('Condition');
+      
+      // Check for photo requirement
+      const photoCount = document.querySelectorAll('[data-testid="Photo"]').length;
+      if (photoCount === 0) missingFields.push('Photos (at least 1 required)');
+      
+      return {
+        success: false,
+        error: `Form incomplete. Missing: ${missingFields.join(', ')}`
+      };
+    }
+    
+    // Click ONCE - use direct click only (prevents multiple submissions)
+    console.log('🖱️ [FORM SUBMIT] Clicking List button ONCE...');
+    
+    // Use direct click - most reliable and prevents multiple submissions
+    finalSubmitBtn.click();
+    
+    console.log('✅ [FORM SUBMIT] List button clicked (single click)');
+    
+    // Wait for navigation/success page (reduced wait time)
+    await sleep(3000); // Reduced from 5000ms
+    
+    // Try to detect success and extract listing URL
+    const currentUrl = window.location.href;
+    
+    if (currentUrl.includes('/item/')) {
+      // Successfully created - URL contains item ID
+      const listingId = currentUrl.split('/item/')[1]?.split('/')[0] || '';
+      
+      // Reset submission flag on success
+      isSubmittingMercariForm = false;
+      
+      return {
+        success: true,
+        listingId: listingId,
+        listingUrl: currentUrl
+      };
+    } else if (currentUrl.includes('/sell')) {
+      // Still on sell page - check for error messages
+      const errorMsg = document.querySelector('[class*="error"], [class*="Error"], [role="alert"]');
+      const errorText = errorMsg?.textContent || 'Unknown validation error';
+      
+      // Reset submission flag on error
+      isSubmittingMercariForm = false;
+      
+      return {
+        success: false,
+        error: `Listing failed: ${errorText}`
+      };
+    }
+    
+    // Unknown state - reset flag after delay
+    setTimeout(() => {
+      isSubmittingMercariForm = false;
+    }, 5000);
+    
     return {
       success: false,
-      error: 'List button not found on page'
+      error: 'Unable to determine listing status'
     };
-  }
-  
-  // Check if button is enabled (Mercari disables it if form is invalid)
-  if (finalSubmitBtn.disabled) {
-    console.warn('⚠️ [FORM SUBMIT] List button is disabled - checking form validation...');
-    // Try to identify what's missing
-    const titleInput = document.querySelector('[data-testid="Title"]') || document.querySelector('#sellName');
-    const descInput = document.querySelector('[data-testid="Description"]') || document.querySelector('#sellDescription');
-    const priceInput = document.querySelector('[data-testid="Price"]') || document.querySelector('#Price');
-    const categoryDropdown = document.querySelector('[data-testid="CategoryL0"]');
-    const conditionDropdown = document.querySelector('[data-testid="Condition"]');
-    
-    const missingFields = [];
-    if (!titleInput?.value) missingFields.push('Title');
-    if (!descInput?.value) missingFields.push('Description');
-    if (!priceInput?.value) missingFields.push('Price');
-    if (categoryDropdown?.textContent === 'Select category') missingFields.push('Category');
-    if (conditionDropdown?.textContent === 'Select condition') missingFields.push('Condition');
-    
-    // Check for photo requirement
-    const photoCount = document.querySelectorAll('[data-testid="Photo"]').length;
-    if (photoCount === 0) missingFields.push('Photos (at least 1 required)');
-    
+  } catch (error) {
+    // Reset flag on exception
+    isSubmittingMercariForm = false;
+    console.error('❌ [FORM SUBMIT] Error:', error);
     return {
       success: false,
-      error: `Form incomplete. Missing: ${missingFields.join(', ')}`
+      error: error.message || 'Form submission failed'
     };
   }
-  
-  // Click immediately - use multiple methods for reliability
-  console.log('🖱️ [FORM SUBMIT] Clicking List button immediately...');
-  
-  // Method 1: Direct click on button (immediate)
-  finalSubmitBtn.click();
-  
-  // Method 2: Also trigger form submit event (backup, immediate)
-  const form = finalSubmitBtn.closest('form');
-  if (form) {
-    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-    form.dispatchEvent(submitEvent);
-  }
-  
-  // Method 3: Also dispatch mouse events for better compatibility (immediate)
-  const mouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window });
-  const mouseUp = new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window });
-  const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-  finalSubmitBtn.dispatchEvent(mouseDown);
-  finalSubmitBtn.dispatchEvent(mouseUp);
-  finalSubmitBtn.dispatchEvent(clickEvent);
-  
-  console.log('✅ [FORM SUBMIT] List button clicked');
-  
-  // Wait for navigation/success page
-  await sleep(5000);
-  
-  // Try to detect success and extract listing URL
-  const currentUrl = window.location.href;
-  
-  if (currentUrl.includes('/item/')) {
-    // Successfully created - URL contains item ID
-    const listingId = currentUrl.split('/item/')[1]?.split('/')[0] || '';
-    
-    return {
-      success: true,
-      listingId: listingId,
-      listingUrl: currentUrl
-    };
-  } else if (currentUrl.includes('/sell')) {
-    // Still on sell page - check for error messages
-    const errorMsg = document.querySelector('[class*="error"], [class*="Error"], [role="alert"]');
-    const errorText = errorMsg?.textContent || 'Unknown validation error';
-    
-    return {
-      success: false,
-      error: `Listing failed: ${errorText}`
-    };
-  }
-  
-  // Unknown state
-  return {
-    success: false,
-    error: 'Unable to determine listing status'
-  };
 }
 
 // Helper: Wait for element to appear
