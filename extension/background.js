@@ -117,6 +117,120 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   
+  // Handle Facebook listing request from bridge script
+  if (message.type === 'CREATE_FACEBOOK_LISTING') {
+    (async () => {
+      try {
+        const listingData = message.listingData;
+        
+        // Helper function to check if content script is ready
+        const isContentScriptReady = async (tabId) => {
+          for (let i = 0; i < 5; i++) {
+            try {
+              const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+              if (response && response.status === 'ready') {
+                return true;
+              }
+            } catch (error) {
+              if (i === 4 || 
+                  !error.message?.includes('Receiving end does not exist') &&
+                  !error.message?.includes('Could not establish connection')) {
+                return false;
+              }
+            }
+            
+            if (i < 4) {
+              await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+            }
+          }
+          return false;
+        };
+        
+        // Helper function to send message with retry
+        const sendMessageWithRetry = async (tabId, message, maxRetries = 3) => {
+          for (let i = 0; i < maxRetries; i++) {
+            try {
+              const response = await chrome.tabs.sendMessage(tabId, message);
+              return { success: true, response };
+            } catch (error) {
+              const isLastRetry = i === maxRetries - 1;
+              const isConnectionError = error.message?.includes('Receiving end does not exist') ||
+                                       error.message?.includes('Could not establish connection');
+              
+              if (isLastRetry || !isConnectionError) {
+                return { success: false, error: error.message };
+              }
+              
+              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+            }
+          }
+        };
+        
+        // Find Facebook tab or create new one (work silently like Vendoo)
+        const tabs = await chrome.tabs.query({ url: 'https://www.facebook.com/*' });
+        
+        let targetTab = null;
+        
+        if (tabs.length > 0) {
+          // Try to use existing Facebook tab
+          const facebookTab = tabs[0];
+          
+          // Check if tab is in a valid state
+          const tabInfo = await chrome.tabs.get(facebookTab.id);
+          if (tabInfo.status === 'complete' && tabInfo.url?.startsWith('https://www.facebook.com')) {
+            // Check if content script is ready
+            const isReady = await isContentScriptReady(facebookTab.id);
+            if (isReady) {
+              targetTab = facebookTab;
+            }
+          }
+        }
+        
+        // If no valid tab found, create a new one (hidden in background like Vendoo)
+        if (!targetTab) {
+          targetTab = await chrome.tabs.create({
+            url: 'https://www.facebook.com/marketplace/create/',
+            active: false
+          });
+          
+          // Wait for page to load (silently, like Vendoo)
+          await new Promise((resolve) => {
+            const listener = (tabId, info) => {
+              if (tabId === targetTab.id && info.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                resolve();
+              }
+            };
+            chrome.tabs.onUpdated.addListener(listener);
+          });
+          
+          // Reduced wait time - content script should be ready faster
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Send listing data with retry logic (silently, like Vendoo)
+        const result = await sendMessageWithRetry(targetTab.id, {
+          type: 'CREATE_LISTING',
+          listingData: listingData
+        });
+        
+        if (result.success) {
+          sendResponse(result.response || { success: false, error: 'No response from Facebook content script' });
+        } else {
+          sendResponse({ 
+            success: false, 
+            error: 'Failed to communicate with Facebook tab. Please ensure you have a Facebook tab open and try again. Error: ' + result.error 
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error in Facebook listing flow:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    
+    return true; // Keep channel open for async response
+  }
+
   // Handle Mercari listing request from bridge script
   if (message.type === 'CREATE_MERCARI_LISTING') {
     const listingData = message.listingData;

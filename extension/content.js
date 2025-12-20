@@ -433,6 +433,10 @@ async function createListing(listingData) {
     return await createMercariListing(listingData);
   }
   
+  if (MARKETPLACE === 'facebook') {
+    return await createFacebookListing(listingData);
+  }
+  
   // Other marketplaces to be implemented
   return {
     success: false,
@@ -581,6 +585,331 @@ async function createMercariListing(listingData) {
     console.error('❌ [MERCARI] Error during listing creation:', error);
     return { success: false, error: error.message };
   }
+}
+
+// Facebook Marketplace listing automation
+async function createFacebookListing(listingData) {
+  try {
+    console.log('🚀 [FACEBOOK] Starting listing creation...');
+    const summaryData = {
+      title: listingData.title,
+      price: listingData.price,
+      photosCount: listingData.photos?.length || 0,
+      category: listingData.category,
+      condition: listingData.condition
+    };
+    console.log('📋 [FACEBOOK] Listing data:', summaryData);
+    
+    // Navigate to Marketplace create listing page if not already there
+    if (!window.location.href.includes('/marketplace/create') && !window.location.href.includes('/marketplace/sell')) {
+      console.log('🌐 [FACEBOOK] Navigating to Marketplace create page...');
+      // Store listing data in sessionStorage so we can retrieve it after navigation
+      sessionStorage.setItem('__facebookPendingListing', JSON.stringify(listingData));
+      window.location.href = 'https://www.facebook.com/marketplace/create/';
+      
+      // Wait for page to load, then retry
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const storedData = sessionStorage.getItem('__facebookPendingListing');
+          if (storedData) {
+            const data = JSON.parse(storedData);
+            sessionStorage.removeItem('__facebookPendingListing');
+            createFacebookListing(data);
+          }
+        }, 500);
+      }, { once: true });
+      return { success: false, error: 'Navigating to Marketplace create page...', retrying: true };
+    }
+    
+    console.log('⏳ [FACEBOOK] Waiting for form to load...');
+    // Wait for form to be ready - Facebook uses various selectors
+    await waitForElement('input[placeholder*="What are you selling"], textarea[placeholder*="Describe"], [aria-label*="Title"], [aria-label*="Price"]', 10000);
+    console.log('✅ [FACEBOOK] Form loaded, starting to fill fields...');
+    
+    // Fill in form fields
+    const fillResult = await fillFacebookForm(listingData);
+    console.log('✅ [FACEBOOK] Form fields filled successfully');
+    
+    // Reduced wait time for form changes to take effect
+    await sleep(500);
+    
+    // Upload photos if present
+    const hasPhotos = listingData.photos && listingData.photos.length > 0;
+    if (hasPhotos) {
+      console.log(`📸 [FACEBOOK] Starting photo upload for ${listingData.photos.length} photo(s)...`);
+      try {
+        const uploadResult = await uploadFacebookPhotos(listingData.photos);
+        if (!uploadResult.success) {
+          console.error('❌ [FACEBOOK] Photo upload failed:', uploadResult.error);
+          return {
+            success: false,
+            error: `Photo upload failed: ${uploadResult.error}`,
+            requiresManualPhotoUpload: true
+          };
+        }
+        console.log(`✅ [FACEBOOK] All photos uploaded successfully!`);
+      } catch (error) {
+        console.error('❌ [FACEBOOK] Photo upload error:', error);
+        return {
+          success: false,
+          error: `Photo upload error: ${error.message}`,
+          requiresManualPhotoUpload: true
+        };
+      }
+    }
+    
+    // Wait a bit for photos to process
+    await sleep(1000);
+    
+    console.log('📤 [FACEBOOK] Submitting form...');
+    // Submit the form
+    const submitResult = await submitFacebookForm();
+    
+    if (submitResult.success) {
+      console.log('✅ [FACEBOOK] Listing created successfully!', submitResult.listingUrl);
+    } else {
+      console.error('❌ [FACEBOOK] Form submission failed:', submitResult.error);
+    }
+    
+    return submitResult;
+    
+  } catch (error) {
+    console.error('❌ [FACEBOOK] Error during listing creation:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Fill Facebook Marketplace form fields
+async function fillFacebookForm(listingData) {
+  console.log('📝 [FACEBOOK] Starting to fill form fields...');
+  
+  try {
+    // 1. TITLE
+    if (listingData.title) {
+      console.log('  → Setting title:', listingData.title);
+      const titleInput = document.querySelector('input[placeholder*="What are you selling"], input[aria-label*="Title"], input[aria-label*="Item name"]') ||
+                        document.querySelector('input[type="text"]');
+      if (titleInput) {
+        titleInput.focus();
+        titleInput.value = listingData.title;
+        titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+        titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(300);
+        console.log('  ✓ Title set');
+      }
+    }
+    
+    // 2. PRICE
+    if (listingData.price) {
+      console.log('  → Setting price:', listingData.price);
+      const priceInput = document.querySelector('input[placeholder*="Price"], input[aria-label*="Price"], input[type="number"]') ||
+                         document.querySelector('input[name*="price" i]');
+      if (priceInput) {
+        priceInput.focus();
+        priceInput.value = listingData.price.toString();
+        priceInput.dispatchEvent(new Event('input', { bubbles: true }));
+        priceInput.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(300);
+        console.log('  ✓ Price set');
+      }
+    }
+    
+    // 3. DESCRIPTION
+    if (listingData.description) {
+      console.log('  → Setting description:', listingData.description.substring(0, 50) + '...');
+      const descInput = document.querySelector('textarea[placeholder*="Describe"], textarea[aria-label*="Description"]') ||
+                       document.querySelector('textarea');
+      if (descInput) {
+        descInput.focus();
+        descInput.value = listingData.description;
+        descInput.dispatchEvent(new Event('input', { bubbles: true }));
+        descInput.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(300);
+        console.log('  ✓ Description set');
+      }
+    }
+    
+    // 4. CATEGORY (if provided)
+    if (listingData.category) {
+      console.log('  → Setting category:', listingData.category);
+      const categoryButton = document.querySelector('[aria-label*="Category"], button[aria-label*="Category"]') ||
+                            document.querySelector('div[role="button"]:has-text("Category")');
+      if (categoryButton) {
+        categoryButton.click();
+        await sleep(500);
+        // Try to find and select the category
+        const categoryOption = Array.from(document.querySelectorAll('[role="menuitem"], [role="option"]'))
+          .find(el => el.textContent?.toLowerCase().includes(listingData.category.toLowerCase()));
+        if (categoryOption) {
+          categoryOption.click();
+          await sleep(300);
+          console.log('  ✓ Category set');
+        }
+      }
+    }
+    
+    // 5. CONDITION (if provided)
+    if (listingData.condition) {
+      console.log('  → Setting condition:', listingData.condition);
+      const conditionButton = document.querySelector('[aria-label*="Condition"], button[aria-label*="Condition"]');
+      if (conditionButton) {
+        conditionButton.click();
+        await sleep(500);
+        const conditionOption = Array.from(document.querySelectorAll('[role="menuitem"], [role="option"]'))
+          .find(el => el.textContent?.toLowerCase().includes(listingData.condition.toLowerCase()));
+        if (conditionOption) {
+          conditionOption.click();
+          await sleep(300);
+          console.log('  ✓ Condition set');
+        }
+      }
+    }
+    
+    // 6. LOCATION (if provided)
+    if (listingData.location || listingData.zip) {
+      console.log('  → Setting location:', listingData.location || listingData.zip);
+      const locationInput = document.querySelector('input[placeholder*="Location"], input[aria-label*="Location"]');
+      if (locationInput) {
+        locationInput.focus();
+        locationInput.value = listingData.location || listingData.zip || '';
+        locationInput.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(500); // Wait for autocomplete
+        // Select first suggestion if available
+        const suggestion = document.querySelector('[role="option"], [role="menuitem"]');
+        if (suggestion) {
+          suggestion.click();
+          await sleep(300);
+        }
+        console.log('  ✓ Location set');
+      }
+    }
+    
+    console.log('✅ [FACEBOOK] All form fields filled!');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ [FACEBOOK] Error filling form:', error);
+    throw error;
+  }
+}
+
+// Upload photos to Facebook Marketplace
+async function uploadFacebookPhotos(photos) {
+  console.log('📸 [FACEBOOK PHOTO UPLOAD] Starting photo upload process...');
+  
+  if (!photos || photos.length === 0) {
+    console.log('⚠️ [FACEBOOK PHOTO UPLOAD] No photos to upload');
+    return { success: true, uploadIds: [] };
+  }
+  
+  try {
+    // Find the photo upload button/area
+    const photoButton = document.querySelector('[aria-label*="Add photos"], [aria-label*="Upload"], input[type="file"]') ||
+                       document.querySelector('div[role="button"]:has-text("Add photos")');
+    
+    if (!photoButton) {
+      return { success: false, error: 'Photo upload button not found' };
+    }
+    
+    // If it's a file input, use it directly
+    if (photoButton.tagName === 'INPUT' && photoButton.type === 'file') {
+      const fileInput = photoButton;
+      
+      // Convert photo URLs to File objects
+      const files = [];
+      for (const photo of photos) {
+        const photoUrl = photo.preview || photo.imageUrl || photo;
+        const response = await fetch(photoUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        files.push(file);
+      }
+      
+      // Create a DataTransfer object to set files
+      const dataTransfer = new DataTransfer();
+      files.forEach(file => dataTransfer.items.add(file));
+      fileInput.files = dataTransfer.files;
+      
+      // Trigger change event
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      // Wait for uploads to complete
+      await sleep(2000);
+      
+      console.log('✅ [FACEBOOK PHOTO UPLOAD] Photos uploaded successfully!');
+      return { success: true, uploadIds: [] };
+    } else {
+      // Click the button to open file picker (user will need to select files manually)
+      photoButton.click();
+      return { success: false, error: 'Manual photo upload required - file input not accessible', requiresManualUpload: true };
+    }
+    
+  } catch (error) {
+    console.error('❌ [FACEBOOK PHOTO UPLOAD] Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Submit Facebook Marketplace form
+async function submitFacebookForm() {
+  console.log('📤 [FACEBOOK FORM SUBMIT] Looking for Publish button...');
+  
+  // Find the Publish/Post button
+  const submitBtn = document.querySelector('[aria-label*="Publish"], [aria-label*="Post"], button:has-text("Publish"), button:has-text("Post")') ||
+                   document.querySelector('div[role="button"]:has-text("Publish")') ||
+                   document.querySelector('button[type="submit"]');
+  
+  if (!submitBtn) {
+    console.error('❌ [FACEBOOK FORM SUBMIT] Publish button not found');
+    return {
+      success: false,
+      error: 'Publish button not found on page'
+    };
+  }
+  
+  console.log('✅ [FACEBOOK FORM SUBMIT] Publish button found');
+  
+  // Check if button is disabled
+  if (submitBtn.disabled || submitBtn.getAttribute('aria-disabled') === 'true') {
+    console.warn('⚠️ [FACEBOOK FORM SUBMIT] Publish button is disabled - form may be incomplete');
+    return {
+      success: false,
+      error: 'Form incomplete - please check required fields'
+    };
+  }
+  
+  // Click the button
+  console.log('🖱️ [FACEBOOK FORM SUBMIT] Clicking Publish button...');
+  submitBtn.click();
+  
+  // Wait for navigation or success message
+  await sleep(2000);
+  
+  // Check if we navigated to a listing page or success page
+  if (window.location.href.includes('/marketplace/item/') || window.location.href.includes('/marketplace/you/')) {
+    const listingUrl = window.location.href;
+    console.log('✅ [FACEBOOK FORM SUBMIT] Listing created successfully!');
+    return {
+      success: true,
+      listingUrl: listingUrl,
+      message: 'Listing created successfully'
+    };
+  }
+  
+  // If still on create page, might have succeeded but not navigated
+  const successMessage = document.querySelector('[role="alert"], .success, [data-testid*="success"]');
+  if (successMessage) {
+    console.log('✅ [FACEBOOK FORM SUBMIT] Success message detected');
+    return {
+      success: true,
+      message: 'Listing created successfully'
+    };
+  }
+  
+  return {
+    success: true,
+    message: 'Form submitted - please verify listing was created'
+  };
 }
 
 // Use Puppeteer API for listings with photos
