@@ -321,79 +321,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         };
         
-        // VENDOO-STYLE APPROACH: Create tab in MINIMIZED WINDOW - completely invisible
-        // This is the ONLY way to prevent tab from being visible at all
-        console.log('🔧 [MERCARI] Creating tab in minimized window (completely invisible)...');
+        // MV3-FRIENDLY APPROACH: Invisible background tab worker
+        // User gesture ✅ (from website -> extension message)
+        // Create background tab with active: false (invisible)
+        console.log('🔧 [MERCARI] Creating invisible background tab...');
         
-        // STEP 1: Save current active tab/window to restore focus
-        const currentTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const originalActiveTab = currentTabs[0];
-        const originalTabId = originalActiveTab?.id;
-        const originalWindowId = originalActiveTab?.windowId;
-        
-        // STEP 2: Create tab in a NEW MINIMIZED WINDOW (completely invisible)
-        // This is the key - minimized windows don't show tabs at all
-        const minimizedWindow = await chrome.windows.create({
+        // Create background tab (active: false = invisible, no user interruption)
+        const backgroundTab = await chrome.tabs.create({
           url: 'https://www.mercari.com/sell/',
-          state: 'minimized', // CRITICAL: Window starts minimized = invisible
-          focused: false, // Don't focus the window
-          type: 'normal'
+          active: false // CRITICAL: Tab is created but never becomes active/visible
         });
         
-        // Get the tab from the minimized window
-        const hiddenTab = minimizedWindow.tabs[0];
-        console.log('✅ [MERCARI] Tab created in minimized window:', hiddenTab.id, 'Window:', minimizedWindow.id);
+        console.log('✅ [MERCARI] Background tab created:', backgroundTab.id);
         
-        // STEP 3: Ensure window stays minimized and never becomes visible
-        const keepWindowMinimized = async () => {
-          try {
-            await chrome.windows.update(minimizedWindow.id, { 
-              state: 'minimized',
-              focused: false 
-            });
-          } catch (e) {}
-        };
+        // Ensure tab stays inactive (multiple safeguards)
+        // Move tab to end of tab bar immediately
+        try {
+          await chrome.tabs.move(backgroundTab.id, { index: -1 });
+        } catch (e) {
+          // Ignore move errors
+        }
         
-        // Immediately ensure window stays minimized
-        await keepWindowMinimized();
+        // Ensure tab stays inactive
+        await chrome.tabs.update(backgroundTab.id, { active: false });
         
-        // STEP 4: Set up window state listener to keep window minimized
-        const windowStateListener = async (windowId) => {
-          if (windowId === minimizedWindow.id) {
-            try {
-              const windowInfo = await chrome.windows.get(windowId);
-              if (windowInfo.state !== 'minimized') {
-                console.log('🛡️ [MERCARI] Window became visible! Immediately minimizing...');
-                await chrome.windows.update(windowId, { 
-                  state: 'minimized',
-                  focused: false 
-                });
-              }
-            } catch (e) {}
-          }
-        };
-        
-        chrome.windows.onFocusChanged.addListener(windowStateListener);
-        
-        // STEP 5: Keep window minimized continuously (very aggressive - every 50ms)
-        const minimizeInterval = setInterval(keepWindowMinimized, 50);
-        
-        // Clean up listeners after automation completes
-        const cleanupListeners = () => {
-          clearInterval(minimizeInterval);
-          chrome.windows.onFocusChanged.removeListener(windowStateListener);
-        };
-        
-        // Auto-cleanup after 30 seconds
-        setTimeout(cleanupListeners, 30000);
-        
-        // Wait for page to load and content script to be ready
+        // Wait for page to load
         await new Promise((resolve) => {
           const listener = (tabId, info) => {
-            if (tabId === hiddenTab.id && info.status === 'complete') {
+            if (tabId === backgroundTab.id && info.status === 'complete') {
               chrome.tabs.onUpdated.removeListener(listener);
-              // Ensure window stays minimized after load
-              keepWindowMinimized();
               resolve();
             }
           };
@@ -402,25 +358,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Timeout after 15 seconds
           setTimeout(() => {
             chrome.tabs.onUpdated.removeListener(listener);
-            keepWindowMinimized(); // Ensure minimized on timeout too
             resolve();
           }, 15000);
         });
         
-        // Wait for content script to initialize (it loads automatically via manifest.json) - optimized
+        // Content script loads automatically via manifest.json
+        // Wait for it to be ready
         console.log('⏳ [MERCARI] Waiting for content script to be ready...');
         let contentScriptReady = false;
         for (let i = 0; i < 8; i++) {
           try {
-            const pingResponse = await chrome.tabs.sendMessage(hiddenTab.id, { type: 'PING' });
+            const pingResponse = await chrome.tabs.sendMessage(backgroundTab.id, { type: 'PING' });
             if (pingResponse && pingResponse.pong) {
               contentScriptReady = true;
               console.log('✅ [MERCARI] Content script ready!');
               break;
             }
           } catch (e) {
-            // Content script not ready yet, wait and retry - faster retries
-            await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from 500ms
+            // Content script not ready yet, wait and retry
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
         
@@ -428,29 +384,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.warn('⚠️ [MERCARI] Content script not ready, proceeding anyway...');
         }
         
-        // Wait for React/DOM to initialize - reduced wait
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 2000ms
+        // Wait for React/DOM to initialize
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Send listing data to content script (it has all the automation logic)
+        // Send listing data to content script (it fills form, uploads images, submits)
         console.log('📤 [MERCARI] Sending listing data to content script...');
-        const result = await sendMessageWithRetry(hiddenTab.id, {
+        const result = await sendMessageWithRetry(backgroundTab.id, {
           type: 'CREATE_LISTING',
           listingData: listingData
         });
         
-        // Close the minimized window after automation completes (cleanup)
-        // Wait a bit to ensure automation has started
+        // Close the background tab when done (cleanup)
         setTimeout(async () => {
           try {
-            // Clean up listeners first
-            cleanupListeners();
-            
-            // Close the entire minimized window (this closes the tab too)
-            await chrome.windows.remove(minimizedWindow.id);
-            console.log('🧹 [MERCARI] Minimized window closed');
+            await chrome.tabs.remove(backgroundTab.id);
+            console.log('🧹 [MERCARI] Background tab closed');
           } catch (e) {
-            // Window already closed or doesn't exist
-            cleanupListeners(); // Still clean up listeners
+            // Tab already closed or doesn't exist
           }
         }, 5000); // Close after 5 seconds (automation should be done by then)
         

@@ -1153,13 +1153,16 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     
     // Click to open dropdown
     dropdown.click();
-    await sleep(200); // Reduced from 400ms - dropdown opens quickly
+    // Brand dropdown needs more time to open
+    const openWait = testId === 'Brand' ? 400 : 200;
+    await sleep(openWait);
     
     // Wait for options to appear (they usually appear in a portal/overlay)
     // Mercari dropdowns render options in the DOM after clicking
-    // Try multiple times to find options
+    // Try multiple times to find options - Brand needs more attempts
     let options = [];
-    for (let attempt = 0; attempt < 5; attempt++) {
+    const maxAttempts = testId === 'Brand' ? 8 : 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // Try to find the option - Mercari uses various patterns
       // Look for elements with role="option" or in a listbox
       options = Array.from(document.querySelectorAll('[role="option"]'));
@@ -1185,7 +1188,9 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
         break;
       }
       
-      await sleep(100); // Reduced from 150ms
+      // Brand needs more time between attempts
+      const attemptWait = testId === 'Brand' ? 200 : 100;
+      await sleep(attemptWait);
     }
     
     if (options.length === 0) {
@@ -1256,10 +1261,12 @@ async function typeIntoMercariDropdown(testId, text) {
     dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
     await sleep(50); // Reduced from 100ms
     
-    // Click to open/focus
+    // Click to open/focus - Brand dropdown needs more time
     console.log(`🖱️ [TYPE DROPDOWN ${testId}] Clicking dropdown to open...`);
     dropdown.click();
-    await sleep(200); // Reduced from 400ms - dropdown opens quickly
+    // Brand dropdown needs more time to open and show input
+    const waitTime = testId === 'Brand' ? 400 : 200;
+    await sleep(waitTime);
     
     // Try to find an input field within or after the dropdown
     let input = dropdown.querySelector('input[type="text"]') ||
@@ -1284,6 +1291,15 @@ async function typeIntoMercariDropdown(testId, text) {
               document.querySelector('[role="combobox"] input');
     }
     
+    // For Brand specifically, wait a bit more and try again
+    if ((!input || input.tagName !== 'INPUT') && testId === 'Brand') {
+      await sleep(300);
+      input = document.querySelector('input[type="text"][placeholder*="brand" i]') ||
+              document.querySelector('input[type="text"][placeholder*="search" i]') ||
+              document.querySelector('[role="combobox"] input') ||
+              document.activeElement;
+    }
+    
     console.log(`🔍 [TYPE DROPDOWN ${testId}] Input found:`, input ? 'Yes' : 'No');
     
     if (input && input.tagName === 'INPUT') {
@@ -1291,7 +1307,7 @@ async function typeIntoMercariDropdown(testId, text) {
       
       // Focus the input
       input.focus();
-      await sleep(100); // Reduced from 300ms
+      await sleep(200); // Brand needs more time
       
       // Clear the input
       input.value = '';
@@ -1313,8 +1329,9 @@ async function typeIntoMercariDropdown(testId, text) {
       
       console.log(`⚡ [TYPE DROPDOWN ${testId}] Set value instantly (robot speed!): "${text}"`);
       
-      // Wait for autocomplete to appear (minimal wait)
-      await sleep(200); // Reduced from 400ms
+      // Wait for autocomplete to appear - Brand needs more time
+      const autocompleteWait = testId === 'Brand' ? 500 : 200;
+      await sleep(autocompleteWait);
       
       // Try to find and click the matching option
       const options = Array.from(document.querySelectorAll('[role="option"]'));
@@ -2240,10 +2257,27 @@ async function setMercariBrand(brand) {
   let brandSuccess = false;
   
   // Try multiple approaches - but stop as soon as one succeeds
-  // 1. Try typing first (Mercari brand is searchable)
+  // Brand selection needs more time than other fields due to search/autocomplete
+  
+  // 1. Try typing first (Mercari brand is searchable) - give it more time
   console.log(`🔍 [BRAND] Attempting method 1: typeIntoMercariDropdown`);
   brandSuccess = await typeIntoMercariDropdown('Brand', brand);
   console.log(`📋 [BRAND] Method 1 result:`, brandSuccess ? 'Success' : 'Failed');
+  
+  // Verify after method 1
+  if (brandSuccess) {
+    await sleep(500); // Wait for UI to update
+    const brandDropdownAfter = document.querySelector('[data-testid="Brand"]');
+    const newValue = brandDropdownAfter?.textContent?.trim() || brandDropdownAfter?.value?.trim() || '';
+    if (newValue && newValue !== 'Select brand' && newValue !== 'Brand' && newValue.length > 1 && 
+        (newValue.toLowerCase().includes(brand.toLowerCase()) || brand.toLowerCase().includes(newValue.toLowerCase()))) {
+      console.log(`✅ [BRAND] Brand set successfully via typing: "${brand}" -> "${newValue}"`);
+      return true;
+    } else {
+      console.log(`⚠️ [BRAND] Method 1 reported success but value doesn't match, trying method 2...`);
+      brandSuccess = false; // Reset to try next method
+    }
+  }
   
   if (!brandSuccess) {
     // 2. If typing failed, try dropdown selection with exact match
@@ -2251,11 +2285,37 @@ async function setMercariBrand(brand) {
     brandSuccess = await selectMercariDropdown('Brand', brand, false);
     console.log(`📋 [BRAND] Method 2 result:`, brandSuccess ? 'Success' : 'Failed');
     
+    // Verify after method 2
+    if (brandSuccess) {
+      await sleep(500);
+      const brandDropdownAfter = document.querySelector('[data-testid="Brand"]');
+      const newValue = brandDropdownAfter?.textContent?.trim() || brandDropdownAfter?.value?.trim() || '';
+      if (newValue && newValue !== 'Select brand' && newValue !== 'Brand' && newValue.length > 1) {
+        console.log(`✅ [BRAND] Brand set successfully via exact match: "${brand}" -> "${newValue}"`);
+        return true;
+      } else {
+        brandSuccess = false;
+      }
+    }
+    
     if (!brandSuccess) {
       // 3. If exact match failed, try partial match
       console.log(`🔍 [BRAND] Attempting method 3: selectMercariDropdown (partial match)`);
       brandSuccess = await selectMercariDropdown('Brand', brand, true);
       console.log(`📋 [BRAND] Method 3 result:`, brandSuccess ? 'Success' : 'Failed');
+      
+      // Verify after method 3
+      if (brandSuccess) {
+        await sleep(500);
+        const brandDropdownAfter = document.querySelector('[data-testid="Brand"]');
+        const newValue = brandDropdownAfter?.textContent?.trim() || brandDropdownAfter?.value?.trim() || '';
+        if (newValue && newValue !== 'Select brand' && newValue !== 'Brand' && newValue.length > 1) {
+          console.log(`✅ [BRAND] Brand set successfully via partial match: "${brand}" -> "${newValue}"`);
+          return true;
+        } else {
+          brandSuccess = false;
+        }
+      }
       
       if (!brandSuccess && brand.includes(' ')) {
         // 4. Try with just the first word if brand has multiple words
@@ -2263,11 +2323,24 @@ async function setMercariBrand(brand) {
         console.log(`🔍 [BRAND] Attempting method 4: selectMercariDropdown (first word: "${firstWord}")`);
         brandSuccess = await selectMercariDropdown('Brand', firstWord, true);
         console.log(`📋 [BRAND] Method 4 result:`, brandSuccess ? 'Success' : 'Failed');
+        
+        // Verify after method 4
+        if (brandSuccess) {
+          await sleep(500);
+          const brandDropdownAfter = document.querySelector('[data-testid="Brand"]');
+          const newValue = brandDropdownAfter?.textContent?.trim() || brandDropdownAfter?.value?.trim() || '';
+          if (newValue && newValue !== 'Select brand' && newValue !== 'Brand' && newValue.length > 1) {
+            console.log(`✅ [BRAND] Brand set successfully via first word: "${brand}" -> "${newValue}"`);
+            return true;
+          } else {
+            brandSuccess = false;
+          }
+        }
       }
     }
   }
   
-  // Verify the brand was actually set
+  // Final verification
   if (brandSuccess) {
     await sleep(500); // Wait for UI to update
     const brandDropdownAfter = document.querySelector('[data-testid="Brand"]');
@@ -2283,11 +2356,8 @@ async function setMercariBrand(brand) {
       return false;
     }
   } else {
-    // Don't log warning if brand setting failed - might be optional or already set
-    // Only log if we're in debug mode
-    if (window.location.search.includes('debug=true')) {
-      console.warn(`⚠️ [BRAND] All methods failed to set brand: "${brand}"`);
-    }
+    // Log warning - brand is important
+    console.warn(`⚠️ [BRAND] All methods failed to set brand: "${brand}"`);
     return false;
   }
 }
