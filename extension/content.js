@@ -426,7 +426,8 @@ if (MARKETPLACE) {
     
     if (message.type === 'CREATE_LISTING') {
       // Run async listing creation
-      createListing(message.listingData).then((result) => {
+      // Note: Background script already navigated tab to /sell/, so content script shouldn't navigate again
+      createListing(message.listingData, { skipNavigation: true }).then((result) => {
         sendResponse(result);
       }).catch((error) => {
         sendResponse({ success: false, error: error.message });
@@ -447,13 +448,13 @@ if (MARKETPLACE) {
 }
 
 // Create listing on current marketplace
-async function createListing(listingData) {
+async function createListing(listingData, options = {}) {
   if (MARKETPLACE === 'mercari') {
-    return await createMercariListing(listingData);
+    return await createMercariListing(listingData, options);
   }
   
   if (MARKETPLACE === 'facebook') {
-    return await createFacebookListing(listingData);
+    return await createFacebookListing(listingData, options);
   }
   
   // Other marketplaces to be implemented
@@ -467,7 +468,7 @@ async function createListing(listingData) {
 let isCreatingMercariListing = false;
 
 // Mercari-specific listing automation
-async function createMercariListing(listingData) {
+async function createMercariListing(listingData, options = {}) {
   // Prevent multiple simultaneous calls
   if (isCreatingMercariListing) {
     console.warn('⚠️ [MERCARI] Listing creation already in progress, skipping...');
@@ -491,11 +492,11 @@ async function createMercariListing(listingData) {
     };
     console.log('📋 [MERCARI] Listing data:', summaryData);
     
-    // Navigate to sell page if not already there (use same tab, not new tab)
-    if (!window.location.href.includes('/sell')) {
+    // Only navigate if not called from background script (which already navigated the tab)
+    if (!options.skipNavigation && !window.location.href.includes('/sell')) {
       console.log('🌐 [MERCARI] Navigating to sell page in current tab...');
       // Store listing data in sessionStorage so we can retrieve it after navigation
-      sessionStorage.setItem('__mercariPendingListing', JSON.stringify(listingData));
+      sessionStorage.setItem('__mercariPendingListing', JSON.stringify({ ...listingData, skipNavigation: false }));
       window.location.href = 'https://www.mercari.com/sell/';
       
       // Wait for page to load, then retry (reduced delay)
@@ -507,22 +508,32 @@ async function createMercariListing(listingData) {
             sessionStorage.removeItem('__mercariPendingListing');
             createMercariListing(data);
           }
-        }, 500); // Reduced from 2000ms to 500ms
+        }, 300); // Reduced from 500ms to 300ms
       }, { once: true });
       return { success: false, error: 'Navigating to sell page...', retrying: true };
     }
     
+    // If called from background script, ensure we're on the sell page (should already be)
+    if (options.skipNavigation && !window.location.href.includes('/sell')) {
+      console.warn('⚠️ [MERCARI] Expected to be on /sell page but not there. Waiting...');
+      await sleep(300); // Reduced from 500ms to 300ms
+      if (!window.location.href.includes('/sell')) {
+        isCreatingMercariListing = false;
+        return { success: false, error: 'Not on Mercari sell page' };
+      }
+    }
+    
     console.log('⏳ [MERCARI] Waiting for form to load...');
     // Wait for form to be ready (use actual Mercari selectors) - reduced timeout
-    await waitForElement('[data-testid="Title"], #sellName', 8000); // Reduced from 10000ms
+    await waitForElement('[data-testid="Title"], #sellName', 4000); // Reduced from 5000ms to 4000ms
     console.log('✅ [MERCARI] Form loaded, starting to fill fields...');
     
     // Fill in form fields
     const fillResult = await fillMercariForm(listingData);
     console.log('✅ [MERCARI] Form fields filled successfully');
     
-    // Reduced wait time for form changes to take effect
-    await sleep(500); // Reduced from 2000ms to 500ms
+    // Minimal wait time for form changes to take effect
+    await sleep(100); // Reduced from 200ms to 100ms
     
     // Upload photos if present (using extension method with Mercari's GraphQL API)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
@@ -532,7 +543,7 @@ async function createMercariListing(listingData) {
       // Headers should already be captured from page load - minimal wait
       if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
         console.log('⏳ [MERCARI] Waiting for API headers to be captured...');
-        await sleep(500); // Reduced from 1000ms - headers should be ready very quickly
+        await sleep(200); // Reduced from 500ms - headers should be ready very quickly
         
         // Check again
         if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
@@ -695,7 +706,7 @@ async function createFacebookListing(listingData) {
     }
     
     // Wait a bit for photos to process
-    await sleep(1000);
+    await sleep(500); // Reduced from 1000ms to 500ms
     
     console.log('📤 [FACEBOOK] Submitting form...');
     // Submit the form
@@ -730,7 +741,7 @@ async function fillFacebookForm(listingData) {
         titleInput.value = listingData.title;
         titleInput.dispatchEvent(new Event('input', { bubbles: true }));
         titleInput.dispatchEvent(new Event('change', { bubbles: true }));
-        await sleep(300);
+        await sleep(100); // Reduced from 300ms to 100ms
         console.log('  ✓ Title set');
       }
     }
@@ -745,7 +756,7 @@ async function fillFacebookForm(listingData) {
         priceInput.value = listingData.price.toString();
         priceInput.dispatchEvent(new Event('input', { bubbles: true }));
         priceInput.dispatchEvent(new Event('change', { bubbles: true }));
-        await sleep(300);
+        await sleep(100); // Reduced from 300ms to 100ms
         console.log('  ✓ Price set');
       }
     }
@@ -760,7 +771,7 @@ async function fillFacebookForm(listingData) {
         descInput.value = listingData.description;
         descInput.dispatchEvent(new Event('input', { bubbles: true }));
         descInput.dispatchEvent(new Event('change', { bubbles: true }));
-        await sleep(300);
+        await sleep(100); // Reduced from 300ms to 100ms
         console.log('  ✓ Description set');
       }
     }
@@ -870,7 +881,7 @@ async function uploadFacebookPhotos(photos) {
       fileInput.dispatchEvent(new Event('change', { bubbles: true }));
       
       // Wait for uploads to complete
-      await sleep(2000);
+      await sleep(500); // Reduced from 2000ms
       
       console.log('✅ [FACEBOOK PHOTO UPLOAD] Photos uploaded successfully!');
       return { success: true, uploadIds: [] };
@@ -1066,11 +1077,11 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     
     // Scroll into view if needed
     dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await sleep(200);
+    await sleep(100); // Reduced from 200ms to 100ms
     
     // Click to open dropdown
     dropdown.click();
-    await sleep(800); // Wait for dropdown to fully open
+    await sleep(400); // Reduced from 800ms to 400ms - Wait for dropdown to fully open
     
     // Wait for options to appear (they usually appear in a portal/overlay)
     // Mercari dropdowns render options in the DOM after clicking
@@ -1102,13 +1113,13 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
         break;
       }
       
-      await sleep(300);
+      await sleep(150); // Reduced from 300ms to 150ms
     }
     
     if (options.length === 0) {
       // Click outside to close dropdown
       document.body.click();
-      await sleep(300);
+      await sleep(150); // Reduced from 300ms to 150ms
       return false;
     }
     
@@ -1131,14 +1142,14 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     
     if (matchedOption) {
       matchedOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await sleep(200);
+      await sleep(100); // Reduced from 200ms to 100ms
       matchedOption.click();
-      await sleep(600); // Wait after selection
+      await sleep(300); // Reduced from 600ms to 300ms - Wait after selection
       return true;
     } else {
       // Click outside to close dropdown
       document.body.click();
-      await sleep(300);
+      await sleep(150); // Reduced from 300ms to 150ms
       return false;
     }
   } catch (error) {
@@ -1171,12 +1182,12 @@ async function typeIntoMercariDropdown(testId, text) {
     
     // Scroll into view
     dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await sleep(200);
+    await sleep(100); // Reduced from 200ms to 100ms
     
     // Click to open/focus
     console.log(`🖱️ [TYPE DROPDOWN ${testId}] Clicking dropdown to open...`);
     dropdown.click();
-    await sleep(800); // Increased wait time for dropdown to open
+    await sleep(400); // Reduced from 800ms to 400ms
     
     // Try to find an input field within or after the dropdown
     let input = dropdown.querySelector('input[type="text"]') ||
@@ -1225,7 +1236,7 @@ async function typeIntoMercariDropdown(testId, text) {
       input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
       
-      await sleep(1200); // Wait for autocomplete suggestions
+        await sleep(600); // Reduced from 1200ms - autocomplete should appear faster
       
       // Try to find and click the matching option
       const options = Array.from(document.querySelectorAll('[role="option"]'));
@@ -1240,9 +1251,9 @@ async function typeIntoMercariDropdown(testId, text) {
       if (matchingOption) {
         console.log(`✅ [TYPE DROPDOWN ${testId}] Found matching option: "${matchingOption.textContent?.trim()}"`);
         matchingOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await sleep(200);
+        await sleep(100); // Reduced from 200ms to 100ms
         matchingOption.click();
-        await sleep(500);
+        await sleep(300); // Reduced from 500ms to 300ms
         return true;
       } else {
         console.log(`⚠️ [TYPE DROPDOWN ${testId}] No matching option found, trying Enter key...`);
@@ -1250,7 +1261,7 @@ async function typeIntoMercariDropdown(testId, text) {
         // If no matching option found, try pressing Enter to accept typed value
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
         input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-        await sleep(500);
+        await sleep(300); // Reduced from 500ms to 300ms
         
         // Check if value was accepted by checking dropdown value
         const dropdownAfter = document.querySelector(`[data-testid="${testId}"]`);
@@ -1288,7 +1299,7 @@ async function uploadMercariPhotos(photos) {
     
     // Reduced wait time - page should already be initialized
     console.log('⏳ [PHOTO UPLOAD] Waiting for page to initialize...');
-    await sleep(500); // Reduced from 2000ms to 500ms
+    await sleep(200); // Reduced from 500ms to 200ms
     
     // Load headers from storage using the same pattern as loadHeadersFromStorage
     console.log('🔍 [PHOTO UPLOAD] Loading headers from storage...');
@@ -1625,13 +1636,14 @@ async function uploadMercariPhotos(photos) {
 
         // Small delay between uploads
         if (i < photos.length - 1) {
-          console.log(`⏳ [PHOTO UPLOAD] Waiting 200ms before next upload...`);
-          await sleep(200); // Reduced from 500ms to 200ms for faster uploads
+          console.log(`⏳ [PHOTO UPLOAD] Waiting 100ms before next upload...`);
+          await sleep(100); // Reduced from 200ms to 100ms for faster uploads
         }
 
       } catch (error) {
         console.error(`❌ [PHOTO UPLOAD ${i + 1}/${photos.length}] Error:`, error);
-        return { success: false, error: `Failed to upload photo ${i + 1}: ${error.message}` };
+        // Continue with next photo instead of failing completely
+        console.warn(`⚠️ [PHOTO UPLOAD ${i + 1}/${photos.length}] Skipping this photo and continuing...`);
       }
     }
 

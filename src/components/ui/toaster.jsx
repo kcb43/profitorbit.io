@@ -26,9 +26,9 @@ export function Toaster() {
         const toastVariant = variant || "success";
         return (
           <Toast key={id} {...props} variant={toastVariant} onOpenChange={onOpenChange}>
-            <div className="relative" style={{ width: '100%', minHeight: '50px' }}>
+            <div className="relative" style={{ width: '100%', minHeight: '50px', position: 'relative' }}>
               <ToastIcon variant={toastVariant} />
-              <div className="flex flex-col" style={{ marginLeft: '48px', paddingRight: '24px' }}>
+              <div className="flex flex-col" style={{ marginLeft: '48px', paddingRight: '24px', paddingTop: '2px' }}>
                 {title && <ToastTitle>{title}</ToastTitle>}
                 {description && (
                   <ToastDescription>{description}</ToastDescription>

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
-import { X, CheckCircle } from "lucide-react";
+import { X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ToastProvider = React.forwardRef(({ ...props }, ref) => (
@@ -145,20 +145,24 @@ const ToastIcon = React.forwardRef(({ variant = "default", className, ...props }
     return (
       <span
         ref={ref}
-        className={cn("absolute flex items-center", className)}
+        className={cn("absolute flex items-center justify-center", className)}
         style={{
           position: 'absolute',
-          left: '4px',
+          left: '16px',
           top: '16px',
-          width: '24px',
-          height: '24px',
+          width: '20px',
+          height: '20px',
           color: 'rgb(82, 196, 26)',
+          zIndex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
         role="img"
-        aria-label="check-circle"
+        aria-label="check"
         {...props}
       >
-        <CheckCircle className="w-6 h-6" style={{ fill: 'rgb(82, 196, 26)', color: 'rgb(82, 196, 26)' }} />
+        <Check className="w-5 h-5" style={{ color: 'rgb(82, 196, 26)', strokeWidth: 3, width: '20px', height: '20px' }} />
       </span>
     );
   }

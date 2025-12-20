@@ -313,7 +313,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             pinned: false // Don't pin it
           });
           
-          // Ensure tab stays hidden by updating it
+          // Immediately ensure tab stays hidden (multiple updates to prevent visibility)
           await chrome.tabs.update(targetTab.id, { active: false });
           
           // Wait for page to load (silently, like Vendoo)
@@ -321,8 +321,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const listener = (tabId, info) => {
               if (tabId === targetTab.id && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(listener);
-                // Ensure tab stays hidden after load
+                // Aggressively ensure tab stays hidden after load
                 chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
+                // Double-check after a brief delay
+                setTimeout(() => {
+                  chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
+                }, 100);
                 resolve();
               }
             };
@@ -330,7 +334,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           
           // Reduced wait time - content script should be ready faster
-          await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
+          await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from 500ms to 300ms
+          
+          // Final check to ensure tab stays hidden
+          await chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
         }
         
         // Send listing data with retry logic (silently, like Vendoo)
