@@ -5,6 +5,42 @@
 
 console.log('Profit Orbit Extension: Background script loaded');
 
+// Track Mercari automation tabs to keep them hidden
+const mercariAutomationTabs = new Set();
+
+// Listen for tab activation and immediately hide Mercari automation tabs
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  if (mercariAutomationTabs.has(activeInfo.tabId)) {
+    console.log('🛡️ [TAB PROTECTION] Mercari automation tab activated, hiding immediately...');
+    try {
+      await chrome.tabs.update(activeInfo.tabId, { active: false });
+      // Also move to end
+      await chrome.tabs.move(activeInfo.tabId, { index: -1 }).catch(() => {});
+    } catch (error) {
+      console.warn('⚠️ [TAB PROTECTION] Could not hide tab:', error);
+    }
+  }
+});
+
+// Also listen for window focus changes
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  
+  // Check all Mercari automation tabs in this window
+  try {
+    const tabs = await chrome.tabs.query({ windowId: windowId });
+    for (const tab of tabs) {
+      if (mercariAutomationTabs.has(tab.id) && tab.active) {
+        console.log('🛡️ [TAB PROTECTION] Mercari automation tab active in focused window, hiding...');
+        await chrome.tabs.update(tab.id, { active: false });
+        await chrome.tabs.move(tab.id, { index: -1 }).catch(() => {});
+      }
+    }
+  } catch (error) {
+    // Ignore errors
+  }
+});
+
 // Store login status for all marketplaces
 let marketplaceStatus = {
   mercari: { loggedIn: false, userName: null, lastChecked: null },
@@ -307,14 +343,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         // If no valid tab found, create a new one (hidden in background like Vendoo)
         if (!targetTab) {
+          // Strategy: Create tab, immediately move it to end, and continuously monitor to keep it hidden
+          console.log('🔧 [MERCARI TAB] Creating hidden tab...');
+          
+          // Get current window to move tab to end
+          const currentWindow = await chrome.windows.getCurrent();
+          
+          // Create tab with active: false
           targetTab = await chrome.tabs.create({
             url: 'https://www.mercari.com/sell/',
             active: false, // Keep tab hidden
             pinned: false // Don't pin it
           });
           
-          // Immediately ensure tab stays hidden (multiple updates to prevent visibility)
-          await chrome.tabs.update(targetTab.id, { active: false });
+          console.log('✅ [MERCARI TAB] Tab created:', targetTab.id);
+          
+          // Add to tracking set for protection
+          mercariAutomationTabs.add(targetTab.id);
+          
+          // Remove from tracking after 60 seconds (cleanup)
+          setTimeout(() => {
+            mercariAutomationTabs.delete(targetTab.id);
+            console.log('🧹 [MERCARI TAB] Removed tab from tracking:', targetTab.id);
+          }, 60000);
+          
+          // Immediately move tab to the end (makes it less visible)
+          try {
+            await chrome.tabs.move(targetTab.id, { index: -1 });
+            console.log('📦 [MERCARI TAB] Tab moved to end');
+          } catch (moveError) {
+            console.warn('⚠️ [MERCARI TAB] Could not move tab:', moveError);
+          }
+          
+          // Immediately ensure tab stays hidden (multiple rapid updates)
+          await Promise.all([
+            chrome.tabs.update(targetTab.id, { active: false }),
+            chrome.tabs.update(targetTab.id, { active: false }),
+            chrome.tabs.update(targetTab.id, { active: false })
+          ]).catch(() => {});
+          
+          // Set up continuous monitoring to keep tab hidden
+          const keepTabHidden = setInterval(async () => {
+            try {
+              const tabInfo = await chrome.tabs.get(targetTab.id);
+              if (tabInfo.active) {
+                console.log('🛡️ [MERCARI TAB] Tab became active, hiding it...');
+                await chrome.tabs.update(targetTab.id, { active: false });
+                // Also move to end again
+                try {
+                  await chrome.tabs.move(targetTab.id, { index: -1 });
+                } catch (e) {}
+              }
+            } catch (error) {
+              // Tab might have been closed or error occurred
+              clearInterval(keepTabHidden);
+            }
+          }, 100); // Check every 100ms
+          
+          // Clear the interval after 30 seconds (tab should be done by then)
+          setTimeout(() => {
+            clearInterval(keepTabHidden);
+            console.log('🛡️ [MERCARI TAB] Stopped monitoring tab visibility');
+          }, 30000);
           
           // Wait for page to load (silently, like Vendoo)
           await new Promise((resolve) => {
@@ -322,11 +412,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               if (tabId === targetTab.id && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(listener);
                 // Aggressively ensure tab stays hidden after load
-                chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
-                // Double-check after a brief delay
+                Promise.all([
+                  chrome.tabs.update(targetTab.id, { active: false }),
+                  chrome.tabs.update(targetTab.id, { active: false })
+                ]).catch(() => {});
+                // Move to end again after load
                 setTimeout(() => {
+                  chrome.tabs.move(targetTab.id, { index: -1 }).catch(() => {});
                   chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
-                }, 100);
+                }, 50);
                 resolve();
               }
             };
@@ -336,8 +430,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Reduced wait time - content script should be ready faster
           await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from 500ms to 300ms
           
-          // Final check to ensure tab stays hidden
-          await chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
+          // Final aggressive check to ensure tab stays hidden
+          await Promise.all([
+            chrome.tabs.update(targetTab.id, { active: false }),
+            chrome.tabs.move(targetTab.id, { index: -1 }).catch(() => {})
+          ]).catch(() => {});
+          
+          console.log('✅ [MERCARI TAB] Tab setup complete, should be hidden');
         }
         
         // Send listing data with retry logic (silently, like Vendoo)
