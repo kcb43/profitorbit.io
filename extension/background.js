@@ -321,71 +321,106 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         };
         
-        // Find Mercari tab - ONLY use existing tabs, never create new ones
-        const tabs = await chrome.tabs.query({ url: 'https://www.mercari.com/*' });
+        // VENDOO-STYLE APPROACH: Create hidden tab, let content script load, work silently
+        // The tab is created with active: false so it never becomes visible
+        console.log('🔧 [MERCARI] Creating hidden background tab (like Vendoo - no visible tabs)...');
         
-        let targetTab = null;
+        // Create tab in background (active: false = never visible to user)
+        const hiddenTab = await chrome.tabs.create({
+          url: 'https://www.mercari.com/sell/',
+          active: false, // CRITICAL: Never switch to this tab
+          pinned: false
+        });
         
-        if (tabs.length > 0) {
-          // Try to use existing Mercari tab
-          const mercariTab = tabs[0];
-          
-          // Check if tab is in a valid state
-          const tabInfo = await chrome.tabs.get(mercariTab.id);
-          if (tabInfo.status === 'complete' && tabInfo.url?.startsWith('https://www.mercari.com')) {
-            // Check if content script is ready
-            const isReady = await isContentScriptReady(mercariTab.id);
-            if (isReady) {
-              targetTab = mercariTab;
-              console.log('✅ [MERCARI TAB] Using existing Mercari tab:', targetTab.id);
+        console.log('✅ [MERCARI] Hidden tab created:', hiddenTab.id);
+        
+        // Immediately move tab to end (makes it even less visible)
+        try {
+          await chrome.tabs.move(hiddenTab.id, { index: -1 });
+        } catch (e) {
+          // Ignore move errors
+        }
+        
+        // Aggressive tab hiding: Ensure it stays hidden
+        const keepTabHidden = async () => {
+          try {
+            await chrome.tabs.update(hiddenTab.id, { active: false });
+          } catch (e) {}
+        };
+        
+        // Keep tab hidden continuously for first few seconds
+        const hideInterval = setInterval(keepTabHidden, 100);
+        setTimeout(() => clearInterval(hideInterval), 3000);
+        
+        // Wait for page to load and content script to be ready
+        await new Promise((resolve) => {
+          const listener = (tabId, info) => {
+            if (tabId === hiddenTab.id && info.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              keepTabHidden(); // Ensure hidden after load
+              resolve();
             }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+          
+          // Timeout after 15 seconds
+          setTimeout(() => {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }, 15000);
+        });
+        
+        // Wait for content script to initialize (it loads automatically via manifest.json)
+        console.log('⏳ [MERCARI] Waiting for content script to be ready...');
+        let contentScriptReady = false;
+        for (let i = 0; i < 10; i++) {
+          try {
+            const pingResponse = await chrome.tabs.sendMessage(hiddenTab.id, { type: 'PING' });
+            if (pingResponse && pingResponse.pong) {
+              contentScriptReady = true;
+              console.log('✅ [MERCARI] Content script ready!');
+              break;
+            }
+          } catch (e) {
+            // Content script not ready yet, wait and retry
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
         
-        // If no valid tab found, return error - don't create new tabs/windows
-        if (!targetTab) {
-          console.error('❌ [MERCARI TAB] No existing Mercari tab found');
-          sendResponse({ 
-            success: false, 
-            error: 'Please open a Mercari tab (https://www.mercari.com) and try again. The extension works silently in your existing tabs.' 
-          });
-          return;
+        if (!contentScriptReady) {
+          console.warn('⚠️ [MERCARI] Content script not ready, proceeding anyway...');
         }
         
-        // Navigate existing tab to sell page if needed (silently, without switching to it)
-        if (!targetTab.url?.includes('/sell')) {
-          console.log('🌐 [MERCARI TAB] Navigating existing tab to sell page (staying in background)...');
-          await chrome.tabs.update(targetTab.id, { url: 'https://www.mercari.com/sell/' });
-          
-          // Wait for navigation (but don't switch to the tab)
-          await new Promise((resolve) => {
-            const listener = (tabId, info) => {
-              if (tabId === targetTab.id && info.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
-                // Ensure tab stays inactive
-                chrome.tabs.update(targetTab.id, { active: false }).catch(() => {});
-                resolve();
-              }
-            };
-            chrome.tabs.onUpdated.addListener(listener);
-          });
-          
-          // Wait for content script to be ready
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
+        // Wait a bit more for React/DOM to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Send listing data with retry logic (silently, like Vendoo)
-        const result = await sendMessageWithRetry(targetTab.id, {
+        // Send listing data to content script (it has all the automation logic)
+        console.log('📤 [MERCARI] Sending listing data to content script...');
+        const result = await sendMessageWithRetry(hiddenTab.id, {
           type: 'CREATE_LISTING',
           listingData: listingData
         });
         
+        // Close the hidden tab after automation completes (cleanup)
+        // Wait a bit to ensure automation has started
+        setTimeout(async () => {
+          try {
+            // Check if tab still exists before closing
+            await chrome.tabs.get(hiddenTab.id);
+            // Close tab silently
+            await chrome.tabs.remove(hiddenTab.id);
+            console.log('🧹 [MERCARI] Hidden tab closed');
+          } catch (e) {
+            // Tab already closed or doesn't exist
+          }
+        }, 5000); // Close after 5 seconds (automation should be done by then)
+        
         if (result.success) {
-          sendResponse(result.response || { success: false, error: 'No response from Mercari content script' });
+          sendResponse(result.response || { success: false, error: 'No response from content script' });
         } else {
           sendResponse({ 
             success: false, 
-            error: 'Failed to communicate with Mercari tab. Please ensure you have a Mercari tab open and try again. Error: ' + result.error 
+            error: result.error || 'Failed to communicate with Mercari tab' 
           });
         }
       } catch (error) {

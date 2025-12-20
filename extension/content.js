@@ -248,62 +248,83 @@ let hasWarnedAboutInvalidContext = false;
 
 // Helper to safely access chrome.storage with invalidated context handling
 const safeChromeStorageGet = (keys, callback) => {
-  if (!checkExtensionContext()) {
-    // Silently handle invalidated context - don't log warnings (too noisy)
-    if (callback) callback(null);
-    return;
-  }
-  
   try {
-    if (!chrome || !chrome.storage || !chrome.storage.local) {
-      console.warn('⚠️ [CHROME STORAGE] chrome.storage.local not available');
-      if (callback) callback(null);
+    if (!checkExtensionContext()) {
+      // Silently handle invalidated context - don't log warnings (too noisy)
+      if (callback) {
+        try {
+          callback(null);
+        } catch (e) {
+          // Silently ignore callback errors
+        }
+      }
       return;
     }
     
-    chrome.storage.local.get(keys, (result) => {
-      try {
-        if (chrome.runtime.lastError) {
-          const errorMsg = chrome.runtime.lastError.message || '';
-          if (errorMsg.includes('invalidated') || errorMsg.includes('Extension context')) {
-            // Only warn once per page load to reduce console noise during development
-            if (!hasWarnedAboutInvalidContext) {
-              console.warn('⚠️ [CHROME STORAGE] Extension context invalidated - this is normal if you reloaded the extension. Please refresh this page.');
-              hasWarnedAboutInvalidContext = true;
+    if (!chrome || !chrome.storage || !chrome.storage.local) {
+      // Silently handle - don't log warnings
+      if (callback) {
+        try {
+          callback(null);
+        } catch (e) {
+          // Silently ignore callback errors
+        }
+      }
+      return;
+    }
+    
+    try {
+      chrome.storage.local.get(keys, (result) => {
+        try {
+          if (chrome.runtime.lastError) {
+            // Silently handle errors - don't log or show stack traces
+            if (callback) {
+              try {
+                callback(null);
+              } catch (e) {
+                // Silently ignore callback errors
+              }
             }
-            if (callback) callback(null);
             return;
           }
-          console.warn('⚠️ [CHROME STORAGE] Error:', errorMsg);
-          if (callback) callback(null);
-          return;
-        }
-        
-        if (callback) callback(result);
-      } catch (error) {
-        if (error.message && error.message.includes('invalidated')) {
-          // Only warn once per page load to reduce console noise during development
-          if (!hasWarnedAboutInvalidContext) {
-            console.warn('⚠️ [CHROME STORAGE] Extension context invalidated - this is normal if you reloaded the extension. Please refresh this page.');
-            hasWarnedAboutInvalidContext = true;
+          
+          if (callback) {
+            try {
+              callback(result);
+            } catch (e) {
+              // Silently ignore callback errors
+            }
           }
-        } else {
-          console.error('❌ [CHROME STORAGE] Error processing result:', error);
+        } catch (error) {
+          // Silently handle callback errors - don't show stack traces
+          if (callback) {
+            try {
+              callback(null);
+            } catch (e) {
+              // Silently ignore callback errors
+            }
+          }
         }
-        if (callback) callback(null);
+      });
+    } catch (error) {
+      // Silently handle errors - don't show stack traces
+      if (callback) {
+        try {
+          callback(null);
+        } catch (e) {
+          // Silently ignore callback errors
+        }
       }
-    });
-  } catch (error) {
-    if (error.message && error.message.includes('invalidated')) {
-      // Only warn once per page load to reduce console noise during development
-      if (!hasWarnedAboutInvalidContext) {
-        console.warn('⚠️ [CHROME STORAGE] Extension context invalidated - this is normal if you reloaded the extension. Please refresh this page.');
-        hasWarnedAboutInvalidContext = true;
-      }
-    } else {
-      console.error('❌ [CHROME STORAGE] Error accessing chrome.storage:', error);
     }
-    if (callback) callback(null);
+  } catch (error) {
+    // Silently handle all errors - don't show stack traces
+    if (callback) {
+      try {
+        callback(null);
+      } catch (e) {
+        // Silently ignore callback errors
+      }
+    }
   }
 };
 
@@ -313,24 +334,42 @@ if (MARKETPLACE === 'mercari') {
   let extensionContextValid = true;
   
   const loadHeadersFromStorage = () => {
-    safeChromeStorageGet(['mercariApiHeaders'], (result) => {
-      if (!result) {
-        // Context invalidated or error - stop refreshing
-        extensionContextValid = false;
-        if (headerRefreshInterval) {
-          clearInterval(headerRefreshInterval);
-          headerRefreshInterval = null;
+    try {
+      safeChromeStorageGet(['mercariApiHeaders'], (result) => {
+        try {
+          if (!result) {
+            // Context invalidated or error - stop refreshing
+            extensionContextValid = false;
+            if (headerRefreshInterval) {
+              clearInterval(headerRefreshInterval);
+              headerRefreshInterval = null;
+            }
+            return;
+          }
+          
+          if (result.mercariApiHeaders) {
+            capturedMercariHeaders = result.mercariApiHeaders;
+            console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
+          } else {
+            console.log('📡 [HEADER LOAD] No headers found in storage yet');
+          }
+        } catch (error) {
+          // Silently handle callback errors - don't show stack traces
+          extensionContextValid = false;
+          if (headerRefreshInterval) {
+            clearInterval(headerRefreshInterval);
+            headerRefreshInterval = null;
+          }
         }
-        return;
+      });
+    } catch (error) {
+      // Silently handle errors - don't show stack traces
+      extensionContextValid = false;
+      if (headerRefreshInterval) {
+        clearInterval(headerRefreshInterval);
+        headerRefreshInterval = null;
       }
-      
-      if (result.mercariApiHeaders) {
-        capturedMercariHeaders = result.mercariApiHeaders;
-        console.log('📡 [HEADER LOAD] Loaded Mercari API headers from storage:', capturedMercariHeaders);
-      } else {
-        console.log('📡 [HEADER LOAD] No headers found in storage yet');
-      }
-    });
+    }
   };
   
   // Load on startup (with a small delay to ensure chrome.storage is available)
@@ -346,11 +385,18 @@ if (MARKETPLACE === 'mercari') {
   // Only set interval if extension context is valid
   if (checkExtensionContext()) {
     headerRefreshInterval = setInterval(() => {
-      if (extensionContextValid) {
-        loadHeadersFromStorage();
-      } else {
+      try {
+        if (extensionContextValid && checkExtensionContext()) {
+          loadHeadersFromStorage();
+        } else {
+          clearInterval(headerRefreshInterval);
+          headerRefreshInterval = null;
+        }
+      } catch (error) {
+        // Silently handle errors - don't show stack traces
         clearInterval(headerRefreshInterval);
         headerRefreshInterval = null;
+        extensionContextValid = false;
       }
     }, 5000);
   }
