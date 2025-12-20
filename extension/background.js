@@ -41,6 +41,24 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
+// Clean up stored worker tab ID when tab is closed
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  if (mercariAutomationTabs.has(tabId)) {
+    mercariAutomationTabs.delete(tabId);
+    
+    // Check if this was our stored worker tab
+    try {
+      const stored = await chrome.storage.session.get(['mercariWorkerTabId']);
+      if (stored.mercariWorkerTabId === tabId) {
+        await chrome.storage.session.remove(['mercariWorkerTabId']);
+        console.log('🧹 [MERCARI] Worker tab closed, removed from storage');
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+});
+
 // Store login status for all marketplaces
 let marketplaceStatus = {
   mercari: { loggedIn: false, userName: null, lastChecked: null },
@@ -321,26 +339,85 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         };
         
-        // MV3-FRIENDLY APPROACH: Invisible background tab worker
+        // MV3-FRIENDLY APPROACH: Reusable worker tab (no "new tab" notification)
         // User gesture ✅ (from website -> extension message)
-        // Create background tab with active: false (invisible)
-        console.log('🔧 [MERCARI] Creating invisible background tab...');
+        // Reuse existing worker tab or create one if it doesn't exist
         
-        // Create background tab (active: false = invisible, no user interruption)
-        const backgroundTab = await chrome.tabs.create({
-          url: 'https://www.mercari.com/sell/',
-          active: false // CRITICAL: Tab is created but never becomes active/visible
-        });
+        let workerTabId = null;
         
-        console.log('✅ [MERCARI] Background tab created:', backgroundTab.id);
-        
-        // Ensure tab stays inactive (multiple safeguards)
-        // Move tab to end of tab bar immediately
+        // Try to get existing worker tab ID from storage
         try {
-          await chrome.tabs.move(backgroundTab.id, { index: -1 });
+          const stored = await chrome.storage.session.get(['mercariWorkerTabId']);
+          workerTabId = stored.mercariWorkerTabId;
         } catch (e) {
-          // Ignore move errors
+          console.log('📦 [MERCARI] No stored worker tab ID');
         }
+        
+        // Check if stored tab ID is still valid
+        let backgroundTab = null;
+        if (workerTabId) {
+          try {
+            const tab = await chrome.tabs.get(workerTabId);
+            if (tab && tab.url && tab.url.includes('mercari.com')) {
+              // Tab exists and is on Mercari - reuse it
+              console.log('♻️ [MERCARI] Reusing existing worker tab:', workerTabId);
+              backgroundTab = tab;
+              
+              // Update URL if needed (navigate to sell page)
+              if (!tab.url.includes('/sell')) {
+                await chrome.tabs.update(workerTabId, {
+                  url: 'https://www.mercari.com/sell/',
+                  active: false
+                });
+              } else {
+                // Ensure tab stays inactive
+                await chrome.tabs.update(workerTabId, { active: false });
+              }
+            } else {
+              // Tab exists but wrong URL - update it
+              console.log('🔄 [MERCARI] Worker tab exists but wrong URL, updating...');
+              await chrome.tabs.update(workerTabId, {
+                url: 'https://www.mercari.com/sell/',
+                active: false
+              });
+              backgroundTab = await chrome.tabs.get(workerTabId);
+            }
+          } catch (e) {
+            // Tab doesn't exist anymore - create new one
+            console.log('⚠️ [MERCARI] Stored worker tab no longer exists, creating new one...');
+            workerTabId = null;
+          }
+        }
+        
+        // Create new worker tab if we don't have a valid one
+        if (!backgroundTab) {
+          console.log('🔧 [MERCARI] Creating new worker tab...');
+          backgroundTab = await chrome.tabs.create({
+            url: 'https://www.mercari.com/sell/',
+            active: false // CRITICAL: Tab is created but never becomes active/visible
+          });
+          workerTabId = backgroundTab.id;
+          
+          // Save worker tab ID for future reuse
+          try {
+            await chrome.storage.session.set({ mercariWorkerTabId: workerTabId });
+            console.log('💾 [MERCARI] Saved worker tab ID:', workerTabId);
+          } catch (e) {
+            console.warn('⚠️ [MERCARI] Failed to save worker tab ID:', e);
+          }
+          
+          // Move tab to end of tab bar immediately
+          try {
+            await chrome.tabs.move(workerTabId, { index: -1 });
+          } catch (e) {
+            // Ignore move errors
+          }
+        }
+        
+        console.log('✅ [MERCARI] Worker tab ready:', backgroundTab.id);
+        
+        // Track this tab to keep it hidden
+        mercariAutomationTabs.add(backgroundTab.id);
         
         // Ensure tab stays inactive
         await chrome.tabs.update(backgroundTab.id, { active: false });
@@ -394,15 +471,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           listingData: listingData
         });
         
-        // Close the background tab when done (cleanup)
-        setTimeout(async () => {
-          try {
-            await chrome.tabs.remove(backgroundTab.id);
-            console.log('🧹 [MERCARI] Background tab closed');
-          } catch (e) {
-            // Tab already closed or doesn't exist
-          }
-        }, 5000); // Close after 5 seconds (automation should be done by then)
+        // Don't close the worker tab - keep it for reuse
+        // This prevents "new tab" notifications on subsequent runs
+        console.log('💾 [MERCARI] Keeping worker tab for reuse:', backgroundTab.id);
         
         if (result.success) {
           sendResponse(result.response || { success: false, error: 'No response from content script' });
