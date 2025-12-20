@@ -9,15 +9,17 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Palette, 
-  Facebook, 
   CheckCircle2, 
   XCircle, 
   AlertCircle,
-  ShoppingBag,
-  Package,
-  Shirt,
   RefreshCw,
 } from "lucide-react";
+import facebookLogo from "@/assets/facebook-logo.svg";
+// Using official eBay logo from Wikimedia Commons
+const ebayLogo = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
+// Using official Mercari logo from brandfetch
+const mercariLogo = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
+import poshmarkLogo from "@/assets/poshmark-logo.svg";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { 
   getConnectionStatus, 
@@ -39,7 +41,7 @@ const MARKETPLACES = [
   {
     id: 'facebook',
     name: 'Facebook Marketplace',
-    icon: Facebook,
+    icon: facebookLogo,
     color: 'bg-blue-600',
     description: 'List items on Facebook Marketplace',
     requiredPermissions: ['pages_manage_posts', 'business_management'],
@@ -48,7 +50,7 @@ const MARKETPLACES = [
   {
     id: 'ebay',
     name: 'eBay',
-    icon: ShoppingBag,
+    icon: ebayLogo,
     color: 'bg-yellow-500',
     description: 'List items on eBay',
     requiredPermissions: ['Trading API access'],
@@ -57,7 +59,7 @@ const MARKETPLACES = [
   {
     id: 'mercari',
     name: 'Mercari',
-    icon: Package,
+    icon: mercariLogo,
     color: 'bg-orange-500',
     description: 'List items on Mercari via browser extension',
     requiredPermissions: ['Browser extension required'],
@@ -66,7 +68,7 @@ const MARKETPLACES = [
   {
     id: 'poshmark',
     name: 'Poshmark',
-    icon: Shirt,
+    icon: poshmarkLogo,
     color: 'bg-pink-500',
     description: 'List items on Poshmark',
     requiredPermissions: ['API access'],
@@ -449,7 +451,11 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <ShoppingBag className="w-5 h-5 text-white" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
               </div>
               <div>
                 <CardTitle>Marketplace Connections</CardTitle>
@@ -467,7 +473,7 @@ export default function Settings() {
                 {MARKETPLACES.map((marketplace) => {
                   if (!marketplace || !marketplace.icon) return null;
                   
-                  const Icon = marketplace.icon;
+                  const iconSrc = marketplace.icon;
                   const status = getMarketplaceAccountStatus(marketplace.id);
                   const isComingSoon = marketplace.status === 'coming_soon';
 
@@ -476,8 +482,8 @@ export default function Settings() {
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg ${marketplace.color || 'bg-gray-500'} flex items-center justify-center`}>
-                              <Icon className="w-5 h-5 text-white" />
+                            <div className="w-10 h-10 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center p-2 border border-gray-200 dark:border-gray-700">
+                              <img src={iconSrc} alt={marketplace.name} className="w-full h-full object-contain" />
                             </div>
                             <div>
                               <CardTitle className="text-base">{marketplace.name}</CardTitle>
@@ -627,7 +633,7 @@ export default function Settings() {
                                 className="flex-1 text-xs"
                                 size="sm"
                               >
-                                <Icon className="w-3 h-3 mr-1" />
+                                <img src={iconSrc} alt={marketplace.name} className="w-3 h-3 mr-1 object-contain" />
                                 Connect
                               </Button>
                             </>
@@ -638,7 +644,7 @@ export default function Settings() {
                               className="flex-1 text-xs"
                               size="sm"
                             >
-                              <Icon className="w-3 h-3 mr-1" />
+                              <img src={iconSrc} alt={marketplace.name} className="w-3 h-3 mr-1 object-contain" />
                               {marketplace.id === 'facebook' 
                                 ? (!sdkReady ? 'Loading...' : 'Login with Facebook')
                                 : 'Connect'}

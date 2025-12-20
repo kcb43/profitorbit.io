@@ -95,8 +95,11 @@ export default function ProfitCalendar() {
   }, [sales, currentMonth]);
 
   // Re-evaluation of monthly stats
-  const { monthlyProfit, monthlySalesCount, avgDailyProfit } = useMemo(() => {
+  const { monthlyProfit, monthlySalesCount, avgDailyProfit, monthlyTotalSpend, monthlyRevenue, monthlyCosts } = useMemo(() => {
     let totalProfit = 0;
+    let totalSpend = 0;
+    let totalRevenue = 0;
+    let totalCosts = 0;
     let salesCount = 0;
     const daysInCurrentMonth = getDaysInMonth(currentMonth);
 
@@ -111,6 +114,10 @@ export default function ProfitCalendar() {
 
     salesInCurrentMonth.forEach(sale => {
       totalProfit += (sale.profit || 0);
+      totalSpend += (sale.purchase_price || 0);
+      totalRevenue += (sale.selling_price || 0);
+      const cost = (sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0);
+      totalCosts += cost;
       salesCount++;
     });
 
@@ -119,9 +126,13 @@ export default function ProfitCalendar() {
     return {
       monthlyProfit: totalProfit,
       monthlySalesCount: salesCount,
-      avgDailyProfit: averageDaily
+      avgDailyProfit: averageDaily,
+      monthlyTotalSpend: totalSpend,
+      monthlyRevenue: totalRevenue,
+      monthlyCosts: totalCosts
     };
   }, [sales, currentMonth]);
+
 
   const getHeatLevel = (profit) => {
     if (!profit || maxDailyProfit === 0) return 'none';
@@ -154,7 +165,7 @@ export default function ProfitCalendar() {
           </p>
         </div>
 
-        <Card className="border-0 shadow-lg mb-4 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden md:scale-[0.85] md:origin-top-left">
+        <Card className="border-0 shadow-lg mb-4 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden md:scale-[0.75] md:origin-top-left">
           <CardHeader className="border-b bg-gray-800 dark:bg-gray-800 p-4 md:bg-transparent md:border-b md:border-white/5 md:px-6 md:py-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle className="text-lg sm:text-xl text-white">
@@ -253,13 +264,8 @@ export default function ProfitCalendar() {
                       {format(day, 'd')}
                     </div>
                     {dayData && (
-                      <div className="flex flex-col items-center gap-0.5 w-full">
-                        <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm md:text-inherit">
-                          ${profit.toFixed(0)}
-                        </div>
-                        <div className="text-[8px] sm:text-[9px] font-medium text-gray-500 dark:text-gray-400 md:text-xs md:text-slate-400">
-                          ${dayData.totalSpend.toFixed(0)} spent
-                        </div>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm md:text-inherit">
+                        ${profit.toFixed(0)}
                       </div>
                     )}
                   </div>
@@ -302,6 +308,28 @@ export default function ProfitCalendar() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* KPI Cards Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 md:px-6 md:pb-4">
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-lg">
+              <div className="text-sm text-white/60">Revenue</div>
+              <div className="mt-1 text-2xl font-semibold text-white">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
+              <div className="mt-2 text-xs text-blue-400/80">This month</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-lg">
+              <div className="text-sm text-white/60">Costs</div>
+              <div className="mt-1 text-2xl font-semibold text-white">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
+              <div className="mt-2 text-xs text-orange-400/80">This month</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-lg">
+              <div className="text-sm text-white/60">Profit Margin</div>
+              <div className="mt-1 text-2xl font-semibold text-white">
+                {monthlyRevenue ? `${Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10}%` : '0%'}
+              </div>
+              <div className="mt-2 text-xs text-green-400/80">This month</div>
+            </div>
+
           </div>
         </Card>
       </div>

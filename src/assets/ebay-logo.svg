@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <rect x="2" y="6" width="20" height="12" rx="1" fill="#E53238"/>
+  <rect x="2" y="6" width="20" height="3" fill="#0064D2"/>
+  <rect x="2" y="9" width="20" height="3" fill="#F5AF02"/>
+  <rect x="2" y="12" width="20" height="3" fill="#86B817"/>
+  <text x="12" y="17" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">eBay</text>
+</svg>

@@ -454,43 +454,52 @@ async function createMercariListing(listingData) {
     };
     console.log('📋 [MERCARI] Listing data:', summaryData);
     
-    // Navigate to sell page if not already there
+    // Navigate to sell page if not already there (use same tab, not new tab)
     if (!window.location.href.includes('/sell')) {
-      console.log('🌐 [MERCARI] Navigating to sell page...');
+      console.log('🌐 [MERCARI] Navigating to sell page in current tab...');
+      // Store listing data in sessionStorage so we can retrieve it after navigation
+      sessionStorage.setItem('__mercariPendingListing', JSON.stringify(listingData));
       window.location.href = 'https://www.mercari.com/sell/';
       
-      // Wait for page to load, then retry
+      // Wait for page to load, then retry (reduced delay)
       window.addEventListener('load', () => {
-        setTimeout(() => createMercariListing(listingData), 2000);
+        setTimeout(() => {
+          const storedData = sessionStorage.getItem('__mercariPendingListing');
+          if (storedData) {
+            const data = JSON.parse(storedData);
+            sessionStorage.removeItem('__mercariPendingListing');
+            createMercariListing(data);
+          }
+        }, 500); // Reduced from 2000ms to 500ms
       }, { once: true });
       return { success: false, error: 'Navigating to sell page...', retrying: true };
     }
     
     console.log('⏳ [MERCARI] Waiting for form to load...');
-    // Wait for form to be ready (use actual Mercari selectors)
-    await waitForElement('[data-testid="Title"], #sellName', 10000);
+    // Wait for form to be ready (use actual Mercari selectors) - reduced timeout
+    await waitForElement('[data-testid="Title"], #sellName', 8000); // Reduced from 10000ms
     console.log('✅ [MERCARI] Form loaded, starting to fill fields...');
     
     // Fill in form fields
     const fillResult = await fillMercariForm(listingData);
     console.log('✅ [MERCARI] Form fields filled successfully');
     
-    // Wait a bit for all changes to take effect
-    await sleep(2000);
+    // Reduced wait time for form changes to take effect
+    await sleep(500); // Reduced from 2000ms to 500ms
     
     // Upload photos if present (using extension method with Mercari's GraphQL API)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
     if (hasPhotos) {
       console.log(`📸 [MERCARI] Starting photo upload for ${listingData.photos.length} photo(s)...`);
       
-      // Wait a bit to ensure we've captured headers from Mercari's initial API calls
+      // Reduced wait time for headers - they should already be captured from page load
       if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
         console.log('⏳ [MERCARI] Waiting for API headers to be captured...');
-        await sleep(3000); // Wait 3 seconds for Mercari to make API calls
+        await sleep(1000); // Reduced from 3000ms to 1000ms - headers should be ready faster
         
         // Check again
         if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
-          console.warn('⚠️ [MERCARI] No headers captured yet, proceeding with fallback headers');
+          console.warn('⚠️ [MERCARI] No headers captured yet, proceeding with storage headers');
         } else {
           console.log(`✅ [MERCARI] Captured ${Object.keys(capturedMercariHeaders).length} headers from Mercari API`);
         }
@@ -912,9 +921,9 @@ async function uploadMercariPhotos(photos) {
     
     console.log(`📸 [PHOTO UPLOAD] Processing ${photos.length} photo(s)...`);
     
-    // Wait a bit for page to fully load and make initial API calls
+    // Reduced wait time - page should already be initialized
     console.log('⏳ [PHOTO UPLOAD] Waiting for page to initialize...');
-    await sleep(2000);
+    await sleep(500); // Reduced from 2000ms to 500ms
     
     // Load headers from storage using the same pattern as loadHeadersFromStorage
     console.log('🔍 [PHOTO UPLOAD] Loading headers from storage...');
@@ -1251,8 +1260,8 @@ async function uploadMercariPhotos(photos) {
 
         // Small delay between uploads
         if (i < photos.length - 1) {
-          console.log(`⏳ [PHOTO UPLOAD] Waiting 500ms before next upload...`);
-          await sleep(500);
+          console.log(`⏳ [PHOTO UPLOAD] Waiting 200ms before next upload...`);
+          await sleep(200); // Reduced from 500ms to 200ms for faster uploads
         }
 
       } catch (error) {

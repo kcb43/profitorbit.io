@@ -1,7 +1,15 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts';
 import { format, parseISO, startOfMonth } from 'date-fns';
 
 export default function MonthlyPnlChart({ sales, rangeLabel }) {
@@ -9,6 +17,7 @@ export default function MonthlyPnlChart({ sales, rangeLabel }) {
     if (!rangeLabel) return "Recent period";
     return rangeLabel.toLowerCase() === "lifetime" ? "Lifetime view" : `Last ${rangeLabel}`;
   }, [rangeLabel]);
+
   const data = React.useMemo(() => {
     const monthlyData = sales.reduce((acc, sale) => {
       if (!sale.sale_date) {
@@ -18,7 +27,7 @@ export default function MonthlyPnlChart({ sales, rangeLabel }) {
       if (!acc[month]) {
         acc[month] = {
           revenue: 0,
-          cost: 0,
+          costs: 0,
           profit: 0,
           monthLabel: format(startOfMonth(parseISO(sale.sale_date)), 'MMM yyyy'),
           monthKey: month,
@@ -26,64 +35,109 @@ export default function MonthlyPnlChart({ sales, rangeLabel }) {
       }
       const cost = (sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0);
       acc[month].revenue += sale.selling_price || 0;
-      acc[month].cost += cost;
+      acc[month].costs += cost;
       acc[month].profit += sale.profit || 0;
       return acc;
     }, {});
-    
+
     return Object.values(monthlyData)
       .sort((a, b) => (a.monthKey > b.monthKey ? 1 : -1))
       .slice(-12)
-      .map(({ monthLabel, revenue, cost, profit }) => ({
+      .map(({ monthLabel, revenue, costs, profit }) => ({
         month: monthLabel,
         revenue,
-        cost,
+        costs,
         profit,
       }));
   }, [sales]);
 
-  return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl font-semibold text-foreground">Monthly Profit &amp; Loss</CardTitle>
-        <CardDescription className="text-muted-foreground">
-          {descriptor} of revenue, costs, and net profit.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-4">
-        {data.length > 0 ? (
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-              <XAxis dataKey="month" stroke="#6b7280" style={{ fontSize: '12px' }} tickLine={false} axisLine={false} />
-              <YAxis
-                stroke="#6b7280"
-                style={{ fontSize: '12px' }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `$${value.toFixed(0)}`}
-              />
-              <Tooltip
-                formatter={(value) => `$${Number(value).toFixed(2)}`}
-                cursor={{ fill: 'rgba(59, 130, 246, 0.08)' }}
-                contentStyle={{
-                  borderRadius: '12px',
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: '0 10px 30px -12px rgba(15, 23, 42, 0.35)',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '13px', paddingTop: 12 }} />
-              <Bar dataKey="revenue" fill="#2563eb" name="Revenue" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="cost" fill="#f97316" name="Costs" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="profit" fill="#16a34a" name="Profit" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="py-16 text-center text-sm text-muted-foreground">
-            Not enough sales in this range to render the chart.
+  if (data.length === 0) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-lg">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-sm text-white/60">Monthly P&L</div>
+            <div className="text-lg font-semibold text-white">Revenue vs Costs</div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+        <div className="h-64 flex items-center justify-center">
+          <div className="text-sm text-white/40">Not enough sales in this range to render the chart.</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-lg">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-sm text-white/60">Monthly P&L</div>
+          <div className="text-lg font-semibold text-white">Revenue vs Costs</div>
+        </div>
+        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+          Profit highlighted
+        </div>
+      </div>
+
+      <div className="h-64 md:h-96 lg:h-[420px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data}>
+            <CartesianGrid strokeDasharray="3 6" stroke="rgba(255,255,255,0.06)" />
+            <XAxis
+              dataKey="month"
+              tick={{ fill: 'rgba(255,255,255,0.6)' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: 'rgba(255,255,255,0.6)' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => `$${value.toFixed(0)}`}
+            />
+            <Tooltip
+              contentStyle={{
+                background: 'rgba(10,10,10,0.95)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12,
+              }}
+              labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+              formatter={(value) => `$${Number(value).toFixed(2)}`}
+            />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="#60a5fa"
+              fill="rgba(96,165,250,0.25)"
+              strokeWidth={2}
+            />
+            <Area
+              type="monotone"
+              dataKey="costs"
+              stroke="#fb923c"
+              fill="rgba(251,146,60,0.18)"
+              strokeWidth={2}
+            />
+            <Line
+              type="monotone"
+              dataKey="profit"
+              stroke="#22c55e"
+              strokeWidth={3}
+              dot={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+        {data.slice(-3).map((d) => (
+          <div key={d.month} className="rounded-xl border border-white/10 bg-white/5 p-2">
+            <div className="text-white/60">{d.month}</div>
+            <div className="text-white font-semibold">${Math.round(d.profit || 0).toLocaleString()}</div>
+            <div className="text-white/50">profit</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

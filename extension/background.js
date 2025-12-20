@@ -209,8 +209,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.tabs.onUpdated.addListener(listener);
           });
           
-          // Give Mercari extra time to initialize and content script to load
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Reduced wait time - content script should be ready faster
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 3000ms to 1000ms
         }
         
         // Send listing data with retry logic (silently, like Vendoo)
