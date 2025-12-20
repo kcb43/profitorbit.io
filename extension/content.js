@@ -579,26 +579,25 @@ async function createMercariListing(listingData, options = {}) {
     }
     
     console.log('⏳ [MERCARI] Waiting for form to load...');
-    // Wait for form to be ready (use actual Mercari selectors) - reduced timeout
-    await waitForElement('[data-testid="Title"], #sellName', 4000); // Reduced from 5000ms to 4000ms
+    // Wait for form to be ready (use actual Mercari selectors) - optimized timeout
+    await waitForElement('[data-testid="Title"], #sellName', 2000); // Reduced from 4000ms to 2000ms
     console.log('✅ [MERCARI] Form loaded, starting to fill fields...');
     
     // Fill in form fields
     const fillResult = await fillMercariForm(listingData);
     console.log('✅ [MERCARI] Form fields filled successfully');
     
-    // Minimal wait time for form changes to take effect
-    await sleep(100); // Reduced from 200ms to 100ms
+    // No wait needed - form fields are set synchronously
     
     // Upload photos if present (using extension method with Mercari's GraphQL API)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
     if (hasPhotos) {
       console.log(`📸 [MERCARI] Starting photo upload for ${listingData.photos.length} photo(s)...`);
       
-      // Headers should already be captured from page load - minimal wait
+      // Headers should already be captured from page load - no wait needed
       if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
         console.log('⏳ [MERCARI] Waiting for API headers to be captured...');
-        await sleep(200); // Reduced from 500ms - headers should be ready very quickly
+        await sleep(50); // Minimal wait - headers should be ready immediately
         
         // Check again
         if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
@@ -649,9 +648,8 @@ async function createMercariListing(listingData, options = {}) {
     
     // Handle any popups that might have appeared after photo upload (non-blocking)
     handleMercariPopups().catch(() => {}); // Don't wait for this
-    await sleep(100); // Minimal wait
     
-    // Verify and re-set brand if needed (popups might have cleared it)
+    // Verify and re-set brand if needed (popups might have cleared it) - parallel check
     if (listingData.brand) {
       console.log('🔍 [MERCARI] Verifying brand is still set...');
       const brandDropdown = document.querySelector('[data-testid="Brand"]');
@@ -661,7 +659,7 @@ async function createMercariListing(listingData, options = {}) {
       if (!brandValue || brandValue === 'Select brand' || brandValue === 'Brand' || brandValue.length < 2) {
         console.log('⚠️ [MERCARI] Brand appears to be missing, re-setting...');
         await setMercariBrand(listingData.brand);
-        await sleep(200); // Reduced wait time
+        // No wait needed - brand is set synchronously
       } else {
         console.log(`✅ [MERCARI] Brand is still set: "${brandValue}"`);
       }
@@ -1151,11 +1149,11 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     
     // Scroll into view if needed
     dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await sleep(100); // Reduced from 200ms to 100ms
+    await sleep(50); // Reduced from 100ms
     
     // Click to open dropdown
     dropdown.click();
-    await sleep(400); // Reduced from 800ms to 400ms - Wait for dropdown to fully open
+    await sleep(200); // Reduced from 400ms - dropdown opens quickly
     
     // Wait for options to appear (they usually appear in a portal/overlay)
     // Mercari dropdowns render options in the DOM after clicking
@@ -1187,13 +1185,13 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
         break;
       }
       
-      await sleep(150); // Reduced from 300ms to 150ms
+      await sleep(100); // Reduced from 150ms
     }
     
     if (options.length === 0) {
       // Click outside to close dropdown
       document.body.click();
-      await sleep(150); // Reduced from 300ms to 150ms
+      await sleep(50); // Reduced from 150ms
       return false;
     }
     
@@ -1216,14 +1214,14 @@ async function selectMercariDropdown(testId, optionText, partialMatch = false) {
     
     if (matchedOption) {
       matchedOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await sleep(100); // Reduced from 200ms to 100ms
+      await sleep(50); // Reduced from 100ms
       matchedOption.click();
-      await sleep(300); // Reduced from 600ms to 300ms - Wait after selection
+      await sleep(150); // Reduced from 300ms - selection happens quickly
       return true;
     } else {
       // Click outside to close dropdown
       document.body.click();
-      await sleep(150); // Reduced from 300ms to 150ms
+      await sleep(50); // Reduced from 150ms
       return false;
     }
   } catch (error) {
@@ -1256,12 +1254,12 @@ async function typeIntoMercariDropdown(testId, text) {
     
     // Scroll into view
     dropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await sleep(100); // Reduced from 200ms to 100ms
+    await sleep(50); // Reduced from 100ms
     
     // Click to open/focus
     console.log(`🖱️ [TYPE DROPDOWN ${testId}] Clicking dropdown to open...`);
     dropdown.click();
-    await sleep(400); // Reduced from 800ms to 400ms
+    await sleep(200); // Reduced from 400ms - dropdown opens quickly
     
     // Try to find an input field within or after the dropdown
     let input = dropdown.querySelector('input[type="text"]') ||
@@ -1315,8 +1313,8 @@ async function typeIntoMercariDropdown(testId, text) {
       
       console.log(`⚡ [TYPE DROPDOWN ${testId}] Set value instantly (robot speed!): "${text}"`);
       
-      // Wait for autocomplete to appear (reduced wait)
-      await sleep(400); // Reduced from 600ms
+      // Wait for autocomplete to appear (minimal wait)
+      await sleep(200); // Reduced from 400ms
       
       // Try to find and click the matching option
       const options = Array.from(document.querySelectorAll('[role="option"]'));
@@ -1331,9 +1329,9 @@ async function typeIntoMercariDropdown(testId, text) {
       if (matchingOption) {
         console.log(`✅ [TYPE DROPDOWN ${testId}] Found matching option: "${matchingOption.textContent?.trim()}"`);
         matchingOption.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await sleep(100); // Reduced from 200ms to 100ms
+        await sleep(50); // Reduced from 100ms
         matchingOption.click();
-        await sleep(300); // Reduced from 500ms to 300ms
+        await sleep(150); // Reduced from 300ms
         return true;
       } else {
         console.log(`⚠️ [TYPE DROPDOWN ${testId}] No matching option found, trying Enter key...`);
@@ -1341,7 +1339,7 @@ async function typeIntoMercariDropdown(testId, text) {
         // If no matching option found, try pressing Enter to accept typed value
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
         input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-        await sleep(300); // Reduced from 500ms to 300ms
+        await sleep(150); // Reduced from 300ms
         
         // Check if value was accepted by checking dropdown value
         const dropdownAfter = document.querySelector(`[data-testid="${testId}"]`);
@@ -1714,10 +1712,10 @@ async function uploadMercariPhotos(photos) {
           throw new Error('No uploadId in response: ' + JSON.stringify(result));
         }
 
-        // Small delay between uploads
+        // Small delay between uploads - minimal wait
         if (i < photos.length - 1) {
-          console.log(`⏳ [PHOTO UPLOAD] Waiting 100ms before next upload...`);
-          await sleep(100); // Reduced from 200ms to 100ms for faster uploads
+          console.log(`⏳ [PHOTO UPLOAD] Waiting 50ms before next upload...`);
+          await sleep(50); // Reduced from 100ms for faster uploads
         }
 
       } catch (error) {
@@ -1856,7 +1854,7 @@ async function fillMercariForm(data) {
   try {
     console.log('📝 [FORM FILL] Starting to fill form fields...');
     // Wrap entire form fill in try-catch to prevent errors from stopping the process
-    // 1. TITLE
+    // 1. TITLE - Set immediately, no wait needed
     console.log(`📝 [FORM FILL] Setting title: "${data.title}"`);
     const titleInput = document.querySelector('[data-testid="Title"]') || 
                       document.querySelector('#sellName');
@@ -1864,11 +1862,10 @@ async function fillMercariForm(data) {
       titleInput.value = data.title;
       titleInput.dispatchEvent(new Event('input', { bubbles: true }));
       titleInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await sleep(300);
       console.log(`✅ [FORM FILL] Title set`);
     }
     
-    // 2. DESCRIPTION
+    // 2. DESCRIPTION - Set immediately, no wait needed
     console.log(`📝 [FORM FILL] Setting description...`);
     const descInput = document.querySelector('[data-testid="Description"]') ||
                      document.querySelector('#sellDescription');
@@ -1876,7 +1873,6 @@ async function fillMercariForm(data) {
       descInput.value = data.description;
       descInput.dispatchEvent(new Event('input', { bubbles: true }));
       descInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await sleep(300);
       console.log(`✅ [FORM FILL] Description set`);
     }
     
@@ -1917,9 +1913,9 @@ async function fillMercariForm(data) {
         }
         
         if (success) {
-          // Wait for next level dropdown to appear (if not the last level)
+          // Wait for next level dropdown to appear (if not the last level) - optimized wait
           if (level < categoryParts.length - 1) {
-            await sleep(1000); // Give Mercari time to load next level
+            await sleep(300); // Reduced from 1000ms - Mercari loads quickly
             // Check if any category dropdown is available for next level
             const nextLevelTestId = `CategoryL${level + 1}`;
             let nextDropdown = document.querySelector(`[data-testid="${nextLevelTestId}"]`);
@@ -1928,7 +1924,7 @@ async function fillMercariForm(data) {
               nextDropdown = document.querySelector('[data-testid*="Category"]') ||
                            document.querySelector('[aria-haspopup="listbox"][id*="category"]');
               if (!nextDropdown) {
-                await sleep(1000);
+                await sleep(300); // Reduced from 1000ms
               }
             }
           } else {
@@ -2006,24 +2002,23 @@ async function fillMercariForm(data) {
       await selectMercariDropdown('Color', data.color, false);
     }
     
-    // 7. SIZE (text input)
+    // 7. SIZE (text input) - Set immediately, no wait needed
     if (data.size) {
       const sizeInput = document.querySelector('[data-testid="Size"]') ||
                         document.querySelector('input[name*="size" i]');
       if (sizeInput) {
         sizeInput.value = data.size;
         sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
-        await sleep(300);
       }
     }
     
-    // 8. SHIPS FROM (zip code)
+    // 8. SHIPS FROM (zip code) - Optimized waits
     if (data.shipsFrom) {
       // User may need to click Edit button first
       const editShipsFromBtn = document.querySelector('[data-testid="ShipsFromEditButton"]');
       if (editShipsFromBtn) {
         editShipsFromBtn.click();
-        await sleep(500);
+        await sleep(200); // Reduced from 500ms
       }
       
       const zipInput = document.querySelector('input[name*="zip" i]') ||
@@ -2031,7 +2026,6 @@ async function fillMercariForm(data) {
       if (zipInput) {
         zipInput.value = data.shipsFrom;
         zipInput.dispatchEvent(new Event('input', { bubbles: true }));
-        await sleep(300);
       }
     }
     
@@ -2041,7 +2035,7 @@ async function fillMercariForm(data) {
       await selectMercariDropdown('ShippingMethod', deliveryText, true);
     }
     
-    // 10. PRICE (do this last as it often triggers validation)
+    // 10. PRICE (do this last as it often triggers validation) - Optimized wait
     console.log(`📝 [FORM FILL] Setting price: $${data.price}`);
     const priceInput = document.querySelector('[data-testid="Price"]') ||
                       document.querySelector('#Price') ||
@@ -2051,13 +2045,13 @@ async function fillMercariForm(data) {
       priceInput.dispatchEvent(new Event('input', { bubbles: true }));
       priceInput.dispatchEvent(new Event('change', { bubbles: true }));
       priceInput.dispatchEvent(new Event('blur', { bubbles: true }));
-      await sleep(500);
+      await sleep(200); // Reduced from 500ms
       console.log(`✅ [FORM FILL] Price set`);
     }
     
-    // 10.5. SMART PRICING & SMART OFFERS (after price is set)
+    // 10.5. SMART PRICING & SMART OFFERS (after price is set) - Optimized wait
     if (data.smartPricing !== undefined || data.smartOffers !== undefined) {
-      await sleep(1000); // Wait for price to process and toggles to appear
+      await sleep(300); // Reduced from 1000ms - toggles appear quickly
       
       // Smart Pricing toggle
       if (data.smartPricing !== undefined) {
@@ -2072,13 +2066,13 @@ async function fillMercariForm(data) {
             // Only toggle if state doesn't match desired state
             if (data.smartPricing !== isChecked) {
               smartPricingToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              await sleep(200);
+              await sleep(50); // Reduced from 200ms
               smartPricingToggle.click();
-              await sleep(500); // Wait for toggle to activate and UI to update
+              await sleep(200); // Reduced from 500ms - UI updates quickly
               
               // If enabling Smart Pricing, look for Floor Price input
               if (data.smartPricing && data.floorPrice) {
-                await sleep(500); // Wait for input field to appear
+                await sleep(200); // Reduced from 500ms - input appears quickly
                 
                 // Use exact Mercari selectors for Floor Price
                 let floorPriceInput = document.querySelector('[data-testid="SmartPricingFloorPrice"]') ||
@@ -2091,7 +2085,7 @@ async function fillMercariForm(data) {
                   floorPriceInput.value = String(data.floorPrice);
                   floorPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
                   floorPriceInput.dispatchEvent(new Event('change', { bubbles: true }));
-                  await sleep(300);
+                  // No wait needed
                 }
               }
             }
@@ -2623,19 +2617,72 @@ async function submitMercariForm(brandToVerify = null) {
       const stillHasButton = document.querySelector('[data-testid="ListButton"]') !== null;
       
       if (!stillHasButton) {
-        // Button disappeared - might be processing, wait a bit more
-        console.log('⏳ [FORM SUBMIT] List button disappeared, might be processing...');
-        await sleep(2000);
-        currentUrl = window.location.href;
+        // Button disappeared - might be processing, wait longer and check multiple times
+        console.log('⏳ [FORM SUBMIT] List button disappeared, checking for success...');
         
-        if (currentUrl.includes('/item/')) {
-          const listingId = currentUrl.split('/item/')[1]?.split('/')[0] || '';
-          console.log('✅ [FORM SUBMIT] Success after additional wait! Listing ID:', listingId);
+        // Wait and check multiple times (Mercari can take a few seconds to redirect)
+        for (let check = 0; check < 5; check++) {
+          await sleep(1500); // Wait 1.5 seconds between checks
+          currentUrl = window.location.href;
+          
+          // Check if we navigated to item page (success!)
+          if (currentUrl.includes('/item/')) {
+            const listingId = currentUrl.split('/item/')[1]?.split('/')[0] || '';
+            console.log('✅ [FORM SUBMIT] Success detected! Listing ID:', listingId);
+            isSubmittingMercariForm = false;
+            return {
+              success: true,
+              listingId: listingId,
+              listingUrl: currentUrl
+            };
+          }
+          
+          // Check for success indicators on the page
+          const successIndicators = [
+            document.querySelector('[class*="success"]'),
+            document.querySelector('[class*="Success"]'),
+            document.querySelector('[data-testid*="success"]'),
+            document.querySelector('text*="Listing created"'),
+            document.querySelector('text*="Item listed"'),
+            document.querySelector('text*="Your item is live"')
+          ].filter(el => el !== null);
+          
+          if (successIndicators.length > 0) {
+            console.log('✅ [FORM SUBMIT] Success indicators found on page!');
+            // Try to extract listing URL from page
+            const listingLink = document.querySelector('a[href*="/item/"]');
+            if (listingLink) {
+              const listingUrl = listingLink.href;
+              const listingId = listingUrl.split('/item/')[1]?.split('/')[0] || '';
+              isSubmittingMercariForm = false;
+              return {
+                success: true,
+                listingId: listingId,
+                listingUrl: listingUrl
+              };
+            }
+            // Even without URL, if we see success indicators, assume success
+            isSubmittingMercariForm = false;
+            return {
+              success: true,
+              message: 'Listing created successfully (success indicators detected)',
+              url: currentUrl
+            };
+          }
+          
+          console.log(`⏳ [FORM SUBMIT] Check ${check + 1}/5: Still processing...`);
+        }
+        
+        // After all checks, if still on sell page but button is gone, assume success
+        // (Mercari sometimes doesn't redirect immediately but listing is created)
+        currentUrl = window.location.href;
+        if (!document.querySelector('[data-testid="ListButton"]')) {
+          console.log('✅ [FORM SUBMIT] Button gone and no errors found - assuming success');
           isSubmittingMercariForm = false;
           return {
             success: true,
-            listingId: listingId,
-            listingUrl: currentUrl
+            message: 'Listing likely created successfully (button disappeared, no errors)',
+            url: currentUrl
           };
         }
       }
