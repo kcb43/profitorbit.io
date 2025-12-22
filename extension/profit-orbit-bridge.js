@@ -11,37 +11,60 @@ console.log('Profit Orbit Extension: Document ready state:', document.readyState
 // This is necessary because content scripts run in an isolated world
 // Use a separate file to avoid CSP violations with inline scripts
 (function() {
-  try {
-    const script = document.createElement('script');
-    // Use chrome.runtime.getURL to get the extension URL for the script file
-    script.src = chrome.runtime.getURL('profit-orbit-page-api.js');
-    script.onload = function() {
-      console.log('Profit Orbit Extension: Page script loaded successfully');
-      this.remove(); // Remove script tag after loading
-    };
-    script.onerror = function() {
-      console.error('Profit Orbit Extension: Failed to load page script');
-      this.remove();
-    };
-    
-    // Try to inject into head first, fallback to documentElement
-    const target = document.head || document.documentElement;
-    if (target) {
-      target.appendChild(script);
-      console.log('Profit Orbit Extension: Page script injection initiated');
-    } else {
-      console.error('Profit Orbit Extension: Could not find injection target (head or documentElement)');
-      // Try again after a delay
-      setTimeout(() => {
-        const retryTarget = document.head || document.documentElement;
-        if (retryTarget) {
-          retryTarget.appendChild(script);
-          console.log('Profit Orbit Extension: Page script injection retried');
-        }
-      }, 100);
+  function injectPageScript() {
+    try {
+      const script = document.createElement('script');
+      // Use chrome.runtime.getURL to get the extension URL for the script file
+      const scriptUrl = chrome.runtime.getURL('profit-orbit-page-api.js');
+      console.log('Profit Orbit Extension: Attempting to inject page script from:', scriptUrl);
+      script.src = scriptUrl;
+      
+      script.onload = function() {
+        console.log('Profit Orbit Extension: Page script loaded successfully');
+        // Don't remove immediately - let it stay for debugging
+        setTimeout(() => this.remove(), 1000);
+      };
+      
+      script.onerror = function(error) {
+        console.error('Profit Orbit Extension: Failed to load page script:', error);
+        console.error('Profit Orbit Extension: Script URL was:', scriptUrl);
+        console.error('Profit Orbit Extension: Check if profit-orbit-page-api.js exists in extension folder');
+        this.remove();
+      };
+      
+      // Try to inject into head first, fallback to documentElement
+      const target = document.head || document.documentElement;
+      if (target) {
+        target.appendChild(script);
+        console.log('Profit Orbit Extension: Page script injection initiated, target:', target.tagName);
+      } else {
+        console.error('Profit Orbit Extension: Could not find injection target (head or documentElement)');
+        // Try again after a delay
+        setTimeout(() => {
+          const retryTarget = document.head || document.documentElement;
+          if (retryTarget) {
+            retryTarget.appendChild(script);
+            console.log('Profit Orbit Extension: Page script injection retried');
+          } else {
+            console.error('Profit Orbit Extension: Still no injection target available');
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Profit Orbit Extension: Error injecting page script:', error);
     }
-  } catch (error) {
-    console.error('Profit Orbit Extension: Error injecting page script:', error);
+  }
+  
+  // Try to inject immediately
+  if (document.head || document.documentElement) {
+    injectPageScript();
+  } else {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', injectPageScript);
+    } else {
+      setTimeout(injectPageScript, 100);
+    }
   }
 })();
 
