@@ -17,6 +17,7 @@
     "https://www.ebay.com/*",
     "https://www.etsy.com/*",
     "https://profitorbit.io/*",
+    "https://*.vercel.app/*",
     "http://localhost:5173/*",
     "http://localhost:5174/*"
   ],
@@ -38,6 +39,7 @@
     {
       "matches": [
         "https://profitorbit.io/*",
+        "https://*.vercel.app/*",
         "http://localhost:5173/*",
         "http://localhost:5174/*"
       ],
@@ -50,6 +52,7 @@
       "resources": ["profit-orbit-page-api.js"],
       "matches": [
         "https://profitorbit.io/*",
+        "https://*.vercel.app/*",
         "http://localhost:5173/*",
         "http://localhost:5174/*"
       ]
@@ -71,6 +74,7 @@
   "externally_connectable": {
     "matches": [
       "https://profitorbit.io/*",
+      "https://*.vercel.app/*",
       "http://localhost:5173/*",
       "http://localhost:5174/*"
     ]
