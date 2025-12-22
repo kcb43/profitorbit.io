@@ -60,6 +60,9 @@ import { useEbayCategoryTreeId, useEbayCategories } from "@/hooks/useEbayCategor
 import { crosslistingEngine } from "@/services/CrosslistingEngine";
 import { UnifiedListingForm } from "@/components/UnifiedListingForm";
 import { ExternalLink, List } from "lucide-react";
+import { listingJobsApi, platformApi } from "@/api/listingApiClient";
+import { PlatformConnectionStatus } from "@/components/PlatformConnectionStatus";
+import { ListingJobTracker } from "@/components/ListingJobTracker";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -273,6 +276,11 @@ export default function Crosslist() {
   const [bulkAction, setBulkAction] = useState(null);
   const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
   const [crosslistLoading, setCrosslistLoading] = useState(false);
+  
+  // New automation system state
+  const [activeJobs, setActiveJobs] = useState({}); // { itemId: jobId }
+  const [platformConnections, setPlatformConnections] = useState([]);
+  const [showPlatformConnect, setShowPlatformConnect] = useState(false);
   
   // Force grid view on mobile screens (md breakpoint is 768px)
   useEffect(() => {
@@ -834,50 +842,155 @@ export default function Crosslist() {
     return listing.status;
   };
 
-  const handleListOnMarketplaceItem = async (itemId, marketplace) => {
-    setCrosslistLoading(true);
-    try {
-      const accounts = await crosslistingEngine.getMarketplaceAccounts();
-      const account = accounts[marketplace];
+  // Load platform connection status
+  useEffect(() => {
+    const loadPlatformStatus = async () => {
+      try {
+        const status = await platformApi.getStatus();
+        setPlatformConnections(status);
+      } catch (error) {
+        console.error('Error loading platform status:', error);
+      }
+    };
+    loadPlatformStatus();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadPlatformStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-      if (!account || !account.isActive) {
+  const isPlatformConnected = (platformId) => {
+    const platform = platformConnections.find((p) => p.platform === platformId);
+    return platform?.status === 'connected';
+  };
+
+  const handleListOnMarketplaceItem = async (itemId, marketplace) => {
+    // Check if platform is connected
+    if (!isPlatformConnected(marketplace)) {
+      toast({
+        title: 'Platform Not Connected',
+        description: `Please connect your ${marketplace} account first using the Chrome extension.`,
+        variant: 'destructive',
+      });
+      setShowPlatformConnect(true);
+      return;
+    }
+
+    // Only support Mercari and Facebook for now (automation system)
+    if (!['mercari', 'facebook'].includes(marketplace)) {
+      // Fallback to old system for other platforms
+      setCrosslistLoading(true);
+      try {
+        const accounts = await crosslistingEngine.getMarketplaceAccounts();
+        const account = accounts[marketplace];
+
+        if (!account || !account.isActive) {
+          toast({
+            title: 'Account Not Connected',
+            description: `Please connect your ${marketplace} account first.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const result = await crosslistingEngine.listItemOnMarketplace(
+          itemId,
+          marketplace,
+          {
+            access_token: account.access_token,
+          }
+        );
+
         toast({
-          title: 'Account Not Connected',
-          description: `Please connect your ${marketplace} account first.`,
+          title: 'Listed Successfully',
+          description: `Item listed on ${marketplace}.`,
+        });
+
+        const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+        setMarketplaceListings(prev => ({
+          ...prev,
+          [itemId]: listings,
+        }));
+
+        queryClient.invalidateQueries(['inventoryItems']);
+      } catch (error) {
+        toast({
+          title: 'Listing Failed',
+          description: error.message || `Failed to list on ${marketplace}.`,
           variant: 'destructive',
         });
-        return;
+      } finally {
+        setCrosslistLoading(false);
+      }
+      return;
+    }
+
+    // Use new automation system for Mercari and Facebook
+    setCrosslistLoading(true);
+    try {
+      // Get inventory item
+      const inventoryItem = inventory.find((item) => item.id === itemId);
+      if (!inventoryItem) {
+        throw new Error('Inventory item not found');
       }
 
-      const result = await crosslistingEngine.listItemOnMarketplace(
-        itemId,
-        marketplace,
-        {
-          access_token: account.access_token,
-        }
-      );
+      // Prepare payload from inventory item
+      const payload = {
+        title: inventoryItem.item_name || '',
+        description: inventoryItem.notes || inventoryItem.item_name || '',
+        price: inventoryItem.listing_price || inventoryItem.purchase_price || '0',
+        category: inventoryItem.category || '',
+        condition: inventoryItem.condition || '',
+        images: inventoryItem.image_url ? [inventoryItem.image_url] : [],
+      };
 
-      toast({
-        title: 'Listed Successfully',
-        description: `Item listed on ${marketplace}.`,
-      });
+      // Create listing job
+      const result = await listingJobsApi.createJob(itemId, [marketplace], payload);
 
-      // Refresh listings
-      const listings = await crosslistingEngine.getMarketplaceListings(itemId);
-      setMarketplaceListings(prev => ({
+      // Track the job
+      setActiveJobs((prev) => ({
         ...prev,
-        [itemId]: listings,
+        [itemId]: result.jobId,
       }));
 
-      queryClient.invalidateQueries(['inventoryItems']);
+      toast({
+        title: 'Listing Job Created',
+        description: `Your item is being listed on ${marketplace}. Check status below.`,
+      });
     } catch (error) {
       toast({
-        title: 'Listing Failed',
-        description: error.message || `Failed to list on ${marketplace}.`,
+        title: 'Failed to Create Listing Job',
+        description: error.message || `Failed to start listing on ${marketplace}.`,
         variant: 'destructive',
       });
     } finally {
       setCrosslistLoading(false);
+    }
+  };
+
+  const handleJobComplete = (job) => {
+    // Remove from active jobs
+    setActiveJobs((prev) => {
+      const newJobs = { ...prev };
+      Object.keys(newJobs).forEach((itemId) => {
+        if (newJobs[itemId] === job.id) {
+          delete newJobs[itemId];
+        }
+      });
+      return newJobs;
+    });
+
+    // Show success message
+    if (job.status === 'completed' && job.result) {
+      const platforms = Object.keys(job.result).filter(
+        (p) => job.result[p].success
+      );
+      toast({
+        title: 'Listing Complete',
+        description: `Successfully listed on ${platforms.join(', ')}`,
+      });
+
+      // Refresh inventory
+      queryClient.invalidateQueries(['inventoryItems']);
     }
   };
 
@@ -1201,6 +1314,39 @@ export default function Crosslist() {
           </div>
         </div>
 
+        {/* Platform Connection Status & Active Jobs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <PlatformConnectionStatus
+            onConnectClick={(platform) => {
+              toast({
+                title: 'Connect Platform',
+                description: `Open ${platform} in a new tab, log in, then use the Chrome extension to connect.`,
+              });
+            }}
+          />
+          {Object.keys(activeJobs).length > 0 && (
+            <div className="space-y-2">
+              {Object.entries(activeJobs).map(([itemId, jobId]) => {
+                const item = inventory.find((i) => i.id === itemId);
+                return (
+                  <ListingJobTracker
+                    key={jobId}
+                    jobId={jobId}
+                    onComplete={handleJobComplete}
+                    onClose={() => {
+                      setActiveJobs((prev) => {
+                        const newJobs = { ...prev };
+                        delete newJobs[itemId];
+                        return newJobs;
+                      });
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
             <CardTitle className="text-gray-900 dark:text-white text-base flex items-center gap-2">
@@ -1403,29 +1549,46 @@ export default function Crosslist() {
                       {it.purchase_date && ` • ${format(parseISO(it.purchase_date), "MMM d, yyyy")}`}
                     </p>
 
-                    {/* Marketplace Icons */}
-                    <div className="mt-auto flex flex-wrap items-center gap-3">
+                    {/* Marketplace Icons & List Buttons */}
+                    <div className="mt-auto flex flex-wrap items-center gap-2">
                       {MARKETPLACES.map((m) => {
                         const isListed = map[m.id];
                         const status = getListingStatus(it.id, m.id);
                         const listings = getItemListings(it.id);
                         const listing = listings.find(l => l.marketplace === m.id);
+                        const isConnected = isPlatformConnected(m.id);
+                        const hasActiveJob = activeJobs[it.id];
                         
                         return (
-                          <div
-                            key={m.id}
-                            className={`glass inline-flex items-center justify-center w-12 h-12 rounded-lg border-2 transition-all cursor-pointer hover:scale-110 ${
-                              isListed
-                                ? "bg-white border-white shadow-lg shadow-white/20 opacity-100"
-                                : "bg-gray-500/10 border-gray-600/50 opacity-40 hover:opacity-60"
-                            }`}
-                            style={{
-                              backdropFilter: 'blur(10px)',
-                              borderRadius: '10px'
-                            }}
-                            title={isListed ? `✓ Listed on ${m.label}` : `Not listed on ${m.label}`}
-                          >
-                            {renderMarketplaceIcon(m, "w-6 h-6")}
+                          <div key={m.id} className="flex flex-col items-center gap-1">
+                            <div
+                              className={`glass inline-flex items-center justify-center w-12 h-12 rounded-lg border-2 transition-all ${
+                                isListed
+                                  ? "bg-white border-white shadow-lg shadow-white/20 opacity-100"
+                                  : "bg-gray-500/10 border-gray-600/50 opacity-40 hover:opacity-60"
+                              }`}
+                              style={{
+                                backdropFilter: 'blur(10px)',
+                                borderRadius: '10px'
+                              }}
+                              title={isListed ? `✓ Listed on ${m.label}` : `Not listed on ${m.label}`}
+                            >
+                              {renderMarketplaceIcon(m, "w-6 h-6")}
+                            </div>
+                            {!isListed && isConnected && !hasActiveJob && ['mercari', 'facebook'].includes(m.id) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
+                                disabled={crosslistLoading}
+                                className="text-xs h-6 px-2"
+                              >
+                                List on {m.label}
+                              </Button>
+                            )}
+                            {hasActiveJob && activeJobs[it.id] && (
+                              <div className="text-xs text-blue-600">Processing...</div>
+                            )}
                           </div>
                         );
                       })}
@@ -1523,6 +1686,8 @@ export default function Crosslist() {
                         const status = getListingStatus(it.id, m.id);
                         const listings = getItemListings(it.id);
                         const listing = listings.find(l => l.marketplace === m.id);
+                        const isConnected = isPlatformConnected(m.id);
+                        const hasActiveJob = activeJobs[it.id];
                         
                         return (
                           <div
@@ -1539,7 +1704,21 @@ export default function Crosslist() {
                             >
                               {renderMarketplaceIcon(m, "w-4 h-4")}
                             </div>
-                            {status === 'not_listed' ? null : (
+                            {status === 'not_listed' ? (
+                              isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
+                                  disabled={crosslistLoading}
+                                  className="text-xs h-6 px-2"
+                                >
+                                  List on {m.label}
+                                </Button>
+                              ) : !isConnected && ['mercari', 'facebook'].includes(m.id) ? (
+                                <span className="text-xs text-muted-foreground">Connect</span>
+                              ) : null
+                            ) : (
                               <div className="flex gap-1">
                                 {listing?.marketplace_listing_url && (
                                   <Button
@@ -1561,6 +1740,9 @@ export default function Crosslist() {
                                   <X className="w-3 h-3" />
                                 </Button>
                               </div>
+                            )}
+                            {hasActiveJob && activeJobs[it.id] && (
+                              <span className="text-xs text-blue-600">Processing...</span>
                             )}
                           </div>
                         );

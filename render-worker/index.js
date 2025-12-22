@@ -92,7 +92,7 @@ async function processJob(job) {
           message: `Processing ${platform}...`,
         });
 
-        await logJobEvent(jobId, 'info', `Starting ${platform} listing`, platform);
+        await logJobEvent(jobId, 'info', `Starting ${platform} listing`, { platform });
 
         // Get platform account
         const platformAccount = await getPlatformAccount(job.user_id, platform);
@@ -117,16 +117,16 @@ async function processJob(job) {
         const imagePaths = job.payload.images || [];
         if (imagePaths.length > 0) {
           await processor.uploadImages(imagePaths);
-          await logJobEvent(jobId, 'info', `Uploaded ${imagePaths.length} images`, platform);
+          await logJobEvent(jobId, 'info', `Uploaded ${imagePaths.length} images`, { platform });
         }
 
         // Fill form
         await processor.fillForm(job.payload);
-        await logJobEvent(jobId, 'info', 'Form filled', platform);
+        await logJobEvent(jobId, 'info', 'Form filled', { platform });
 
         // Submit
         await processor.submit();
-        await logJobEvent(jobId, 'info', 'Listing submitted', platform);
+        await logJobEvent(jobId, 'info', 'Listing submitted', { platform });
 
         // Get listing URL
         const listingUrl = await processor.getListingUrl();
@@ -135,7 +135,8 @@ async function processJob(job) {
           listingUrl,
         };
 
-        await logJobEvent(jobId, 'success', `Listing created: ${listingUrl}`, platform, {
+        await logJobEvent(jobId, 'success', `Listing created: ${listingUrl}`, {
+          platform,
           url: listingUrl,
         });
 
@@ -148,7 +149,8 @@ async function processJob(job) {
           error: error.message,
         };
 
-        await logJobEvent(jobId, 'error', `Failed: ${error.message}`, platform, {
+        await logJobEvent(jobId, 'error', `Failed: ${error.message}`, {
+          platform,
           error: error.message,
           stack: error.stack,
         });
@@ -166,17 +168,17 @@ async function processJob(job) {
 
     // Update job result
     const allSuccess = Object.values(results).every((r) => r.success);
-    await updateJobResult(
-      jobId,
-      results,
-      allSuccess ? 'completed' : 'partial'
-    );
+    if (!allSuccess) {
+      // If not all succeeded, mark as failed
+      await markJobFailed(jobId, 'Some platforms failed to list');
+    }
+    await updateJobResult(jobId, results);
 
     console.log(`✅ Job ${jobId} completed`);
   } catch (error) {
     console.error(`❌ Job ${jobId} failed:`, error);
     await markJobFailed(jobId, error.message);
-    await logJobEvent(jobId, 'error', `Job failed: ${error.message}`, null, {
+    await logJobEvent(jobId, 'error', `Job failed: ${error.message}`, {
       error: error.message,
       stack: error.stack,
     });

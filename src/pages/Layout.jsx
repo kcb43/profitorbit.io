@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { UserProfile } from "@/components/UserProfile";
 
 // Navigation categories matching the example design
 const navigationCategories = [
@@ -269,15 +270,7 @@ export default function Layout({ children }) {
 
           <SidebarFooter className="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gradient-to-br from-gray-200 dark:from-gray-700 to-gray-300 dark:to-gray-800 rounded-full flex items-center justify-center">
-                  <span className="text-gray-700 dark:text-gray-200 font-semibold text-sm">U</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">Reseller</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Track your profits</p>
-                </div>
-              </div>
+              <UserProfile />
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
