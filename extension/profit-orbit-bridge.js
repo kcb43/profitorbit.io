@@ -61,6 +61,15 @@ function updateLocalStorage(status) {
       window.dispatchEvent(new CustomEvent('marketplaceStatusUpdate', {
         detail: { marketplace, status: data }
       }));
+      
+      // Dispatch connection ready event for Mercari (so React app knows immediately)
+      if (marketplace === 'mercari' && data.loggedIn) {
+        window.postMessage({
+          type: 'MERCARI_CONNECTION_READY',
+          payload: { userName: data.userName || data.name || 'Mercari User' }
+        }, '*');
+        console.log('🔵 Bridge: Dispatched MERCARI_CONNECTION_READY event');
+      }
     } else {
       localStorage.removeItem(`profit_orbit_${marketplace}_connected`);
       localStorage.removeItem(`profit_orbit_${marketplace}_user`);

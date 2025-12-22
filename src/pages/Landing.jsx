@@ -26,6 +26,49 @@ export default function Landing() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
+  // Handle OAuth callback - check for hash fragment with access_token
+  React.useEffect(() => {
+    const handleOAuthCallback = async () => {
+      // Check if we have OAuth callback hash fragment
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        console.log('🔐 OAuth callback detected, processing...');
+        
+        // Wait for Supabase to process the hash fragment
+        // Supabase automatically processes hash fragments on initialization
+        // But we need to wait a bit for it to complete
+        try {
+          // Check session after a short delay to allow Supabase to process
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.log('✅ OAuth callback successful, session established');
+            // Clear the hash fragment and redirect to dashboard
+            window.history.replaceState(null, '', window.location.pathname);
+            navigate('/dashboard', { replace: true });
+          } else if (error) {
+            console.error('❌ OAuth callback error:', error);
+          } else {
+            console.warn('⚠️ OAuth callback detected but no session found');
+            // Retry once more after a longer delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession) {
+              window.history.replaceState(null, '', window.location.pathname);
+              navigate('/dashboard', { replace: true });
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error processing OAuth callback:', error);
+        }
+      }
+    };
+
+    handleOAuthCallback();
+  }, [navigate]);
+
   const handleGetStarted = () => {
     navigate('/signup');
   };

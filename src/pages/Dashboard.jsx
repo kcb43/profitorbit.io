@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { sortSalesByRecency } from "@/utils/sales";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { format, parseISO, differenceInDays, isAfter } from 'date-fns';
+import { supabase } from "@/api/supabaseClient";
 
 import StatCard from "../components/dashboard/StatCard";
 import ProfitChart from "../components/dashboard/ProfitChart";
@@ -66,7 +67,53 @@ const SUPPORTED_MARKETPLACES = [
 
 export default function Dashboard() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [profitChartRange, setProfitChartRange] = useState('14d');
+
+  // Handle OAuth callback - process hash fragment before AuthGuard redirects
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      // Check if we have OAuth callback hash fragment
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        console.log('🔐 Dashboard: OAuth callback detected, processing...');
+        
+        try {
+          // Wait for Supabase to process the hash fragment
+          // Supabase automatically processes hash fragments, but we need to wait
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.log('✅ Dashboard: OAuth callback successful, session established');
+            // Clear the hash fragment
+            window.history.replaceState(null, '', window.location.pathname);
+          } else if (error) {
+            console.error('❌ Dashboard: OAuth callback error:', error);
+            // Redirect to login on error
+            navigate('/login', { replace: true });
+          } else {
+            console.warn('⚠️ Dashboard: OAuth callback detected but no session found, retrying...');
+            // Retry once more after a longer delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession) {
+              window.history.replaceState(null, '', window.location.pathname);
+            } else {
+              console.error('❌ Dashboard: Session still not found after retry');
+              navigate('/login', { replace: true });
+            }
+          }
+        } catch (error) {
+          console.error('❌ Dashboard: Error processing OAuth callback:', error);
+          navigate('/login', { replace: true });
+        }
+      }
+    };
+
+    handleOAuthCallback();
+  }, [navigate]);
 
   // Add Google site verification meta tag when Dashboard loads
   useEffect(() => {

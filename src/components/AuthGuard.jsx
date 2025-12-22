@@ -12,16 +12,49 @@ export function AuthGuard({ children }) {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    checkAuth();
+    let subscription = null;
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthenticated(!!session);
-      setLoading(false);
-    });
+    // Handle OAuth callback first - process hash fragment before checking auth
+    const handleOAuthCallback = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        console.log('🔐 AuthGuard: OAuth callback detected, processing hash fragment...');
+        
+        // Wait for Supabase to process the hash fragment
+        // Supabase automatically processes hash fragments on initialization
+        // But we need to give it time to complete
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Clear the hash fragment after processing
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    const initializeAuth = async () => {
+      // First, handle OAuth callback if present
+      await handleOAuthCallback();
+      
+      // Then check auth status
+      await checkAuth();
+
+      // Listen for auth changes
+      const {
+        data: { subscription: authSubscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setAuthenticated(!!session);
+        setLoading(false);
+      });
+
+      subscription = authSubscription;
+    };
+
+    initializeAuth();
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const checkAuth = async () => {
