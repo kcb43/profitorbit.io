@@ -170,6 +170,13 @@ export default function Settings() {
       console.log('🟢 Profit Orbit: Marketplace status update received:', event.detail);
       
       if (event.detail.marketplace === 'mercari' && event.detail.status.loggedIn) {
+        // Check if user explicitly disconnected - if so, ignore this update
+        const wasExplicitlyDisconnected = localStorage.getItem('profit_orbit_mercari_disconnected') === 'true';
+        if (wasExplicitlyDisconnected) {
+          console.log('⚠️ Profit Orbit: Ignoring Mercari status update - user explicitly disconnected');
+          return;
+        }
+        
         console.log('🟢 Profit Orbit: Mercari connection detected via event!');
         const userName = event.detail.status.userName || event.detail.status.name || 'Mercari User';
         
@@ -200,6 +207,13 @@ export default function Settings() {
     const handleExtensionReady = (event) => {
       console.log('🟢 Profit Orbit: Extension ready event:', event.detail);
       if (event.detail?.marketplaces?.mercari?.loggedIn) {
+        // Check if user explicitly disconnected - if so, ignore this update
+        const wasExplicitlyDisconnected = localStorage.getItem('profit_orbit_mercari_disconnected') === 'true';
+        if (wasExplicitlyDisconnected) {
+          console.log('⚠️ Profit Orbit: Ignoring extensionReady event - user explicitly disconnected');
+          return;
+        }
+        
         console.log('🟢 Profit Orbit: Mercari connection detected via extensionReady event!');
         const mercariData = event.detail.marketplaces.mercari;
         const userName = mercariData.userName || mercariData.name || 'Mercari User';
@@ -394,6 +408,16 @@ export default function Settings() {
     const pollInterval = setInterval(() => {
       const currentStatus = localStorage.getItem('profit_orbit_mercari_connected');
       const isConnected = currentStatus === 'true';
+      const wasExplicitlyDisconnected = localStorage.getItem('profit_orbit_mercari_disconnected') === 'true';
+      
+      // If user explicitly disconnected, don't auto-reconnect even if extension detects login
+      if (wasExplicitlyDisconnected && isConnected && !mercariConnected) {
+        console.log('⚠️ Profit Orbit: Mercari login detected but user explicitly disconnected - ignoring auto-reconnect');
+        // Clear the connection status that extension set
+        localStorage.removeItem('profit_orbit_mercari_connected');
+        localStorage.removeItem('profit_orbit_mercari_user');
+        return;
+      }
       
       // Always sync state with localStorage - force update if different
       // But don't show toast here - only show on explicit connection actions
@@ -401,7 +425,9 @@ export default function Settings() {
         console.log('🟢 Profit Orbit: State sync - updating from', mercariConnected, 'to', isConnected);
         setMercariConnected(isConnected);
         
+        // Clear disconnect flag when reconnected (user must have clicked Connect again)
         if (isConnected) {
+          localStorage.removeItem('profit_orbit_mercari_disconnected');
           // Get user info
           const userData = localStorage.getItem('profit_orbit_mercari_user');
           if (userData) {
@@ -690,9 +716,21 @@ export default function Settings() {
           clearInterval(checkInterval);
           
           if (status === 'true') {
+            // Check if user explicitly disconnected - if so, clear the status
+            const wasExplicitlyDisconnected = localStorage.getItem('profit_orbit_mercari_disconnected') === 'true';
+            if (wasExplicitlyDisconnected) {
+              console.log('⚠️ Profit Orbit: User explicitly disconnected - clearing auto-detected connection');
+              localStorage.removeItem('profit_orbit_mercari_connected');
+              localStorage.removeItem('profit_orbit_mercari_user');
+              return;
+            }
+            
             console.log('🟢 Profit Orbit: Found connection in localStorage!');
             const wasConnected = mercariConnected;
             setMercariConnected(true);
+            
+            // Clear disconnect flag when user explicitly connects
+            localStorage.removeItem('profit_orbit_mercari_disconnected');
             
             // Only show toast if user explicitly clicked connect and wasn't already connected
             if (!wasConnected) {
@@ -864,9 +902,11 @@ export default function Settings() {
         // Clear Mercari connection
         setMercariConnected(false);
         localStorage.removeItem('profit_orbit_mercari_connected');
+        localStorage.removeItem('profit_orbit_mercari_user');
+        // Set flag to prevent auto-reconnection after explicit disconnect
+        localStorage.setItem('profit_orbit_mercari_disconnected', 'true');
         // Reset notification flag when disconnected
         mercariNotificationShown.current = false;
-        localStorage.removeItem('profit_orbit_mercari_user');
         localStorage.removeItem('mercari_session_detected');
         localStorage.removeItem('mercari_user_info');
       }
