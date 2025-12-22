@@ -1,6 +1,5 @@
 /**
- * Page Context API - Injected into page
- * Exposes ProfitOrbitExtension API to React app
+ * Page Context API - SIMPLIFIED VERSION
  */
 
 (function() {
@@ -8,10 +7,17 @@
   
   console.log('🟢 Profit Orbit Page API: Loading...');
   
+  // Listen for chrome.storage changes via content script
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'profit_orbit_mercari_connected' && e.newValue === 'true') {
+      console.log('🟢 Page API: Mercari connection detected via storage event');
+    }
+  });
+  
   // Expose API
   window.ProfitOrbitExtension = {
     queryStatus: function() {
-      console.log('🟢 Profit Orbit Page API: queryStatus() called');
+      console.log('🟢 Page API: queryStatus() called');
       window.postMessage({ type: 'PROFIT_ORBIT_QUERY_STATUS' }, '*');
     },
     
@@ -20,30 +26,27 @@
     },
     
     getAllStatus: function(callback) {
-      console.log('🟢 Profit Orbit Page API: getAllStatus() called');
+      console.log('🟢 Page API: getAllStatus() called');
       const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       
-      // Store callback
       window.__ProfitOrbitCallbacks = window.__ProfitOrbitCallbacks || {};
       window.__ProfitOrbitCallbacks[requestId] = callback;
       
-      // Send request to content script
       window.postMessage({
         type: 'PROFIT_ORBIT_GET_ALL_STATUS',
         requestId: requestId
       }, '*');
       
-      // Timeout after 5 seconds
       setTimeout(() => {
         if (window.__ProfitOrbitCallbacks[requestId]) {
           delete window.__ProfitOrbitCallbacks[requestId];
-          if (callback) callback({ error: 'Timeout waiting for response' });
+          if (callback) callback({ error: 'Timeout' });
         }
       }, 5000);
     }
   };
   
-  // Listen for responses from content script
+  // Listen for responses
   window.addEventListener('message', function(event) {
     if (event.data.type === 'PROFIT_ORBIT_STATUS_RESPONSE') {
       const callback = window.__ProfitOrbitCallbacks?.[event.data.requestId];
@@ -58,10 +61,9 @@
     }
   });
   
-  // Dispatch ready event
   window.dispatchEvent(new CustomEvent('profitOrbitBridgeReady', {
     detail: { api: window.ProfitOrbitExtension }
   }));
   
-  console.log('🟢 Profit Orbit Page API: Ready!', window.ProfitOrbitExtension);
+  console.log('🟢 Profit Orbit Page API: Ready!');
 })();

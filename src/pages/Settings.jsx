@@ -463,14 +463,21 @@ export default function Settings() {
               marketplace: 'mercari'
             }));
             
-            // Force state update
+            // Force state update immediately
+            console.log('🟢 Profit Orbit: Setting mercariConnected to TRUE');
             setMercariConnected(true);
+            
+            // Force re-render by updating state again
+            setTimeout(() => {
+              setMercariConnected(true);
+            }, 100);
             
             toast({
               title: 'Mercari Connected!',
               description: `Connected as ${userName}`,
             });
           } else {
+            console.log('🔴 Profit Orbit: Mercari not logged in');
             toast({
               title: 'Not Connected',
               description: 'Please log into Mercari first, then try again.',
@@ -484,10 +491,15 @@ export default function Settings() {
         console.log('🟢 Profit Orbit: Bridge API not available, triggering check event');
         window.dispatchEvent(new CustomEvent('checkMercariStatus'));
         
+        // Also try to query directly via postMessage
+        window.postMessage({ type: 'PROFIT_ORBIT_QUERY_STATUS' }, '*');
+        
         // Check localStorage after delay
         setTimeout(() => {
           const status = localStorage.getItem('profit_orbit_mercari_connected');
+          console.log('🟢 Profit Orbit: Checked localStorage after delay:', status);
           if (status === 'true') {
+            console.log('🟢 Profit Orbit: Found connection in localStorage, updating state');
             setMercariConnected(true);
             const userData = JSON.parse(localStorage.getItem('profit_orbit_mercari_user') || '{}');
             toast({
@@ -495,6 +507,7 @@ export default function Settings() {
               description: userData.userName ? `Connected as ${userData.userName}` : 'Your Mercari account is connected.',
             });
           } else {
+            console.log('🔴 Profit Orbit: No connection found in localStorage');
             showMercariInstructions();
           }
         }, 2000);

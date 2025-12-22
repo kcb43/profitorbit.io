@@ -155,7 +155,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       };
       
       // Persist to storage
-      chrome.storage.local.set({ marketplaceStatus }, () => {
+      chrome.storage.local.set({ 
+        marketplaceStatus,
+        profit_orbit_marketplace_status: marketplaceStatus // Also save with React-friendly key
+      }, () => {
         console.log(`${marketplace} status saved:`, marketplaceStatus[marketplace]);
       });
       
@@ -172,7 +175,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   
   if (message.type === 'GET_ALL_STATUS') {
+    console.log('🔵 Background: GET_ALL_STATUS requested, returning:', marketplaceStatus);
     sendResponse({ status: marketplaceStatus });
+    
+    // Also update chrome.storage.local so React app can access it
+    chrome.storage.local.set({ 
+      profit_orbit_marketplace_status: marketplaceStatus 
+    }, () => {
+      console.log('🔵 Background: Marketplace status saved to chrome.storage.local');
+    });
+    
     return true;
   }
   
@@ -554,6 +566,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Inject bridge script into Profit Orbit tabs if not already loaded
+async function ensureBridgeScriptInjected(tabId) {
+  try {
+    // Try to inject the bridge script
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['profit-orbit-bridge.js']
+    });
+    console.log(`✅ Bridge script injected into tab ${tabId}`);
+    
+    // Also inject page API script
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['profit-orbit-page-api.js'],
+      world: 'MAIN' // Inject into page context
+    });
+    console.log(`✅ Page API script injected into tab ${tabId}`);
+  } catch (error) {
+    console.log(`⚠️ Could not inject bridge script into tab ${tabId}:`, error.message);
+  }
+}
+
 // Notify Profit Orbit web app
 async function notifyProfitOrbit(message) {
   try {
@@ -565,11 +599,19 @@ async function notifyProfitOrbit(message) {
     
     for (const tab of tabs) {
       try {
+        // Ensure bridge script is injected first
+        await ensureBridgeScriptInjected(tab.id);
+        
+        // Wait a bit for script to load
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         await chrome.tabs.sendMessage(tab.id, message);
         console.log(`Message sent to tab ${tab.id}`);
       } catch (error) {
         // Tab might not be ready or bridge script not loaded
         console.log(`Could not send message to tab ${tab.id}:`, error.message);
+        // Try injecting bridge script
+        await ensureBridgeScriptInjected(tab.id);
       }
     }
   } catch (error) {
