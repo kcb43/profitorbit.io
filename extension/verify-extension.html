@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Profit Orbit Extension Verification</title>
+</head>
+<body>
+  <h1>Profit Orbit Extension Verification</h1>
+  <div id="status"></div>
+  <script>
+    const statusDiv = document.getElementById('status');
+    
+    // Check if bridge script loaded
+    setTimeout(() => {
+      if (window.ProfitOrbitExtension) {
+        statusDiv.innerHTML += '<p style="color: green;">✅ Bridge API is available!</p>';
+        statusDiv.innerHTML += '<pre>' + JSON.stringify(window.ProfitOrbitExtension, null, 2) + '</pre>';
+      } else {
+        statusDiv.innerHTML += '<p style="color: red;">❌ Bridge API is NOT available</p>';
+      }
+      
+      if (window.__ProfitOrbitBridgeReady) {
+        statusDiv.innerHTML += '<p style="color: green;">✅ Bridge ready flag is set</p>';
+      } else {
+        statusDiv.innerHTML += '<p style="color: red;">❌ Bridge ready flag is NOT set</p>';
+      }
+      
+      // Check console for bridge script logs
+      statusDiv.innerHTML += '<p>Check the browser console for bridge script logs.</p>';
+      statusDiv.innerHTML += '<p>You should see: "Profit Orbit Extension: Bridge script loaded on Profit Orbit domain"</p>';
+    }, 2000);
+  </script>
+</body>
+</html>
+

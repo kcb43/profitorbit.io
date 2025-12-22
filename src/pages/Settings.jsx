@@ -198,6 +198,16 @@ export default function Settings() {
     };
     window.addEventListener('extensionReady', handleExtensionReady);
     
+    // Listen for bridge ready event
+    const handleBridgeReady = () => {
+      console.log('Profit Orbit: Bridge ready event received');
+      // Try to check status once bridge is ready
+      setTimeout(() => {
+        checkMercariStatusFromStorage();
+      }, 500);
+    };
+    window.addEventListener('profitOrbitBridgeReady', handleBridgeReady);
+    
     // Check if already connected on mount and get username
     const checkMercariStatus = () => {
       const mercariStatus = localStorage.getItem('profit_orbit_mercari_connected');
@@ -220,6 +230,32 @@ export default function Settings() {
     
     // Check immediately
     checkMercariStatus();
+    
+    // Also check if bridge is already available
+    if (window.ProfitOrbitExtension) {
+      console.log('Profit Orbit: Bridge API already available on mount');
+      setTimeout(() => {
+        checkMercariStatusFromStorage();
+      }, 1000);
+    } else {
+      console.log('Profit Orbit: Bridge API not yet available, waiting for bridgeReady event...');
+      // Poll for bridge API availability (fallback)
+      const bridgeCheckInterval = setInterval(() => {
+        if (window.ProfitOrbitExtension) {
+          console.log('Profit Orbit: Bridge API detected via polling');
+          clearInterval(bridgeCheckInterval);
+          checkMercariStatusFromStorage();
+        }
+      }, 500);
+      
+      // Clear interval after 10 seconds
+      setTimeout(() => {
+        clearInterval(bridgeCheckInterval);
+        if (!window.ProfitOrbitExtension) {
+          console.warn('Profit Orbit: Bridge API still not available after 10 seconds');
+        }
+      }, 10000);
+    }
     
     // Poll for Mercari connection status every 1 second (more frequent for better detection)
     const pollInterval = setInterval(() => {
@@ -252,6 +288,7 @@ export default function Settings() {
       window.removeEventListener('marketplaceStatusUpdate', handleMarketplaceUpdate);
       window.removeEventListener('extensionReady', handleExtensionReady);
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profitOrbitBridgeReady', handleBridgeReady);
       clearInterval(pollInterval);
     };
   }, [searchParams, navigate, toast, mercariConnected]);
@@ -440,17 +477,46 @@ export default function Settings() {
         }
       } else {
         console.log('Profit Orbit: Extension bridge not available - bridge script may not be loaded');
+        console.log('Profit Orbit: Checking for extension...');
+        
+        // Try to detect if extension is installed by checking for chrome.runtime
+        // Note: This only works if we can access chrome.runtime directly (which we can't from React)
+        // But we can check if the bridge script has injected the API
+        if (window.__ProfitOrbitBridgeReady) {
+          console.log('Profit Orbit: Bridge ready flag detected, but API not available');
+        }
+        
         // Try to trigger bridge script via custom event
         window.dispatchEvent(new CustomEvent('checkMercariStatus'));
+        
+        // Also try to manually inject a check
+        const checkExtensionInstalled = () => {
+          // Check if extension files are accessible (this won't work due to CSP, but worth trying)
+          const testScript = document.createElement('script');
+          testScript.onerror = () => {
+            console.log('Profit Orbit: Extension may not be installed or enabled');
+            showMercariInstructions();
+          };
+          testScript.src = chrome?.runtime?.getURL?.('profit-orbit-bridge.js') || '';
+          if (testScript.src) {
+            document.head.appendChild(testScript);
+          }
+        };
+        
         // Wait a bit and check again
         setTimeout(() => {
           const status = localStorage.getItem('profit_orbit_mercari_connected');
           if (status === 'true') {
             checkMercariStatusFromStorage();
-          } else {
+          } else if (!window.ProfitOrbitExtension) {
+            console.warn('Profit Orbit: Extension bridge still not available after timeout');
+            console.warn('Profit Orbit: Please ensure:');
+            console.warn('  1. Extension is installed and enabled');
+            console.warn('  2. Extension is reloaded after code changes');
+            console.warn('  3. Page is refreshed after extension reload');
             showMercariInstructions();
           }
-        }, 1000);
+        }, 2000);
       }
       return false;
     }

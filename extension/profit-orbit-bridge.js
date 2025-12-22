@@ -4,12 +4,15 @@
  */
 
 console.log('Profit Orbit Extension: Bridge script loaded on Profit Orbit domain');
+console.log('Profit Orbit Extension: Current URL:', window.location.href);
+console.log('Profit Orbit Extension: Document ready state:', document.readyState);
 
 // Inject script into page context to expose API to React app
 // This is necessary because content scripts run in an isolated world
 (function() {
-  const script = document.createElement('script');
-  script.textContent = `
+  try {
+    const script = document.createElement('script');
+    script.textContent = `
     (function() {
       // Store reference to content script's message handler
       window.__ProfitOrbitBridgeReady = true;
@@ -49,11 +52,35 @@ console.log('Profit Orbit Extension: Bridge script loaded on Profit Orbit domain
       };
       
       console.log('Profit Orbit Extension: Bridge API injected into page context', window.ProfitOrbitExtension);
+      
+      // Dispatch a custom event to notify React app that bridge is ready
+      window.dispatchEvent(new CustomEvent('profitOrbitBridgeReady', {
+        detail: { api: window.ProfitOrbitExtension }
+      }));
     })();
   `;
-  (document.head || document.documentElement).appendChild(script);
-  script.remove();
-  console.log('Profit Orbit Extension: Page script injected');
+    
+    // Try to inject into head first, fallback to documentElement
+    const target = document.head || document.documentElement;
+    if (target) {
+      target.appendChild(script);
+      script.remove();
+      console.log('Profit Orbit Extension: Page script injected successfully');
+    } else {
+      console.error('Profit Orbit Extension: Could not find injection target (head or documentElement)');
+      // Try again after a delay
+      setTimeout(() => {
+        const retryTarget = document.head || document.documentElement;
+        if (retryTarget) {
+          retryTarget.appendChild(script);
+          script.remove();
+          console.log('Profit Orbit Extension: Page script injected on retry');
+        }
+      }, 100);
+    }
+  } catch (error) {
+    console.error('Profit Orbit Extension: Error injecting page script:', error);
+  }
 })();
 
 // Function to query extension for marketplace statuses (defined first so API can reference it)
