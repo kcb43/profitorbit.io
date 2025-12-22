@@ -125,11 +125,18 @@ function queryExtensionStatus() {
         Object.entries(response.status).forEach(([marketplace, data]) => {
           if (data.loggedIn) {
             const wasConnected = localStorage.getItem(`profit_orbit_${marketplace}_connected`) === 'true';
+            const userName = data.userName || data.name || 'User';
+            
             localStorage.setItem(`profit_orbit_${marketplace}_connected`, 'true');
             localStorage.setItem(`profit_orbit_${marketplace}_user`, JSON.stringify({
-              userName: data.userName || data.name || 'User',
+              userName: userName,
               marketplace: marketplace
             }));
+            
+            console.log(`Profit Orbit Bridge: ${marketplace} status updated in localStorage:`, {
+              connected: true,
+              userName: userName
+            });
             
             // Dispatch event for React components (only if status changed)
             if (!wasConnected) {
@@ -143,6 +150,7 @@ function queryExtensionStatus() {
             if (wasConnected) {
               localStorage.removeItem(`profit_orbit_${marketplace}_connected`);
               localStorage.removeItem(`profit_orbit_${marketplace}_user`);
+              console.log(`Profit Orbit Bridge: ${marketplace} disconnected`);
             }
           }
         });

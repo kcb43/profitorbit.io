@@ -426,25 +426,32 @@ export default function Settings() {
           if (response?.status?.mercari?.loggedIn) {
             console.log('Profit Orbit: Mercari is logged in!', response.status.mercari);
             const mercariData = response.status.mercari;
+            const userName = mercariData.userName || mercariData.name || 'Mercari User';
             
             // Update localStorage
             localStorage.setItem('profit_orbit_mercari_connected', 'true');
             localStorage.setItem('profit_orbit_mercari_user', JSON.stringify({
-              userName: mercariData.userName || mercariData.name || 'Mercari User',
+              userName: userName,
               marketplace: 'mercari'
             }));
+            
+            console.log('Profit Orbit: Updated localStorage with Mercari connection:', {
+              connected: true,
+              userName: userName
+            });
             
             // Update state
             setMercariConnected(true);
             
             toast({
               title: 'Mercari Connected!',
-              description: mercariData.userName || mercariData.name 
-                ? `Connected as ${mercariData.userName || mercariData.name}` 
+              description: userName !== 'Mercari User' 
+                ? `Connected as ${userName}` 
                 : 'Your Mercari account is connected.',
             });
           } else {
-            console.log('Profit Orbit: Mercari not logged in');
+            console.log('Profit Orbit: Mercari not logged in, response:', response);
+            console.log('Profit Orbit: Mercari status:', response?.status?.mercari);
             toast({
               title: 'Not Connected',
               description: 'Please log into Mercari first, then try connecting again.',
