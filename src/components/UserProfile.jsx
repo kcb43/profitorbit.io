@@ -42,7 +42,7 @@ export function UserProfile() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate('/');
+    navigate('/login');
   };
 
   const getInitials = (email) => {

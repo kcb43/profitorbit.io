@@ -2,6 +2,7 @@ import Layout from "./Layout.jsx";
 
 import Dashboard from "./Dashboard";
 import Landing from "./Landing";
+import Login from "./Login";
 import ProfileSettings from "./ProfileSettings";
 
 import AddSale from "./AddSale";
@@ -88,6 +89,9 @@ function PagesContent() {
             <Routes>
               {/* Public Landing Page */}
               <Route path="/" element={<Landing />} />
+              
+              {/* Login Page */}
+              <Route path="/login" element={<Login />} />
               
               {/* Protected Dashboard Routes */}
               <Route
