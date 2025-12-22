@@ -72,6 +72,23 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   }
 });
 
+// Inject bridge script into Profit Orbit pages when they load
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    const profitOrbitUrls = [
+      'https://profitorbit.io',
+      'http://localhost:5173',
+      'http://localhost:5174'
+    ];
+    
+    if (profitOrbitUrls.some(url => tab.url.startsWith(url))) {
+      console.log(`🔵 Background: Profit Orbit page loaded: ${tab.url}`);
+      // Inject bridge script dynamically
+      await ensureBridgeScriptInjected(tabId);
+    }
+  }
+});
+
 // Store login status for all marketplaces
 let marketplaceStatus = {
   mercari: { loggedIn: false, userName: null, lastChecked: null },
@@ -569,22 +586,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Inject bridge script into Profit Orbit tabs if not already loaded
 async function ensureBridgeScriptInjected(tabId) {
   try {
-    // Try to inject the bridge script
+    console.log(`🔵 Background: Attempting to inject bridge script into tab ${tabId}`);
+    
+    // Try to inject the bridge script (content script context)
     await chrome.scripting.executeScript({
       target: { tabId: tabId },
       files: ['profit-orbit-bridge.js']
     });
-    console.log(`✅ Bridge script injected into tab ${tabId}`);
+    console.log(`✅ Background: Bridge script injected into tab ${tabId}`);
     
-    // Also inject page API script
+    // Wait a bit for bridge script to load
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Also inject page API script (page context)
     await chrome.scripting.executeScript({
       target: { tabId: tabId },
       files: ['profit-orbit-page-api.js'],
       world: 'MAIN' // Inject into page context
     });
-    console.log(`✅ Page API script injected into tab ${tabId}`);
+    console.log(`✅ Background: Page API script injected into tab ${tabId}`);
   } catch (error) {
-    console.log(`⚠️ Could not inject bridge script into tab ${tabId}:`, error.message);
+    console.log(`⚠️ Background: Could not inject bridge script into tab ${tabId}:`, error.message);
+    console.log(`⚠️ Background: Error details:`, error);
   }
 }
 
