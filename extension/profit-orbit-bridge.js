@@ -5,6 +5,38 @@
 
 console.log('Profit Orbit Extension: Bridge script loaded on Profit Orbit domain');
 
+// Expose API to React app via window object
+window.ProfitOrbitExtension = {
+  // Query extension for marketplace status
+  queryStatus: () => {
+    queryExtensionStatus();
+  },
+  
+  // Check if extension is available
+  isAvailable: () => {
+    return !!(chrome && chrome.runtime && chrome.runtime.id);
+  },
+  
+  // Get all marketplace statuses
+  getAllStatus: (callback) => {
+    if (!chrome.runtime?.id) {
+      callback({ error: 'Extension not available' });
+      return;
+    }
+    
+    chrome.runtime.sendMessage(
+      { type: 'GET_ALL_STATUS' },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          callback({ error: chrome.runtime.lastError.message });
+        } else {
+          callback(response || {});
+        }
+      }
+    );
+  }
+};
+
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Profit Orbit received message from extension:', message);

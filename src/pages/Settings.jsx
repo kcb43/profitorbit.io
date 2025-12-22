@@ -360,19 +360,18 @@ export default function Settings() {
       
       // First, force a check via the bridge script by triggering extension query
       // The bridge script should query the extension and update localStorage
-      if (window.chrome && window.chrome.runtime) {
-        try {
-          // Try to trigger bridge script to query extension
-          window.dispatchEvent(new CustomEvent('checkMercariStatus'));
-          
-          // Also try direct message to extension (if we know the ID)
-          // But first, let's try to get status from bridge script
-          setTimeout(() => {
-            checkMercariStatusFromStorage();
-          }, 500);
-        } catch (e) {
-          console.log('Could not trigger bridge script:', e);
-        }
+      if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.isAvailable()) {
+        // Use bridge script API
+        window.ProfitOrbitExtension.queryStatus();
+        setTimeout(() => {
+          checkMercariStatusFromStorage();
+        }, 500);
+      } else {
+        // Try to trigger bridge script via custom event
+        window.dispatchEvent(new CustomEvent('checkMercariStatus'));
+        setTimeout(() => {
+          checkMercariStatusFromStorage();
+        }, 1000);
       }
       
       // Check localStorage immediately
@@ -410,41 +409,48 @@ export default function Settings() {
     } else {
       console.log('Profit Orbit: Mercari not connected in localStorage, querying extension...');
       // Check if we can query extension via bridge script
-      if (window.chrome && window.chrome.runtime) {
+      if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.isAvailable()) {
         try {
-          chrome.runtime.sendMessage(
-            { type: 'GET_ALL_STATUS' },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                console.log('Profit Orbit: Extension not available:', chrome.runtime.lastError.message);
-                showMercariInstructions();
-              } else if (response?.status?.mercari?.loggedIn) {
-                console.log('Profit Orbit: Extension reports Mercari logged in:', response.status.mercari);
-                setMercariConnected(true);
-                localStorage.setItem('profit_orbit_mercari_connected', 'true');
-                localStorage.setItem('profit_orbit_mercari_user', JSON.stringify({
-                  userName: response.status.mercari.userName || response.status.mercari.name || 'Mercari User',
-                  marketplace: 'mercari'
-                }));
-                toast({
-                  title: 'Mercari Connected!',
-                  description: (response.status.mercari.userName || response.status.mercari.name) 
-                    ? `Connected as ${response.status.mercari.userName || response.status.mercari.name}` 
-                    : 'Your Mercari account is connected.',
-                });
-              } else {
-                console.log('Profit Orbit: Extension reports Mercari not logged in');
-                showMercariInstructions();
-              }
+          window.ProfitOrbitExtension.getAllStatus((response) => {
+            if (response.error) {
+              console.log('Profit Orbit: Extension not available:', response.error);
+              showMercariInstructions();
+            } else if (response?.status?.mercari?.loggedIn) {
+              console.log('Profit Orbit: Extension reports Mercari logged in:', response.status.mercari);
+              setMercariConnected(true);
+              localStorage.setItem('profit_orbit_mercari_connected', 'true');
+              localStorage.setItem('profit_orbit_mercari_user', JSON.stringify({
+                userName: response.status.mercari.userName || response.status.mercari.name || 'Mercari User',
+                marketplace: 'mercari'
+              }));
+              toast({
+                title: 'Mercari Connected!',
+                description: (response.status.mercari.userName || response.status.mercari.name) 
+                  ? `Connected as ${response.status.mercari.userName || response.status.mercari.name}` 
+                  : 'Your Mercari account is connected.',
+              });
+            } else {
+              console.log('Profit Orbit: Extension reports Mercari not logged in');
+              showMercariInstructions();
             }
-          );
+          });
         } catch (e) {
           console.log('Profit Orbit: Extension communication failed:', e);
           showMercariInstructions();
         }
       } else {
-        console.log('Profit Orbit: Chrome runtime not available');
-        showMercariInstructions();
+        console.log('Profit Orbit: Extension bridge not available - bridge script may not be loaded');
+        // Try to trigger bridge script via custom event
+        window.dispatchEvent(new CustomEvent('checkMercariStatus'));
+        // Wait a bit and check again
+        setTimeout(() => {
+          const status = localStorage.getItem('profit_orbit_mercari_connected');
+          if (status === 'true') {
+            checkMercariStatusFromStorage();
+          } else {
+            showMercariInstructions();
+          }
+        }, 1000);
       }
       return false;
     }
@@ -767,10 +773,16 @@ export default function Settings() {
                                 size="sm"
                                 onClick={() => {
                                   // Force check connection status
-                                  checkMercariStatusFromStorage();
-                                  // Also trigger bridge script to query extension
-                                  if (window.chrome && window.chrome.runtime) {
+                                  if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.isAvailable()) {
+                                    window.ProfitOrbitExtension.queryStatus();
+                                    setTimeout(() => {
+                                      checkMercariStatusFromStorage();
+                                    }, 500);
+                                  } else {
                                     window.dispatchEvent(new CustomEvent('checkMercariStatus'));
+                                    setTimeout(() => {
+                                      checkMercariStatusFromStorage();
+                                    }, 1000);
                                   }
                                   toast({
                                     title: 'Checking Connection...',
