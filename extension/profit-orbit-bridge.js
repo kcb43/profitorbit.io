@@ -116,17 +116,35 @@ setInterval(() => {
   }
 }, 500); // Check every 500ms
 
-// Query on load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(queryStatus, 500);
-  });
-} else {
-  setTimeout(queryStatus, 500);
+// Wait for chrome.runtime to be available before setting up polling
+function waitForChromeRuntime(callback, maxAttempts = 10) {
+  let attempts = 0;
+  const checkInterval = setInterval(() => {
+    attempts++;
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+      clearInterval(checkInterval);
+      console.log('🔵 Bridge: chrome.runtime is now available');
+      callback();
+    } else if (attempts >= maxAttempts) {
+      clearInterval(checkInterval);
+      console.error('🔴 Bridge: chrome.runtime never became available after', maxAttempts, 'attempts');
+    }
+  }, 500);
 }
 
-// Also poll every 2 seconds to keep status updated
-setInterval(queryStatus, 2000);
+// Query on load (wait for chrome.runtime first)
+waitForChromeRuntime(() => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(queryStatus, 500);
+    });
+  } else {
+    setTimeout(queryStatus, 500);
+  }
+
+  // Also poll every 2 seconds to keep status updated
+  setInterval(queryStatus, 2000);
+});
 
 // Listen for manual checks
 window.addEventListener('checkMercariStatus', queryStatus);
