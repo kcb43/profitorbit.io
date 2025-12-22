@@ -4,6 +4,9 @@
 (function() {
   'use strict';
   
+  console.log('[PAGE] Profit Orbit Extension: Page script loaded');
+  console.log('[PAGE] Profit Orbit Extension: URL:', window.location.href);
+  
   // Store reference to content script's message handler
   window.__ProfitOrbitBridgeReady = true;
   
