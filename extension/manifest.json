@@ -42,7 +42,7 @@
         "http://localhost:5174/*"
       ],
       "js": ["profit-orbit-bridge.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "action": {
