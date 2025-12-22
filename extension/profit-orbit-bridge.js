@@ -45,12 +45,29 @@ function updateLocalStorage(status) {
 
 // Function to query status from background
 function queryStatus() {
-  if (!chrome.runtime?.id) {
-    console.warn('🔴 Bridge: chrome.runtime not available');
+  // Check if we're in content script context (has chrome.runtime)
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+    console.error('🔴 Bridge: chrome.runtime not available - script may be in wrong context');
+    console.error('🔴 Bridge: typeof chrome:', typeof chrome);
+    console.error('🔴 Bridge: chrome.runtime:', chrome?.runtime);
+    console.error('🔴 Bridge: chrome.runtime.id:', chrome?.runtime?.id);
+    
+    // Try to get runtime ID from extension URL
+    try {
+      const runtimeId = chrome.runtime?.id;
+      if (!runtimeId) {
+        console.error('🔴 Bridge: Cannot proceed without chrome.runtime.id');
+        return;
+      }
+    } catch (e) {
+      console.error('🔴 Bridge: Error accessing chrome.runtime:', e);
+      return;
+    }
     return;
   }
   
   console.log('🔵 Bridge: Querying background for status...');
+  console.log('🔵 Bridge: chrome.runtime.id:', chrome.runtime.id);
   
   chrome.runtime.sendMessage({ type: 'GET_ALL_STATUS' }, (response) => {
     if (chrome.runtime.lastError) {

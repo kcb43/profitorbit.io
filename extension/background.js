@@ -588,17 +588,8 @@ async function ensureBridgeScriptInjected(tabId) {
   try {
     console.log(`🔵 Background: Attempting to inject bridge script into tab ${tabId}`);
     
-    // Try to inject the bridge script (content script context)
-    await chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      files: ['profit-orbit-bridge.js']
-    });
-    console.log(`✅ Background: Bridge script injected into tab ${tabId}`);
-    
-    // Wait a bit for bridge script to load
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Also inject page API script (page context)
+    // DON'T inject bridge script dynamically - it's already loaded via manifest.json content_scripts
+    // Only inject the page API script (which needs to be in MAIN world)
     await chrome.scripting.executeScript({
       target: { tabId: tabId },
       files: ['profit-orbit-page-api.js'],
@@ -606,7 +597,7 @@ async function ensureBridgeScriptInjected(tabId) {
     });
     console.log(`✅ Background: Page API script injected into tab ${tabId}`);
   } catch (error) {
-    console.log(`⚠️ Background: Could not inject bridge script into tab ${tabId}:`, error.message);
+    console.log(`⚠️ Background: Could not inject page API script into tab ${tabId}:`, error.message);
     console.log(`⚠️ Background: Error details:`, error);
   }
 }
