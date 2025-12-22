@@ -3,12 +3,26 @@
  * Bridges communication between extension and Profit Orbit web app
  */
 
+// Log to both content script console and try to log to page console
 console.log('Profit Orbit Extension: Bridge script loaded on Profit Orbit domain');
 console.log('Profit Orbit Extension: Current URL:', window.location.href);
 console.log('Profit Orbit Extension: Document ready state:', document.readyState);
 console.log('Profit Orbit Extension: Chrome runtime ID:', chrome.runtime?.id);
 
-// Also log to page console via a custom event (for debugging)
+// Try to log to page console by injecting a script that logs
+try {
+  const logScript = document.createElement('script');
+  logScript.textContent = `
+    console.log('[PAGE] Profit Orbit Extension: Bridge script is loading...');
+    console.log('[PAGE] Profit Orbit Extension: URL:', window.location.href);
+  `;
+  (document.head || document.documentElement).appendChild(logScript);
+  logScript.remove();
+} catch (e) {
+  console.log('Profit Orbit Extension: Could not inject log script:', e);
+}
+
+// Also dispatch event for React app
 try {
   window.dispatchEvent(new CustomEvent('profitOrbitBridgeScriptLoaded', {
     detail: { url: window.location.href, runtimeId: chrome.runtime?.id }

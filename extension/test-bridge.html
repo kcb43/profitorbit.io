@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Bridge Script</title>
+</head>
+<body>
+  <h1>Bridge Script Test</h1>
+  <div id="status">Checking...</div>
+  <script>
+    setTimeout(() => {
+      const statusDiv = document.getElementById('status');
+      
+      if (window.ProfitOrbitExtension) {
+        statusDiv.innerHTML = '<p style="color: green;">✅ Bridge API is available!</p>';
+        statusDiv.innerHTML += '<pre>' + JSON.stringify(Object.keys(window.ProfitOrbitExtension), null, 2) + '</pre>';
+      } else {
+        statusDiv.innerHTML = '<p style="color: red;">❌ Bridge API is NOT available</p>';
+        statusDiv.innerHTML += '<p>Check the console for bridge script logs.</p>';
+      }
+      
+      if (window.__ProfitOrbitBridgeReady) {
+        statusDiv.innerHTML += '<p style="color: green;">✅ Bridge ready flag is set</p>';
+      } else {
+        statusDiv.innerHTML += '<p style="color: red;">❌ Bridge ready flag is NOT set</p>';
+      }
+    }, 3000);
+  </script>
+</body>
+</html>
+
