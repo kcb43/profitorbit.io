@@ -1,36 +1,38 @@
 /**
- * Content Script for Profit Orbit Domain - ULTRA SIMPLE VERSION
- * Uses localStorage polling for communication (most reliable)
+ * Content Script for Profit Orbit Domain
+ * SIMPLIFIED - Direct communication with background
  */
+
+// IMMEDIATE LOG - Should appear FIRST
+console.log('🔵🔵🔵 PROFIT ORBIT BRIDGE SCRIPT STARTING 🔵🔵🔵');
+console.log('🔵 Bridge: Script file loaded at:', new Date().toISOString());
+console.log('🔵 Bridge: URL:', window.location.href);
+console.log('🔵 Bridge: Document ready state:', document.readyState);
 
 // Prevent multiple initializations
 if (window.__PROFIT_ORBIT_BRIDGE_INITIALIZED) {
-  console.log('🔵 Bridge: Already initialized, skipping...');
+  console.log('⚠️ Bridge: Already initialized, skipping duplicate load');
+  throw new Error('Bridge script already initialized');
+}
+window.__PROFIT_ORBIT_BRIDGE_INITIALIZED = true;
+
+// Check chrome availability immediately
+console.log('🔵 Bridge: typeof chrome:', typeof chrome);
+if (typeof chrome !== 'undefined') {
+  console.log('🔵 Bridge: chrome.runtime exists:', !!chrome.runtime);
+  if (chrome.runtime) {
+    console.log('🔵 Bridge: chrome.runtime.id:', chrome.runtime.id);
+    console.log('🔵 Bridge: chrome.runtime.sendMessage exists:', typeof chrome.runtime.sendMessage);
+  }
 } else {
-  window.__PROFIT_ORBIT_BRIDGE_INITIALIZED = true;
-  
-  // CRITICAL: This log should appear in the PAGE CONSOLE (F12), not service worker console
-  console.log('🔵🔵🔵 Profit Orbit Bridge: Content script loaded - CHECK PAGE CONSOLE (F12) 🔵🔵🔵');
-  console.log('🔵 Bridge: Current URL:', window.location.href);
-  
-  // Store runtime ID when available (it can become undefined later)
-  let storedRuntimeId = null;
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-    storedRuntimeId = chrome.runtime.id;
-    console.log('🔵 Bridge: Chrome runtime ID:', storedRuntimeId);
-  }
-  
-  // Make it VERY visible
-  if (typeof window !== 'undefined') {
-    window.__PROFIT_ORBIT_BRIDGE_LOADED = true;
-    window.__PROFIT_ORBIT_RUNTIME_ID = storedRuntimeId;
-    console.log('🔵 Bridge: Window flag set - window.__PROFIT_ORBIT_BRIDGE_LOADED = true');
-  }
+  console.error('🔴 Bridge: chrome is undefined - this is a content script, chrome should exist!');
 }
 
 // Function to update localStorage with marketplace status
 function updateLocalStorage(status) {
   if (!status) return;
+  
+  console.log('🔵 Bridge: Updating localStorage with status:', status);
   
   Object.entries(status).forEach(([marketplace, data]) => {
     if (data.loggedIn) {
@@ -39,6 +41,8 @@ function updateLocalStorage(status) {
         userName: data.userName || data.name || 'User',
         marketplace: marketplace
       }));
+      
+      console.log(`🔵 Bridge: ${marketplace} marked as connected`);
       
       // Dispatch event
       window.dispatchEvent(new CustomEvent('marketplaceStatusUpdate', {
@@ -58,108 +62,107 @@ function updateLocalStorage(status) {
 
 // Function to query status from background
 function queryStatus() {
-  // Check if we're in content script context (has chrome.runtime)
+  console.log('🔵 Bridge: queryStatus() called');
+  
   if (typeof chrome === 'undefined' || !chrome.runtime) {
     console.error('🔴 Bridge: chrome.runtime not available');
     return;
   }
   
-  // Use stored runtime ID or try to get it fresh
-  const runtimeId = chrome.runtime.id || window.__PROFIT_ORBIT_RUNTIME_ID;
+  console.log('🔵 Bridge: Sending GET_ALL_STATUS message to background...');
   
-  if (!runtimeId) {
-    // Try to get it from chrome.runtime.getURL or sendMessage (which works even without id)
-    console.log('🔵 Bridge: chrome.runtime.id not available, attempting sendMessage anyway...');
-  } else {
-    console.log('🔵 Bridge: Querying background for status...');
-    console.log('🔵 Bridge: Using runtime ID:', runtimeId);
-  }
-  
-  // sendMessage works even if chrome.runtime.id is undefined (it uses the extension context)
-  chrome.runtime.sendMessage({ type: 'GET_ALL_STATUS' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('🔴 Bridge: Error:', chrome.runtime.lastError.message);
-      
-      // If context invalidated, try to refresh
-      if (chrome.runtime.lastError.message.includes('Extension context invalidated')) {
-        console.error('🔴 Bridge: Extension context invalidated - please reload extension');
-        window.__PROFIT_ORBIT_RUNTIME_ID = null;
+  try {
+    chrome.runtime.sendMessage({ type: 'GET_ALL_STATUS' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('🔴 Bridge: Error from background:', chrome.runtime.lastError.message);
+        return;
       }
-      return;
-    }
-    
-    console.log('🔵 Bridge: Received status:', response);
-    
-    if (response?.status) {
-      updateLocalStorage(response.status);
-    }
-  });
+      
+      console.log('🔵 Bridge: Received response from background:', response);
+      
+      if (response?.status) {
+        updateLocalStorage(response.status);
+      } else {
+        console.warn('⚠️ Bridge: Response has no status field:', response);
+      }
+    });
+  } catch (error) {
+    console.error('🔴 Bridge: Exception sending message:', error);
+  }
 }
 
 // Listen for background messages
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('🔵 Bridge: Received message:', message.type);
-  
-  if (message.type === 'MARKETPLACE_STATUS_UPDATE') {
-    const { marketplace, data } = message;
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('🔵 Bridge: Received message from background:', message.type);
     
-    if (data.loggedIn) {
-      localStorage.setItem(`profit_orbit_${marketplace}_connected`, 'true');
-      localStorage.setItem(`profit_orbit_${marketplace}_user`, JSON.stringify(data));
+    if (message.type === 'MARKETPLACE_STATUS_UPDATE') {
+      const { marketplace, data } = message;
       
-      window.dispatchEvent(new CustomEvent('marketplaceStatusUpdate', {
-        detail: { marketplace, status: data }
-      }));
+      if (data.loggedIn) {
+        localStorage.setItem(`profit_orbit_${marketplace}_connected`, 'true');
+        localStorage.setItem(`profit_orbit_${marketplace}_user`, JSON.stringify(data));
+        
+        window.dispatchEvent(new CustomEvent('marketplaceStatusUpdate', {
+          detail: { marketplace, status: data }
+        }));
+      }
+      
+      sendResponse({ received: true });
     }
     
-    sendResponse({ received: true });
-  }
-  
-  return true;
-});
+    return true;
+  });
+  console.log('🔵 Bridge: Message listener registered');
+} else {
+  console.error('🔴 Bridge: Cannot register message listener - chrome.runtime not available');
+}
 
 // Poll localStorage for status requests from React app
 setInterval(() => {
-  // Check if React app is requesting status
   const requestFlag = localStorage.getItem('profit_orbit_request_status');
   if (requestFlag === 'true') {
-    console.log('🔵🔵🔵 Bridge: React app requested status, querying... 🔵🔵🔵');
+    console.log('🔵🔵🔵 Bridge: React app requested status via localStorage flag 🔵🔵🔵');
     localStorage.removeItem('profit_orbit_request_status');
     queryStatus();
   }
-}, 500); // Check every 500ms
+}, 500);
 
-// Wait for chrome.runtime to be available before setting up polling
-function waitForChromeRuntime(callback, maxAttempts = 10) {
-  let attempts = 0;
-  const checkInterval = setInterval(() => {
-    attempts++;
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-      clearInterval(checkInterval);
-      console.log('🔵 Bridge: chrome.runtime is now available');
-      callback();
-    } else if (attempts >= maxAttempts) {
-      clearInterval(checkInterval);
-      console.error('🔴 Bridge: chrome.runtime never became available after', maxAttempts, 'attempts');
-    }
-  }, 500);
-}
-
-// Query on load (wait for chrome.runtime first)
-waitForChromeRuntime(() => {
+// Query status on load
+function initializePolling() {
+  console.log('🔵 Bridge: Initializing polling...');
+  
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('🔵 Bridge: DOMContentLoaded fired, querying status...');
       setTimeout(queryStatus, 500);
     });
   } else {
+    console.log('🔵 Bridge: Document already loaded, querying status immediately...');
     setTimeout(queryStatus, 500);
   }
 
-  // Also poll every 2 seconds to keep status updated
-  setInterval(queryStatus, 2000);
-});
+  // Poll every 2 seconds
+  setInterval(() => {
+    queryStatus();
+  }, 2000);
+  
+  console.log('🔵 Bridge: Polling initialized');
+}
+
+// Start initialization
+initializePolling();
 
 // Listen for manual checks
-window.addEventListener('checkMercariStatus', queryStatus);
+window.addEventListener('checkMercariStatus', () => {
+  console.log('🔵 Bridge: Manual check requested via event');
+  queryStatus();
+});
 
-console.log('🔵 Profit Orbit Bridge: Initialized');
+// Set window flag for React app
+if (typeof window !== 'undefined') {
+  window.__PROFIT_ORBIT_BRIDGE_LOADED = true;
+  console.log('🔵 Bridge: Window flag set - window.__PROFIT_ORBIT_BRIDGE_LOADED = true');
+}
+
+console.log('🔵🔵🔵 PROFIT ORBIT BRIDGE SCRIPT INITIALIZED 🔵🔵🔵');

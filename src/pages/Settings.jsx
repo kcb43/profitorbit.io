@@ -428,41 +428,77 @@ export default function Settings() {
 
   const handleMercariConnect = async () => {
     try {
-      console.log('🟢 Profit Orbit: Checking Mercari connection...');
+      console.log('🟢🟢🟢 Profit Orbit: Checking Mercari connection... 🟢🟢🟢');
+      
+      // Check if bridge script is loaded
+      if (window.__PROFIT_ORBIT_BRIDGE_LOADED) {
+        console.log('🟢 Profit Orbit: Bridge script is loaded!');
+      } else {
+        console.warn('🔴 Profit Orbit: Bridge script NOT loaded!');
+        toast({
+          title: 'Extension Not Detected',
+          description: 'Please reload the extension and refresh this page.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       toast({
         title: 'Checking Connection...',
         description: 'Querying extension for Mercari login status...',
       });
       
-      // Method 1: Use bridge API if available
+      // Set request flag for content script (this is the most reliable method)
+      console.log('🟢 Profit Orbit: Setting localStorage request flag...');
+      localStorage.setItem('profit_orbit_request_status', 'true');
+      
+      // Also try direct query if API is available
       if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.isAvailable()) {
-        console.log('🟢 Profit Orbit: Using bridge API');
+        console.log('🟢 Profit Orbit: Also using bridge API');
         window.ProfitOrbitExtension.getAllStatus((response) => {
           console.log('🟢 Profit Orbit: getAllStatus response:', response);
           
           const mercariStatus = response?.status?.mercari;
-          console.log('🟢 Profit Orbit: Mercari status:', mercariStatus);
-          
           if (mercariStatus?.loggedIn) {
             const userName = mercariStatus.userName || 'Mercari User';
-            
-            // Update localStorage (should already be updated by bridge script)
             localStorage.setItem('profit_orbit_mercari_connected', 'true');
             localStorage.setItem('profit_orbit_mercari_user', JSON.stringify({
               userName: userName,
               marketplace: 'mercari'
             }));
-            
-            // Force state update
-            console.log('🟢 Profit Orbit: Setting mercariConnected to TRUE');
             setMercariConnected(true);
-            
             toast({
               title: 'Mercari Connected!',
               description: `Connected as ${userName}`,
             });
+            return;
+          }
+        });
+      }
+      
+      // Poll localStorage for response (fallback)
+      let attempts = 0;
+      const maxAttempts = 20; // 10 seconds
+      
+      const checkInterval = setInterval(() => {
+        attempts++;
+        const status = localStorage.getItem('profit_orbit_mercari_connected');
+        
+        console.log(`🟢 Profit Orbit: Polling attempt ${attempts}/${maxAttempts}, status:`, status);
+        
+        if (status === 'true' || attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          
+          if (status === 'true') {
+            console.log('🟢 Profit Orbit: Found connection in localStorage!');
+            setMercariConnected(true);
+            const userData = JSON.parse(localStorage.getItem('profit_orbit_mercari_user') || '{}');
+            toast({
+              title: 'Mercari Connected!',
+              description: userData.userName ? `Connected as ${userData.userName}` : 'Your Mercari account is connected.',
+            });
           } else {
-            console.log('🔴 Profit Orbit: Mercari not logged in');
+            console.log('🔴 Profit Orbit: No connection found after polling');
             toast({
               title: 'Not Connected',
               description: 'Please log into Mercari first, then try again.',
@@ -470,40 +506,8 @@ export default function Settings() {
             });
             showMercariInstructions();
           }
-        });
-      } else {
-        // Method 2: Use localStorage polling directly
-        console.log('🟢 Profit Orbit: Bridge API not available, using localStorage polling');
-        
-        // Set request flag for content script
-        localStorage.setItem('profit_orbit_request_status', 'true');
-        
-        // Poll localStorage for response
-        let attempts = 0;
-        const maxAttempts = 20; // 10 seconds
-        
-        const checkInterval = setInterval(() => {
-          attempts++;
-          const status = localStorage.getItem('profit_orbit_mercari_connected');
-          
-          if (status === 'true' || attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            
-            if (status === 'true') {
-              console.log('🟢 Profit Orbit: Found connection in localStorage');
-              setMercariConnected(true);
-              const userData = JSON.parse(localStorage.getItem('profit_orbit_mercari_user') || '{}');
-              toast({
-                title: 'Mercari Connected!',
-                description: userData.userName ? `Connected as ${userData.userName}` : 'Your Mercari account is connected.',
-              });
-            } else {
-              console.log('🔴 Profit Orbit: No connection found');
-              showMercariInstructions();
-            }
-          }
-        }, 500);
-      }
+        }
+      }, 500);
       
     } catch (error) {
       console.error('🔴 Profit Orbit: Error:', error);
