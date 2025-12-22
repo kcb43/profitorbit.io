@@ -18,18 +18,60 @@ const MARKETPLACE = (() => {
 const LOGIN_DETECTORS = {
   mercari: () => {
     // Fast check: Check cookies first (fastest)
-    if (document.cookie.includes('mercari_session') || document.cookie.includes('mercari_user')) {
+    const cookies = document.cookie;
+    if (cookies.includes('mercari_session') || 
+        cookies.includes('mercari_user') ||
+        cookies.includes('mercari_auth') ||
+        cookies.includes('_mercari_session')) {
       return true;
     }
+    
+    // Check localStorage for auth tokens
+    try {
+      const localStorageKeys = Object.keys(localStorage);
+      if (localStorageKeys.some(key => 
+        key.includes('mercari') && (key.includes('auth') || key.includes('token') || key.includes('session'))
+      )) {
+        return true;
+      }
+    } catch (e) {
+      // localStorage might not be accessible
+    }
+    
     // Then check DOM elements (in order of most likely to appear first)
-    return !!(
-      document.querySelector('[data-testid="UserMenuButton"]') ||
-      document.querySelector('.merUserMenu') ||
-      document.querySelector('[aria-label*="Account"]') ||
-      document.querySelector('a[href*="/mypage"]') ||
-      document.querySelector('[data-testid="user-menu"]') ||
-      document.querySelector('button[aria-label*="Account"]')
-    );
+    const selectors = [
+      '[data-testid="UserMenuButton"]',
+      '.merUserMenu',
+      '[aria-label*="Account"]',
+      '[aria-label*="account"]',
+      'a[href*="/mypage"]',
+      '[data-testid="user-menu"]',
+      'button[aria-label*="Account"]',
+      'button[aria-label*="account"]',
+      '[data-testid="header-user-menu"]',
+      'header [href*="/mypage"]',
+      'nav [href*="/mypage"]'
+    ];
+    
+    for (const selector of selectors) {
+      if (document.querySelector(selector)) {
+        return true;
+      }
+    }
+    
+    // Check if we're NOT on login page (if we're on a protected page, we're logged in)
+    const isLoginPage = window.location.pathname.includes('/login') || 
+                        window.location.pathname.includes('/signin') ||
+                        document.querySelector('form[action*="login"]') ||
+                        document.querySelector('input[type="email"][name*="email"]');
+    
+    // If we're on a protected page (like /mypage, /sell, etc.) and not on login page, assume logged in
+    const protectedPaths = ['/mypage', '/sell', '/purchases', '/settings', '/profile'];
+    if (!isLoginPage && protectedPaths.some(path => window.location.pathname.includes(path))) {
+      return true;
+    }
+    
+    return false;
   },
   
   facebook: () => {
@@ -95,9 +137,37 @@ const LOGIN_DETECTORS = {
 // Get user info for each marketplace
 const USER_INFO_GETTERS = {
   mercari: () => {
+    // Try multiple selectors to get username
+    let userName = 'Mercari User';
+    
     const userMenu = document.querySelector('[data-testid="UserMenuButton"]');
+    if (userMenu) {
+      userName = userMenu.getAttribute('aria-label') || 
+                 userMenu.getAttribute('title') ||
+                 userMenu.textContent?.trim() ||
+                 'Mercari User';
+    }
+    
+    // Try other selectors
+    if (userName === 'Mercari User') {
+      const accountLink = document.querySelector('a[href*="/mypage"]');
+      if (accountLink) {
+        userName = accountLink.textContent?.trim() || 
+                   accountLink.getAttribute('aria-label') ||
+                   'Mercari User';
+      }
+    }
+    
+    // Try to get from page title or meta tags
+    if (userName === 'Mercari User') {
+      const pageTitle = document.title;
+      if (pageTitle && !pageTitle.includes('Mercari')) {
+        userName = pageTitle.split('|')[0]?.trim() || 'Mercari User';
+      }
+    }
+    
     return {
-      userName: userMenu?.getAttribute('aria-label') || 'Mercari User',
+      userName: userName,
       marketplace: 'mercari'
     };
   },
@@ -197,6 +267,7 @@ function updateLoginStatus(force = false) {
     }
     
     // Send to background script
+    console.log(`Profit Orbit: Sending ${MARKETPLACE} login status:`, userInfo);
     chrome.runtime.sendMessage({
       type: `${MARKETPLACE?.toUpperCase()}_LOGIN_STATUS`,
       marketplace: MARKETPLACE,
@@ -204,9 +275,9 @@ function updateLoginStatus(force = false) {
     }, (response) => {
       if (chrome.runtime.lastError) {
         // Extension was reloaded or context invalidated - this is normal
-        console.log('Extension context changed - page needs refresh');
+        console.log('Profit Orbit: Extension context changed -', chrome.runtime.lastError.message);
       } else {
-        console.log('Login status sent:', response);
+        console.log('Profit Orbit: Login status sent successfully:', response);
       }
     });
     
@@ -406,27 +477,44 @@ if (MARKETPLACE === 'mercari') {
 
 // Check login on page load
 if (MARKETPLACE) {
+  console.log(`Profit Orbit Extension: Initializing for ${MARKETPLACE}`);
+  
   // Immediate check if DOM is ready
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    updateLoginStatus(true);
+    console.log('Profit Orbit: Page already loaded - checking login status immediately');
+    setTimeout(() => updateLoginStatus(true), 100);
   } else {
     // Fast check on DOMContentLoaded (faster than 'load')
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('Profit Orbit: DOMContentLoaded - checking login status');
       updateLoginStatus(true);
     }, { once: true });
   }
   
   // Also check on full page load (fallback)
   window.addEventListener('load', () => {
+    console.log('Profit Orbit: Page loaded - checking login status');
     updateLoginStatus(true);
   }, { once: true });
+
+  // Poll every 3 seconds to catch login changes (especially for SPAs)
+  const statusPollInterval = setInterval(() => {
+    if (checkExtensionContext()) {
+      updateLoginStatus(false); // Use cache if recent
+    } else {
+      clearInterval(statusPollInterval);
+    }
+  }, 3000);
 
   // Watch for login changes (SPA navigation) - with debouncing
   let mutationTimeout;
   const observer = new MutationObserver(() => {
     clearTimeout(mutationTimeout);
     // Reduced delay from 2000ms to 300ms for faster detection
-    mutationTimeout = setTimeout(() => updateLoginStatus(true), 300);
+    mutationTimeout = setTimeout(() => {
+      console.log('Profit Orbit: DOM mutation detected - checking login status');
+      updateLoginStatus(true);
+    }, 300);
   });
 
   // Only observe if body exists, otherwise wait

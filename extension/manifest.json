@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Profit Orbit - Crosslisting Assistant",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "Automate crosslisting on Mercari, Facebook, Poshmark, eBay, and more",
   "permissions": [
     "storage",

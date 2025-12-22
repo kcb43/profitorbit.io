@@ -352,12 +352,7 @@ export default function Settings() {
   };
 
   const handleMercariConnect = async () => {
-    // Query ALL installed extensions for Orben extension
-    // This works because we added externally_connectable to manifest
     try {
-      // Get list of all extensions (requires permission)
-      // Since we can't enumerate extensions, we'll try to communicate with our known extension
-      
       // First, check if extension posted to localStorage on THIS domain
       const mercariStatus = localStorage.getItem('profit_orbit_mercari_connected');
       
@@ -372,13 +367,39 @@ export default function Settings() {
         return;
       }
       
-      // If not in localStorage, show instructions
-      toast({
-        title: 'Not Detected',
-        description: 'Please ensure: 1) Extension is installed and active 2) You\'re logged into Mercari 3) Refresh this page after logging in',
-        variant: 'destructive',
-        duration: 8000,
-      });
+      // Try to query extension directly
+      try {
+        // Check if extension is available
+        if (window.chrome && window.chrome.runtime) {
+          // Try to send message to extension
+          chrome.runtime.sendMessage(
+            'joladgcaegjegegnbklmecnddeihbnah', // Extension ID - update if needed
+            { type: 'GET_MARKETPLACE_STATUS', marketplace: 'mercari' },
+            (response) => {
+              if (chrome.runtime.lastError) {
+                console.log('Extension not available:', chrome.runtime.lastError.message);
+                showMercariInstructions();
+              } else if (response?.status?.loggedIn) {
+                setMercariConnected(true);
+                localStorage.setItem('profit_orbit_mercari_connected', 'true');
+                localStorage.setItem('profit_orbit_mercari_user', JSON.stringify(response.status));
+                toast({
+                  title: 'Mercari Connected!',
+                  description: response.status.userName ? `Connected as ${response.status.userName}` : 'Your Mercari account is connected.',
+                });
+              } else {
+                showMercariInstructions();
+              }
+            }
+          );
+          return;
+        }
+      } catch (e) {
+        console.log('Extension communication failed:', e);
+      }
+      
+      // If not detected, show instructions
+      showMercariInstructions();
       
     } catch (error) {
       console.error('Error connecting Mercari:', error);
@@ -388,6 +409,15 @@ export default function Settings() {
         variant: 'destructive',
       });
     }
+  };
+
+  const showMercariInstructions = () => {
+    toast({
+      title: 'Mercari Not Detected',
+      description: '1) Make sure the Profit Orbit extension is installed and enabled\n2) Open Mercari.com in a new tab and log in\n3) Come back here and click "Connect Mercari" again\n\nThe extension will detect your login automatically.',
+      variant: 'destructive',
+      duration: 10000,
+    });
   };
 
   const handleMarketplaceConnect = (marketplaceId) => {
