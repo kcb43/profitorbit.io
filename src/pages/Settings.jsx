@@ -777,23 +777,6 @@ export default function Settings() {
                                 <RefreshCw className="w-3 h-3 mr-1" />
                                 Connect
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleMercariConnect}
-                                className="flex-1 text-xs"
-                              >
-                                <RefreshCw className="w-3 h-3 mr-1" />
-                                Mercari Login
-                              </Button>
-                              <Button
-                                onClick={() => handleMarketplaceConnect(marketplace.id)}
-                                className="flex-1 text-xs"
-                                size="sm"
-                              >
-                                <img src={iconSrc} alt={marketplace.name} className="w-3 h-3 mr-1 object-contain" />
-                                Connect
-                              </Button>
                             </>
                           ) : (
                             <Button
