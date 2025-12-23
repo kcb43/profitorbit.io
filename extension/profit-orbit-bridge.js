@@ -105,10 +105,19 @@ function isExtensionContextValid() {
 
 // Function to query status from background
 function queryStatus() {
+  // Check if extension context is invalidated first (fast path)
+  if (extensionContextInvalidated) {
+    return;
+  }
+  
   // Check if extension context is still valid
   if (!isExtensionContextValid()) {
+    // isExtensionContextValid() sets extensionContextInvalidated flag if needed
+    // Only log warning once
     if (!extensionContextInvalidated) {
       console.warn('⚠️ Bridge: Extension context not available');
+      extensionContextInvalidated = true;
+      stopAllPolling();
     }
     return;
   }
@@ -238,6 +247,13 @@ function startStatusRequestPolling() {
       return;
     }
     
+    // Check context validity before processing requests
+    if (!isExtensionContextValid()) {
+      extensionContextInvalidated = true;
+      stopAllPolling();
+      return;
+    }
+    
     const requestFlag = localStorage.getItem('profit_orbit_request_status');
     if (requestFlag === 'true') {
       console.log('🔵🔵🔵 Bridge: React app requested status via localStorage flag 🔵🔵🔵');
@@ -272,12 +288,19 @@ function initializePolling() {
     }
     
     pollingInterval = setInterval(() => {
-      // Stop polling if extension context is invalidated
+      // Stop polling if extension context is invalidated (check before calling queryStatus)
       if (extensionContextInvalidated) {
         stopAllPolling();
         return;
       }
-      queryStatus();
+      // Only call queryStatus if context is still valid
+      if (isExtensionContextValid()) {
+        queryStatus();
+      } else {
+        // Context became invalid, stop polling
+        extensionContextInvalidated = true;
+        stopAllPolling();
+      }
     }, 2000);
   }
   
