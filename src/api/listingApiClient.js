@@ -35,20 +35,30 @@ async function getAuthToken() {
  * Make authenticated API request
  */
 async function apiRequest(endpoint, options = {}) {
+  console.log("API REQUEST DEBUG: Starting request", { endpoint, LISTING_API_URL });
+  
   const token = await getAuthToken();
+  console.log("API REQUEST DEBUG: Token retrieved", { hasToken: !!token, tokenLength: token?.length });
+  
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
+  
+  console.log("API REQUEST DEBUG: Request headers", { ...headers, Authorization: token ? 'Bearer ***' : 'missing' });
+  console.log("API REQUEST DEBUG: Full URL", `${LISTING_API_URL}${endpoint}`);
 
   const response = await fetch(`${LISTING_API_URL}${endpoint}`, {
     ...options,
     headers,
   });
+  
+  console.log("API REQUEST DEBUG: Response received", { status: response.status, ok: response.ok });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    console.error("API REQUEST DEBUG: Request failed", { status: response.status, error });
     throw new Error(error.error || error.message || `HTTP ${response.status}`);
   }
 

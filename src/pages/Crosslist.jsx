@@ -922,8 +922,10 @@ export default function Crosslist() {
     // Use new automation system for Mercari and Facebook
     setCrosslistLoading(true);
     try {
+      console.log("🔵 CROSSLIST DEBUG: Calling platformApi.getStatus()");
       // Check platform connection status from API (don't rely on extension)
       const platformStatuses = await platformApi.getStatus();
+      console.log("🔵 CROSSLIST DEBUG: platformStatuses received", platformStatuses);
       const platformStatus = platformStatuses.find((p) => p.platform === marketplace);
       
       if (!platformStatus || platformStatus.status !== 'connected') {
@@ -953,7 +955,9 @@ export default function Crosslist() {
       };
 
       // Create listing job directly via API (independent of extension)
+      console.log("🔵 CROSSLIST DEBUG: Calling listingJobsApi.createJob()", { itemId, marketplace, payload });
       const result = await listingJobsApi.createJob(itemId, [marketplace], payload);
+      console.log("🔵 CROSSLIST DEBUG: createJob result", result);
 
       // Track the job
       setActiveJobs((prev) => ({
