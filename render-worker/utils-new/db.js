@@ -20,6 +20,9 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 /**
  * Claim a listing job using row-level locking
  * Uses Supabase RPC function to prevent duplicate processing
+ * 
+ * Note: supabase.rpc('claim_listing_job') automatically calls public.claim_listing_job
+ * No need to specify schema prefix - Supabase defaults to public schema
  */
 export async function claimJob() {
   const { data, error } = await supabase.rpc('claim_listing_job');
