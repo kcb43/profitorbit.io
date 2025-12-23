@@ -15,8 +15,9 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+// Supports comma-separated origins: "https://profitorbit.io,https://profit-pulse-2.vercel.app"
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
   : ['https://profitorbit.io'];
 
 app.use(
