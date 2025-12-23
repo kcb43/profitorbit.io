@@ -862,6 +862,43 @@ export default function Crosslist() {
     return platform?.status === 'connected';
   };
 
+  // Simple Mercari button that guarantees visible feedback + network activity
+  function ListOnMercariButton({ itemId, marketplaceId }) {
+    const onClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Obvious user-visible effect
+      alert("Listing started (UI click registered).");
+
+      // Guaranteed network request (canary)
+      fetch("/api/health", { method: "GET", credentials: "include" }).catch(() => {});
+
+      // Actual create-job call
+      fetch("/api/listings/create-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          itemId,
+          marketplaceId,
+          platforms: ["mercari"],
+        }),
+      }).catch(() => {});
+    };
+
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        style={{ pointerEvents: "auto" }}
+        className="text-xs h-6 px-2 border rounded-md"
+      >
+        List on Mercari
+      </button>
+    );
+  }
+
   // Wrapper function for button clicks - moves async logic out of JSX
   const handleListButtonClick = async (e, itemId, marketplace) => {
     if (e) {
@@ -1583,17 +1620,21 @@ export default function Crosslist() {
                               {renderMarketplaceIcon(m, "w-6 h-6")}
                             </div>
                             {!isListed && isConnected && !hasActiveJob && ['mercari', 'facebook'].includes(m.id) && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => handleListButtonClick(e, it.id, m.id)}
-                                disabled={crosslistLoading}
-                                className="text-xs h-6 px-2"
-                                style={{ pointerEvents: crosslistLoading ? 'none' : 'auto', zIndex: 10 }}
-                              >
-                                List on {m.label}
-                              </Button>
+                              m.id === 'mercari' ? (
+                                <ListOnMercariButton itemId={it.id} marketplaceId={m.id} />
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                                  disabled={crosslistLoading}
+                                  className="text-xs h-6 px-2"
+                                  style={{ pointerEvents: crosslistLoading ? 'none' : 'auto', zIndex: 10 }}
+                                >
+                                  List on {m.label}
+                                </Button>
+                              )
                             )}
                             {hasActiveJob && activeJobs[it.id] && (
                               <div className="text-xs text-blue-600">Processing...</div>
@@ -1715,17 +1756,21 @@ export default function Crosslist() {
                             </div>
                             {status === 'not_listed' ? (
                               isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => handleListButtonClick(e, it.id, m.id)}
-                                  disabled={crosslistLoading}
-                                  className="text-xs h-6 px-2"
-                                  style={{ pointerEvents: crosslistLoading ? 'none' : 'auto', zIndex: 10 }}
-                                >
-                                  List on {m.label}
-                                </Button>
+                                m.id === 'mercari' ? (
+                                  <ListOnMercariButton itemId={it.id} marketplaceId={m.id} />
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                                    disabled={crosslistLoading}
+                                    className="text-xs h-6 px-2"
+                                    style={{ pointerEvents: crosslistLoading ? 'none' : 'auto', zIndex: 10 }}
+                                  >
+                                    List on {m.label}
+                                  </Button>
+                                )
                               ) : !isConnected && ['mercari', 'facebook'].includes(m.id) ? (
                                 <span className="text-xs text-muted-foreground">Connect</span>
                               ) : null
