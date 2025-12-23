@@ -867,7 +867,10 @@ export default function Crosslist() {
     console.log("HANDLE LIST FIRED", { itemId, marketplace });
     
     // Only support Mercari and Facebook for now (automation system)
+    console.log("MARKETPLACE PARAM:", marketplace);
+    
     if (!['mercari', 'facebook'].includes(marketplace)) {
+      console.log("🚨 FALLING BACK TO OLD SYSTEM", marketplace);
       // Fallback to old system for other platforms
       setCrosslistLoading(true);
       try {
@@ -915,6 +918,7 @@ export default function Crosslist() {
       return;
     }
 
+    console.log("✅ USING NEW AUTOMATION SYSTEM", marketplace);
     // Use new automation system for Mercari and Facebook
     setCrosslistLoading(true);
     try {
