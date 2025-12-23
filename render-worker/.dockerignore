@@ -4,8 +4,8 @@
 .env
 Dockerfile
 fly.toml
-# Exclude locked directories - we use utils-new and processors-new instead
-processors/
-utils/
-**/processors/**
-**/utils/**
+# Exclude old/temp directories - we use utils-new and processors-new
+processors-temp/
+utils-temp/
+**/processors-temp/**
+**/utils-temp/**

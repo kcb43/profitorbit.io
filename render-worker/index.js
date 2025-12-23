@@ -11,11 +11,11 @@ import {
   updateJobResult,
   markJobFailed,
   logJobEvent,
-} from './utils/db.js';
-import { supabase } from './utils/db.js';
-import { decrypt } from './utils/encryption.js';
-import { MercariProcessor } from './processors/mercari.js';
-import { FacebookProcessor } from './processors/facebook.js';
+} from './utils-new/db.js';
+import { supabase } from './utils-new/db.js';
+import { decrypt } from './utils-new/encryption.js';
+import { MercariProcessor } from './processors-new/mercari.js';
+import { FacebookProcessor } from './processors-new/facebook.js';
 
 dotenv.config();
 
