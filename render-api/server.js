@@ -16,20 +16,34 @@ const PORT = process.env.PORT || 8080;
 
 // CORS configuration
 // Supports comma-separated origins: "https://profitorbit.io,https://profit-pulse-2.vercel.app"
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-  : ['https://profitorbit.io'];
+// Automatically allows all .vercel.app preview domains
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // allow non-browser tools like curl
+  if (allowedOrigins.includes(origin)) return true;
+
+  // allow all Vercel preview deploys
+  try {
+    const url = new URL(origin);
+    if (url.hostname.endsWith('.vercel.app')) return true;
+  } catch {
+    // Invalid URL, deny
+  }
+
+  return false;
+}
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+      if (isAllowedOrigin(origin)) {
+        return callback(null, true);
       }
+      return callback(new Error('Not allowed by CORS: ' + origin));
     },
     credentials: true,
   })
