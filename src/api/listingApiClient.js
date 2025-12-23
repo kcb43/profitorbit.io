@@ -91,7 +91,11 @@ export const platformApi = {
    * Get connection status for all platforms
    */
   async getStatus() {
+    console.log("🔵 PLATFORM API DEBUG: getStatus() called");
     const result = await apiRequest('/api/platform/status');
+    console.log("🔵 PLATFORM API DEBUG: apiRequest result", result);
+    console.log("🔵 PLATFORM API DEBUG: result.platforms", result.platforms);
+    console.log("🔵 PLATFORM API DEBUG: returning", result.platforms || []);
     return result.platforms || [];
   },
 
@@ -116,7 +120,12 @@ export const listingJobsApi = {
    * @param {object} payload - Listing data (title, description, price, images, etc.)
    */
   async createJob(inventoryItemId, platforms, payload) {
-    return apiRequest('/api/listings/create-job', {
+    console.log("🔵 LISTING JOBS API DEBUG: createJob() called", {
+      inventoryItemId,
+      platforms,
+      payloadKeys: Object.keys(payload || {})
+    });
+    const result = await apiRequest('/api/listings/create-job', {
       method: 'POST',
       body: JSON.stringify({
         inventory_item_id: inventoryItemId || null,
@@ -124,6 +133,8 @@ export const listingJobsApi = {
         payload,
       }),
     });
+    console.log("🔵 LISTING JOBS API DEBUG: createJob() result", result);
+    return result;
   },
 
   /**

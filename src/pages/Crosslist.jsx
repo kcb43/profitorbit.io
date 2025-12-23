@@ -863,13 +863,16 @@ export default function Crosslist() {
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
+    console.log("✅ HANDLE LIST FIRED", { itemId, marketplace });
     alert("handleListOnMarketplaceItem fired: " + marketplace);
-    console.log("HANDLE LIST FIRED", { itemId, marketplace });
+    
+    // Normalize marketplace for comparison
+    const normalizedMarketplace = String(marketplace).toLowerCase().trim();
+    console.log("🔵 BRANCH DEBUG: normalizedMarketplace", normalizedMarketplace);
+    console.log("🔵 BRANCH DEBUG: original marketplace", marketplace);
     
     // Only support Mercari and Facebook for now (automation system)
-    console.log("MARKETPLACE PARAM:", marketplace);
-    
-    if (!['mercari', 'facebook'].includes(marketplace)) {
+    if (!['mercari', 'facebook'].includes(normalizedMarketplace)) {
       console.log("🚨 FALLING BACK TO OLD SYSTEM", marketplace);
       // Fallback to old system for other platforms
       setCrosslistLoading(true);
@@ -918,25 +921,67 @@ export default function Crosslist() {
       return;
     }
 
-    console.log("✅ USING NEW AUTOMATION SYSTEM", marketplace);
+    console.log("✅ USING NEW AUTOMATION SYSTEM", normalizedMarketplace);
     // Use new automation system for Mercari and Facebook
     setCrosslistLoading(true);
     try {
+      // Canary fetch to prove code path is reached
+      console.log("🔵 CANARY: Fetching health endpoint to prove code path");
+      try {
+        const healthResponse = await fetch("https://profitorbit-api.fly.dev/health");
+        const healthData = await healthResponse.json();
+        console.log("🔵 CANARY: Health check result", healthData);
+      } catch (healthError) {
+        console.error("🔵 CANARY: Health check failed", healthError);
+      }
+      
+      // Check session before API call
+      console.log("🔵 SESSION DEBUG: Checking Supabase session");
+      try {
+        const { supabase } = await import('@/api/supabaseClient');
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        console.log("🔵 SESSION DEBUG: Session check result", { 
+          hasSession: !!sessionData?.session, 
+          hasToken: !!sessionData?.session?.access_token,
+          error: sessionError 
+        });
+      } catch (sessionCheckError) {
+        console.error("🔵 SESSION DEBUG: Session check failed", sessionCheckError);
+      }
+      
       console.log("🔵 CROSSLIST DEBUG: Calling platformApi.getStatus()");
       // Check platform connection status from API (don't rely on extension)
-      const platformStatuses = await platformApi.getStatus();
-      console.log("🔵 CROSSLIST DEBUG: platformStatuses received", platformStatuses);
+      const platformStatusesRaw = await platformApi.getStatus();
+      console.log("🔵 CROSSLIST DEBUG: platformStatusesRaw received", platformStatusesRaw);
+      console.log("🔵 CROSSLIST DEBUG: Is array?", Array.isArray(platformStatusesRaw));
+      console.log("🔵 CROSSLIST DEBUG: Type?", typeof platformStatusesRaw);
+      
+      // Handle both result.platforms and direct array
+      const platformStatuses = Array.isArray(platformStatusesRaw) 
+        ? platformStatusesRaw 
+        : (platformStatusesRaw?.platforms || []);
+      console.log("🔵 CROSSLIST DEBUG: platformStatuses (normalized)", platformStatuses);
+      
+      const platformStatus = platformStatuses.find((p) => p.platform === normalizedMarketplace);
+      console.log("🔵 CROSSLIST DEBUG: platformStatus found", platformStatus);
       const platformStatus = platformStatuses.find((p) => p.platform === marketplace);
       
       if (!platformStatus || platformStatus.status !== 'connected') {
+        console.log("🔵 CROSSLIST DEBUG: Platform not connected, returning early", {
+          platformStatus,
+          status: platformStatus?.status,
+          normalizedMarketplace
+        });
         toast({
           title: 'Platform Not Connected',
-          description: `Please connect your ${marketplace} account first using the Chrome extension.`,
+          description: `Please connect your ${normalizedMarketplace} account first using the Chrome extension.`,
           variant: 'destructive',
         });
         setShowPlatformConnect(true);
         return;
       }
+      
+      console.log("🔵 CROSSLIST DEBUG: Platform is connected, proceeding with job creation");
 
       // Get inventory item
       const inventoryItem = inventory.find((item) => item.id === itemId);
@@ -955,8 +1000,13 @@ export default function Crosslist() {
       };
 
       // Create listing job directly via API (independent of extension)
-      console.log("🔵 CROSSLIST DEBUG: Calling listingJobsApi.createJob()", { itemId, marketplace, payload });
-      const result = await listingJobsApi.createJob(itemId, [marketplace], payload);
+      console.log("🔵 CROSSLIST DEBUG: Calling listingJobsApi.createJob()", { 
+        itemId, 
+        marketplace: normalizedMarketplace, 
+        platforms: [normalizedMarketplace],
+        payload 
+      });
+      const result = await listingJobsApi.createJob(itemId, [normalizedMarketplace], payload);
       console.log("🔵 CROSSLIST DEBUG: createJob result", result);
 
       // Track the job
