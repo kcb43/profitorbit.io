@@ -863,29 +863,32 @@ export default function Crosslist() {
   };
 
   // Wrapper function for button clicks - moves async logic out of JSX
-  const handleListButtonClick = (e, itemId, marketplace) => {
+  const handleListButtonClick = async (e, itemId, marketplace) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    handleListOnMarketplaceItem(itemId, marketplace).catch((error) => {
+    try {
+      await handleListOnMarketplaceItem(itemId, marketplace);
+    } catch (error) {
       toast({
         title: 'Listing Failed',
         description: error.message || 'Failed to create listing job.',
         variant: 'destructive',
       });
-    });
+    }
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
     // Normalize marketplace for comparison
     const normalizedMarketplace = String(marketplace).toLowerCase().trim();
     
-    // Only support Mercari and Facebook for now (automation system)
-    if (!['mercari', 'facebook'].includes(normalizedMarketplace)) {
-      // Fallback to old system for other platforms
-      setCrosslistLoading(true);
-      try {
+    setCrosslistLoading(true);
+    
+    try {
+      // Only support Mercari and Facebook for now (automation system)
+      if (!['mercari', 'facebook'].includes(normalizedMarketplace)) {
+        // Fallback to old system for other platforms
         const accounts = await crosslistingEngine.getMarketplaceAccounts();
         const account = accounts[marketplace];
 
@@ -918,21 +921,10 @@ export default function Crosslist() {
         }));
 
         queryClient.invalidateQueries(['inventoryItems']);
-      } catch (error) {
-        toast({
-          title: 'Listing Failed',
-          description: error.message || `Failed to list on ${marketplace}.`,
-          variant: 'destructive',
-        });
-      } finally {
-        setCrosslistLoading(false);
+        return;
       }
-      return;
-    }
 
-    // Use new automation system for Mercari and Facebook
-    setCrosslistLoading(true);
-    try {
+      // Use new automation system for Mercari and Facebook
       // Check platform connection status from API
       const platformStatusesRaw = await platformApi.getStatus();
       const platformStatuses = Array.isArray(platformStatusesRaw) 
@@ -986,6 +978,7 @@ export default function Crosslist() {
         description: error.message || `Failed to start listing on ${marketplace}.`,
         variant: 'destructive',
       });
+      throw error; // Re-throw so handleListButtonClick can catch it
     } finally {
       setCrosslistLoading(false);
     }
