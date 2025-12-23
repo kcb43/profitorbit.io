@@ -61,7 +61,6 @@ import { crosslistingEngine } from "@/services/CrosslistingEngine";
 import { UnifiedListingForm } from "@/components/UnifiedListingForm";
 import { ExternalLink, List } from "lucide-react";
 import { listingJobsApi, platformApi } from "@/api/listingApiClient";
-import { PlatformConnectionStatus } from "@/components/PlatformConnectionStatus";
 import { ListingJobTracker } from "@/components/ListingJobTracker";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
@@ -1314,38 +1313,28 @@ export default function Crosslist() {
           </div>
         </div>
 
-        {/* Platform Connection Status & Active Jobs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <PlatformConnectionStatus
-            onConnectClick={(platform) => {
-              toast({
-                title: 'Connect Platform',
-                description: `Open ${platform} in a new tab, log in, then use the Chrome extension to connect.`,
-              });
-            }}
-          />
-          {Object.keys(activeJobs).length > 0 && (
-            <div className="space-y-2">
-              {Object.entries(activeJobs).map(([itemId, jobId]) => {
-                const item = inventory.find((i) => i.id === itemId);
-                return (
-                  <ListingJobTracker
-                    key={jobId}
-                    jobId={jobId}
-                    onComplete={handleJobComplete}
-                    onClose={() => {
-                      setActiveJobs((prev) => {
-                        const newJobs = { ...prev };
-                        delete newJobs[itemId];
-                        return newJobs;
-                      });
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* Active Jobs */}
+        {Object.keys(activeJobs).length > 0 && (
+          <div className="space-y-2">
+            {Object.entries(activeJobs).map(([itemId, jobId]) => {
+              const item = inventory.find((i) => i.id === itemId);
+              return (
+                <ListingJobTracker
+                  key={jobId}
+                  jobId={jobId}
+                  onComplete={handleJobComplete}
+                  onClose={() => {
+                    setActiveJobs((prev) => {
+                      const newJobs = { ...prev };
+                      delete newJobs[itemId];
+                      return newJobs;
+                    });
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
 
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
