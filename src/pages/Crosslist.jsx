@@ -863,6 +863,9 @@ export default function Crosslist() {
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
+    console.log("LIST CLICKED", { itemId, marketplace });
+    debugger;
+    
     // Only support Mercari and Facebook for now (automation system)
     if (!['mercari', 'facebook'].includes(marketplace)) {
       // Fallback to old system for other platforms
