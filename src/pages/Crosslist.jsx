@@ -1,4 +1,6 @@
-﻿
+﻿// Module-scope log to prove file is loaded
+console.log("✅ Crosslist module loaded", new Date().toISOString());
+
 import React, { useMemo, useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -1629,13 +1631,25 @@ export default function Crosslist() {
                             </div>
                             {!isListed && isConnected && !hasActiveJob && ['mercari', 'facebook'].includes(m.id) && (
                               <Button
+                                type="button"
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log("🧩 BUTTON RENDER marketplace=", m.id);
+                                  console.log("✅ UI BUTTON CLICKED (inline)", { itemId: it.id, marketplace: m.id });
+                                  // Forced Network canary
+                                  fetch("https://profitorbit-api.fly.dev/health")
+                                    .then(() => console.log("✅ health ok"))
+                                    .catch(console.error);
+                                  return handleListOnMarketplaceItem(it.id, m.id);
+                                }}
                                 disabled={crosslistLoading}
                                 className="text-xs h-6 px-2"
                               >
                                 List on {m.label}
+                                <span style={{fontSize: 10, opacity: 0.7, marginLeft: 4}}>BUILD: 2025-12-23-click-debug-1</span>
                               </Button>
                             )}
                             {hasActiveJob && activeJobs[it.id] && (
@@ -1759,13 +1773,25 @@ export default function Crosslist() {
                             {status === 'not_listed' ? (
                               isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob ? (
                                 <Button
+                                  type="button"
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleListOnMarketplaceItem(it.id, m.id)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log("🧩 BUTTON RENDER marketplace=", m.id);
+                                    console.log("✅ UI BUTTON CLICKED (inline)", { itemId: it.id, marketplace: m.id });
+                                    // Forced Network canary
+                                    fetch("https://profitorbit-api.fly.dev/health")
+                                      .then(() => console.log("✅ health ok"))
+                                      .catch(console.error);
+                                    return handleListOnMarketplaceItem(it.id, m.id);
+                                  }}
                                   disabled={crosslistLoading}
                                   className="text-xs h-6 px-2"
                                 >
                                   List on {m.label}
+                                  <span style={{fontSize: 10, opacity: 0.7, marginLeft: 4}}>BUILD: 2025-12-23-click-debug-1</span>
                                 </Button>
                               ) : !isConnected && ['mercari', 'facebook'].includes(m.id) ? (
                                 <span className="text-xs text-muted-foreground">Connect</span>
