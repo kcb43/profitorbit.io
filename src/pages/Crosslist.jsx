@@ -1,7 +1,4 @@
-﻿// Module-scope log to prove file is loaded
-console.log("✅ Crosslist module loaded", new Date().toISOString());
-
-import React, { useMemo, useState, useEffect } from "react";
+﻿import React, { useMemo, useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
@@ -245,7 +242,11 @@ const renderMarketplaceIcon = (marketplace, sizeClass = "w-4 h-4") => {
   );
 };
 
+// Module-scope log to prove file is loaded (must be after imports)
+console.log("✅ Crosslist module loaded", new Date().toISOString());
+
 export default function Crosslist() {
+  console.log("✅ Crosslist component rendering", new Date().toISOString());
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -866,17 +867,24 @@ export default function Crosslist() {
 
   // Wrapper function for button clicks - moves async logic out of JSX
   const handleListButtonClick = (e, itemId, marketplace) => {
+    console.log("🔥🔥🔥 handleListButtonClick CALLED", { itemId, marketplace, timestamp: new Date().toISOString() });
     e.preventDefault();
     e.stopPropagation();
     console.log("🧩 BUTTON RENDER marketplace=", marketplace);
     console.log("✅ UI BUTTON CLICKED (inline)", { itemId, marketplace });
     // Forced Network canary
+    console.log("🔵 About to fetch /health endpoint...");
     fetch("https://profitorbit-api.fly.dev/health")
-      .then(() => console.log("✅ health ok"))
-      .catch(console.error);
+      .then((res) => {
+        console.log("✅ health ok", res.status);
+        return res.json();
+      })
+      .then((data) => console.log("✅ health data", data))
+      .catch((err) => console.error("❌ health fetch error", err));
     // Call the async handler (don't await - fire and forget)
+    console.log("🔵 About to call handleListOnMarketplaceItem...");
     handleListOnMarketplaceItem(itemId, marketplace).catch((error) => {
-      console.error("Error in handleListOnMarketplaceItem:", error);
+      console.error("❌ Error in handleListOnMarketplaceItem:", error);
     });
   };
 
@@ -1650,7 +1658,10 @@ export default function Crosslist() {
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                                onClick={(e) => {
+                                  console.log("🔵 BUTTON onClick FIRED (row view)", { itemId: it.id, marketplace: m.id, label: m.label });
+                                  handleListButtonClick(e, it.id, m.id);
+                                }}
                                 disabled={crosslistLoading}
                                 className="text-xs h-6 px-2"
                               >
@@ -1782,7 +1793,10 @@ export default function Crosslist() {
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                                  onClick={(e) => {
+                                    console.log("🔵 BUTTON onClick FIRED (grid view)", { itemId: it.id, marketplace: m.id, label: m.label });
+                                    handleListButtonClick(e, it.id, m.id);
+                                  }}
                                   disabled={crosslistLoading}
                                   className="text-xs h-6 px-2"
                                 >
