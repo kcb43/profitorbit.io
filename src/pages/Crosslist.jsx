@@ -1659,6 +1659,19 @@ export default function Crosslist() {
                         const isConnected = isPlatformConnected(m.id);
                         const hasActiveJob = activeJobs[it.id];
                         
+                        // Debug logging for Mercari button rendering (row view)
+                        if (m.id === 'mercari') {
+                          console.log("🔵 MERCARI BUTTON DEBUG (row view)", {
+                            itemId: it.id,
+                            itemName: it.item_name,
+                            isListed,
+                            isConnected,
+                            hasActiveJob: !!hasActiveJob,
+                            crosslistLoading,
+                            shouldShow: !isListed && isConnected && !hasActiveJob && ['mercari', 'facebook'].includes(m.id)
+                          });
+                        }
+                        
                         return (
                           <div key={m.id} className="flex flex-col items-center gap-1">
                             <div
@@ -1807,6 +1820,20 @@ export default function Crosslist() {
                         const listing = listings.find(l => l.marketplace === m.id);
                         const isConnected = isPlatformConnected(m.id);
                         const hasActiveJob = activeJobs[it.id];
+                        
+                        // Debug logging for Mercari button rendering (grid view)
+                        if (m.id === 'mercari') {
+                          console.log("🔵 MERCARI BUTTON DEBUG (grid view)", {
+                            itemId: it.id,
+                            itemName: it.item_name,
+                            isListed,
+                            status,
+                            isConnected,
+                            hasActiveJob: !!hasActiveJob,
+                            crosslistLoading,
+                            shouldShow: status === 'not_listed' && isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob
+                          });
+                        }
                         
                         return (
                           <div
