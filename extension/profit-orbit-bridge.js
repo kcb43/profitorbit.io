@@ -55,30 +55,57 @@ window.addEventListener("message", (event) => {
   }
 });
 
+// Helper: extract Supabase access token from localStorage
+function extractSupabaseToken() {
+  try {
+    // Common Supabase key patterns: "supabase.auth.token" or "sb-<ref>-auth-token"
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (!key.includes("auth") && !key.includes("supabase") && !key.startsWith("sb-")) {
+        continue;
+      }
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        const token =
+          parsed?.currentSession?.access_token ||
+          parsed?.currentSession?.accessToken ||
+          parsed?.access_token ||
+          parsed?.accessToken ||
+          null;
+        if (token) return token;
+      } catch (e) {
+        // Some Supabase SDKs store plain string
+        if (typeof raw === "string" && raw.includes("access_token")) {
+          try {
+            const maybe = JSON.parse(raw);
+            const token =
+              maybe?.currentSession?.access_token ||
+              maybe?.access_token ||
+              null;
+            if (token) return token;
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // ignore and fallback
+  }
+  return null;
+}
+
 // Respond to extension popup asking for API URL + auth token so it can connect the platform
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GET_LISTING_CONFIG") {
     try {
-      // Supabase stores session in localStorage under this key
-      const raw = localStorage.getItem("supabase.auth.token");
-      let authToken = null;
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          authToken =
-            parsed?.currentSession?.access_token ||
-            parsed?.currentSession?.accessToken ||
-            parsed?.access_token ||
-            parsed?.accessToken ||
-            null;
-        } catch (e) {
-          // ignore parse error
-        }
-      }
-
-      // Use the same default as the web app client
+      const authToken = extractSupabaseToken();
+      // Use page-provided API URL if set; fallback to default
       const apiUrl =
         window.__PO_API_URL ||
+        window.__LISTING_API_URL ||
         "https://profitorbit-api.fly.dev";
 
       sendResponse({ apiUrl, authToken });
