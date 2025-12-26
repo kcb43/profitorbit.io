@@ -952,18 +952,19 @@ export default function Crosslist() {
       }
 
       // Use new automation system for Mercari and Facebook
-      // Check platform connection status from API
-      const platformStatusesRaw = await platformApi.getStatus();
-      const platformStatuses = Array.isArray(platformStatusesRaw) 
-        ? platformStatusesRaw 
-        : (platformStatusesRaw?.platforms || []);
-      
-      const platformStatus = platformStatuses.find((p) => p.platform === normalizedMarketplace);
+      // Check platform connection via localStorage flag set by extension
+      const isPlatformConnected = (id) => {
+        if (typeof window === "undefined") return false;
+        return localStorage.getItem(`profit_orbit_${id}_connected`) === "true";
+      };
 
-      if (!platformStatus || platformStatus.status !== 'connected') {
+      const required = [normalizedMarketplace];
+      const notConnected = required.filter((p) => !isPlatformConnected(p));
+
+      if (notConnected.length > 0) {
         toast({
           title: 'Platform Not Connected',
-          description: `Please connect your ${marketplace} account first using the Chrome extension.`,
+          description: `Please connect your ${notConnected.join(', ')} account first using the Chrome extension.`,
           variant: 'destructive',
         });
         setShowPlatformConnect(true);
