@@ -17,7 +17,6 @@ import { decrypt } from './utils-new/encryption.js';
 import { MercariProcessor } from './processors-new/mercari.js';
 import { FacebookProcessor } from './processors-new/facebook.js';
 import fs from 'fs';
-import { supabase } from './utils-new/db.js';
 
 // Version stamp to verify deployment
 console.log('WORKER BUILD:', '2025-12-23-import-fix-1');
