@@ -55,6 +55,40 @@ window.addEventListener("message", (event) => {
   }
 });
 
+// Respond to extension popup asking for API URL + auth token so it can connect the platform
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "GET_LISTING_CONFIG") {
+    try {
+      // Supabase stores session in localStorage under this key
+      const raw = localStorage.getItem("supabase.auth.token");
+      let authToken = null;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          authToken =
+            parsed?.currentSession?.access_token ||
+            parsed?.currentSession?.accessToken ||
+            parsed?.access_token ||
+            parsed?.accessToken ||
+            null;
+        } catch (e) {
+          // ignore parse error
+        }
+      }
+
+      // Use the same default as the web app client
+      const apiUrl =
+        window.__PO_API_URL ||
+        "https://profitorbit-api.fly.dev";
+
+      sendResponse({ apiUrl, authToken });
+    } catch (err) {
+      sendResponse({ apiUrl: "https://profitorbit-api.fly.dev", authToken: null, error: err?.message });
+    }
+    return true;
+  }
+});
+
 // Function to update localStorage with marketplace status
 function updateLocalStorage(status) {
   if (!status) return;
