@@ -18,25 +18,43 @@ if (!supabaseUrl || !supabaseServiceKey) {
 export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
- * Claim a listing job using row-level locking
- * Uses Supabase RPC function to prevent duplicate processing
- * 
- * Note: supabase.rpc('claim_listing_job') automatically calls public.claim_listing_job
- * No need to specify schema prefix - Supabase defaults to public schema
+ * Claim a listing job (old-school query with status check)
  */
 export async function claimJob() {
-  const { data, error } = await supabase.rpc('claim_listing_job');
+  // 1) find one queued job
+  const { data: queued, error: qErr } = await supabase
+    .from('listing_jobs')
+    .select('*')
+    .eq('status', 'queued')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
-  if (error) {
-    console.error('Error claiming job:', error);
-    return null;
+  if (qErr) {
+    console.error('Error fetching queued job:', qErr);
+    throw qErr;
+  }
+  if (!queued) return null;
+
+  // 2) claim it AND return the claimed row
+  const { data: claimed, error: cErr } = await supabase
+    .from('listing_jobs')
+    .update({
+      status: 'running',
+      progress: { percent: 0, message: 'Claimed by worker' },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', queued.id)
+    .eq('status', 'queued') // prevent double-claim
+    .select('*')
+    .single();
+
+  if (cErr) {
+    console.error('Error claiming job:', cErr);
+    throw cErr;
   }
 
-  if (!data || data.length === 0) {
-    return null;
-  }
-
-  return data[0];
+  return claimed;
 }
 
 /**
