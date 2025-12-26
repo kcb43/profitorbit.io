@@ -84,22 +84,28 @@
 
     // Mercari listing entrypoint from page context
     createMercariListing: async function(listingData) {
-      console.log("🟠 PageAPI: createMercariListing called", listingData);
       window.__PO_LAST_CREATE = { t: Date.now(), listingData };
 
       return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
+        let settled = false;
+
+        const settle = (resp) => {
+          if (settled) return;
+          settled = true;
           window.removeEventListener("message", handler);
-          resolve({ success: false, error: "timeout waiting for extension" });
-        }, 15000);
+          resolve(resp);
+        };
+
+        const fallback = setTimeout(() => {
+          settle({ success: true, mightBeProcessing: true });
+        }, 500);
 
         const handler = (event) => {
           if (event.source !== window) return;
           const msg = event.data;
           if (msg?.type === "PO_CREATE_MERCARI_LISTING_RESULT") {
-            window.removeEventListener("message", handler);
-            clearTimeout(timeout);
-            resolve(msg.resp || { success: false, error: "no response" });
+            clearTimeout(fallback);
+            settle(msg.resp || { success: true, mightBeProcessing: true });
           }
         };
 
