@@ -14,6 +14,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Global CORS headers (wildcard) and OPTIONS handling to keep browsers happy
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
 // CORS configuration
 // Supports comma-separated origins: "https://profitorbit.io,https://profit-pulse-2.vercel.app"
 // Automatically allows all .vercel.app preview domains
@@ -70,6 +83,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
+  // Allow any origin to read the health endpoint (safe, no credentials)
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),

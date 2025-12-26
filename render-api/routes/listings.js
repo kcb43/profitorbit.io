@@ -22,6 +22,7 @@ const router = express.Router();
  */
 router.post('/create-job', requireAuth, async (req, res) => {
   try {
+    console.log('🔥 LISTING ROUTE HIT', new Date().toISOString());
     const userId = req.userId;
     const { inventory_item_id, platforms, payload } = req.body;
 
