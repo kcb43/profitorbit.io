@@ -264,10 +264,8 @@ async function workerLoop() {
       return; // Continue polling
     }
 
-    // Process job (don't await - let it run in background)
-    processJob(job).catch((err) => {
-      console.error('Unhandled error in processJob:', err);
-    });
+    // Process job inline for stability (MAX_CONCURRENT_JOBS=1)
+    await processJob(job);
   } catch (error) {
     // Catch any unexpected errors to prevent worker crash
     console.error('Unexpected error in workerLoop:', error);
