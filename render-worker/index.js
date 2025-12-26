@@ -12,7 +12,6 @@ import {
   markJobFailed,
   logJobEvent,
 } from './utils-new/db.js';
-import { supabase } from './utils-new/db.js';
 import { decrypt } from './utils-new/encryption.js';
 import { MercariProcessor } from './processors-new/mercari.js';
 import { FacebookProcessor } from './processors-new/facebook.js';
