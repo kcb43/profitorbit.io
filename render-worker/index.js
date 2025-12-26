@@ -165,9 +165,10 @@ async function processJob(job) {
         if (platform === 'mercari') {
           const missing = validateMercariPayload(job.payload);
           if (missing.length) {
-            await safeMarkJobFailed(jobId, `Mercari missing required fields: ${missing.join(", ")}`);
-            await logJobEvent(jobId, 'error', 'Mercari validation failed', { missing });
-            break;
+          const msg = `Mercari form validation errors: ${missing.join("; ")}`;
+          await safeMarkJobFailed(jobId, msg);
+          await logJobEvent(jobId, 'error', 'Mercari validation failed', { missing });
+          throw new Error(msg);
           }
         }
 
