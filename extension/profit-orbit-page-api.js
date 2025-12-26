@@ -80,6 +80,22 @@
         sent: true,
         timestamp: Date.now()
       };
+    },
+
+    // Mercari listing entrypoint from page context
+    createMercariListing: async function(listingData) {
+      console.log("🟠 PageAPI: createMercariListing called", listingData);
+      // stamp for easy inspection from the page
+      window.__PO_LAST_CREATE = { t: Date.now(), listingData };
+
+      // forward to content script via postMessage
+      window.postMessage({
+        type: "PO_CREATE_MERCARI_LISTING",
+        payload: listingData,
+        timestamp: Date.now()
+      }, "*");
+
+      return { sent: true, timestamp: Date.now() };
     }
   };
   

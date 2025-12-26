@@ -158,8 +158,12 @@ console.log('📡 [WEB REQUEST] Network request interceptor installed for Mercar
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Background received message:', message, 'from sender:', sender);
-  
+  console.log("🟣 Background: onMessage", {
+    type: message?.type,
+    message,
+    sender: { id: sender?.id, url: sender?.url, origin: sender?.origin },
+  });
+
   // Handle login status updates from any marketplace
   if (message.type?.endsWith('_LOGIN_STATUS')) {
     const marketplace = message.marketplace;
@@ -210,6 +214,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ 
       status: marketplaceStatus[marketplace] || { loggedIn: false }
     });
+    return true;
+  }
+
+  if (message.type === "MERCARI_CREATE_LISTING") {
+    console.log("🔥 Background: MERCARI_CREATE_LISTING received", message.payload);
+    // TODO: implement Mercari listing flow; for now acknowledge receipt
+    sendResponse({ success: true, mightBeProcessing: true });
     return true;
   }
   

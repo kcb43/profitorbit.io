@@ -41,6 +41,26 @@ if (typeof chrome !== 'undefined') {
   console.error('🔴 Bridge: chrome is undefined - this is a content script, chrome should exist!');
 }
 
+// Listen for page context requests to create a Mercari listing
+window.addEventListener("message", (event) => {
+  if (event.source !== window) return;
+  const msg = event.data;
+  if (msg?.type === "PO_CREATE_MERCARI_LISTING") {
+    console.log("🟣 Bridge: forwarding PO_CREATE_MERCARI_LISTING to background", msg.payload);
+    try {
+      chrome.runtime.sendMessage(
+        { type: "MERCARI_CREATE_LISTING", payload: msg.payload },
+        (resp) => {
+          console.log("🟣 Bridge: background responded", resp);
+          window.postMessage({ type: "PO_CREATE_MERCARI_LISTING_RESULT", resp }, "*");
+        }
+      );
+    } catch (err) {
+      console.error("🔴 Bridge: failed to forward Mercari create listing", err);
+    }
+  }
+});
+
 // Function to update localStorage with marketplace status
 function updateLocalStorage(status) {
   if (!status) return;
@@ -282,31 +302,31 @@ function initializePolling() {
 
   // Poll every 2 seconds (only if extension context is valid)
   function startPolling() {
-    // Clear existing interval if any
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-    
-    pollingInterval = setInterval(() => {
-      // Stop polling if extension context is invalidated (check before calling queryStatus)
-      if (extensionContextInvalidated) {
-        stopAllPolling();
-        return;
-      }
-      // Only call queryStatus if context is still valid
-      if (isExtensionContextValid()) {
-        queryStatus();
-      } else {
-        // Context became invalid, stop polling
-        extensionContextInvalidated = true;
-        stopAllPolling();
-      }
-    }, 2000);
+    // Temporarily disabled for debugging; leave single initial query intact
+    // if (pollingInterval) {
+    //   clearInterval(pollingInterval);
+    // }
+    //
+    // pollingInterval = setInterval(() => {
+    //   // Stop polling if extension context is invalidated (check before calling queryStatus)
+    //   if (extensionContextInvalidated) {
+    //     stopAllPolling();
+    //     return;
+    //   }
+    //   // Only call queryStatus if context is still valid
+    //   if (isExtensionContextValid()) {
+    //     queryStatus();
+    //   } else {
+    //     // Context became invalid, stop polling
+    //     extensionContextInvalidated = true;
+    //     stopAllPolling();
+    //   }
+    // }, 2000);
   }
   
-  startPolling();
+  // startPolling(); // disabled for debugging
   
-  console.log('🔵 Bridge: Polling initialized');
+  console.log('🔵 Bridge: Polling initialized (interval disabled for debug)');
 }
 
 // Start initialization
