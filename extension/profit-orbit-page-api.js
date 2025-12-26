@@ -85,17 +85,32 @@
     // Mercari listing entrypoint from page context
     createMercariListing: async function(listingData) {
       console.log("🟠 PageAPI: createMercariListing called", listingData);
-      // stamp for easy inspection from the page
       window.__PO_LAST_CREATE = { t: Date.now(), listingData };
 
-      // forward to content script via postMessage
-      window.postMessage({
-        type: "PO_CREATE_MERCARI_LISTING",
-        payload: listingData,
-        timestamp: Date.now()
-      }, "*");
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          window.removeEventListener("message", handler);
+          resolve({ success: false, error: "timeout waiting for extension" });
+        }, 15000);
 
-      return { sent: true, timestamp: Date.now() };
+        const handler = (event) => {
+          if (event.source !== window) return;
+          const msg = event.data;
+          if (msg?.type === "PO_CREATE_MERCARI_LISTING_RESULT") {
+            window.removeEventListener("message", handler);
+            clearTimeout(timeout);
+            resolve(msg.resp || { success: false, error: "no response" });
+          }
+        };
+
+        window.addEventListener("message", handler);
+
+        window.postMessage({
+          type: "PO_CREATE_MERCARI_LISTING",
+          payload: listingData,
+          timestamp: Date.now()
+        }, "*");
+      });
     }
   };
   

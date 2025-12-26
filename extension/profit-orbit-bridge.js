@@ -46,18 +46,12 @@ window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   const msg = event.data;
   if (msg?.type === "PO_CREATE_MERCARI_LISTING") {
-    console.log("🟣 Bridge: forwarding PO_CREATE_MERCARI_LISTING to background", msg.payload);
-    try {
-      chrome.runtime.sendMessage(
-        { type: "MERCARI_CREATE_LISTING", payload: msg.payload },
-        (resp) => {
-          console.log("🟣 Bridge: background responded", resp);
-          window.postMessage({ type: "PO_CREATE_MERCARI_LISTING_RESULT", resp }, "*");
-        }
-      );
-    } catch (err) {
-      console.error("🔴 Bridge: failed to forward Mercari create listing", err);
-    }
+    chrome.runtime.sendMessage(
+      { type: "CREATE_MERCARI_LISTING", listingData: msg.payload },
+      (resp) => {
+        window.postMessage({ type: "PO_CREATE_MERCARI_LISTING_RESULT", resp }, "*");
+      }
+    );
   }
 });
 

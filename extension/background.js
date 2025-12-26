@@ -217,13 +217,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === "MERCARI_CREATE_LISTING") {
-    console.log("🔥 Background: MERCARI_CREATE_LISTING received", message.payload);
-    // TODO: implement Mercari listing flow; for now acknowledge receipt
-    sendResponse({ success: true, mightBeProcessing: true });
-    return true;
-  }
-  
   // Handle Facebook listing request from bridge script
   if (message.type === 'CREATE_FACEBOOK_LISTING') {
     (async () => {
