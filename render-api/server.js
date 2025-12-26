@@ -14,6 +14,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Request logger with request id
+app.use((req, res, next) => {
+  const rid = req.headers["fly-request-id"] || req.headers["x-request-id"] || "no-id";
+  console.log(`➡️ ${req.method} ${req.path} rid=${rid}`);
+  next();
+});
+
 // Global CORS headers (wildcard) and OPTIONS handling to keep browsers happy
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -98,6 +105,8 @@ app.use('/api/listings', listingsRoutes);
 
 // 404 handler
 app.use((req, res) => {
+  const rid = req.headers["fly-request-id"] || req.headers["x-request-id"] || "no-id";
+  console.log(`❌ 404 ${req.method} ${req.path} rid=${rid}`);
   res.status(404).json({
     error: 'Not found',
     path: req.path,
