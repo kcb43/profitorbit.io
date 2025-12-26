@@ -864,15 +864,19 @@ export default function Crosslist() {
 
   // Mercari button with capture/bubble probes
   function MercariListButton({ itemId, marketplaceId, onClick }) {
-    console.log("🟢 MERCARI BUTTON RENDER", itemId, marketplaceId);
+    console.log("🟠 MercariListButton rendered", { itemId, marketplaceId });
+
+    const handleClick = (e) => {
+      alert("🟠 MercariListButton CLICK");
+      console.log("🟠 MercariListButton CLICK", { itemId, marketplaceId, hasOnClick: !!onClick });
+      if (onClick) onClick(e, itemId, marketplaceId);
+    };
+
     return (
       <button
         type="button"
         onClickCapture={() => alert("CAPTURE: MERCARI BUTTON")}
-        onClick={(e) => {
-          alert("BUBBLE: MERCARI BUTTON");
-          onClick?.(e, itemId, marketplaceId);
-        }}
+        onClick={handleClick}
         className="text-xs h-6 px-2 border rounded-md"
       >
         List on Mercari
@@ -1626,7 +1630,7 @@ export default function Crosslist() {
                                 <MercariListButton
                                   itemId={it.id}
                                   marketplaceId={m.id}
-                                  onClick={handleListButtonClick}
+                                  onClick={(e) => handleListButtonClick(e, it.id, m.id)}
                                 />
                               ) : (
                                 <>
@@ -1775,7 +1779,7 @@ export default function Crosslist() {
                             <MercariListButton
                               itemId={it.id}
                               marketplaceId={m.id}
-                              onClick={handleListButtonClick}
+                              onClick={(e) => handleListButtonClick(e, it.id, m.id)}
                             />
                                 ) : (
                                   <Button
