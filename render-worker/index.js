@@ -17,6 +17,7 @@ import { decrypt } from './utils-new/encryption.js';
 import { MercariProcessor } from './processors-new/mercari.js';
 import { FacebookProcessor } from './processors-new/facebook.js';
 import fs from 'fs';
+import { supabase } from './utils-new/db.js';
 
 // Version stamp to verify deployment
 console.log('WORKER BUILD:', '2025-12-23-import-fix-1');
@@ -82,11 +83,24 @@ async function getPlatformAccount(userId, platform) {
  * Process a single listing job
  */
 async function processJob(job) {
+  if (!job || !job.id) {
+    console.error("❌ Claimed job is invalid:", job);
+    return;
+  }
+
   const jobId = job.id;
   currentJobs.add(jobId);
 
   try {
-    console.log(`📦 Processing job ${jobId} for platforms: ${job.platforms.join(', ')}`);
+    const platformsArr = Array.isArray(job.platforms) ? job.platforms : [];
+    if (platformsArr.length === 0) {
+      console.error("❌ Job platforms is not an array or empty:", job.platforms, "job:", job);
+      await safeMarkJobFailed(jobId, "Job has no platforms");
+      return;
+    }
+
+    const platformsStr = platformsArr.join(', ');
+    console.log(`📦 Processing job ${jobId} for platforms: ${platformsStr}`);
 
     // Initialize browser if needed
     await initBrowser();
@@ -94,10 +108,10 @@ async function processJob(job) {
     const results = {};
 
     // Process each platform sequentially
-    for (const platform of job.platforms) {
+    for (const platform of platformsArr) {
       try {
         await updateJobProgress(jobId, {
-          percent: Math.floor((job.platforms.indexOf(platform) / job.platforms.length) * 100),
+          percent: Math.floor((platformsArr.indexOf(platform) / platformsArr.length) * 100),
           message: `Processing ${platform}...`,
         });
 
@@ -179,20 +193,40 @@ async function processJob(job) {
     const allSuccess = Object.values(results).every((r) => r.success);
     if (!allSuccess) {
       // If not all succeeded, mark as failed
-      await markJobFailed(jobId, 'Some platforms failed to list');
+      await safeMarkJobFailed(jobId, 'Some platforms failed to list');
     }
     await updateJobResult(jobId, results);
 
     console.log(`✅ Job ${jobId} completed`);
   } catch (error) {
     console.error(`❌ Job ${jobId} failed:`, error);
-    await markJobFailed(jobId, error.message);
+    await safeMarkJobFailed(jobId, error.message);
     await logJobEvent(jobId, 'error', `Job failed: ${error.message}`, {
       error: error.message,
       stack: error.stack,
     });
   } finally {
     currentJobs.delete(jobId);
+  }
+}
+
+async function safeMarkJobFailed(jobId, errMessage) {
+  if (!jobId) {
+    console.error("❌ Cannot mark failed: missing jobId", errMessage);
+    return;
+  }
+  try {
+    await supabase
+      .from('listing_jobs')
+      .update({
+        status: 'failed',
+        progress: { percent: 0, message: 'Failed' },
+        result: { error: errMessage },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+  } catch (err) {
+    console.error("❌ safeMarkJobFailed error", err);
   }
 }
 
