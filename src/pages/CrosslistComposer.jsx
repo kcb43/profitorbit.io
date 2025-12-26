@@ -35610,8 +35610,8 @@ export default function CrosslistComposer() {
           return;
         }
 
-        // Prepare listing data for extension
-        const listingData = {
+        // Prepare listing payload for Mercari
+        const listingPayload = {
           title: mercariForm.title || generalForm.title,
           description: mercariForm.description || generalForm.description || '',
           price: mercariForm.price || generalForm.price,
@@ -35632,6 +35632,12 @@ export default function CrosslistComposer() {
           minimumPrice: mercariForm.minimumPrice || '', // Minimum price for Smart Offers
         };
 
+        // Wrap in listingData shape expected by page/bridge if needed
+        const listingData = {
+          inventory_item_id: currentEditingItemId || null,
+          payload: listingPayload,
+        };
+
         // Set loading state for Mercari listing
         setIsMercariListing(true);
         setIsSaving(true);
@@ -35643,9 +35649,9 @@ export default function CrosslistComposer() {
         });
 
         const resp = await listingJobsApi.createJob(
-          null, // omit inventory_item_id for now
+          null, // omit inventory_item_id for now; payload carries details
           ['mercari'],
-          listingData
+          listingPayload
         );
 
         toast({
