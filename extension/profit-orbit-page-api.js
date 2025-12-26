@@ -84,7 +84,15 @@
 
     // Mercari listing entrypoint from page context
     createMercariListing: async function(listingData) {
-      window.__PO_LAST_CREATE = { t: Date.now(), listingData };
+      // Normalize payload shape: ensure inventory_item_id and payload wrapper
+      const normalized = listingData && listingData.payload
+        ? listingData
+        : {
+            inventory_item_id: listingData?.inventory_item_id ?? null,
+            payload: listingData || {},
+          };
+
+      window.__PO_LAST_CREATE = { t: Date.now(), listingData: normalized };
 
       return new Promise((resolve) => {
         let settled = false;
@@ -113,7 +121,7 @@
 
         window.postMessage({
           type: "PO_CREATE_MERCARI_LISTING",
-          payload: listingData,
+          payload: normalized,
           timestamp: Date.now()
         }, "*");
       });
