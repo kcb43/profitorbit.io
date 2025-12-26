@@ -862,39 +862,19 @@ export default function Crosslist() {
     return platform?.status === 'connected';
   };
 
-  // Native DOM listener to bypass React onClick issues
-  function MercariListButton({ itemId, marketplaceId }) {
+  // Mercari button with capture/bubble probes
+  function MercariListButton({ itemId, marketplaceId, onClick }) {
     console.log("🟢 MERCARI BUTTON RENDER", itemId, marketplaceId);
-    const btnRef = useRef(null);
-
-    useEffect(() => {
-      const el = btnRef.current;
-      if (!el) return;
-
-      const handler = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        fetch("/api/health", { method: "GET", credentials: "include" }).catch(() => {});
-
-        fetch("/api/listings/create-job", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            itemId,
-            marketplaceId,
-            platforms: ["mercari"],
-          }),
-        }).catch(() => {});
-      };
-
-      el.addEventListener("click", handler, { capture: true });
-      return () => el.removeEventListener("click", handler, { capture: true });
-    }, [itemId, marketplaceId]);
-
     return (
-      <button ref={btnRef} type="button" className="text-xs h-6 px-2 border rounded-md">
+      <button
+        type="button"
+        onClickCapture={() => alert("CAPTURE: MERCARI BUTTON")}
+        onClick={(e) => {
+          alert("BUBBLE: MERCARI BUTTON");
+          onClick?.(e, itemId, marketplaceId);
+        }}
+        className="text-xs h-6 px-2 border rounded-md"
+      >
         List on Mercari
         <span style={{ marginLeft: 8, fontSize: 10 }}>MERCARI_BTN_MARKER_7</span>
       </button>
@@ -1355,6 +1335,21 @@ export default function Crosslist() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+      <div
+        style={{
+          position: "fixed",
+          bottom: 10,
+          right: 10,
+          zIndex: 999999,
+          background: "black",
+          color: "lime",
+          padding: "6px 8px",
+          fontSize: 12,
+          borderRadius: 6,
+        }}
+      >
+        BUILD: crosslist-click-probe-9
+      </div>
       <div className="max-w-7xl mx-auto space-y-6 min-w-0">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
           <div className="min-w-0">
@@ -1628,7 +1623,11 @@ export default function Crosslist() {
                             </div>
                             {!isListed && isConnected && !hasActiveJob && ['mercari', 'facebook'].includes(m.id) && (
                               m.id === 'mercari' ? (
-                                <MercariListButton itemId={it.id} marketplaceId={m.id} />
+                                <MercariListButton
+                                  itemId={it.id}
+                                  marketplaceId={m.id}
+                                  onClick={handleListButtonClick}
+                                />
                               ) : (
                                 <>
                                   <button
@@ -1773,7 +1772,11 @@ export default function Crosslist() {
                             {status === 'not_listed' ? (
                               isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob ? (
                                 m.id === 'mercari' ? (
-                                  <MercariListButton itemId={it.id} marketplaceId={m.id} />
+                            <MercariListButton
+                              itemId={it.id}
+                              marketplaceId={m.id}
+                              onClick={handleListButtonClick}
+                            />
                                 ) : (
                                   <Button
                                     type="button"
