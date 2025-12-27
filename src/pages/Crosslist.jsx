@@ -905,11 +905,20 @@ export default function Crosslist() {
       alert("4️⃣ AFTER handleListOnMarketplaceItem");
 
     } catch (err) {
-      console.error("❌ WRAPPER ERROR", err);
-      alert("❌ WRAPPER ERROR: " + (err?.message || err));
+      console.error("❌ WRAPPER ERROR full:", err);
+
+      const details =
+        err?.details ||
+        err?.response?.data?.details ||
+        err?.response?.data?.error ||
+        err?.message ||
+        String(err);
+
+      alert("❌ WRAPPER ERROR: " + details);
+
       toast({
         title: 'Listing Failed',
-        description: err?.message || 'Failed to create listing job.',
+        description: details,
         variant: 'destructive',
       });
     }
