@@ -56,43 +56,63 @@ window.addEventListener("message", (event) => {
 });
 
 // Helper: extract Supabase access token from localStorage
+function parseSupabaseTokenValue(raw) {
+  if (!raw) return null;
+
+  // If the value itself is a JWT, return it
+  if (typeof raw === "string" && raw.split(".").length === 3) return raw;
+
+  try {
+    const parsed = JSON.parse(raw);
+    // Supabase common shapes (v1/v2)
+    return (
+      parsed?.currentSession?.access_token ||
+      parsed?.currentSession?.accessToken ||
+      parsed?.session?.access_token ||
+      parsed?.data?.session?.access_token ||
+      parsed?.access_token ||
+      parsed?.accessToken ||
+      null
+    );
+  } catch (_) {
+    // ignore
+  }
+
+  // Sometimes it's a JSON string embedded in a string
+  if (typeof raw === "string" && raw.includes("{") && raw.includes("access_token")) {
+    try {
+      const parsed2 = JSON.parse(raw);
+      return (
+        parsed2?.currentSession?.access_token ||
+        parsed2?.session?.access_token ||
+        parsed2?.access_token ||
+        null
+      );
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  return null;
+}
+
 function extractSupabaseToken() {
   try {
-    // Common Supabase key patterns: "supabase.auth.token" or "sb-<ref>-auth-token"
     const keys = Object.keys(localStorage);
-    for (const key of keys) {
-      if (!key.includes("auth") && !key.includes("supabase") && !key.startsWith("sb-")) {
-        continue;
-      }
+
+    // Prefer the canonical Supabase v2 key pattern first: sb-<ref>-auth-token
+    const preferred = keys
+      .filter((k) => k.startsWith("sb-") && k.endsWith("-auth-token"))
+      .concat(keys);
+
+    for (const key of preferred) {
+      if (!key.includes("auth") && !key.includes("supabase") && !key.startsWith("sb-")) continue;
       const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw);
-        const token =
-          parsed?.currentSession?.access_token ||
-          parsed?.currentSession?.accessToken ||
-          parsed?.access_token ||
-          parsed?.accessToken ||
-          null;
-        if (token) return token;
-      } catch (e) {
-        // Some Supabase SDKs store plain string
-        if (typeof raw === "string" && raw.includes("access_token")) {
-          try {
-            const maybe = JSON.parse(raw);
-            const token =
-              maybe?.currentSession?.access_token ||
-              maybe?.access_token ||
-              null;
-            if (token) return token;
-          } catch (_) {
-            // ignore
-          }
-        }
-      }
+      const token = parseSupabaseTokenValue(raw);
+      if (token) return token;
     }
-  } catch (err) {
-    // ignore and fallback
+  } catch (_) {
+    // ignore
   }
   return null;
 }
@@ -106,26 +126,40 @@ function getListingConfig() {
   return { apiUrl, authToken };
 }
 
+let __poLastMissingConfigWarnAt = 0;
 function ensurePlatformConnected(platform) {
+  const platformId =
+    typeof platform === "string"
+      ? platform
+      : platform?.platform || platform?.marketplace || platform?.id || "unknown";
+
   const { apiUrl, authToken } = getListingConfig();
-  if (!authToken || !apiUrl) {
-    console.warn("⚠️ Bridge: Missing apiUrl/authToken; cannot connect platform", { apiUrlPresent: !!apiUrl, hasToken: !!authToken });
+  // apiUrl has a default; authToken may be missing if user isn't logged in yet.
+  if (!authToken) {
+    const now = Date.now();
+    if (now - __poLastMissingConfigWarnAt > 30000) {
+      __poLastMissingConfigWarnAt = now;
+      console.warn("âš ï¸ Bridge: Missing authToken; cannot connect platform", {
+        platform: platformId,
+        apiUrl,
+      });
+    }
     return;
   }
   try {
     chrome.runtime.sendMessage(
       {
         type: "CONNECT_PLATFORM",
-        platform,
+        platform: platformId,
         apiUrl,
         authToken,
       },
       (resp) => {
-        console.log("🟣 Bridge: CONNECT_PLATFORM response", resp);
+        console.log("ðŸŸ£ Bridge: CONNECT_PLATFORM response", resp);
       }
     );
   } catch (err) {
-    console.error("🔴 Bridge: Failed to trigger CONNECT_PLATFORM", err);
+    console.error("ðŸ”´ Bridge: Failed to trigger CONNECT_PLATFORM", err);
   }
 }
 

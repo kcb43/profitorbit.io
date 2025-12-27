@@ -1034,21 +1034,6 @@ export default function Crosslist() {
         description: `Your item is being listed on ${marketplace}. Check status below.`,
       });
 
-      // Call extension page API if available
-      console.log("[F] before calling extension page API", {
-        hasExt: !!window.ProfitOrbitExtension,
-        fnType: typeof window.ProfitOrbitExtension?.createMercariListing,
-      });
-      const listingData = {
-        inventory_item_id: itemId,
-        payload,
-      };
-      // console.log("[F2] listingData keys:", listingData ? Object.keys(listingData) : null);
-      if (window.ProfitOrbitExtension?.createMercariListing) {
-        const resp = await window.ProfitOrbitExtension.createMercariListing(listingData);
-        console.log("[G] after createMercariListing", resp);
-      }
-
       return result;
     } catch (err) {
       console.error("[X] handleListOnMarketplaceItem ERROR", err);
@@ -1059,11 +1044,14 @@ export default function Crosslist() {
   };
 
   const handleJobComplete = (job) => {
+    let matchedItemId = null;
+
     // Remove from active jobs
     setActiveJobs((prev) => {
       const newJobs = { ...prev };
       Object.keys(newJobs).forEach((itemId) => {
         if (newJobs[itemId] === job.id) {
+          matchedItemId = itemId;
           delete newJobs[itemId];
         }
       });
@@ -1079,6 +1067,28 @@ export default function Crosslist() {
         title: 'Listing Complete',
         description: `Successfully listed on ${platforms.join(', ')}`,
       });
+
+      // Step 1a: only treat Mercari as success if we have a real items URL
+      const mercariListingUrl = job?.result?.mercari?.listingUrl;
+      const isMercariRealSuccess =
+        job?.result?.mercari?.success === true &&
+        typeof mercariListingUrl === 'string' &&
+        mercariListingUrl.includes('mercari.com/items/');
+
+      if (isMercariRealSuccess) {
+        const inventoryItemId = job.inventory_item_id || matchedItemId;
+        if (inventoryItemId) {
+          base44.entities.InventoryItem.update(inventoryItemId, {
+            status: 'listed',
+            mercari_listing_id: mercariListingUrl,
+          }).catch(() => {});
+        }
+
+        // Open the posted listing (may be blocked by popup blockers)
+        try {
+          window.open(mercariListingUrl, '_blank', 'noopener,noreferrer');
+        } catch {}
+      }
 
       // Refresh inventory
       queryClient.invalidateQueries(['inventoryItems']);
@@ -1831,12 +1841,20 @@ export default function Crosslist() {
                             {status === 'not_listed' ? (
                               isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob ? (
                                 m.id === 'mercari' ? (
+<<<<<<< HEAD
                             <MercariListButton
                               itemId={it.id}
                               marketplaceId={m.id}
                               onClick={(e) => handleListButtonClick(e, it.id, m.id)}
                             />
                             <span style={{ fontSize: 12, opacity: 0.7 }}>BUILD: 2025-12-26-A</span>
+=======
+                                  <MercariListButton
+                                    itemId={it.id}
+                                    marketplaceId={m.id}
+                                    onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                                  />
+>>>>>>> a617b91f5cb3abc4c2039b830ccef3dc075f405d
                                 ) : (
                                   <Button
                                     type="button"

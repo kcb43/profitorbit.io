@@ -35644,7 +35644,7 @@ export default function CrosslistComposer() {
 
         toast({
           title: "Creating Mercari Listing...",
-          description: "The extension is creating your listing in the background. This may take a few seconds.",
+          description: "Your listing job is being queued. The worker will post it in the background.",
           duration: 5000,
         });
 
@@ -35656,15 +35656,8 @@ export default function CrosslistComposer() {
 
         toast({
           title: "Mercari listing job created",
-          description: "Processing in the background. Check Mercari shortly.",
+          description: "Processing in the background. You'll see the result once the job completes.",
         });
-
-        if (currentEditingItemId) {
-          base44.entities.InventoryItem.update(currentEditingItemId, {
-            status: 'listed',
-            mercari_listing_id: resp?.listingId || '',
-          }).catch(err => console.error('Error updating inventory:', err));
-        }
 
         setIsMercariListing(false);
         setIsSaving(false);

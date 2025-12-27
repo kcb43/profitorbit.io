@@ -240,6 +240,16 @@ async function processJob(job) {
 
         // Get listing URL
         const listingUrl = await processor.getListingUrl();
+        if (platform === 'mercari') {
+          const ok =
+            typeof listingUrl === 'string' &&
+            listingUrl.includes('mercari.com/items/');
+          if (!ok) {
+            throw new Error(
+              `Mercari listingUrl not confirmed (expected mercari.com/items/...). Got: ${listingUrl || 'empty'}`
+            );
+          }
+        }
         results[platform] = {
           success: true,
           listingUrl,
