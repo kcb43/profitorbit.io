@@ -16,6 +16,8 @@ import { decrypt } from './utils-new/encryption.js';
 import { MercariProcessor } from './processors-new/mercari.js';
 import { FacebookProcessor } from './processors-new/facebook.js';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 // Version stamp to verify deployment
 console.log('WORKER BUILD:', '2025-12-23-import-fix-1');
@@ -77,12 +79,17 @@ async function getPlatformAccount(userId, platform) {
   };
 }
 
-function validateMercariPayload(p) {
+function normalizeMercariPayload(p) {
   // Normalize common fields from upstream payload shapes
+  const photos = Array.isArray(p?.photos) ? p.photos : [];
+  const imageUrls = photos
+    .map((ph) => ph?.preview)
+    .filter((u) => typeof u === 'string' && u.startsWith('http'));
+
   const normalized = {
     ...p,
     category: p?.category || p?.mercariCategory || p?.mercariCategoryId,
-    images: Array.isArray(p?.images) ? p.images : (Array.isArray(p?.photos) ? p.photos : []),
+    images: imageUrls, // default to URL list; will download before upload
     shipping: p?.shipping || {
       paidBy: p?.shipping?.paidBy || p?.shippingPayer,
       method: p?.shipping?.method || p?.deliveryMethod || p?.shippingCarrier,
@@ -112,7 +119,19 @@ function validateMercariPayload(p) {
   const imgs = normalized?.images || [];
   if (!Array.isArray(imgs) || imgs.length === 0) missing.push("images");
 
-  return { missing, normalized };
+  return { missing, normalized, imageUrls };
+}
+
+async function downloadToTmp(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to download image: ${url} (${res.status})`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const filePath = path.join(
+    os.tmpdir(),
+    `img-${Date.now()}-${Math.random().toString(16).slice(2)}.jpg`
+  );
+  await fs.promises.writeFile(filePath, buf);
+  return filePath;
 }
 
 /**
@@ -174,22 +193,35 @@ async function processJob(job) {
 
         // Validate Mercari payload before filling form
         if (platform === 'mercari') {
-          const { missing, normalized } = validateMercariPayload(job.payload);
+          const { missing, normalized, imageUrls } = normalizeMercariPayload(job.payload);
           if (missing.length) {
             const msg = `Mercari form validation errors: ${missing.join("; ")}`;
-          await safeMarkJobFailed(jobId, msg);
-          await logJobEvent(jobId, 'error', 'Mercari validation failed', { missing });
-          throw new Error(msg);
+            await safeMarkJobFailed(jobId, msg);
+            await logJobEvent(jobId, 'error', 'Mercari validation failed', { missing });
+            throw new Error(msg);
           }
-          // Use normalized payload for mercari processing
-          job.payload = normalized;
-        }
-
-        // Upload images
-        const imagePaths = job.payload.images || [];
-        if (imagePaths.length > 0) {
-          await processor.uploadImages(imagePaths);
-          await logJobEvent(jobId, 'info', `Uploaded ${imagePaths.length} images`, { platform });
+          // Download images to temp files for upload (Playwright requires file paths)
+          const localFiles = [];
+          for (const url of imageUrls) {
+            localFiles.push(await downloadToTmp(url));
+          }
+          job.payload = {
+            ...normalized,
+            images: localFiles,
+            imageUrls, // keep original urls for debugging if needed
+          };
+          // Upload images using local file paths
+          if (localFiles.length === 0) {
+            throw new Error("Mercari requires at least 1 photo. payload.photos is empty/invalid.");
+          }
+          await processor.uploadImages(localFiles);
+        } else {
+          // Upload images
+          const imagePaths = job.payload.images || [];
+          if (imagePaths.length > 0) {
+            await processor.uploadImages(imagePaths);
+            await logJobEvent(jobId, 'info', `Uploaded ${imagePaths.length} images`, { platform });
+          }
         }
 
         // Fill form
