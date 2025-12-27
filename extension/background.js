@@ -765,9 +765,25 @@ setInterval(async () => {
 let LISTING_API_URL = null;
 
 // Cookie capture functions (inline version since we can't use ES6 imports in manifest v3)
-async function exportCookies(domain) {
+// NOTE: Mercari relies on host-only cookies on https://www.mercari.com/, which may not be returned by
+// chrome.cookies.getAll({ domain: 'mercari.com' }). Prefer URL-based queries and merge results.
+async function exportCookies(domain, urls = []) {
   try {
-    const cookies = await chrome.cookies.getAll({ domain });
+    const buckets = [];
+
+    // Domain-based bucket (catches domain cookies like .mercari.com)
+    buckets.push(await chrome.cookies.getAll({ domain }));
+
+    // URL-based buckets (catches host-only cookies like www.mercari.com, including __Host-* cookies)
+    for (const url of urls) {
+      try {
+        buckets.push(await chrome.cookies.getAll({ url }));
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    const cookies = buckets.flat().filter(Boolean);
     const mapSameSite = (v) => {
       // chrome.cookies Cookie.sameSite: "no_restriction" | "lax" | "strict" | "unspecified"
       // Playwright expects: "Lax" | "Strict" | "None"
@@ -780,7 +796,7 @@ async function exportCookies(domain) {
       return undefined;
     };
 
-    return cookies.map((cookie) => {
+    const mapped = cookies.map((cookie) => {
       const expires =
         typeof cookie.expirationDate === 'number' ? cookie.expirationDate
         : typeof cookie.expires === 'number' ? cookie.expires
@@ -802,6 +818,17 @@ async function exportCookies(domain) {
       if (typeof expires === 'number') out.expires = expires;
       return out;
     });
+
+    // Dedupe by (name,domain,path) so we don't send duplicates from domain+url buckets
+    const seen = new Set();
+    const deduped = [];
+    for (const c of mapped) {
+      const key = `${c.name}::${c.domain || ''}::${c.path || ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(c);
+    }
+    return deduped;
   } catch (error) {
     console.error(`Error exporting cookies for ${domain}:`, error);
     throw error;
@@ -837,7 +864,13 @@ async function connectPlatform(platform, apiUrl, authToken) {
     }
 
     // Export cookies
-    const cookies = await exportCookies(domain);
+    const urls =
+      platform === 'mercari'
+        ? ['https://www.mercari.com/', 'https://www.mercari.com/sell/']
+        : platform === 'facebook'
+          ? ['https://www.facebook.com/']
+          : [];
+    const cookies = await exportCookies(domain, urls);
     if (cookies.length === 0) {
       throw new Error(`No cookies found for ${domain}. Please log in to ${platform} first.`);
     }
