@@ -32,17 +32,33 @@ export class MercariProcessor extends BaseProcessor {
 
     // Navigate to sell page if not already there
     if (!this.page.url().includes('mercari.com/sell')) {
+      // NOTE: `networkidle` often never happens on modern sites due to long-polling/analytics.
+      // Use domcontentloaded + explicit waits instead.
       await this.page.goto('https://www.mercari.com/sell/', {
-        waitUntil: 'networkidle',
+        waitUntil: 'domcontentloaded',
+        timeout: 90000,
       });
     }
 
     await this.checkCaptchaWall('before upload');
 
+    // If we got redirected to login, cookies/session are not valid
+    const urlNow = this.page.url();
+    if (
+      urlNow.includes('/login') ||
+      urlNow.includes('/signin') ||
+      urlNow.includes('/authenticate') ||
+      urlNow.includes('/auth')
+    ) {
+      throw new Error(
+        `Mercari session is not logged in (redirected to ${urlNow}). Reconnect Mercari in the extension and try again.`
+      );
+    }
+
     // Wait for image upload area
     const uploadArea = await this.page.waitForSelector(
       'input[type="file"]',
-      { timeout: 10000 }
+      { timeout: 30000 }
     ).catch(() => null);
 
     if (!uploadArea) {
@@ -297,7 +313,7 @@ export class MercariProcessor extends BaseProcessor {
     if (this.listingUrl && this.context) {
       try {
         const viewPage = await this.context.newPage();
-        await viewPage.goto(this.listingUrl, { waitUntil: 'networkidle', timeout: 15000 });
+        await viewPage.goto(this.listingUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await logJobEvent(this.job.id, 'info', 'Opened listing in new tab', {
           platform: 'mercari',
           listingUrl: this.listingUrl,

@@ -35,6 +35,10 @@ export class BaseProcessor {
     }
 
     this.page = await this.context.newPage();
+
+    // Mercari/Facebook can be slow and `networkidle` is unreliable; use generous defaults.
+    this.page.setDefaultTimeout(90000);
+    this.page.setDefaultNavigationTimeout(90000);
   }
 
   /**
