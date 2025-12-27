@@ -40,6 +40,23 @@ router.post('/connect', requireAuth, async (req, res) => {
       });
     }
 
+    // Mercari sanity check: if we only received Cloudflare cookies, the user is not actually connected.
+    if (platform === 'mercari') {
+      const names = (cookies || []).map((c) => c?.name).filter(Boolean);
+      const onlyCloudflare =
+        names.length > 0 &&
+        names.every((n) => typeof n === 'string' && (n.startsWith('__cf') || n.startsWith('_cf')));
+      if (onlyCloudflare || names.length < 6) {
+        return res.status(400).json({
+          error:
+            'Mercari connect failed: captured cookies look incomplete (not logged in). ' +
+            'Open `https://www.mercari.com/sell/` in the same Chrome profile, ensure you are logged in, then reconnect.',
+          cookieCount: names.length,
+          cookieSample: names.slice(0, 25),
+        });
+      }
+    }
+
     // Encrypt cookies
     const sessionPayload = {
       cookies,

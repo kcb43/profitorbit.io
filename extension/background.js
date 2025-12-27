@@ -767,7 +767,7 @@ let LISTING_API_URL = null;
 // Cookie capture functions (inline version since we can't use ES6 imports in manifest v3)
 // NOTE: Mercari relies on host-only cookies on https://www.mercari.com/, which may not be returned by
 // chrome.cookies.getAll({ domain: 'mercari.com' }). Prefer URL-based queries and merge results.
-async function exportCookies(domain, urls = []) {
+async function exportCookies(domain, urls = [], extraCookies = []) {
   try {
     const buckets = [];
 
@@ -781,6 +781,10 @@ async function exportCookies(domain, urls = []) {
       } catch (_) {
         // ignore
       }
+    }
+
+    if (Array.isArray(extraCookies) && extraCookies.length) {
+      buckets.push(extraCookies);
     }
 
     const cookies = buckets.flat().filter(Boolean);
@@ -872,19 +876,46 @@ async function connectPlatform(platform, apiUrl, authToken) {
     // Export cookies
     const urls =
       platform === 'mercari'
-        ? ['https://www.mercari.com/', 'https://www.mercari.com/sell/']
+        ? [
+            'https://www.mercari.com/',
+            'https://www.mercari.com/sell/',
+            'https://www.mercari.com/sell',
+            'https://mercari.com/',
+            'https://mercari.com/sell/',
+          ]
         : platform === 'facebook'
           ? ['https://www.facebook.com/']
           : [];
-    const cookies = await exportCookies(domain, urls);
+
+    // Also collect *all* mercari cookies from the jar (covers auth.mercari.com and other subdomains)
+    let extraCookies = [];
+    if (platform === 'mercari') {
+      try {
+        const all = await chrome.cookies.getAll({});
+        extraCookies = (all || []).filter((c) => typeof c?.domain === 'string' && c.domain.includes('mercari'));
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    const cookies = await exportCookies(domain, urls, extraCookies);
     const urlCookieCount = cookies.filter((c) => typeof c?.url === 'string' && c.url.startsWith('http')).length;
     const cookieNamesSample = cookies.slice(0, 25).map((c) => c.name).join(',');
     const hasHost = cookies.some((c) => typeof c?.name === 'string' && c.name.startsWith('__Host-'));
+    const onlyCloudflare =
+      cookies.length > 0 &&
+      cookies.every((c) => typeof c?.name === 'string' && (c.name.startsWith('__cf') || c.name.startsWith('_cf')));
     console.log(
       `🍪 CONNECT_PLATFORM cookie export: platform=${platform} total=${cookies.length} urlCookies=${urlCookieCount} has__Host=${hasHost} sample=${cookieNamesSample}`
     );
     if (cookies.length === 0) {
       throw new Error(`No cookies found for ${domain}. Please log in to ${platform} first.`);
+    }
+    if (platform === 'mercari' && (onlyCloudflare || cookies.length < 6)) {
+      throw new Error(
+        `Mercari cookies captured look incomplete (cookieCount=${cookies.length}, urlCookies=${urlCookieCount}). ` +
+          `Please ensure you're logged into Mercari in THIS Chrome profile, visit https://www.mercari.com/sell/ once, then reconnect.`
+      );
     }
 
     // Get user agent
