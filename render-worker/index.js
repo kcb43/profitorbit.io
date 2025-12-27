@@ -21,7 +21,7 @@ import os from 'os';
 import path from 'path';
 
 // Version stamp to verify deployment
-console.log('WORKER BUILD:', '2025-12-27-worker-fix-3');
+console.log('WORKER BUILD:', '2025-12-27-worker-fix-4');
 
 // Debug: Log container file structure
 console.log('FILES IN /app:', fs.readdirSync('/app'));
@@ -131,9 +131,24 @@ async function getPlatformAccount(userId, platform) {
 
   // Decrypt session payload
   const decrypted = decrypt(data.session_payload_encrypted);
+  let parsed = null;
+  try {
+    parsed = typeof decrypted === 'string' ? JSON.parse(decrypted) : decrypted;
+  } catch (e) {
+    throw new Error(
+      `Failed to parse decrypted platform session payload JSON for ${platform}. ` +
+        `Reconnect the platform. (${e?.message || e})`
+    );
+  }
+
+  const cookieCount = Array.isArray(parsed?.cookies) ? parsed.cookies.length : 0;
+  const urlCookieCount = Array.isArray(parsed?.cookies)
+    ? parsed.cookies.filter((c) => typeof c?.url === 'string' && c.url.startsWith('http')).length
+    : 0;
+  console.log(`🍪 Platform session for ${platform}: cookies=${cookieCount} urlCookies=${urlCookieCount}`);
   return {
     ...data,
-    session_payload_encrypted: decrypted,
+    session_payload_encrypted: parsed,
   };
 }
 
