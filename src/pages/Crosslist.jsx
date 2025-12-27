@@ -917,13 +917,14 @@ export default function Crosslist() {
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
-    console.log("🧠 HANDLE LIST ENTER", { itemId, marketplace });
-    // Normalize marketplace for comparison
-    const normalizedMarketplace = String(marketplace).toLowerCase().trim();
-    
-    setCrosslistLoading(true);
-    
+    console.log("A️⃣ ENTER handleListOnMarketplaceItem", { itemId, marketplace });
     try {
+      console.log("B️⃣ normalize marketplace");
+      // Normalize marketplace for comparison
+      const normalizedMarketplace = String(marketplace).toLowerCase().trim();
+    
+      setCrosslistLoading(true);
+    
       // Only support Mercari and Facebook for now (automation system)
       if (!['mercari', 'facebook'].includes(normalizedMarketplace)) {
         // Fallback to old system for other platforms
@@ -982,12 +983,34 @@ export default function Crosslist() {
         return;
       }
 
+      console.log("C️⃣ before building listingData");
       // Get inventory item
       const inventoryItem = inventory.find((item) => item.id === itemId);
       if (!inventoryItem) {
         throw new Error('Inventory item not found');
       }
 
+      console.log("D️⃣ before platform connected checks");
+      // Check platform connection via localStorage flag set by extension
+      const isPlatformConnected = (id) => {
+        if (typeof window === "undefined") return false;
+        return localStorage.getItem(`profit_orbit_${id}_connected`) === "true";
+      };
+
+      const required = [normalizedMarketplace];
+      const notConnected = required.filter((p) => !isPlatformConnected(p));
+
+      if (notConnected.length > 0) {
+        toast({
+          title: 'Platform Not Connected',
+          description: `Please connect your ${notConnected.join(', ')} account first using the Chrome extension.`,
+          variant: 'destructive',
+        });
+        setShowPlatformConnect(true);
+        return;
+      }
+
+      console.log("C️⃣ before building listingData");
       // Prepare payload from inventory item
       const payload = {
         title: inventoryItem.item_name || '',
@@ -999,7 +1022,8 @@ export default function Crosslist() {
       };
 
       // Create listing job directly via API
-      console.log("🌍 ABOUT TO POST create-job", payload);
+      console.log("E️⃣ before API create-job");
+      console.log("E2 payload", payload);
       const result = await listingJobsApi.createJob(itemId, [normalizedMarketplace], payload);
       console.log("🌍 create-job result", result);
 
@@ -1019,6 +1043,7 @@ export default function Crosslist() {
         description: error.message || `Failed to start listing on ${marketplace}.`,
         variant: 'destructive',
       });
+      console.error("❌ handleListOnMarketplaceItem ERROR", error);
       throw error; // Re-throw so handleListButtonClick can catch it
     } finally {
       setCrosslistLoading(false);
