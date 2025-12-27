@@ -12,6 +12,9 @@ export class MercariProcessor extends BaseProcessor {
       'text=/verify/i',
       'text=/robot/i',
       'text=/unusual traffic/i',
+      'text=/just a moment/i',
+      'text=/checking your browser/i',
+      'text=/access denied/i',
       'iframe[src*="captcha"]',
       'iframe[src*="hcaptcha"]',
       'iframe[src*="recaptcha"]',
@@ -55,14 +58,58 @@ export class MercariProcessor extends BaseProcessor {
       );
     }
 
-    // Wait for image upload area
-    const uploadArea = await this.page.waitForSelector(
+    // Mercari often hides the file input behind an "Add photos" UI.
+    // Try to reveal it and then locate a usable input[type=file].
+    const fileInputSelectors = [
       'input[type="file"]',
-      { timeout: 30000 }
-    ).catch(() => null);
+      'input[type="file"][accept*="image"]',
+      'form input[type="file"]',
+    ];
+
+    const revealSelectors = [
+      'button:has-text("Add photos")',
+      'button:has-text("Add photo")',
+      'button:has-text("Add")',
+      'button:has-text("Upload")',
+      'text=/add photos/i',
+      'text=/upload/i',
+      '[data-testid*="photo"]',
+    ];
+
+    let uploadArea = null;
+
+    // Try a few rounds: check for file input, otherwise click "reveal" controls.
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      for (const sel of fileInputSelectors) {
+        uploadArea = await this.page.waitForSelector(sel, { timeout: 5000 }).catch(() => null);
+        if (uploadArea) break;
+      }
+      if (uploadArea) break;
+
+      for (const rs of revealSelectors) {
+        const loc = this.page.locator(rs).first();
+        const visible = await loc.isVisible().catch(() => false);
+        if (!visible) continue;
+        await loc.click({ timeout: 5000 }).catch(() => {});
+        await this.page.waitForTimeout(750);
+        break;
+      }
+    }
 
     if (!uploadArea) {
-      throw new Error('Could not find image upload area on Mercari');
+      const url = this.page.url();
+      const title = await this.page.title().catch(() => 'unknown');
+      try {
+        await this.page.screenshot({ path: `/tmp/mercari-no-upload-area-${this.job.id}.png`, fullPage: true });
+        const html = await this.page.content().catch(() => '');
+        await import('fs').then((fs) => {
+          fs.writeFileSync(`/tmp/mercari-no-upload-area-${this.job.id}.html`, html);
+        });
+        console.log(`🧾 Saved /tmp/mercari-no-upload-area-${this.job.id}.png and .html`);
+      } catch (e) {
+        console.log('⚠️ Could not save Mercari debug artifacts:', e?.message || e);
+      }
+      throw new Error(`Could not find image upload area on Mercari (url=${url} title=${title})`);
     }
 
     // Download and upload each image
