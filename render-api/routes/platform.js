@@ -49,39 +49,62 @@ router.post('/connect', requireAuth, async (req, res) => {
 
     const encryptedPayload = encrypt(sessionPayload);
 
-    // Upsert into platform_accounts
-    const { data, error } = await supabase
-      .from('platform_accounts')
-      .upsert(
-        {
-          user_id: userId,
-          platform,
-          status: 'connected',
-          session_payload_encrypted: encryptedPayload,
-          session_meta: meta || {},
-          last_verified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'user_id,platform',
-        }
-      )
-      .select()
-      .single();
+    // Save into platform_accounts.
+    // NOTE: Supabase upsert with onConflict requires a UNIQUE constraint on (user_id, platform).
+    // Some environments may not have that constraint yet. To avoid hard-failing, do update-then-insert.
+    const row = {
+      user_id: userId,
+      platform,
+      status: 'connected',
+      session_payload_encrypted: encryptedPayload,
+      session_meta: meta || {},
+      last_verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      console.error('Database error:', error);
+    // 1) Try update existing row
+    const { data: updated, error: uErr } = await supabase
+      .from('platform_accounts')
+      .update(row)
+      .eq('user_id', userId)
+      .eq('platform', platform)
+      .select()
+      .maybeSingle();
+
+    if (uErr) {
+      console.error('Database update error:', uErr);
       return res.status(500).json({
         error: 'Failed to save platform connection',
-        details: error.message,
+        details: uErr.message,
+        code: uErr.code,
       });
+    }
+
+    // 2) If no existing row, insert new
+    let saved = updated;
+    if (!saved) {
+      const { data: inserted, error: iErr } = await supabase
+        .from('platform_accounts')
+        .insert(row)
+        .select()
+        .single();
+
+      if (iErr) {
+        console.error('Database insert error:', iErr);
+        return res.status(500).json({
+          error: 'Failed to save platform connection',
+          details: iErr.message,
+          code: iErr.code,
+        });
+      }
+      saved = inserted;
     }
 
     res.json({
       success: true,
       platform,
       status: 'connected',
-      accountId: data.id,
+      accountId: saved.id,
     });
   } catch (error) {
     console.error('Platform connect error:', error);
