@@ -4,6 +4,7 @@
  */
 
 console.log('Profit Orbit Extension: Background script loaded');
+console.log('EXT BUILD:', '2025-12-27-connect-debug-2');
 
 // Track Mercari automation tabs to keep them hidden
 const mercariAutomationTabs = new Set();
@@ -324,7 +325,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       } catch (error) {
         console.error('❌ Error in Facebook listing flow:', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({ success: false, error: error?.message || String(error) });
       }
     })();
     
@@ -830,13 +831,34 @@ async function connectPlatform(platform, apiUrl, authToken) {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `API error: ${response.status}`);
+    // Always read raw text so we can show it in logs even if it's not JSON
+    const text = await response.text().catch(() => '');
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (_) {
+      data = null;
     }
 
-    const data = await response.json();
-    return data;
+    if (!response.ok) {
+      console.error('❌ CONNECT_PLATFORM failed', {
+        platform,
+        apiUrl,
+        status: response.status,
+        statusText: response.statusText,
+        body: (text || '').slice(0, 800),
+      });
+      const msg =
+        data?.error ||
+        data?.message ||
+        `API error: ${response.status}${text ? ` - ${text.slice(0, 300)}` : ''}`;
+      const details = data?.details ? ` | details: ${data.details}` : '';
+      const code = data?.code ? ` | code: ${data.code}` : '';
+      throw new Error(`${msg}${details}${code}`);
+    }
+
+    // If API returned no JSON body, still treat as success
+    return data || { success: true };
   } catch (error) {
     console.error(`Error connecting platform ${platform}:`, error);
     throw error;
@@ -861,7 +883,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, result });
       } catch (error) {
         console.error('Platform connection error:', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({ success: false, error: error?.message || String(error) });
       }
     })();
     return true; // Keep channel open for async response

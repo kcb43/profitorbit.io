@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Profit Orbit - Crosslisting Assistant",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "description": "Automate crosslisting on Mercari, Facebook, Poshmark, eBay, and more",
   "permissions": [
     "storage",
@@ -19,7 +19,8 @@
     "https://profitorbit.io/*",
     "https://*.vercel.app/*",
     "http://localhost:5173/*",
-    "http://localhost:5174/*"
+    "http://localhost:5174/*",
+    "https://*.fly.dev/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -33,7 +34,9 @@
         "https://www.ebay.com/*",
         "https://www.etsy.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -43,13 +46,17 @@
         "http://localhost:5173/*",
         "http://localhost:5174/*"
       ],
-      "js": ["profit-orbit-bridge.js"],
+      "js": [
+        "profit-orbit-bridge.js"
+      ],
       "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["profit-orbit-page-api.js"],
+      "resources": [
+        "profit-orbit-page-api.js"
+      ],
       "matches": [
         "https://profitorbit.io/*",
         "https://*.vercel.app/*",
@@ -80,4 +87,3 @@
     ]
   }
 }
-
