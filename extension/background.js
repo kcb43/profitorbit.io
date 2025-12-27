@@ -824,11 +824,12 @@ async function exportCookies(domain, urls = []) {
       return out;
     });
 
-    // Dedupe by (name,domain,path) so we don't send duplicates from domain+url buckets
+    // Dedupe so we don't send duplicates from domain+url buckets.
+    // IMPORTANT: include `url` in the key because url-cookies and domain-cookies must coexist.
     const seen = new Set();
     const deduped = [];
     for (const c of mapped) {
-      const key = `${c.name}::${c.domain || ''}::${c.path || ''}`;
+      const key = `${c.name}::${c.url || ''}::${c.domain || ''}::${c.path || ''}`;
       if (seen.has(key)) continue;
       seen.add(key);
       deduped.push(c);
@@ -876,6 +877,8 @@ async function connectPlatform(platform, apiUrl, authToken) {
           ? ['https://www.facebook.com/']
           : [];
     const cookies = await exportCookies(domain, urls);
+    const urlCookieCount = cookies.filter((c) => typeof c?.url === 'string' && c.url.startsWith('http')).length;
+    console.log(`🍪 CONNECT_PLATFORM cookie export: platform=${platform} total=${cookies.length} urlCookies=${urlCookieCount}`);
     if (cookies.length === 0) {
       throw new Error(`No cookies found for ${domain}. Please log in to ${platform} first.`);
     }

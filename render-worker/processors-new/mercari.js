@@ -45,18 +45,22 @@ export class MercariProcessor extends BaseProcessor {
 
     await this.checkCaptchaWall('before upload');
 
+    const ensureStillOnSell = async (label) => {
+      const u = this.page.url();
+      if (
+        u.includes('/login') ||
+        u.includes('/signin') ||
+        u.includes('/authenticate') ||
+        u.includes('/auth')
+      ) {
+        throw new Error(
+          `Mercari session is not logged in (redirected to ${u}) (${label}). Reconnect Mercari in the extension and try again.`
+        );
+      }
+    };
+
     // If we got redirected to login, cookies/session are not valid
-    const urlNow = this.page.url();
-    if (
-      urlNow.includes('/login') ||
-      urlNow.includes('/signin') ||
-      urlNow.includes('/authenticate') ||
-      urlNow.includes('/auth')
-    ) {
-      throw new Error(
-        `Mercari session is not logged in (redirected to ${urlNow}). Reconnect Mercari in the extension and try again.`
-      );
-    }
+    await ensureStillOnSell('after goto');
 
     // Mercari often hides the file input behind an "Add photos" UI.
     // Try to reveal it and then locate a usable input[type=file].
@@ -80,6 +84,7 @@ export class MercariProcessor extends BaseProcessor {
 
     // Try a few rounds: check for file input, otherwise click "reveal" controls.
     for (let attempt = 1; attempt <= 4; attempt++) {
+      await ensureStillOnSell(`attempt ${attempt}`);
       for (const sel of fileInputSelectors) {
         uploadArea = await this.page.waitForSelector(sel, { timeout: 5000 }).catch(() => null);
         if (uploadArea) break;

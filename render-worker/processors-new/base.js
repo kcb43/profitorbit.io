@@ -79,6 +79,19 @@ export class BaseProcessor {
       const normalized = this.normalizeCookiesForPlaywright(this.cookies);
       console.log(`🍪 Adding cookies: raw=${this.cookies.length} normalized=${normalized.length}`);
       await this.context.addCookies(normalized);
+
+      // Verify cookies actually landed in the context (helps debug Mercari login redirects)
+      try {
+        const applied = await this.context.cookies('https://www.mercari.com/');
+        const hostCookies = applied.filter((c) => typeof c?.domain === 'string' && c.domain.includes('mercari'));
+        const hostNames = hostCookies.slice(0, 12).map((c) => c.name);
+        const hasHostPrefix = hostCookies.some((c) => typeof c?.name === 'string' && c.name.startsWith('__Host-'));
+        console.log(
+          `🍪 Context cookies for mercari.com: count=${hostCookies.length} has__Host=${hasHostPrefix} sample=${hostNames.join(',')}`
+        );
+      } catch (e) {
+        console.log('⚠️ Could not verify applied cookies:', e?.message || e);
+      }
     }
 
     this.page = await this.context.newPage();
