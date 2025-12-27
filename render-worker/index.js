@@ -216,11 +216,17 @@ async function processJob(job) {
           }
           await processor.uploadImages(localFiles);
         } else {
-          // Upload images
-          const imagePaths = job.payload.images || [];
-          if (imagePaths.length > 0) {
-            await processor.uploadImages(imagePaths);
-            await logJobEvent(jobId, 'info', `Uploaded ${imagePaths.length} images`, { platform });
+          const imageUrls = Array.isArray(job.payload.images) ? job.payload.images
+            : Array.isArray(job.payload.photos) ? job.payload.photos.map(p => p.preview || p.imageUrl).filter(Boolean)
+            : [];
+
+          console.log("🖼️ Images resolved:", imageUrls.length);
+
+          if (imageUrls.length > 0) {
+            await processor.uploadImages(imageUrls);
+            await logJobEvent(jobId, 'info', `Uploaded ${imageUrls.length} images`, { platform });
+          } else {
+            throw new Error("No images provided (Mercari requires at least 1 photo).");
           }
         }
 
