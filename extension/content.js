@@ -744,10 +744,18 @@ async function createMercariListing(listingData, options = {}) {
     
     // No wait needed - form fields are set synchronously
     
-    // Upload photos if present (using extension method with Mercari's GraphQL API)
+    // Upload photos (required by Mercari)
     const hasPhotos = listingData.photos && listingData.photos.length > 0;
     if (hasPhotos) {
       console.log(`📸 [MERCARI] Starting photo upload for ${listingData.photos.length} photo(s)...`);
+
+      // Ensure the photo uploader UI is opened (Mercari often hides the file input until you click
+      // "Add up to 12 photos / drag and drop").
+      try {
+        await ensureMercariPhotoUploaderOpen();
+      } catch (e) {
+        console.warn('⚠️ [MERCARI] Could not explicitly open photo uploader UI:', e?.message || e);
+      }
       
       // Headers should already be captured from page load - no wait needed
       if (!capturedMercariHeaders || Object.keys(capturedMercariHeaders).length === 0) {
@@ -768,11 +776,9 @@ async function createMercariListing(listingData, options = {}) {
         const uploadResult = await uploadMercariPhotos(listingData.photos);
         if (!uploadResult.success) {
           console.error('❌ [MERCARI] Photo upload failed:', uploadResult.error);
-          alert(`❌ Photo Upload Failed\n\n${JSON.stringify({ error: uploadResult.error }, null, 2)}`);
           return {
             success: false,
-            error: `Photo upload failed: ${uploadResult.error}`,
-            requiresManualPhotoUpload: true
+            error: `Photo upload failed: ${uploadResult.error}`
           };
         }
         console.log(`✅ [MERCARI] All photos uploaded successfully! Upload IDs: ${uploadResult.uploadIds.join(', ')}`);
@@ -781,24 +787,23 @@ async function createMercariListing(listingData, options = {}) {
         console.error('❌ [MERCARI] Photo upload error:', error);
         return {
           success: false,
-          error: `Photo upload error: ${error.message}`,
-          requiresManualPhotoUpload: true
+          error: `Photo upload error: ${error.message}`
         };
       }
+    } else {
+      // User expectation: photos should carry over from the app listing. Mercari requires at least one photo.
+      return {
+        success: false,
+        error: 'No photos provided. Mercari requires at least 1 photo to list.',
+      };
     }
     
     // Check if photos are required but not uploaded
-    const photoCount = document.querySelectorAll('[data-testid="Photo"]').length;
-    const photosInData = listingData.photos && listingData.photos.length > 0;
-    
-    if (photoCount === 0 && !photosInData) {
-      console.log('⚠️ [MERCARI] No photos provided, manual upload required');
-      return {
-        success: true,
-        message: 'Form filled successfully. Please upload at least one photo manually and click the List button.',
-        requiresManualPhotoUpload: true,
-        filled: true
-      };
+    const photoCount =
+      document.querySelectorAll('[data-testid="Photo"]').length ||
+      document.querySelectorAll('img[src^="blob:"]').length;
+    if (photoCount === 0) {
+      return { success: false, error: 'Mercari did not register any uploaded photos.' };
     }
     
     // Handle any popups that might have appeared after photo upload (non-blocking)
@@ -1988,17 +1993,23 @@ async function uploadMercariPhotos(photos) {
       try {
         console.log(`📁 [FILE INPUT] Setting ${photoBlobs.length} photo(s) to file input...`);
         
-        // Find the file input element
-        const fileInput = document.querySelector('input[data-testid="SellPhotoInput"]');
+        // Ensure the photo uploader UI is opened (reveals file input)
+        await ensureMercariPhotoUploaderOpen();
+
+        // Find the file input element (try multiple selectors)
+        const fileInput =
+          document.querySelector('input[data-testid="SellPhotoInput"]') ||
+          document.querySelector('input[type="file"][accept*="image"]') ||
+          document.querySelector('input[type="file"]');
         
         if (!fileInput) {
-          console.warn(`⚠️ [FILE INPUT] File input not found with data-testid="SellPhotoInput"`);
+          console.warn(`⚠️ [FILE INPUT] File input not found (SellPhotoInput / input[type=file])`);
         } else {
           // Create a DataTransfer object to hold the files
           const dataTransfer = new DataTransfer();
           
           // Add each blob as a file to the DataTransfer
-          photoBlobs.forEach((blob, index) => {
+          photoBlobs.slice(0, 12).forEach((blob, index) => {
             // Create a File object from the blob with a proper name
             const file = new File([blob], `photo-${index + 1}.jpg`, { type: 'image/jpeg' });
             dataTransfer.items.add(file);
@@ -2014,6 +2025,15 @@ async function uploadMercariPhotos(photos) {
           fileInput.dispatchEvent(changeEvent);
           
           console.log(`✅ [FILE INPUT] Change event triggered`);
+
+          // Wait for thumbnails to appear so submit validation sees photos
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const count =
+              document.querySelectorAll('[data-testid="Photo"]').length ||
+              document.querySelectorAll('img[src^="blob:"]').length;
+            if (count > 0) break;
+            await sleep(250);
+          }
         }
       } catch (fileInputError) {
         console.warn(`⚠️ [FILE INPUT] Error setting files to input:`, fileInputError);
@@ -2387,6 +2407,50 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Ensure Mercari's sell photo uploader UI is open (reveals the file input).
+async function ensureMercariPhotoUploaderOpen() {
+  // If the input is already present, we’re done.
+  const existing =
+    document.querySelector('input[data-testid="SellPhotoInput"]') ||
+    document.querySelector('input[type="file"][accept*="image"]') ||
+    document.querySelector('input[type="file"]');
+  if (existing) return true;
+
+  const candidates = [];
+  candidates.push(...Array.from(document.querySelectorAll('button')));
+  candidates.push(...Array.from(document.querySelectorAll('[role="button"]')));
+  candidates.push(...Array.from(document.querySelectorAll('label')));
+  candidates.push(...Array.from(document.querySelectorAll('div')));
+
+  const matchText = (el) => {
+    const t = (el?.textContent || '').trim().toLowerCase();
+    if (!t) return false;
+    if (t.includes('add up to') && t.includes('photos')) return true;
+    if (t.includes('drag and drop') && t.includes('photos')) return true;
+    if (t.includes('add photos')) return true;
+    if (t.includes('add photo')) return true;
+    return false;
+  };
+
+  const clickable = candidates.find((el) => matchText(el) && el.offsetParent !== null);
+  if (clickable) {
+    clickable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await sleep(100);
+    try {
+      clickable.click();
+    } catch (_) {
+      // ignore
+    }
+    await sleep(250);
+  }
+
+  const after =
+    document.querySelector('input[data-testid="SellPhotoInput"]') ||
+    document.querySelector('input[type="file"][accept*="image"]') ||
+    document.querySelector('input[type="file"]');
+  return !!after;
+}
+
 // Submit Mercari form
 // Helper function to set brand (reusable)
 async function setMercariBrand(brand) {
@@ -2650,12 +2714,17 @@ async function submitMercariForm(brandToVerify = null) {
     
     console.log('📤 [FORM SUBMIT] Looking for List button (fresh query)...');
     // Find the List button using actual Mercari selector - query fresh each time
-    const submitBtn = document.querySelector('[data-testid="ListButton"]') ||
-                     document.querySelector('button[type="submit"]') ||
-                     document.querySelector('button:contains("List")') ||
-                     Array.from(document.querySelectorAll('button')).find(btn => 
-                       btn.textContent?.trim().toLowerCase().includes('list')
-                     );
+    const findListButton = () => {
+      const byTestId = document.querySelector('[data-testid="ListButton"]');
+      if (byTestId) return byTestId;
+      // Avoid invalid CSS pseudo selectors (e.g. :contains)
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const byText = buttons.find((btn) => (btn.textContent || '').trim().toLowerCase() === 'list')
+        || buttons.find((btn) => (btn.textContent || '').trim().toLowerCase().includes('list'));
+      return byText || document.querySelector('button[type="submit"]');
+    };
+
+    const submitBtn = findListButton();
     
     if (!submitBtn) {
       console.error('❌ [FORM SUBMIT] List button not found');
@@ -2708,11 +2777,7 @@ async function submitMercariForm(brandToVerify = null) {
       await sleep(500); // Check every 500ms
       
       // Re-fetch button to get latest state
-      finalSubmitBtn = document.querySelector('[data-testid="ListButton"]') ||
-                       document.querySelector('button[type="submit"]') ||
-                       Array.from(document.querySelectorAll('button')).find(btn => 
-                         btn.textContent?.trim().toLowerCase().includes('list')
-                       );
+      finalSubmitBtn = findListButton();
       
       if (!finalSubmitBtn) {
         console.warn(`⚠️ [FORM SUBMIT] Button not found (attempt ${waitAttempt + 1}/10)`);
