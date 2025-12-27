@@ -886,27 +886,38 @@ export default function Crosslist() {
 
   // Wrapper function for button clicks - moves async logic out of JSX
   const handleListButtonClick = async (e, itemId, marketplace) => {
-    console.log("🟣 CLICK HANDLER START", Date.now());
-    alert("CLICK HANDLER START");
-    console.log("🟣 CLICK WRAPPER HIT", { itemId, marketplaceId: marketplace, t: Date.now() });
-    window.__lastListClick = { itemId, marketplaceId: marketplace, t: Date.now() };
-    alert("CLICK WRAPPER HIT");
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    console.log("1️⃣ CLICK HANDLER START", { itemId, marketplace });
+    alert("1️⃣ CLICK HANDLER START");
+
     try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      console.log("2️⃣ AFTER preventDefault");
+
+      console.log("3️⃣ BEFORE handleListOnMarketplaceItem");
+      alert("3️⃣ BEFORE handleListOnMarketplaceItem");
+
       await handleListOnMarketplaceItem(itemId, marketplace);
-    } catch (error) {
+
+      console.log("4️⃣ AFTER handleListOnMarketplaceItem");
+      alert("4️⃣ AFTER handleListOnMarketplaceItem");
+
+    } catch (err) {
+      console.error("❌ WRAPPER ERROR", err);
+      alert("❌ WRAPPER ERROR: " + (err?.message || err));
       toast({
         title: 'Listing Failed',
-        description: error.message || 'Failed to create listing job.',
+        description: err?.message || 'Failed to create listing job.',
         variant: 'destructive',
       });
     }
+    console.log("5️⃣ WRAPPER END");
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
+    console.log("🧠 HANDLE LIST ENTER", { itemId, marketplace });
     // Normalize marketplace for comparison
     const normalizedMarketplace = String(marketplace).toLowerCase().trim();
     
@@ -988,7 +999,9 @@ export default function Crosslist() {
       };
 
       // Create listing job directly via API
+      console.log("🌍 ABOUT TO POST create-job", payload);
       const result = await listingJobsApi.createJob(itemId, [normalizedMarketplace], payload);
+      console.log("🌍 create-job result", result);
 
       // Track the job
       setActiveJobs((prev) => ({
