@@ -4,8 +4,47 @@
 
 import { BaseProcessor } from './base.js';
 import { updateJobProgress, logJobEvent } from '../utils-new/db.js';
+import { uploadArtifact, uploadTextArtifact, getPublicUrl } from '../utils-new/storage.js';
 
 export class MercariProcessor extends BaseProcessor {
+  async uploadMercariDebugArtifacts(kind) {
+    // Default bucket: reuse existing listing-photos bucket to avoid infra changes.
+    // If you prefer a separate bucket, set WORKER_DEBUG_BUCKET=worker-debug and create it in Supabase.
+    const bucket = process.env.WORKER_DEBUG_BUCKET || 'listing-photos';
+    const jobId = this.job?.id || 'unknown-job';
+    const basePath = `debug/mercari/${jobId}/${Date.now()}-${kind}`;
+
+    const url = this.page?.url?.() || null;
+    const title = await this.page.title().catch(() => 'unknown');
+
+    // Capture in-memory artifacts (no /tmp dependency)
+    const png = await this.page.screenshot({ fullPage: true, type: 'png' });
+    const html = await this.page.content().catch(() => '');
+
+    const pngPath = `${basePath}.png`;
+    const htmlPath = `${basePath}.html`;
+
+    await uploadArtifact(bucket, pngPath, png, 'image/png');
+    await uploadTextArtifact(bucket, htmlPath, html, 'text/html; charset=utf-8');
+
+    const pngUrl = getPublicUrl(bucket, pngPath);
+    const htmlUrl = getPublicUrl(bucket, htmlPath);
+
+    await logJobEvent(jobId, 'info', 'Uploaded Mercari debug artifacts', {
+      platform: 'mercari',
+      bucket,
+      pngPath,
+      htmlPath,
+      pngUrl,
+      htmlUrl,
+      url,
+      title,
+    });
+
+    console.log(`🧾 Uploaded debug artifacts: ${bucket}/${pngPath} and ${bucket}/${htmlPath}`);
+    return { bucket, pngPath, htmlPath, pngUrl, htmlUrl, url, title };
+  }
+
   async checkCaptchaWall(label) {
     const captchaHints = [
       'text=/captcha/i',
@@ -67,14 +106,16 @@ export class MercariProcessor extends BaseProcessor {
     if (!sellFormReady) {
       const url = this.page.url();
       const title = await this.page.title().catch(() => 'unknown');
+      let artifactInfo = null;
       try {
-        await this.page.screenshot({ path: `/tmp/mercari-sell-form-missing-${this.job.id}.png`, fullPage: true });
-      } catch (_) {
-        // ignore
+        artifactInfo = await this.uploadMercariDebugArtifacts('sell-form-missing');
+      } catch (e) {
+        console.log('⚠️ Could not upload Mercari debug artifacts:', e?.message || e);
       }
       throw new Error(
         `Mercari sell form did not render (url=${url} title=${title}). ` +
-          `This is usually an account gate (e.g. W-9/verification) or a different sell UI variant.`
+          `This is usually an account gate (e.g. W-9/verification) or a different sell UI variant.` +
+          (artifactInfo?.pngUrl ? ` Debug screenshot: ${artifactInfo.pngUrl}` : '')
       );
     }
 
@@ -126,14 +167,9 @@ export class MercariProcessor extends BaseProcessor {
       const url = this.page.url();
       const title = await this.page.title().catch(() => 'unknown');
       try {
-        await this.page.screenshot({ path: `/tmp/mercari-no-upload-area-${this.job.id}.png`, fullPage: true });
-        const html = await this.page.content().catch(() => '');
-        await import('fs').then((fs) => {
-          fs.writeFileSync(`/tmp/mercari-no-upload-area-${this.job.id}.html`, html);
-        });
-        console.log(`🧾 Saved /tmp/mercari-no-upload-area-${this.job.id}.png and .html`);
+        await this.uploadMercariDebugArtifacts('no-upload-area');
       } catch (e) {
-        console.log('⚠️ Could not save Mercari debug artifacts:', e?.message || e);
+        console.log('⚠️ Could not upload Mercari debug artifacts:', e?.message || e);
       }
       throw new Error(`Could not find image upload area on Mercari (url=${url} title=${title})`);
     }

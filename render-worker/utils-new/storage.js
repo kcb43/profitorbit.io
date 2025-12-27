@@ -34,3 +34,24 @@ export function getPublicUrl(bucket, path) {
   return data.publicUrl;
 }
 
+/**
+ * Upload a debug artifact (Buffer/string) to Supabase Storage.
+ * NOTE: uses service role, so bucket can be private; public URL only works if bucket is public.
+ */
+export async function uploadArtifact(bucket, path, body, contentType) {
+  const { data, error } = await supabase.storage.from(bucket).upload(path, body, {
+    contentType: contentType || 'application/octet-stream',
+    upsert: true,
+    cacheControl: '3600',
+  });
+  if (error) {
+    throw new Error(`Failed to upload artifact (${bucket}/${path}): ${error.message}`);
+  }
+  return data?.path || path;
+}
+
+export async function uploadTextArtifact(bucket, path, text, contentType = 'text/plain; charset=utf-8') {
+  const buf = Buffer.from(String(text ?? ''), 'utf8');
+  return await uploadArtifact(bucket, path, buf, contentType);
+}
+
