@@ -917,14 +917,14 @@ export default function Crosslist() {
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
-    console.log("A️⃣ ENTER handleListOnMarketplaceItem", { itemId, marketplace });
+    console.log("[A] ENTER handleListOnMarketplaceItem", { itemId, marketplace });
+
     try {
-      console.log("B️⃣ normalize marketplace");
-      // Normalize marketplace for comparison
+      console.log("[B] normalize marketplace");
       const normalizedMarketplace = String(marketplace).toLowerCase().trim();
-    
+
       setCrosslistLoading(true);
-    
+
       // Only support Mercari and Facebook for now (automation system)
       if (!['mercari', 'facebook'].includes(normalizedMarketplace)) {
         // Fallback to old system for other platforms
@@ -960,18 +960,17 @@ export default function Crosslist() {
         }));
 
         queryClient.invalidateQueries(['inventoryItems']);
-        return;
+        return result;
       }
 
-      console.log("C️⃣ before building listingData");
+      console.log("[C] before building listing data");
       // Get inventory item
       const inventoryItem = inventory.find((item) => item.id === itemId);
       if (!inventoryItem) {
         throw new Error('Inventory item not found');
       }
 
-      console.log("D️⃣ before platform connected checks");
-      // Use new automation system for Mercari and Facebook
+      console.log("[D] before platform connected checks");
       // Check platform connection via localStorage flag set by extension
       const isPlatformConnected = (id) => {
         if (typeof window === "undefined") return false;
@@ -991,7 +990,6 @@ export default function Crosslist() {
         return;
       }
 
-      console.log("C️⃣ before building listingData");
       // Prepare payload from inventory item
       const payload = {
         title: inventoryItem.item_name || '',
@@ -1003,7 +1001,7 @@ export default function Crosslist() {
       };
 
       // Create listing job directly via API
-      console.log("E️⃣ before API create-job");
+      console.log("[E] before API create-job");
       console.log("E2 payload", payload);
       const result = await listingJobsApi.createJob(itemId, [normalizedMarketplace], payload);
       console.log("🌍 create-job result", result);
@@ -1018,14 +1016,26 @@ export default function Crosslist() {
         title: 'Listing Job Created',
         description: `Your item is being listed on ${marketplace}. Check status below.`,
       });
-    } catch (error) {
-      toast({
-        title: 'Failed to Create Listing Job',
-        description: error.message || `Failed to start listing on ${marketplace}.`,
-        variant: 'destructive',
+
+      // Call extension page API if available
+      console.log("[F] before calling extension page API", {
+        hasExt: !!window.ProfitOrbitExtension,
+        fnType: typeof window.ProfitOrbitExtension?.createMercariListing,
       });
-      console.error("❌ handleListOnMarketplaceItem ERROR", error);
-      throw error; // Re-throw so handleListButtonClick can catch it
+      const listingData = {
+        inventory_item_id: itemId,
+        payload,
+      };
+      // console.log("[F2] listingData keys:", listingData ? Object.keys(listingData) : null);
+      if (window.ProfitOrbitExtension?.createMercariListing) {
+        const resp = await window.ProfitOrbitExtension.createMercariListing(listingData);
+        console.log("[G] after createMercariListing", resp);
+      }
+
+      return result;
+    } catch (err) {
+      console.error("[X] handleListOnMarketplaceItem ERROR", err);
+      throw err;
     } finally {
       setCrosslistLoading(false);
     }
