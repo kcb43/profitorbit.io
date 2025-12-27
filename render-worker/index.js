@@ -47,8 +47,8 @@ async function initBrowser() {
 
   console.log('🚀 Initializing Playwright browser...');
   browser = await chromium.launch({
-    headless: HEADLESS,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    headless: false, // force headed to test bot detection
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
   });
 
   console.log('✅ Browser initialized');
