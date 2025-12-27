@@ -1,6 +1,5 @@
 /**
  * Database utilities for Render Worker
- * Handles Supabase connection and job claiming
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -17,11 +16,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-/**
- * Claim a listing job (old-school query with status check)
- */
 export async function claimJob() {
-  // 1) find one queued job
   const { data: queued, error: qErr } = await supabase
     .from('listing_jobs')
     .select('*')
@@ -36,7 +31,6 @@ export async function claimJob() {
   }
   if (!queued) return null;
 
-  // 2) claim it AND return the claimed row
   const { data: claimed, error: cErr } = await supabase
     .from('listing_jobs')
     .update({
@@ -45,7 +39,7 @@ export async function claimJob() {
       updated_at: new Date().toISOString(),
     })
     .eq('id', queued.id)
-    .eq('status', 'queued') // prevent double-claim
+    .eq('status', 'queued')
     .select('*')
     .single();
 
@@ -57,9 +51,6 @@ export async function claimJob() {
   return claimed;
 }
 
-/**
- * Update job progress
- */
 export async function updateJobProgress(jobId, progress) {
   const { error } = await supabase
     .from('listing_jobs')
@@ -72,16 +63,13 @@ export async function updateJobProgress(jobId, progress) {
   }
 }
 
-/**
- * Update job result
- */
 export async function updateJobResult(jobId, result) {
+  // Schema-tolerant: some envs may not have completed_at
   const { error } = await supabase
     .from('listing_jobs')
     .update({
       status: 'completed',
       result,
-      completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', jobId);
@@ -92,15 +80,13 @@ export async function updateJobResult(jobId, result) {
   }
 }
 
-/**
- * Mark job as failed
- */
 export async function markJobFailed(jobId, errorMessage) {
+  // Schema-tolerant: error column may be jsonb
   const { error } = await supabase
     .from('listing_jobs')
     .update({
       status: 'failed',
-      error: errorMessage,
+      error: { message: errorMessage },
       updated_at: new Date().toISOString(),
     })
     .eq('id', jobId);
@@ -111,21 +97,27 @@ export async function markJobFailed(jobId, errorMessage) {
   }
 }
 
-/**
- * Log job event
- */
-export async function logJobEvent(jobId, eventType, message, metadata = {}) {
-  const { error } = await supabase.from('listing_job_events').insert({
-    job_id: jobId,
-    event_type: eventType,
-    message,
-    metadata,
-    created_at: new Date().toISOString(),
-  });
+export async function logJobEvent(jobId, level, message, metadata = {}) {
+  const attempts = [
+    { job_id: jobId, event_type: level, message, metadata, created_at: new Date().toISOString() },
+    { job_id: jobId, event_type: level, message, metadata },
+    { job_id: jobId, level, message, metadata },
+    { job_id: jobId, type: level, message, metadata },
+    { job_id: jobId, message, metadata },
+    { job_id: jobId, message },
+  ];
 
-  if (error) {
-    console.error('Error logging job event:', error);
-    // Don't throw - event logging failures shouldn't break the job
+  for (const row of attempts) {
+    const { error } = await supabase.from('listing_job_events').insert(row);
+    if (!error) return;
+
+    const schemaish =
+      error.code === 'PGRST204' ||
+      (typeof error.message === 'string' && error.message.includes("Could not find the"));
+
+    if (!schemaish) {
+      console.error('Error logging job event:', error);
+      return;
+    }
   }
 }
-

@@ -12,6 +12,7 @@ import {
   markJobFailed,
   logJobEvent,
 } from './utils-new/db.js';
+import { supabase } from './utils-new/db.js';
 import { decrypt } from './utils-new/encryption.js';
 import { MercariProcessor } from './processors-new/mercari.js';
 import { FacebookProcessor } from './processors-new/facebook.js';
@@ -20,7 +21,7 @@ import os from 'os';
 import path from 'path';
 
 // Version stamp to verify deployment
-console.log('WORKER BUILD:', '2025-12-23-import-fix-1');
+console.log('WORKER BUILD:', '2025-12-27-worker-fix-3');
 
 // Debug: Log container file structure
 console.log('FILES IN /app:', fs.readdirSync('/app'));
@@ -31,7 +32,7 @@ dotenv.config();
 
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '2000');
 const MAX_CONCURRENT_JOBS = parseInt(process.env.MAX_CONCURRENT_JOBS || '1');
-const HEADLESS = false;
+const HEADLESS = process.env.HEADLESS ? process.env.HEADLESS !== 'false' : true;
 
 let browser = null;
 let isRunning = false;
