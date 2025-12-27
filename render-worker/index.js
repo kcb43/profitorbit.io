@@ -195,18 +195,6 @@ function normalizeMercariPayload(p) {
   return { missing, normalized, imageUrls };
 }
 
-async function downloadToTmp(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to download image: ${url} (${res.status})`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  const filePath = path.join(
-    os.tmpdir(),
-    `img-${Date.now()}-${Math.random().toString(16).slice(2)}.jpg`
-  );
-  await fs.promises.writeFile(filePath, buf);
-  return filePath;
-}
-
 /**
  * Process a single listing job
  */
@@ -288,20 +276,15 @@ async function processJob(job) {
           };
 
           if (!dryRun) {
-            // Download images to temp files for upload (Playwright requires file paths)
-            const localFiles = [];
-            for (const url of imageUrls) {
-              localFiles.push(await downloadToTmp(url));
-            }
-            job.payload.images = localFiles;
-            if (localFiles.length === 0) {
+            // Upload from URLs directly (MercariProcessor downloads to memory buffers; no disk write needed)
+            if (imageUrls.length === 0) {
               throw new Error("Mercari requires at least 1 photo. payload.photos is empty/invalid.");
             }
-            console.log(`🖼️ Job ${jobId}: uploading ${localFiles.length} images to Mercari`);
+            console.log(`🖼️ Job ${jobId}: uploading ${imageUrls.length} images to Mercari`);
             await withTimeout(
-              processor.uploadImages(localFiles),
+              processor.uploadImages(imageUrls),
               4 * 60 * 1000,
-              `mercari uploadImages (${localFiles.length} images)`
+              `mercari uploadImages (${imageUrls.length} images)`
             );
           } else {
             await logJobEvent(jobId, 'warn', 'Mercari dry-run enabled: skipping image upload and submit', {
