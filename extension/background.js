@@ -768,16 +768,40 @@ let LISTING_API_URL = null;
 async function exportCookies(domain) {
   try {
     const cookies = await chrome.cookies.getAll({ domain });
-    return cookies.map((cookie) => ({
-      name: cookie.name,
-      value: cookie.value,
-      domain: cookie.domain,
-      path: cookie.path,
-      secure: cookie.secure,
-      httpOnly: cookie.httpOnly,
-      sameSite: cookie.sameSite,
-      expirationDate: cookie.expirationDate,
-    }));
+    const mapSameSite = (v) => {
+      // chrome.cookies Cookie.sameSite: "no_restriction" | "lax" | "strict" | "unspecified"
+      // Playwright expects: "Lax" | "Strict" | "None"
+      if (!v) return undefined;
+      const s = String(v).toLowerCase();
+      if (s === 'lax') return 'Lax';
+      if (s === 'strict') return 'Strict';
+      if (s === 'no_restriction') return 'None';
+      // unspecified -> omit (Playwright will default)
+      return undefined;
+    };
+
+    return cookies.map((cookie) => {
+      const expires =
+        typeof cookie.expirationDate === 'number' ? cookie.expirationDate
+        : typeof cookie.expires === 'number' ? cookie.expires
+        : undefined;
+
+      const sameSite = mapSameSite(cookie.sameSite);
+
+      // Send a Playwright-compatible cookie shape to the API/worker.
+      // Playwright requires either {url} or {domain,path}; we keep domain/path.
+      const out = {
+        name: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain,
+        path: cookie.path,
+        secure: cookie.secure,
+        httpOnly: cookie.httpOnly,
+      };
+      if (sameSite) out.sameSite = sameSite;
+      if (typeof expires === 'number') out.expires = expires;
+      return out;
+    });
   } catch (error) {
     console.error(`Error exporting cookies for ${domain}:`, error);
     throw error;
