@@ -21,6 +21,28 @@ NODE_ENV="production"
 
 The worker does **NOT** need `CORS_ORIGIN` or `ALLOWED_ORIGINS` since it doesn't serve HTTP requests - it only processes jobs from the database.
 
+## Optional: Playwright proxy (recommended if Mercari challenges Fly datacenter IPs)
+
+You can route the worker's Playwright traffic through a proxy (for example, an ISP/static residential proxy) to improve reliability.
+
+- **PLAYWRIGHT_PROXY_SERVER**: e.g. `http://host:port` (or `socks5://host:port`)
+- **PLAYWRIGHT_PROXY_USERNAME**: proxy username (optional)
+- **PLAYWRIGHT_PROXY_PASSWORD**: proxy password (optional)
+- **PLAYWRIGHT_PROXY_BYPASS**: comma-separated domains to bypass proxy (optional)
+
+Alternative single var:
+
+- **PLAYWRIGHT_PROXY**: full proxy URL, e.g. `http://user:pass@host:port`
+
+Example:
+
+```bash
+fly secrets set -a profitpulse-listing-worker \
+  PLAYWRIGHT_PROXY_SERVER="http://host:port" \
+  PLAYWRIGHT_PROXY_USERNAME="user" \
+  PLAYWRIGHT_PROXY_PASSWORD="pass"
+```
+
 ## Worker App Name
 
 - **Fly App Name**: `profitpulse-listing-worker`

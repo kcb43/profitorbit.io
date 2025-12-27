@@ -38,6 +38,45 @@ let browser = null;
 let isRunning = false;
 let currentJobs = new Set();
 
+function getPlaywrightProxyConfig() {
+  // Supports either a full proxy URL in PLAYWRIGHT_PROXY (e.g. http://user:pass@host:port)
+  // or discrete vars:
+  // - PLAYWRIGHT_PROXY_SERVER (e.g. http://host:port)
+  // - PLAYWRIGHT_PROXY_USERNAME
+  // - PLAYWRIGHT_PROXY_PASSWORD
+  // - PLAYWRIGHT_PROXY_BYPASS (comma-separated domains)
+  const raw = process.env.PLAYWRIGHT_PROXY;
+  if (raw && typeof raw === 'string' && raw.trim()) {
+    // Playwright accepts server/username/password/bypass but not a combined URL with creds reliably across all cases,
+    // so parse it ourselves.
+    try {
+      const u = new URL(raw);
+      const username = u.username ? decodeURIComponent(u.username) : undefined;
+      const password = u.password ? decodeURIComponent(u.password) : undefined;
+      const server = `${u.protocol}//${u.host}`;
+      return {
+        server,
+        username,
+        password,
+        bypass: process.env.PLAYWRIGHT_PROXY_BYPASS || undefined,
+      };
+    } catch {
+      // If it's not a valid URL, treat it as server
+      return { server: raw.trim() };
+    }
+  }
+
+  const server = process.env.PLAYWRIGHT_PROXY_SERVER;
+  if (!server) return null;
+
+  return {
+    server,
+    username: process.env.PLAYWRIGHT_PROXY_USERNAME || undefined,
+    password: process.env.PLAYWRIGHT_PROXY_PASSWORD || undefined,
+    bypass: process.env.PLAYWRIGHT_PROXY_BYPASS || undefined,
+  };
+}
+
 function withTimeout(promise, ms, label) {
   let t = null;
   const timeoutPromise = new Promise((_, reject) => {
@@ -57,9 +96,17 @@ async function initBrowser() {
   }
 
   console.log('🚀 Initializing Playwright browser...');
+  const proxy = getPlaywrightProxyConfig();
+  if (proxy?.server) {
+    console.log('🧷 Using Playwright proxy server:', proxy.server);
+  } else {
+    console.log('🧷 No Playwright proxy configured (direct connection)');
+  }
+
   browser = await chromium.launch({
     headless: HEADLESS,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
+    ...(proxy?.server ? { proxy } : {}),
   });
 
   console.log('✅ Browser initialized');
