@@ -20,6 +20,43 @@ export class BaseProcessor {
     this.userAgent = sessionPayload.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
   }
 
+  normalizeCookiesForPlaywright(cookies) {
+    const mapSameSite = (v) => {
+      if (!v) return undefined;
+      const s = String(v).toLowerCase();
+      if (s === 'lax') return 'Lax';
+      if (s === 'strict') return 'Strict';
+      if (s === 'none' || s === 'no_restriction') return 'None';
+      return undefined;
+    };
+
+    return (Array.isArray(cookies) ? cookies : [])
+      .map((c) => {
+        if (!c?.name || c?.value == null) return null;
+
+        const expires =
+          typeof c.expires === 'number' ? c.expires
+          : typeof c.expirationDate === 'number' ? c.expirationDate
+          : undefined;
+
+        const out = {
+          name: c.name,
+          value: c.value,
+          domain: c.domain,
+          path: c.path || '/',
+          httpOnly: !!c.httpOnly,
+          secure: !!c.secure,
+        };
+
+        const sameSite = mapSameSite(c.sameSite);
+        if (sameSite) out.sameSite = sameSite;
+        if (typeof expires === 'number') out.expires = expires;
+
+        return out;
+      })
+      .filter(Boolean);
+  }
+
   /**
    * Initialize the browser page
    */
@@ -31,10 +68,16 @@ export class BaseProcessor {
 
     // Set cookies
     if (this.cookies && this.cookies.length > 0) {
-      await this.context.addCookies(this.cookies);
+      const normalized = this.normalizeCookiesForPlaywright(this.cookies);
+      console.log(`🍪 Adding cookies: raw=${this.cookies.length} normalized=${normalized.length}`);
+      await this.context.addCookies(normalized);
     }
 
     this.page = await this.context.newPage();
+
+    // More generous defaults; many modern sites never reach "networkidle"
+    this.page.setDefaultTimeout(90000);
+    this.page.setDefaultNavigationTimeout(90000);
   }
 
   /**
