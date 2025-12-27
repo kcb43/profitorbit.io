@@ -59,17 +59,41 @@ export class MercariProcessor extends BaseProcessor {
 
     await this.ensureSellPageReady('before upload');
 
+    // Ensure the actual sell form has rendered (not a marketing shell / gated page).
+    // If this doesn't appear, selectors below won't work.
+    const sellFormReady = await this.page
+      .waitForSelector('[data-testid="Title"], #sellName', { timeout: 15000 })
+      .catch(() => null);
+    if (!sellFormReady) {
+      const url = this.page.url();
+      const title = await this.page.title().catch(() => 'unknown');
+      try {
+        await this.page.screenshot({ path: `/tmp/mercari-sell-form-missing-${this.job.id}.png`, fullPage: true });
+      } catch (_) {
+        // ignore
+      }
+      throw new Error(
+        `Mercari sell form did not render (url=${url} title=${title}). ` +
+          `This is usually an account gate (e.g. W-9/verification) or a different sell UI variant.`
+      );
+    }
+
     // Mercari often hides the file input behind an "Add photos" UI.
     // Try to reveal it and then locate a usable input[type=file].
     const fileInputSelectors = [
-      'input[type="file"]',
+      // Mercari's real input (often hidden until clicking the add-photos area)
+      'input[data-testid="SellPhotoInput"]',
+      // Fallbacks
       'input[type="file"][accept*="image"]',
+      'input[type="file"]',
       'form input[type="file"]',
     ];
 
     const revealSelectors = [
       'button:has-text("Add photos")',
       'button:has-text("Add photo")',
+      'text=/add up to\\s*12\\s*photos/i',
+      'text=/drag and drop/i',
       'button:has-text("Add")',
       'button:has-text("Upload")',
       'text=/add photos/i',
@@ -123,8 +147,10 @@ export class MercariProcessor extends BaseProcessor {
         // Download image from Supabase Storage
         const imageBuffer = await this.downloadImageFromStorage(imagePath);
 
-        // Upload file using Playwright's file input
-        await this.page.setInputFiles('input[type="file"]', {
+        // Upload file using Playwright's file input (prefer Mercari's testid input)
+        const inputSel =
+          'input[data-testid="SellPhotoInput"], input[type="file"][accept*="image"], input[type="file"]';
+        await this.page.setInputFiles(inputSel, {
           name: `image-${i}.jpg`,
           mimeType: 'image/jpeg',
           buffer: imageBuffer,
