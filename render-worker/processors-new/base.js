@@ -122,7 +122,23 @@ export class BaseProcessor {
     this.context = await this.browser.newContext({
       userAgent: this.userAgent,
       viewport: { width: 1280, height: 720 },
+      locale: 'en-US',
       ...(extraHTTPHeaders ? { extraHTTPHeaders } : {}),
+    });
+
+    // Attempt to reduce bot-detection signals (esp. Cloudflare JS challenges) in headless.
+    // This is not a silver bullet, but it removes some high-signal flags.
+    await this.context.addInitScript(() => {
+      try {
+        // webdriver flag
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        // languages
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        // plugins
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      } catch (_) {
+        // ignore
+      }
     });
 
     // Set cookies

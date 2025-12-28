@@ -123,6 +123,26 @@ export class MercariProcessor extends BaseProcessor {
       } catch (e) {
         console.log('⚠️ Could not upload Mercari debug artifacts:', e?.message || e);
       }
+
+      // Extra signal: detect common Cloudflare bot challenge markers in the HTML we captured.
+      try {
+        const html = await this.page.content().catch(() => '');
+        const hasCfChallenge =
+          typeof html === 'string' &&
+          (html.includes('/cdn-cgi/challenge-platform/') ||
+            html.includes('__CF$cv$params') ||
+            html.toLowerCase().includes('checking your browser') ||
+            html.toLowerCase().includes('just a moment'));
+        if (hasCfChallenge) {
+          await logJobEvent(this.job.id, 'warn', 'Mercari appears to be serving a Cloudflare challenge (sell form blocked)', {
+            platform: 'mercari',
+            url,
+            title,
+          });
+        }
+      } catch (_) {
+        // ignore
+      }
       throw new Error(
         `Mercari sell form did not render (url=${url} title=${title}). ` +
           `This is usually an account gate (e.g. W-9/verification) or a different sell UI variant.` +

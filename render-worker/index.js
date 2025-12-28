@@ -105,7 +105,14 @@ async function initBrowser() {
 
   browser = await chromium.launch({
     headless: HEADLESS,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-blink-features=AutomationControlled',
+      // Reduce high-signal headless fingerprinting in requests (UA-CH)
+      '--disable-features=UserAgentClientHint,UserAgentClientHintFullVersionList,UserAgentClientHintPlatform',
+    ],
     ...(proxy?.server ? { proxy } : {}),
   });
 
