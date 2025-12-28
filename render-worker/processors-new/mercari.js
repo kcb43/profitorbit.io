@@ -51,6 +51,8 @@ export class MercariProcessor extends BaseProcessor {
     });
 
     console.log(`🧾 Uploaded debug artifacts: ${bucket}/${pngPath} and ${bucket}/${htmlPath}`);
+    if (pngUrl) console.log(`🧾 Debug screenshot URL: ${pngUrl}`);
+    if (htmlUrl) console.log(`🧾 Debug HTML URL: ${htmlUrl}`);
     return { bucket, pngPath, htmlPath, pngUrl, htmlUrl, url, title };
   }
 
@@ -124,7 +126,8 @@ export class MercariProcessor extends BaseProcessor {
       throw new Error(
         `Mercari sell form did not render (url=${url} title=${title}). ` +
           `This is usually an account gate (e.g. W-9/verification) or a different sell UI variant.` +
-          (artifactInfo?.pngUrl ? ` Debug screenshot: ${artifactInfo.pngUrl}` : '')
+          (artifactInfo?.pngUrl ? ` Debug screenshot: ${artifactInfo.pngUrl}` : '') +
+          (artifactInfo?.htmlUrl ? ` Debug HTML: ${artifactInfo.htmlUrl}` : '')
       );
     }
 
