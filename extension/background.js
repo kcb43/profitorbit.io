@@ -934,11 +934,16 @@ async function connectPlatform(platform, apiUrl, authToken) {
     if (cookies.length === 0) {
       throw new Error(`No cookies found for ${domain}. Please log in to ${platform} first.`);
     }
-    // Mercari: allow connection if we have a header-based session; otherwise require real cookies.
-    if (platform === 'mercari' && (onlyCloudflare || cookies.length < 6) && !hasMercariHeaderSession) {
+    // Mercari (UI automation): require real, non-Cloudflare cookies.
+    //
+    // Header-only sessions may work for API calls, but Playwright UI automation of /sell relies on
+    // the browser having the same auth cookies as a normal logged-in session. If we proceed with
+    // only Cloudflare cookies, the worker reliably ends up at a logged-out shell + Cloudflare
+    // bot scripts and the sell form never renders.
+    if (platform === 'mercari' && (onlyCloudflare || cookies.length < 6)) {
       throw new Error(
-        `Mercari cookies captured look incomplete (cookieCount=${cookies.length}, urlCookies=${urlCookieCount}). ` +
-          `Please ensure you're logged into Mercari in THIS Chrome profile, visit https://www.mercari.com/sell/ once, then reconnect.`
+        `Mercari cookies captured look incomplete for UI automation (cookieCount=${cookies.length}, urlCookies=${urlCookieCount}). ` +
+          `Please confirm you're logged into Mercari in THIS Chrome profile, open https://www.mercari.com/sell/ and ensure you can see the sell form, then click Connect again.`
       );
     }
 
