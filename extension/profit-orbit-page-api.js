@@ -83,7 +83,10 @@
     },
 
     // Mercari listing entrypoint from page context
-    createMercariListing: async function(listingData) {
+    //
+    // Optional: pass an options object as 2nd argument:
+    //   ProfitOrbitExtension.createMercariListing(listingData, { useExistingTabOnly: true })
+    createMercariListing: async function(listingData, options = null) {
       // Normalize payload shape: ensure inventory_item_id and payload wrapper
       const normalized = listingData && listingData.payload
         ? listingData
@@ -91,6 +94,11 @@
             inventory_item_id: listingData?.inventory_item_id ?? null,
             payload: listingData || {},
           };
+
+      // Carry options through to the extension bridge/background.
+      if (options && typeof options === 'object') {
+        normalized.options = options;
+      }
 
       window.__PO_LAST_CREATE = { t: Date.now(), listingData: normalized };
 

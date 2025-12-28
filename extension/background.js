@@ -341,6 +341,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle Mercari listing request from bridge script
   if (message.type === 'CREATE_MERCARI_LISTING') {
     const listingData = message.listingData;
+    const useExistingTabOnly = !!listingData?.options?.useExistingTabOnly;
     
     // Handle async response - Manifest V3 pattern
     (async () => {
@@ -396,7 +397,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         };
         
-        // MV3-FRIENDLY APPROACH: Minimized popup window (effectively invisible)
+        // Prefer an existing Mercari /sell tab if the user already has one open.
+        // This avoids creating any new tab/window (required for "Vendoo-like" UX).
+        try {
+          const existingSellTabs = await chrome.tabs.query({
+            url: ['*://www.mercari.com/sell*', '*://mercari.com/sell*'],
+          });
+          if (existingSellTabs && existingSellTabs.length > 0) {
+            // Pick the first complete tab if possible
+            const candidate =
+              existingSellTabs.find((t) => t.status === 'complete') || existingSellTabs[0];
+            backgroundTab = candidate;
+            console.log('♻️ [MERCARI] Using existing /sell tab:', backgroundTab.id);
+          }
+        } catch (e) {
+          console.log('ℹ️ [MERCARI] Could not query existing Mercari tabs:', e?.message || e);
+        }
+
+        if (useExistingTabOnly && !backgroundTab) {
+          throw new Error(
+            'Mercari listing requires an existing open Mercari /sell tab (no-new-tab mode enabled). ' +
+              'Open https://www.mercari.com/sell/ in an existing tab (logged in), then click List again.'
+          );
+        }
+
+        // MV3-FRIENDLY APPROACH (fallback): Minimized popup window (effectively invisible)
         // User gesture ✅ (from website -> extension message)
         // Create popup window positioned off-screen - won't steal focus and is invisible
         
