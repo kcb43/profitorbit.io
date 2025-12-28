@@ -928,18 +928,45 @@ async function connectPlatform(platform, apiUrl, authToken) {
     const onlyCloudflare =
       cookies.length > 0 &&
       cookies.every((c) => typeof c?.name === 'string' && (c.name.startsWith('__cf') || c.name.startsWith('_cf')));
+
+    // Identify whether we have any "real" Mercari cookies vs just consent/security cookies.
+    const cookieNames = cookies.map((c) => String(c?.name || '')).filter(Boolean);
+    const isClearlyNotAuth = (name) => {
+      const n = name.toLowerCase();
+      // Cloudflare + consent banners + generic trackers we often see even when logged out
+      return (
+        n.startsWith('_cf') ||
+        n.startsWith('__cf') ||
+        n.startsWith('notice_') ||
+        n.startsWith('cmapi_') ||
+        n === 'usprivacy' ||
+        n === 'tasessionid' ||
+        n === '_dd_s'
+      );
+    };
+    const hasMercariNamedCookie = cookieNames.some((n) => n.toLowerCase().includes('mercari'));
+    const nonTrivialCookies = cookieNames.filter((n) => !isClearlyNotAuth(n));
+    const nonTrivialSample = nonTrivialCookies.slice(0, 20).join(',');
     console.log(
       `🍪 CONNECT_PLATFORM cookie export: platform=${platform} total=${cookies.length} urlCookies=${urlCookieCount} has__Host=${hasHost} hasHeaderSession=${hasMercariHeaderSession} sample=${cookieNamesSample}`
     );
+    if (platform === 'mercari') {
+      console.log(
+        `🍪 MERCARI cookie classification: onlyCloudflare=${onlyCloudflare} hasMercariNamedCookie=${hasMercariNamedCookie} nonTrivialCount=${nonTrivialCookies.length} nonTrivialSample=${nonTrivialSample}`
+      );
+    }
     if (cookies.length === 0) {
       throw new Error(`No cookies found for ${domain}. Please log in to ${platform} first.`);
     }
-    // Mercari (UI automation): require real, non-Cloudflare cookies.
+    // Mercari (UI automation): require real, non-Cloudflare auth cookies.
     //
     // Header-only sessions may work for API calls, but Playwright UI automation of /sell relies on
     // the browser having the same auth cookies as a normal logged-in session. If we proceed with
     // only Cloudflare cookies, the worker ends up at a logged-out shell + Cloudflare bot scripts.
-    if (platform === 'mercari' && (onlyCloudflare || cookies.length < 6)) {
+    if (
+      platform === 'mercari' &&
+      (onlyCloudflare || cookies.length < 6 || (!hasHost && !hasMercariNamedCookie))
+    ) {
       throw new Error(
         `Mercari cookies captured look incomplete for UI automation (cookieCount=${cookies.length}, urlCookies=${urlCookieCount}). ` +
           `Open https://www.mercari.com/sell/ in THIS Chrome profile and confirm you can see the sell form, then click Connect again.`
