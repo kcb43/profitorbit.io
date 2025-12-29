@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-15-upload-in-hidden-iframe-no-tabs');
+console.log('EXT BUILD:', '2025-12-29-background-clean-16-iframe-allframes-origin-filter');
 
 // -----------------------------
 // Helpers
@@ -70,21 +70,20 @@ async function pickFacebookTabId() {
   }
 }
 
-async function ensureFrameForOrigin(tabId, origin) {
-  // Create (if needed) a hidden iframe inside an existing facebook.com tab, then return its frameId.
-  // This avoids opening new tabs/windows while still allowing same-origin fetch to upload.facebook.com.
-  if (!tabId) return null;
+async function ensureHiddenIframe(tabId, origin) {
+  // Create (if needed) a hidden iframe inside an existing facebook.com tab.
+  // We do NOT try to resolve frameId (would require extra permissions); instead we later run code in allFrames
+  // and only execute the fetch inside the frame whose location.origin matches the upload origin.
+  if (!tabId) return { ok: false, reason: 'missing_tab' };
   const normalized = String(origin || '').replace(/\/+$/, '');
-  if (!normalized) return null;
+  if (!normalized) return { ok: false, reason: 'missing_origin' };
 
-  // 1) Inject a hidden iframe (idempotent)
   try {
-    await chrome.scripting.executeScript({
+    const res = await chrome.scripting.executeScript({
       target: { tabId },
       func: (o) => {
         try {
           const origin = String(o || '').replace(/\/+$/, '');
-          if (!origin) return { ok: false, reason: 'missing_origin' };
           const id = `__po_hidden_iframe_${origin.replace(/[^a-z0-9]/gi, '_')}`;
           let el = document.getElementById(id);
           if (!el) {
@@ -100,7 +99,6 @@ async function ensureFrameForOrigin(tabId, origin) {
             el.style.pointerEvents = 'none';
             document.documentElement.appendChild(el);
           } else {
-            // If the iframe exists but navigated away, re-point it.
             try {
               if (typeof el.src === 'string' && !el.src.startsWith(origin)) el.src = `${origin}/`;
             } catch (_) {}
@@ -112,29 +110,10 @@ async function ensureFrameForOrigin(tabId, origin) {
       },
       args: [normalized],
     });
-  } catch (_) {
-    // ignore; we'll still try to locate the frame
+    return res?.[0]?.result || { ok: true };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message || e || 'executeScript_failed') };
   }
-
-  // 2) Poll for the frame to appear via webNavigation.getAllFrames
-  const getAllFrames = async () =>
-    await new Promise((resolve) => {
-      try {
-        chrome.webNavigation.getAllFrames({ tabId }, (frames) => resolve(Array.isArray(frames) ? frames : []));
-      } catch (_) {
-        resolve([]);
-      }
-    });
-
-  const deadline = Date.now() + 15000;
-  while (Date.now() < deadline) {
-    const frames = await getAllFrames();
-    const hit = frames.find((f) => typeof f?.url === 'string' && f.url.startsWith(normalized));
-    if (hit && typeof hit.frameId === 'number') return hit.frameId;
-    await new Promise((r) => setTimeout(r, 250));
-  }
-
-  return null;
 }
 
 async function facebookFetchInTab(tabId, args, frameId = null) {
@@ -211,6 +190,112 @@ async function facebookFetchInTab(tabId, args, frameId = null) {
   // executeScript returns an array; take first result
   const first = Array.isArray(results) ? results[0] : null;
   return first?.result || null;
+}
+
+async function facebookFetchInTabAtOrigin(tabId, origin, args, timeoutMs = 15000) {
+  // Runs a fetch in ALL frames and only executes it in the frame whose location.origin matches `origin`.
+  // This avoids needing webNavigation permissions to discover frameIds.
+  if (!tabId) throw new Error('No suitable tab found for running this request.');
+  const targetOrigin = String(origin || '').replace(/\/+$/, '');
+  if (!targetOrigin) throw new Error('Missing target origin for in-tab fetch');
+
+  const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || 15000);
+  let last = null;
+
+  while (Date.now() < deadline) {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: async (payload) => {
+        const targetOrigin = String(payload?.targetOrigin || '').replace(/\/+$/, '');
+        const href = String(location?.href || '');
+        const origin = String(location?.origin || '');
+
+        if (!targetOrigin || origin !== targetOrigin) {
+          return { skipped: true, ok: false, status: 0, text: '', headers: {}, error: null, href, origin };
+        }
+
+        const safeHeaders = { ...(payload?.headers || {}) };
+        const drop = (k) => {
+          delete safeHeaders[k];
+          delete safeHeaders[String(k || '').toLowerCase()];
+        };
+        drop('host');
+        drop('content-length');
+        drop('cookie');
+        drop('origin');
+        drop('referer');
+        drop('user-agent');
+        for (const k of Object.keys(safeHeaders)) {
+          if (String(k).toLowerCase().startsWith('sec-fetch-')) drop(k);
+        }
+
+        const init = {
+          method: payload?.method || 'GET',
+          headers: safeHeaders,
+          credentials: 'include',
+          mode: payload?.mode || 'cors',
+          redirect: 'follow',
+        };
+
+        if (payload?.bodyType === 'formData') {
+          const fd = new FormData();
+          const fields = Array.isArray(payload?.formFields) ? payload.formFields : [];
+          for (const f of fields) {
+            if (!f) continue;
+            const name = String(f.name || '');
+            if (!name) continue;
+            fd.append(name, String(f.value ?? ''));
+          }
+
+          const file = payload?.file || null;
+          if (file?.base64 && file?.fieldName) {
+            const b64 = String(file.base64 || '');
+            const bin = atob(b64);
+            const u8 = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i) & 0xff;
+            const blob = new Blob([u8], { type: String(file.type || 'application/octet-stream') });
+            fd.append(String(file.fieldName), blob, String(file.fileName || 'photo.jpg'));
+          }
+
+          init.body = fd;
+        } else if (payload?.bodyType === 'text') {
+          init.body = String(payload?.bodyText || '');
+        }
+
+        try {
+          const resp = await fetch(String(payload?.url || ''), init);
+          const text = await resp.text().catch(() => '');
+          const headers = {};
+          try {
+            for (const [k, v] of resp.headers.entries()) headers[k] = v;
+          } catch (_) {}
+          return { skipped: false, ok: resp.ok, status: resp.status, text, headers, error: null, href, origin };
+        } catch (e) {
+          return { skipped: false, ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed'), href, origin };
+        }
+      },
+      args: [{ ...args, targetOrigin }],
+    });
+
+    const executed = (results || []).map((r) => r?.result).filter(Boolean);
+    const match = executed.find((r) => r.skipped === false && r.origin === targetOrigin) || null;
+    last = match || last;
+    if (match) return match;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+
+  return (
+    last || {
+      skipped: false,
+      ok: false,
+      status: 0,
+      text: '',
+      headers: {},
+      error: `No frame for origin ${targetOrigin} became available within timeout`,
+      href: null,
+      origin: null,
+    }
+  );
 }
 
 // -----------------------------
@@ -1970,14 +2055,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const fbTabId = await pickFacebookTabId();
         uploadAttemptMeta.fbTabId = fbTabId;
         uploadAttemptMeta.tabFetch = true;
-        let uploadFrameId = null;
+        let uploadOrigin = null;
         try {
           const u = new URL(uploadTemplate.url);
-          uploadFrameId = await ensureFrameForOrigin(fbTabId, u.origin);
+          uploadOrigin = u.origin;
         } catch (_) {
-          uploadFrameId = null;
+          uploadOrigin = null;
         }
-        uploadAttemptMeta.fbFrameId = uploadFrameId;
+        uploadAttemptMeta.uploadOrigin = uploadOrigin;
+        const iframeInfo = uploadOrigin ? await ensureHiddenIframe(fbTabId, uploadOrigin) : { ok: false, reason: 'bad_upload_url' };
+        uploadAttemptMeta.iframe = iframeInfo;
 
         // executeScript args must be JSON-serializable; pass file bytes as base64 string.
         const toBase64 = (ab) => {
@@ -1993,17 +2080,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
         uploadAttemptMeta.fileBase64Chars = fileBase64.length;
 
-        const uploadResult = await facebookFetchInTab(
+        const uploadResult = await facebookFetchInTabAtOrigin(
           fbTabId,
+          uploadOrigin || 'https://upload.facebook.com',
           {
-          url: uploadTemplate.url,
-          method: 'POST',
-          headers: uploadHeaders,
-          bodyType: 'formData',
-          formFields: uploadFormFields,
-          file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+            url: uploadTemplate.url,
+            method: 'POST',
+            headers: uploadHeaders,
+            bodyType: 'formData',
+            formFields: uploadFormFields,
+            file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
           },
-          uploadFrameId
+          15000
         );
         const uploadTextRaw = uploadResult?.text || '';
         const uploadOk = !!uploadResult?.ok;
