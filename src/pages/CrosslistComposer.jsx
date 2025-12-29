@@ -33099,7 +33099,53 @@ export default function CrosslistComposer() {
   const [activeForm, setActiveForm] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
   const [isMercariListing, setIsMercariListing] = useState(false);
+  const [isFacebookListing, setIsFacebookListing] = useState(false);
   const [currentEditingItemId, setCurrentEditingItemId] = useState(null);
+  const [facebookListingId, setFacebookListingId] = useState(null);
+  const [facebookListingUrl, setFacebookListingUrl] = useState('');
+  const [mercariJobId, setMercariJobId] = useState(null);
+  const [mercariListingUrl, setMercariListingUrl] = useState('');
+  const [mercariListingId, setMercariListingId] = useState(null);
+
+  // When Mercari listing runs via job-mode, poll until completed so we can show View/Delete buttons in-form.
+  useEffect(() => {
+    if (!mercariJobId) return;
+    let cancelled = false;
+    let interval = null;
+
+    const poll = async () => {
+      try {
+        const job = await listingJobsApi.getJobStatus(mercariJobId);
+        if (cancelled) return;
+        if (job?.status === 'completed') {
+          const url = job?.result?.mercari?.listingUrl || '';
+          if (url) setMercariListingUrl(String(url));
+          const idFromUrl = (() => {
+            try {
+              const m = /mercari\.com\/items\/([A-Za-z0-9]+)/.exec(String(url));
+              return m?.[1] || null;
+            } catch (_) {
+              return null;
+            }
+          })();
+          if (idFromUrl) setMercariListingId(String(idFromUrl));
+          if (interval) clearInterval(interval);
+        }
+        if (job?.status === 'failed') {
+          if (interval) clearInterval(interval);
+        }
+      } catch (_) {
+        // ignore; keep polling briefly
+      }
+    };
+
+    poll();
+    interval = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [mercariJobId]);
   const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [customBrands, setCustomBrands] = useState(() => {
@@ -34936,8 +34982,8 @@ export default function CrosslistComposer() {
       // Initiate eBay OAuth flow
       window.location.href = '/api/ebay/auth';
     } else if (templateKey === 'facebook') {
-      // Initiate Facebook OAuth flow
-      window.location.href = '/auth/facebook/auth';
+      // Vendoo-like reconnect: re-check extension session + re-send CONNECT_PLATFORM (no developer OAuth redirect)
+      handleConnectFacebook();
     } else {
       const label = TEMPLATE_DISPLAY_NAMES[templateKey] || "Marketplace";
       toast({
@@ -35536,6 +35582,7 @@ export default function CrosslistComposer() {
 
       try {
         setIsSaving(true);
+        setIsFacebookListing(true);
 
         // Upload any photos with blob: URLs to get proper HTTP/HTTPS URLs for Facebook
         const sourcePhotos = facebookForm.photos?.length > 0 ? facebookForm.photos : (generalForm.photos || []);
@@ -35592,7 +35639,12 @@ export default function CrosslistComposer() {
           const listingUrl =
             result?.listingUrl ||
             result?.url ||
+            (result?.listingId ? `https://www.facebook.com/marketplace/item/${result.listingId}/` : '') ||
             (result?.itemId ? `https://www.facebook.com/marketplace/item/${result.itemId}/` : '');
+
+          const listingIdStr = String(result?.listingId || result?.itemId || result?.id || '').trim();
+          setFacebookListingId(listingIdStr || null);
+          setFacebookListingUrl(listingUrl || '');
 
           toast({
             title: "Facebook listing created successfully!",
@@ -35600,9 +35652,9 @@ export default function CrosslistComposer() {
           });
 
           // Update inventory item status and save marketplace listing
-          if (currentEditingItemId && (result?.itemId || result?.id || listingUrl)) {
+          if (currentEditingItemId && (listingIdStr || listingUrl)) {
             try {
-              const marketplaceId = String(result?.itemId || result?.id || '');
+              const marketplaceId = listingIdStr;
               // Update inventory item status with listing info
               await base44.entities.InventoryItem.update(currentEditingItemId, {
                 status: 'listed',
@@ -35661,6 +35713,7 @@ export default function CrosslistComposer() {
         });
       } finally {
         setIsSaving(false);
+        setIsFacebookListing(false);
       }
 
       return;
@@ -35791,6 +35844,11 @@ export default function CrosslistComposer() {
           ['mercari'],
           listingPayload
         );
+
+        // Track job so we can show View/Delete actions once it completes
+        try {
+          if (resp?.jobId) setMercariJobId(String(resp.jobId));
+        } catch (_) {}
 
         toast({
           title: "Mercari listing job created",
@@ -41813,10 +41871,78 @@ export default function CrosslistComposer() {
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")}>
-                  List on Facebook
+                <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")} disabled={isFacebookListing}>
+                  {isFacebookListing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Listing...
+                    </>
+                  ) : (
+                    <>List on Facebook</>
+                  )}
                 </Button>
               </div>
+
+              {/* Facebook listing actions */}
+              {(facebookListingUrl || facebookListingId) && (
+                <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-green-600" />
+                      <Label className="text-sm font-semibold">Listing Active</Label>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {facebookListingId && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1">Facebook Listing ID</Label>
+                        <code className="text-xs bg-background px-2 py-1 rounded border break-all">{facebookListingId}</code>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          const url = facebookListingUrl || (facebookListingId ? `https://www.facebook.com/marketplace/item/${facebookListingId}/` : '');
+                          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        View Listing
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="gap-2"
+                        onClick={async () => {
+                          if (!confirm('Remove this listing from Profit Orbit? (This does NOT delete it on Facebook yet.)')) return;
+                          try {
+                            setIsSaving(true);
+                            setFacebookListingUrl('');
+                            setFacebookListingId(null);
+                            if (currentEditingItemId) {
+                              await base44.entities.InventoryItem.update(currentEditingItemId, {
+                                status: 'available',
+                                facebook_listing_id: '',
+                              });
+                              queryClient.invalidateQueries(['inventoryItems']);
+                            }
+                            toast({ title: 'Removed from app', description: 'Facebook delete/delist is not implemented yet.' });
+                          } catch (e) {
+                            toast({ title: 'Failed', description: e?.message || String(e), variant: 'destructive' });
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }}
+                      >
+                        Delete Listing
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -46102,6 +46228,69 @@ export default function CrosslistComposer() {
                           )}
                         </Button>
                       </div>
+
+                      {/* Mercari listing actions (after job completes) */}
+                      {(mercariListingUrl || mercariJobId) && (
+                        <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Lock className="h-4 w-4 text-green-600" />
+                              <Label className="text-sm font-semibold">
+                                {mercariListingUrl ? 'Listing Active' : 'Listing In Progress'}
+                              </Label>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            {mercariJobId && (
+                              <div>
+                                <Label className="text-xs text-muted-foreground mb-1">Job ID</Label>
+                                <code className="text-xs bg-background px-2 py-1 rounded border break-all">{mercariJobId}</code>
+                              </div>
+                            )}
+                            {mercariListingUrl && (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => window.open(mercariListingUrl, '_blank', 'noopener,noreferrer')}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  View Listing
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={async () => {
+                                    if (!confirm('Remove this listing from Profit Orbit? (This does NOT delist it on Mercari yet.)')) return;
+                                    try {
+                                      setIsSaving(true);
+                                      setMercariListingUrl('');
+                                      setMercariListingId(null);
+                                      setMercariJobId(null);
+                                      if (currentEditingItemId) {
+                                        await base44.entities.InventoryItem.update(currentEditingItemId, {
+                                          status: 'available',
+                                          mercari_listing_id: '',
+                                        });
+                                        queryClient.invalidateQueries(['inventoryItems']);
+                                      }
+                                      toast({ title: 'Removed from app', description: 'Mercari delist is not implemented yet.' });
+                                    } catch (e) {
+                                      toast({ title: 'Failed', description: e?.message || String(e), variant: 'destructive' });
+                                    } finally {
+                                      setIsSaving(false);
+                                    }
+                                  }}
+                                >
+                                  Delete Listing
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -47060,8 +47249,15 @@ export default function CrosslistComposer() {
                           <Save className="h-4 w-4" />
                           Save
                         </Button>
-                        <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")}>
-                          List on Facebook
+                        <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")} disabled={isFacebookListing}>
+                          {isFacebookListing ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Listing...
+                            </>
+                          ) : (
+                            <>List on Facebook</>
+                          )}
                         </Button>
                       </div>
                     </div>

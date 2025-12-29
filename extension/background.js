@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-20-graphql-template-and-id-extraction');
+console.log('EXT BUILD:', '2025-12-29-background-clean-21-tabless-fb-fetch-primary');
 
 // -----------------------------
 // Helpers
@@ -190,6 +190,18 @@ async function facebookFetchInTab(tabId, args, frameId = null) {
   // executeScript returns an array; take first result
   const first = Array.isArray(results) ? results[0] : null;
   return first?.result || null;
+}
+
+async function facebookFetchDirect(url, init) {
+  // Tabless path: uses extension fetch (host_permissions allow cross-origin).
+  // This does NOT require any facebook.com tab to be open.
+  const resp = await fetch(String(url || ''), { ...(init || {}), credentials: 'include' });
+  const text = await resp.text().catch(() => '');
+  const headers = {};
+  try {
+    for (const [k, v] of resp.headers.entries()) headers[k] = v;
+  } catch (_) {}
+  return { ok: resp.ok, status: resp.status, text, headers };
 }
 
 async function facebookFetchInTabAtOrigin(tabId, origin, args, timeoutMs = 15000) {
@@ -2098,38 +2110,58 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // The "Failed to fetch" here is typically caused by the browser doing a CORS preflight due to custom headers
         // (x-fb-*, sec-fetch-*, etc.). Facebook's real upload requests generally rely on cookies + form fields,
         // not custom JS-set headers. So we send only simple headers (Accept) and put tokens in the multipart body.
-        const fbTabId = await pickFacebookTabId();
-        uploadAttemptMeta.fbTabId = fbTabId;
-        uploadAttemptMeta.tabFetch = true;
-
-        // executeScript args must be JSON-serializable; pass file bytes as base64 string.
-        const toBase64 = (ab) => {
-          const u8 = new Uint8Array(ab);
-          let s = '';
-          const chunk = 0x8000;
-          for (let i = 0; i < u8.length; i += chunk) {
-            s += String.fromCharCode(...u8.subarray(i, i + chunk));
-          }
-          return btoa(s);
-        };
-        const fileBase64 = toBase64(await imgBlob.arrayBuffer());
-        uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
-        uploadAttemptMeta.fileBase64Chars = fileBase64.length;
-
-        // Only "simple" headers to avoid preflight. Keep Accept if present.
-        const tabUploadHeaders = {};
+        // Prefer tabless upload via extension fetch (no facebook.com tab required).
+        // Fallback to in-tab fetch only if direct upload fails.
+        const directUploadHeaders = {};
         try {
-          if (uploadHeaders?.accept) tabUploadHeaders.accept = uploadHeaders.accept;
+          if (uploadHeaders?.accept) directUploadHeaders.accept = uploadHeaders.accept;
         } catch (_) {}
 
-        const uploadResult = await facebookFetchInTab(fbTabId, {
-          url: uploadTemplate.url,
-          method: 'POST',
-          headers: tabUploadHeaders,
-          bodyType: 'formData',
-          formFields: uploadFormFields,
-          file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
-        });
+        let uploadResult = null;
+        try {
+          const fd = new FormData();
+          for (const f of uploadFormFields) {
+            if (!f?.name) continue;
+            fd.append(String(f.name), String(f.value ?? ''));
+          }
+          fd.append(String(fileFieldName), imgBlob, String(fileName));
+          const direct = await facebookFetchDirect(uploadTemplate.url, {
+            method: 'POST',
+            headers: directUploadHeaders,
+            body: fd,
+          });
+          uploadResult = { ...direct, error: null, href: null };
+          uploadAttemptMeta.directFetch = true;
+        } catch (e) {
+          uploadAttemptMeta.directFetch = false;
+          uploadAttemptMeta.directError = String(e?.message || e || 'direct_upload_failed');
+          const fbTabId = await pickFacebookTabId();
+          uploadAttemptMeta.fbTabId = fbTabId;
+          uploadAttemptMeta.tabFetch = true;
+
+          // executeScript args must be JSON-serializable; pass file bytes as base64 string.
+          const toBase64 = (ab) => {
+            const u8 = new Uint8Array(ab);
+            let s = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < u8.length; i += chunk) {
+              s += String.fromCharCode(...u8.subarray(i, i + chunk));
+            }
+            return btoa(s);
+          };
+          const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+          uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
+          uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+
+          uploadResult = await facebookFetchInTab(fbTabId, {
+            url: uploadTemplate.url,
+            method: 'POST',
+            headers: directUploadHeaders,
+            bodyType: 'formData',
+            formFields: uploadFormFields,
+            file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+          });
+        }
         const uploadTextRaw = uploadResult?.text || '';
         const uploadOk = !!uploadResult?.ok;
         const uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
@@ -2375,14 +2407,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         delete gqlHeaders['cookie'];
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
-        const fbTabIdForGql = await pickFacebookTabId();
-        const gqlResult = await facebookFetchInTab(fbTabIdForGql, {
-          url: graphqlTemplate.url,
-          method: 'POST',
-          headers: gqlHeaders,
-          bodyType: 'text',
-          bodyText: encodeFormBody(form),
-        });
+        // Prefer tabless GraphQL call too (no facebook.com tab required).
+        // Fallback to in-tab fetch only if direct fails.
+        let gqlResult = null;
+        try {
+          const direct = await facebookFetchDirect(graphqlTemplate.url, {
+            method: 'POST',
+            headers: gqlHeaders,
+            body: encodeFormBody(form),
+          });
+          gqlResult = { ...direct, error: null, href: null };
+        } catch (e) {
+          const fbTabIdForGql = await pickFacebookTabId();
+          gqlResult = await facebookFetchInTab(fbTabIdForGql, {
+            url: graphqlTemplate.url,
+            method: 'POST',
+            headers: gqlHeaders,
+            bodyType: 'text',
+            bodyText: encodeFormBody(form),
+          });
+        }
         const gqlText = gqlResult?.text || '';
         const gqlOk = !!gqlResult?.ok;
         const gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
