@@ -75,7 +75,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
-import { createMarketplaceListing, getUserPages, isConnected } from "@/api/facebookClient";
+// Facebook connection/listing is handled via the Profit Orbit extension (Vendoo-like session),
+// not the Facebook developer OAuth flow.
 import { listingJobsApi } from "@/api/listingApiClient";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
@@ -33218,6 +33219,25 @@ export default function CrosslistComposer() {
   const [facebookPages, setFacebookPages] = useState([]);
   const [facebookSelectedPage, setFacebookSelectedPage] = useState(null);
 
+  // Facebook connection state (extension session)
+  const [facebookConnected, setFacebookConnected] = useState(() => {
+    try {
+      return localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
+  const [facebookUsername, setFacebookUsername] = useState(() => {
+    try {
+      const raw = localStorage.getItem('profit_orbit_facebook_user');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.userName || parsed?.name || null;
+    } catch (_) {
+      return null;
+    }
+  });
+
   // Mercari connection state
   const [mercariConnected, setMercariConnected] = useState(() => {
     return localStorage.getItem('profit_orbit_mercari_connected') === 'true';
@@ -33399,6 +33419,70 @@ export default function CrosslistComposer() {
       }
     };
   }, [mercariConnected, mercariUsername]);
+
+  // Listen for Facebook connection status updates from extension (same-tab safe: uses poll + events)
+  useEffect(() => {
+    const readConnected = () => {
+      try {
+        return localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+      } catch (_) {
+        return false;
+      }
+    };
+    const readUserName = () => {
+      try {
+        const raw = localStorage.getItem('profit_orbit_facebook_user');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed?.userName || parsed?.name || null;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const sync = () => {
+      const c = readConnected();
+      const u = readUserName();
+      setFacebookConnected(c);
+      setFacebookUsername(u);
+    };
+
+    const onMarketplaceStatusUpdate = (event) => {
+      if (event.detail?.marketplace !== 'facebook') return;
+      const st = event.detail?.status;
+      if (!st) return;
+      if (st.loggedIn) {
+        setFacebookConnected(true);
+        setFacebookUsername(st.userName || null);
+      } else {
+        setFacebookConnected(false);
+        setFacebookUsername(null);
+      }
+    };
+
+    const onExtensionReady = (event) => {
+      const st = event?.detail?.marketplaces?.facebook;
+      if (!st) return;
+      if (st.loggedIn) {
+        setFacebookConnected(true);
+        setFacebookUsername(st.userName || null);
+      } else {
+        setFacebookConnected(false);
+        setFacebookUsername(null);
+      }
+    };
+
+    window.addEventListener('marketplaceStatusUpdate', onMarketplaceStatusUpdate);
+    window.addEventListener('extensionReady', onExtensionReady);
+
+    sync();
+    const poll = setInterval(sync, 1500);
+    return () => {
+      window.removeEventListener('marketplaceStatusUpdate', onMarketplaceStatusUpdate);
+      window.removeEventListener('extensionReady', onExtensionReady);
+      clearInterval(poll);
+    };
+  }, []);
   
   // Handle OAuth callback from URL params
   useEffect(() => {
@@ -35433,11 +35517,18 @@ export default function CrosslistComposer() {
     }
 
     if (marketplace === "facebook") {
-      // Check if Facebook is connected
-      if (!isConnected()) {
+      // Check if Facebook is connected via extension (Vendoo-like)
+      const fbConnected = (() => {
+        try {
+          return localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+        } catch (_) {
+          return false;
+        }
+      })();
+      if (!fbConnected) {
         toast({
           title: "Facebook Not Connected",
-          description: "Please connect your Facebook account in Settings first.",
+          description: "Please connect your Facebook account first.",
           variant: "destructive",
         });
         return;
@@ -35477,16 +35568,6 @@ export default function CrosslistComposer() {
           throw new Error('At least one photo is required for Facebook Marketplace listings.');
         }
 
-        // Get user's Facebook pages
-        const pages = await getUserPages();
-        if (pages.length === 0) {
-          throw new Error('No Facebook Pages found. You must manage at least one Page to create Marketplace listings.');
-        }
-
-        // Use selected page or first available page
-        const pageId = facebookForm.facebookPageId || facebookSelectedPage?.id || pages[0].id;
-        const selectedPage = pages.find(p => p.id === pageId) || pages[0];
-
         // Prepare Facebook listing data
         const title = facebookForm.title || generalForm.title;
         const description = facebookForm.description || generalForm.description || '';
@@ -35496,38 +35577,42 @@ export default function CrosslistComposer() {
           throw new Error('Title, description, and price are required for Facebook Marketplace listings.');
         }
 
-        // Convert price to cents
-        const priceInCents = Math.round(parseFloat(price) * 100);
+        // Create Facebook Marketplace listing via extension (no new tab/window)
+        const ext = window?.ProfitOrbitExtension;
+        if (!ext?.createFacebookListing) {
+          throw new Error('Extension API not available. Please refresh and ensure the Profit Orbit extension is enabled.');
+        }
 
-        // Create Facebook Marketplace listing
-        const result = await createMarketplaceListing({
-          pageId: selectedPage.id,
-          title: title,
-          description: description,
-          price: priceInCents,
-          currency: 'USD',
-          imageUrls: photosToUse,
+        const result = await ext.createFacebookListing({
+          inventory_item_id: currentEditingItemId || null,
+          payload: { title, description, price, images: photosToUse },
         });
 
-        if (result.success) {
+        if (result?.success) {
+          const listingUrl =
+            result?.listingUrl ||
+            result?.url ||
+            (result?.itemId ? `https://www.facebook.com/marketplace/item/${result.itemId}/` : '');
+
           toast({
             title: "Facebook listing created successfully!",
-            description: result.message || `Your item has been listed on Facebook Marketplace (${selectedPage.name}).`,
+            description: listingUrl ? `Listed! ${listingUrl}` : (result?.message || 'Listed successfully.'),
           });
 
           // Update inventory item status and save marketplace listing
-          if (currentEditingItemId && result.id) {
+          if (currentEditingItemId && (result?.itemId || result?.id || listingUrl)) {
             try {
+              const marketplaceId = String(result?.itemId || result?.id || '');
               // Update inventory item status with listing info
               await base44.entities.InventoryItem.update(currentEditingItemId, {
                 status: 'listed',
-                facebook_listing_id: String(result.id),
+                facebook_listing_id: marketplaceId || null,
                 marketplace_listings: {
                   facebook: {
-                    listing_id: String(result.id),
+                    listing_id: marketplaceId || null,
                     listed_at: new Date().toISOString(),
                     status: 'active',
-                    url: result.url || ''
+                    url: listingUrl || ''
                   }
                 }
               });
@@ -35536,8 +35621,8 @@ export default function CrosslistComposer() {
               const listingData = {
                 inventory_item_id: currentEditingItemId,
                 marketplace: 'facebook',
-                marketplace_listing_id: String(result.id),
-                marketplace_listing_url: result.url || '',
+                marketplace_listing_id: marketplaceId || '',
+                marketplace_listing_url: listingUrl || '',
                 status: 'active',
                 listed_at: new Date().toISOString(),
                 metadata: result,
@@ -35565,7 +35650,7 @@ export default function CrosslistComposer() {
             }
           }
         } else {
-          throw new Error(result.message || 'Failed to create Facebook listing');
+          throw new Error(result?.error || result?.message || 'Failed to create Facebook listing');
         }
       } catch (error) {
         console.error('Error creating Facebook listing:', error);
@@ -35849,9 +35934,15 @@ export default function CrosslistComposer() {
               throw new Error(result.Errors?.join(', ') || 'Failed to create listing');
             }
           } else if (marketplace === "facebook") {
-            // Check if Facebook is connected
-            if (!isConnected()) {
-              throw new Error('Facebook account not connected. Please connect your Facebook account in Settings first.');
+            const fbConnected = (() => {
+              try {
+                return localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+              } catch (_) {
+                return false;
+              }
+            })();
+            if (!fbConnected) {
+              throw new Error('Facebook account not connected. Please connect your Facebook account first.');
             }
 
             // Upload any photos with blob: URLs to get proper HTTP/HTTPS URLs for Facebook
@@ -35885,16 +35976,6 @@ export default function CrosslistComposer() {
               throw new Error('At least one photo is required for Facebook Marketplace listings.');
             }
 
-            // Get user's Facebook pages
-            const pages = await getUserPages();
-            if (pages.length === 0) {
-              throw new Error('No Facebook Pages found. You must manage at least one Page to create Marketplace listings.');
-            }
-
-            // Use selected page or first available page
-            const pageId = facebookForm.facebookPageId || facebookSelectedPage?.id || pages[0].id;
-            const selectedPage = pages.find(p => p.id === pageId) || pages[0];
-
             // Prepare Facebook listing data
             const title = facebookForm.title || generalForm.title;
             const description = facebookForm.description || generalForm.description || '';
@@ -35904,28 +35985,28 @@ export default function CrosslistComposer() {
               throw new Error('Title, description, and price are required for Facebook Marketplace listings.');
             }
 
-            // Convert price to cents
-            const priceInCents = Math.round(parseFloat(price) * 100);
+            const ext = window?.ProfitOrbitExtension;
+            if (!ext?.createFacebookListing) {
+              throw new Error('Extension API not available. Please refresh and ensure the Profit Orbit extension is enabled.');
+            }
 
-            // Create Facebook Marketplace listing
-            const result = await createMarketplaceListing({
-              pageId: selectedPage.id,
-              title: title,
-              description: description,
-              price: priceInCents,
-              currency: 'USD',
-              imageUrls: photosToUse,
+            const result = await ext.createFacebookListing({
+              inventory_item_id: currentEditingItemId || null,
+              payload: { title, description, price, images: photosToUse },
             });
 
-            if (result.success) {
+            if (result?.success) {
+              const listingUrl =
+                result?.listingUrl ||
+                result?.url ||
+                (result?.itemId ? `https://www.facebook.com/marketplace/item/${result.itemId}` : '');
               results.push({ 
                 marketplace, 
-                itemId: result.id,
-                listingUrl: `https://www.facebook.com/marketplace/item/${result.id}`,
-                pageName: selectedPage.name,
+                itemId: result?.itemId || result?.id,
+                listingUrl,
               });
             } else {
-              throw new Error(result.message || 'Failed to create Facebook listing');
+              throw new Error(result?.error || result?.message || 'Failed to create Facebook listing');
             }
           } else {
             // For other marketplaces, just mark as coming soon for now
@@ -36544,7 +36625,7 @@ export default function CrosslistComposer() {
               <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-5 h-5" />
               <Label className="text-base font-semibold">Facebook Account</Label>
             </div>
-            {facebookToken ? (
+            {facebookConnected ? (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("facebook")}>
                   <RefreshCw className="h-4 w-4" />
@@ -36568,7 +36649,7 @@ export default function CrosslistComposer() {
             <div>
               <Label className="text-xs text-muted-foreground mb-1">Status</Label>
               <div className="flex items-center gap-2">
-                {facebookToken ? (
+                {facebookConnected ? (
                   <>
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
                     <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
@@ -36582,49 +36663,16 @@ export default function CrosslistComposer() {
               </div>
             </div>
 
-            {/* Token Expires */}
+            {/* Logged in as */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">Token Expires</Label>
+              <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
               <div className="text-sm">
-                {facebookToken?.expires_at ? (
-                  <span>{new Date(facebookToken.expires_at).toLocaleDateString()}</span>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
+                {facebookUsername ? <span className="font-medium">{facebookUsername}</span> : <span className="text-muted-foreground">—</span>}
               </div>
             </div>
 
           </div>
 
-          {/* Show selected page if available */}
-          {facebookPages.length > 0 && (
-            <div className="pt-2 border-t">
-              <Label className="text-xs text-muted-foreground mb-2 block">Selected Page</Label>
-              <Select
-                value={facebookSelectedPage?.id || ""}
-                onValueChange={(value) => {
-                  const page = facebookPages.find(p => p.id === value);
-                  setFacebookSelectedPage(page);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a page">
-                    {facebookSelectedPage?.name || "Select a page"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {facebookPages.map((page) => (
-                    <SelectItem key={page.id} value={page.id}>
-                      {page.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Listings will be posted on behalf of this page.
-              </p>
-            </div>
-          )}
         </div>
         )}
 
@@ -41995,7 +42043,7 @@ export default function CrosslistComposer() {
                         <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-5 h-5" />
                         <Label className="text-base font-semibold">Facebook Account</Label>
                       </div>
-                      {facebookToken ? (
+                      {facebookConnected ? (
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("facebook")}>
                             <RefreshCw className="h-4 w-4" />
@@ -42018,7 +42066,7 @@ export default function CrosslistComposer() {
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1">Status</Label>
                         <div className="flex items-center gap-2">
-                          {facebookToken ? (
+                          {facebookConnected ? (
                             <>
                               <div className="w-2 h-2 rounded-full bg-green-500"></div>
                               <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
@@ -42032,45 +42080,16 @@ export default function CrosslistComposer() {
                         </div>
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground mb-1">Token Expires</Label>
+                        <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                         <div className="text-sm">
-                          {facebookToken?.expires_at ? (
-                            <span>{new Date(facebookToken.expires_at).toLocaleDateString()}</span>
+                          {facebookUsername ? (
+                            <span className="font-medium">{facebookUsername}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </div>
                       </div>
                     </div>
-
-                    {facebookPages.length > 0 && (
-                      <div className="pt-2 border-t">
-                        <Label className="text-xs text-muted-foreground mb-2 block">Selected Page</Label>
-                        <Select
-                          value={facebookSelectedPage?.id || ""}
-                          onValueChange={(value) => {
-                            const page = facebookPages.find(p => p.id === value);
-                            setFacebookSelectedPage(page);
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a page">
-                              {facebookSelectedPage?.name || "Select a page"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {facebookPages.map((page) => (
-                              <SelectItem key={page.id} value={page.id}>
-                                {page.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Listings will be posted on behalf of this page.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
 
