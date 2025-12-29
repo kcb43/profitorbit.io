@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-12-facebook-tab-fetch-base64');
+console.log('EXT BUILD:', '2025-12-29-background-clean-13-tabfetch-error-capture');
 
 // -----------------------------
 // Helpers
@@ -77,18 +77,28 @@ async function facebookFetchInTab(tabId, args) {
     target: { tabId },
     func: async (payload) => {
       const safeHeaders = { ...(payload?.headers || {}) };
-      // Avoid forbidden/meaningless headers; browser will set these correctly in-tab.
-      delete safeHeaders['host'];
-      delete safeHeaders['Host'];
-      delete safeHeaders['content-length'];
-      delete safeHeaders['Content-Length'];
-      delete safeHeaders['cookie'];
-      delete safeHeaders['Cookie'];
+      // Avoid forbidden/meaningless headers; the browser sets these. Passing them can cause failures.
+      const drop = (k) => {
+        delete safeHeaders[k];
+        delete safeHeaders[String(k || '').toLowerCase()];
+      };
+      drop('host');
+      drop('content-length');
+      drop('cookie');
+      drop('origin');
+      drop('referer');
+      drop('user-agent');
+      // Drop sec-fetch-* headers (browser-controlled)
+      for (const k of Object.keys(safeHeaders)) {
+        if (String(k).toLowerCase().startsWith('sec-fetch-')) drop(k);
+      }
 
       const init = {
         method: payload?.method || 'GET',
         headers: safeHeaders,
         credentials: 'include',
+        mode: payload?.mode || 'cors',
+        redirect: 'follow',
       };
 
       if (payload?.bodyType === 'formData') {
@@ -116,13 +126,17 @@ async function facebookFetchInTab(tabId, args) {
         init.body = String(payload?.bodyText || '');
       }
 
-      const resp = await fetch(String(payload?.url || ''), init);
-      const text = await resp.text().catch(() => '');
-      const headers = {};
       try {
-        for (const [k, v] of resp.headers.entries()) headers[k] = v;
-      } catch (_) {}
-      return { ok: resp.ok, status: resp.status, text, headers };
+        const resp = await fetch(String(payload?.url || ''), init);
+        const text = await resp.text().catch(() => '');
+        const headers = {};
+        try {
+          for (const [k, v] of resp.headers.entries()) headers[k] = v;
+        } catch (_) {}
+        return { ok: resp.ok, status: resp.status, text, headers, error: null };
+      } catch (e) {
+        return { ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed') };
+      }
     },
     args: [args],
   });
@@ -1911,6 +1925,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const uploadOk = !!uploadResult?.ok;
         const uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
         const uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
+        const uploadErr = uploadResult?.error ? String(uploadResult.error) : null;
         const uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
 
         // Some FB endpoints return JSON with a "for (;;);" prefix or slightly-invalid wrappers.
@@ -1919,6 +1934,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           uploadJson = uploadText ? JSON.parse(uploadText) : null;
         } catch (_) {
           uploadJson = null;
+        }
+
+        // If the tab fetch failed (status 0 / network error), surface that clearly.
+        if (!uploadOk || uploadStatus === 0) {
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastUploadDebug: {
+                  t: Date.now(),
+                  ok: uploadOk,
+                  status: uploadStatus,
+                  url: uploadTemplate.url,
+                  requestHeaders: uploadHeaders,
+                  attemptMeta: uploadAttemptMeta,
+                  responseHeaders: uploadRespHeaders,
+                  error: uploadErr,
+                  text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+          throw new Error(`Facebook upload failed in facebook.com tab${uploadErr ? `: ${uploadErr}` : ''}`);
         }
 
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
@@ -1937,6 +1975,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   requestHeaders: uploadHeaders,
                   attemptMeta: uploadAttemptMeta,
                   responseHeaders: uploadRespHeaders,
+                  error: uploadErr,
                   // Note: FormData is not serializable; omit body.
                   responseJson: uploadJson,
                   text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
