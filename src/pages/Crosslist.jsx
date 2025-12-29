@@ -862,33 +862,20 @@ export default function Crosslist() {
     return platform?.status === 'connected';
   };
 
-  // Mercari button with capture/bubble probes
   function MercariListButton({ itemId, marketplaceId, onClick }) {
-    console.log("🟠 MercariListButton RENDER", { itemId, marketplaceId, hasOnClick: !!onClick });
-
-    const handleClick = (e) => {
-      alert("🟠 MercariListButton CLICK");
-      console.log("🟠 MercariListButton CLICK", { itemId, marketplaceId, hasOnClick: !!onClick });
-      if (onClick) onClick(e, itemId, marketplaceId);
-    };
-
     return (
       <button
         type="button"
-        onClick={handleClick}
+        onClick={(e) => onClick?.(e, itemId, marketplaceId)}
         className="text-xs h-6 px-2 border rounded-md"
       >
         List on Mercari
-        <span style={{ marginLeft: 8, fontSize: 10 }}>MERCARI_BTN_MARKER_7</span>
       </button>
     );
   }
 
   // Wrapper function for button clicks - moves async logic out of JSX
   const handleListButtonClick = async (e, itemId, marketplace) => {
-    console.log("1️⃣ CLICK HANDLER START", { itemId, marketplace });
-    alert("1️⃣ CLICK HANDLER START");
-
     const withTimeout = (p, ms) =>
       Promise.race([
         p,
@@ -902,16 +889,8 @@ export default function Crosslist() {
         e.preventDefault();
         e.stopPropagation();
       }
-      console.log("2️⃣ AFTER preventDefault");
-
-      console.log("3️⃣ BEFORE handleListOnMarketplaceItem");
-      alert("3️⃣ BEFORE handleListOnMarketplaceItem");
 
       await withTimeout(handleListOnMarketplaceItem(itemId, marketplace), 15000);
-
-      console.log("4️⃣ AFTER handleListOnMarketplaceItem");
-      alert("4️⃣ AFTER handleListOnMarketplaceItem");
-
     } catch (err) {
       console.error("❌ WRAPPER ERROR full:", err);
 
@@ -922,15 +901,12 @@ export default function Crosslist() {
         err?.message ||
         String(err);
 
-      alert("❌ WRAPPER ERROR: " + details);
-
       toast({
         title: 'Listing Failed',
         description: details,
         variant: 'destructive',
       });
     }
-    console.log("5️⃣ WRAPPER END");
   };
 
   const handleListOnMarketplaceItem = async (itemId, marketplace) => {
@@ -942,8 +918,19 @@ export default function Crosslist() {
 
       setCrosslistLoading(true);
 
-      // Only support Mercari and Facebook for now (automation system)
-      if (!['mercari', 'facebook'].includes(normalizedMarketplace)) {
+      // Only support Mercari quick-listing from this page.
+      // Facebook listing is handled on the Facebook crosslist form (CrosslistComposer) to avoid duplicate flows/buttons.
+      if (normalizedMarketplace === 'facebook') {
+        toast({
+          title: 'Use Facebook Crosslist Form',
+          description: 'Facebook Marketplace listing is available on the Facebook crosslist form page.',
+          variant: 'destructive',
+          duration: 8000,
+        });
+        return;
+      }
+
+      if (!['mercari'].includes(normalizedMarketplace)) {
         // Fallback to old system for other platforms
         const accounts = await crosslistingEngine.getMarketplaceAccounts();
         const account = accounts[marketplace];
@@ -1681,44 +1668,12 @@ export default function Crosslist() {
                             >
                               {renderMarketplaceIcon(m, "w-6 h-6")}
                             </div>
-                            {!isListed && isConnected && !hasActiveJob && ['mercari', 'facebook'].includes(m.id) && (
-                              m.id === 'mercari' ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => alert("✅ MERCARI TEST CLICK")}
-                                    style={{ padding: 12, border: "1px solid red", marginBottom: 6 }}
-                                  >
-                                    MERCARI TEST CLICK
-                                  </button>
-                                  <MercariListButton
-                                    itemId={it.id}
-                                    marketplaceId={m.id}
-                                    onClick={(e) => handleListButtonClick(e, it.id, m.id)}
-                                  />
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => alert('RAW BUTTON CLICKED')}
-                                    style={{ padding: 12, border: '1px solid red', marginBottom: 6 }}
-                                  >
-                                    TEST CLICK
-                                  </button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => handleListButtonClick(e, it.id, m.id)}
-                                  disabled={crosslistLoading}
-                                  className="text-xs h-6 px-2"
-                                  style={{ pointerEvents: crosslistLoading ? 'none' : 'auto', zIndex: 10 }}
-                                >
-                                  List on {m.label}
-                                </Button>
-                                </>
-                              )
+                            {!isListed && isConnected && !hasActiveJob && m.id === 'mercari' && (
+                              <MercariListButton
+                                itemId={it.id}
+                                marketplaceId={m.id}
+                                onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                              />
                             )}
                             {hasActiveJob && activeJobs[it.id] && (
                               <div className="text-xs text-blue-600">Processing...</div>
@@ -1839,27 +1794,13 @@ export default function Crosslist() {
                               {renderMarketplaceIcon(m, "w-4 h-4")}
                             </div>
                             {status === 'not_listed' ? (
-                              isConnected && ['mercari', 'facebook'].includes(m.id) && !hasActiveJob ? (
-                                m.id === 'mercari' ? (
-                                  <MercariListButton
-                                    itemId={it.id}
-                                    marketplaceId={m.id}
-                                    onClick={(e) => handleListButtonClick(e, it.id, m.id)}
-                                  />
-                                ) : (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => handleListButtonClick(e, it.id, m.id)}
-                                    disabled={crosslistLoading}
-                                    className="text-xs h-6 px-2"
-                                    style={{ pointerEvents: crosslistLoading ? 'none' : 'auto', zIndex: 10 }}
-                                  >
-                                    List on {m.label}
-                                  </Button>
-                                )
-                              ) : !isConnected && ['mercari', 'facebook'].includes(m.id) ? (
+                              isConnected && m.id === 'mercari' && !hasActiveJob ? (
+                                <MercariListButton
+                                  itemId={it.id}
+                                  marketplaceId={m.id}
+                                  onClick={(e) => handleListButtonClick(e, it.id, m.id)}
+                                />
+                              ) : !isConnected && m.id === 'mercari' ? (
                                 <span className="text-xs text-muted-foreground">Connect</span>
                               ) : null
                             ) : (
