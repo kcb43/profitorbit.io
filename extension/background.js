@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-18-graphql-body-parse-docid');
+console.log('EXT BUILD:', '2025-12-29-background-clean-19-fix-tdz-recordedbodytext');
 
 // -----------------------------
 // Helpers
@@ -1713,6 +1713,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           );
         }
 
+        const getRecordedBodyText = (rec) => {
+          // Recorder stores requestBody as { kind, value }. We need a string for parsing/scoring.
+          const rb = rec?.requestBody;
+          if (!rb) return '';
+          if (typeof rb === 'string') return rb;
+          if (typeof rb !== 'object') return String(rb || '');
+
+          if (rb.kind === 'rawText' && typeof rb.value === 'string') return rb.value;
+
+          // Convert webRequest formData shape into application/x-www-form-urlencoded
+          if (rb.kind === 'formData' && rb.value && typeof rb.value === 'object') {
+            const parts = [];
+            for (const [k, v] of Object.entries(rb.value)) {
+              if (!k) continue;
+              const arr = Array.isArray(v) ? v : [String(v)];
+              for (const item of arr) {
+                if (item === undefined || item === null) continue;
+                parts.push(`${encodeURIComponent(String(k))}=${encodeURIComponent(String(item))}`);
+              }
+            }
+            return parts.join('&');
+          }
+
+          try {
+            return JSON.stringify(rb);
+          } catch (_) {
+            return String(rb || '');
+          }
+        };
+
         const pickGraphqlTemplate = (recs) => {
           // Heuristic: find a Marketplace create/publish mutation call
           const graphql = recs.filter((r) => typeof r?.url === 'string' && r.url.includes('/api/graphql') && String(r.method || '').toUpperCase() === 'POST');
@@ -1790,36 +1820,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
           }
           return parts.join('&');
-        };
-
-        const getRecordedBodyText = (rec) => {
-          // Recorder stores requestBody as { kind, value }. We need a string for parsing/scoring.
-          const rb = rec?.requestBody;
-          if (!rb) return '';
-          if (typeof rb === 'string') return rb;
-          if (typeof rb !== 'object') return String(rb || '');
-
-          if (rb.kind === 'rawText' && typeof rb.value === 'string') return rb.value;
-
-          // Convert webRequest formData shape into application/x-www-form-urlencoded
-          if (rb.kind === 'formData' && rb.value && typeof rb.value === 'object') {
-            const parts = [];
-            for (const [k, v] of Object.entries(rb.value)) {
-              if (!k) continue;
-              const arr = Array.isArray(v) ? v : [String(v)];
-              for (const item of arr) {
-                if (item === undefined || item === null) continue;
-                parts.push(`${encodeURIComponent(String(k))}=${encodeURIComponent(String(item))}`);
-              }
-            }
-            return parts.join('&');
-          }
-
-          try {
-            return JSON.stringify(rb);
-          } catch (_) {
-            return String(rb || '');
-          }
         };
 
         // Get user id from cookies (used by FB bodies as __user/av)
