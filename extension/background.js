@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-7');
+console.log('EXT BUILD:', '2025-12-29-background-clean-12-facebook-tab-fetch-base64');
 
 // -----------------------------
 // Helpers
@@ -48,6 +48,88 @@ async function notifyProfitOrbit(message) {
       // ignore
     }
   }
+}
+
+// -----------------------------
+// Facebook helpers (run requests in a real facebook.com tab)
+// -----------------------------
+
+async function pickFacebookTabId() {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['https://www.facebook.com/*', 'https://m.facebook.com/*'] });
+    const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
+    if (!valid.length) return null;
+    // Prefer active tab, then last focused, then first.
+    const active = valid.find((t) => t.active);
+    if (active?.id) return active.id;
+    const lastFocused = valid.find((t) => t.lastAccessed);
+    if (lastFocused?.id) return lastFocused.id;
+    return valid[0].id;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function facebookFetchInTab(tabId, args) {
+  if (!tabId) throw new Error('No facebook.com tab found. Open Facebook in a tab (logged in) and try again.');
+
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async (payload) => {
+      const safeHeaders = { ...(payload?.headers || {}) };
+      // Avoid forbidden/meaningless headers; browser will set these correctly in-tab.
+      delete safeHeaders['host'];
+      delete safeHeaders['Host'];
+      delete safeHeaders['content-length'];
+      delete safeHeaders['Content-Length'];
+      delete safeHeaders['cookie'];
+      delete safeHeaders['Cookie'];
+
+      const init = {
+        method: payload?.method || 'GET',
+        headers: safeHeaders,
+        credentials: 'include',
+      };
+
+      if (payload?.bodyType === 'formData') {
+        const fd = new FormData();
+        const fields = Array.isArray(payload?.formFields) ? payload.formFields : [];
+        for (const f of fields) {
+          if (!f) continue;
+          const name = String(f.name || '');
+          if (!name) continue;
+          fd.append(name, String(f.value ?? ''));
+        }
+
+        const file = payload?.file || null;
+        if (file?.base64 && file?.fieldName) {
+          const b64 = String(file.base64 || '');
+          const bin = atob(b64);
+          const u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i) & 0xff;
+          const blob = new Blob([u8], { type: String(file.type || 'application/octet-stream') });
+          fd.append(String(file.fieldName), blob, String(file.fileName || 'photo.jpg'));
+        }
+
+        init.body = fd;
+      } else if (payload?.bodyType === 'text') {
+        init.body = String(payload?.bodyText || '');
+      }
+
+      const resp = await fetch(String(payload?.url || ''), init);
+      const text = await resp.text().catch(() => '');
+      const headers = {};
+      try {
+        for (const [k, v] of resp.headers.entries()) headers[k] = v;
+      } catch (_) {}
+      return { ok: resp.ok, status: resp.status, text, headers };
+    },
+    args: [args],
+  });
+
+  // executeScript returns an array; take first result
+  const first = Array.isArray(results) ? results[0] : null;
+  return first?.result || null;
 }
 
 // -----------------------------
@@ -1038,17 +1120,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (type === 'STOP_FACEBOOK_API_RECORDING') {
-    facebookApiRecorder.enabled = false;
-    const endedAt = Date.now();
-    const records = facebookApiRecorder.records.slice();
-    console.log('🟦 [FACEBOOK] API recording stopped', { count: records.length });
-    try {
-      chrome.storage.local.set(
-        { facebookApiLastRecording: { t: endedAt, count: records.length, records } },
-        () => {}
-      );
-    } catch (_) {}
-    sendResponse({ success: true, startedAt: facebookApiRecorder.startedAt, endedAt, count: records.length, records });
+    (async () => {
+      facebookApiRecorder.enabled = false;
+      const endedAt = Date.now();
+      const records = facebookApiRecorder.records.slice();
+      console.log('🟦 [FACEBOOK] API recording stopped', { count: records.length });
+
+      // IMPORTANT (MV3 service workers):
+      // If we fire-and-forget chrome.storage writes, the service worker can go idle and the write may not persist.
+      // Await the write to guarantee durability before responding.
+      try {
+        await new Promise((resolve) => {
+          try {
+            chrome.storage.local.set(
+              { facebookApiLastRecording: { t: endedAt, count: records.length, records } },
+              () => resolve(true)
+            );
+          } catch (_) {
+            resolve(false);
+          }
+        });
+
+        // Best-effort readback to prove persistence (helps debug "recorded N calls but create can't find it")
+        const saved = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['facebookApiLastRecording'], (r) => resolve(r?.facebookApiLastRecording || null));
+          } catch (_) {
+            resolve(null);
+          }
+        });
+        console.log('🟦 [FACEBOOK] API recording persisted', {
+          saved: !!saved,
+          savedCount: typeof saved?.count === 'number' ? saved.count : null,
+          savedAt: typeof saved?.t === 'number' ? saved.t : null,
+        });
+      } catch (e) {
+        console.warn('⚠️ [FACEBOOK] Failed to persist API recording to storage', e);
+      }
+
+      sendResponse({ success: true, startedAt: facebookApiRecorder.startedAt, endedAt, count: records.length, records });
+    })();
     return true;
   }
 
@@ -1068,11 +1179,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     facebookApiRecorder.pending = new Map();
     facebookApiRecorder.startedAt = null;
     facebookApiRecorder.enabled = false;
-    try {
-      chrome.storage.local.remove(['facebookApiLastRecording'], () => {});
-    } catch (_) {}
-    console.log('🟦 [FACEBOOK] API recording cleared');
-    sendResponse({ success: true, cleared: true });
+    (async () => {
+      try {
+        await new Promise((resolve) => {
+          try {
+            chrome.storage.local.remove(['facebookApiLastRecording'], () => resolve(true));
+          } catch (_) {
+            resolve(false);
+          }
+        });
+      } catch (_) {}
+      console.log('🟦 [FACEBOOK] API recording cleared');
+      sendResponse({ success: true, cleared: true });
+    })();
     return true;
   }
 
@@ -1378,16 +1497,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!images.length) throw new Error('Missing images (need at least 1 image URL). Expected payload.images[] or payload.image_url.');
 
         // Load last FB recording as a "template" for endpoints/doc_ids/headers.
-        const last = await new Promise((resolve) => {
-          try {
-            chrome.storage.local.get(['facebookApiLastRecording'], (r) => resolve(r?.facebookApiLastRecording || null));
-          } catch (_) {
-            resolve(null);
-          }
-        });
-        const records = Array.isArray(last?.records) ? last.records : Array.isArray(last) ? last : [];
+        //
+        // Prefer the in-memory recorder buffer if the user clicked "Start recording" but forgot to click "Stop".
+        // (In MV3 service workers, state can be lost on suspension; we still fall back to storage.)
+        const inMemoryRecords = Array.isArray(facebookApiRecorder?.records) ? facebookApiRecorder.records.slice() : [];
+        let last = null;
+        let records = inMemoryRecords;
+
         if (!records.length) {
-          throw new Error('No Facebook API recording found in extension storage. Run start/stop Facebook API recording once while creating a Marketplace item.');
+          last = await new Promise((resolve) => {
+            try {
+              chrome.storage.local.get(['facebookApiLastRecording'], (r) => resolve(r?.facebookApiLastRecording || null));
+            } catch (_) {
+              resolve(null);
+            }
+          });
+          records = Array.isArray(last?.records) ? last.records : Array.isArray(last) ? last : [];
+        } else {
+          // Best-effort persist so future runs don't depend on the service worker staying alive.
+          try {
+            chrome.storage.local.set(
+              { facebookApiLastRecording: { t: Date.now(), count: inMemoryRecords.length, records: inMemoryRecords } },
+              () => {}
+            );
+          } catch (_) {}
+        }
+
+        if (!records.length) {
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastCreateDebug: {
+                  t: Date.now(),
+                  stage: 'load_recording',
+                  error: 'missing_facebook_recording',
+                  inMemoryCount: inMemoryRecords.length,
+                  hasSaved: !!last,
+                  savedCount: typeof last?.count === 'number' ? last.count : null,
+                  runtimeId: chrome?.runtime?.id || null,
+                  hint:
+                    'On a profitorbit.io tab, run ProfitOrbitExtension.startFacebookApiRecording(), then in a facebook.com tab create a Marketplace item and upload at least 1 photo, then run ProfitOrbitExtension.stopFacebookApiRecording().',
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+          throw new Error(
+            'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while creating a Marketplace item (upload at least 1 photo).'
+          );
         }
 
         const pickGraphqlTemplate = (recs) => {
@@ -1408,13 +1565,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
 
         const pickUploadTemplate = (recs) => {
-          const uploads = recs.filter(
-            (r) =>
-              typeof r?.url === 'string' &&
-              (r.url.includes('rupload.facebook.com') || r.url.includes('upload.facebook.com')) &&
-              String(r.method || '').toUpperCase() === 'POST'
-          );
-          return uploads[0] || null;
+          const uploads = recs
+            .filter(
+              (r) =>
+                typeof r?.url === 'string' &&
+                (r.url.includes('rupload.facebook.com') || r.url.includes('upload.facebook.com')) &&
+                String(r.method || '').toUpperCase() === 'POST'
+            )
+            .map((r) => {
+              const url = String(r.url || '');
+              const hdrs = r?.requestHeaders || {};
+              const ct = String(hdrs['content-type'] || hdrs['Content-Type'] || '');
+              const bodyText = r?.requestBody?.kind === 'rawText' ? String(r.requestBody.value || '') : '';
+
+              // Score most-likely photo upload request:
+              // - multipart/form-data indicates a real upload
+              // - filename= or name="file" indicates file part
+              // - marketplace-ish URL paths tend to be the right endpoints
+              let score = 0;
+              if (ct.toLowerCase().includes('multipart/form-data')) score += 10;
+              if (url.includes('rupload.facebook.com')) score += 4;
+              if (url.toLowerCase().includes('marketplace') || url.toLowerCase().includes('commerce')) score += 6;
+              if (/filename=/i.test(bodyText) || /name="file"/i.test(bodyText) || /name='file'/i.test(bodyText)) score += 10;
+              if (typeof r?.statusCode === 'number' && r.statusCode >= 200 && r.statusCode < 300) score += 2;
+              return { r, score, ct, url };
+            })
+            .sort((a, b) => b.score - a.score);
+          return uploads[0]?.r || null;
         };
 
         const graphqlTemplate = pickGraphqlTemplate(records);
@@ -1458,29 +1635,282 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         });
 
+        const inferImageMime = async (blob, urlHint) => {
+          const byExt = (() => {
+            const u = String(urlHint || '').toLowerCase();
+            if (u.includes('.png')) return 'image/png';
+            if (u.includes('.webp')) return 'image/webp';
+            if (u.includes('.gif')) return 'image/gif';
+            if (u.includes('.jpg') || u.includes('.jpeg')) return 'image/jpeg';
+            return null;
+          })();
+
+          try {
+            const ab = await blob.arrayBuffer();
+            const u8 = new Uint8Array(ab.slice(0, 16));
+            // JPEG: FF D8 FF
+            if (u8.length >= 3 && u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff) return 'image/jpeg';
+            // PNG: 89 50 4E 47 0D 0A 1A 0A
+            if (
+              u8.length >= 8 &&
+              u8[0] === 0x89 &&
+              u8[1] === 0x50 &&
+              u8[2] === 0x4e &&
+              u8[3] === 0x47 &&
+              u8[4] === 0x0d &&
+              u8[5] === 0x0a &&
+              u8[6] === 0x1a &&
+              u8[7] === 0x0a
+            )
+              return 'image/png';
+            // GIF: GIF87a / GIF89a
+            if (u8.length >= 6) {
+              const s = new TextDecoder('ascii', { fatal: false }).decode(u8.slice(0, 6));
+              if (s === 'GIF87a' || s === 'GIF89a') return 'image/gif';
+            }
+            // WebP: RIFF....WEBP
+            if (u8.length >= 12) {
+              const riff = new TextDecoder('ascii', { fatal: false }).decode(u8.slice(0, 4));
+              const webp = new TextDecoder('ascii', { fatal: false }).decode(u8.slice(8, 12));
+              if (riff === 'RIFF' && webp === 'WEBP') return 'image/webp';
+            }
+          } catch (_) {
+            // ignore
+          }
+
+          // Fallbacks
+          if (blob?.type && String(blob.type).startsWith('image/')) return String(blob.type);
+          return byExt || 'image/jpeg';
+        };
+
+        const parseMultipartFieldsFromRawText = (rawText, boundary) => {
+          // Returns: { fields: Array<{name, value}>, fileFieldName: string|null }
+          const out = { fields: [], fileFieldName: null };
+          if (!rawText || !boundary) return out;
+
+          const text = String(rawText || '');
+          const marker = `--${boundary}`;
+          if (!text.includes(marker)) return out;
+
+          const parts = text.split(marker);
+          for (const part of parts) {
+            const p = part.trim();
+            if (!p || p === '--') continue;
+
+            // Split headers/body by first blank line
+            const idx = p.indexOf('\r\n\r\n') >= 0 ? p.indexOf('\r\n\r\n') : p.indexOf('\n\n');
+            if (idx < 0) continue;
+            const headerBlock = p.slice(0, idx);
+            const bodyBlock = p.slice(idx + (p.indexOf('\r\n\r\n') >= 0 ? 4 : 2));
+
+            const cdLine = headerBlock
+              .split(/\r?\n/)
+              .find((l) => l.toLowerCase().startsWith('content-disposition:'));
+            if (!cdLine) continue;
+
+            const nameMatch = /name="([^"]+)"/i.exec(cdLine) || /name='([^']+)'/i.exec(cdLine);
+            const fileMatch = /filename="([^"]+)"/i.exec(cdLine) || /filename='([^']+)'/i.exec(cdLine);
+            const fieldName = nameMatch?.[1] || null;
+            if (!fieldName) continue;
+
+            // If this part is a file part, capture fieldName and skip adding as a text field.
+            if (fileMatch) {
+              if (!out.fileFieldName) out.fileFieldName = fieldName;
+              continue;
+            }
+
+            // Small text field
+            const value = bodyBlock.replace(/\r?\n--\s*$/g, '').trim();
+            if (value.length > 0 && value.length < 50_000) {
+              out.fields.push({ name: fieldName, value });
+            }
+          }
+
+          return out;
+        };
+
+        const appendUploadTemplateFields = (fd, template) => {
+          const appendedNames = new Set();
+          const kind = template?.requestBody?.kind;
+          if (kind === 'formData' && template?.requestBody?.value && typeof template.requestBody.value === 'object') {
+            for (const [k, v] of Object.entries(template.requestBody.value)) {
+              if (!k) continue;
+              // v is typically string[] from webRequest API
+              const arr = Array.isArray(v) ? v : [String(v)];
+              for (const item of arr) {
+                if (item === undefined || item === null) continue;
+                const key = String(k);
+                fd.append(key, String(item));
+                appendedNames.add(key);
+              }
+            }
+            return { fileFieldName: null, fieldsAdded: true, appendedNames };
+          }
+
+          if (kind === 'rawText') {
+            // Try parse boundary from recorded content-type header
+            const recordedCt =
+              template?.requestHeaders?.['content-type'] ||
+              template?.requestHeaders?.['Content-Type'] ||
+              null;
+            const ct = String(recordedCt || '');
+            const bMatch = /boundary=([^\s;]+)/i.exec(ct);
+            const boundary = bMatch?.[1] || null;
+            const parsed = parseMultipartFieldsFromRawText(String(template?.requestBody?.value || ''), boundary);
+            for (const f of parsed.fields) {
+              fd.append(f.name, f.value);
+              appendedNames.add(String(f.name));
+            }
+            return { fileFieldName: parsed.fileFieldName, fieldsAdded: parsed.fields.length > 0, appendedNames };
+          }
+
+          return { fileFieldName: null, fieldsAdded: false, appendedNames };
+        };
+
         // Download first image
         const firstUrl = images[0];
         console.log('🟦 [FACEBOOK] Using image URL', { firstUrlType: typeof firstUrl, firstUrl });
         const rawBlob = await fetchBlobFromUrl(firstUrl);
-        console.log('🟦 [FACEBOOK] Downloaded image blob', { type: rawBlob?.type || null, size: rawBlob?.size || null });
+        const inferredMime = await inferImageMime(rawBlob, firstUrl);
+        // Re-wrap blob with a real image mime type if upstream served application/octet-stream
+        const imgBlob = (() => {
+          try {
+            if (rawBlob?.type && rawBlob.type.startsWith('image/')) return rawBlob;
+            return rawBlob.slice(0, rawBlob.size, inferredMime);
+          } catch (_) {
+            return rawBlob;
+          }
+        })();
+        console.log('🟦 [FACEBOOK] Downloaded image blob', {
+          type: rawBlob?.type || null,
+          inferredMime,
+          size: rawBlob?.size || null,
+        });
 
         // Upload using the recorded template URL/headers (best-effort)
+        //
+        // IMPORTANT:
+        // FB photo upload endpoints often expect multipart/form-data. Sending raw bytes while
+        // keeping a recorded multipart boundary header causes FB to return a "200" with an error payload.
         const uploadHeaders = { ...(uploadTemplate.requestHeaders || {}) };
+        const recordedUploadContentType =
+          uploadHeaders['content-type'] || uploadHeaders['Content-Type'] || null;
         // Avoid forbidden headers
         delete uploadHeaders['content-length'];
         delete uploadHeaders['host'];
         delete uploadHeaders['cookie'];
-        // Update content-type for binary upload if not present
-        if (!uploadHeaders['content-type']) uploadHeaders['content-type'] = 'application/octet-stream';
-        if (rawBlob?.type) uploadHeaders['x-fb-photo-content-type'] = rawBlob.type;
+        // Let fetch set the multipart boundary automatically
+        delete uploadHeaders['content-type'];
+        delete uploadHeaders['Content-Type'];
 
-        const uploadResp = await fetch(uploadTemplate.url, {
+        // Best-effort hint header (not always required)
+        if (inferredMime) uploadHeaders['x-fb-photo-content-type'] = inferredMime;
+
+        // NOTE:
+        // Facebook often rejects uploads if the request doesn't originate from a real facebook.com document context.
+        // MV3 service worker fetches effectively originate from the extension origin, which can trigger FB error 1357004.
+        // To match real browser behavior, run the upload inside an existing facebook.com tab.
+        const uploadFormFields = [];
+        const fieldsInfo = (() => {
+          const appendedNames = new Set();
+          const kind = uploadTemplate?.requestBody?.kind;
+
+          if (kind === 'formData' && uploadTemplate?.requestBody?.value && typeof uploadTemplate.requestBody.value === 'object') {
+            for (const [k, v] of Object.entries(uploadTemplate.requestBody.value)) {
+              if (!k) continue;
+              const arr = Array.isArray(v) ? v : [String(v)];
+              for (const item of arr) {
+                if (item === undefined || item === null) continue;
+                const key = String(k);
+                uploadFormFields.push({ name: key, value: String(item) });
+                appendedNames.add(key);
+              }
+            }
+            return { fileFieldName: null, fieldsAdded: uploadFormFields.length > 0, appendedNames };
+          }
+
+          if (kind === 'rawText') {
+            const ct = String(recordedUploadContentType || '');
+            const bMatch = /boundary=([^\s;]+)/i.exec(ct);
+            const boundary = bMatch?.[1] || null;
+            const parsed = parseMultipartFieldsFromRawText(String(uploadTemplate?.requestBody?.value || ''), boundary);
+            for (const f of parsed.fields) {
+              uploadFormFields.push({ name: String(f.name), value: String(f.value) });
+              appendedNames.add(String(f.name));
+            }
+            return { fileFieldName: parsed.fileFieldName, fieldsAdded: uploadFormFields.length > 0, appendedNames };
+          }
+
+          return { fileFieldName: null, fieldsAdded: false, appendedNames };
+        })();
+
+        const uploadAttemptMeta = {
+          inferredMime,
+          templateRequestBodyKind: uploadTemplate?.requestBody?.kind || null,
+          templateFieldsAdded: !!fieldsInfo?.fieldsAdded,
+          templateFieldNamesCount: fieldsInfo?.appendedNames instanceof Set ? fieldsInfo.appendedNames.size : null,
+          copiedQueryParamCount: 0,
+          copiedQueryParamKeys: [],
+        };
+
+        // Some FB upload endpoints require a bunch of tokens to be present in the POST body (not only the URL).
+        // If the recorded request had them in the URL querystring, copy them into the multipart body as well.
+        try {
+          const u = new URL(uploadTemplate.url);
+          const params = u.searchParams;
+          const already = fieldsInfo?.appendedNames instanceof Set ? fieldsInfo.appendedNames : new Set();
+
+          // Important: lsd is often expected both as a param and as x-fb-lsd header.
+          const lsd = params.get('lsd');
+          if (lsd && !uploadHeaders['x-fb-lsd']) uploadHeaders['x-fb-lsd'] = lsd;
+
+          // Copy all query params (best-effort). This can include large __dyn/__csr blobs; FB often tolerates it.
+          for (const [k, v] of params.entries()) {
+            if (!k) continue;
+            if (v === undefined || v === null) continue;
+            if (already.has(k)) continue;
+            already.add(k);
+            uploadAttemptMeta.copiedQueryParamCount += 1;
+            if (uploadAttemptMeta.copiedQueryParamKeys.length < 50) uploadAttemptMeta.copiedQueryParamKeys.push(k);
+            uploadFormFields.push({ name: k, value: v });
+          }
+        } catch (_) {}
+
+        // Use the recorded multipart file field name if we can detect it; otherwise default to "file"
+        const fileFieldName = fieldsInfo?.fileFieldName || 'file';
+        uploadAttemptMeta.fileFieldName = fileFieldName;
+        const ext = inferredMime === 'image/png' ? 'png' : inferredMime === 'image/webp' ? 'webp' : inferredMime === 'image/gif' ? 'gif' : 'jpg';
+        const fileName = `photo-${Date.now()}.${ext}`;
+        const fbTabId = await pickFacebookTabId();
+        uploadAttemptMeta.fbTabId = fbTabId;
+        uploadAttemptMeta.tabFetch = true;
+
+        // executeScript args must be JSON-serializable; pass file bytes as base64 string.
+        const toBase64 = (ab) => {
+          const u8 = new Uint8Array(ab);
+          let s = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < u8.length; i += chunk) {
+            s += String.fromCharCode(...u8.subarray(i, i + chunk));
+          }
+          return btoa(s);
+        };
+        const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+        uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
+        uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+
+        const uploadResult = await facebookFetchInTab(fbTabId, {
+          url: uploadTemplate.url,
           method: 'POST',
           headers: uploadHeaders,
-          body: await rawBlob.arrayBuffer(),
-          credentials: 'include',
+          bodyType: 'formData',
+          formFields: uploadFormFields,
+          file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
         });
-        const uploadTextRaw = await uploadResp.text().catch(() => '');
+        const uploadTextRaw = uploadResult?.text || '';
+        const uploadOk = !!uploadResult?.ok;
+        const uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
+        const uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
         const uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
 
         // Some FB endpoints return JSON with a "for (;;);" prefix or slightly-invalid wrappers.
@@ -1491,13 +1921,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           uploadJson = null;
         }
 
+        // If FB returned an error payload, surface it clearly (HTTP can still be 200).
+        if (uploadJson && typeof uploadJson === 'object' && (uploadJson.error || uploadJson.errorSummary || uploadJson.errorDescription)) {
+          const code = uploadJson.error ? String(uploadJson.error) : null;
+          const summary = uploadJson.errorSummary ? String(uploadJson.errorSummary) : 'Facebook upload error';
+          const desc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastUploadDebug: {
+                  t: Date.now(),
+                  ok: uploadOk,
+                  status: uploadStatus,
+                  url: uploadTemplate.url,
+                  requestHeaders: uploadHeaders,
+                  attemptMeta: uploadAttemptMeta,
+                  responseHeaders: uploadRespHeaders,
+                  // Note: FormData is not serializable; omit body.
+                  responseJson: uploadJson,
+                  text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+          throw new Error(`${summary}${code ? ` (code ${code})` : ''}${desc ? `: ${desc}` : ''}`);
+        }
+
         const headerFirstId = (() => {
           try {
             const candidates = [
-              uploadResp.headers?.get?.('x-fb-photo-id'),
-              uploadResp.headers?.get?.('x-fb-media-id'),
-              uploadResp.headers?.get?.('x-fb-image-id'),
-              uploadResp.headers?.get?.('x-fb-upload-media-id'),
+              uploadRespHeaders['x-fb-photo-id'],
+              uploadRespHeaders['x-fb-media-id'],
+              uploadRespHeaders['x-fb-image-id'],
+              uploadRespHeaders['x-fb-upload-media-id'],
             ].filter(Boolean);
             const first = candidates[0] ? String(candidates[0]).trim() : null;
             if (first && /^\d{6,}$/.test(first)) return first;
@@ -1562,19 +2019,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!photoId) {
           // Save rich debug (including response headers) so we can patch extraction next time without guessing.
           try {
-            const respHeaders = {};
-            try {
-              for (const [k, v] of uploadResp.headers.entries()) respHeaders[k] = v;
-            } catch (_) {}
             chrome.storage.local.set(
               {
                 facebookLastUploadDebug: {
                   t: Date.now(),
-                  ok: uploadResp.ok,
-                  status: uploadResp.status,
+                  ok: uploadOk,
+                  status: uploadStatus,
                   url: uploadTemplate.url,
                   requestHeaders: uploadHeaders,
-                  responseHeaders: respHeaders,
+                  responseHeaders: uploadRespHeaders,
                   text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
                 },
               },
@@ -1583,7 +2036,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           } catch (_) {}
           throw new Error('Facebook upload succeeded but could not determine uploaded photo id. Saved debug as facebookLastUploadDebug (includes response headers).');
         }
-        console.log('🟦 [FACEBOOK] Uploaded photo', { photoId, status: uploadResp.status });
+        console.log('🟦 [FACEBOOK] Uploaded photo', { photoId, status: uploadStatus });
 
         // Build GraphQL request from template, overriding variables + tokens where possible
         const form = parseFormBody(graphqlTemplate.requestBody || '');
@@ -1649,13 +2102,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         delete gqlHeaders['cookie'];
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
-        const gqlResp = await fetch(graphqlTemplate.url, {
+        const fbTabIdForGql = await pickFacebookTabId();
+        const gqlResult = await facebookFetchInTab(fbTabIdForGql, {
+          url: graphqlTemplate.url,
           method: 'POST',
           headers: gqlHeaders,
-          body: encodeFormBody(form),
-          credentials: 'include',
+          bodyType: 'text',
+          bodyText: encodeFormBody(form),
         });
-        const gqlText = await gqlResp.text().catch(() => '');
+        const gqlText = gqlResult?.text || '';
+        const gqlOk = !!gqlResult?.ok;
+        const gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
         let gqlJson = null;
         try { gqlJson = gqlText ? JSON.parse(gqlText) : null; } catch (_) { gqlJson = null; }
 
@@ -1664,10 +2121,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const listingId = idNode?.id || (/\"id\"\s*:\s*\"(\d{8,})\"/.exec(gqlText)?.[1] || null);
         const url = listingId ? `https://www.facebook.com/marketplace/item/${listingId}/` : null;
 
-        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlResp.ok, status: gqlResp.status, url: graphqlTemplate.url, docId, friendlyName, listingId, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
+        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlOk, status: gqlStatus, url: graphqlTemplate.url, docId, friendlyName, listingId, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
 
-        if (!gqlResp.ok) {
-          throw new Error(`Facebook GraphQL create failed: ${gqlResp.status}`);
+        if (!gqlOk) {
+          throw new Error(`Facebook GraphQL create failed: ${gqlStatus}`);
         }
 
         console.log('🟢 [FACEBOOK] Listing request completed', { listingId, url });
