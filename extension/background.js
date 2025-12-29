@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-19-fix-tdz-recordedbodytext');
+console.log('EXT BUILD:', '2025-12-29-background-clean-20-graphql-template-and-id-extraction');
 
 // -----------------------------
 // Helpers
@@ -1749,15 +1749,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const scored = graphql
             .map((r) => {
               const body = getRecordedBodyText(r);
-              const friendly = /fb_api_req_friendly_name=([^&]+)/.exec(body)?.[1] || '';
-              const hasMarketplace = body.includes('Marketplace') || decodeURIComponent(friendly || '').includes('Marketplace');
-              const hasCreate = body.toLowerCase().includes('create') || decodeURIComponent(friendly || '').toLowerCase().includes('create');
+              const friendlyEnc = /fb_api_req_friendly_name=([^&]+)/.exec(body)?.[1] || '';
+              let friendly = '';
+              try { friendly = decodeURIComponent(friendlyEnc || ''); } catch (_) { friendly = String(friendlyEnc || ''); }
+              const hasMarketplace = body.includes('Marketplace') || friendly.includes('Marketplace');
+              const hasCreate = body.toLowerCase().includes('create') || friendly.toLowerCase().includes('create');
               const hasDoc = /doc_id=\d+/.test(body);
-              const score = (hasMarketplace ? 10 : 0) + (hasCreate ? 5 : 0) + (hasDoc ? 5 : 0) + (body.includes('variables=') ? 2 : 0);
+              const isQuery = /\bquery\b/i.test(friendly) || /Query/i.test(friendly);
+              const isMutation = /\bmutation\b/i.test(friendly) || /Mutation/i.test(friendly);
+              const hasVars = body.includes('variables=');
+              // Strongly prefer mutations (publish/create) over composer "Query" templates.
+              const score =
+                (hasMarketplace ? 10 : 0) +
+                (hasCreate ? 6 : 0) +
+                (hasDoc ? 8 : 0) +
+                (hasVars ? 3 : 0) +
+                (isMutation ? 25 : 0) -
+                (isQuery ? 20 : 0);
               return { r, score };
             })
             .sort((a, b) => b.score - a.score);
-          return scored[0]?.r || null;
+          // If our best candidate doesn't even have doc_id, bail (recording likely incomplete).
+          const best = scored[0]?.r || null;
+          if (!best) return null;
+          const bestBody = getRecordedBodyText(best);
+          if (!/doc_id=\d+/.test(bestBody)) return null;
+          return best;
         };
 
         const pickUploadTemplate = (recs) => {
@@ -2372,15 +2389,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let gqlJson = null;
         try { gqlJson = gqlText ? JSON.parse(gqlText) : null; } catch (_) { gqlJson = null; }
 
-        // Extract listing id best-effort
-        const idNode = gqlJson ? deepFindFirst(gqlJson, (o) => typeof o?.id === 'string' && /^\d{8,}$/.test(o.id)) : null;
-        const listingId = idNode?.id || (/\"id\"\s*:\s*\"(\d{8,})\"/.exec(gqlText)?.[1] || null);
+        // Extract listing id best-effort.
+        // NOTE: Some composer queries return Marketplace IDs (e.g. current_marketplace.id) which are NOT listing IDs.
+        const marketplaceId =
+          gqlJson?.data?.viewer?.marketplace_settings?.current_marketplace?.id ||
+          null;
+
+        const collectIds = (root) => {
+          const out = new Set();
+          deepMutate(root, (o, k) => {
+            if (!o || typeof o !== 'object') return;
+            const v = o[k];
+            if (typeof v === 'string' && /^\d{8,}$/.test(v)) out.add(v);
+          });
+          return Array.from(out);
+        };
+
+        const ids = gqlJson ? collectIds(gqlJson) : [];
+        const filtered = ids.filter((id) => id !== marketplaceId && id !== fbUserId);
+
+        // Prefer ids near keys that look like item/listing/draft
+        const preferredNode = gqlJson
+          ? deepFindFirst(gqlJson, (o) => {
+              if (!o || typeof o !== 'object') return false;
+              const keys = Object.keys(o);
+              const hasListingishKey = keys.some((k) => /listing|item|draft|marketplace_item/i.test(k));
+              if (!hasListingishKey) return false;
+              return keys.some((k) => typeof o[k] === 'string' && /^\d{8,}$/.test(o[k]) && o[k] !== marketplaceId && o[k] !== fbUserId);
+            })
+          : null;
+
+        let listingId = null;
+        if (preferredNode) {
+          for (const [k, v] of Object.entries(preferredNode)) {
+            if (typeof v === 'string' && /^\d{8,}$/.test(v) && v !== marketplaceId && v !== fbUserId) {
+              listingId = v;
+              break;
+            }
+          }
+        }
+        if (!listingId) listingId = filtered[0] || null;
+
         const url = listingId ? `https://www.facebook.com/marketplace/item/${listingId}/` : null;
 
-        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlOk, status: gqlStatus, url: graphqlTemplate.url, docId, friendlyName, listingId, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
+        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlOk, status: gqlStatus, url: graphqlTemplate.url, docId, friendlyName, listingId, marketplaceId, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
 
         if (!gqlOk) {
           throw new Error(`Facebook GraphQL create failed: ${gqlStatus}`);
+        }
+
+        if (!listingId) {
+          throw new Error(
+            'Facebook GraphQL call succeeded but did not return a listing/item id. Your recording likely captured a composer QUERY (e.g. CometMarketplaceComposerCreateComponentQuery) but not the Publish/Create mutation. Re-record while clicking Publish on a Marketplace item.'
+          );
         }
 
         console.log('🟢 [FACEBOOK] Listing request completed', { listingId, url });
