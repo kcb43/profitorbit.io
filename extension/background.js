@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-13-tabfetch-error-capture');
+console.log('EXT BUILD:', '2025-12-29-background-clean-14-upload-in-upload-host-tab');
 
 // -----------------------------
 // Helpers
@@ -70,8 +70,46 @@ async function pickFacebookTabId() {
   }
 }
 
+async function ensureTabForOrigin(origin) {
+  // Find or create a background tab at the given origin so same-origin fetch can succeed
+  // (avoids CORS surprises when calling upload.facebook.com from a www.facebook.com document).
+  const normalized = String(origin || '').replace(/\/+$/, '');
+  if (!normalized) return null;
+
+  try {
+    const urlPattern = `${normalized}/*`;
+    const tabs = await chrome.tabs.query({ url: [urlPattern] });
+    const existing = (tabs || []).find((t) => t && typeof t.id === 'number');
+    if (existing?.id) return existing.id;
+  } catch (_) {}
+
+  // Create a background tab and wait for it to finish loading
+  const created = await chrome.tabs.create({ url: `${normalized}/`, active: false });
+  const tabId = created?.id;
+  if (!tabId) return null;
+
+  await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      try { chrome.tabs.onUpdated.removeListener(listener); } catch (_) {}
+      resolve(true);
+    }, 15000);
+
+    const listener = (updatedTabId, info) => {
+      if (updatedTabId !== tabId) return;
+      if (info.status === 'complete') {
+        clearTimeout(timeout);
+        try { chrome.tabs.onUpdated.removeListener(listener); } catch (_) {}
+        resolve(true);
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+
+  return tabId;
+}
+
 async function facebookFetchInTab(tabId, args) {
-  if (!tabId) throw new Error('No facebook.com tab found. Open Facebook in a tab (logged in) and try again.');
+  if (!tabId) throw new Error('No suitable tab found for running this request.');
 
   const results = await chrome.scripting.executeScript({
     target: { tabId },
@@ -133,9 +171,9 @@ async function facebookFetchInTab(tabId, args) {
         try {
           for (const [k, v] of resp.headers.entries()) headers[k] = v;
         } catch (_) {}
-        return { ok: resp.ok, status: resp.status, text, headers, error: null };
+        return { ok: resp.ok, status: resp.status, text, headers, error: null, href: String(location?.href || '') };
       } catch (e) {
-        return { ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed') };
+        return { ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed'), href: String(location?.href || '') };
       }
     },
     args: [args],
@@ -1895,7 +1933,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         uploadAttemptMeta.fileFieldName = fileFieldName;
         const ext = inferredMime === 'image/png' ? 'png' : inferredMime === 'image/webp' ? 'webp' : inferredMime === 'image/gif' ? 'gif' : 'jpg';
         const fileName = `photo-${Date.now()}.${ext}`;
-        const fbTabId = await pickFacebookTabId();
+        // IMPORTANT:
+        // If the upload host is upload.facebook.com / rupload.facebook.com, doing the fetch from a
+        // www.facebook.com document can still fail (status 0 / Failed to fetch) due to CORS or origin policies.
+        // So we run the upload inside a tab whose origin matches the upload host.
+        let uploadOriginTabId = null;
+        try {
+          const u = new URL(uploadTemplate.url);
+          uploadOriginTabId = await ensureTabForOrigin(u.origin);
+        } catch (_) {
+          uploadOriginTabId = null;
+        }
+        const fbTabId = uploadOriginTabId || (await pickFacebookTabId());
         uploadAttemptMeta.fbTabId = fbTabId;
         uploadAttemptMeta.tabFetch = true;
 
@@ -1926,6 +1975,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
         const uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
         const uploadErr = uploadResult?.error ? String(uploadResult.error) : null;
+        const uploadHref = uploadResult?.href ? String(uploadResult.href) : null;
         const uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
 
         // Some FB endpoints return JSON with a "for (;;);" prefix or slightly-invalid wrappers.
@@ -1950,6 +2000,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   attemptMeta: uploadAttemptMeta,
                   responseHeaders: uploadRespHeaders,
                   error: uploadErr,
+                  href: uploadHref,
                   text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
                 },
               },
@@ -1976,6 +2027,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   attemptMeta: uploadAttemptMeta,
                   responseHeaders: uploadRespHeaders,
                   error: uploadErr,
+                  href: uploadHref,
                   // Note: FormData is not serializable; omit body.
                   responseJson: uploadJson,
                   text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
