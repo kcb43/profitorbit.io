@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-17-upload-no-preflight');
+console.log('EXT BUILD:', '2025-12-29-background-clean-18-graphql-body-parse-docid');
 
 // -----------------------------
 // Helpers
@@ -1718,7 +1718,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const graphql = recs.filter((r) => typeof r?.url === 'string' && r.url.includes('/api/graphql') && String(r.method || '').toUpperCase() === 'POST');
           const scored = graphql
             .map((r) => {
-              const body = String(r?.requestBody || '');
+              const body = getRecordedBodyText(r);
               const friendly = /fb_api_req_friendly_name=([^&]+)/.exec(body)?.[1] || '';
               const hasMarketplace = body.includes('Marketplace') || decodeURIComponent(friendly || '').includes('Marketplace');
               const hasCreate = body.toLowerCase().includes('create') || decodeURIComponent(friendly || '').toLowerCase().includes('create');
@@ -1790,6 +1790,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
           }
           return parts.join('&');
+        };
+
+        const getRecordedBodyText = (rec) => {
+          // Recorder stores requestBody as { kind, value }. We need a string for parsing/scoring.
+          const rb = rec?.requestBody;
+          if (!rb) return '';
+          if (typeof rb === 'string') return rb;
+          if (typeof rb !== 'object') return String(rb || '');
+
+          if (rb.kind === 'rawText' && typeof rb.value === 'string') return rb.value;
+
+          // Convert webRequest formData shape into application/x-www-form-urlencoded
+          if (rb.kind === 'formData' && rb.value && typeof rb.value === 'object') {
+            const parts = [];
+            for (const [k, v] of Object.entries(rb.value)) {
+              if (!k) continue;
+              const arr = Array.isArray(v) ? v : [String(v)];
+              for (const item of arr) {
+                if (item === undefined || item === null) continue;
+                parts.push(`${encodeURIComponent(String(k))}=${encodeURIComponent(String(item))}`);
+              }
+            }
+            return parts.join('&');
+          }
+
+          try {
+            return JSON.stringify(rb);
+          } catch (_) {
+            return String(rb || '');
+          }
         };
 
         // Get user id from cookies (used by FB bodies as __user/av)
@@ -2241,9 +2271,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           throw new Error('Facebook upload succeeded but could not determine uploaded photo id. Saved debug as facebookLastUploadDebug (includes response headers).');
         }
         console.log('🟦 [FACEBOOK] Uploaded photo', { photoId, status: uploadStatus });
+        // Persist a "success" debug snapshot too so storage always reflects the latest run.
+        try {
+          chrome.storage.local.set(
+            {
+              facebookLastUploadDebug: {
+                t: Date.now(),
+                ok: uploadOk,
+                status: uploadStatus,
+                url: uploadTemplate.url,
+                requestHeaders: uploadHeaders,
+                attemptMeta: uploadAttemptMeta,
+                responseHeaders: uploadRespHeaders,
+                error: uploadErr,
+                href: uploadHref,
+                photoId,
+                text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
+              },
+            },
+            () => {}
+          );
+        } catch (_) {}
 
         // Build GraphQL request from template, overriding variables + tokens where possible
-        const form = parseFormBody(graphqlTemplate.requestBody || '');
+        const gqlBodyText = getRecordedBodyText(graphqlTemplate);
+        const form = parseFormBody(gqlBodyText);
         const friendlyName = form.fb_api_req_friendly_name || null;
         const docId = form.doc_id || null;
         if (!docId) throw new Error('Facebook GraphQL template missing doc_id');
