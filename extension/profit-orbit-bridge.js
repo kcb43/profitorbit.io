@@ -55,75 +55,100 @@ if (typeof chrome !== 'undefined') {
   console.error('🔴 Bridge: chrome is undefined - this is a content script, chrome should exist!');
 }
 
-// Listen for page context requests to create a Mercari listing
+// Helper to safely post a response back to the MAIN world
+function poPostResponse(type, resp) {
+  try {
+    window.postMessage({ type, resp }, "*");
+  } catch (_) {}
+}
+
+function poHandleExtensionInvalidated(err, responseType) {
+  try {
+    console.error('🔴 Bridge: Extension context invalidated (caught)', err);
+  } catch (_) {}
+
+  try {
+    // Mark + notify so the app can prompt a refresh
+    localStorage.setItem('profit_orbit_extension_invalidated', 'true');
+  } catch (_) {}
+
+  try {
+    window.dispatchEvent(new CustomEvent('profitOrbitExtensionInvalidated'));
+  } catch (_) {}
+
+  // Stop any periodic polling loops
+  try {
+    stopAllPolling();
+  } catch (_) {}
+
+  poPostResponse(responseType, {
+    success: false,
+    error: 'Extension context invalidated. If you just reloaded/updated the extension, refresh this tab and try again.',
+  });
+}
+
+function poTrySendMessage(message, responseType) {
+  try {
+    chrome.runtime.sendMessage(message, (resp) => poPostResponse(responseType, resp));
+  } catch (err) {
+    const msg = String(err?.message || err || '');
+    if (msg.toLowerCase().includes('extension context invalidated')) {
+      poHandleExtensionInvalidated(err, responseType);
+      return;
+    }
+    poPostResponse(responseType, { success: false, error: msg || 'Unknown error sending message to extension.' });
+  }
+}
+
+// Listen for page context requests (page -> bridge -> background)
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   const msg = event.data;
-  if (msg?.type === "PO_CREATE_MERCARI_LISTING") {
-    chrome.runtime.sendMessage(
-      { type: "CREATE_MERCARI_LISTING", listingData: msg.payload },
-      (resp) => {
-        window.postMessage({ type: "PO_CREATE_MERCARI_LISTING_RESULT", resp }, "*");
-      }
-    );
+  if (!msg?.type) return;
+
+  if (msg.type === "PO_CREATE_MERCARI_LISTING") {
+    poTrySendMessage({ type: "CREATE_MERCARI_LISTING", listingData: msg.payload }, "PO_CREATE_MERCARI_LISTING_RESULT");
+    return;
   }
-  if (msg?.type === "PO_CREATE_FACEBOOK_LISTING") {
-    chrome.runtime.sendMessage(
-      { type: "CREATE_FACEBOOK_LISTING", listingData: msg.payload },
-      (resp) => {
-        window.postMessage({ type: "PO_CREATE_FACEBOOK_LISTING_RESULT", resp }, "*");
-      }
-    );
+  if (msg.type === "PO_CREATE_FACEBOOK_LISTING") {
+    poTrySendMessage({ type: "CREATE_FACEBOOK_LISTING", listingData: msg.payload }, "PO_CREATE_FACEBOOK_LISTING_RESULT");
+    return;
   }
 
   // Mercari API recorder controls (for API-mode reverse engineering)
-  if (msg?.type === "PO_START_MERCARI_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "START_MERCARI_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_START_MERCARI_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_START_MERCARI_API_RECORDING") {
+    poTrySendMessage({ type: "START_MERCARI_API_RECORDING" }, "PO_START_MERCARI_API_RECORDING_RESULT");
+    return;
   }
-
-  if (msg?.type === "PO_STOP_MERCARI_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "STOP_MERCARI_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_STOP_MERCARI_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_STOP_MERCARI_API_RECORDING") {
+    poTrySendMessage({ type: "STOP_MERCARI_API_RECORDING" }, "PO_STOP_MERCARI_API_RECORDING_RESULT");
+    return;
   }
-
-  if (msg?.type === "PO_GET_MERCARI_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "GET_MERCARI_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_GET_MERCARI_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_GET_MERCARI_API_RECORDING") {
+    poTrySendMessage({ type: "GET_MERCARI_API_RECORDING" }, "PO_GET_MERCARI_API_RECORDING_RESULT");
+    return;
   }
-
-  if (msg?.type === "PO_CLEAR_MERCARI_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "CLEAR_MERCARI_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_CLEAR_MERCARI_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_CLEAR_MERCARI_API_RECORDING") {
+    poTrySendMessage({ type: "CLEAR_MERCARI_API_RECORDING" }, "PO_CLEAR_MERCARI_API_RECORDING_RESULT");
+    return;
   }
 
   // Facebook API recorder controls (for API-mode reverse engineering)
-  if (msg?.type === "PO_START_FACEBOOK_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "START_FACEBOOK_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_START_FACEBOOK_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_START_FACEBOOK_API_RECORDING") {
+    poTrySendMessage({ type: "START_FACEBOOK_API_RECORDING" }, "PO_START_FACEBOOK_API_RECORDING_RESULT");
+    return;
   }
-
-  if (msg?.type === "PO_STOP_FACEBOOK_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "STOP_FACEBOOK_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_STOP_FACEBOOK_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_STOP_FACEBOOK_API_RECORDING") {
+    poTrySendMessage({ type: "STOP_FACEBOOK_API_RECORDING" }, "PO_STOP_FACEBOOK_API_RECORDING_RESULT");
+    return;
   }
-
-  if (msg?.type === "PO_GET_FACEBOOK_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "GET_FACEBOOK_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_GET_FACEBOOK_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_GET_FACEBOOK_API_RECORDING") {
+    poTrySendMessage({ type: "GET_FACEBOOK_API_RECORDING" }, "PO_GET_FACEBOOK_API_RECORDING_RESULT");
+    return;
   }
-
-  if (msg?.type === "PO_CLEAR_FACEBOOK_API_RECORDING") {
-    chrome.runtime.sendMessage({ type: "CLEAR_FACEBOOK_API_RECORDING" }, (resp) => {
-      window.postMessage({ type: "PO_CLEAR_FACEBOOK_API_RECORDING_RESULT", resp }, "*");
-    });
+  if (msg.type === "PO_CLEAR_FACEBOOK_API_RECORDING") {
+    poTrySendMessage({ type: "CLEAR_FACEBOOK_API_RECORDING" }, "PO_CLEAR_FACEBOOK_API_RECORDING_RESULT");
+    return;
   }
 });
 
