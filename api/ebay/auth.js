@@ -23,6 +23,11 @@ export default async function handler(req, res) {
 
   try {
     const clientId = process.env.VITE_EBAY_CLIENT_ID || process.env.EBAY_CLIENT_ID;
+    const redirectUriName =
+      process.env.EBAY_REDIRECT_URI_NAME ||
+      process.env.EBAY_RU_NAME ||
+      process.env.EBAY_OAUTH_REDIRECT_URI_NAME ||
+      null;
     const ebayEnv = process.env.EBAY_ENV;
     const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
     const isProductionByClientId = clientId && (
@@ -36,6 +41,17 @@ export default async function handler(req, res) {
     if (!clientId) {
       return res.status(500).json({ 
         error: 'eBay Client ID not configured. Please set EBAY_CLIENT_ID environment variable.' 
+      });
+    }
+
+    // eBay OAuth uses the "Redirect URI name" (RuName) for the `redirect_uri` parameter,
+    // not the callback URL itself.
+    if (!redirectUriName) {
+      return res.status(500).json({
+        error:
+          'eBay redirect URI name (RuName) not configured. Please set EBAY_REDIRECT_URI_NAME in Vercel.',
+        hint:
+          'In eBay Developer Portal -> your app -> Auth (new security), copy the Redirect URI name (RuName) and set it as EBAY_REDIRECT_URI_NAME.',
       });
     }
 
@@ -74,7 +90,9 @@ export default async function handler(req, res) {
       baseUrl = 'http://localhost:5173';
     }
     
-    const redirectUri = `${baseUrl}/api/ebay/callback`;
+    // This is the callback URL you configured/accepted in eBay dev portal.
+    // NOTE: eBay still expects the RuName in the auth URL param.
+    const callbackUrl = `${baseUrl}/api/ebay/callback`;
     
     console.log('OAuth Redirect URI construction:', {
       BASE_URL: process.env.BASE_URL,
@@ -82,7 +100,8 @@ export default async function handler(req, res) {
       host: req.headers.host,
       referer: req.headers.referer,
       finalBaseUrl: baseUrl,
-      finalRedirectUri: redirectUri,
+      callbackUrl,
+      redirectUriName,
       environment: useProduction ? 'production' : 'sandbox',
     });
     
@@ -94,14 +113,25 @@ export default async function handler(req, res) {
       ? 'https://auth.ebay.com/oauth2/authorize'
       : 'https://auth.sandbox.ebay.com/oauth2/authorize';
 
-    // Required OAuth scopes for Trading API
-    // https://api.ebay.com/oauth/api_scope - Full API access including listing
-    const scope = 'https://api.ebay.com/oauth/api_scope';
+    // Scopes: use env override, otherwise default to a broad set used for selling + identity.
+    // eBay scopes are space-separated.
+    const scope =
+      process.env.EBAY_OAUTH_SCOPES ||
+      [
+        'https://api.ebay.com/oauth/api_scope',
+        'https://api.ebay.com/oauth/api_scope/sell.inventory',
+        'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.account',
+        'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
+        'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+        'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly',
+      ].join(' ');
 
     // Build authorization URL with parameters
     const authParams = new URLSearchParams({
       client_id: clientId,
-      redirect_uri: redirectUri,
+      redirect_uri: redirectUriName,
       response_type: 'code',
       scope: scope,
       state: state,
@@ -111,22 +141,25 @@ export default async function handler(req, res) {
 
     console.log('eBay OAuth authorization redirect:', {
       authUrl: fullAuthUrl,
-      redirectUri,
+      callbackUrl,
+      redirectUriName,
       environment: useProduction ? 'production' : 'sandbox',
       clientId: clientId?.substring(0, 20) + '...',
     });
 
     // Validate that we have all required parameters before redirecting
-    if (!clientId || !redirectUri || !scope) {
+    if (!clientId || !callbackUrl || !redirectUriName || !scope) {
       console.error('Missing required OAuth parameters:', {
         hasClientId: !!clientId,
-        hasRedirectUri: !!redirectUri,
+        hasCallbackUrl: !!callbackUrl,
+        hasRedirectUriName: !!redirectUriName,
         hasScope: !!scope,
       });
       return res.status(500).json({ 
         error: 'Invalid OAuth configuration',
         details: 'Missing required parameters for OAuth flow',
-        redirectUri: redirectUri,
+        callbackUrl,
+        redirectUriName,
       });
     }
 
@@ -134,7 +167,8 @@ export default async function handler(req, res) {
     if (req.query.debug === 'true') {
       return res.status(200).json({
         debug: true,
-        redirectUri: redirectUri,
+        callbackUrl,
+        redirectUriName,
         authUrl: fullAuthUrl,
         environment: useProduction ? 'production' : 'sandbox',
         clientIdPrefix: clientId?.substring(0, 30) + '...',
@@ -145,12 +179,13 @@ export default async function handler(req, res) {
           vercelUrl: process.env.VERCEL_URL,
         },
         instructions: [
-          '1. Copy the redirectUri above',
+          '1. Verify callbackUrl is listed in eBay Developer Portal (Accepted/Allowed Redirect URI)',
+          '2. Verify redirectUriName matches the "Redirect URI name" (RuName) for that callbackUrl',
           '2. Go to https://developer.ebay.com/my/keys',
           '3. Find your OAuth 2.0 Redirect URIs section',
-          '4. Make sure the redirectUri matches EXACTLY (including https/http and path)',
+          '4. Make sure the callbackUrl matches EXACTLY (including https/http and path)',
           '5. If it doesn\'t match, either:',
-          '   - Add the redirectUri to eBay Developer Console, OR',
+          '   - Add the callbackUrl to eBay Developer Console, OR',
           '   - Set BASE_URL environment variable to match what\'s in eBay Console',
         ],
       });
@@ -165,13 +200,13 @@ export default async function handler(req, res) {
     // Return detailed error information
     const baseUrl = process.env.BASE_URL || 
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'unknown');
-    const redirectUri = `${baseUrl}/api/ebay/callback`;
+    const callbackUrl = `${baseUrl}/api/ebay/callback`;
     
     res.status(500).json({ 
       error: 'Internal server error',
       message: error.message,
-      redirectUri: redirectUri,
-      hint: 'Make sure the redirect_uri matches exactly what is configured in eBay Developer Console',
+      callbackUrl,
+      hint: 'Make sure EBAY_REDIRECT_URI_NAME (RuName) matches what is configured in eBay Developer Console',
     });
   }
 }

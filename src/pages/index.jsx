@@ -24,6 +24,7 @@ import ProfitCalendar from "./ProfitCalendar";
 
 import Crosslist from "./Crosslist";
 import CrosslistComposer from "./CrosslistComposer";
+import EbayOauthLanding from "./EbayOauthLanding";
 import Crosslisting from "./Crosslisting";
 import MarketIntelligence from "./MarketIntelligence";
 import Settings from "./Settings";
@@ -292,6 +293,7 @@ function PagesContent() {
               />
               
               {/* Public Routes */}
+              <Route path="/oauth/ebay" element={<EbayOauthLanding />} />
               <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
             </Routes>
         </>

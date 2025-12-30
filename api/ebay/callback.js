@@ -23,6 +23,11 @@ export default async function handler(req, res) {
 
   try {
     const { code, state, error, error_description } = req.query;
+    const redirectUriName =
+      process.env.EBAY_REDIRECT_URI_NAME ||
+      process.env.EBAY_RU_NAME ||
+      process.env.EBAY_OAUTH_REDIRECT_URI_NAME ||
+      null;
 
     // Build frontend URL for redirects
     // Priority: BASE_URL > Production domain from host > VERCEL_URL > Headers
@@ -85,7 +90,8 @@ export default async function handler(req, res) {
       finalFrontendUrl: frontendUrl,
     });
     
-    const redirectPath = '/CrosslistComposer';
+    // Redirect to a public landing page so we can store the token before any AuthGuard redirects.
+    const redirectPath = '/oauth/ebay';
 
     // Check for errors from eBay
     if (error) {
@@ -137,6 +143,14 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!redirectUriName) {
+      return res.redirect(
+        `${frontendUrl}${redirectPath}?ebay_auth_error=${encodeURIComponent(
+          'Missing EBAY_REDIRECT_URI_NAME (RuName) in server configuration. Set it in Vercel and try again.'
+        )}`
+      );
+    }
+
     // Determine environment
     const ebayEnv = process.env.EBAY_ENV;
     const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
@@ -148,39 +162,8 @@ export default async function handler(req, res) {
     );
     const useProduction = isProductionByEnv || isProductionByClientId;
 
-    // Build callback URL (must match the redirect_uri used in auth.js)
-    // Use the same logic as auth.js for consistency
-    let baseUrl = null;
-    
-    // 1. Check for explicit BASE_URL environment variable (highest priority)
-    if (process.env.BASE_URL) {
-      baseUrl = process.env.BASE_URL.replace(/\/$/, ''); // Remove trailing slash
-    }
-    // 2. Check for VERCEL_URL (provided by Vercel)
-    else if (process.env.VERCEL_URL) {
-      // VERCEL_URL is just the domain, add https://
-      const vercelUrl = process.env.VERCEL_URL.replace(/^https?:\/\//, ''); // Remove protocol if present
-      baseUrl = `https://${vercelUrl}`;
-    }
-    // 3. Use request headers to determine URL
-    else if (req.headers.host) {
-      const protocol = req.headers['x-forwarded-proto'] || 'https';
-      baseUrl = `${protocol}://${req.headers.host}`;
-    }
-    // 4. Try referer header as fallback
-    else if (req.headers.referer) {
-      try {
-        baseUrl = new URL(req.headers.referer).origin;
-      } catch (e) {
-        console.error('Error parsing referer:', e);
-      }
-    }
-    // 5. Last resort: localhost (for local development)
-    else {
-      baseUrl = 'http://localhost:5173';
-    }
-    
-    const redirectUri = `${baseUrl}/api/ebay/callback`;
+    // eBay expects the RuName for `redirect_uri` in the token exchange as well.
+    const redirectUri = redirectUriName;
 
     // eBay OAuth token endpoint
     const tokenUrl = useProduction
