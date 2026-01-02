@@ -82,8 +82,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   const [loadedTransform, setLoadedTransform] = useState(null);
   
   const imageRef = useRef(null);
+  const previewCanvasRef = useRef(null);
   const cropperInstanceRef = useRef(null);
   const queryClient = useQueryClient();
+  const previewRenderTimerRef = useRef(null);
+  const previewRenderAbortRef = useRef({ cancelled: false, token: 0 });
   
   // Store editing history per image URL to remember settings - persisted to localStorage
   const imageEditHistoryRef = useRef((() => {
@@ -478,6 +481,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
   // Update image filter styles (for preview only)
   useEffect(() => {
+    // When NOT cropping, we render a canvas preview so adjustments match what will be saved.
+    // Cropper requires a real <img>, so we only use the <img> element while cropping.
+    if (!isCropping) return;
+
     if (imageRef.current) {
       const filterStyle = `brightness(${filters.brightness}%) 
                           contrast(${filters.contrast}%) 
@@ -487,16 +494,143 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       
       imageRef.current.style.filter = filterStyle;
       imageRef.current.style.transform = transformStyle;
-      
-      // Apply shadow effect using drop-shadow
-      if (filters.shadow > 0) {
-        const shadowIntensity = filters.shadow / 100; // Convert 0-100 to 0-1
-        const shadowBlur = shadowIntensity * 20; // Max blur of 20px
-        const shadowOffset = shadowIntensity * 10; // Max offset of 10px
-        imageRef.current.style.filter = `${filterStyle} drop-shadow(${shadowOffset}px ${shadowOffset}px ${shadowBlur}px rgba(0, 0, 0, ${shadowIntensity * 0.5}))`;
-      }
     }
   }, [filters, transform]);
+
+  // --- Canva-like "Shadows" adjustment ---
+  // Previously `shadow` was implemented as an *outer* drop-shadow. Users expect a tonal shadow lift
+  // (affecting darker pixels inside the image). We apply that in the canvas pipeline for preview + save.
+  const applyShadowsAdjustment = (ctx, canvas, shadowValue) => {
+    const amount = Number(shadowValue || 0);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
+    // amount: 0..100, lift dark pixels more than mid/high pixels.
+    const strength = Math.min(Math.max(amount / 100, 0), 1);
+
+    try {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imgData.data;
+
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        const a = d[i + 3];
+        if (a === 0) continue;
+
+        // Perceptual-ish luminance.
+        const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b; // 0..255
+
+        if (lum >= 140) continue; // only lift shadows, not mid/highlights
+
+        const t = (140 - lum) / 140; // 0..1, stronger in darker areas
+        const lift = strength * t * 60; // max ~60 levels in deep shadows
+
+        d[i] = Math.min(255, r + lift);
+        d[i + 1] = Math.min(255, g + lift);
+        d[i + 2] = Math.min(255, b + lift);
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    } catch (e) {
+      // Some browsers can throw if canvas is tainted; in that case we simply skip shadows adjustment.
+      console.warn('Shadows adjustment skipped:', e?.message || e);
+    }
+  };
+
+  // Render preview to canvas (throttled) so what you see matches what you save.
+  useEffect(() => {
+    if (!open) return;
+    if (!imgSrc) return;
+    if (isCropping) return;
+
+    // Cancel any pending timer
+    if (previewRenderTimerRef.current) {
+      clearTimeout(previewRenderTimerRef.current);
+      previewRenderTimerRef.current = null;
+    }
+
+    const token = (previewRenderAbortRef.current.token || 0) + 1;
+    previewRenderAbortRef.current.token = token;
+    previewRenderAbortRef.current.cancelled = false;
+
+    // Throttle slightly to keep sliders feeling smooth.
+    previewRenderTimerRef.current = setTimeout(() => {
+      const canvas = previewCanvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      img.onload = () => {
+        if (previewRenderAbortRef.current.token !== token) return;
+
+        // Downscale preview to keep it fast.
+        const maxDim = 1400;
+        const srcW = img.naturalWidth || 1;
+        const srcH = img.naturalHeight || 1;
+        const scale = Math.min(1, maxDim / Math.max(srcW, srcH));
+        const w = Math.max(1, Math.round(srcW * scale));
+        const h = Math.max(1, Math.round(srcH * scale));
+
+        const rotationDeg = transform.rotate % 360;
+        const isRotated90 = Math.abs(rotationDeg % 180) === 90;
+
+        canvas.width = isRotated90 ? h : w;
+        canvas.height = isRotated90 ? w : h;
+
+        // Clear with white like Canva export defaults.
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Filters (brightness/contrast/saturate).
+        ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturate}%)`;
+
+        // Transform around center.
+        const rotation = (rotationDeg * Math.PI) / 180;
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(transform.flip_x, transform.flip_y);
+        ctx.rotate(rotation);
+
+        // Draw image
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+        // Reset transform and apply tonal shadows lift (post-process).
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.filter = 'none';
+        applyShadowsAdjustment(ctx, canvas, filters.shadow);
+      };
+
+      img.onerror = () => {
+        // If the image can't be loaded, just leave the previous preview.
+      };
+
+      img.src = imgSrc;
+    }, 80);
+
+    return () => {
+      if (previewRenderTimerRef.current) {
+        clearTimeout(previewRenderTimerRef.current);
+        previewRenderTimerRef.current = null;
+      }
+    };
+  }, [
+    open,
+    imgSrc,
+    isCropping,
+    filters.brightness,
+    filters.contrast,
+    filters.saturate,
+    filters.shadow,
+    transform.rotate,
+    transform.flip_x,
+    transform.flip_y,
+  ]);
 
   // Get slider max value based on active filter
   const getSliderMax = () => {
@@ -881,15 +1015,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                        contrast(${filters.contrast}%) 
                        saturate(${filters.saturate}%)`;
 
-          // Apply shadow if enabled
-          if (filters.shadow > 0) {
-            const shadowIntensity = filters.shadow / 100;
-            ctx.shadowBlur = shadowIntensity * 20;
-            ctx.shadowOffsetX = shadowIntensity * 10;
-            ctx.shadowOffsetY = shadowIntensity * 10;
-            ctx.shadowColor = `rgba(0, 0, 0, ${shadowIntensity * 0.5})`;
-          }
-
           // Step 5: Draw the image (cropped if needed)
           ctx.drawImage(
             img,
@@ -897,14 +1022,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             -sourceWidth / 2, -sourceHeight / 2, sourceWidth, sourceHeight  // Destination
           );
 
-          // Reset shadow
-          ctx.shadowBlur = 0;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 0;
-          ctx.shadowColor = 'transparent';
-
           // Reset transforms for final output
           ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+          // Tonal shadows adjustment (post-process on the rendered pixels)
+          applyShadowsAdjustment(ctx, canvas, filters.shadow);
 
           // Step 7: Convert to blob and create File
           canvas.toBlob((blob) => {
@@ -1060,15 +1182,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                    contrast(${filters.contrast}%) 
                    saturate(${filters.saturate}%)`;
 
-      // Apply shadow if enabled
-      if (filters.shadow > 0) {
-        const shadowIntensity = filters.shadow / 100;
-        ctx.shadowBlur = shadowIntensity * 20; // Max blur of 20px
-        ctx.shadowOffsetX = shadowIntensity * 10; // Max offset of 10px
-        ctx.shadowOffsetY = shadowIntensity * 10;
-        ctx.shadowColor = `rgba(0, 0, 0, ${shadowIntensity * 0.5})`; // Semi-transparent black
-      }
-
       ctx.drawImage(
         img,
         -img.naturalWidth / 2,
@@ -1077,14 +1190,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         img.naturalHeight
       );
 
-      // Reset shadow for next operations
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
-      ctx.shadowColor = 'transparent';
-
       // Reset transforms for final output
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      // Tonal shadows adjustment (post-process on the rendered pixels)
+      applyShadowsAdjustment(ctx, canvas, filters.shadow);
 
       // Convert to blob and create File
       canvas.toBlob((blob) => {
@@ -1496,18 +1606,32 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       </>
                     )}
 
-                    <img
-                      ref={imageRef}
-                      src={imgSrc}
-                      alt="Editor Preview"
-                      className="block object-contain"
-                      style={{
-                        width: '499px',
-                        height: 'auto',
-                        maxWidth: '100%',
-                        maxHeight: '95%'
-                      }}
-                    />
+                    {isCropping ? (
+                      <img
+                        ref={imageRef}
+                        src={imgSrc}
+                        alt="Editor Preview"
+                        className="block object-contain"
+                        style={{
+                          width: '499px',
+                          height: 'auto',
+                          maxWidth: '100%',
+                          maxHeight: '95%'
+                        }}
+                      />
+                    ) : (
+                      <canvas
+                        ref={previewCanvasRef}
+                        aria-label="Editor Preview"
+                        className="block object-contain"
+                        style={{
+                          width: '499px',
+                          height: 'auto',
+                          maxWidth: '100%',
+                          maxHeight: '95%'
+                        }}
+                      />
+                    )}
                     
                     {/* Rotate buttons overlay - always visible */}
                     <div style={{
