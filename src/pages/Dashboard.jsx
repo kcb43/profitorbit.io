@@ -187,29 +187,10 @@ export default function Dashboard() {
     initialData: { totalProfit: 0, totalRevenue: 0, totalSales: 0 },
   });
 
-  // Bounded sales fetch for charts + breakdown (avoid pulling the entire sales table on initial load)
-  // We intentionally keep this small so dashboard is fast even with big sales history.
-  const salesSince = React.useMemo(() => {
-    // IMPORTANT: sale_date is a DATE column (yyyy-MM-dd). Use date-only cutoffs for correctness.
-    const today = startOfDay(new Date());
-    if (profitChartRange === '14d') {
-      return format(subDays(today, 13), 'yyyy-MM-dd'); // include today + previous 13 days
-    }
-    if (profitChartRange === 'monthly') {
-      return format(startOfMonth(subMonths(today, 11)), 'yyyy-MM-dd'); // last 12 months (inclusive)
-    }
-    if (profitChartRange === 'yearly') {
-      return format(startOfYear(subYears(today, 5)), 'yyyy-MM-dd'); // last 6 years (inclusive)
-    }
-    return format(subYears(today, 2), 'yyyy-MM-dd');
-  }, [profitChartRange]);
-
-  const salesLimit = React.useMemo(() => {
-    if (profitChartRange === '14d') return 500;
-    if (profitChartRange === 'monthly') return 2000;
-    if (profitChartRange === 'yearly') return 5000;
-    return 2000;
-  }, [profitChartRange]);
+  // IMPORTANT: keep Dashboard chart inputs consistent with Sales History.
+  // We fetch a bounded recent slice (no server-side date filter) and filter/group client-side.
+  // This avoids inconsistencies when DB column types vary (DATE vs TIMESTAMPTZ).
+  const salesLimit = 5000;
 
   const salesFields = React.useMemo(() => ([
     'id',
@@ -237,7 +218,6 @@ export default function Dashboard() {
     queryFn: () => {
       const qs = new URLSearchParams();
       qs.set('sort', '-sale_date');
-      qs.set('since', salesSince);
       qs.set('limit', String(salesLimit));
       qs.set('fields', salesFields);
       return apiGetJson(`/api/sales?${qs.toString()}`);

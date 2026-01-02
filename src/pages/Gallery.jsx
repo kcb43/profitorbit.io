@@ -67,15 +67,8 @@ export default function GalleryPage() {
   const activeSales = useMemo(() => (rawSales ?? []).filter(sale => !sale.deleted_at), [rawSales]);
   const sortedSales = useMemo(() => sortSalesByRecency(activeSales), [activeSales]);
 
-  // If there are no sales in the current month, fall back to the most recent month that has sales
-  // (users expect Showcase to show "the latest month with activity", not a blank header).
-  const displayMonthKey = useMemo(() => {
-    const currentKey = format(new Date(), 'yyyy-MM');
-    const hasCurrent = (sortedSales ?? []).some((s) => s?.sale_date && String(s.sale_date).startsWith(currentKey));
-    if (hasCurrent) return currentKey;
-    const latest = sortedSales?.find((s) => s?.sale_date);
-    return latest?.sale_date ? String(latest.sale_date).slice(0, 7) : currentKey;
-  }, [sortedSales]);
+  // Showcase "Deals of the Month" should always mean the current month.
+  const displayMonthKey = useMemo(() => format(new Date(), 'yyyy-MM'), []);
 
   const salesWithMetrics = useMemo(() => {
     if (!sortedSales) return [];

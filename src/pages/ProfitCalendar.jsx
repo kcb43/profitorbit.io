@@ -45,7 +45,6 @@ export default function ProfitCalendar() {
     // (they can behave inconsistently depending on DB column types). Fetch a bounded history slice
     // and filter client-side using date-only keys.
     queryFn: () => base44.entities.Sale.list('-sale_date', {
-      since: '1970-01-01',
       limit: 5000,
       fields: [
         'id',
