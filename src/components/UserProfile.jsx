@@ -24,20 +24,42 @@ export function UserProfile() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let mounted = true;
+
+    // Listen for auth changes (this should fire with INITIAL_SESSION as well)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setUser(session?.user || null);
       setLoading(false);
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
+    // Hydration can be slightly delayed on first paint; don't immediately show "signed out".
+    const warm = async () => {
+      for (let i = 0; i < 12; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (session?.user) {
+          setUser(session.user);
+          setLoading(false);
+          return;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      if (!mounted) return;
+      setUser(null);
+      setLoading(false);
+    };
 
-    return () => subscription.unsubscribe();
+    warm();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSignOut = async () => {

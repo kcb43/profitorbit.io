@@ -33085,7 +33085,7 @@ export default function CrosslistComposer() {
   
   // Fetch inventory items if IDs are provided
   const { data: inventory = [] } = useQuery({
-    queryKey: ["inventoryItems"],
+    queryKey: ["inventoryItems", "crosslistComposer"],
     queryFn: () => base44.entities.InventoryItem.list("-purchase_date"),
     initialData: [],
   });

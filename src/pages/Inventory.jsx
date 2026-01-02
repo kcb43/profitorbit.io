@@ -148,7 +148,7 @@ export default function InventoryPage() {
   };
 
   const { data: inventoryItems, isLoading } = useQuery({
-    queryKey: ['inventoryItems'],
+    queryKey: ['inventoryItems', 'inventory'],
     // Include deleted items so "Show Deleted" can work reliably.
     // Other pages (Dashboard/Crosslist) still use the default list behavior (exclude deleted).
     queryFn: () => base44.entities.InventoryItem.list('-purchase_date', { include_deleted: 'true' }),

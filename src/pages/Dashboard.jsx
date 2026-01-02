@@ -229,10 +229,24 @@ export default function Dashboard() {
     return sortSalesByRecency(activeSales);
   }, [rawSales]);
   
-  // New query for inventory items
+  // Inventory query: use a distinct cache key so other pages (Inventory/Crosslist) don't overwrite it
+  // with different queryFns (a source of "data appears after clicking Crosslist").
   const { data: inventoryItems, isLoading: isLoadingInventory, error: inventoryError } = useQuery({
-    queryKey: ['inventoryItems'],
-    queryFn: () => base44.entities.InventoryItem.list(),
+    queryKey: ['inventoryItems', 'dashboard'],
+    queryFn: () =>
+      base44.entities.InventoryItem.list('-purchase_date', {
+        limit: 5000,
+        fields: [
+          'id',
+          'status',
+          'purchase_date',
+          'quantity',
+          'quantity_sold',
+          'return_deadline',
+          'return_deadline_dismissed',
+          'deleted_at',
+        ].join(','),
+      }),
     initialData: [],
   });
 

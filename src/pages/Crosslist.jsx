@@ -363,7 +363,7 @@ export default function Crosslist() {
   ];
 
   const { data: inventory = [], isLoading, refetch: refetchInventory } = useQuery({
-    queryKey: ["inventoryItems"],
+    queryKey: ["inventoryItems", "crosslist"],
     queryFn: () => base44.entities.InventoryItem.list("-purchase_date"),
     initialData: [],
     refetchOnWindowFocus: true,
