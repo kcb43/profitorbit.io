@@ -5,6 +5,10 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import App from '@/App.jsx'
 import '@/index.css'
 
+// Build stamp (useful for debugging cache/deploy issues in production).
+// If you don't see this in the browser console, you're not on the latest deployed JS bundle.
+console.log('🟢 WEB BUILD: 2026-01-02-dashboard-perf-c5af1dc');
+
 // Sensible defaults to reduce refetch churn and make the app feel faster.
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -33,15 +33,40 @@ export default async function handler(req, res) {
   }
 
   try {
-    // PostgREST aggregates (fast, server-side)
-    const { data, error } = await supabase
-      .from('sales')
-      .select('profit_sum:profit.sum(), revenue_sum:selling_price.sum(), sales_count:id.count()')
-      .eq('user_id', userId)
-      .is('deleted_at', null);
+    // PostgREST aggregates (fast, server-side) — tolerate either `selling_price` or `sale_price`.
+    const candidates = [
+      'profit_sum:profit.sum(), revenue_sum:selling_price.sum(), sales_count:id.count()',
+      'profit_sum:profit.sum(), revenue_sum:sale_price.sum(), sales_count:id.count()',
+      'profit_sum:profit.sum(), sales_count:id.count()',
+    ];
 
-    if (error) {
-      return res.status(500).json({ error: error.message });
+    let data = null;
+    let lastError = null;
+
+    for (const select of candidates) {
+      // eslint-disable-next-line no-await-in-loop
+      const res2 = await supabase
+        .from('sales')
+        .select(select)
+        .eq('user_id', userId)
+        .is('deleted_at', null);
+
+      if (!res2.error) {
+        data = res2.data;
+        lastError = null;
+        break;
+      }
+
+      lastError = res2.error;
+      const msg = String(res2.error.message || '');
+      const isMissingColumn =
+        msg.includes("Could not find the 'selling_price' column") ||
+        msg.includes("Could not find the 'sale_price' column");
+      if (!isMissingColumn) break;
+    }
+
+    if (lastError) {
+      return res.status(500).json({ error: lastError.message });
     }
 
     const row = Array.isArray(data) ? data[0] : data;
