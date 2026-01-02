@@ -11,6 +11,51 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+function parsePositiveInt(value, { min = 1, max = 5000 } = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  if (i < min) return null;
+  return Math.min(i, max);
+}
+
+function buildSelectFromFields(fieldsCsv) {
+  if (!fieldsCsv) return '*';
+  const allowed = new Set([
+    'id',
+    'user_id',
+    'item_name',
+    'purchase_price',
+    'purchase_date',
+    'source',
+    'status',
+    'category',
+    'notes',
+    'image_url',
+    'images',
+    'quantity',
+    'quantity_sold',
+    'return_deadline',
+    'return_deadline_dismissed',
+    'deleted_at',
+    'created_at',
+    'updated_at',
+    // crosslist fields that may exist in some schemas
+    'ebay_listing_id',
+    'facebook_listing_id',
+    'mercari_listing_id',
+    'marketplace_listings',
+  ]);
+
+  const fields = String(fieldsCsv)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter((f) => allowed.has(f));
+
+  return fields.length ? fields.join(',') : '*';
+}
+
 function normalizeImagesFromBody(body) {
   const b = { ...(body || {}) };
 
@@ -81,9 +126,10 @@ async function handleGet(req, res, userId) {
 
   if (id) {
     // Get single item
+    const select = buildSelectFromFields(queryParams.fields);
     const { data, error } = await supabase
       .from('inventory_items')
-      .select('*')
+      .select(select)
       .eq('id', id)
       .eq('user_id', userId)
       .single();
@@ -101,10 +147,12 @@ async function handleGet(req, res, userId) {
     
     const includeDeleted = String(queryParams.include_deleted || '').toLowerCase() === 'true';
     const deletedOnly = String(queryParams.deleted_only || '').toLowerCase() === 'true';
+    const limit = parsePositiveInt(queryParams.limit);
+    const select = buildSelectFromFields(queryParams.fields);
 
     let query = supabase
       .from('inventory_items')
-      .select('*')
+      .select(select)
       .eq('user_id', userId);
 
     // Default behavior: hide deleted items unless explicitly requested.
@@ -123,6 +171,10 @@ async function handleGet(req, res, userId) {
       query = query.order(sortField, { ascending });
     } else {
       query = query.order('purchase_date', { ascending: false });
+    }
+
+    if (limit) {
+      query = query.limit(limit);
     }
 
     const { data, error } = await query;
