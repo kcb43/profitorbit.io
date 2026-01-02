@@ -52,7 +52,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     brightness: 100,
     contrast: 100,
     saturate: 100,
-    shadow: 0
+    // Canva-like semantics: 100 = original image (no change)
+    shadow: 100
   });
   const [transform, setTransform] = useState({
     rotate: 0,
@@ -139,7 +140,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         filters.brightness !== 100 || 
         filters.contrast !== 100 || 
         filters.saturate !== 100 ||
-        filters.shadow !== 0;
+        filters.shadow !== 100;
       
       const hasTransformChanges = 
         transform.rotate !== 0 || 
@@ -154,7 +155,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       filters.brightness !== loadedFilters.brightness || 
       filters.contrast !== loadedFilters.contrast || 
       filters.saturate !== loadedFilters.saturate ||
-      filters.shadow !== (loadedFilters.shadow || 0);
+      filters.shadow !== (loadedFilters.shadow ?? 100);
     
     const hasTransformChanges = 
       transform.rotate !== loadedTransform.rotate || 
@@ -170,7 +171,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       filters.brightness !== 100 || 
       filters.contrast !== 100 || 
       filters.saturate !== 100 ||
-      filters.shadow !== 0;
+      filters.shadow !== 100;
     
     const hasTransformChanges = 
       transform.rotate !== 0 || 
@@ -227,6 +228,24 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     }
   };
 
+  // Preload adjacent images for smoother navigation (reduces perceived lag).
+  useEffect(() => {
+    if (!open) return;
+    if (!normalizedImages || normalizedImages.length === 0) return;
+    const urls = [];
+    const prev = normalizedImages[currentImageIndex - 1];
+    const next = normalizedImages[currentImageIndex + 1];
+    if (typeof prev === 'string') urls.push(prev);
+    if (typeof next === 'string') urls.push(next);
+    urls.forEach((u) => {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = u;
+      } catch (_) {}
+    });
+  }, [open, normalizedImages, currentImageIndex]);
+
   // Reset everything when dialog opens with new item
   useEffect(() => {
     if (open && imageSrc) {
@@ -264,7 +283,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             brightness: 100,
             contrast: 100,
             saturate: 100,
-            shadow: 0
+        shadow: 100
           });
           setTransform({
             rotate: 0,
@@ -397,7 +416,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             brightness: 100,
             contrast: 100,
             saturate: 100,
-            shadow: 0
+            shadow: 100
           };
           const defaultTransform = {
             rotate: 0,
@@ -501,11 +520,14 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   // Previously `shadow` was implemented as an *outer* drop-shadow. Users expect a tonal shadow lift
   // (affecting darker pixels inside the image). We apply that in the canvas pipeline for preview + save.
   const applyShadowsAdjustment = (ctx, canvas, shadowValue) => {
-    const amount = Number(shadowValue || 0);
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    // shadowValue: 0..200 where 100 = neutral (original image)
+    const v = Number(shadowValue);
+    if (!Number.isFinite(v)) return;
+    const delta = v - 100; // -100..+100
+    if (delta === 0) return;
 
-    // amount: 0..100, lift dark pixels more than mid/high pixels.
-    const strength = Math.min(Math.max(amount / 100, 0), 1);
+    const strength = Math.min(Math.max(Math.abs(delta) / 100, 0), 1);
+    const direction = delta > 0 ? 1 : -1;
 
     try {
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -524,11 +546,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         if (lum >= 140) continue; // only lift shadows, not mid/highlights
 
         const t = (140 - lum) / 140; // 0..1, stronger in darker areas
-        const lift = strength * t * 60; // max ~60 levels in deep shadows
+        const lift = strength * t * 60 * direction; // max ~60 levels in deep shadows
 
-        d[i] = Math.min(255, r + lift);
-        d[i + 1] = Math.min(255, g + lift);
-        d[i + 2] = Math.min(255, b + lift);
+        d[i] = Math.min(255, Math.max(0, r + lift));
+        d[i + 1] = Math.min(255, Math.max(0, g + lift));
+        d[i + 2] = Math.min(255, Math.max(0, b + lift));
       }
 
       ctx.putImageData(imgData, 0, 0);
@@ -640,7 +662,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       case 'saturate':
         return 200;
       case 'shadow':
-        return 100;
+        return 200;
       default:
         return 100;
     }
@@ -653,7 +675,8 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
   // Get slider value for active filter
   const getSliderValue = () => {
-    return filters[activeFilter] || 0;
+    if (activeFilter === 'shadow') return filters.shadow ?? 100;
+    return filters[activeFilter] ?? 0;
   };
 
   // Handle filter button click
@@ -714,9 +737,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
   // Enable crop mode
   const enableCropMode = () => {
-    if (!cropperInstanceRef.current) {
-      setTimeout(() => initCropper(), 100);
-    }
+    // Switching to crop mode must render the <img> first (Cropper can't attach to <canvas>).
+    if (!isCropping) setIsCropping(true);
+    // Initialize once the <img> is mounted and has dimensions.
+    setTimeout(() => initCropper(), 0);
   };
 
   // Cancel crop mode
@@ -813,7 +837,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       brightness: 100,
       contrast: 100,
       saturate: 100,
-      shadow: 0
+            shadow: 100
     });
     setTransform({
       rotate: 0,
@@ -886,7 +910,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         brightness: template.settings.brightness ?? 100,
         contrast: template.settings.contrast ?? 100,
         saturate: template.settings.saturate ?? 100,
-        shadow: template.settings.shadow ?? 0
+        shadow: template.settings.shadow ?? 100
       });
       setTransform({
         rotate: template.settings.rotate ?? 0,
