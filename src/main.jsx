@@ -7,7 +7,7 @@ import '@/index.css'
 
 // Build stamp (useful for debugging cache/deploy issues in production).
 // If you don't see this in the browser console, you're not on the latest deployed JS bundle.
-console.log('🟢 WEB BUILD: 2026-01-02-dashboard-perf-c5af1dc');
+console.log('🟢 WEB BUILD: 2026-01-02-dashboard-perf-bd6c515');
 
 // Sensible defaults to reduce refetch churn and make the app feel faster.
 const queryClient = new QueryClient({
@@ -23,6 +23,6 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
     <App />
-    <SpeedInsights />
+    {import.meta.env.VITE_ENABLE_SPEED_INSIGHTS === 'true' ? <SpeedInsights /> : null}
   </QueryClientProvider>
 )

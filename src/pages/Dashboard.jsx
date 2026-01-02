@@ -177,18 +177,29 @@ export default function Dashboard() {
   });
 
   // Bounded sales fetch for charts + breakdown (avoid pulling the entire sales table on initial load)
-  const twoYearsAgo = React.useMemo(() => {
+  // We intentionally keep this small so dashboard is fast even with big sales history.
+  const salesSince = React.useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 365 * 2);
+    if (profitChartRange === '14d') d.setDate(d.getDate() - 14);
+    else if (profitChartRange === 'monthly') d.setDate(d.getDate() - 365); // last 12 months
+    else if (profitChartRange === 'yearly') d.setDate(d.getDate() - 365 * 6); // last 6 years
+    else d.setDate(d.getDate() - 365 * 2);
     return d.toISOString();
-  }, []);
+  }, [profitChartRange]);
+
+  const salesLimit = React.useMemo(() => {
+    if (profitChartRange === '14d') return 500;
+    if (profitChartRange === 'monthly') return 2000;
+    if (profitChartRange === 'yearly') return 5000;
+    return 2000;
+  }, [profitChartRange]);
 
   const { data: rawSales, isLoading: isLoadingSales, error: salesError } = useQuery({
-    queryKey: ['sales', 'dashboard'],
+    queryKey: ['sales', 'dashboard', profitChartRange],
     queryFn: () =>
       base44.entities.Sale.list('-sale_date', {
-        since: twoYearsAgo,
-        limit: 5000,
+        since: salesSince,
+        limit: salesLimit,
         fields: [
           'id',
           'item_name',
