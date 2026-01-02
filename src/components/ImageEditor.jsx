@@ -1637,10 +1637,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                         alt="Editor Preview"
                         className="block object-contain"
                         style={{
-                          width: '499px',
-                          height: 'auto',
+                          width: '100%',
+                          height: '100%',
                           maxWidth: '100%',
-                          maxHeight: '95%'
+                          maxHeight: '100%',
+                          objectFit: 'contain'
                         }}
                       />
                     ) : (
@@ -1649,10 +1650,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                         aria-label="Editor Preview"
                         className="block object-contain"
                         style={{
-                          width: '499px',
-                          height: 'auto',
+                          width: '100%',
+                          height: '100%',
                           maxWidth: '100%',
-                          maxHeight: '95%'
+                          maxHeight: '100%',
+                          objectFit: 'contain'
                         }}
                       />
                     )}
