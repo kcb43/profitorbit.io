@@ -149,7 +149,9 @@ export default function InventoryPage() {
 
   const { data: inventoryItems, isLoading } = useQuery({
     queryKey: ['inventoryItems'],
-    queryFn: () => base44.entities.InventoryItem.list('-purchase_date'),
+    // Include deleted items so "Show Deleted" can work reliably.
+    // Other pages (Dashboard/Crosslist) still use the default list behavior (exclude deleted).
+    queryFn: () => base44.entities.InventoryItem.list('-purchase_date', { include_deleted: 'true' }),
     initialData: [],
     notifyOnChangeProps: 'all', // Ensure we get notified of all changes for optimistic updates
   });
@@ -203,7 +205,8 @@ export default function InventoryPage() {
     if (itemsToHardDelete.length > 0) {
       try {
         await Promise.all(
-          itemsToHardDelete.map(item => base44.entities.InventoryItem.delete(item.id))
+          // Hard delete after 30 days (soft delete uses deleted_at).
+          itemsToHardDelete.map(item => base44.entities.InventoryItem.delete(item.id, true))
         );
         queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       } catch (error) {

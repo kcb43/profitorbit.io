@@ -99,11 +99,20 @@ async function handleGet(req, res, userId) {
       return res.status(401).json({ error: 'User ID required' });
     }
     
+    const includeDeleted = String(queryParams.include_deleted || '').toLowerCase() === 'true';
+    const deletedOnly = String(queryParams.deleted_only || '').toLowerCase() === 'true';
+
     let query = supabase
       .from('inventory_items')
       .select('*')
-      .eq('user_id', userId)
-      .is('deleted_at', null);
+      .eq('user_id', userId);
+
+    // Default behavior: hide deleted items unless explicitly requested.
+    if (deletedOnly) {
+      query = query.not('deleted_at', 'is', null);
+    } else if (!includeDeleted) {
+      query = query.is('deleted_at', null);
+    }
 
     // Handle sorting
     if (queryParams.sort) {

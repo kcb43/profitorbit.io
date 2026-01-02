@@ -75,9 +75,17 @@ class EntityWrapper {
     return apiRequest(`/${this.entityName}?id=${id}`);
   }
 
-  async list(sort = null) {
-    const params = sort ? `?sort=${sort}` : '';
-    return apiRequest(`/${this.entityName}${params}`);
+  async list(sort = null, extraQueryParams = null) {
+    const params = new URLSearchParams();
+    if (sort) params.set('sort', sort);
+    if (extraQueryParams && typeof extraQueryParams === 'object') {
+      for (const [k, v] of Object.entries(extraQueryParams)) {
+        if (v === undefined || v === null || v === '') continue;
+        params.set(k, String(v));
+      }
+    }
+    const qs = params.toString();
+    return apiRequest(`/${this.entityName}${qs ? `?${qs}` : ''}`);
   }
 
   async create(data) {
