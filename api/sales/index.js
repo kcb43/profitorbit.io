@@ -30,6 +30,13 @@ function cleanUndefined(obj) {
 
 function normalizeSaleFromDb(row) {
   if (!row || typeof row !== 'object') return row;
+
+  const toNumberOrNull = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
   const selling_price =
     row.selling_price ??
     row.sale_price ??
@@ -42,8 +49,15 @@ function normalizeSaleFromDb(row) {
   return {
     ...row,
     // Always provide the fields the frontend expects:
-    selling_price,
-    purchase_price,
+    selling_price: toNumberOrNull(selling_price),
+    purchase_price: toNumberOrNull(purchase_price),
+    // Normalize numeric columns returned from Supabase (NUMERICs often come back as strings)
+    sale_price: toNumberOrNull(row.sale_price ?? row.salePrice ?? null),
+    profit: toNumberOrNull(row.profit ?? null),
+    shipping_cost: toNumberOrNull(row.shipping_cost ?? row.shippingCost ?? 0) ?? 0,
+    platform_fees: toNumberOrNull(row.platform_fees ?? row.platformFees ?? 0) ?? 0,
+    vat_fees: toNumberOrNull(row.vat_fees ?? row.vatFees ?? 0) ?? 0,
+    other_costs: toNumberOrNull(row.other_costs ?? row.otherCosts ?? 0) ?? 0,
   };
 }
 

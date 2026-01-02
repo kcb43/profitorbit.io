@@ -630,13 +630,7 @@ export default function Dashboard() {
             {/* Use platform aggregate when available; fall back to chart-range sales */}
             {Array.isArray(platformSummary) && platformSummary.length > 0 ? (
               <PlatformBreakdown
-                sales={platformSummary.map((r) => ({
-                  platform: r.platform,
-                  selling_price: Number(r.total_revenue ?? 0) || 0,
-                  profit: Number(r.total_profit ?? 0) || 0,
-                  deleted_at: null,
-                  // count is rendered via revenue/profit cards; we pass it through as `count` below in the component mapping
-                }))}
+                sales={platformSummary}
               />
             ) : (
               <PlatformBreakdown sales={sales} />

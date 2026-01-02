@@ -65,6 +65,7 @@ export default function ReportsPage() {
       limit: range === 'lifetime' ? 5000 : 3000,
       fields: [
         'id',
+        'inventory_id',
         'item_name',
         'purchase_date',
         'sale_date',
