@@ -117,17 +117,35 @@ async function postWithUser(url, userId, body) {
 }
 
 export default function MigrateData() {
+  const [fullExportJson, setFullExportJson] = useState("");
   const [inventoryJson, setInventoryJson] = useState("");
   const [salesJson, setSalesJson] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
   const [errors, setErrors] = useState([]);
 
+  const fullParsed = useMemo(() => tryParseJson(fullExportJson), [fullExportJson]);
   const invParsed = useMemo(() => tryParseJson(inventoryJson), [inventoryJson]);
   const salesParsed = useMemo(() => tryParseJson(salesJson), [salesJson]);
 
-  const invRows = useMemo(() => normalizeArray(invParsed.value, ["inventory", "items", "inventoryItems"]), [invParsed.value]);
-  const salesRows = useMemo(() => normalizeArray(salesParsed.value, ["sales", "rows", "saleItems"]), [salesParsed.value]);
+  const fullInvRows = useMemo(
+    () => normalizeArray(fullParsed.value, ["inventory_items", "inventoryItems", "inventory", "items"]),
+    [fullParsed.value],
+  );
+  const fullSalesRows = useMemo(
+    () => normalizeArray(fullParsed.value, ["sales", "sale_items", "saleItems", "rows"]),
+    [fullParsed.value],
+  );
+
+  const invRows = useMemo(() => {
+    if (fullInvRows.length > 0) return fullInvRows;
+    return normalizeArray(invParsed.value, ["inventory_items", "inventory", "items", "inventoryItems"]);
+  }, [fullInvRows, invParsed.value]);
+
+  const salesRows = useMemo(() => {
+    if (fullSalesRows.length > 0) return fullSalesRows;
+    return normalizeArray(salesParsed.value, ["sales", "sale_items", "rows", "saleItems"]);
+  }, [fullSalesRows, salesParsed.value]);
 
   const preview = useMemo(() => {
     const mappedSales = salesRows.map(mapSale);
@@ -143,6 +161,10 @@ export default function MigrateData() {
     setStatus(null);
     setErrors([]);
 
+    if (!fullParsed.ok) {
+      setStatus(`Full export JSON invalid: ${fullParsed.error}`);
+      return;
+    }
     if (!invParsed.ok) {
       setStatus(`Inventory JSON invalid: ${invParsed.error}`);
       return;
@@ -163,7 +185,7 @@ export default function MigrateData() {
     const salesToImport = salesRows.map(mapSale);
 
     if (invToImport.length === 0 && salesToImport.length === 0) {
-      setStatus("No rows found. Paste inventory + sales JSON first.");
+      setStatus("No rows found. Paste your full Base44 export JSON (recommended) or paste inventory + sales JSON.");
       return;
     }
 
@@ -243,7 +265,27 @@ export default function MigrateData() {
             </div>
           )}
 
+          {fullParsed.ok === false && (
+            <div className="mt-4">
+              <Alert variant="destructive">
+                <AlertDescription>{`Full export JSON error: ${fullParsed.error}`}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           <div className="mt-4 grid grid-cols-1 gap-3">
+            <div>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Base44 export JSON (recommended)</div>
+              <Textarea
+                value={fullExportJson}
+                onChange={(e) => setFullExportJson(e.target.value)}
+                placeholder='Paste the full Base44 JSON (supports { "inventory_items": [...], "sales": [...] })'
+                className="min-h-[180px] font-mono text-xs"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                If this is filled, it will be used instead of the two boxes below.
+              </div>
+            </div>
             <div>
               <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Inventory JSON</div>
               <Textarea
@@ -271,6 +313,7 @@ export default function MigrateData() {
             <Button
               variant="outline"
               onClick={() => {
+                setFullExportJson("");
                 setInventoryJson("");
                 setSalesJson("");
                 setStatus(null);
