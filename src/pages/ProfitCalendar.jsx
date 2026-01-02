@@ -18,7 +18,8 @@ import {
   parseISO,
   startOfWeek,
   endOfWeek,
-  getDaysInMonth
+  getDaysInMonth,
+  isWithinInterval
 } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -69,14 +70,18 @@ export default function ProfitCalendar() {
 
   // Filter out soft-deleted sales
   const sales = useMemo(() => {
-    const startKey = formatDate(calendarWindow.start, 'yyyy-MM-dd');
-    const endKey = formatDate(calendarWindow.end, 'yyyy-MM-dd');
+    // Match SalesHistory semantics: parseISO + interval checks.
+    // This is more tolerant of different `sale_date` string formats.
     return (rawSales ?? [])
       .filter((sale) => !sale.deleted_at)
       .filter((sale) => {
         if (!sale?.sale_date) return false;
-        const k = String(sale.sale_date).slice(0, 10);
-        return k >= startKey && k <= endKey;
+        try {
+          const d = parseISO(String(sale.sale_date));
+          return isWithinInterval(d, { start: calendarWindow.start, end: calendarWindow.end });
+        } catch {
+          return false;
+        }
       });
   }, [rawSales, calendarWindow]);
 

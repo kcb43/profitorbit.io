@@ -85,11 +85,10 @@ export default function ReportsPage() {
     if (range === "lifetime") return sortedSales;
     const days = RANGE_TO_DAYS[range];
     const cutoff = startOfDay(subDays(new Date(), days - 1));
-    const cutoffKey = format(cutoff, 'yyyy-MM-dd');
     return sortedSales.filter((sale) => {
       if (!sale?.sale_date) return false;
       try {
-        return String(sale.sale_date).slice(0, 10) >= cutoffKey;
+        return parseISO(String(sale.sale_date)) >= cutoff;
       } catch {
         return false;
       }
