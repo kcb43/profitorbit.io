@@ -11,7 +11,18 @@ import newApiClient from './newApiClient';
  * You can opt back into the legacy Base44 SDK by setting:
  *   VITE_USE_LEGACY_BASE44_SDK=true
  */
-const useLegacyBase44Sdk = import.meta.env.VITE_USE_LEGACY_BASE44_SDK === 'true';
+let useLegacyBase44Sdk = import.meta.env.VITE_USE_LEGACY_BASE44_SDK === 'true';
+
+// Safety: never use the legacy Base44 SDK on the production site.
+// It can cause data to appear "missing" and it bypasses our `/api/*` routes (Supabase-backed).
+try {
+  if (typeof window !== 'undefined') {
+    const host = window.location?.hostname || '';
+    if (import.meta.env.PROD && /(^|\.)profitorbit\.io$/i.test(host)) {
+      useLegacyBase44Sdk = false;
+    }
+  }
+} catch (_) {}
 
 export const base44 = useLegacyBase44Sdk
   ? createClient({
@@ -19,3 +30,10 @@ export const base44 = useLegacyBase44Sdk
       requiresAuth: false,
     })
   : newApiClient;
+
+try {
+  const mode = useLegacyBase44Sdk ? 'legacy-base44-sdk' : 'supabase-api';
+  // eslint-disable-next-line no-console
+  console.log('🟢 DATA CLIENT MODE:', mode);
+  localStorage.setItem('profit_orbit_data_client_mode', mode);
+} catch (_) {}
