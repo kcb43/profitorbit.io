@@ -41,12 +41,11 @@ export default function ProfitCalendar() {
 
   const { data: rawSales, isLoading } = useQuery({
     queryKey: ['sales', 'profitCalendar', format(currentMonth, 'yyyy-MM')],
-    // Only fetch sales for the visible calendar window (fast).
+    // IMPORTANT: SalesHistory is correct; this page must not rely on server-side `from/to` filters
+    // (they can behave inconsistently depending on DB column types). Fetch a bounded history slice
+    // and filter client-side using date-only keys.
     queryFn: () => base44.entities.Sale.list('-sale_date', {
-      // sale_date is DATE; use date-only bounds.
-      from: formatDate(calendarWindow.start, 'yyyy-MM-dd'),
-      to: formatDate(calendarWindow.end, 'yyyy-MM-dd'),
-      // Safety: if a user has lots of sales in a month, don't truncate.
+      since: '1970-01-01',
       limit: 5000,
       fields: [
         'id',
@@ -69,7 +68,17 @@ export default function ProfitCalendar() {
   });
 
   // Filter out soft-deleted sales
-  const sales = useMemo(() => (rawSales ?? []).filter(sale => !sale.deleted_at), [rawSales]);
+  const sales = useMemo(() => {
+    const startKey = formatDate(calendarWindow.start, 'yyyy-MM-dd');
+    const endKey = formatDate(calendarWindow.end, 'yyyy-MM-dd');
+    return (rawSales ?? [])
+      .filter((sale) => !sale.deleted_at)
+      .filter((sale) => {
+        if (!sale?.sale_date) return false;
+        const k = String(sale.sale_date).slice(0, 10);
+        return k >= startKey && k <= endKey;
+      });
+  }, [rawSales, calendarWindow]);
 
   // Helper functions for month navigation
   const handlePreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));

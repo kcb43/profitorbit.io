@@ -40,10 +40,21 @@ const StatHighlight = ({ icon: Icon, color, title, value, itemName, saleId }) =>
   );
 };
 
-export default function DealOfTheMonth({ sales }) {
-  const monthLabel = React.useMemo(() => format(new Date(), 'MMMM yyyy'), []);
+export default function DealOfTheMonth({ sales, monthKey }) {
+  const effectiveMonthKey = React.useMemo(() => {
+    if (monthKey && /^\d{4}-\d{2}$/.test(String(monthKey))) return String(monthKey);
+    return format(new Date(), 'yyyy-MM');
+  }, [monthKey]);
+
+  const monthLabel = React.useMemo(() => {
+    try {
+      return format(parseISO(`${effectiveMonthKey}-01`), 'MMMM yyyy');
+    } catch {
+      return format(new Date(), 'MMMM yyyy');
+    }
+  }, [effectiveMonthKey]);
   const deals = React.useMemo(() => {
-    const monthKey = format(new Date(), 'yyyy-MM');
+    const monthKey = effectiveMonthKey;
     const monthlySales = (sales ?? []).filter((sale) => {
       if (!sale?.sale_date) return false;
       // sale_date is DATE (yyyy-MM-dd). Use string match to avoid timezone drift.
@@ -92,7 +103,7 @@ export default function DealOfTheMonth({ sales }) {
     });
 
     return { highestProfit, fastestSale, highestRoi };
-  }, [sales]);
+  }, [sales, effectiveMonthKey]);
 
   return (
     <Card className="border-0 shadow-sm">
