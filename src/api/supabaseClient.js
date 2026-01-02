@@ -24,6 +24,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Helper to get current user ID
 // This will need to be adapted based on your auth setup
 export async function getCurrentUserId() {
+  // Prefer session (fast, local) and fall back to getUser (network)
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user?.id) return session.user.id;
+
   const { data: { user } } = await supabase.auth.getUser();
   return user?.id || null;
 }
