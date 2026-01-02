@@ -33,6 +33,25 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Prefer SQL RPC (fast + reliable across schema variants).
+    const rpcRes = await supabase.rpc('po_sales_summary', { p_user_id: userId });
+    if (!rpcRes.error) {
+      const row = Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data;
+      return res.status(200).json({
+        totalProfit: Number(row?.total_profit ?? 0) || 0,
+        totalRevenue: Number(row?.total_revenue ?? 0) || 0,
+        totalSales: Number(row?.total_sales ?? 0) || 0,
+      });
+    }
+
+    // If the function doesn't exist yet (migration not run), fall back to PostgREST aggregates.
+    const rpcMsg = String(rpcRes.error?.message || '');
+    const isMissingFn =
+      rpcMsg.includes('function') && (rpcMsg.includes('does not exist') || rpcMsg.includes('not found'));
+    if (!isMissingFn) {
+      return res.status(500).json({ error: rpcRes.error.message });
+    }
+
     // PostgREST aggregates (fast, server-side) — tolerate either `selling_price` or `sale_price`.
     const candidates = [
       'profit_sum:profit.sum(), revenue_sum:selling_price.sum(), sales_count:id.count()',
