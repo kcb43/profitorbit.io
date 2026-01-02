@@ -1310,7 +1310,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] sm:w-[85vw] max-w-[1200px] max-h-[90vh] p-0 overflow-hidden bg-white border-gray-200 flex flex-col shadow-2xl">
+        <DialogContent className="w-[100vw] h-[100dvh] sm:w-[85vw] sm:max-w-[1200px] sm:max-h-[90vh] p-0 overflow-hidden bg-white border-gray-200 flex flex-col shadow-2xl rounded-none sm:rounded-lg">
           <DialogHeader className="px-4 py-2.5 border-b border-gray-200 bg-gray-50 backdrop-blur-sm flex-shrink-0" style={{ paddingTop: '17px', paddingBottom: '17px' }}>
             <div className="flex items-center gap-3">
               <DialogTitle className="text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -1331,9 +1331,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
           </DialogHeader>
 
-          <div className="ant-modal-body flex flex-col md:flex-row h-auto md:flex-1 overflow-y-auto md:overflow-hidden min-h-0" style={{ scale: 1, outline: 'none', padding: '16px' }}>
+          <div className="ant-modal-body flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden p-3 sm:p-4" style={{ scale: 1, outline: 'none' }}>
             {/* Compact Sidebar */}
-            <div className="w-full md:w-[220px] bg-gray-50 backdrop-blur-sm md:border-r border-gray-200 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-3 max-h-none md:max-h-full flex-shrink-0">
+            <div className="w-full md:w-[220px] bg-gray-50 backdrop-blur-sm md:border-r border-gray-200 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-3 flex-shrink-0 max-h-[38dvh] md:max-h-none order-1">
               {/* Template Section - Compact */}
               <div className="space-y-2">
                 <Select
@@ -1580,10 +1580,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             </div>
           </div>
 
-            {/* Main Content - Image takes most space */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 h-[400px] md:h-full overflow-hidden bg-transparent dark:bg-transparent" style={{ paddingLeft: '12px', scale: 1, outline: 'none' }}>
+            {/* Main Content - Image preview */}
+            <div className="w-full md:flex-1 flex flex-col min-w-0 flex-1 overflow-hidden bg-transparent dark:bg-transparent mt-3 md:mt-0 md:pl-3 order-2" style={{ scale: 1, outline: 'none' }}>
               <div 
-                className={`image-edit-container w-full h-full overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700'}`}
+                className={`image-edit-container w-full flex-1 min-h-[45dvh] md:min-h-0 overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700'}`}
                 style={{ 
                   scale: 1,
                   outline: 'none'
