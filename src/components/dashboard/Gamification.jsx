@@ -51,7 +51,7 @@ const getTierInfo = (totalProfit) => {
   }
 };
 
-export default function Gamification({ sales, stats }) {
+export default function Gamification({ sales, stats, variant }) {
   const [selectedCharacterIcon, setSelectedCharacterIcon] = useState(() => getSelectedCharacterIcon());
 
   // Listen for character changes
@@ -147,6 +147,73 @@ export default function Gamification({ sales, stats }) {
     
     return { percentage, pointsNeeded };
   }, [stats.totalProfit, tierInfo]);
+
+  if (variant === "mosaic") {
+    return (
+      <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-sm bg-white dark:bg-gray-950">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold text-foreground">Your Progress</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-4">
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0">
+              <div className="text-sm text-muted-foreground">Current level</div>
+              <div className="mt-1 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-muted/40 flex items-center justify-center overflow-hidden">
+                  {typeof currentLevel.icon === "string" ? (
+                    <img src={currentLevel.icon} alt="Level" className="h-8 w-8 object-contain" />
+                  ) : (
+                    renderIcon(currentLevel.icon, "text-gray-700 dark:text-gray-200 w-8 h-8")
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-lg font-semibold text-foreground">{currentLevel.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {nextLevel ? `Next: ${nextLevel.name}` : "Max level reached"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tier</div>
+              <div className="mt-1 text-xl font-bold text-foreground">{tierInfo.name}</div>
+              <div className="text-xs text-muted-foreground mt-1">{points.toLocaleString()} pts</div>
+            </div>
+          </div>
+
+          {tierInfo.nextTier && (
+            <div>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Progress to {tierInfo.nextTier}</span>
+                <span className="font-semibold text-foreground">{Math.round(tierProgress.percentage)}%</span>
+              </div>
+              <Progress value={tierProgress.percentage} className="h-2" />
+              {tierProgress.pointsNeeded > 0 ? (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  ${tierProgress.pointsNeeded.toFixed(0)} more needed
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <div>
+            <div className="text-sm font-medium text-muted-foreground mb-2">Achievements</div>
+            <div className="flex flex-wrap gap-2">
+              {achievements.length > 0 ? achievements.map((ach) => (
+                <Badge key={ach.name} variant="secondary" className="px-3 py-1.5">
+                  <ach.icon className={`w-4 h-4 mr-2 ${ach.color}`} />
+                  <span className="font-semibold">{ach.name}</span>
+                </Badge>
+              )) : (
+                <div className="text-xs text-muted-foreground">Your first achievement is just around the corner!</div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-gray-900 relative overflow-hidden">

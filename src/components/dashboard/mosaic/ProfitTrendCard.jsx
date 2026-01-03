@@ -1,19 +1,26 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { format, parseISO, subDays } from "date-fns";
+import { format, parseISO, subDays, isAfter, isBefore } from "date-fns";
 
-function buildSeries(sales, range) {
+function buildSeries(sales, range, customRange) {
   const s = Array.isArray(sales) ? sales : [];
   const points = {};
 
   if (range === "14d") {
     const cutoff = subDays(new Date(), 13);
-    const cutoffKey = format(cutoff, "yyyy-MM-dd");
-    s.filter((x) => x?.sale_date && String(x.sale_date).slice(0, 10) >= cutoffKey).forEach((x) => {
-      const k = String(x.sale_date).slice(0, 10);
-      points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+    s.forEach((x) => {
+      if (!x?.sale_date) return;
+      try {
+        const d = parseISO(String(x.sale_date));
+        if (isBefore(d, cutoff)) return;
+        const k = format(d, "yyyy-MM-dd");
+        points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+      } catch (_) {}
     });
     return Object.keys(points)
       .sort()
@@ -23,8 +30,11 @@ function buildSeries(sales, range) {
   if (range === "monthly") {
     s.forEach((x) => {
       if (!x?.sale_date) return;
-      const k = String(x.sale_date).slice(0, 7);
-      points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+      try {
+        const d = parseISO(String(x.sale_date));
+        const k = format(d, "yyyy-MM");
+        points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+      } catch (_) {}
     });
     return Object.keys(points)
       .sort()
@@ -32,11 +42,32 @@ function buildSeries(sales, range) {
       .map((k) => ({ k, date: format(parseISO(`${k}-01`), "MMM yy"), v: points[k] }));
   }
 
+  if (range === "custom") {
+    const from = customRange?.from || null;
+    const to = customRange?.to || null;
+    if (!from || !to) return [];
+    s.forEach((x) => {
+      if (!x?.sale_date) return;
+      try {
+        const d = parseISO(String(x.sale_date));
+        if (isBefore(d, from) || isAfter(d, to)) return;
+        const k = format(d, "yyyy-MM-dd");
+        points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+      } catch (_) {}
+    });
+    return Object.keys(points)
+      .sort()
+      .map((k) => ({ k, date: format(parseISO(k), "MMM dd"), v: points[k] }));
+  }
+
   // yearly
   s.forEach((x) => {
     if (!x?.sale_date) return;
-    const k = String(x.sale_date).slice(0, 4);
-    points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+    try {
+      const d = parseISO(String(x.sale_date));
+      const k = format(d, "yyyy");
+      points[k] = (points[k] || 0) + (Number(x.profit ?? 0) || 0);
+    } catch (_) {}
   });
   return Object.keys(points)
     .sort()
@@ -44,8 +75,8 @@ function buildSeries(sales, range) {
     .map((k) => ({ k, date: k, v: points[k] }));
 }
 
-export default function ProfitTrendCard({ sales, range, onRangeChange }) {
-  const data = React.useMemo(() => buildSeries(sales, range), [sales, range]);
+export default function ProfitTrendCard({ sales, range, onRangeChange, customRange, onCustomRangeChange }) {
+  const data = React.useMemo(() => buildSeries(sales, range, customRange), [sales, range, customRange]);
   const total = React.useMemo(() => data.reduce((sum, p) => sum + (Number(p.v || 0) || 0), 0), [data]);
 
   return (
@@ -59,13 +90,52 @@ export default function ProfitTrendCard({ sales, range, onRangeChange }) {
               <span className="text-muted-foreground">total</span>
             </div>
           </div>
-          <Tabs value={range} onValueChange={onRangeChange}>
-            <TabsList className="bg-muted/40">
-              <TabsTrigger value="14d">14 Days</TabsTrigger>
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="yearly">Yearly</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-2">
+            <Tabs value={range} onValueChange={onRangeChange}>
+              <TabsList className="bg-muted/40">
+                <TabsTrigger value="14d">14 Days</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="yearly">Yearly</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={range === "custom" ? "default" : "outline"}
+                  className={range === "custom" ? "" : "border-gray-300 dark:border-gray-700"}
+                >
+                  {customRange?.from && customRange?.to
+                    ? `${format(customRange.from, "MMM d, yyyy")} – ${format(customRange.to, "MMM d, yyyy")}`
+                    : "Date Range"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(next) => {
+                    onCustomRangeChange?.(next);
+                    if (next?.from && next?.to) {
+                      onRangeChange?.("custom");
+                    }
+                  }}
+                  numberOfMonths={2}
+                />
+                <div className="flex justify-end gap-2 p-3 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      onCustomRangeChange?.(undefined);
+                      onRangeChange?.("14d");
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

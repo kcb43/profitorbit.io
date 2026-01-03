@@ -34,7 +34,6 @@ import QuickActions from "../components/dashboard/QuickActions";
 import KpiSparkCard from "../components/dashboard/mosaic/KpiSparkCard";
 import ProfitTrendCard from "../components/dashboard/mosaic/ProfitTrendCard";
 import PlatformDonutCard from "../components/dashboard/mosaic/PlatformDonutCard";
-import RecentSalesTable from "../components/dashboard/mosaic/RecentSalesTable";
 
 const SUPPORTED_MARKETPLACES = [
   {
@@ -85,6 +84,8 @@ export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const [profitChartRange, setProfitChartRange] = useState('14d');
+  const [desktopProfitRange, setDesktopProfitRange] = useState('14d');
+  const [desktopCustomRange, setDesktopCustomRange] = useState(undefined);
 
   // Handle OAuth callback - process hash fragment before AuthGuard redirects
   useEffect(() => {
@@ -648,9 +649,6 @@ export default function Dashboard() {
               <Button variant="outline" className="border-gray-300 dark:border-gray-700 text-sm">
                 Filter
               </Button>
-              <Button variant="outline" className="border-gray-300 dark:border-gray-700 text-sm">
-                Date Range
-              </Button>
               <Link to={createPageUrl("AddSale")}>
                 <Button className="bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white">
                   <Plus className="w-4 h-4 mr-2" />
@@ -697,25 +695,36 @@ export default function Dashboard() {
 
             {/* Main chart + side card */}
             <div className="col-span-8">
-              <ProfitTrendCard sales={sales} range={profitChartRange} onRangeChange={setProfitChartRange} />
+              <ProfitTrendCard
+                sales={sales}
+                range={desktopProfitRange}
+                onRangeChange={setDesktopProfitRange}
+                customRange={desktopCustomRange}
+                onCustomRangeChange={setDesktopCustomRange}
+              />
             </div>
             <div className="col-span-4">
               <PlatformDonutCard rows={platformSummary} title="Platform Revenue" />
             </div>
 
-            {/* Table-like recent sales */}
+            {/* Your progress + quick actions */}
             <div className="col-span-12">
-              <RecentSalesTable sales={recentSales} />
+              <Gamification
+                sales={sales}
+                stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
+                variant="mosaic"
+              />
             </div>
-
-            {/* Existing blocks (keep your labeled stacks) */}
             <div className="col-span-12">
-              <Gamification sales={sales} stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }} />
-            </div>
-            <div className="col-span-6">
               <QuickActions />
             </div>
-            <div className="col-span-6">
+
+            {/* Recent sales (restore carousel) */}
+            <div className="col-span-12">
+              <RecentSales sales={recentSales} />
+            </div>
+
+            <div className="col-span-12">
               <TipOfTheDay />
             </div>
           </div>

@@ -4,12 +4,39 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 
 const COLORS = ["#6366f1", "#60a5fa", "#34d399", "#f472b6", "#fbbf24", "#94a3b8"];
 
+const PLATFORM_META = {
+  ebay: {
+    name: "eBay",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
+  },
+  mercari: {
+    name: "Mercari",
+    icon: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
+  },
+  facebook_marketplace: {
+    name: "Facebook",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+  },
+  facebook: {
+    name: "Facebook",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+  },
+};
+
+function normalizePlatformKey(raw) {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (!v) return "other";
+  if (v === "facebook marketplace" || v === "facebook_marketplace" || v === "fbmp") return "facebook_marketplace";
+  return v.replace(/\s+/g, "_");
+}
+
 export default function PlatformDonutCard({ rows, title = "Platform Mix" }) {
   const data = React.useMemo(() => {
     const arr = Array.isArray(rows) ? rows : [];
     return arr
       .map((r) => ({
-        name: String(r?.platform || "other"),
+        key: normalizePlatformKey(r?.platform),
+        name: PLATFORM_META[normalizePlatformKey(r?.platform)]?.name || String(r?.platform || "Other"),
         value: Number(r?.total_revenue ?? r?.selling_price ?? 0) || 0,
       }))
       .filter((d) => d.value > 0)
@@ -32,7 +59,10 @@ export default function PlatformDonutCard({ rows, title = "Platform Mix" }) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Tooltip
-                formatter={(v) => [`$${Number(v || 0).toFixed(2)}`, "Revenue"]}
+                formatter={(v, _name, props) => {
+                  const label = props?.payload?.name || "Revenue";
+                  return [`$${Number(v || 0).toFixed(2)}`, label];
+                }}
                 contentStyle={{
                   backgroundColor: "hsl(var(--background))",
                   border: "1px solid hsl(var(--border))",
@@ -67,7 +97,14 @@ export default function PlatformDonutCard({ rows, title = "Platform Mix" }) {
                 className="inline-block h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: COLORS[i % COLORS.length] }}
               />
-              <span className="capitalize">{d.name.replace(/_/g, " ")}</span>
+              {PLATFORM_META[d.key]?.icon ? (
+                <img
+                  src={PLATFORM_META[d.key].icon}
+                  alt={d.name}
+                  className="h-4 w-4 object-contain"
+                />
+              ) : null}
+              <span>{d.name}</span>
             </div>
           ))}
         </div>
