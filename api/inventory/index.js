@@ -182,7 +182,9 @@ async function handleGet(req, res, userId) {
     }
 
     if (search) {
-      query = query.ilike('item_name', `%${search}%`);
+      // Allow searching by item name, category, or source (UI expects this).
+      const q = `%${search}%`;
+      query = query.or(`item_name.ilike.${q},category.ilike.${q},source.ilike.${q}`);
     }
 
     if (status) {

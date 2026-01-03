@@ -18,7 +18,7 @@ async function sleep(ms) {
 
 async function getAuthContext() {
   // Prefer session (includes access_token). Session hydration can lag slightly on cold loads.
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 8; i++) {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
       return { userId: session.user?.id || null, accessToken: session.access_token };
