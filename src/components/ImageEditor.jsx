@@ -1379,7 +1379,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 </Select>
                 <Button
                   onClick={handleSaveTemplateClick}
-                  className="w-full bg-indigo-600/80 hover:bg-indigo-500 text-white flex items-center justify-center gap-1.5 text-xs h-[41px]"
+                  className="w-full bg-indigo-600/80 hover:bg-indigo-500 text-white flex items-center justify-center gap-1.5 text-xs h-7 sm:h-[41px]"
                 >
                   <Save className="w-3 h-3" />
                   <span>Save Template</span>
@@ -1440,7 +1440,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 ) : (
                   <button
                     onClick={() => handleTransform('crop')}
-                    className="w-full p-2 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs h-[54px]"
+                    className="w-full p-2 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs h-9 sm:h-[54px]"
                   >
                     <Crop className="w-3.5 h-3.5" />
                     <span>Crop</span>
@@ -1590,7 +1590,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 }}
               >
                 {imgSrc && (
-                  <div className="relative flex items-center justify-center" style={{ outline: 'none', border: 'none', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 1)' }}>
+                  <div
+                    className="relative flex items-center justify-center pb-16 md:pb-0"
+                    style={{ outline: 'none', border: 'none', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 1)' }}
+                  >
                     {/* Image edited checkmark - top right */}
                     {editedImages.has(currentImageIndex) && (
                       <div className="absolute top-4 right-4 z-20">
@@ -1662,7 +1665,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     {/* Rotate buttons overlay - always visible */}
                     <div style={{
                       position: 'absolute',
-                      bottom: '24px',
+                      bottom: '12px',
                       left: '50%',
                       transform: 'translateX(-50%)',
                       display: 'flex',
@@ -1671,25 +1674,25 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     }}>
                       <button
                         onClick={() => handleTransform('rotate_left')}
-                        className="w-8 h-8 rounded-full bg-white hover:bg-gray-50 border border-gray-300 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105"
+                        className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white hover:bg-gray-50 border border-gray-300 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105"
                         style={{
                           borderColor: 'rgba(209, 213, 219, 1)',
                           boxShadow: '0px 1px 10px 4px rgba(0, 0, 0, 0.1), 0px 0px 0px 0px rgba(0, 0, 0, 0), 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05)'
                         }}
                         title="Rotate Left"
                       >
-                        <RotateCcw className="w-4 h-4 text-gray-700" />
+                        <RotateCcw className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-700" />
                       </button>
                       <button
                         onClick={() => handleTransform('rotate_right')}
-                        className="w-8 h-8 rounded-full bg-white hover:bg-gray-50 border border-gray-300 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105"
+                        className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white hover:bg-gray-50 border border-gray-300 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105"
                         style={{
                           borderColor: 'rgba(209, 213, 219, 1)',
                           boxShadow: '0px 1px 10px 4px rgba(0, 0, 0, 0.1), 0px 0px 0px 0px rgba(0, 0, 0, 0), 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05)'
                         }}
                         title="Rotate Right"
                       >
-                        <RotateCw className="w-4 h-4 text-gray-700" />
+                        <RotateCw className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-700" />
                       </button>
                     </div>
                   </div>
