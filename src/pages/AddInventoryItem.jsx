@@ -23,6 +23,7 @@ import { ImageEditor } from "@/components/ImageEditor";
 import { scanReceiptPlaceholder } from "@/api/receiptScanner";
 import imageCompression from "browser-image-compression";
 import { ReactSortable } from "react-sortablejs";
+import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
 const MAX_PHOTOS = 12;
 const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy"];
@@ -129,6 +130,7 @@ export default function AddInventoryItem() {
   const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null });
+  const [base44Tags, setBase44Tags] = useState("");
 
   const { data: existingItem, isLoading: isLoadingItem } = useQuery({
     queryKey: ['inventoryItem', itemId],
@@ -154,6 +156,9 @@ export default function AddInventoryItem() {
     }
 
     if (dataToLoad) {
+      const { clean: cleanNotes, tags } = splitBase44Tags(dataToLoad.notes || "");
+      if (!isCopying) setBase44Tags(tags || "");
+
       const initialSource = dataToLoad.source || "";
       if (initialSource && !PREDEFINED_SOURCES.includes(initialSource)) {
         setIsOtherSource(true);
@@ -188,7 +193,7 @@ export default function AddInventoryItem() {
         source: initialSource,
         status: isCopying ? "available" : (dataToLoad.status || "available"),
         category: initialCategory,
-        notes: isCopying ? "" : (dataToLoad.notes || ""),
+        notes: isCopying ? "" : cleanNotes,
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,
         return_deadline: isCopying ? "" : (dataToLoad.return_deadline || ""),
@@ -268,7 +273,10 @@ export default function AddInventoryItem() {
     return_deadline: data.return_deadline ? data.return_deadline : null,
     images: photos?.map(p => p.imageUrl || p.url || p).filter(Boolean) || [],
     image_url: photos?.find(p => p.isMain)?.imageUrl || photos?.[0]?.imageUrl || data.image_url || '',
-    notes: data.notes ? cleanHtmlText(data.notes) : '',
+    notes: mergeBase44Tags(
+      data.notes ? cleanHtmlText(data.notes) : '',
+      itemId && !copyId ? base44Tags : ''
+    ),
     };
   };
 

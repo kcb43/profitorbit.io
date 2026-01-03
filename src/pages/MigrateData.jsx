@@ -166,6 +166,8 @@ export default function MigrateData() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
   const [errors, setErrors] = useState([]);
+  const [backfillBusy, setBackfillBusy] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState(null);
 
   const fullParsed = useMemo(() => tryParseJson(fullExportJson), [fullExportJson]);
   const invParsed = useMemo(() => tryParseJson(inventoryJson), [inventoryJson]);
@@ -331,6 +333,28 @@ export default function MigrateData() {
     }
   };
 
+  const runBackfill = async () => {
+    setBackfillBusy(true);
+    setBackfillStatus(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        ...(session?.user?.id ? { 'x-user-id': session.user.id } : {}),
+      };
+      const resp = await fetch('/api/admin/backfill-sales-fields', { method: 'POST', headers });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || `HTTP ${resp.status}`);
+      setBackfillStatus(`Done. Scanned ${json.scanned}, updated ${json.updated}, skipped ${json.skipped}.`);
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+    } catch (e) {
+      setBackfillStatus(`Backfill failed: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setBackfillBusy(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900/95 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-4">
@@ -421,18 +445,34 @@ export default function MigrateData() {
             </Button>
             <Button
               variant="outline"
+              onClick={runBackfill}
+              disabled={busy || backfillBusy}
+            >
+              {backfillBusy ? "Backfilling..." : "Backfill missing Sales fields (admin)"}
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => {
                 setFullExportJson("");
                 setInventoryJson("");
                 setSalesJson("");
                 setStatus(null);
                 setErrors([]);
+                setBackfillStatus(null);
               }}
               disabled={busy}
             >
               Clear
             </Button>
           </div>
+
+          {backfillStatus && (
+            <div className="mt-3">
+              <Alert>
+                <AlertDescription>{backfillStatus}</AlertDescription>
+              </Alert>
+            </div>
+          )}
 
           {errors.length > 0 && (
             <div className="mt-4">

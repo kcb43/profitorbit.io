@@ -481,6 +481,13 @@ export default function Dashboard() {
               deltaPositive={true}
               stroke="hsl(var(--po-positive))"
               data={(sales || []).slice(0, 30).reverse().map((s) => ({ v: Number(s?.profit ?? 0) || 0 }))}
+              right={
+                <Link to={createPageUrl("Gallery")} className="group">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:opacity-95 transition-opacity">
+                    <DollarSign className="h-6 w-6 text-white" />
+                  </div>
+                </Link>
+              }
             />
             <KpiSparkCard
               title="Total Sales"

@@ -20,6 +20,7 @@ import {
 import ClearableDateInput from "../components/ClearableDateInput";
 import imageCompression from "browser-image-compression";
 import { extractCustomFees, getCustomFeesTotal, injectCustomFees } from "@/utils/customFees";
+import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
 const platformOptions = [
   { value: "ebay", label: "eBay" },
@@ -152,6 +153,7 @@ export default function AddSale() {
   const [soldDialogOpen, setSoldDialogOpen] = useState(false); // New state for sold listings dialog
   const [activeMarket, setActiveMarket] = useState('ebay_sold');
   const imageInputRef = useRef(null);
+  const [base44Tags, setBase44Tags] = useState("");
 
   useEffect(() => {
     setIsOtherSource(false);
@@ -160,6 +162,8 @@ export default function AddSale() {
     if (existingSale) {
       const dataToLoad = { ...existingSale };
       const { cleanNotes, customFees: storedCustomFees } = extractCustomFees(dataToLoad.notes || "");
+      const { clean: cleanNoTags, tags } = splitBase44Tags(cleanNotes || "");
+      if (!copyId) setBase44Tags(tags || "");
       const customFeesTotal = getCustomFeesTotal(storedCustomFees);
       let feesForState = storedCustomFees;
 
@@ -198,7 +202,7 @@ export default function AddSale() {
         platform_fees: String(dataToLoad.platform_fees ?? ''),
         other_costs: formattedOtherCosts,
         vat_fees: String(dataToLoad.vat_fees ?? ''),
-        notes: copyId ? '' : cleanNotes,
+        notes: copyId ? '' : cleanNoTags,
         quantity_sold: String(dataToLoad.quantity_sold ?? 1),
       }));
 
@@ -273,6 +277,7 @@ export default function AddSale() {
     const totalCosts = purchasePrice + shippingCost + platformFees + combinedOtherCosts + vatFees;
     const profit = sellingPrice - totalCosts;
     const notesWithCustomFees = injectCustomFees(saleData.notes, activeCustomFees);
+    const notesWithTags = mergeBase44Tags(notesWithCustomFees, saleId && !copyId ? base44Tags : "");
 
     return {
       ...saleData,
@@ -289,7 +294,7 @@ export default function AddSale() {
       inventory_id: inventoryId || saleData.inventory_id || null,
       sale_date: saleData.sale_date || new Date().toISOString().split("T")[0],
       created_date: saleData.created_date || new Date().toISOString(),
-      notes: notesWithCustomFees,
+      notes: notesWithTags,
     };
   };
 
