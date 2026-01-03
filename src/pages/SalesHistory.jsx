@@ -125,7 +125,7 @@ export default function SalesHistory() {
     customCategory: "",
     sale_date: "",
   });
-  const [viewMode, setViewMode] = useState("list"); // "list" or "grid"
+  const [viewMode, setViewMode] = useState("grid"); // "list" or "grid" (grid = inventory-style rows)
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -847,8 +847,8 @@ export default function SalesHistory() {
             onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
             className="flex-shrink-0"
           >
-            {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-            {viewMode === "list" ? "Grid View" : "List View"}
+            {viewMode === "grid" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
+            {viewMode === "grid" ? "Grid View" : "List View"}
           </Button>
         </div>
 
@@ -1059,7 +1059,7 @@ export default function SalesHistory() {
                     </p>
                   </div>
                 )}
-                {viewMode === "grid" ? (
+                {viewMode !== "grid" ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {filteredSales.map((sale) => {
                       const safeNotes = stripCustomFeeNotes(sale.notes || "");

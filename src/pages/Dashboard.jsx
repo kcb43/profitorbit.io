@@ -424,6 +424,11 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-12 gap-4 lg:gap-6">
+          {/* Tip of the Day (Mobile only: above KPI cards) */}
+          <div className="col-span-12 lg:hidden">
+            <TipOfTheDay variant="banner" />
+          </div>
+
           {/* KPI Row */}
           <div className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             <KpiSparkCard
@@ -439,8 +444,13 @@ export default function Dashboard() {
               value={isLoadingSalesSummary ? "…" : String(totalSales || 0)}
               deltaLabel={null}
               deltaPositive={true}
-              stroke="hsl(var(--po-info))"
-              data={(sales || []).slice(0, 30).reverse().map(() => ({ v: 1 }))}
+              right={
+                <Link to={createPageUrl("SalesHistory")} className="group">
+                  <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
+                    <ShoppingBag className="h-6 w-6 text-foreground" />
+                  </div>
+                </Link>
+              }
             />
             <KpiSparkCard
               title="Items in Stock"
@@ -448,9 +458,11 @@ export default function Dashboard() {
               deltaLabel={null}
               deltaPositive={true}
               right={
-                <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center">
-                  <Box className="h-6 w-6 text-foreground" />
-                </div>
+                <Link to={createPageUrl("Inventory")} className="group">
+                  <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
+                    <Box className="h-6 w-6 text-foreground" />
+                  </div>
+                </Link>
               }
             />
           </div>
@@ -471,11 +483,6 @@ export default function Dashboard() {
               title="Platform Revenue"
               reportsHref={createPageUrl("Reports")}
             />
-          </div>
-
-          {/* Tip of the Day (Mobile only: above Your Progress) */}
-          <div className="col-span-12 lg:hidden">
-            <TipOfTheDay variant="banner" />
           </div>
 
           {/* Your progress + quick actions */}

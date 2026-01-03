@@ -83,7 +83,7 @@ export default function ProfitTrendCard({ sales, range, onRangeChange, customRan
   return (
     <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-sm">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <CardTitle className="text-base font-semibold text-foreground">Profit Trend</CardTitle>
             <div className="mt-1 text-sm text-muted-foreground">
@@ -91,9 +91,9 @@ export default function ProfitTrendCard({ sales, range, onRangeChange, customRan
               <span className="text-muted-foreground">total</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <Tabs value={range} onValueChange={onRangeChange}>
-              <TabsList className="bg-muted/40">
+              <TabsList className="bg-muted/40 w-full sm:w-auto flex flex-wrap justify-start">
                 <TabsTrigger value="14d">14 Days</TabsTrigger>
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
                 <TabsTrigger value="yearly">Yearly</TabsTrigger>
@@ -104,7 +104,7 @@ export default function ProfitTrendCard({ sales, range, onRangeChange, customRan
               <PopoverTrigger asChild>
                 <Button
                   variant={range === "custom" ? "default" : "outline"}
-                  className={range === "custom" ? "" : "border-gray-300 dark:border-gray-700"}
+                  className={`${range === "custom" ? "" : "border-gray-300 dark:border-gray-700"} w-full sm:w-auto`}
                 >
                   {customRange?.from && customRange?.to
                     ? `${format(customRange.from, "MMM d, yyyy")} – ${format(customRange.to, "MMM d, yyyy")}`

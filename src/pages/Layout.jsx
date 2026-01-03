@@ -204,7 +204,7 @@ export default function Layout({ children }) {
             {navigationCategories.map((category, categoryIndex) => (
               <React.Fragment key={category.title}>
                 {/* Category */}
-                <div className={categoryIndex === navigationCategories.length - 1 ? "" : "mb-3"}>
+                <div className={categoryIndex === navigationCategories.length - 1 ? "" : "mb-2"}>
                   {/* Category Header */}
                   <div className="flex items-center gap-2 px-3 py-1.5">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -231,10 +231,8 @@ export default function Layout({ children }) {
                             `}
                           >
                             {/* Icon */}
-                            <IconComponent 
-                              className={`
-                                w-4.5 h-4.5 flex-shrink-0
-                              `}
+                            <IconComponent
+                              className={`flex-shrink-0 ${item.title === "Crosslist" ? "w-4 h-4" : "w-4.5 h-4.5"}`}
                               strokeWidth={2}
                             />
 
@@ -253,9 +251,7 @@ export default function Layout({ children }) {
 
                 {/* Category Divider (except for last category) */}
                 {categoryIndex < navigationCategories.length - 1 && (
-                  <div 
-                    className="h-px bg-border/60 mx-4 my-2"
-                  />
+                  <div className="h-px bg-border/60 mx-4 my-1.5" />
                 )}
               </React.Fragment>
             ))}
