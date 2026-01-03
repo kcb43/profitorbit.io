@@ -245,6 +245,8 @@ async function handleGet(req, res, userId) {
     const includeDeleted = String(queryParams.include_deleted || '').toLowerCase() === 'true';
     const deletedOnly = String(queryParams.deleted_only || '').toLowerCase() === 'true';
     const search = queryParams.search ? String(queryParams.search).trim() : '';
+    const category = queryParams.category ? String(queryParams.category).trim() : '';
+    const needsReview = String(queryParams.needs_review || '').toLowerCase() === 'true';
     const platform = queryParams.platform ? String(queryParams.platform).trim() : '';
     const minProfit = queryParams.min_profit !== undefined ? Number(queryParams.min_profit) : null;
     const maxProfit = queryParams.max_profit !== undefined ? Number(queryParams.max_profit) : null;
@@ -276,6 +278,18 @@ async function handleGet(req, res, userId) {
       // Allow searching by item name, category, or source (UI expects this).
       const q = `%${search}%`;
       query = query.or(`item_name.ilike.${q},category.ilike.${q},source.ilike.${q}`);
+    }
+    if (category) {
+      if (category === '__uncategorized') {
+        // Prefer NULL (most common). Empty-string categories are rare.
+        query = query.is('category', null);
+      } else {
+        query = query.eq('category', category);
+      }
+    }
+    if (needsReview) {
+      // NOTE: This is an OR filter. UI should avoid combining needs_review with searchTerm.
+      query = query.or('inventory_id.is.null,purchase_date.is.null,source.is.null,category.is.null');
     }
     if (platform) {
       query = query.eq('platform', platform);

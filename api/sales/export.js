@@ -40,6 +40,8 @@ export default async function handler(req, res) {
   const includeDeleted = String(req.query.include_deleted || '').toLowerCase() === 'true';
   const deletedOnly = String(req.query.deleted_only || '').toLowerCase() === 'true';
   const search = req.query.search ? String(req.query.search).trim() : '';
+  const category = req.query.category ? String(req.query.category).trim() : '';
+  const needsReview = String(req.query.needs_review || '').toLowerCase() === 'true';
   const platform = req.query.platform ? String(req.query.platform).trim() : '';
   const from = req.query.from ? String(req.query.from) : null;
   const to = req.query.to ? String(req.query.to) : null;
@@ -78,7 +80,13 @@ export default async function handler(req, res) {
 
   if (from && isIsoLike(from)) query = query.gte('sale_date', from);
   if (to && isIsoLike(to)) query = query.lte('sale_date', to);
-  if (search) query = query.ilike('item_name', `%${search}%`);
+  // NOTE: needs_review uses OR server-side; avoid combining with searchTerm to keep semantics clean.
+  if (!needsReview && search) query = query.or(`item_name.ilike.%${search}%,category.ilike.%${search}%,source.ilike.%${search}%`);
+  if (category) {
+    if (category === '__uncategorized') query = query.is('category', null);
+    else query = query.eq('category', category);
+  }
+  if (needsReview) query = query.or('inventory_id.is.null,purchase_date.is.null,source.is.null,category.is.null');
   if (platform) query = query.eq('platform', platform);
   if (Number.isFinite(minProfit)) query = query.gte('profit', minProfit);
   if (Number.isFinite(maxProfit)) query = query.lte('profit', maxProfit);

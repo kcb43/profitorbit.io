@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows } from "lucide-react";
+import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2 } from "lucide-react";
 import { format, parseISO, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -105,10 +105,12 @@ export default function SalesHistory() {
   const [filters, setFilters] = useState({
     searchTerm: "",
     platform: "all",
+    category: "all",
     minProfit: "",
     maxProfit: "",
     startDate: null,
     endDate: null,
+    needsReview: false,
   });
   const [sort, setSort] = useState({ by: "sale_date", order: "desc" });
 
@@ -134,6 +136,9 @@ export default function SalesHistory() {
   const queryClient = useQueryClient();
   const [pageSize, setPageSize] = useState(50);
   const [pageIndex, setPageIndex] = useState(0);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [saleToLink, setSaleToLink] = useState(null);
+  const [linkSearch, setLinkSearch] = useState("");
 
   // Mobile-only: keep Sales History in Grid view (no List view on mobile)
   React.useEffect(() => {
@@ -195,10 +200,12 @@ export default function SalesHistory() {
   }, [
     filters.searchTerm,
     filters.platform,
+    filters.category,
     filters.minProfit,
     filters.maxProfit,
     filters.startDate,
     filters.endDate,
+    filters.needsReview,
     showDeletedOnly,
     pageSize,
   ]);
@@ -217,16 +224,101 @@ export default function SalesHistory() {
       if (showDeletedOnly) qs.set('deleted_only', 'true');
       else qs.set('include_deleted', 'false');
 
-      if (filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
+      // NOTE: needs_review uses an OR filter on the server; don't combine it with searchTerm (also uses OR).
+      if (!filters.needsReview && filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
       if (filters.platform && filters.platform !== 'all') qs.set('platform', filters.platform);
+      if (filters.category && filters.category !== 'all') qs.set('category', filters.category);
       if (filters.minProfit !== '') qs.set('min_profit', String(filters.minProfit));
       if (filters.maxProfit !== '') qs.set('max_profit', String(filters.maxProfit));
       if (filters.startDate) qs.set('from', filters.startDate.toISOString().slice(0, 10));
       if (filters.endDate) qs.set('to', filters.endDate.toISOString().slice(0, 10));
+      if (filters.needsReview) qs.set('needs_review', 'true');
 
       return apiGetJson(`/api/sales?${qs.toString()}`);
     },
     placeholderData: { data: [], total: 0, limit: pageSize, offset: 0 },
+  });
+
+  const isNeedsReviewSale = React.useCallback((sale) => {
+    return (
+      !sale?.inventory_id ||
+      !sale?.purchase_date ||
+      !sale?.source ||
+      !sale?.category
+    );
+  }, []);
+
+  const { data: needsReviewCountPage } = useQuery({
+    queryKey: ['sales', 'salesHistory', 'needsReviewCount', showDeletedOnly],
+    enabled: !showDeletedOnly,
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      qs.set('paged', 'true');
+      qs.set('count', 'true');
+      qs.set('limit', '1');
+      qs.set('offset', '0');
+      qs.set('fields', 'id');
+      qs.set('include_deleted', 'false');
+      qs.set('needs_review', 'true');
+      return apiGetJson(`/api/sales?${qs.toString()}`);
+    },
+    placeholderData: { data: [], total: 0, limit: 1, offset: 0 },
+    staleTime: 30_000,
+  });
+  const needsReviewTotal = Number.isFinite(Number(needsReviewCountPage?.total)) ? Number(needsReviewCountPage.total) : 0;
+
+  const inventoryLinkFields = React.useMemo(
+    () => ['id', 'item_name', 'purchase_date', 'source', 'category', 'image_url', 'deleted_at', 'status'].join(','),
+    []
+  );
+  const { data: linkInventoryPage, isLoading: isLoadingLinkInventory } = useQuery({
+    queryKey: ['inventoryItems', 'salesHistory', 'link', saleToLink?.id, linkSearch],
+    enabled: linkDialogOpen && !!saleToLink,
+    queryFn: async () => {
+      const term = (linkSearch || saleToLink?.item_name || '').trim();
+      const qs = new URLSearchParams();
+      qs.set('paged', 'true');
+      qs.set('count', 'true');
+      qs.set('limit', '25');
+      qs.set('offset', '0');
+      qs.set('fields', inventoryLinkFields);
+      qs.set('include_deleted', 'false');
+      if (term) qs.set('search', term);
+      return apiGetJson(`/api/inventory?${qs.toString()}`);
+    },
+    placeholderData: { data: [], total: 0, limit: 25, offset: 0 },
+  });
+  const linkInventoryResults = React.useMemo(() => linkInventoryPage?.data || [], [linkInventoryPage]);
+
+  const linkSaleToInventoryMutation = useMutation({
+    mutationFn: async ({ sale, inventoryItem }) => {
+      const patch = {
+        inventory_id: inventoryItem.id,
+      };
+      if (!sale.purchase_date && inventoryItem.purchase_date) patch.purchase_date = inventoryItem.purchase_date;
+      if (!sale.source && inventoryItem.source) patch.source = inventoryItem.source;
+      if (!sale.category && inventoryItem.category) patch.category = inventoryItem.category;
+      await base44.entities.Sale.update(sale.id, patch);
+      return patch;
+    },
+    onSuccess: () => {
+      toast({
+        title: '✅ Linked sale to inventory',
+        description: 'Updated inventory link + backfilled missing fields where possible.',
+      });
+      setLinkDialogOpen(false);
+      setSaleToLink(null);
+      setLinkSearch('');
+      queryClient.invalidateQueries({ queryKey: ['sales', 'salesHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+    onError: (error) => {
+      toast({
+        title: '❌ Failed to link sale',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const rawSales = React.useMemo(() => salesPage?.data || [], [salesPage]);
@@ -804,7 +896,18 @@ export default function SalesHistory() {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => {
+      if (key === 'needsReview') {
+        const nextNeeds = value === true || value === 'true';
+        return {
+          ...prev,
+          needsReview: nextNeeds,
+          // needs_review uses OR server-side; keep semantics clean by clearing searchTerm.
+          ...(nextNeeds ? { searchTerm: '' } : {}),
+        };
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const deletedCount = React.useMemo(() => {
@@ -828,18 +931,30 @@ export default function SalesHistory() {
 
       // If showing deleted sales, skip other filters except search
       if (showDeletedOnly) {
-        const matchesSearch = !filters.searchTerm || 
-          (sale.item_name?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-           sale.category?.toLowerCase().includes(filters.searchTerm.toLowerCase()));
+        const term = (filters.searchTerm || '').toLowerCase();
+        const matchesSearch = !term || 
+          (sale.item_name?.toLowerCase().includes(term) ||
+           sale.category?.toLowerCase().includes(term) ||
+           sale.source?.toLowerCase().includes(term));
         return deletedMatch && matchesSearch;
       }
 
       // For non-deleted sales, apply all filters
       if (!deletedMatch) return false;
 
-      const matchesSearch = sale.item_name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                           sale.category?.toLowerCase().includes(filters.searchTerm.toLowerCase());
+      const term = (filters.searchTerm || '').toLowerCase();
+      const matchesSearch = !term ||
+        sale.item_name?.toLowerCase().includes(term) ||
+        sale.category?.toLowerCase().includes(term) ||
+        sale.source?.toLowerCase().includes(term);
       const matchesPlatform = filters.platform === "all" || sale.platform === filters.platform;
+      const matchesCategory =
+        filters.category === 'all'
+          ? true
+          : filters.category === '__uncategorized'
+          ? !sale.category
+          : sale.category === filters.category;
+      const matchesNeedsReview = !filters.needsReview || isNeedsReviewSale(sale);
 
       const profit = sale.profit || 0;
       const matchesMinProfit = filters.minProfit === "" || profit >= parseFloat(filters.minProfit);
@@ -849,9 +964,9 @@ export default function SalesHistory() {
       const matchesStartDate = !filters.startDate || saleDate >= filters.startDate;
       const matchesEndDate = !filters.endDate || saleDate <= endOfDay(filters.endDate);
 
-      return matchesSearch && matchesPlatform && matchesMinProfit && matchesMaxProfit && matchesStartDate && matchesEndDate;
+      return matchesSearch && matchesPlatform && matchesCategory && matchesNeedsReview && matchesMinProfit && matchesMaxProfit && matchesStartDate && matchesEndDate;
     });
-  }, [salesWithMetrics, showDeletedOnly, filters]);
+  }, [salesWithMetrics, showDeletedOnly, filters, isNeedsReviewSale]);
 
   const bulkPayloadEmpty = Object.keys(buildBulkUpdatePayload()).length === 0;
 
@@ -992,12 +1107,14 @@ export default function SalesHistory() {
                     // Match current filters; export up to 5000 rows.
                     if (showDeletedOnly) qs.set('deleted_only', 'true');
                     else qs.set('include_deleted', 'false');
-                    if (filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
+                    if (!filters.needsReview && filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
                     if (filters.platform && filters.platform !== 'all') qs.set('platform', filters.platform);
+                    if (filters.category && filters.category !== 'all') qs.set('category', filters.category);
                     if (filters.minProfit !== '') qs.set('min_profit', String(filters.minProfit));
                     if (filters.maxProfit !== '') qs.set('max_profit', String(filters.maxProfit));
                     if (filters.startDate) qs.set('from', filters.startDate.toISOString().slice(0, 10));
                     if (filters.endDate) qs.set('to', filters.endDate.toISOString().slice(0, 10));
+                    if (filters.needsReview) qs.set('needs_review', 'true');
                     qs.set('limit', '5000');
                     window.open(`/api/sales/export?${qs.toString()}`, '_blank');
                   }}
@@ -1007,15 +1124,16 @@ export default function SalesHistory() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 min-w-0">
               <div className="relative min-w-0">
                 <Label htmlFor="search" className="text-xs sm:text-sm mb-1.5 block break-words">Search</Label>
                 <Search className="absolute left-3 bottom-2.5 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground pointer-events-none z-10" />
                 <Input
                   id="search"
-                  placeholder="Item name or category..."
+                  placeholder={filters.needsReview ? "Needs Review enabled (search disabled)" : "Item name, category, source..."}
                   value={filters.searchTerm}
                   onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                  disabled={filters.needsReview}
                   className="pl-9 sm:pl-10 w-full"
                 />
               </div>
@@ -1032,6 +1150,21 @@ export default function SalesHistory() {
                     <SelectItem value="etsy">Etsy</SelectItem>
                     <SelectItem value="mercari">Mercari</SelectItem>
                     <SelectItem value="offer_up">OfferUp</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0">
+                <Label htmlFor="category" className="text-xs sm:text-sm mb-1.5 block break-words">Category</Label>
+                <Select value={filters.category} onValueChange={(v) => handleFilterChange('category', v)}>
+                  <SelectTrigger id="category" className="w-full">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="__uncategorized">Uncategorized</SelectItem>
+                    {PREDEFINED_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1075,6 +1208,29 @@ export default function SalesHistory() {
                     </Popover>
                   </div>
                </div>
+            </div>
+
+            <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="needs-review"
+                  checked={filters.needsReview}
+                  onCheckedChange={(v) => handleFilterChange('needsReview', v)}
+                />
+                <Label htmlFor="needs-review" className="text-xs sm:text-sm text-foreground">
+                  Needs Review (missing inventory link / purchase date / source / category)
+                </Label>
+              </div>
+              {!showDeletedOnly && needsReviewTotal > 0 && (
+                <Button
+                  variant={filters.needsReview ? "default" : "outline"}
+                  size="sm"
+                  className="whitespace-nowrap text-xs sm:text-sm"
+                  onClick={() => handleFilterChange('needsReview', !filters.needsReview)}
+                >
+                  {filters.needsReview ? "Showing Needs Review" : `Review (${needsReviewTotal})`}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1606,6 +1762,27 @@ export default function SalesHistory() {
                             >
                               <ArchiveRestore className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </Button>
+                            {isNeedsReviewSale(sale) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSaleToLink(sale);
+                                  setLinkSearch(sale?.item_name || "");
+                                  setLinkDialogOpen(true);
+                                }}
+                                className="glass text-amber-500 hover:text-amber-400 hover:bg-amber-900/10 flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  borderRadius: '8px',
+                                  minWidth: '28px',
+                                  minHeight: '28px'
+                                }}
+                                title="Link to Inventory"
+                              >
+                                <Link2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1792,6 +1969,20 @@ export default function SalesHistory() {
                                     Copy
                                   </Button>
                                 </Link>
+                                {isNeedsReviewSale(sale) && (
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSaleToLink(sale);
+                                      setLinkSearch(sale?.item_name || "");
+                                      setLinkDialogOpen(true);
+                                    }}
+                                    className="w-full rounded-xl text-xs h-9 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                                  >
+                                    <Link2 className="w-4 h-4 mr-2" />
+                                    Link Inventory
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   onClick={() => handleDeleteClick(sale)}
@@ -2052,6 +2243,92 @@ export default function SalesHistory() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Link Sale to Inventory Dialog */}
+      <Dialog
+        open={linkDialogOpen}
+        onOpenChange={(open) => {
+          setLinkDialogOpen(open);
+          if (!open) {
+            setSaleToLink(null);
+            setLinkSearch('');
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Link Sale to Inventory</DialogTitle>
+            <DialogDescription>
+              Pick the correct inventory item for this sale. We’ll save the inventory link and fill missing purchase date/source/category when available.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="rounded-lg border p-3 bg-muted/30">
+              <div className="text-sm font-semibold text-foreground break-words">
+                Sale: {saleToLink?.item_name || '—'}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Missing: {!saleToLink?.inventory_id ? 'inventory link' : null}
+                {!saleToLink?.purchase_date ? `${saleToLink?.inventory_id ? '' : ', '}purchase date` : null}
+                {!saleToLink?.source ? `${(!saleToLink?.inventory_id || !saleToLink?.purchase_date) ? ', ' : ''}source` : null}
+                {!saleToLink?.category ? `${(!saleToLink?.inventory_id || !saleToLink?.purchase_date || !saleToLink?.source) ? ', ' : ''}category` : null}
+              </div>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={linkSearch}
+                onChange={(e) => setLinkSearch(e.target.value)}
+                placeholder="Search inventory..."
+                className="pl-9"
+              />
+            </div>
+
+            <div className="max-h-[380px] overflow-auto rounded-lg border">
+              {isLoadingLinkInventory ? (
+                <div className="p-4 text-sm text-muted-foreground">Loading inventory…</div>
+              ) : linkInventoryResults.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">No inventory matches found.</div>
+              ) : (
+                <div className="divide-y">
+                  {linkInventoryResults.map((inv) => (
+                    <div key={inv.id} className="p-3 flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-md border bg-muted/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {inv.image_url ? (
+                          <img src={inv.image_url} alt={inv.item_name} className="w-full h-full object-contain" />
+                        ) : (
+                          <Package className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm text-foreground truncate">{inv.item_name || '—'}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {inv.category || 'Uncategorized'} • {inv.source || '—'} • {inv.purchase_date ? inv.purchase_date : '—'}
+                        </div>
+                      </div>
+                      <Button
+                        className="whitespace-nowrap"
+                        disabled={linkSaleToInventoryMutation.isPending || !saleToLink}
+                        onClick={() => linkSaleToInventoryMutation.mutate({ sale: saleToLink, inventoryItem: inv })}
+                      >
+                        Link
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );

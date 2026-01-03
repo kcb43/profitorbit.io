@@ -43,7 +43,7 @@ async function getUserId() {
 
 // Helper function to make API requests
 async function apiRequest(endpoint, options = {}) {
-  const { userId, accessToken } = await getAuthContext();
+  let { userId, accessToken } = await getAuthContext();
   
   const headers = {
     'Content-Type': 'application/json',
@@ -52,10 +52,27 @@ async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  let response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
   });
+
+  // If auth hydration is slow (common on cold loads), we can hit a 401 before tokens are ready.
+  // Retry once after a short delay.
+  if (response.status === 401 && !accessToken) {
+    await sleep(200);
+    ({ userId, accessToken } = await getAuthContext());
+    const retryHeaders = {
+      'Content-Type': 'application/json',
+      ...(userId && { 'x-user-id': userId }),
+      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+      ...options.headers,
+    };
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: retryHeaders,
+    });
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
