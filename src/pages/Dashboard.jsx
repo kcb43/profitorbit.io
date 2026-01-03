@@ -408,13 +408,13 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-3">
               <Link to={createPageUrl("AddSale")}>
-                <Button className="bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white">
+                <Button className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-md">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Sale
                 </Button>
               </Link>
               <Link to={createPageUrl("AddInventoryItem")} state={{ from: location.pathname || "/Dashboard" }}>
-                <Button variant="outline" className="border-gray-300 dark:border-gray-700">
+                <Button className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md">
                   <Package className="w-4 h-4 mr-2" />
                   Add Inventory
                 </Button>
@@ -446,8 +446,8 @@ export default function Dashboard() {
               deltaPositive={true}
               right={
                 <Link to={createPageUrl("SalesHistory")} className="group">
-                  <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
-                    <ShoppingBag className="h-6 w-6 text-foreground" />
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:opacity-95 transition-opacity">
+                    <ShoppingBag className="h-6 w-6 text-white" />
                   </div>
                 </Link>
               }
@@ -459,8 +459,8 @@ export default function Dashboard() {
               deltaPositive={true}
               right={
                 <Link to={createPageUrl("Inventory")} className="group">
-                  <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
-                    <Box className="h-6 w-6 text-foreground" />
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:opacity-95 transition-opacity">
+                    <Box className="h-6 w-6 text-white" />
                   </div>
                 </Link>
               }

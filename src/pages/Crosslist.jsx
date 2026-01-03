@@ -1382,21 +1382,6 @@ export default function Crosslist() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      <div
-        style={{
-          position: "fixed",
-          bottom: 10,
-          right: 10,
-          zIndex: 999999,
-          background: "black",
-          color: "lime",
-          padding: "6px 8px",
-          fontSize: 12,
-          borderRadius: 6,
-        }}
-      >
-        BUILD: crosslist-click-probe-9
-      </div>
       <div className="max-w-7xl mx-auto space-y-6 min-w-0">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
           <div className="min-w-0">
@@ -1800,8 +1785,6 @@ export default function Crosslist() {
                                   marketplaceId={m.id}
                                   onClick={(e) => handleListButtonClick(e, it.id, m.id)}
                                 />
-                              ) : !isConnected && m.id === 'mercari' ? (
-                                <span className="text-xs text-muted-foreground">Connect</span>
                               ) : null
                             ) : (
                               <div className="flex gap-1">

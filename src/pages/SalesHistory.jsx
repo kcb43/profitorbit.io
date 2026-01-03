@@ -847,8 +847,8 @@ export default function SalesHistory() {
             onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
             className="flex-shrink-0"
           >
-            {viewMode === "grid" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-            {viewMode === "grid" ? "Grid View" : "List View"}
+            {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
+            {viewMode === "list" ? "Grid View" : "List View"}
           </Button>
         </div>
 
@@ -1059,7 +1059,7 @@ export default function SalesHistory() {
                     </p>
                   </div>
                 )}
-                {viewMode !== "grid" ? (
+                {viewMode === "grid" ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {filteredSales.map((sale) => {
                       const safeNotes = stripCustomFeeNotes(sale.notes || "");
@@ -1195,7 +1195,7 @@ export default function SalesHistory() {
                   const totalCosts = ((sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0));
                   
                   return (
-                  <div key={sale.id} className={`product-list-item relative flex flex-row sm:flex-row items-start sm:items-center mb-4 sm:mb-6 min-w-0 w-full max-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                    <div key={sale.id} className={`product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full max-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                     style={{
                       minHeight: 'auto',
                       height: 'auto',
@@ -1211,7 +1211,7 @@ export default function SalesHistory() {
                       {/* Product Image Section - Clickable */}
                       <div 
                         onClick={() => handleSelect(sale.id)}
-                        className={`glass flex items-center justify-center relative w-[62px] sm:w-[220px] min-w-[62px] sm:min-w-[220px] max-w-[62px] sm:max-w-[220px] h-[62px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-700/50 hover:opacity-90 hover:shadow-md'}`}
+                        className={`glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-700/50 hover:opacity-90 hover:shadow-md'}`}
                         style={{
                           borderRadius: '12px',
                           flexShrink: 0

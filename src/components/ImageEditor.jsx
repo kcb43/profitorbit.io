@@ -167,6 +167,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   
   // Check if there are changes from ORIGINAL (for Reset All button)
   const hasChangesFromOriginal = () => {
+    const hasCropChanges = imgSrc !== originalImgSrc;
     const hasFilterChanges = 
       filters.brightness !== 100 || 
       filters.contrast !== 100 || 
@@ -178,7 +179,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       transform.flip_x !== 1 || 
       transform.flip_y !== 1;
     
-    return hasFilterChanges || hasTransformChanges;
+    return hasCropChanges || hasFilterChanges || hasTransformChanges;
   };
 
   // Update hasUnsavedChanges when filters, transforms, or image source change
@@ -779,11 +780,11 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       console.log('Natural image size:', imageData.naturalWidth, 'x', imageData.naturalHeight);
       
       const canvas = cropperInstanceRef.current.getCroppedCanvas({
-        maxWidth: 4096,
-        maxHeight: 4096,
+        maxWidth: 2560,
+        maxHeight: 2560,
         fillColor: '#fff',
         imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high',
+        imageSmoothingQuality: 'medium',
       });
       
       if (!canvas) {
@@ -938,7 +939,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       filters.brightness !== 100 || 
       filters.contrast !== 100 || 
       filters.saturate !== 100 ||
-      filters.shadow !== 0 ||
+      filters.shadow !== 100 ||
       transform.rotate !== 0 ||
       transform.flip_x !== 1 ||
       transform.flip_y !== 1 ||
@@ -1187,13 +1188,21 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       // Calculate rotated dimensions
       const rotation = (transform.rotate % 360) * Math.PI / 180;
       const isRotated90 = Math.abs(transform.rotate % 180) === 90;
+
+      // Downscale huge exports for speed (rotate/crop/save) + smaller uploads.
+      const maxExportDim = 2560;
+      const srcW = img.naturalWidth || 1;
+      const srcH = img.naturalHeight || 1;
+      const exportScale = Math.min(1, maxExportDim / Math.max(srcW, srcH));
+      const drawW = Math.max(1, Math.round(srcW * exportScale));
+      const drawH = Math.max(1, Math.round(srcH * exportScale));
       
       if (isRotated90) {
-        canvas.width = img.naturalHeight;
-        canvas.height = img.naturalWidth;
+        canvas.width = drawH;
+        canvas.height = drawW;
       } else {
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        canvas.width = drawW;
+        canvas.height = drawH;
       }
 
       // Apply transforms
@@ -1208,10 +1217,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
       ctx.drawImage(
         img,
-        -img.naturalWidth / 2,
-        -img.naturalHeight / 2,
-        img.naturalWidth,
-        img.naturalHeight
+        -drawW / 2,
+        -drawH / 2,
+        drawW,
+        drawH
       );
 
       // Reset transforms for final output
