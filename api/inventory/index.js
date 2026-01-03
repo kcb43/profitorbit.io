@@ -155,7 +155,11 @@ async function handleGet(req, res, userId) {
     
     const includeDeleted = String(queryParams.include_deleted || '').toLowerCase() === 'true';
     const deletedOnly = String(queryParams.deleted_only || '').toLowerCase() === 'true';
-    const paged = String(queryParams.paged || '').toLowerCase() === 'true';
+    // Back-compat: if client passes limit/offset/count, treat it as a paged request.
+    const paged =
+      String(queryParams.paged || '').toLowerCase() === 'true' ||
+      queryParams.offset !== undefined ||
+      String(queryParams.count || '').toLowerCase() === 'true';
     const wantCount = String(queryParams.count || '').toLowerCase() === 'true' || paged;
     const limit = parsePositiveInt(queryParams.limit) || (paged ? 50 : null);
     const offset = parseNonNegativeInt(queryParams.offset);

@@ -381,7 +381,7 @@ export default function Crosslist() {
     'poshmark_listing_id',
   ].join(',')), []);
 
-  const { data: inventory = [], isLoading, refetch: refetchInventory } = useQuery({
+  const { data: inventoryResp, isLoading, refetch: refetchInventory } = useQuery({
     queryKey: ["inventoryItems", "crosslist"],
     queryFn: () => base44.entities.InventoryItem.list("-purchase_date", {
       limit: 5000,
@@ -391,6 +391,13 @@ export default function Crosslist() {
     // Avoid churn; user can pull-to-refresh by reloading or using in-app actions.
     refetchOnWindowFocus: false,
   });
+
+  // Back-compat: some API responses can be paged objects: { data, total, ... }.
+  const inventory = React.useMemo(() => {
+    if (Array.isArray(inventoryResp)) return inventoryResp;
+    if (inventoryResp && Array.isArray(inventoryResp.data)) return inventoryResp.data;
+    return [];
+  }, [inventoryResp]);
 
   const crosslistableItems = useMemo(
     () => inventory.filter((item) => item.status !== "sold" && !item.deleted_at),
