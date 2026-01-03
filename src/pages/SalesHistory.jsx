@@ -1204,17 +1204,19 @@ export default function SalesHistory() {
                   const totalCosts = ((sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0));
                   
                   return (
-                    <div key={sale.id} className={`product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full max-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
-                    style={{
-                      minHeight: 'auto',
-                      height: 'auto',
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      maxWidth: '100%',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      flexShrink: 0
-                    }}>
+                    <div key={sale.id} className="w-full max-w-full">
+                      {/* Mobile/Tablet list layout (unchanged) */}
+                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full max-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                      style={{
+                        minHeight: 'auto',
+                        height: 'auto',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        maxWidth: '100%',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        flexShrink: 0
+                      }}>
                     {/* Image and Description Container - Mobile stacked, desktop side-by-side */}
                     <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                       {/* Product Image Section - Clickable */}
@@ -1486,6 +1488,188 @@ export default function SalesHistory() {
                       </div>
                     </div>
                   </div>
+                      </div>
+
+                      {/* Desktop list layout (new) */}
+                      <div
+                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : ''}`}
+                      >
+                        <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
+                          {/* Image */}
+                          <div className="p-4">
+                            <div
+                              onClick={() => handleSelect(sale.id)}
+                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
+                                selectedSales.includes(sale.id)
+                                  ? "border-green-500 shadow-lg shadow-green-500/20"
+                                  : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
+                              }`}
+                              style={{ height: 140 }}
+                              title="Click image to select"
+                            >
+                              {sale.image_url ? (
+                                <OptimizedImage
+                                  src={sale.image_url}
+                                  alt={sale.item_name}
+                                  className="w-full h-full object-contain"
+                                  lazy={true}
+                                />
+                              ) : (
+                                <Package className="w-10 h-10 text-gray-400" />
+                              )}
+
+                              {platformIcons[sale.platform] && (
+                                <div className="absolute top-2 right-2 rounded-lg bg-white/90 dark:bg-slate-900/80 border border-gray-200/70 dark:border-slate-700/60 p-1.5 shadow-sm">
+                                  <img
+                                    src={platformIcons[sale.platform]}
+                                    alt={platformNames[sale.platform]}
+                                    className="w-5 h-5 object-contain"
+                                  />
+                                </div>
+                              )}
+
+                              {selectedSales.includes(sale.id) && (
+                                <div className="absolute top-2 left-2 z-20">
+                                  <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                                    <Check className="w-4 h-4 text-white" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Details */}
+                          <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-slate-700/60 px-5 py-4">
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div
+                                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
+                                  style={{ background: resaleValue.color }}
+                                  title="Resale value"
+                                >
+                                  {resaleValue.label}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {platformNames[sale.platform] || "—"} • {format(parseISO(sale.sale_date), "MMM d, yyyy")}
+                                </div>
+                              </div>
+
+                              <div className="text-sm font-bold tabular-nums">
+                                <span className="text-muted-foreground text-xs font-semibold mr-2">Profit</span>
+                                <span className={`${(sale.profit || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {(sale.profit || 0) >= 0 ? '+' : ''}${(sale.profit || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-2">
+                              <h3 className="text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                                {sale.item_name || "Untitled Item"}
+                              </h3>
+                            </Link>
+
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Sold</span>
+                                <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+                                  ${Number(sale.selling_price || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">ROI</span>
+                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                  {Number.isFinite(Number(sale.roi)) ? `${Number(sale.roi).toFixed(0)}%` : "—"}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Costs</span>
+                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                  ${Number(totalCosts || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Net</span>
+                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                  ${Number((sale.selling_price || 0) - (totalCosts || 0)).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {safeNotes && (
+                              <div className="mt-3 text-xs text-muted-foreground line-clamp-2">
+                                {safeNotes}
+                              </div>
+                            )}
+
+                            {isDeleted && daysUntilPermanentDelete !== null && (
+                              <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-xs">
+                                <p className="font-semibold flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                            <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full">
+                              <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl text-xs h-9 shadow-sm shadow-indigo-500/20">
+                                View Details
+                              </Button>
+                            </Link>
+
+                            {isDeleted ? (
+                              <>
+                                <Button
+                                  onClick={() => recoverSaleMutation.mutate(sale)}
+                                  disabled={recoverSaleMutation.isPending}
+                                  className="w-full bg-green-600 hover:bg-green-700 rounded-xl text-xs h-9"
+                                >
+                                  <ArchiveRestore className="w-4 h-4 mr-2" />
+                                  {recoverSaleMutation.isPending ? "Recovering..." : "Recover"}
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setSaleToPermanentDelete(sale);
+                                    setPermanentDeleteDialogOpen(true);
+                                  }}
+                                  disabled={permanentDeleteSaleMutation.isPending}
+                                  className="w-full bg-red-600 hover:bg-red-700 rounded-xl text-xs h-9"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete Forever
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Link to={createPageUrl(`AddSale?id=${sale.id}`)} className="w-full">
+                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900">
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                </Link>
+                                <Link to={createPageUrl(`AddSale?copyId=${sale.id}`)} className="w-full">
+                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900">
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Copy
+                                  </Button>
+                                </Link>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleDeleteClick(sale)}
+                                  disabled={deleteSaleMutation.isPending}
+                                  className="w-full rounded-xl text-xs h-9 border-red-500/40 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     )})}
                   </div>
                 )}

@@ -1492,22 +1492,23 @@ export default function InventoryPage() {
                   }
 
                   return (
-                    <div 
-                      key={item.id} 
-                      className={`product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
-                      style={{
-                        minHeight: 'auto',
-                        height: 'auto',
-                        borderRadius: '16px',
-                        overflow: 'hidden',
-                        maxWidth: '100%',
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        flexShrink: 0,
-                        paddingBottom: window.innerWidth < 768 ? '2.50rem' : '0',
-                        boxShadow: selectedItems.includes(item.id) ? 'rgba(34, 197, 94, 0.4) 0px 10px 30px -5px' : undefined
-                      }}
-                    >
+                    <div key={item.id} className="w-full max-w-full">
+                      {/* Mobile/Tablet list layout (unchanged) */}
+                      <div
+                        className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                        style={{
+                          minHeight: 'auto',
+                          height: 'auto',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          maxWidth: '100%',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          flexShrink: 0,
+                          paddingBottom: window.innerWidth < 768 ? '2.50rem' : '0',
+                          boxShadow: selectedItems.includes(item.id) ? 'rgba(34, 197, 94, 0.4) 0px 10px 30px -5px' : undefined
+                        }}
+                      >
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
@@ -1593,7 +1594,7 @@ export default function InventoryPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteItem(item.id);
+                                handleDeleteClick(item);
                               }}
                               className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
@@ -1714,7 +1715,7 @@ export default function InventoryPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteItem(item.id);
+                                handleDeleteClick(item);
                               }}
                               className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
@@ -1804,6 +1805,286 @@ export default function InventoryPage() {
                         >
                           View Details
                         </Button>
+                      </div>
+                      </div>
+
+                      {/* Desktop list layout (new) */}
+                      <div
+                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                      >
+                        <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
+                          {/* Image */}
+                          <div className="p-4">
+                            <div
+                              onClick={() => handleSelect(item.id)}
+                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
+                                selectedItems.includes(item.id)
+                                  ? "border-green-500 shadow-lg shadow-green-500/20"
+                                  : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
+                              }`}
+                              style={{ height: 140 }}
+                              title="Click image to select"
+                            >
+                              {item.images && item.images.length > 1 ? (
+                                <ImageCarousel
+                                  images={item.images.map(img => img.imageUrl || img.url || img)}
+                                  imageClassName="object-contain"
+                                  counterPosition="bottom"
+                                />
+                              ) : (
+                                <OptimizedImage
+                                  src={item.image_url || DEFAULT_IMAGE_URL}
+                                  alt={item.item_name}
+                                  fallback={DEFAULT_IMAGE_URL}
+                                  className="w-full h-full object-contain"
+                                  lazy={true}
+                                />
+                              )}
+
+                              {selectedItems.includes(item.id) && (
+                                <div className="absolute top-2 left-2 z-20">
+                                  <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                                    <Check className="w-4 h-4 text-white" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Details */}
+                          <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-slate-700/60 px-5 py-4">
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1 rounded-xl`}>
+                                  {statusLabels[item.status] || statusLabels.available}
+                                </Badge>
+                                {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
+                                  <Badge variant="outline" className="text-[10px] px-2 py-1 rounded-xl border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10">
+                                    Return in {daysRemaining}d
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite(item.id);
+                                  }}
+                                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition ${
+                                    favoriteMarked
+                                      ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                      : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                                  }`}
+                                  title={favoriteMarked ? "Unfavorite" : "Favorite"}
+                                >
+                                  <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                                </button>
+
+                                {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditImage(e, item);
+                                    }}
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                    title="Edit photo"
+                                  >
+                                    <ImageIcon className="h-4 w-4" />
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setItemToView(item);
+                                    setViewDialogOpen(true);
+                                  }}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                                  title="View details"
+                                >
+                                  <Search className="h-4 w-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(item);
+                                  }}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <Link
+                              to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
+                              state={returnStateForInventory}
+                              className="block mb-2"
+                            >
+                              <h3 className="text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                                {item.item_name || "Untitled Item"}
+                              </h3>
+                            </Link>
+
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Price</span>
+                                <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+                                  ${Number(item.purchase_price || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Qty</span>
+                                <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+                                  {item.quantity}
+                                  {quantitySold > 0 && (
+                                    <span className={`ml-2 text-xs font-semibold ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                      {isSoldOut ? 'Sold out' : `${quantitySold} sold`}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Purchased</span>
+                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                  {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Available</span>
+                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                  {Math.max((item.quantity || 0) - (quantitySold || 0), 0)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {itemTags.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {itemTags.map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px]">
+                                    {tag}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTagFromItem(item.id, tag)}
+                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-500"
+                                      title="Remove tag"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+
+                            {isDeleted && daysUntilPermanentDelete !== null && (
+                              <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-xs">
+                                <p className="font-semibold flex items-center gap-1">
+                                  <AlarmClock className="w-3 h-3" />
+                                  {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                            <Button
+                              onClick={() => {
+                                setItemToView(item);
+                                setViewDialogOpen(true);
+                              }}
+                              className={`w-full text-white font-semibold rounded-xl text-xs h-9 shadow-sm ${
+                                item.status === 'listed' 
+                                  ? 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600' 
+                                  : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
+                              }`}
+                            >
+                              View Details
+                            </Button>
+
+                            {isDeleted ? (
+                              <>
+                                <Button
+                                  onClick={() => recoverItemMutation.mutate(item.id)}
+                                  disabled={recoverItemMutation.isPending}
+                                  className="w-full bg-green-600 hover:bg-green-700 rounded-xl text-xs h-9"
+                                >
+                                  <ArchiveRestore className="w-4 h-4 mr-2" />
+                                  {recoverItemMutation.isPending ? "Recovering..." : "Recover"}
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setItemToPermanentlyDelete(item);
+                                    setPermanentDeleteDialogOpen(true);
+                                  }}
+                                  disabled={permanentDeleteMutation.isPending}
+                                  className="w-full bg-red-600 hover:bg-red-700 rounded-xl text-xs h-9"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  {permanentDeleteMutation.isPending ? "Deleting..." : "Delete Forever"}
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
+                                  <Button
+                                    onClick={() => handleMarkAsSold(item)}
+                                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl text-xs h-9 shadow-sm shadow-green-500/15"
+                                  >
+                                    Mark as Sold
+                                  </Button>
+                                )}
+
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSoldDialogName(item.item_name || "");
+                                    setSoldDialogOpen(true);
+                                  }}
+                                  className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900"
+                                >
+                                  <BarChart className="w-4 h-4 mr-2" />
+                                  Search
+                                </Button>
+
+                                <Link
+                                  to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
+                                  state={returnStateForInventory}
+                                  className="w-full"
+                                >
+                                  <Button
+                                    variant="outline"
+                                    className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900"
+                                  >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Item
+                                  </Button>
+                                </Link>
+
+                                {isConnected() && !isSoldOut && item.status !== 'sold' && (
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setItemForFacebookListing(item);
+                                      setFacebookListingDialogOpen(true);
+                                    }}
+                                    className="w-full rounded-xl text-xs h-9 border-blue-600/40 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                                  >
+                                    <Facebook className="w-4 h-4 mr-2" />
+                                    List on FB
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );

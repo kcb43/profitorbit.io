@@ -1550,85 +1550,74 @@ export default function Crosslist() {
               </div>
             )}
             {layout === "rows" && !isMobile ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {filtered.map((it) => {
               const map = computeListingState(it);
               const listedCount = Object.values(map).filter(Boolean).length;
               
               return (
-                <div key={it.id} className="product-list-item relative flex flex-col sm:flex-row items-start sm:items-center min-w-0 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg"
-                  style={{
-                    minHeight: '248px',
-                    height: 'auto',
-                    borderRadius: '16px',
-                    overflow: 'hidden'
-                  }}>
-                  {/* Product Image Section */}
-                  <div className="glass flex items-center justify-center relative flex-shrink-0 m-4 bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700/50"
-                    style={{
-                      width: '220px',
-                      minWidth: '220px',
-                      height: '210px',
-                      borderRadius: '12px',
-                      padding: '16px'
-                    }}>
-                    <div
-                      onClick={() => toggleSelect(it.id)}
-                      className="block w-full h-full cursor-pointer"
-                    >
-                      <OptimizedImage
-                        src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
-                        alt={it.item_name}
-                        fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
-                        className="w-full h-full object-contain"
-                        style={{ maxHeight: '186px' }}
-                        lazy={true}
-                      />
-                    </div>
-                    {selected.includes(it.id) && (
-                      <div className="absolute top-2 left-2 z-20">
-                        <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                <div
+                  key={it.id}
+                  className="product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60"
+                >
+                  <div className="grid grid-cols-[168px_1fr_220px] gap-0 min-w-0">
+                    {/* Product Image Section */}
+                    <div className="p-4">
+                      <div
+                        onClick={() => toggleSelect(it.id)}
+                        className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
+                          selected.includes(it.id)
+                            ? "border-green-500 shadow-lg shadow-green-500/20"
+                            : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
+                        }`}
+                        style={{ height: 140 }}
+                        title="Click image to select"
+                      >
+                        <OptimizedImage
+                          src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
+                          alt={it.item_name}
+                          fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
+                          className="w-full h-full object-contain"
+                          lazy={true}
+                        />
 
-                  {/* Details Section */}
-                  <div className="flex-1 flex flex-col justify-between h-full px-4 sm:px-6 py-4 sm:py-6 border-l border-r min-w-0"
-                    style={{
-                      borderColor: 'rgba(229, 231, 235, 0.8)',
-                      minHeight: '210px'
-                    }}>
-                    {/* Status Badge */}
-                    <div className="mb-3">
-                      <Badge className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} glass px-4 sm:px-6 py-2 rounded-xl text-sm font-medium`}
-                        style={{
-                          background: it.status === 'listed' ? 'rgba(34, 197, 94, 0.2)' : it.status === 'sold' ? 'rgba(156, 163, 175, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                          border: it.status === 'listed' ? '1px solid rgba(34, 197, 94, 0.4)' : it.status === 'sold' ? '1px solid rgba(156, 163, 175, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)'
-                        }}>
-                        {STATUS_LABELS[it.status] || STATUS_LABELS.available}
-                      </Badge>
+                        {selected.includes(it.id) && (
+                          <div className="absolute top-2 left-2 z-20">
+                            <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Details Section */}
+                    <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-slate-700/60 px-5 py-4">
+                    {/* Status Badge */}
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <Badge className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} px-3 py-1.5 rounded-xl text-xs font-semibold`}>
+                          {STATUS_LABELS[it.status] || STATUS_LABELS.available}
+                        </Badge>
+                        {listedCount > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            {listedCount} of {MARKETPLACES.length} listed
+                          </div>
+                        )}
+                      </div>
 
                     {/* Title */}
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white break-words line-clamp-2 mb-2"
-                      style={{ letterSpacing: '0.5px' }}>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white break-words line-clamp-2 mb-1">
                       {it.item_name || 'Untitled Item'}
                     </h3>
 
                     {/* Category and Source */}
-                    <p className="text-gray-700 dark:text-gray-300 mb-4 text-xs sm:text-sm break-words"
-                      style={{ 
-                        letterSpacing: '0.7px',
-                        lineHeight: '23.8px'
-                      }}>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mb-3 break-words">
                       {it.category || "—"} • {it.source || "—"}
                       {it.purchase_date && ` • ${format(parseISO(it.purchase_date), "MMM d, yyyy")}`}
                     </p>
 
                     {/* Marketplace Icons & List Buttons */}
-                    <div className="mt-auto flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {MARKETPLACES.map((m) => {
                         const isListed = map[m.id];
                         const status = getListingStatus(it.id, m.id);
@@ -1640,15 +1629,11 @@ export default function Crosslist() {
                         return (
                           <div key={m.id} className="flex flex-col items-center gap-1">
                             <div
-                              className={`glass inline-flex items-center justify-center w-12 h-12 rounded-lg border-2 transition-all ${
+                              className={`inline-flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
                                 isListed
-                                  ? "bg-white border-white shadow-lg shadow-white/20 opacity-100"
-                                  : "bg-gray-500/10 border-gray-600/50 opacity-40 hover:opacity-60"
+                                  ? "bg-white dark:bg-slate-900 border-emerald-500/40 opacity-100 shadow-sm"
+                                  : "bg-gray-500/10 border-gray-300 dark:border-slate-600 opacity-50 hover:opacity-70"
                               }`}
-                              style={{
-                                backdropFilter: 'blur(10px)',
-                                borderRadius: '10px'
-                              }}
                               title={isListed ? `✓ Listed on ${m.label}` : `Not listed on ${m.label}`}
                             >
                               {renderMarketplaceIcon(m, "w-6 h-6")}
@@ -1666,29 +1651,23 @@ export default function Crosslist() {
                           </div>
                         );
                       })}
-                      {listedCount > 0 && (
-                        <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
-                          {listedCount} of {MARKETPLACES.length} listed
-                        </span>
-                      )}
                     </div>
 
                     {/* Purchase Price */}
-                    <div className="mt-3 flex items-center text-gray-900 dark:text-white">
-                      <span className="text-xs sm:text-sm font-semibold mr-2">Purchase Price:</span>
-                      <span className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+                      <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground">Purchase Price</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">
                         ${(it.purchase_price || 0).toFixed(2)}
                       </span>
                     </div>
-                  </div>
+                    </div>
 
-                  {/* Actions Section */}
-                  <div className="flex flex-col items-stretch justify-center gap-2 px-3 py-3 flex-shrink-0 w-full sm:w-[200px] border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80">
+                    {/* Actions Section */}
+                    <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
                     {/* Crosslist Button */}
                     <Button
                       onClick={() => openComposer([it.id], false)}
-                      className="w-full bg-gradient-to-r from-green-600 via-green-600 to-green-600 hover:from-green-500 hover:via-green-600 hover:to-green-500 text-white font-semibold py-1.5 px-3 rounded-xl text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-sm shadow-green-500/20 hover:shadow-md hover:shadow-green-500/25 text-xs"
-                      style={{ letterSpacing: '1px' }}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl text-xs h-9 shadow-sm shadow-green-500/15"
                     >
                       <span className="flex justify-center items-center gap-1">
                         Crosslist
@@ -1700,10 +1679,11 @@ export default function Crosslist() {
                     <Button
                       variant="ghost"
                       onClick={() => navigate(createPageUrl(`AddInventoryItem?id=${it.id}`))}
-                      className="w-full glass text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 py-1.5 px-3 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600"
+                      className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-slate-900/60 border border-gray-200/70 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900"
                     >
                       Edit
                     </Button>
+                    </div>
                   </div>
                 </div>
               );
