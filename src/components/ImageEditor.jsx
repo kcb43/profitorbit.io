@@ -1619,7 +1619,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                         {currentImageIndex > 0 && (
                           <button
                             onClick={goToPrevImage}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
                             title="Previous image"
                           >
                             <ChevronLeft className="w-6 h-6 text-gray-800" />
@@ -1630,7 +1630,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                         {currentImageIndex < normalizedImages.length - 1 && (
                           <button
                             onClick={goToNextImage}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
                             title="Next image"
                           >
                             <ChevronRight className="w-6 h-6 text-gray-800" />
@@ -1676,12 +1676,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                     {/* Rotate buttons overlay - always visible */}
                     <div style={{
                       position: 'absolute',
-                      bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 64px)' : '12px',
+                      // Keep above the mobile footer buttons (Reset/Apply/Save)
+                      bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 132px)' : '12px',
                       left: '50%',
                       transform: 'translateX(-50%)',
                       display: 'flex',
                       gap: '8px',
-                      zIndex: 1000
+                      zIndex: 2000
                     }}>
                       <button
                         onClick={() => handleTransform('rotate_left')}

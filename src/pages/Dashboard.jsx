@@ -502,11 +502,6 @@ export default function Dashboard() {
               deltaPositive={true}
               right={
                 <div className="flex items-center gap-2">
-                  <Link to={createPageUrl("Inventory")} className="group">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:opacity-95 transition-opacity">
-                      <Box className="h-6 w-6 text-white" />
-                    </div>
-                  </Link>
                   {hasStockAlerts && (
                     <button
                       type="button"
@@ -518,6 +513,11 @@ export default function Dashboard() {
                       <ChevronDown className={`h-4 w-4 transition-transform ${stockAlertsOpen ? "rotate-180" : ""}`} />
                     </button>
                   )}
+                  <Link to={createPageUrl("Inventory")} className="group">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:opacity-95 transition-opacity">
+                      <Box className="h-6 w-6 text-white" />
+                    </div>
+                  </Link>
                 </div>
               }
             />
