@@ -49,6 +49,7 @@ export default async function handler(req, res) {
   const invById = new Map();
   const invByNameBuckets = new Map(); // name -> array of inv rows
   const invByBase44Id = new Map(); // base44Id -> inv row
+  let inventoryWithBase44Tag = 0;
   for (const it of inventoryRows) {
     if (it?.id) invById.set(it.id, it);
     const name = it?.item_name ? String(it.item_name).trim() : '';
@@ -57,7 +58,10 @@ export default async function handler(req, res) {
     invByNameBuckets.get(name).push(it);
 
     const b44 = parseBase44InventoryIdFromNotes(it?.notes);
-    if (b44) invByBase44Id.set(b44, it);
+    if (b44) {
+      invByBase44Id.set(b44, it);
+      inventoryWithBase44Tag += 1;
+    }
   }
   const invByNameUnique = new Map();
   for (const [name, rows] of invByNameBuckets.entries()) {
@@ -74,9 +78,11 @@ export default async function handler(req, res) {
   let needReview = 0;
   let matchedByInventoryId = 0;
   let matchedByBase44Link = 0;
+  let matchedByBase44LinkDb = 0;
   let matchedByNameUnique = 0;
   let noInventoryMatch = 0;
   let patchEmpty = 0;
+  const sampleMissingBase44Links = [];
 
   while (true) {
     const salesRes = await supabase
@@ -114,6 +120,26 @@ export default async function handler(req, res) {
         if (b44Linked && invByBase44Id.has(b44Linked)) {
           inv = invByBase44Id.get(b44Linked);
           matchedByBase44Link += 1;
+        } else if (b44Linked) {
+          // Fallback: query DB by notes to find the inventory row even if tag formatting differs.
+          // eslint-disable-next-line no-await-in-loop
+          const invDb = await supabase
+            .from('inventory_items')
+            .select('id,item_name,purchase_date,source,category,notes')
+            .eq('user_id', userId)
+            .ilike('notes', `%Base44 inventory ID:%${b44Linked}%`)
+            .limit(2);
+          if (!invDb.error && Array.isArray(invDb.data) && invDb.data.length === 1) {
+            inv = invDb.data[0];
+            matchedByBase44LinkDb += 1;
+          } else if (sampleMissingBase44Links.length < 10) {
+            sampleMissingBase44Links.push({
+              saleId: s.id,
+              base44LinkedInventoryId: b44Linked,
+              candidates: Array.isArray(invDb.data) ? invDb.data.length : 0,
+              error: invDb.error?.message || null,
+            });
+          }
         } else {
           // 2) Fallback: name-based match only if unambiguous
           const name = s.item_name ? String(s.item_name).trim() : '';
@@ -172,12 +198,16 @@ export default async function handler(req, res) {
     updated,
     skipped,
     debug: {
+      inventoryWithBase44Tag,
+      inventoryBase44MapSize: invByBase44Id.size,
       needReview,
       matchedByInventoryId,
       matchedByBase44Link,
+      matchedByBase44LinkDb,
       matchedByNameUnique,
       noInventoryMatch,
       patchEmpty,
+      sampleMissingBase44Links,
     },
   });
 }
