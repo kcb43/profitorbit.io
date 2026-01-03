@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { sortSalesByRecency } from "@/utils/sales";
+import { splitBase44Tags } from "@/utils/base44Notes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1370,7 +1371,7 @@ export default function SalesHistory() {
                 {viewMode === "grid" ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {filteredSales.map((sale) => {
-                      const safeNotes = stripCustomFeeNotes(sale.notes || "");
+                      const safeNotes = splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean;
                       const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
                       const resaleValue = getResaleValue(sale.profit || 0, sale.roi || 0);
                       
@@ -1484,7 +1485,7 @@ export default function SalesHistory() {
                 ) : (
                   <div>
                     {filteredSales.map((sale) => {
-                  const safeNotes = stripCustomFeeNotes(sale.notes || "");
+                      const safeNotes = splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean;
                   const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
                   
                   // Calculate days until permanent deletion for deleted sales

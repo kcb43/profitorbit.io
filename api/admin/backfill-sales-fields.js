@@ -13,6 +13,18 @@ function chunk(arr, size) {
   return out;
 }
 
+function parseBase44InventoryIdFromNotes(notes) {
+  const s = String(notes || '');
+  const m = s.match(/Base44 inventory ID:\s*([^\s]+)/i);
+  return m?.[1] || null;
+}
+
+function parseBase44LinkedInventoryIdFromSaleNotes(notes) {
+  const s = String(notes || '');
+  const m = s.match(/Base44 linked inventory ID:\s*([^\s]+)/i);
+  return m?.[1] || null;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -28,7 +40,7 @@ export default async function handler(req, res) {
   // Load inventory map (id -> fields) and unique name map (item_name -> fields) for this user.
   const invRes = await supabase
     .from('inventory_items')
-    .select('id,item_name,purchase_date,source,category')
+    .select('id,item_name,purchase_date,source,category,notes')
     .eq('user_id', userId);
 
   if (invRes.error) return res.status(500).json({ error: invRes.error.message });
@@ -36,12 +48,16 @@ export default async function handler(req, res) {
 
   const invById = new Map();
   const invByNameBuckets = new Map(); // name -> array of inv rows
+  const invByBase44Id = new Map(); // base44Id -> inv row
   for (const it of inventoryRows) {
     if (it?.id) invById.set(it.id, it);
     const name = it?.item_name ? String(it.item_name).trim() : '';
     if (!name) continue;
     if (!invByNameBuckets.has(name)) invByNameBuckets.set(name, []);
     invByNameBuckets.get(name).push(it);
+
+    const b44 = parseBase44InventoryIdFromNotes(it?.notes);
+    if (b44) invByBase44Id.set(b44, it);
   }
   const invByNameUnique = new Map();
   for (const [name, rows] of invByNameBuckets.entries()) {
@@ -59,7 +75,7 @@ export default async function handler(req, res) {
   while (true) {
     const salesRes = await supabase
       .from('sales')
-      .select('id,inventory_id,item_name,purchase_date,source,category')
+        .select('id,inventory_id,item_name,purchase_date,source,category,notes')
       .eq('user_id', userId)
       .is('deleted_at', null)
       .order('sale_date', { ascending: false })
@@ -85,8 +101,15 @@ export default async function handler(req, res) {
       if (s.inventory_id && invById.has(s.inventory_id)) {
         inv = invById.get(s.inventory_id);
       } else {
-        const name = s.item_name ? String(s.item_name).trim() : '';
-        if (name && invByNameUnique.has(name)) inv = invByNameUnique.get(name);
+        // 1) Prefer Base44 "linked inventory id" tag (best signal for imported rows)
+        const b44Linked = parseBase44LinkedInventoryIdFromSaleNotes(s?.notes);
+        if (b44Linked && invByBase44Id.has(b44Linked)) {
+          inv = invByBase44Id.get(b44Linked);
+        } else {
+          // 2) Fallback: name-based match only if unambiguous
+          const name = s.item_name ? String(s.item_name).trim() : '';
+          if (name && invByNameUnique.has(name)) inv = invByNameUnique.get(name);
+        }
       }
 
       if (!inv) {
@@ -95,6 +118,8 @@ export default async function handler(req, res) {
       }
 
       const patch = {};
+      // If this sale came from Base44 and inventory_id is missing/invalid, link it now.
+      if (!s.inventory_id && inv?.id) patch.inventory_id = inv.id;
       if (needsPurchase && inv.purchase_date) patch.purchase_date = inv.purchase_date;
       if (needsSource && inv.source) patch.source = inv.source;
       if (needsCategory && inv.category) patch.category = inv.category;

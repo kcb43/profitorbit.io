@@ -381,13 +381,27 @@ export default function Crosslist() {
     'poshmark_listing_id',
   ].join(',')), []);
 
-  const { data: inventoryResp, isLoading, refetch: refetchInventory } = useQuery({
+  const {
+    data: inventoryResp,
+    isLoading,
+    isError: isInventoryError,
+    error: inventoryError,
+    refetch: refetchInventory,
+  } = useQuery({
     queryKey: ["inventoryItems", "crosslist"],
-    queryFn: () => base44.entities.InventoryItem.list("-purchase_date", {
-      limit: 5000,
-      fields: inventoryFields,
-    }),
+    queryFn: async () => {
+      try {
+        return await base44.entities.InventoryItem.list("-purchase_date", {
+          limit: 5000,
+          fields: inventoryFields,
+        });
+      } catch (e) {
+        console.error('❌ Crosslist inventory fetch failed:', e);
+        throw e;
+      }
+    },
     placeholderData: [],
+    retry: 2,
     // Avoid churn; user can pull-to-refresh by reloading or using in-app actions.
     refetchOnWindowFocus: false,
   });
@@ -1551,7 +1565,25 @@ export default function Crosslist() {
           </CardContent>
         </Card>
 
-        {isLoading ? (
+        {isInventoryError ? (
+          <div className="p-12 text-center">
+            <p className="text-muted-foreground text-base">Failed to load inventory for Crosslist.</p>
+            <p className="text-muted-foreground text-xs mt-2 break-words">
+              {String(inventoryError?.message || inventoryError || 'Unknown error')}
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button variant="outline" onClick={() => refetchInventory()}>
+                Retry
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+              >
+                Refresh
+              </Button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading…</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
