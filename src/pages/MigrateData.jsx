@@ -168,6 +168,7 @@ export default function MigrateData() {
   const [errors, setErrors] = useState([]);
   const [backfillBusy, setBackfillBusy] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
 
   const fullParsed = useMemo(() => tryParseJson(fullExportJson), [fullExportJson]);
   const invParsed = useMemo(() => tryParseJson(inventoryJson), [inventoryJson]);
@@ -205,6 +206,11 @@ export default function MigrateData() {
   const runImport = async () => {
     setStatus(null);
     setErrors([]);
+
+    if (!confirmed) {
+      setStatus("Please confirm you understand this is a migration-only tool before importing.");
+      return;
+    }
 
     if (!fullParsed.ok) {
       setStatus(`Full export JSON invalid: ${fullParsed.error}`);
@@ -363,6 +369,28 @@ export default function MigrateData() {
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
             Paste the JSON from your Base44 export page (inventory + sales). This will import into your currently signed-in Supabase user.
           </p>
+
+          <div className="mt-4">
+            <Alert>
+              <AlertDescription>
+                <div className="space-y-2">
+                  <div className="font-medium">Migration-only tool</div>
+                  <div className="text-sm">
+                    This page is meant for one-time data migration and can create many rows quickly. It should not be used as part of normal day-to-day workflow.
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={confirmed}
+                      onChange={(e) => setConfirmed(e.target.checked)}
+                    />
+                    I understand and want to proceed.
+                  </label>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">

@@ -34,6 +34,7 @@ const EbayOauthLanding = React.lazy(() => import("./EbayOauthLanding"));
 import DevErrorBoundary from "../components/DevErrorBoundary";
 import ScrollToTop from "../components/ScrollToTop";
 import { AuthGuard } from "../components/AuthGuard";
+import { AdminGuard } from "../components/AdminGuard";
 
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 
@@ -325,11 +326,13 @@ function PagesContent() {
                 path="/MigrateData"
                 element={
                   <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Settings">
-                        {withSuspense(<MigrateData />)}
-                      </Layout>
-                    )}
+                    <AdminGuard>
+                      {withSuspense(
+                        <Layout currentPageName="Settings">
+                          {withSuspense(<MigrateData />)}
+                        </Layout>
+                      )}
+                    </AdminGuard>
                   </AuthGuard>
                 }
               />
