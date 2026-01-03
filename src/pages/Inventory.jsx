@@ -1295,60 +1295,64 @@ export default function InventoryPage() {
                   {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Per page</Label>
-                  <Select
-                    value={String(pageSize)}
-                    onValueChange={(v) => {
-                      const n = Number(v);
-                      if (n === 50 || n === 100 || n === 200) setPageSize(n);
-                    }}
-                  >
-                    <SelectTrigger className="h-9 w-[110px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="200">200</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Per page</Label>
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(v) => {
+                        const n = Number(v);
+                        if (n === 50 || n === 100 || n === 200) setPageSize(n);
+                      }}
+                    >
+                      <SelectTrigger className="h-9 w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="200">200</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  <Button
-                    variant="outline"
-                    disabled={!canPrev}
-                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                    className="h-9"
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!canNext}
-                    onClick={() => setPageIndex((p) => p + 1)}
-                    className="h-9"
-                  >
-                    Next
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={!canPrev}
+                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                      className="h-9"
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canNext}
+                      onClick={() => setPageIndex((p) => p + 1)}
+                      className="h-9"
+                    >
+                      Next
+                    </Button>
 
-                  <Button
-                    variant="outline"
-                    className="h-9"
-                    onClick={() => {
-                      const qs = new URLSearchParams();
-                      // Match current filters; export up to 5000 rows.
-                      if (showDeletedOnly) qs.set('deleted_only', 'true');
-                      else qs.set('include_deleted', 'true');
-                      if (filters.search?.trim()) qs.set('search', filters.search.trim());
-                      if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
-                      else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
-                      if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
-                      qs.set('limit', '5000');
-                      window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
-                    }}
-                  >
-                    Export CSV
-                  </Button>
+                    <Button
+                      variant="outline"
+                      className="h-9"
+                      onClick={() => {
+                        const qs = new URLSearchParams();
+                        // Match current filters; export up to 5000 rows.
+                        if (showDeletedOnly) qs.set('deleted_only', 'true');
+                        else qs.set('include_deleted', 'true');
+                        if (filters.search?.trim()) qs.set('search', filters.search.trim());
+                        if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
+                        else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
+                        if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
+                        qs.set('limit', '5000');
+                        window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
+                      }}
+                    >
+                      Export CSV
+                    </Button>
+                  </div>
                 </div>
               </div>
 
