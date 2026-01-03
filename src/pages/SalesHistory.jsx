@@ -1626,7 +1626,6 @@ export default function SalesHistory() {
                       </div>
                     </div>
                   </div>
-                      </div>
 
                       {/* Desktop list layout (new) */}
                       <div
