@@ -156,9 +156,8 @@ export default function PlatformRevenueTableCard({
                       </span>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-foreground truncate">{d.name}</div>
-                  </div>
+                  {/* Mobile: hide platform name (keep logo). Keep an accessible label for non-icon fallback. */}
+                  <span className="sr-only">{d.name}</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-right">
