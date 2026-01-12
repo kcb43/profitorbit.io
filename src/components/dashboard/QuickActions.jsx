@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Package, Layers, BarChart3 } from "lucide-react";
+import { CalendarDays, Package, Layers, BarChart3 } from "lucide-react";
 
 export default function QuickActions() {
   const actions = [
@@ -14,10 +14,10 @@ export default function QuickActions() {
       shadow: "shadow-emerald-500/30"
     },
     {
-      title: "Add Sale",
-      description: "Record a sale",
-      icon: Plus,
-      link: createPageUrl("AddSale"),
+      title: "Profit Calendar",
+      description: "View daily profit",
+      icon: CalendarDays,
+      link: createPageUrl("ProfitCalendar"),
       gradient: "from-green-500 via-emerald-500 to-teal-600",
       shadow: "shadow-green-500/30"
     },
