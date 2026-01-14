@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import ClearableDateInput from "../components/ClearableDateInput";
 import SoldLookupDialog from "../components/SoldLookupDialog";
 import ReceiptScannerDialog from "@/components/ReceiptScannerDialog";
-import EbaySearchDialog from "@/components/EbaySearchDialog";
+const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { ImageEditor } from "@/components/ImageEditor";
 import { scanReceiptPlaceholder } from "@/api/receiptScanner";
 import imageCompression from "browser-image-compression";
@@ -1112,12 +1112,16 @@ export default function AddInventoryItem() {
         onScan={handleReceiptScan}
         isScanning={isReceiptScanning}
       />
-      <EbaySearchDialog
-        open={ebaySearchDialogOpen}
-        onOpenChange={setEbaySearchDialogOpen}
-        onSelectItem={handleEbayItemSelect}
-        initialSearchQuery={ebaySearchInitialQuery}
-      />
+      {ebaySearchDialogOpen ? (
+        <React.Suspense fallback={null}>
+          <EbaySearchDialog
+            open={ebaySearchDialogOpen}
+            onOpenChange={setEbaySearchDialogOpen}
+            onSelectItem={handleEbayItemSelect}
+            initialSearchQuery={ebaySearchInitialQuery}
+          />
+        </React.Suspense>
+      ) : null}
       <ImageEditor
         open={editorOpen}
         onOpenChange={setEditorOpen}

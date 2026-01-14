@@ -50,7 +50,7 @@ import {
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import SoldLookupDialog from "../components/SoldLookupDialog";
-import EbaySearchDialog from "../components/EbaySearchDialog";
+const EbaySearchDialog = React.lazy(() => import("../components/EbaySearchDialog"));
 import imageCompression from "browser-image-compression";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
@@ -47867,12 +47867,16 @@ export default function CrosslistComposer() {
       />
 
       {/* eBay Search Dialog */}
-      <EbaySearchDialog
-        open={ebaySearchDialogOpen}
-        onOpenChange={setEbaySearchDialogOpen}
-        onSelectItem={handleEbayItemSelect}
-        initialSearchQuery={ebaySearchInitialQuery}
-      />
+      {ebaySearchDialogOpen ? (
+        <React.Suspense fallback={null}>
+          <EbaySearchDialog
+            open={ebaySearchDialogOpen}
+            onOpenChange={setEbaySearchDialogOpen}
+            onSelectItem={handleEbayItemSelect}
+            initialSearchQuery={ebaySearchInitialQuery}
+          />
+        </React.Suspense>
+      ) : null}
     </div>
   );
 }

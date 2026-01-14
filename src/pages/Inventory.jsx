@@ -41,7 +41,7 @@ import { ImageCarousel } from "@/components/ImageCarousel";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
 import { FacebookListingDialog } from "@/components/FacebookListingDialog";
 import { isConnected } from "@/api/facebookClient";
-import EbaySearchDialog from "@/components/EbaySearchDialog";
+const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { supabase } from "@/api/supabaseClient";
 
 const sourceIcons = {
@@ -2925,12 +2925,16 @@ export default function InventoryPage() {
         }}
       />
 
-      <EbaySearchDialog
-        open={ebaySearchDialogOpen}
-        onOpenChange={setEbaySearchDialogOpen}
-        onSelectItem={handleEbayItemSelect}
-        initialSearchQuery={ebaySearchInitialQuery}
-      />
+      {ebaySearchDialogOpen ? (
+        <React.Suspense fallback={null}>
+          <EbaySearchDialog
+            open={ebaySearchDialogOpen}
+            onOpenChange={setEbaySearchDialogOpen}
+            onSelectItem={handleEbayItemSelect}
+            initialSearchQuery={ebaySearchInitialQuery}
+          />
+        </React.Suspense>
+      ) : null}
 
       <FacebookListingDialog
         open={facebookListingDialogOpen}
