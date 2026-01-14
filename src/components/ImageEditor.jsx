@@ -1480,6 +1480,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                 <Camera className="w-4 h-4" />
                 <span>Photo Editor</span>
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                Edit photos with brightness, contrast, saturation, shadows, crop, and rotation. Save changes or apply to all images.
+              </DialogDescription>
               
               {/* Apply to All button - Desktop only in header */}
               {hasUnsavedChanges && hasMultipleImages && onApplyToAll && (

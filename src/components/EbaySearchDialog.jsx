@@ -89,7 +89,9 @@ export default function EbaySearchDialog({
     if (!searchResultsData?.pages) return null;
     
     // Combine all itemSummaries from all pages
-    const allItems = searchResultsData.pages.flatMap(page => page.itemSummaries || []);
+    const allItems = searchResultsData.pages
+      .flatMap((page) => page?.itemSummaries || [])
+      .filter(Boolean);
     
     // Get total from the first page (should be same across all pages)
     const total = searchResultsData.pages[0]?.total || 0;
@@ -135,7 +137,7 @@ export default function EbaySearchDialog({
     
     // Return items in their original order from eBay (sorted by Best Match/relevance)
     // This matches what users see on eBay.com when searching
-    return searchResults.itemSummaries;
+    return (searchResults.itemSummaries || []).filter(Boolean);
   }, [searchResults?.itemSummaries]);
 
   const handleSearch = () => {
