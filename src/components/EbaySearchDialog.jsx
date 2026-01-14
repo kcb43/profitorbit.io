@@ -286,6 +286,7 @@ export default function EbaySearchDialog({
                 {items.map((item) => {
                   const isSelected = selectedItem?.itemId === item.itemId;
                   const isAvailable = isEbayItemAvailable(item);
+                  const imageUrl = item?.image?.imageUrl || null;
 
                   return (
                     <Card
@@ -300,9 +301,9 @@ export default function EbaySearchDialog({
                       <CardContent className="p-4">
                         <div className="flex gap-4">
                           {/* Item Image */}
-                          {item.image?.imageUrl && (
+                          {imageUrl && (
                             <img
-                              src={item.image.imageUrl}
+                              src={imageUrl}
                               alt={item.title}
                               className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
                             />
