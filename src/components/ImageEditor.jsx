@@ -35,17 +35,13 @@ import { useIsMobile } from "@/hooks/use-mobile";
 /**
  * Advanced Image Editor Component
  * Provides comprehensive image editing capabilities with filters and transforms
- * 
- * @param {boolean} open - Whether the editor dialog is open
- * @param {function} onOpenChange - Callback when dialog open state changes
- * @param {string} imageSrc - Source URL of the image to edit (blob URL or URL)
- * @param {function} onSave - Callback when user saves edited image (receives File object)
- * @param {string} fileName - Optional filename for the saved image
- * @param {Array} allImages - Optional array of all images to apply filters to
- * @param {function} onApplyToAll - Optional callback to apply filters to all images
- * @param {string} itemId - Optional item ID to track editing history
+ *
+ * NOTE:
+ * - This component is used on pages where it is often rendered "closed" (open=false).
+ * - To avoid crashes from malformed image arrays (e.g. null entries) and to reduce work,
+ *   we only mount the heavy implementation when open=true.
  */
-export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = 'edited-image.jpg', allImages = [], onApplyToAll, itemId, onAddImage }) {
+function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'edited-image.jpg', allImages = [], onApplyToAll, itemId, onAddImage }) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   // When itemId is not available (e.g. editing before the item is created),
@@ -111,7 +107,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   // - If the parent provides image objects with an `id`, use that id as the key (survives reordering).
   // - Otherwise, fall back to index-based keys.
   const { normalizedImages, normalizedImageKeys } = useMemo(() => {
-    const imgs = (allImages && allImages.length > 0) ? allImages : [imageSrc];
+    // IMPORTANT: some saved data can include null entries; filter them out defensively.
+    const rawImgs = (allImages && allImages.length > 0) ? allImages : [imageSrc];
+    const imgs = (rawImgs || []).filter(Boolean);
     const urls = [];
     const keys = [];
 
@@ -2048,4 +2046,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       </AlertDialog>
     </>
   );
+}
+
+// Public wrapper: do not mount the heavy editor (and its hooks) unless open.
+export function ImageEditor(props) {
+  if (!props?.open) return null;
+  return <ImageEditorInner {...props} />;
 }
