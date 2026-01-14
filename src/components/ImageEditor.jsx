@@ -107,12 +107,23 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   // Store temporary unsaved state per image index (including crops) - session only
   const tempImageStateRef = useRef(new Map());
   
-  // Normalize images array - memoized to prevent recalculation
-  const normalizedImages = useMemo(() => {
-    if (allImages && allImages.length > 0) {
-      return allImages.map(img => typeof img === 'string' ? img : img.imageUrl || img.url || img);
-    }
-    return [imageSrc];
+  // Normalize images array + stable per-image keys.
+  // - If the parent provides image objects with an `id`, use that id as the key (survives reordering).
+  // - Otherwise, fall back to index-based keys.
+  const { normalizedImages, normalizedImageKeys } = useMemo(() => {
+    const imgs = (allImages && allImages.length > 0) ? allImages : [imageSrc];
+    const urls = [];
+    const keys = [];
+
+    imgs.forEach((img, idx) => {
+      const isObj = img && typeof img === 'object';
+      const url = typeof img === 'string' ? img : (img.imageUrl || img.url || img.preview || img);
+      const key = isObj && img.id ? String(img.id) : String(idx);
+      urls.push(url);
+      keys.push(key);
+    });
+
+    return { normalizedImages: urls, normalizedImageKeys: keys };
   }, [allImages, imageSrc]);
   
   const hasMultipleImages = normalizedImages.length > 1;
@@ -276,7 +287,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         }
         
         // Check if this image has saved editing settings
-        const historyKey = itemId !== undefined ? `${itemId}_0` : `session_${sessionKeyRef.current}_0`;
+        const historyKey = getHistoryKeyForIndex(0);
         const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
         const urlToLoad = savedSettings?.originalImageUrl || imageToLoad;
 
@@ -356,10 +367,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       }
       
       // Check if there are saved settings with an original URL
-      const historyKey =
-        itemId !== undefined
-          ? `${itemId}_${currentImageIndex}`
-          : `session_${sessionKeyRef.current}_${currentImageIndex}`;
+      const historyKey = getHistoryKeyForIndex(currentImageIndex);
       const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
       const urlToLoad = savedSettings?.originalImageUrl || imageToLoad;
       
@@ -851,8 +859,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
     []
   );
 
-  const getHistoryKeyForIndex = (idx) =>
-    itemId !== undefined ? `${itemId}_${idx}` : `session_${sessionKeyRef.current}_${idx}`;
+  const getHistoryKeyForIndex = (idx) => {
+    const k = normalizedImageKeys?.[idx] ?? String(idx);
+    return itemId !== undefined ? `${itemId}_${k}` : `session_${sessionKeyRef.current}_${k}`;
+  };
 
   const resetCurrentImage = () => {
     // Restore original baseline image for this index (undoes any crops/dataUrl changes)
@@ -1088,10 +1098,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       if (itemId !== undefined || sessionKeyRef.current) {
         try {
           for (let i = 0; i < normalizedImages.length; i++) {
-            const historyKey =
-              itemId !== undefined
-                ? `${itemId}_${i}`
-                : `session_${sessionKeyRef.current}_${i}`;
+            const historyKey = getHistoryKeyForIndex(i);
             const existingSettings = imageEditHistoryRef.current.get(historyKey);
             const originalImageUrl = existingSettings?.originalImageUrl || normalizedImages[i];
             imageEditHistoryRef.current.set(historyKey, {
@@ -1381,9 +1388,9 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         if (blob) {
           const file = new File([blob], fileName, { type: 'image/jpeg' });
           
-          // Store the editing settings for this image (keyed by itemId + index for stability)
-          if (itemId !== undefined) {
-            const historyKey = `${itemId}_${currentImageIndex}`;
+          // Store the editing settings for this image (keyed by itemId/session + stable per-image key)
+          if (itemId !== undefined || sessionKeyRef.current) {
+            const historyKey = getHistoryKeyForIndex(currentImageIndex);
             
             // Preserve original image URL (first time editing) for future edits
             const existingSettings = imageEditHistoryRef.current.get(historyKey);

@@ -36239,6 +36239,26 @@ export default function CrosslistComposer() {
   
   // Generic photo remove handler for any marketplace form
   const handlePhotoRemove = (photoId, marketplace = 'general') => {
+    // If a photo is removed, forget any Photo Editor history for that photo so
+    // re-uploading (even the same image) is treated as a brand new photo.
+    try {
+      const raw = localStorage.getItem('imageEditHistory');
+      if (raw) {
+        const map = new Map(JSON.parse(raw));
+        const editorIdForMarketplace = (m) => currentEditingItemId || `temp_${m}`;
+        const marketplacesToClear = marketplace === 'general'
+          ? ['general', 'ebay', 'etsy', 'mercari', 'facebook']
+          : [marketplace];
+        marketplacesToClear.forEach((m) => {
+          map.delete(`${editorIdForMarketplace(m)}_${photoId}`);
+        });
+        localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(map.entries())));
+      }
+    } catch (e) {
+      // non-fatal
+      console.warn('Failed to clear image edit history on photo remove', e);
+    }
+
     setTemplateForms((prev) => {
       const formPhotos = marketplace === 'general' 
         ? prev.general.photos 
@@ -36272,6 +36292,28 @@ export default function CrosslistComposer() {
 
   // Generic delete all photos handler for any marketplace form
   const handleDeleteAllPhotos = (marketplace = 'general') => {
+    // Deleting photos should also forget any Photo Editor history for them.
+    try {
+      const raw = localStorage.getItem('imageEditHistory');
+      if (raw) {
+        const map = new Map(JSON.parse(raw));
+        const editorIdForMarketplace = (m) => currentEditingItemId || `temp_${m}`;
+        const marketplacesToClear = marketplace === 'general'
+          ? ['general', 'ebay', 'etsy', 'mercari', 'facebook']
+          : [marketplace];
+        marketplacesToClear.forEach((m) => {
+          const prefix = `${editorIdForMarketplace(m)}_`;
+          Array.from(map.keys()).forEach((k) => {
+            if (String(k).startsWith(prefix)) map.delete(k);
+          });
+        });
+        localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(map.entries())));
+      }
+    } catch (e) {
+      // non-fatal
+      console.warn('Failed to clear image edit history on delete all photos', e);
+    }
+
     setTemplateForms((prev) => {
       const formPhotos = marketplace === 'general' 
         ? prev.general.photos 
@@ -47805,8 +47847,8 @@ export default function CrosslistComposer() {
         fileName={`${imageToEdit.marketplace}-${imageToEdit.photoId || 'photo'}-edited.jpg`}
         allImages={
           imageToEdit.marketplace === 'general' 
-            ? (templateForms.general?.photos || []).map(p => p.preview || p.imageUrl || p.url)
-            : (templateForms[imageToEdit.marketplace]?.photos || []).map(p => p.preview || p.imageUrl || p.url)
+            ? (templateForms.general?.photos || [])
+            : (templateForms[imageToEdit.marketplace]?.photos || [])
         }
         onApplyToAll={handleApplyFiltersToAll}
         itemId={currentEditingItemId || `temp_${imageToEdit.marketplace}`}

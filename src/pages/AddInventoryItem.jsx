@@ -102,6 +102,10 @@ export default function AddInventoryItem() {
   const searchParams = new URLSearchParams(location.search);
   const itemId = searchParams.get('id');
   const copyId = searchParams.get('copyId');
+  // Photo Editor history key: for new (unsaved) items, use a stable temp id so we can
+  // reliably forget edits when photos are removed/replaced.
+  const photoEditorTempIdRef = useRef(`temp_add_inventory_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const photoEditorItemId = itemId || photoEditorTempIdRef.current;
 
   const [formData, setFormData] = useState({
     item_name: "",
@@ -518,6 +522,21 @@ export default function AddInventoryItem() {
         image_url: mainPhoto?.imageUrl || ''
       };
     });
+
+    // If a photo is removed, forget any Photo Editor history for that photo so
+    // re-uploading (even the same image) is treated as a brand new photo.
+    try {
+      const raw = localStorage.getItem('imageEditHistory');
+      if (raw) {
+        const map = new Map(JSON.parse(raw));
+        // ImageEditor keys are `${photoEditorItemId}_${photo.id}` when photo objects have ids.
+        map.delete(`${photoEditorItemId}_${photoId}`);
+        localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(map.entries())));
+      }
+    } catch (e) {
+      // non-fatal
+      console.warn('Failed to clear image edit history on photo remove', e);
+    }
   };
 
   const handleEditPhoto = (photoId) => {
@@ -1107,7 +1126,7 @@ export default function AddInventoryItem() {
         fileName="inventory-item-edited.jpg"
         allImages={formData.photos}
         onApplyToAll={handleApplyFiltersToAll}
-        itemId={itemId}
+        itemId={photoEditorItemId}
       />
     </div>
   );
