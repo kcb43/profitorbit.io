@@ -832,37 +832,146 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   };
 
   // Reset all filters and transforms
-  const resetAll = () => {
-    // Restore original image (undoes any crops)
-    if (originalImgSrc) {
-      setImgSrc(originalImgSrc);
-    }
-    
-    // Clear crop data
-    setCropData(null);
-    
-    setFilters({
+  const defaultFilters = useMemo(
+    () => ({
       brightness: 100,
       contrast: 100,
       saturate: 100,
-            shadow: 100
-    });
-    setTransform({
+      shadow: 100,
+    }),
+    []
+  );
+
+  const defaultTransform = useMemo(
+    () => ({
       rotate: 0,
       flip_x: 1,
-      flip_y: 1
-    });
+      flip_y: 1,
+    }),
+    []
+  );
+
+  const getHistoryKeyForIndex = (idx) =>
+    itemId !== undefined ? `${itemId}_${idx}` : `session_${sessionKeyRef.current}_${idx}`;
+
+  const resetCurrentImage = () => {
+    // Restore original baseline image for this index (undoes any crops/dataUrl changes)
+    const baselineUrl =
+      imageEditHistoryRef.current.get(getHistoryKeyForIndex(currentImageIndex))?.originalImageUrl ||
+      originalImgSrc ||
+      normalizedImages[currentImageIndex];
+
+    if (baselineUrl) {
+      setImgSrc(baselineUrl);
+      setOriginalImgSrc(baselineUrl);
+    }
+
+    // Clear crop data + reset adjustments
+    setCropData(null);
+    setFilters(defaultFilters);
+    setTransform(defaultTransform);
+    setLoadedFilters(defaultFilters);
+    setLoadedTransform(defaultTransform);
     setActiveFilter('brightness');
     setSelectedTemplate(null);
     setAspectRatio('free');
-    setAppliedToAll(false); // Reset applied to all state
-    
-    // Clear the editing history for this image
-    if (itemId) {
-      const historyKey = `${itemId}_${currentImageIndex}`;
-      imageEditHistoryRef.current.delete(historyKey);
+
+    // Mark this image as no longer "completed" in-session
+    setEditedImages((prev) => {
+      const next = new Set(prev);
+      next.delete(currentImageIndex);
+      return next;
+    });
+
+    // Persist reset baseline for this image so returning to edit doesn't snap back to previous edits
+    try {
+      const historyKey = getHistoryKeyForIndex(currentImageIndex);
+      const existing = imageEditHistoryRef.current.get(historyKey);
+      if (existing?.originalImageUrl) {
+        imageEditHistoryRef.current.set(historyKey, {
+          ...existing,
+          filters: { ...defaultFilters },
+          transform: { ...defaultTransform },
+          timestamp: Date.now(),
+        });
+        localStorage.setItem(
+          'imageEditHistory',
+          JSON.stringify(Array.from(imageEditHistoryRef.current.entries()))
+        );
+      }
+    } catch (e) {
+      console.error('Failed to persist reset state:', e);
     }
-    
+
+    // Cancel crop mode if active
+    if (cropperInstanceRef.current) {
+      cropperInstanceRef.current.destroy();
+      cropperInstanceRef.current = null;
+      setCropper(null);
+      setIsCropping(false);
+    }
+  };
+
+  const resetAllImages = () => {
+    // Only intended after Apply-to-All on Image 1.
+    // Reset every image back to its original baseline (before any edits).
+    const count = normalizedImages.length;
+
+    // Prepare default state for each image so navigation shows them reset immediately
+    for (let i = 0; i < count; i++) {
+      const historyKey = getHistoryKeyForIndex(i);
+      const existing = imageEditHistoryRef.current.get(historyKey);
+      const baselineUrl = existing?.originalImageUrl || normalizedImages[i];
+
+      tempImageStateRef.current.set(i, {
+        imgSrc: baselineUrl,
+        originalImgSrc: baselineUrl,
+        filters: { ...defaultFilters },
+        transform: { ...defaultTransform },
+        selectedTemplate: null,
+        aspectRatio: 'free',
+        isCropping: false,
+        cropData: null,
+      });
+
+      // Persist reset for each image while preserving the original baseline URL
+      if (existing?.originalImageUrl) {
+        imageEditHistoryRef.current.set(historyKey, {
+          ...existing,
+          filters: { ...defaultFilters },
+          transform: { ...defaultTransform },
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    try {
+      localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(imageEditHistoryRef.current.entries())));
+    } catch (e) {
+      console.error('Failed to persist reset-all state:', e);
+    }
+
+    // Apply to current UI immediately
+    const currentBaseline =
+      tempImageStateRef.current.get(currentImageIndex)?.imgSrc ||
+      originalImgSrc ||
+      normalizedImages[currentImageIndex];
+    if (currentBaseline) {
+      setImgSrc(currentBaseline);
+      setOriginalImgSrc(currentBaseline);
+    }
+    setCropData(null);
+    setFilters(defaultFilters);
+    setTransform(defaultTransform);
+    setLoadedFilters(defaultFilters);
+    setLoadedTransform(defaultTransform);
+    setSelectedTemplate(null);
+    setAspectRatio('free');
+    setActiveFilter('brightness');
+
+    setEditedImages(new Set());
+    setAppliedToAll(false);
+
     // Cancel crop mode if active
     if (cropperInstanceRef.current) {
       cropperInstanceRef.current.destroy();
@@ -900,7 +1009,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       const reader = new FileReader();
       reader.onload = (event) => {
         setImgSrc(event.target.result);
-        resetAll();
+        resetCurrentImage();
         setTimeout(() => {
           if (imageRef.current) {
             initCropper();
@@ -1132,7 +1241,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       // If this template was selected, reset to "None (Custom)"
       if (selectedTemplate === templateToDelete.id) {
         setSelectedTemplate(null);
-        resetAll();
+        resetCurrentImage();
       }
       
       // Refresh templates list
@@ -1388,7 +1497,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   onValueChange={(value) => {
                     if (value === 'none') {
                       setSelectedTemplate(null);
-                      resetAll();
+                      resetCurrentImage();
                     } else {
                       const template = templates.find(t => t.id === value);
                       if (template) {
@@ -1595,15 +1704,49 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                   {/* Action Buttons - Desktop only */}
                   <div className="hidden md:flex flex-col gap-2 pt-2">
                     {/* Reset All - only show when there are changes from ORIGINAL */}
-                    {hasChangesFromOriginal() && (
-                      <Button
-                        onClick={resetAll}
-                        className="w-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
-                      >
-                        <Undo2 className="w-3 h-3" />
-                        <span>Reset All</span>
-                      </Button>
-                    )}
+                    {(() => {
+                      const canShowResetAll =
+                        hasMultipleImages &&
+                        currentImageIndex === 0 &&
+                        appliedToAll &&
+                        normalizedImages.length > 1;
+
+                      const canShowResetCurrent =
+                        hasChangesFromOriginal() &&
+                        (!appliedToAll || currentImageIndex !== 0 || !hasMultipleImages);
+
+                      // Image 1:
+                      // - After Apply-to-All: show only "Reset All"
+                      // - Otherwise (single-image edits): show "Reset for Image 1"
+                      // Other images:
+                      // - Only show "Reset" (this image)
+                      if (canShowResetAll) {
+                        return (
+                          <Button
+                            onClick={resetAllImages}
+                            className="w-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                          >
+                            <Undo2 className="w-3 h-3" />
+                            <span>Reset All</span>
+                          </Button>
+                        );
+                      }
+
+                      if (canShowResetCurrent) {
+                        const label = currentImageIndex === 0 ? "Reset for Image 1" : "Reset";
+                        return (
+                          <Button
+                            onClick={resetCurrentImage}
+                            className="w-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                          >
+                            <Undo2 className="w-3 h-3" />
+                            <span>{label}</span>
+                          </Button>
+                        );
+                      }
+
+                      return null;
+                    })()}
                     
                     {/* Save/Done button */}
                     <Button
@@ -1655,7 +1798,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                         {currentImageIndex > 0 && (
                           <button
                             onClick={goToPrevImage}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
+                            className="image-editor-nav-btn absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
                             title="Previous image"
                           >
                             <ChevronLeft className="w-6 h-6 text-gray-800" />
@@ -1666,7 +1809,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                         {currentImageIndex < normalizedImages.length - 1 && (
                           <button
                             onClick={goToNextImage}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
+                            className="image-editor-nav-btn absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
                             title="Next image"
                           >
                             <ChevronRight className="w-6 h-6 text-gray-800" />
@@ -1757,15 +1900,44 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           {/* Footer - Mobile only */}
           <div className="md:hidden px-4 py-2.5 border-t border-gray-200 bg-gray-50 backdrop-blur-sm flex flex-col gap-2 flex-shrink-0">
             {/* Reset All - only show when there are changes from ORIGINAL */}
-            {hasChangesFromOriginal() && (
-              <Button
-                onClick={resetAll}
-                className="flex-1 bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
-              >
-                <Undo2 className="w-3 h-3" />
-                <span>Reset All</span>
-              </Button>
-            )}
+            {(() => {
+              const canShowResetAll =
+                hasMultipleImages &&
+                currentImageIndex === 0 &&
+                appliedToAll &&
+                normalizedImages.length > 1;
+
+              const canShowResetCurrent =
+                hasChangesFromOriginal() &&
+                (!appliedToAll || currentImageIndex !== 0 || !hasMultipleImages);
+
+              if (canShowResetAll) {
+                return (
+                  <Button
+                    onClick={resetAllImages}
+                    className="flex-1 bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                  >
+                    <Undo2 className="w-3 h-3" />
+                    <span>Reset All</span>
+                  </Button>
+                );
+              }
+
+              if (canShowResetCurrent) {
+                const label = currentImageIndex === 0 ? "Reset for Image 1" : "Reset";
+                return (
+                  <Button
+                    onClick={resetCurrentImage}
+                    className="flex-1 bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                  >
+                    <Undo2 className="w-3 h-3" />
+                    <span>{label}</span>
+                  </Button>
+                );
+              }
+
+              return null;
+            })()}
             
             {/* Apply to All button - Mobile only in footer */}
             {hasUnsavedChanges && hasMultipleImages && onApplyToAll && (

@@ -217,6 +217,21 @@ button:focus-visible {
   color: #000000 !important;
 }
 
+/* Photo Editor: make prev/next buttons visible on Money Green theme even over bright/white photos */
+[data-theme="money-green-dark"] .image-editor-nav-btn {
+  border: 1px solid rgba(16, 185, 129, 0.55) !important; /* emerald-500 */
+  box-shadow:
+    0 0 0 2px rgba(16, 185, 129, 0.20),
+    0 10px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="money-green-dark"] .image-editor-nav-btn:hover {
+  border-color: rgba(52, 211, 153, 0.75) !important; /* emerald-400 */
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.25),
+    0 12px 28px rgba(0, 0, 0, 0.40) !important;
+}
+
 /* Fix Add Sale page CardHeader background for Default Light theme only */
 [data-theme="default-light"] .bg-gray-800.border-b {
   background-color: hsl(var(--card)) !important;
