@@ -59,20 +59,19 @@ export function ebayDetailedItemToInventory(ebayItem) {
  * @returns {string} Image URL
  */
 export function getBestImageUrl(ebayItem) {
+  if (!ebayItem) return '';
+
   // Try detailed images first
-  if (ebayItem.image?.imageUrl) {
-    return ebayItem.image.imageUrl;
-  }
+  const primary = ebayItem?.image?.imageUrl;
+  if (primary) return primary;
   
   // Try thumbnail
-  if (ebayItem.thumbnailImages?.[0]?.imageUrl) {
-    return ebayItem.thumbnailImages[0].imageUrl;
-  }
+  const thumb = ebayItem?.thumbnailImages?.[0]?.imageUrl;
+  if (thumb) return thumb;
   
   // Try itemGroupImages
-  if (ebayItem.itemGroupImages?.[0]?.imageUrl) {
-    return ebayItem.itemGroupImages[0].imageUrl;
-  }
+  const group = ebayItem?.itemGroupImages?.[0]?.imageUrl;
+  if (group) return group;
   
   return '';
 }
