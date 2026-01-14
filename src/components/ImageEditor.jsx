@@ -1733,14 +1733,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
                       }
 
                       if (canShowResetCurrent) {
-                        const label = currentImageIndex === 0 ? "Reset for Image 1" : "Reset";
                         return (
                           <Button
                             onClick={resetCurrentImage}
                             className="w-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
                           >
                             <Undo2 className="w-3 h-3" />
-                            <span>{label}</span>
+                            <span>Reset</span>
                           </Button>
                         );
                       }
@@ -1924,14 +1923,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
               }
 
               if (canShowResetCurrent) {
-                const label = currentImageIndex === 0 ? "Reset for Image 1" : "Reset";
                 return (
                   <Button
                     onClick={resetCurrentImage}
                     className="flex-1 bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
                   >
                     <Undo2 className="w-3 h-3" />
-                    <span>{label}</span>
+                    <span>Reset</span>
                   </Button>
                 );
               }
