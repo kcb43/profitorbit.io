@@ -1685,9 +1685,11 @@ export default function InventoryPage() {
                             flexShrink: 0
                           }}
                         >
-                          {item.images && item.images.length > 1 ? (
+                          {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
                             <ImageCarousel
-                              images={item.images.map(img => img.imageUrl || img.url || img)}
+                              images={(item.images || [])
+                                .filter(Boolean)
+                                .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
                               imageClassName="object-contain rounded-lg"
                               counterPosition="bottom"
                             />
@@ -1984,9 +1986,11 @@ export default function InventoryPage() {
                               style={{ height: 140 }}
                               title="Click image to select"
                             >
-                              {item.images && item.images.length > 1 ? (
+                              {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
                                 <ImageCarousel
-                                  images={item.images.map(img => img.imageUrl || img.url || img)}
+                                  images={(item.images || [])
+                                    .filter(Boolean)
+                                    .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
                                   imageClassName="object-contain"
                                   counterPosition="bottom"
                                 />
@@ -2292,9 +2296,11 @@ export default function InventoryPage() {
                     onClick={() => handleSelect(item.id)}
                     className="block w-full h-full cursor-pointer"
                   >
-                    {item.images && item.images.length > 1 ? (
+                    {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
                       <ImageCarousel
-                        images={item.images.map(img => img.imageUrl || img.url || img)}
+                        images={(item.images || [])
+                          .filter(Boolean)
+                          .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
                         imageClassName="object-cover rounded-lg"
                       />
                     ) : (
