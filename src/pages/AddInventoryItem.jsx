@@ -426,7 +426,8 @@ export default function AddInventoryItem() {
         };
       });
       
-      alert(`✓ Successfully applied filters to ${updatedPhotos.length} image(s)!`);
+      // ImageEditor already shows a toast ("Successfully applied edits...").
+      // Avoid a second blocking browser alert here.
     } catch (error) {
       console.error("Error applying filters to all images:", error);
       alert("Failed to apply filters to all images. Please try again.");

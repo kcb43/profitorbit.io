@@ -48,6 +48,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = 'edited-image.jpg', allImages = [], onApplyToAll, itemId, onAddImage }) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // When itemId is not available (e.g. editing before the item is created),
+  // use a stable per-session key so per-image settings don't get lost when URLs change after uploads.
+  const sessionKeyRef = useRef(null);
   const [imgSrc, setImgSrc] = useState(null);
   const [originalImgSrc, setOriginalImgSrc] = useState(null);
   const [filters, setFilters] = useState({
@@ -252,6 +255,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
   // Reset everything when dialog opens with new item
   useEffect(() => {
     if (open && imageSrc) {
+      // New editing session (or different image set) → new session key.
+      // Keep stable for the entire time the editor is open.
+      sessionKeyRef.current = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
       // Reset all state for fresh editing session
       setCurrentImageIndex(0);
       setEditedImages(new Set());
@@ -269,7 +276,7 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         }
         
         // Check if this image has saved editing settings
-        const historyKey = itemId ? `${itemId}_0` : null;
+        const historyKey = itemId !== undefined ? `${itemId}_0` : `session_${sessionKeyRef.current}_0`;
         const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
         const urlToLoad = savedSettings?.originalImageUrl || imageToLoad;
 
@@ -349,7 +356,10 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       }
       
       // Check if there are saved settings with an original URL
-      const historyKey = itemId ? `${itemId}_${currentImageIndex}` : imageToLoad;
+      const historyKey =
+        itemId !== undefined
+          ? `${itemId}_${currentImageIndex}`
+          : `session_${sessionKeyRef.current}_${currentImageIndex}`;
       const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
       const urlToLoad = savedSettings?.originalImageUrl || imageToLoad;
       
@@ -966,10 +976,13 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
 
       // Persist the applied settings per image so navigating between images keeps the same values,
       // and so reopening the editor restores the last-used adjustments while preserving an original baseline.
-      if (itemId !== undefined) {
+      if (itemId !== undefined || sessionKeyRef.current) {
         try {
           for (let i = 0; i < normalizedImages.length; i++) {
-            const historyKey = `${itemId}_${i}`;
+            const historyKey =
+              itemId !== undefined
+                ? `${itemId}_${i}`
+                : `session_${sessionKeyRef.current}_${i}`;
             const existingSettings = imageEditHistoryRef.current.get(historyKey);
             const originalImageUrl = existingSettings?.originalImageUrl || normalizedImages[i];
             imageEditHistoryRef.current.set(historyKey, {
