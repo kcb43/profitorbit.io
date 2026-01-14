@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function EbaySearchDialog({
+function EbaySearchDialogInner({
   open,
   onOpenChange,
   onSelectItem,
@@ -455,5 +455,12 @@ export default function EbaySearchDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+// Wrapper: don't mount the heavy dialog (and its hooks) unless it's actually open.
+// This prevents crashes on pages that include the dialog component but keep it closed.
+export default function EbaySearchDialog(props) {
+  if (!props?.open) return null;
+  return <EbaySearchDialogInner {...props} />;
 }
 
