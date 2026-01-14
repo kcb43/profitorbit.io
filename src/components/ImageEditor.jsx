@@ -262,9 +262,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       // Load the first image
       const imageToLoad = normalizedImages[0];
       if (imageToLoad) {
-        setImgSrc(imageToLoad);
-        setOriginalImgSrc(imageToLoad);
-        
         // Clean up existing cropper
         if (cropperInstanceRef.current) {
           cropperInstanceRef.current.destroy();
@@ -274,25 +271,36 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
         // Check if this image has saved editing settings
         const historyKey = itemId ? `${itemId}_0` : null;
         const savedSettings = historyKey ? imageEditHistoryRef.current.get(historyKey) : null;
+        const urlToLoad = savedSettings?.originalImageUrl || imageToLoad;
+
+        setImgSrc(urlToLoad);
+        setOriginalImgSrc(urlToLoad);
         
         if (savedSettings) {
           // Load previously saved settings
           console.log('Loading saved settings for image:', savedSettings);
           setFilters(savedSettings.filters);
           setTransform(savedSettings.transform);
+          // Treat loaded settings as baseline so Image 1 shows "Done" once saved/applied
+          setLoadedFilters(savedSettings.filters);
+          setLoadedTransform(savedSettings.transform);
         } else {
           // Reset to defaults for new image
-          setFilters({
+          const defaultFilters = {
             brightness: 100,
             contrast: 100,
             saturate: 100,
-        shadow: 100
-          });
-          setTransform({
+            shadow: 100
+          };
+          const defaultTransform = {
             rotate: 0,
             flip_x: 1,
             flip_y: 1
-          });
+          };
+          setFilters(defaultFilters);
+          setTransform(defaultTransform);
+          setLoadedFilters(defaultFilters);
+          setLoadedTransform(defaultTransform);
         }
         
         setActiveFilter('brightness');
@@ -361,28 +369,24 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
           setIsCropping(false);
         }
         
-        // Verify imageUrl matches for inventory items (to detect photo replacements)
-        // Extract filename without hash to compare base images
-        const extractBaseName = (url) => {
-          if (!url) return '';
-          const parts = url.split('/').pop(); // Get filename
-          const withoutHash = parts?.replace(/^[a-f0-9]+_/, ''); // Remove hash prefix
-          return withoutHash;
-        };
-        
-        const savedBaseName = extractBaseName(savedSettings?.imageUrl);
-        const currentBaseName = extractBaseName(imageToLoad);
-        const isNewImage = savedSettings && imageToLoad && savedBaseName !== currentBaseName;
-        
-        console.log('Image check:', { 
-          savedUrl: savedSettings?.imageUrl, 
-          currentUrl: imageToLoad, 
-          savedBaseName,
-          currentBaseName,
-          isNewImage 
-        });
-        
-        if (savedSettings && !isNewImage) {
+        // Keep history "imageUrl" in sync with whatever URL the parent currently provides.
+        // The editor itself re-uploads images (new filenames), so URL changes are expected and
+        // should NOT be treated as user "replacing" the image.
+        if (savedSettings && imageToLoad && savedSettings.imageUrl !== imageToLoad) {
+          try {
+            const nextSettings = {
+              ...savedSettings,
+              imageUrl: imageToLoad,
+              timestamp: Date.now(),
+            };
+            imageEditHistoryRef.current.set(historyKey, nextSettings);
+            localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(imageEditHistoryRef.current.entries())));
+          } catch (e) {
+            console.error('Failed to sync edit history imageUrl:', e);
+          }
+        }
+
+        if (savedSettings) {
           // Load previously saved settings for this image
           console.log(`Loading saved settings for image ${currentImageIndex}:`, savedSettings);
           console.log('Current selectedTemplate before restore:', selectedTemplate);
@@ -404,15 +408,6 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
             console.log('Template after setState:', templateToRestore);
           }, 100);
         } else {
-          if (isNewImage) {
-            console.log('NEW image detected - clearing old settings');
-            imageEditHistoryRef.current.delete(historyKey);
-            try {
-              localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(imageEditHistoryRef.current.entries())));
-            } catch (e) {
-              console.error('Failed to update localStorage:', e);
-            }
-          }
           // Reset to defaults for images without saved settings
           console.log('No saved settings found, using defaults');
           const defaultFilters = {
@@ -968,12 +963,40 @@ export function ImageEditor({ open, onOpenChange, imageSrc, onSave, fileName = '
       
       // Call the callback with all processed images
       onApplyToAll(processedImages, { filters, transform });
+
+      // Persist the applied settings per image so navigating between images keeps the same values,
+      // and so reopening the editor restores the last-used adjustments while preserving an original baseline.
+      if (itemId !== undefined) {
+        try {
+          for (let i = 0; i < normalizedImages.length; i++) {
+            const historyKey = `${itemId}_${i}`;
+            const existingSettings = imageEditHistoryRef.current.get(historyKey);
+            const originalImageUrl = existingSettings?.originalImageUrl || normalizedImages[i];
+            imageEditHistoryRef.current.set(historyKey, {
+              filters: { ...filters },
+              transform: { ...transform },
+              timestamp: Date.now(),
+              // Track the currently stored image URL (can change after uploads; we sync it on load)
+              imageUrl: normalizedImages[i],
+              // Never overwrite the original baseline once set
+              originalImageUrl,
+              templateId: selectedTemplate || existingSettings?.templateId || null,
+            });
+          }
+          localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(imageEditHistoryRef.current.entries())));
+        } catch (e) {
+          console.error('Failed to persist apply-to-all settings:', e);
+        }
+      }
       
       // Mark all images as edited
       const allIndices = Array.from({ length: normalizedImages.length }, (_, i) => i);
       setEditedImages(new Set(allIndices));
       setHasUnsavedChanges(false);
       setAppliedToAll(true); // Mark that apply to all was used
+      // Treat current settings as baseline so the primary button reads "Done"
+      setLoadedFilters({ ...filters });
+      setLoadedTransform({ ...transform });
       
       // Clear all temporary unsaved states since all images have been processed
       tempImageStateRef.current.clear();
