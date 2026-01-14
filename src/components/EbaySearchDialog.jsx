@@ -91,14 +91,7 @@ export default function EbaySearchDialog({
     // Combine all itemSummaries from all pages
     const allItems = searchResultsData.pages
       .flatMap((page) => page?.itemSummaries || [])
-      .filter(Boolean)
-      // Normalize potentially-null nested structures defensively so rendering/helpers can't crash
-      .map((item) => ({
-        ...item,
-        image: item?.image && typeof item.image === "object" ? item.image : {},
-        thumbnailImages: (item?.thumbnailImages || []).filter(Boolean),
-        itemGroupImages: (item?.itemGroupImages || []).filter(Boolean),
-      }));
+      .filter(Boolean);
     
     // Get total from the first page (should be same across all pages)
     const total = searchResultsData.pages[0]?.total || 0;
@@ -145,13 +138,7 @@ export default function EbaySearchDialog({
     // Return items in their original order from eBay (sorted by Best Match/relevance)
     // This matches what users see on eBay.com when searching
     return (searchResults.itemSummaries || [])
-      .filter(Boolean)
-      .map((item) => ({
-        ...item,
-        image: item?.image && typeof item.image === "object" ? item.image : {},
-        thumbnailImages: (item?.thumbnailImages || []).filter(Boolean),
-        itemGroupImages: (item?.itemGroupImages || []).filter(Boolean),
-      }));
+      .filter(Boolean);
   }, [searchResults?.itemSummaries]);
 
   const handleSearch = () => {
