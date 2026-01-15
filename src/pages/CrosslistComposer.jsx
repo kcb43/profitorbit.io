@@ -33075,6 +33075,8 @@ export default function CrosslistComposer() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { addTag } = useInventoryTags();
+  // Prevent post-OAuth initialization effects from overriding restored UI state (e.g., resetting to Universal form).
+  const skipAutoInitFromOAuthRef = React.useRef(false);
   
   // Get item IDs and autoSelect from URL
   const searchParams = new URLSearchParams(location.search);
@@ -33603,9 +33605,20 @@ export default function CrosslistComposer() {
           if (savedState) {
             try {
               const stateData = JSON.parse(savedState);
+              // Mark that we restored state so later init effects don't clobber active form selection.
+              skipAutoInitFromOAuthRef.current = true;
               // Restore form state
               if (stateData.templateForms) {
                 setTemplateForms(stateData.templateForms);
+              }
+              if (stateData.activeForm) {
+                setActiveForm(stateData.activeForm);
+              }
+              if (stateData.selectedCategoryPath) {
+                setSelectedCategoryPath(stateData.selectedCategoryPath);
+              }
+              if (stateData.generalCategoryPath) {
+                setGeneralCategoryPath(stateData.generalCategoryPath);
               }
               if (stateData.currentEditingItemId) {
                 setCurrentEditingItemId(stateData.currentEditingItemId);
@@ -33627,15 +33640,6 @@ export default function CrosslistComposer() {
                     return; // Exit early
                   }
                 }
-              }
-              if (stateData.activeForm) {
-                setActiveForm(stateData.activeForm);
-              }
-              if (stateData.selectedCategoryPath) {
-                setSelectedCategoryPath(stateData.selectedCategoryPath);
-              }
-              if (stateData.generalCategoryPath) {
-                setGeneralCategoryPath(stateData.generalCategoryPath);
               }
               
               // Clear saved state
@@ -33735,9 +33739,20 @@ export default function CrosslistComposer() {
           if (savedState) {
             try {
               const stateData = JSON.parse(savedState);
+              // Mark that we restored state so later init effects don't clobber active form selection.
+              skipAutoInitFromOAuthRef.current = true;
               // Restore form state
               if (stateData.templateForms) {
                 setTemplateForms(stateData.templateForms);
+              }
+              if (stateData.activeForm) {
+                setActiveForm(stateData.activeForm);
+              }
+              if (stateData.selectedCategoryPath) {
+                setSelectedCategoryPath(stateData.selectedCategoryPath);
+              }
+              if (stateData.generalCategoryPath) {
+                setGeneralCategoryPath(stateData.generalCategoryPath);
               }
               if (stateData.currentEditingItemId) {
                 setCurrentEditingItemId(stateData.currentEditingItemId);
@@ -33759,15 +33774,6 @@ export default function CrosslistComposer() {
                     return; // Exit early
                   }
                 }
-              }
-              if (stateData.activeForm) {
-                setActiveForm(stateData.activeForm);
-              }
-              if (stateData.selectedCategoryPath) {
-                setSelectedCategoryPath(stateData.selectedCategoryPath);
-              }
-              if (stateData.generalCategoryPath) {
-                setGeneralCategoryPath(stateData.generalCategoryPath);
               }
               
               // Clear saved state
@@ -34139,6 +34145,14 @@ export default function CrosslistComposer() {
   
   // Initialize template from first item if available
   useEffect(() => {
+    // If we just restored state from OAuth, don't clobber it by re-initializing (which resets to Universal).
+    if (skipAutoInitFromOAuthRef.current) {
+      // Clear the skip flag once we have items loaded; ref changes don't re-render, so this is safe.
+      if (bulkSelectedItems.length > 0) {
+        skipAutoInitFromOAuthRef.current = false;
+      }
+      return;
+    }
     if (bulkSelectedItems.length > 0) {
       const primaryItem = bulkSelectedItems[0];
       if (autoSelect) {
