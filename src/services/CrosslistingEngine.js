@@ -400,6 +400,56 @@ class CrosslistingEngine {
   }
 
   /**
+   * Upsert marketplace listing record (prevents "forgetting" across pages).
+   * Keyed by (inventory_item_id + marketplace).
+   */
+  async upsertMarketplaceListing(listingData) {
+    try {
+      const inventoryItemId = listingData?.inventory_item_id;
+      const marketplace = listingData?.marketplace;
+      if (!inventoryItemId || !marketplace) return;
+
+      const listings = JSON.parse(localStorage.getItem('marketplace_listings') || '[]');
+      const idx = listings.findIndex(
+        (l) => l?.inventory_item_id === inventoryItemId && l?.marketplace === marketplace
+      );
+
+      const now = new Date().toISOString();
+      const next = {
+        ...listingData,
+        inventory_item_id: inventoryItemId,
+        marketplace,
+        updated_at: now,
+      };
+
+      if (idx !== -1) {
+        listings[idx] = { ...listings[idx], ...next };
+      } else {
+        listings.push({
+          ...next,
+          id: `listing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: now,
+        });
+      }
+      localStorage.setItem('marketplace_listings', JSON.stringify(listings));
+    } catch (error) {
+      console.error('Error upserting marketplace listing:', error);
+    }
+  }
+
+  async removeMarketplaceListingForItem(inventoryItemId, marketplace) {
+    try {
+      const listings = JSON.parse(localStorage.getItem('marketplace_listings') || '[]');
+      const next = listings.filter(
+        (l) => !(l?.inventory_item_id === inventoryItemId && l?.marketplace === marketplace)
+      );
+      localStorage.setItem('marketplace_listings', JSON.stringify(next));
+    } catch (error) {
+      console.error('Error removing marketplace listing:', error);
+    }
+  }
+
+  /**
    * Update marketplace listing record
    */
   async updateMarketplaceListing(listingId, updates) {

@@ -79,6 +79,7 @@ import { Check } from "lucide-react";
 // Facebook connection/listing is handled via the Profit Orbit extension (Vendoo-like session),
 // not the Facebook developer OAuth flow.
 import { listingJobsApi } from "@/api/listingApiClient";
+import { crosslistingEngine } from "@/services/CrosslistingEngine";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -33151,13 +33152,33 @@ export default function CrosslistComposer() {
           if (url) setMercariListingUrl(String(url));
           const idFromUrl = (() => {
             try {
-              const m = /mercari\.com\/items\/([A-Za-z0-9]+)/.exec(String(url));
+              const u = String(url);
+              const m =
+                /mercari\.com\/us\/item\/([A-Za-z0-9]+)/.exec(u) ||
+                /mercari\.com\/items\/([A-Za-z0-9]+)/.exec(u);
               return m?.[1] || null;
             } catch (_) {
               return null;
             }
           })();
           if (idFromUrl) setMercariListingId(String(idFromUrl));
+
+          // Persist listing so Crosslist page + reopening the item remembers it.
+          try {
+            const inventoryItemId = job?.inventory_item_id || currentEditingItemId || null;
+            if (inventoryItemId && url) {
+              await crosslistingEngine.upsertMarketplaceListing({
+                inventory_item_id: inventoryItemId,
+                marketplace: 'mercari',
+                marketplace_listing_id: idFromUrl || String(job?.id || ''),
+                marketplace_listing_url: String(url),
+                status: 'active',
+                listed_at: new Date().toISOString(),
+                metadata: { jobId: job?.id || null, result: job?.result?.mercari || null },
+              });
+            }
+          } catch (_) {}
+
           if (interval) clearInterval(interval);
         }
         if (job?.status === 'failed') {
@@ -33174,7 +33195,31 @@ export default function CrosslistComposer() {
       cancelled = true;
       if (interval) clearInterval(interval);
     };
-  }, [mercariJobId]);
+  }, [mercariJobId, currentEditingItemId]);
+
+  // When switching items (or coming back from Crosslist), restore any existing Mercari listing state.
+  useEffect(() => {
+    const itemId = currentEditingItemId;
+    if (!itemId) return;
+    (async () => {
+      try {
+        const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+        const mercari =
+          listings.find((l) => l.marketplace === 'mercari' && l.status === 'active') ||
+          listings.find((l) => l.marketplace === 'mercari') ||
+          null;
+        if (!mercari) return;
+
+        if (mercari.marketplace_listing_url) setMercariListingUrl(String(mercari.marketplace_listing_url));
+        if (mercari.marketplace_listing_id) {
+          // If it's a fake job id, keep it as job id; otherwise treat as listing id.
+          const id = String(mercari.marketplace_listing_id);
+          if (id.startsWith('ext-mercari-')) setMercariJobId(id);
+          else setMercariListingId(id);
+        }
+      } catch (_) {}
+    })();
+  }, [currentEditingItemId]);
   const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [customBrands, setCustomBrands] = useState(() => {
@@ -35959,14 +36004,30 @@ export default function CrosslistComposer() {
         });
 
         const resp = await listingJobsApi.createJob(
-          null, // omit inventory_item_id for now; payload carries details
+          currentEditingItemId || null,
           ['mercari'],
           listingPayload
         );
 
         // Track job so we can show View/Delete actions once it completes
         try {
-          if (resp?.jobId) setMercariJobId(String(resp.jobId));
+          if (resp?.jobId) {
+            const jid = String(resp.jobId);
+            setMercariJobId(jid);
+
+            // Persist "in progress" so Crosslist page doesn't forget immediately.
+            if (currentEditingItemId) {
+              crosslistingEngine.upsertMarketplaceListing({
+                inventory_item_id: currentEditingItemId,
+                marketplace: 'mercari',
+                marketplace_listing_id: jid,
+                marketplace_listing_url: '',
+                status: 'processing',
+                listed_at: new Date().toISOString(),
+                metadata: { jobId: jid, note: 'Mercari listing in progress (extension fake job)' },
+              }).catch(() => {});
+            }
+          }
         } catch (_) {}
 
         toast({
@@ -46500,6 +46561,11 @@ export default function CrosslistComposer() {
                                       setMercariListingUrl('');
                                       setMercariListingId(null);
                                       setMercariJobId(null);
+                                      if (currentEditingItemId) {
+                                        try {
+                                          await crosslistingEngine.removeMarketplaceListingForItem(currentEditingItemId, 'mercari');
+                                        } catch (_) {}
+                                      }
                                       if (currentEditingItemId) {
                                         await base44.entities.InventoryItem.update(currentEditingItemId, {
                                           status: 'available',

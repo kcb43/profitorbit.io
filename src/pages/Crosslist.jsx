@@ -1092,20 +1092,48 @@ export default function Crosslist() {
         description: `Successfully listed on ${platforms.join(', ')}`,
       });
 
-      // Step 1a: only treat Mercari as success if we have a real items URL
+      // Step 1a: only treat Mercari as success if we have a real Mercari item URL
       const mercariListingUrl = job?.result?.mercari?.listingUrl;
       const isMercariRealSuccess =
         job?.result?.mercari?.success === true &&
         typeof mercariListingUrl === 'string' &&
-        mercariListingUrl.includes('mercari.com/items/');
+        (mercariListingUrl.includes('mercari.com/us/item/') || mercariListingUrl.includes('mercari.com/items/'));
 
       if (isMercariRealSuccess) {
         const inventoryItemId = job.inventory_item_id || matchedItemId;
+        const listingIdFromUrl = (() => {
+          try {
+            const u = String(mercariListingUrl);
+            const m =
+              /mercari\.com\/us\/item\/([A-Za-z0-9]+)/.exec(u) ||
+              /mercari\.com\/items\/([A-Za-z0-9]+)/.exec(u);
+            return m?.[1] || null;
+          } catch (_) {
+            return null;
+          }
+        })();
         if (inventoryItemId) {
           base44.entities.InventoryItem.update(inventoryItemId, {
             status: 'listed',
             mercari_listing_id: mercariListingUrl,
           }).catch(() => {});
+
+          // Persist listing record so this page doesn't "forget" it on navigation.
+          crosslistingEngine
+            .upsertMarketplaceListing({
+              inventory_item_id: inventoryItemId,
+              marketplace: 'mercari',
+              marketplace_listing_id: listingIdFromUrl || String(job?.id || ''),
+              marketplace_listing_url: String(mercariListingUrl),
+              status: 'active',
+              listed_at: new Date().toISOString(),
+              metadata: { jobId: job?.id || null, result: job?.result?.mercari || null },
+            })
+            .then(async () => {
+              const listings = await crosslistingEngine.getMarketplaceListings(inventoryItemId);
+              setMarketplaceListings((prev) => ({ ...prev, [inventoryItemId]: listings }));
+            })
+            .catch(() => {});
         }
 
         // Open the posted listing (may be blocked by popup blockers)
