@@ -37264,16 +37264,18 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDescriptionGeneratorOpen(true)}
-                        className="gap-2 h-7 text-xs"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI Generate
-                      </Button>
+                      {(generalForm.description || "").trim() && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDescriptionGeneratorOpen(true)}
+                          className="gap-2 h-7 text-xs"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Generate
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -38269,16 +38271,18 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDescriptionGeneratorOpen(true)}
-                        className="gap-2 h-7 text-xs"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI Generate
-                      </Button>
+                      {((ebayForm.description || generalForm.description || "").trim()) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDescriptionGeneratorOpen(true)}
+                          className="gap-2 h-7 text-xs"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Generate
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -39685,16 +39689,18 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDescriptionGeneratorOpen(true)}
-                        className="gap-2 h-7 text-xs"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI Generate
-                      </Button>
+                      {((etsyForm.description || generalForm.description || "").trim()) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDescriptionGeneratorOpen(true)}
+                          className="gap-2 h-7 text-xs"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Generate
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -40261,16 +40267,18 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDescriptionGeneratorOpen(true)}
-                        className="gap-2 h-7 text-xs"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI Generate
-                      </Button>
+                      {((mercariForm.description || generalForm.description || "").trim()) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDescriptionGeneratorOpen(true)}
+                          className="gap-2 h-7 text-xs"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Generate
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -41221,16 +41229,18 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDescriptionGeneratorOpen(true)}
-                        className="gap-2 h-7 text-xs"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        AI Generate
-                      </Button>
+                      {((facebookForm.description || generalForm.description || "").trim()) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDescriptionGeneratorOpen(true)}
+                          className="gap-2 h-7 text-xs"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Generate
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -42695,16 +42705,18 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDescriptionGeneratorOpen(true)}
-                                className="gap-2 h-7 text-xs"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                AI Generate
-                              </Button>
+                                {((generalForm.description || "").trim()) && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDescriptionGeneratorOpen(true)}
+                                    className="gap-2 h-7 text-xs"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Generate
+                                  </Button>
+                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -43688,16 +43700,18 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDescriptionGeneratorOpen(true)}
-                                className="gap-2 h-7 text-xs"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                AI Generate
-                              </Button>
+                                {((ebayForm.description || generalForm.description || "").trim()) && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDescriptionGeneratorOpen(true)}
+                                    className="gap-2 h-7 text-xs"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Generate
+                                  </Button>
+                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -45075,16 +45089,18 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDescriptionGeneratorOpen(true)}
-                                className="gap-2 h-7 text-xs"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                AI Generate
-                              </Button>
+                                {((etsyForm.description || generalForm.description || "").trim()) && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDescriptionGeneratorOpen(true)}
+                                    className="gap-2 h-7 text-xs"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Generate
+                                  </Button>
+                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -45639,16 +45655,18 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDescriptionGeneratorOpen(true)}
-                                className="gap-2 h-7 text-xs"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                AI Generate
-                              </Button>
+                                {((mercariForm.description || generalForm.description || "").trim()) && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDescriptionGeneratorOpen(true)}
+                                    className="gap-2 h-7 text-xs"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Generate
+                                  </Button>
+                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -46619,16 +46637,18 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDescriptionGeneratorOpen(true)}
-                                className="gap-2 h-7 text-xs"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                AI Generate
-                              </Button>
+                                {((facebookForm.description || generalForm.description || "").trim()) && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDescriptionGeneratorOpen(true)}
+                                    className="gap-2 h-7 text-xs"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Generate
+                                  </Button>
+                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -47573,16 +47593,18 @@ export default function CrosslistComposer() {
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1.5">
                             <Label htmlFor="poshmark-description" className="text-xs">Description</Label>
                             <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDescriptionGeneratorOpen(true)}
-                                className="gap-2 h-7 text-xs"
-                              >
-                                <Sparkles className="h-3 w-3" />
-                                AI Generate
-                              </Button>
+                                {((templateForms?.[activeForm]?.description || generalForm.description || "").trim()) && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDescriptionGeneratorOpen(true)}
+                                    className="gap-2 h-7 text-xs"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Generate
+                                  </Button>
+                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -47805,6 +47827,12 @@ export default function CrosslistComposer() {
             handleMarketplaceChange(activeForm, "description", description);
           }
         }}
+        marketplace={activeForm}
+        inputDescription={
+          activeForm === "general"
+            ? (generalForm.description || "")
+            : (templateForms?.[activeForm]?.description || generalForm.description || "")
+        }
         title={activeForm === "general" ? generalForm.title : templateForms[activeForm]?.title || generalForm.title}
         brand={activeForm === "general" ? generalForm.brand : templateForms[activeForm]?.brand || generalForm.brand}
         category={activeForm === "general" ? generalForm.category : generalForm.category}

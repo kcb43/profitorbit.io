@@ -15,6 +15,8 @@ export function DescriptionGenerator({
   open, 
   onOpenChange, 
   onSelectDescription,
+  marketplace = "general",
+  inputDescription = "",
   title,
   brand,
   category,
@@ -27,10 +29,14 @@ export function DescriptionGenerator({
   const { toast } = useToast();
 
   const generateDescriptions = async () => {
-    if (!title || title.trim().length === 0) {
+    const seed = String(inputDescription || "").trim();
+    const hasSeed = seed.length > 0;
+    const hasTitle = !!(title && title.trim().length > 0);
+
+    if (!hasSeed && !hasTitle) {
       toast({
-        title: "Title required",
-        description: "Please enter a title before generating descriptions.",
+        title: "Add a description first",
+        description: "Type something in the description field, then click Generate.",
         variant: "destructive",
       });
       return;
@@ -46,7 +52,9 @@ export function DescriptionGenerator({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: title.trim(),
+          marketplace,
+          inputDescription: hasSeed ? seed : undefined,
+          title: hasTitle ? title.trim() : undefined,
           brand: brand || undefined,
           category: category || undefined,
           condition: condition || undefined,
@@ -115,10 +123,10 @@ export function DescriptionGenerator({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            AI Description Generator
+            Description Suggestions
           </DialogTitle>
           <DialogDescription>
-            Generate multiple description variations based on similar items. Shuffle through options and select the best one.
+            Generate a few improved description options based on what you already wrote, tailored to this marketplace.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +135,7 @@ export function DescriptionGenerator({
           <div className="flex items-center justify-between">
             <Button
               onClick={generateDescriptions}
-              disabled={isGenerating || !title || title.trim().length === 0}
+              disabled={isGenerating}
               className="gap-2"
             >
               {isGenerating ? (
@@ -138,7 +146,7 @@ export function DescriptionGenerator({
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  Generate Descriptions
+                  Generate
                 </>
               )}
             </Button>
@@ -215,7 +223,7 @@ export function DescriptionGenerator({
           {descriptions.length === 0 && !isGenerating && (
             <div className="text-center py-8 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Click "Generate Descriptions" to create AI-powered description variations.</p>
+              <p>Click "Generate" to create a few description options you can apply.</p>
               {similarDescriptions.length > 0 && (
                 <p className="text-xs mt-2">
                   Found {similarDescriptions.length} similar item{similarDescriptions.length !== 1 ? 's' : ''} to use as reference.
