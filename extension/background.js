@@ -1634,9 +1634,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const title = String(payload.title || payload.name || '').trim();
         const description = String(payload.description || '').trim();
-        const rawPrice = payload.price ?? payload.listing_price ?? payload.amount ?? payload.priceCents ?? payload.price_cents ?? null;
+        const rawPrice =
+          payload.price ??
+          payload.listing_price ??
+          payload.amount ??
+          payload.priceCents ??
+          payload.price_cents ??
+          null;
         const parsedPrice = parseMercariPrice(rawPrice);
-        const price = parsedPrice?.ok ? parsedPrice.value : Number.NaN;
+        const priceDollars = parsedPrice?.ok ? parsedPrice.value : Number.NaN;
 
         // Accept a few common payload shapes and normalize to images[]
         const toUrl = (v) => {
@@ -1670,19 +1676,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           []).map(toUrl).filter(Boolean);
 
         if (!title) throw new Error('Missing title');
-        if (!Number.isFinite(price) || price <= 0) {
+        if (!Number.isFinite(priceDollars) || priceDollars <= 0) {
           throw new Error(`Missing/invalid price (raw=${rawPrice === null ? 'null' : JSON.stringify(rawPrice)})`);
         }
-        if (price < 1 || price > 2000) {
+        if (priceDollars < 1 || priceDollars > 2000) {
           throw new Error(
-            `Invalid Mercari price ${price}. Expected $1.00–$2,000.00. ` +
+            `Invalid Mercari price ${priceDollars}. Expected $1.00–$2,000.00. ` +
               `If your app provides cents (e.g. 1299 for $12.99), it should be handled automatically; ` +
               `raw=${rawPrice === null ? 'null' : JSON.stringify(rawPrice)} interpretedAsCents=${!!parsedPrice?.interpretedAsCents}`
           );
         }
         if (parsedPrice?.interpretedAsCents) {
-          console.log('🟦 [MERCARI] Interpreted price as cents; converted to dollars', { rawPrice, price });
+          console.log('🟦 [MERCARI] Interpreted price as cents; converted to dollars', { rawPrice, priceDollars });
         }
+
+        // Mercari's internal API sometimes expects price values in cents instead of dollars.
+        // We attempt dollars first, and if Mercari returns the range error, we retry with cents.
+        const isMercariPriceRangeError = (err) => {
+          const msg = String(err?.message || err || '');
+          return msg.includes('Please enter the item price in the range of $1.00-2,000.00');
+        };
+
+        const buildInput = (mode) => {
+          const unitPrice = mode === 'cents' ? Math.round(priceDollars * 100) : priceDollars;
+          const unitSalesFee = Number(payload.salesFee ?? Math.round(unitPrice * 0.1));
+          const out = {
+            photoIds,
+            name: title,
+            price: unitPrice,
+            description,
+            categoryId,
+            conditionId,
+            zipCode,
+            shippingPayerId,
+            shippingClassIds,
+            salesFee: unitSalesFee,
+          };
+          if (Number.isFinite(brandId) && brandId > 0) out.brandId = brandId;
+          if (Number.isFinite(shippingPackageWeight) && shippingPackageWeight > 0) out.shippingPackageWeight = shippingPackageWeight;
+          if (Number.isFinite(sizeId) && sizeId > 0) out.sizeId = sizeId;
+          if (isAutoPriceDrop) {
+            out.isAutoPriceDrop = true;
+            if (Number.isFinite(minPriceForAutoPriceDrop) && minPriceForAutoPriceDrop > 0) {
+              out.minPriceForAutoPriceDrop = minPriceForAutoPriceDrop;
+            }
+          }
+          return out;
+        };
         if (!images.length) throw new Error('Missing images (need at least 1 image URL). Expected payload.images[] or payload.image_url.');
 
         // Load defaults learned from prior successful listings (zipCode, shipping defaults, etc.)
@@ -1818,30 +1858,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const minPriceForAutoPriceDrop = Number(payload.minPriceForAutoPriceDrop ?? defaults.minPriceForAutoPriceDrop ?? 0);
 
         // Mercari fee is typically 10%; use 10% as default if not provided.
-        const salesFee = Number(payload.salesFee ?? Math.round(price * 0.1));
-
-        const input = {
-          photoIds,
-          name: title,
-          price,
-          description,
-          categoryId,
-          conditionId,
-          zipCode,
-          shippingPayerId,
-          shippingClassIds,
-          salesFee,
-        };
-
-        if (Number.isFinite(brandId) && brandId > 0) input.brandId = brandId;
-        if (Number.isFinite(shippingPackageWeight) && shippingPackageWeight > 0) input.shippingPackageWeight = shippingPackageWeight;
-        if (Number.isFinite(sizeId) && sizeId > 0) input.sizeId = sizeId;
-        if (isAutoPriceDrop) {
-          input.isAutoPriceDrop = true;
-          if (Number.isFinite(minPriceForAutoPriceDrop) && minPriceForAutoPriceDrop > 0) {
-            input.minPriceForAutoPriceDrop = minPriceForAutoPriceDrop;
-          }
-        }
+        // Build with dollars first
+        let input = buildInput('dollars');
+        try {
+          chrome.storage.local.set(
+            { mercariLastCreateAttempt: { t: Date.now(), rawPrice, parsedPrice, priceDollars, inputMode: 'dollars', input } },
+            () => {}
+          );
+        } catch (_) {}
 
         // Persist defaults for next time (helps reduce required user inputs).
         await setMercariListingDefaults({
@@ -1855,7 +1879,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           minPriceForAutoPriceDrop: Number.isFinite(minPriceForAutoPriceDrop) ? minPriceForAutoPriceDrop : undefined,
         });
 
-        const created = await mercariCreateListing(input);
+        let created;
+        try {
+          created = await mercariCreateListing(input);
+        } catch (e) {
+          if (isMercariPriceRangeError(e)) {
+            // Retry with cents (common Mercari API expectation)
+            input = buildInput('cents');
+            try {
+              chrome.storage.local.set(
+                { mercariLastCreateAttempt: { t: Date.now(), rawPrice, parsedPrice, priceDollars, inputMode: 'cents', input, retryBecause: 'range_error' } },
+                () => {}
+              );
+            } catch (_) {}
+            created = await mercariCreateListing(input);
+          } else {
+            throw e;
+          }
+        }
         if (!created.itemId) {
           // Save debug and return a "might be processing" success to avoid double-posting.
           try {

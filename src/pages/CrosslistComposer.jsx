@@ -40850,7 +40850,34 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.price ? `Inherited: $${generalForm.price}` : "(min $1/max $2000)"}
                     value={mercariForm.price || ""}
                     onChange={(e) => handleMarketplaceChange("mercari", "price", e.target.value)}
+                    onBlur={(e) => {
+                      const raw = String(e.target.value ?? "").trim();
+                      if (!raw) return;
+                      // Normalize to Mercari rules: $1.00 - $2,000.00
+                      const cleaned = raw.replace(/[^\d.,]/g, "");
+                      const normalized = cleaned.includes(".") && cleaned.includes(",")
+                        ? cleaned.replace(/,/g, "")
+                        : cleaned.includes(",") && !cleaned.includes(".")
+                          ? cleaned.replace(/,/g, ".")
+                          : cleaned;
+                      let n = Number.parseFloat(normalized);
+                      if (!Number.isFinite(n)) {
+                        handleMarketplaceChange("mercari", "price", "");
+                        return;
+                      }
+                      if (n < 1) n = 1;
+                      if (n > 2000) n = 2000;
+                      // Keep up to 2 decimals, trim trailing zeros.
+                      const rounded = Math.round(n * 100) / 100;
+                      const asStr = String(rounded).includes(".")
+                        ? String(rounded).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "")
+                        : String(rounded);
+                      handleMarketplaceChange("mercari", "price", asStr);
+                    }}
                     className="text-right"
+                    min="1"
+                    max="2000"
+                    step="0.01"
                   />
                   {generalForm.price && !mercariForm.price && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -46208,7 +46235,32 @@ export default function CrosslistComposer() {
                             placeholder={generalForm.price ? `Inherited: $${generalForm.price}` : "(min $1/max $2000)"}
                             value={mercariForm.price || ""}
                             onChange={(e) => handleMarketplaceChange("mercari", "price", e.target.value)}
+                            onBlur={(e) => {
+                              const raw = String(e.target.value ?? "").trim();
+                              if (!raw) return;
+                              const cleaned = raw.replace(/[^\d.,]/g, "");
+                              const normalized = cleaned.includes(".") && cleaned.includes(",")
+                                ? cleaned.replace(/,/g, "")
+                                : cleaned.includes(",") && !cleaned.includes(".")
+                                  ? cleaned.replace(/,/g, ".")
+                                  : cleaned;
+                              let n = Number.parseFloat(normalized);
+                              if (!Number.isFinite(n)) {
+                                handleMarketplaceChange("mercari", "price", "");
+                                return;
+                              }
+                              if (n < 1) n = 1;
+                              if (n > 2000) n = 2000;
+                              const rounded = Math.round(n * 100) / 100;
+                              const asStr = String(rounded).includes(".")
+                                ? String(rounded).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "")
+                                : String(rounded);
+                              handleMarketplaceChange("mercari", "price", asStr);
+                            }}
                             className="text-right"
+                            min="1"
+                            max="2000"
+                            step="0.01"
                           />
                           {generalForm.price && !mercariForm.price && (
                             <p className="mt-1 text-xs text-muted-foreground">
