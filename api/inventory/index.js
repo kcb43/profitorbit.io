@@ -34,6 +34,8 @@ function buildSelectFromFields(fieldsCsv) {
     'user_id',
     'item_name',
     'brand',
+    'color1',
+    'color2',
     'purchase_price',
     'purchase_date',
     'source',
@@ -134,43 +136,49 @@ function normalizeImagesFromBody(body) {
 }
 
 async function insertWithOptionalPhotos(table, row) {
-  const { data, error } = await supabase.from(table).insert([row]).select().single();
-  if (!error) return { data, error: null };
-  const missing = extractMissingColumnFromSupabaseError(error.message);
-  if (missing === 'photos' || missing === 'description' || missing === 'brand') {
-    const retryRow = { ...row };
-    delete retryRow.photos;
-    delete retryRow.description;
-    delete retryRow.brand;
-    return supabase.from(table).insert([retryRow]).select().single();
+  let attemptRow = { ...(row || {}) };
+  let lastErr = null;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data, error } = await supabase.from(table).insert([attemptRow]).select().single();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const missing = extractMissingColumnFromSupabaseError(error.message);
+    if (!missing) break;
+    if (!(missing in attemptRow)) break;
+    const next = { ...attemptRow };
+    delete next[missing];
+    attemptRow = next;
   }
-  return { data: null, error };
+
+  return { data: null, error: lastErr };
 }
 
 async function updateWithOptionalPhotos(table, id, userId, patch) {
-  const { data, error } = await supabase
-    .from(table)
-    .update(patch)
-    .eq('id', id)
-    .eq('user_id', userId)
-    .select()
-    .single();
-  if (!error) return { data, error: null };
-  const missing = extractMissingColumnFromSupabaseError(error.message);
-  if (missing === 'photos' || missing === 'description' || missing === 'brand') {
-    const retryPatch = { ...patch };
-    delete retryPatch.photos;
-    delete retryPatch.description;
-    delete retryPatch.brand;
-    return supabase
+  let attemptPatch = { ...(patch || {}) };
+  let lastErr = null;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data, error } = await supabase
       .from(table)
-      .update(retryPatch)
+      .update(attemptPatch)
       .eq('id', id)
       .eq('user_id', userId)
       .select()
       .single();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const missing = extractMissingColumnFromSupabaseError(error.message);
+    if (!missing) break;
+    if (!(missing in attemptPatch)) break;
+    const next = { ...attemptPatch };
+    delete next[missing];
+    attemptPatch = next;
   }
-  return { data: null, error };
+
+  return { data: null, error: lastErr };
 }
 
 export default async function handler(req, res) {
