@@ -35892,9 +35892,38 @@ export default function CrosslistComposer() {
         }
 
         // Prepare listing payload for Mercari
+        const sanitizeDescriptionForMarketplace = (input) => {
+          const s = String(input || '');
+          if (!s) return '';
+          // Convert common HTML-ish content to plain text (Mercari wants plain text).
+          // - remove fragment comments
+          // - turn <br>/<p>/<div> into newlines
+          // - strip remaining tags
+          // - decode a few common entities
+          let t = s
+            .replace(/<!--\s*StartFragment\s*-->/gi, '')
+            .replace(/<!--\s*EndFragment\s*-->/gi, '')
+            .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+            .replace(/<\/\s*p\s*>/gi, '\n')
+            .replace(/<\/\s*div\s*>/gi, '\n')
+            .replace(/<\/\s*li\s*>/gi, '\n')
+            .replace(/<\s*li[^>]*>/gi, '- ')
+            .replace(/<[^>]+>/g, '');
+          // Decode common entities without needing DOMParser
+          t = t
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&lt;/gi, '<')
+            .replace(/&gt;/gi, '>');
+          t = t.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+          return t;
+        };
+
         const listingPayload = {
           title: mercariForm.title || generalForm.title,
-          description: mercariForm.description || generalForm.description || '',
+          description: sanitizeDescriptionForMarketplace(mercariForm.description || generalForm.description || ''),
           price: mercariForm.price || generalForm.price,
           quantity: mercariForm.quantity || generalForm.quantity || 1,
           mercariCategory: mercariForm.mercariCategory || '', // Mercari-specific category

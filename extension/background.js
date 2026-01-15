@@ -439,6 +439,43 @@ function parseMercariPrice(raw) {
   return { ok: false, value: a, raw, interpretedAsCents: false, attemptedCentsValue: b };
 }
 
+function sanitizeHtmlToPlainText(input) {
+  const s = String(input || '');
+  if (!s) return '';
+
+  let t = s
+    .replace(/<!--\s*StartFragment\s*-->/gi, '')
+    .replace(/<!--\s*EndFragment\s*-->/gi, '')
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/\s*p\s*>/gi, '\n')
+    .replace(/<\/\s*div\s*>/gi, '\n')
+    .replace(/<\/\s*li\s*>/gi, '\n')
+    .replace(/<\s*li[^>]*>/gi, '- ')
+    .replace(/<[^>]+>/g, '');
+
+  // Decode common HTML entities (service worker has no DOMParser)
+  t = t
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+
+  // Decode numeric entities like &#8211;
+  t = t.replace(/&#(\d+);/g, (_, num) => {
+    const n = Number(num);
+    if (!Number.isFinite(n)) return '';
+    try {
+      return String.fromCharCode(n);
+    } catch (_) {
+      return '';
+    }
+  });
+
+  return t.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function deepFindFirst(obj, predicate, seen = new Set()) {
   if (!obj || typeof obj !== 'object') return null;
   if (seen.has(obj)) return null;
@@ -1633,7 +1670,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const payload = listingData?.payload || listingData || {};
 
         const title = String(payload.title || payload.name || '').trim();
-        const description = String(payload.description || '').trim();
+        const description = sanitizeHtmlToPlainText(payload.description || '');
         const rawPrice =
           payload.price ??
           payload.listing_price ??

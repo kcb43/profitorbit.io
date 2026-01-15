@@ -16,6 +16,28 @@ export function RichTextarea({
   const editorRef = useRef(null);
   const isUpdatingRef = useRef(false);
 
+  const coercePlainTextFromClipboard = (e) => {
+    const html = e.clipboardData?.getData('text/html') || '';
+    const text = e.clipboardData?.getData('text/plain') || '';
+
+    // Prefer text/plain when available; it avoids StartFragment/style spam from websites.
+    if (text) return text;
+    if (!html) return '';
+
+    // Fallback: derive readable plain text from HTML.
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.innerText || tempDiv.textContent || '';
+  };
+
+  const escapeHtml = (s) =>
+    String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
   // Update editor content when value prop changes (but not during user typing)
   useEffect(() => {
     if (editorRef.current && !isUpdatingRef.current) {
@@ -42,28 +64,16 @@ export function RichTextarea({
 
   const handlePaste = (e) => {
     e.preventDefault();
-    
-    // Get pasted data as HTML
-    const html = e.clipboardData.getData('text/html');
-    const text = e.clipboardData.getData('text/plain');
-    
-    // Use HTML if available (preserves formatting), otherwise use plain text with line breaks
-    let content;
-    if (html) {
-      // Clean up the HTML - remove unnecessary tags but keep <b>, <strong>, <i>, <em>, <br>, <p>
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
-      
-      // Convert line breaks to <br> tags
-      content = tempDiv.innerHTML
-        .replace(/<div>/gi, '<br>')
-        .replace(/<\/div>/gi, '')
-        .replace(/<p>/gi, '')
-        .replace(/<\/p>/gi, '<br>');
-    } else {
-      // Plain text - convert newlines to <br>
-      content = text.replace(/\n/g, '<br>');
-    }
+
+    // Always paste as clean plain text (with line breaks).
+    // This prevents StartFragment / inline styles / random HTML from being saved and later posted to marketplaces.
+    const plain = coercePlainTextFromClipboard(e)
+      .replace(/\r\n/g, '\n')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd();
+
+    const content = escapeHtml(plain).replace(/\n/g, '<br>');
     
     // Insert at cursor position
     const selection = window.getSelection();
