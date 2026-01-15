@@ -1,30 +1,28 @@
-/**
- * Placeholder receipt scanning integration.
- *
- * Replace this with a real receipt/OCR provider such as:
- * - Veryfi OCR API (https://www.veryfi.com/products/ocr-api/)
- * - Tabscanner (https://www.tabscanner.com/)
- * - Mindee Receipts OCR (https://mindee.com/)
- *
- * Each provider typically returns structured data (merchant name, total, date, line items).
- * Map those fields into the inventory form inside `handleReceiptScan`.
- */
-export async function scanReceiptPlaceholder(file) {
-  console.warn(
-    "[ReceiptScanner] No receipt OCR provider configured. Returning mock data. Replace with a real API integration."
-  );
+async function fileToBase64DataUrl(file) {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  return String(base64);
+}
 
-  // Simulate network delay.
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-
-  return {
-    item_name: "",
-    purchase_price: "",
-    purchase_date: "",
-    source: "",
-    category: "",
-    notes: "",
-  };
+export async function scanReceipt(file) {
+  const imageBase64 = await fileToBase64DataUrl(file);
+  const resp = await fetch('/api/receipt/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      imageBase64,
+      fileName: file?.name || undefined,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: 'Scan failed' }));
+    throw new Error(err.error || 'Receipt scan failed');
+  }
+  return resp.json();
 }
 
 

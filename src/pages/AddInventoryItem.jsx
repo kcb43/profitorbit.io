@@ -20,7 +20,7 @@ import SoldLookupDialog from "../components/SoldLookupDialog";
 import ReceiptScannerDialog from "@/components/ReceiptScannerDialog";
 const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { ImageEditor } from "@/components/ImageEditor";
-import { scanReceiptPlaceholder } from "@/api/receiptScanner";
+import { scanReceipt } from "@/api/receiptScanner";
 import imageCompression from "browser-image-compression";
 import { ReactSortable } from "react-sortablejs";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
@@ -114,6 +114,7 @@ export default function AddInventoryItem() {
     source: "",
     status: "available",
     category: "",
+    description: "",
     notes: "",
     image_url: "",
     quantity: 1,
@@ -197,6 +198,7 @@ export default function AddInventoryItem() {
         source: initialSource,
         status: isCopying ? "available" : (dataToLoad.status || "available"),
         category: initialCategory,
+        description: isCopying ? "" : (dataToLoad.description || ""),
         notes: isCopying ? "" : cleanNotes,
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,
@@ -601,29 +603,33 @@ export default function AddInventoryItem() {
   const handleReceiptScan = async (file) => {
     setIsReceiptScanning(true);
     try {
-      const parsed = await scanReceiptPlaceholder(file);
+      const parsed = await scanReceipt(file);
       setFormData((prev) => {
         const next = { ...prev };
-        if (parsed.item_name) next.item_name = parsed.item_name;
-        if (parsed.purchase_price) next.purchase_price = String(parsed.purchase_price);
-        if (parsed.purchase_date) next.purchase_date = parsed.purchase_date;
-        if (parsed.source) next.source = parsed.source;
-        if (parsed.category) next.category = parsed.category;
-        if (parsed.notes) next.notes = parsed.notes;
+        if (parsed?.merchant) next.source = String(parsed.merchant);
+        if (parsed?.purchase_date) next.purchase_date = String(parsed.purchase_date);
+        if (parsed?.total) next.purchase_price = String(parsed.total);
+
+        // Append parsed line items into Notes (keep user's existing notes).
+        if (Array.isArray(parsed?.line_items) && parsed.line_items.length > 0) {
+          const lines = parsed.line_items
+            .filter(Boolean)
+            .map((li) => `- ${li?.name || ''}${li?.price ? `: $${li.price}` : ''}`.trim())
+            .filter(Boolean);
+          const block = lines.length ? `Receipt items:\n${lines.join('\n')}` : '';
+          if (block) next.notes = prev.notes ? `${prev.notes}\n\n${block}` : block;
+        }
         return next;
       });
 
-      if (parsed.source) {
-        setIsOtherSource(!PREDEFINED_SOURCES.includes(parsed.source));
-      }
-      if (parsed.category) {
-        setIsOtherCategory(!PREDEFINED_CATEGORIES.includes(parsed.category));
+      if (parsed?.merchant) {
+        setIsOtherSource(!PREDEFINED_SOURCES.includes(String(parsed.merchant)));
       }
 
       setReceiptDialogOpen(false);
     } catch (error) {
       console.error("Receipt scan failed:", error);
-      alert("Unable to scan receipt. Connect a real OCR provider to enable this feature.");
+      alert(String(error?.message || "Unable to scan receipt. Please try again."));
     } finally {
       setIsReceiptScanning(false);
     }
@@ -1085,6 +1091,26 @@ export default function AddInventoryItem() {
                             />
                         </div>
                     ) : null}
+
+                    <div className="space-y-2 md:col-span-2 min-w-0">
+                        <Label htmlFor="description" className="dark:text-gray-200 break-words">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={formData.description}
+                          onChange={(e) => handleChange('description', e.target.value)}
+                          onPaste={(e) => {
+                            const pastedText = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain');
+                            if (pastedText) {
+                              e.preventDefault();
+                              const cleaned = cleanHtmlText(pastedText);
+                              handleChange('description', formData.description + (formData.description ? '\n' : '') + cleaned);
+                            }
+                          }}
+                          placeholder="Listing description (this will carry into Crosslist)"
+                          rows={5}
+                          className="w-full"
+                        />
+                    </div>
 
                     <div className="space-y-2 md:col-span-2 min-w-0">
                         <Label htmlFor="notes" className="dark:text-gray-200 break-words">Notes</Label>

@@ -215,7 +215,7 @@ const createInitialTemplateState = (item) => {
     ...GENERAL_TEMPLATE_DEFAULT,
     photos: inventoryPhotoObjs,
     title: item?.item_name || "",
-    description: item?.notes || "",
+    description: item?.description || item?.notes || "",
     brand: item?.brand || "",
     condition: item?.condition || "",
     color1: item?.color1 || "",

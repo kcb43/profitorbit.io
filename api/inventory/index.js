@@ -39,8 +39,10 @@ function buildSelectFromFields(fieldsCsv) {
     'status',
     'category',
     'notes',
+    'description',
     'image_url',
     'images',
+    'photos',
     'quantity',
     'quantity_sold',
     'return_deadline',
@@ -86,16 +88,34 @@ function stripColumnFromSelect(select, col) {
 function normalizeImagesFromBody(body) {
   const b = { ...(body || {}) };
 
-  // `photos` is a UI-only concept; normalize it into `images` (string URL[]) + `image_url` (main image)
-  if (Array.isArray(b.photos) && !Array.isArray(b.images)) {
-    const urls = b.photos
-      .map((p) => (typeof p === 'string' ? p : (p?.imageUrl || p?.url || p?.image_url)))
-      .filter(Boolean);
-    b.images = urls;
+  // `photos` is a rich array of photo objects. Normalize it into:
+  // - `photos` (jsonb array of objects)
+  // - `images` (string URL[])
+  // - `image_url` (main image)
+  if (Array.isArray(b.photos)) {
+    const normalizedPhotos = b.photos
+      .filter(Boolean)
+      .map((p, idx) => {
+        if (typeof p === 'string') {
+          return { id: `img_${idx}`, imageUrl: p, isMain: idx === 0 };
+        }
+        const imageUrl = p?.imageUrl || p?.url || p?.image_url || p?.preview;
+        return {
+          id: p?.id || `img_${idx}`,
+          imageUrl,
+          isMain: Boolean(p?.isMain ?? idx === 0),
+          fileName: p?.fileName,
+        };
+      })
+      .filter((p) => Boolean(p?.imageUrl));
 
-    const main = b.photos.find((p) => typeof p === 'object' && p?.isMain);
+    b.photos = normalizedPhotos;
+    if (!Array.isArray(b.images)) {
+      b.images = normalizedPhotos.map((p) => p.imageUrl).filter(Boolean);
+    }
     if (!b.image_url) {
-      b.image_url = (typeof main === 'object' ? (main?.imageUrl || main?.url || main?.image_url) : null) || urls[0] || b.image_url || '';
+      const main = normalizedPhotos.find((p) => p?.isMain) || normalizedPhotos[0];
+      b.image_url = main?.imageUrl || b.image_url || '';
     }
   }
 
@@ -109,10 +129,45 @@ function normalizeImagesFromBody(body) {
     }
   }
 
-  // Never send UI-only field to Supabase (avoids "column does not exist" errors).
-  delete b.photos;
-
   return b;
+}
+
+async function insertWithOptionalPhotos(table, row) {
+  const { data, error } = await supabase.from(table).insert([row]).select().single();
+  if (!error) return { data, error: null };
+  const missing = extractMissingColumnFromSupabaseError(error.message);
+  if (missing === 'photos' || missing === 'description') {
+    const retryRow = { ...row };
+    delete retryRow.photos;
+    delete retryRow.description;
+    return supabase.from(table).insert([retryRow]).select().single();
+  }
+  return { data: null, error };
+}
+
+async function updateWithOptionalPhotos(table, id, userId, patch) {
+  const { data, error } = await supabase
+    .from(table)
+    .update(patch)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  if (!error) return { data, error: null };
+  const missing = extractMissingColumnFromSupabaseError(error.message);
+  if (missing === 'photos' || missing === 'description') {
+    const retryPatch = { ...patch };
+    delete retryPatch.photos;
+    delete retryPatch.description;
+    return supabase
+      .from(table)
+      .update(retryPatch)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+  }
+  return { data: null, error };
 }
 
 export default async function handler(req, res) {
@@ -310,11 +365,7 @@ async function handlePost(req, res, userId) {
     user_id: userId,
   };
 
-  const { data, error } = await supabase
-    .from('inventory_items')
-    .insert([itemData])
-    .select()
-    .single();
+  const { data, error } = await insertWithOptionalPhotos('inventory_items', itemData);
 
   if (error) {
     return res.status(400).json({ error: error.message });
@@ -336,13 +387,7 @@ async function handlePut(req, res, userId) {
   delete updateData.user_id; // Don't allow user_id updates
   delete updateData.created_at; // Don't allow created_at updates
 
-  const { data, error } = await supabase
-    .from('inventory_items')
-    .update(updateData)
-    .eq('id', id)
-    .eq('user_id', userId)
-    .select()
-    .single();
+  const { data, error } = await updateWithOptionalPhotos('inventory_items', id, userId, updateData);
 
   if (error) {
     return res.status(400).json({ error: error.message });
