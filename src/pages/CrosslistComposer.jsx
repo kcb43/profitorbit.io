@@ -35751,18 +35751,54 @@ export default function CrosslistComposer() {
         toast({
           title: "Failed to create listing",
           description: isSessionGlitch
-            ? "Facebook returned error 1357004 (usually a stale session). Click Reconnect, then try again. If it persists, fully close and reopen the browser."
+            ? "Facebook returned error 1357004 (usually a stale session/automation block). You can try reconnecting, or use the fallback buttons to list manually."
             : (error.message || "An error occurred while creating the listing. Please try again."),
           variant: "destructive",
           duration: isSessionGlitch ? 10000 : undefined,
           action: isSessionGlitch ? (
-            <ToastAction
-              onClick={() => {
-                try { handleConnectFacebook(); } catch (_) {}
-              }}
-            >
-              Reconnect Facebook
-            </ToastAction>
+            <div className="flex gap-2">
+              <ToastAction
+                onClick={() => {
+                  try { handleConnectFacebook(); } catch (_) {}
+                }}
+              >
+                Reconnect
+              </ToastAction>
+              <ToastAction
+                onClick={async () => {
+                  try {
+                    // Manual fallback: open FB Marketplace create page and copy draft details.
+                    try { window.open('https://www.facebook.com/marketplace/create/item', '_blank', 'noopener,noreferrer'); } catch (_) {}
+                    const title = facebookForm.title || generalForm.title || '';
+                    const description = facebookForm.description || generalForm.description || '';
+                    const price = facebookForm.price || generalForm.price || '';
+                    const tags = facebookForm.tags || generalForm.tags || '';
+                    const meetUpLocation = facebookForm.meetUpLocation || '';
+                    const draft = [
+                      `Title: ${title}`,
+                      price ? `Price: ${price}` : null,
+                      meetUpLocation ? `Meetup: ${meetUpLocation}` : null,
+                      tags ? `Tags: ${tags}` : null,
+                      '',
+                      description ? `Description:\n${description}` : 'Description:',
+                    ].filter(Boolean).join('\n');
+                    await navigator.clipboard.writeText(draft);
+                    toast({
+                      title: "Copied",
+                      description: "Facebook listing draft copied. Paste it into Facebook Marketplace.",
+                    });
+                  } catch (e) {
+                    toast({
+                      title: "Copy failed",
+                      description: "Could not copy draft (clipboard blocked). Please paste manually.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Open FB + Copy Draft
+              </ToastAction>
+            </div>
           ) : undefined,
         });
       } finally {
