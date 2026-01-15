@@ -33083,11 +33083,37 @@ export default function CrosslistComposer() {
   const itemIds = idsParam ? idsParam.split(',').filter(Boolean) : [];
   const autoSelect = autoSelectParam !== 'false';
   
-  // Fetch inventory items if IDs are provided
+  // If we navigated from Crosslist, we can prefill instantly without waiting on a refetch.
+  const prefillItemsFromNav = useMemo(() => {
+    const raw = location?.state?.prefillItems;
+    if (!Array.isArray(raw)) return [];
+    const cleaned = raw.filter(Boolean);
+    if (itemIds.length === 0) return cleaned;
+    const wanted = new Set(itemIds);
+    return cleaned.filter((it) => it?.id && wanted.has(it.id));
+  }, [location?.state, itemIds.join(',')]);
+
+  // Fetch inventory items. Critical perf fix: if itemIds are provided, fetch ONLY those items
+  // instead of listing the entire inventory and filtering client-side.
   const { data: inventory = [] } = useQuery({
-    queryKey: ["inventoryItems", "crosslistComposer"],
-    queryFn: () => base44.entities.InventoryItem.list("-purchase_date"),
-    initialData: [],
+    queryKey: ["inventoryItems", "crosslistComposer", itemIds.join(',') || "all"],
+    queryFn: async () => {
+      if (itemIds.length > 0) {
+        const results = await Promise.all(
+          itemIds.map((id) =>
+            base44.entities.InventoryItem.get(id).catch(() => null)
+          )
+        );
+        return results.filter(Boolean);
+      }
+
+      // Fallback: when no ids are provided, load inventory for manual selection flows.
+      return await base44.entities.InventoryItem.list("-purchase_date", { limit: 5000 });
+    },
+    placeholderData: prefillItemsFromNav.length > 0 ? prefillItemsFromNav : [],
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: 2,
   });
   
   const bulkSelectedItems = useMemo(() => {

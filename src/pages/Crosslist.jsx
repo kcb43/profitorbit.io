@@ -454,40 +454,12 @@ export default function Crosslist() {
   );
 
   // Compute which marketplaces an item is actually crosslisted to
-  // Checks: marketplace listings, item listing IDs, and marketplace_listings object
+  // Source of truth: marketplace listing records (fast + consistent with DB schema).
   const computeListingState = (item) => {
     const listings = getItemListings(item.id);
     const activeListings = listings.filter(l => l.status === 'active');
     
-    // Check multiple sources for each marketplace
-    const checkListed = (marketplace) => {
-      // Check marketplace listing records
-      if (activeListings.some(l => l.marketplace === marketplace)) {
-        console.log(`✓ ${marketplace} listed (from marketplace records):`, item.item_name);
-        return true;
-      }
-      
-      // Check direct listing ID field (e.g., ebay_listing_id)
-      const listingIdField = `${marketplace}_listing_id`;
-      if (item[listingIdField] && String(item[listingIdField]).trim()) {
-        console.log(`✓ ${marketplace} listed (from ${listingIdField}):`, item[listingIdField], item.item_name);
-        return true;
-      }
-      
-      // Check marketplace_listings object (e.g., marketplace_listings.ebay)
-      if (item.marketplace_listings?.[marketplace]?.listing_id) {
-        console.log(`✓ ${marketplace} listed (from marketplace_listings object):`, item.marketplace_listings[marketplace].listing_id, item.item_name);
-        return true;
-      }
-      
-      // Check if status is 'listed' and this is the primary marketplace
-      if (item.status === 'listed' && item[listingIdField]) {
-        console.log(`✓ ${marketplace} listed (status + listing ID):`, item[listingIdField], item.item_name);
-        return true;
-      }
-      
-      return false;
-    };
+    const checkListed = (marketplace) => activeListings.some((l) => l.marketplace === marketplace);
     
     const state = {
       ebay:     checkListed('ebay'),
@@ -496,19 +468,6 @@ export default function Crosslist() {
       etsy:     checkListed('etsy'),
       poshmark: checkListed('poshmark'),
     };
-    
-    // Log item details if it has listed status but no listings detected
-    if (item.status === 'listed' && !Object.values(state).some(Boolean)) {
-      console.warn('⚠️ Item marked as listed but no marketplace detected:', {
-        itemName: item.item_name,
-        itemId: item.id,
-        status: item.status,
-        ebay_listing_id: item.ebay_listing_id,
-        facebook_listing_id: item.facebook_listing_id,
-        marketplace_listings: item.marketplace_listings,
-        availableFields: Object.keys(item)
-      });
-    }
     
     return state;
   };
@@ -1384,7 +1343,14 @@ export default function Crosslist() {
     }
     
     // Navigate to the composer page
-    navigate(createPageUrl(`CrosslistComposer?${params.toString()}`));
+    // Pass preloaded items to the composer so it can render instantly (no waiting on a full inventory refetch).
+    const prefillItems = itemIds
+      .map((id) => inventory.find((it) => it?.id === id))
+      .filter(Boolean);
+
+    navigate(createPageUrl(`CrosslistComposer?${params.toString()}`), {
+      state: { prefillItems },
+    });
   };
 
   // Handle switching between items in bulk mode
