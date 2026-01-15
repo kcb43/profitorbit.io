@@ -65,7 +65,7 @@ export function DescriptionGenerator({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
+        throw new Error(errorData.details || errorData.error || `HTTP ${response.status}`);
       }
 
       const data = await response.json();

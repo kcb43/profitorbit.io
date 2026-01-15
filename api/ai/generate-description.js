@@ -229,9 +229,11 @@ Return ONLY the descriptions, one per line, numbered 1-${safeNum}. Do not includ
     return res.status(200).json({ descriptions });
   } catch (error) {
     console.error('Error generating descriptions:', error);
+    const msg = String(error?.message || error);
     return res.status(500).json({
-      error: 'Failed to generate descriptions',
-      details: String(error?.message || error),
+      // Put the actionable message in `error` so the client shows it.
+      error: msg,
+      details: msg,
     });
   }
 }
