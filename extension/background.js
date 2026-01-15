@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-21-tabless-fb-fetch-primary');
+console.log('EXT BUILD:', '2026-01-15-background-mercari-device-token-from-tab-fb-1357004-retrylog-1');
 
 // -----------------------------
 // Helpers
@@ -60,6 +60,21 @@ async function pickFacebookTabId() {
     const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
     if (!valid.length) return null;
     // Prefer active tab, then last focused, then first.
+    const active = valid.find((t) => t.active);
+    if (active?.id) return active.id;
+    const lastFocused = valid.find((t) => t.lastAccessed);
+    if (lastFocused?.id) return lastFocused.id;
+    return valid[0].id;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function pickMercariTabId() {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['https://www.mercari.com/*', 'https://mercari.com/*', 'https://*.mercari.com/*'] });
+    const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
+    if (!valid.length) return null;
     const active = valid.find((t) => t.active);
     if (active?.id) return active.id;
     const lastFocused = valid.find((t) => t.lastAccessed);
@@ -507,7 +522,111 @@ async function getMercariAuthHeaders() {
   if (!hdrs?.['x-csrf-token']) missing.push('x-csrf-token');
   if (!hdrs?.['x-de-device-token']) missing.push('x-de-device-token');
 
+  const tryPopulateDeviceTokenFromTab = async () => {
+    const tabId = await pickMercariTabId();
+    if (!tabId) {
+      return { ok: false, reason: 'no_mercari_tab' };
+    }
+    try {
+      const res = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const candidates = [];
+          const add = (source, key, value) => {
+            try {
+              const v = typeof value === 'string' ? value : value == null ? '' : String(value);
+              if (!v) return;
+              if (v.length < 8) return;
+              candidates.push({ source, key: key ? String(key) : null, value: v });
+            } catch (_) {}
+          };
+
+          // Common guesses
+          try {
+            add('localStorage', 'de_device_token', localStorage.getItem('de_device_token'));
+            add('localStorage', 'x-de-device-token', localStorage.getItem('x-de-device-token'));
+            add('localStorage', 'device_token', localStorage.getItem('device_token'));
+            add('localStorage', 'deviceToken', localStorage.getItem('deviceToken'));
+          } catch (_) {}
+
+          // Scan localStorage keys (Mercari can rename keys)
+          try {
+            for (let i = 0; i < localStorage.length; i += 1) {
+              const k = localStorage.key(i);
+              if (!k) continue;
+              const lk = k.toLowerCase();
+              if (!lk.includes('device') && !lk.includes('de_') && !lk.includes('token')) continue;
+              add('localStorageScan', k, localStorage.getItem(k));
+            }
+          } catch (_) {}
+
+          // Scan cookies (best-effort; HttpOnly cookies won't appear)
+          try {
+            const cookie = document.cookie || '';
+            const parts = cookie.split(';').map((s) => s.trim()).filter(Boolean);
+            for (const p of parts) {
+              const eq = p.indexOf('=');
+              const k = eq >= 0 ? p.slice(0, eq) : p;
+              const v = eq >= 0 ? p.slice(eq + 1) : '';
+              const lk = k.toLowerCase();
+              if (lk.includes('device') || lk.includes('de_') || lk.includes('token')) add('cookie', k, decodeURIComponent(v));
+            }
+          } catch (_) {}
+
+          // Pick best candidate (prefer ones that explicitly mention device token)
+          const score = (c) => {
+            const k = (c.key || '').toLowerCase();
+            let s = 0;
+            if (k.includes('de_device')) s += 5;
+            if (k.includes('x-de-device-token')) s += 5;
+            if (k.includes('device_token')) s += 4;
+            if (k.includes('device')) s += 2;
+            if (k.includes('token')) s += 1;
+            if (c.source === 'localStorage') s += 2;
+            return s;
+          };
+          candidates.sort((a, b) => score(b) - score(a));
+          const best = candidates[0] || null;
+          return {
+            ok: true,
+            best: best ? { source: best.source, key: best.key, value: best.value } : null,
+            candidatesCount: candidates.length,
+          };
+        },
+      });
+      const out = res?.[0]?.result || null;
+      return { ok: true, tabId, out };
+    } catch (e) {
+      return { ok: false, reason: e?.message || String(e) };
+    }
+  };
+
   if (missing.length) {
+    // Mercari sometimes stops sending x-de-device-token on the first captured API call.
+    // If that's the only missing piece, try to read it from an existing Mercari tab (no new tabs).
+    if (missing.length === 1 && missing[0] === 'x-de-device-token') {
+      const attempt = await tryPopulateDeviceTokenFromTab();
+      try {
+        chrome.storage.local.set({ mercariDeviceTokenAttempt: { t: Date.now(), attempt } }, () => {});
+      } catch (_) {}
+
+      if (attempt?.ok && attempt?.out?.best?.value) {
+        const token = String(attempt.out.best.value);
+        try {
+          const current = await chrome.storage.local.get(['mercariApiHeaders']);
+          const prev = (current?.mercariApiHeaders && typeof current.mercariApiHeaders === 'object') ? current.mercariApiHeaders : {};
+          const next = { ...prev, 'x-de-device-token': token };
+          await chrome.storage.local.set({ mercariApiHeaders: next, mercariApiHeadersTimestamp: Date.now() });
+        } catch (_) {}
+        // Re-read after setting
+        const reread = await chrome.storage.local.get(['mercariApiHeaders']);
+        const hdrs2 = reread?.mercariApiHeaders || null;
+        if (hdrs2?.authorization && hdrs2?.['x-csrf-token'] && hdrs2?.['x-de-device-token']) {
+          return hdrs2;
+        }
+      }
+    }
+
     try {
       chrome.storage.local.set(
         {
@@ -2297,8 +2416,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const desc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
 
           if (code === '1357004' && uploadAttemptMeta?.directFetch) {
+            console.warn('🟨 [FACEBOOK] Detected 1357004 on upload. Attempting retry in existing FB tab…');
             const fbTabId = await pickFacebookTabId();
             if (!fbTabId) {
+              console.warn('🟨 [FACEBOOK] Retry skipped: no existing facebook.com tab found.');
               throw new Error(
                 `${summary} (code ${code})` +
                   `${desc ? `: ${desc}` : ''} ` +
@@ -2306,6 +2427,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               );
             }
 
+            console.warn('🟨 [FACEBOOK] Retrying upload in existing FB tab', { fbTabId });
             // Build base64 only for this retry path to keep the normal path fast.
             const toBase64 = (ab) => {
               const u8 = new Uint8Array(ab);
@@ -2354,6 +2476,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             // Success: continue with the now-updated uploadResult downstream.
             uploadJson = retryJson;
+            console.warn('🟨 [FACEBOOK] Retry after 1357004 succeeded; continuing with listing flow.');
           }
 
           try {
