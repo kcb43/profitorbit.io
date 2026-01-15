@@ -6,7 +6,7 @@
  * - "Uncaught SyntaxError: Illegal return statement"
  */
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2025-12-29-background-clean-21-tabless-fb-fetch-primary');
+console.log('EXT BUILD:', '2026-01-15-background-fb-tabfirst-mercari-warmup-1');
 
 // -----------------------------
 // Helpers
@@ -68,6 +68,63 @@ async function pickFacebookTabId() {
   } catch (_) {
     return null;
   }
+}
+
+async function ensureFacebookTabId() {
+  let tabId = await pickFacebookTabId();
+  if (tabId) return tabId;
+  try {
+    const created = await chrome.tabs.create({ url: 'https://www.facebook.com/marketplace/', active: false });
+    if (created?.id) {
+      // Give FB a moment to load; we just need a tab context with cookies.
+      await new Promise((r) => setTimeout(r, 1500));
+      return created.id;
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function pickMercariTabId() {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['https://www.mercari.com/*'] });
+    const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
+    if (!valid.length) return null;
+    const active = valid.find((t) => t.active);
+    if (active?.id) return active.id;
+    const lastFocused = valid.find((t) => t.lastAccessed);
+    if (lastFocused?.id) return lastFocused.id;
+    return valid[0].id;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function ensureMercariTabId() {
+  let tabId = await pickMercariTabId();
+  if (tabId) return tabId;
+  try {
+    const created = await chrome.tabs.create({ url: 'https://www.mercari.com/', active: false });
+    if (created?.id) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return created.id;
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function waitForMercariApiHeaders(timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const stored = await chrome.storage.local.get(['mercariApiHeaders']);
+      const hdrs = stored?.mercariApiHeaders || null;
+      if (hdrs && hdrs.authorization && hdrs['x-csrf-token'] && hdrs['x-de-device-token']) {
+        return hdrs;
+      }
+    } catch (_) {}
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  return null;
 }
 
 async function ensureHiddenIframe(tabId, origin) {
@@ -492,13 +549,27 @@ async function normalizeMercariImageForUpload(inputBlob, filename = 'image.jpg')
 
 async function getMercariAuthHeaders() {
   const stored = await chrome.storage.local.get(['mercariApiHeaders']);
-  const hdrs = stored?.mercariApiHeaders || null;
-  if (!hdrs || !hdrs.authorization || !hdrs['x-csrf-token'] || !hdrs['x-de-device-token']) {
-    throw new Error(
-      'Missing Mercari API session headers. Open https://www.mercari.com/ in this Chrome profile, refresh once, then try again.'
-    );
-  }
-  return hdrs;
+  let hdrs = stored?.mercariApiHeaders || null;
+  if (hdrs && hdrs.authorization && hdrs['x-csrf-token'] && hdrs['x-de-device-token']) return hdrs;
+
+  // Warm-up: open Mercari in this profile to trigger a real API call so webRequest can capture headers.
+  // This fixes the common “connected but missing headers” state.
+  try {
+    const tabId = await ensureMercariTabId();
+    if (tabId) {
+      try {
+        // Navigate to /sell/ which reliably triggers API calls while logged in.
+        await chrome.tabs.update(tabId, { url: 'https://www.mercari.com/sell/' });
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  hdrs = await waitForMercariApiHeaders(15000);
+  if (hdrs && hdrs.authorization && hdrs['x-csrf-token'] && hdrs['x-de-device-token']) return hdrs;
+
+  throw new Error(
+    'Missing Mercari API session headers. Open https://www.mercari.com/ in this Chrome profile, refresh once, then try again.'
+  );
 }
 
 async function getMercariListingDefaults() {
@@ -2115,42 +2186,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (uploadHeaders?.accept) directUploadHeaders.accept = uploadHeaders.accept;
         } catch (_) {}
 
+        // Facebook 1357004 is commonly triggered when requests originate from the extension origin.
+        // Prefer running requests inside a real facebook.com tab first.
         let uploadResult = null;
-        try {
-          const fd = new FormData();
-          for (const f of uploadFormFields) {
-            if (!f?.name) continue;
-            fd.append(String(f.name), String(f.value ?? ''));
+        // executeScript args must be JSON-serializable; pass file bytes as base64 string.
+        const toBase64 = (ab) => {
+          const u8 = new Uint8Array(ab);
+          let s = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < u8.length; i += chunk) {
+            s += String.fromCharCode(...u8.subarray(i, i + chunk));
           }
-          fd.append(String(fileFieldName), imgBlob, String(fileName));
-          const direct = await facebookFetchDirect(uploadTemplate.url, {
-            method: 'POST',
-            headers: directUploadHeaders,
-            body: fd,
-          });
-          uploadResult = { ...direct, error: null, href: null };
-          uploadAttemptMeta.directFetch = true;
-        } catch (e) {
-          uploadAttemptMeta.directFetch = false;
-          uploadAttemptMeta.directError = String(e?.message || e || 'direct_upload_failed');
-          const fbTabId = await pickFacebookTabId();
+          return btoa(s);
+        };
+        const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+        uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
+        uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+
+        // Tab-first
+        try {
+          const fbTabId = await ensureFacebookTabId();
           uploadAttemptMeta.fbTabId = fbTabId;
           uploadAttemptMeta.tabFetch = true;
-
-          // executeScript args must be JSON-serializable; pass file bytes as base64 string.
-          const toBase64 = (ab) => {
-            const u8 = new Uint8Array(ab);
-            let s = '';
-            const chunk = 0x8000;
-            for (let i = 0; i < u8.length; i += chunk) {
-              s += String.fromCharCode(...u8.subarray(i, i + chunk));
-            }
-            return btoa(s);
-          };
-          const fileBase64 = toBase64(await imgBlob.arrayBuffer());
-          uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
-          uploadAttemptMeta.fileBase64Chars = fileBase64.length;
-
           uploadResult = await facebookFetchInTab(fbTabId, {
             url: uploadTemplate.url,
             method: 'POST',
@@ -2159,6 +2216,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             formFields: uploadFormFields,
             file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
           });
+        } catch (e) {
+          uploadAttemptMeta.tabFetch = false;
+          uploadAttemptMeta.tabError = String(e?.message || e || 'tab_upload_failed');
+          uploadResult = null;
+        }
+
+        // Fallback to direct extension fetch if tab path failed.
+        if (!uploadResult?.ok) {
+          try {
+            const fd = new FormData();
+            for (const f of uploadFormFields) {
+              if (!f?.name) continue;
+              fd.append(String(f.name), String(f.value ?? ''));
+            }
+            fd.append(String(fileFieldName), imgBlob, String(fileName));
+            const direct = await facebookFetchDirect(uploadTemplate.url, {
+              method: 'POST',
+              headers: directUploadHeaders,
+              body: fd,
+            });
+            uploadAttemptMeta.directFetch = true;
+            uploadResult = { ...direct, error: null, href: null };
+          } catch (e) {
+            uploadAttemptMeta.directFetch = false;
+            uploadAttemptMeta.directError = String(e?.message || e || 'direct_upload_failed');
+            // Keep the original uploadResult (tab failure) if we have it; otherwise synthesize an error.
+            if (!uploadResult) uploadResult = { ok: false, status: 0, text: '', headers: {}, error: uploadAttemptMeta.directError, href: null };
+          }
         }
         const uploadTextRaw = uploadResult?.text || '';
         const uploadOk = !!uploadResult?.ok;
@@ -2405,18 +2490,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         delete gqlHeaders['cookie'];
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
-        // Prefer tabless GraphQL call too (no facebook.com tab required).
-        // Fallback to in-tab fetch only if direct fails.
+        // Facebook 1357004 is commonly triggered when GraphQL requests originate from the extension origin.
+        // Prefer running GraphQL inside a real facebook.com tab first.
         let gqlResult = null;
         try {
-          const direct = await facebookFetchDirect(graphqlTemplate.url, {
-            method: 'POST',
-            headers: gqlHeaders,
-            body: encodeFormBody(form),
-          });
-          gqlResult = { ...direct, error: null, href: null };
-        } catch (e) {
-          const fbTabIdForGql = await pickFacebookTabId();
+          const fbTabIdForGql = await ensureFacebookTabId();
           gqlResult = await facebookFetchInTab(fbTabIdForGql, {
             url: graphqlTemplate.url,
             method: 'POST',
@@ -2424,6 +2502,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             bodyType: 'text',
             bodyText: encodeFormBody(form),
           });
+        } catch (e) {
+          // Fallback to extension-origin fetch only if tab path fails.
+          const direct = await facebookFetchDirect(graphqlTemplate.url, {
+            method: 'POST',
+            headers: gqlHeaders,
+            body: encodeFormBody(form),
+          });
+          gqlResult = { ...direct, error: null, href: null };
         }
         const gqlText = gqlResult?.text || '';
         const gqlOk = !!gqlResult?.ok;
