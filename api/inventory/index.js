@@ -36,6 +36,7 @@ function buildSelectFromFields(fieldsCsv) {
     'brand',
     'size',
     'sku',
+    'zip_code',
     'color1',
     'color2',
     'package_details',
