@@ -491,13 +491,49 @@ async function normalizeMercariImageForUpload(inputBlob, filename = 'image.jpg')
 }
 
 async function getMercariAuthHeaders() {
-  const stored = await chrome.storage.local.get(['mercariApiHeaders']);
+  const stored = await chrome.storage.local.get([
+    'mercariApiHeaders',
+    'mercariApiHeadersTimestamp',
+    'mercariApiHeadersSourceUrl',
+    'mercariApiHeadersType',
+  ]);
   const hdrs = stored?.mercariApiHeaders || null;
-  if (!hdrs || !hdrs.authorization || !hdrs['x-csrf-token'] || !hdrs['x-de-device-token']) {
+  const ts = typeof stored?.mercariApiHeadersTimestamp === 'number' ? stored.mercariApiHeadersTimestamp : null;
+  const src = stored?.mercariApiHeadersSourceUrl ? String(stored.mercariApiHeadersSourceUrl) : null;
+  const typ = stored?.mercariApiHeadersType ? String(stored.mercariApiHeadersType) : null;
+
+  const missing = [];
+  if (!hdrs?.authorization) missing.push('authorization');
+  if (!hdrs?.['x-csrf-token']) missing.push('x-csrf-token');
+  if (!hdrs?.['x-de-device-token']) missing.push('x-de-device-token');
+
+  if (missing.length) {
+    try {
+      chrome.storage.local.set(
+        {
+          mercariLastHeadersStatus: {
+            t: Date.now(),
+            missing,
+            hasAny: !!hdrs && Object.keys(hdrs || {}).length > 0,
+            lastCapturedAt: ts,
+            lastCapturedAgeMs: ts ? Date.now() - ts : null,
+            lastCapturedSourceUrl: src,
+            lastCapturedType: typ,
+            storedKeys: hdrs ? Object.keys(hdrs) : [],
+          },
+        },
+        () => {}
+      );
+    } catch (_) {}
+
     throw new Error(
-      'Missing Mercari API session headers. Open https://www.mercari.com/ in this Chrome profile, refresh once, then try again.'
+      `Missing Mercari API session headers (${missing.join(', ')}). ` +
+        `Open https://www.mercari.com/ in this Chrome profile, refresh once, then try again.` +
+        `${ts ? ` (last capture ${Math.max(0, Date.now() - ts)}ms ago` : ' (no captured headers yet'}` +
+        `${src ? ` from ${src}` : ''}${typ ? `, type=${typ}` : ''})`
     );
   }
+
   return hdrs;
 }
 
@@ -923,8 +959,9 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   (details) => {
     try {
       // Persist key Mercari headers for API-mode
-      if (details.url.includes('mercari.com/v1/api')) {
-        const required = new Set([
+      // Mercari frequently rotates/changes request paths; capture tokens from any Mercari API-ish call.
+      if (shouldRecordMercariUrl(details.url)) {
+        const keep = new Set([
           'authorization',
           'content-type',
           'x-csrf-token',
@@ -939,13 +976,32 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         const captured = {};
         for (const h of details.requestHeaders || []) {
           const name = String(h?.name || '').toLowerCase();
-          if (required.has(name) && h?.value) captured[name] = h.value;
+          if (keep.has(name) && h?.value) captured[name] = h.value;
         }
-        if (Object.keys(captured).length) {
-          chrome.storage.local.set(
-            { mercariApiHeaders: captured, mercariApiHeadersTimestamp: Date.now() },
-            () => {}
-          );
+
+        const hasAnyAuthBits =
+          !!captured.authorization || !!captured['x-csrf-token'] || !!captured['x-de-device-token'];
+
+        if (hasAnyAuthBits) {
+          // Merge with any previously captured values so partial captures don't wipe good ones.
+          chrome.storage.local.get(['mercariApiHeaders'], (res) => {
+            try {
+              const prev = (res && res.mercariApiHeaders && typeof res.mercariApiHeaders === 'object')
+                ? res.mercariApiHeaders
+                : {};
+              const next = { ...prev, ...captured };
+              chrome.storage.local.set(
+                {
+                  mercariApiHeaders: next,
+                  mercariApiHeadersTimestamp: Date.now(),
+                  mercariApiHeadersSourceUrl: details.url || null,
+                  mercariApiHeadersTabId: typeof details.tabId === 'number' ? details.tabId : null,
+                  mercariApiHeadersType: details.type || null,
+                },
+                () => {}
+              );
+            } catch (_) {}
+          });
         }
       }
 
@@ -992,7 +1048,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   {
     urls: ['https://www.mercari.com/v1/api*', 'https://api.mercari.com/*', 'https://*.mercari.com/*'],
     // NOTE: webRequest "types" does NOT include "fetch" (fetch requests are generally reported as "xmlhttprequest").
-    types: ['xmlhttprequest'],
+    // Some Chrome versions report certain Mercari calls as "other", so include it for robustness.
+    types: ['xmlhttprequest', 'other'],
   },
   ['requestHeaders', 'extraHeaders']
 );
@@ -1232,6 +1289,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (type === 'GET_ALL_STATUS') {
     sendResponse({ status: marketplaceStatus });
+    return true;
+  }
+
+  if (type === 'GET_MERCARI_HEADERS_STATUS') {
+    (async () => {
+      try {
+        const stored = await chrome.storage.local.get([
+          'mercariApiHeaders',
+          'mercariApiHeadersTimestamp',
+          'mercariApiHeadersSourceUrl',
+          'mercariApiHeadersType',
+          'mercariLastHeadersStatus',
+        ]);
+        const hdrs = stored?.mercariApiHeaders || null;
+        sendResponse({
+          success: true,
+          hasHeaders: !!hdrs && typeof hdrs === 'object' && Object.keys(hdrs).length > 0,
+          keys: hdrs ? Object.keys(hdrs) : [],
+          requiredPresent: {
+            authorization: !!hdrs?.authorization,
+            'x-csrf-token': !!hdrs?.['x-csrf-token'],
+            'x-de-device-token': !!hdrs?.['x-de-device-token'],
+          },
+          lastCapturedAt: typeof stored?.mercariApiHeadersTimestamp === 'number' ? stored.mercariApiHeadersTimestamp : null,
+          lastCapturedSourceUrl: stored?.mercariApiHeadersSourceUrl ? String(stored.mercariApiHeadersSourceUrl) : null,
+          lastCapturedType: stored?.mercariApiHeadersType ? String(stored.mercariApiHeadersType) : null,
+          lastStatus: stored?.mercariLastHeadersStatus || null,
+        });
+      } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
     return true;
   }
 
@@ -2160,13 +2249,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
           });
         }
-        const uploadTextRaw = uploadResult?.text || '';
-        const uploadOk = !!uploadResult?.ok;
-        const uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
-        const uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
-        const uploadErr = uploadResult?.error ? String(uploadResult.error) : null;
-        const uploadHref = uploadResult?.href ? String(uploadResult.href) : null;
-        const uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
+        let uploadTextRaw = uploadResult?.text || '';
+        let uploadOk = !!uploadResult?.ok;
+        let uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
+        let uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
+        let uploadErr = uploadResult?.error ? String(uploadResult.error) : null;
+        let uploadHref = uploadResult?.href ? String(uploadResult.href) : null;
+        let uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
 
         // Some FB endpoints return JSON with a "for (;;);" prefix or slightly-invalid wrappers.
         let uploadJson = null;
@@ -2201,10 +2290,72 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
+        // Special case: 1357004 often means FB rejects extension-origin requests; retry in an *existing* FB tab.
         if (uploadJson && typeof uploadJson === 'object' && (uploadJson.error || uploadJson.errorSummary || uploadJson.errorDescription)) {
           const code = uploadJson.error ? String(uploadJson.error) : null;
           const summary = uploadJson.errorSummary ? String(uploadJson.errorSummary) : 'Facebook upload error';
           const desc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
+
+          if (code === '1357004' && uploadAttemptMeta?.directFetch) {
+            const fbTabId = await pickFacebookTabId();
+            if (!fbTabId) {
+              throw new Error(
+                `${summary} (code ${code})` +
+                  `${desc ? `: ${desc}` : ''} ` +
+                  `(Fix: open Facebook Marketplace in a tab in this Chrome profile, then retry. The extension will reuse the existing tab; it will not open a new one.)`
+              );
+            }
+
+            // Build base64 only for this retry path to keep the normal path fast.
+            const toBase64 = (ab) => {
+              const u8 = new Uint8Array(ab);
+              let s = '';
+              const chunk = 0x8000;
+              for (let i = 0; i < u8.length; i += chunk) {
+                s += String.fromCharCode(...u8.subarray(i, i + chunk));
+              }
+              return btoa(s);
+            };
+            const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+            uploadAttemptMeta.retry1357004 = true;
+            uploadAttemptMeta.retryTabId = fbTabId;
+
+            const retryResult = await facebookFetchInTab(fbTabId, {
+              url: uploadTemplate.url,
+              method: 'POST',
+              headers: directUploadHeaders,
+              bodyType: 'formData',
+              formFields: uploadFormFields,
+              file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+            });
+
+            // Overwrite uploadResult pipeline variables and re-parse.
+            uploadResult = retryResult;
+            uploadTextRaw = uploadResult?.text || '';
+            uploadOk = !!uploadResult?.ok;
+            uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
+            uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
+            uploadErr = uploadResult?.error ? String(uploadResult.error) : null;
+            uploadHref = uploadResult?.href ? String(uploadResult.href) : null;
+            uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
+
+            const retryText = uploadText;
+            let retryJson = null;
+            try { retryJson = retryText ? JSON.parse(retryText) : null; } catch (_) { retryJson = null; }
+            if (!uploadOk || uploadStatus === 0) {
+              throw new Error(`Facebook upload failed in existing FB tab (retry after 1357004)`);
+            }
+            if (retryJson && typeof retryJson === 'object' && (retryJson.error || retryJson.errorSummary || retryJson.errorDescription)) {
+              const c2 = retryJson.error ? String(retryJson.error) : null;
+              const s2 = retryJson.errorSummary ? String(retryJson.errorSummary) : 'Facebook upload error';
+              const d2 = retryJson.errorDescription ? String(retryJson.errorDescription) : '';
+              throw new Error(`${s2}${c2 ? ` (code ${c2})` : ''}${d2 ? `: ${d2}` : ''}`);
+            }
+
+            // Success: continue with the now-updated uploadResult downstream.
+            uploadJson = retryJson;
+          }
+
           try {
             chrome.storage.local.set(
               {
