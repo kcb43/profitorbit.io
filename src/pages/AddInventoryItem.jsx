@@ -267,7 +267,8 @@ export default function AddInventoryItem() {
   };
 
   const buildInventoryPayload = (data) => {
-    // `photos` is UI-only state; API expects `images` + `image_url`.
+    // Persist `photos` (stable ids) in addition to `images` + `image_url` so Photo Editor settings
+    // can be keyed to photo ids across pages.
     const { photos, ...rest } = data || {};
 
     return {
@@ -276,6 +277,12 @@ export default function AddInventoryItem() {
     quantity: parseInt(data.quantity, 10) || 1,
     return_deadline: data.return_deadline ? data.return_deadline : null,
     images: photos?.map(p => p.imageUrl || p.url || p).filter(Boolean) || [],
+    photos: photos?.map((p, idx) => ({
+      id: p?.id || `photo_${idx}`,
+      imageUrl: p?.imageUrl || p?.url || p?.image_url || p,
+      isMain: Boolean(p?.isMain ?? idx === 0),
+      fileName: p?.fileName,
+    })).filter((p) => Boolean(p.imageUrl)) || [],
     image_url: photos?.find(p => p.isMain)?.imageUrl || photos?.[0]?.imageUrl || data.image_url || '',
     notes: mergeBase44Tags(
       data.notes ? cleanHtmlText(data.notes) : '',
@@ -327,6 +334,32 @@ export default function AddInventoryItem() {
           return old.map((item) => (item.id === context.optimisticId ? { ...result } : item));
         });
       }
+
+      // If this was a NEW item (no itemId yet), migrate Photo Editor history keys
+      // from the temp id used on AddInventory to the real created item id.
+      try {
+        if (!itemId && result?.id) {
+          const tempId = photoEditorTempIdRef.current;
+          const newId = String(result.id);
+          const stored = localStorage.getItem('imageEditHistory');
+          if (stored) {
+            const map = new Map(JSON.parse(stored));
+            const next = new Map();
+            for (const [k, v] of map.entries()) {
+              const key = String(k);
+              if (key.startsWith(`${tempId}_`)) {
+                next.set(`${newId}_${key.slice(`${tempId}_`.length)}`, v);
+              } else {
+                next.set(key, v);
+              }
+            }
+            localStorage.setItem('imageEditHistory', JSON.stringify(Array.from(next.entries())));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to migrate photo editor history keys:', e);
+      }
+
       navigateBackToReturn();
     },
     onSettled: () => {
@@ -600,7 +633,6 @@ export default function AddInventoryItem() {
     setFormData((prev) => {
       const next = { ...prev };
       if (inventoryData.item_name) next.item_name = inventoryData.item_name;
-      if (inventoryData.purchase_price) next.purchase_price = String(inventoryData.purchase_price);
       if (inventoryData.image_url) next.image_url = inventoryData.image_url;
       if (inventoryData.category) next.category = inventoryData.category;
       if (inventoryData.source) {

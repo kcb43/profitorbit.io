@@ -172,9 +172,48 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
 };
 
 const createInitialTemplateState = (item) => {
+  const inventoryPhotoObjs = (() => {
+    // Prefer rich `photos` (stable ids), fallback to `images` (urls), then `image_url`.
+    const photos = Array.isArray(item?.photos) ? item.photos.filter(Boolean) : [];
+    if (photos.length > 0) {
+      return photos
+        .map((p, idx) => ({
+          id: String(p?.id || `photo_${idx}`),
+          preview: p?.preview || p?.imageUrl || p?.url || p?.image_url || "",
+          fileName: p?.fileName || `Inventory photo ${idx + 1}`,
+          fromInventory: true,
+          isMain: Boolean(p?.isMain ?? idx === 0),
+        }))
+        .filter((p) => Boolean(p.preview));
+    }
+
+    const images = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
+    if (images.length > 0) {
+      return images.map((u, idx) => ({
+        id: `img_${idx}`,
+        preview: typeof u === "string" ? u : (u?.imageUrl || u?.url || u?.image_url || ""),
+        fileName: `Inventory photo ${idx + 1}`,
+        fromInventory: true,
+        isMain: idx === 0,
+      })).filter((p) => Boolean(p.preview));
+    }
+
+    if (item?.image_url) {
+      return [{
+        id: "inventory-photo-0",
+        preview: item.image_url,
+        fileName: "Inventory photo",
+        fromInventory: true,
+        isMain: true,
+      }];
+    }
+
+    return [];
+  })();
+
   const general = {
     ...GENERAL_TEMPLATE_DEFAULT,
-    photos: item?.image_url ? [{ id: "inventory-photo", preview: item.image_url, fileName: "Inventory photo", fromInventory: true }] : [],
+    photos: inventoryPhotoObjs,
     title: item?.item_name || "",
     description: item?.notes || "",
     brand: item?.brand || "",
@@ -371,6 +410,9 @@ export default function Crosslist() {
     'category',
     'source',
     'image_url',
+    'images',
+    'photos',
+    'notes',
     'deleted_at',
     'marketplace_listings',
     'ebay_listing_id',

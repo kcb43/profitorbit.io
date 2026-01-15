@@ -34759,7 +34759,6 @@ export default function CrosslistComposer() {
         general.photos = [photo, ...(general.photos || [])];
       }
       if (inventoryData.category) general.category = inventoryData.category;
-      if (inventoryData.purchase_price) general.cost = String(inventoryData.purchase_price);
       if (inventoryData.notes) {
         general.description = inventoryData.notes;
       }

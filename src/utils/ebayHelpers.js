@@ -14,11 +14,29 @@
 export function ebayItemToInventory(ebayItem) {
   if (!ebayItem) return null;
 
+  const categoryPathNames = (() => {
+    const raw = ebayItem.categoryPath || ebayItem.categoryPathBreadcrumb || ebayItem.categories || null;
+    if (!raw) return [];
+    // categoryPath can be array of strings or objects
+    if (Array.isArray(raw)) {
+      return raw
+        .map((c) => (typeof c === 'string' ? c : (c?.categoryName || c?.name || c?.category || '')))
+        .filter(Boolean);
+    }
+    // category might be a single string
+    if (typeof raw === 'string') return [raw];
+    // object with categoryName
+    if (typeof raw === 'object') {
+      const name = raw?.categoryName || raw?.name || raw?.category;
+      return name ? [name] : [];
+    }
+    return [];
+  })();
+
   return {
     item_name: ebayItem.title || '',
-    purchase_price: ebayItem.price?.value?.toString() || '0',
     image_url: ebayItem.image?.imageUrl || '',
-    category: mapEbayCategoryToInventory(ebayItem.categoryPath || []),
+    category: mapEbayCategoryToInventory(categoryPathNames),
     source: 'eBay',
     status: 'available',
     // Don't include notes when converting eBay item to inventory

@@ -189,6 +189,7 @@ export default function InventoryPage() {
     'deleted_at',
     'image_url',
     'images',
+    'photos',
     'source',
     'category',
     'notes',
@@ -646,7 +647,7 @@ export default function InventoryPage() {
 
   // Mutation for updating item image
   const updateImageMutation = useMutation({
-    mutationFn: async ({ itemId, file, imageIndex }) => {
+    mutationFn: async ({ itemId, file, imageIndex, photoId }) => {
       console.log('Starting image update:', { itemId, imageIndex, fileSize: file?.size });
       
       // Upload the edited image
@@ -658,27 +659,48 @@ export default function InventoryPage() {
       
       // Get the current item
       const item = inventoryItems.find(i => i.id === itemId);
-      console.log('Found item:', { itemId, hasImages: !!item?.images, imageCount: item?.images?.length });
+      console.log('Found item:', { itemId, hasImages: !!item?.images, imageCount: item?.images?.length, hasPhotos: !!item?.photos });
+
+      const basePhotos = (() => {
+        const p = Array.isArray(item?.photos) ? item.photos.filter(Boolean) : [];
+        if (p.length > 0) return p;
+        const imgs = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
+        return imgs.map((u, idx) => ({
+          id: `img_${idx}`,
+          imageUrl: typeof u === 'string' ? u : (u?.imageUrl || u?.url || u?.image_url || ''),
+          isMain: idx === 0,
+        }));
+      })();
       
       // Update both image_url AND images array to ensure Edit page shows edited version
       if (item && item.images && Array.isArray(item.images) && imageIndex !== undefined) {
         // Item has images array - update the specific index
         const updatedImages = [...item.images];
         updatedImages[imageIndex] = file_url;
+
+        const updatedPhotos = basePhotos.map((p, idx) => {
+          if (idx !== imageIndex) return p;
+          return { ...p, imageUrl: file_url };
+        });
         
         console.log('Updating images array:', { imageIndex, updatedCount: updatedImages.length, newImages: updatedImages });
         const updatePayload = { 
           images: updatedImages,
-          image_url: updatedImages[0] // First image is main
+          image_url: updatedImages[0], // First image is main
+          photos: updatedPhotos,
         };
         console.log('Update payload:', updatePayload);
         await base44.entities.InventoryItem.update(itemId, updatePayload);
       } else {
         // No images array or not specified - update both image_url and create/update images array
         console.log('Updating single image - updating both image_url and images array');
+        const updatedPhotos = basePhotos.length > 0
+          ? basePhotos.map((p, idx) => (idx === 0 ? { ...p, imageUrl: file_url, isMain: true } : { ...p, isMain: false }))
+          : [{ id: photoId || 'img_0', imageUrl: file_url, isMain: true }];
         const updatePayload = {
           image_url: file_url,
-          images: [file_url] // Ensure images array is also updated
+          images: [file_url], // Ensure images array is also updated
+          photos: updatedPhotos,
         };
         console.log('Update payload:', updatePayload);
         await base44.entities.InventoryItem.update(itemId, updatePayload);
@@ -692,7 +714,8 @@ export default function InventoryPage() {
       
       // Update the stored imageUrl in edit history to the new uploaded URL
       try {
-        const historyKey = `${variables.itemId}_${variables.imageIndex}`;
+        const keySuffix = variables.photoId ? String(variables.photoId) : String(variables.imageIndex);
+        const historyKey = `${variables.itemId}_${keySuffix}`;
         const stored = localStorage.getItem('imageEditHistory');
         if (stored) {
           const historyMap = new Map(JSON.parse(stored));
@@ -791,10 +814,14 @@ export default function InventoryPage() {
 
   const handleSaveEditedImage = (editedFile, imageIndex) => {
     if (imageToEdit.itemId) {
+      const item = inventoryItems.find((i) => i.id === imageToEdit.itemId);
+      const photos = Array.isArray(item?.photos) ? item.photos.filter(Boolean) : [];
+      const photoId = photos?.[imageIndex]?.id ? String(photos[imageIndex].id) : undefined;
       updateImageMutation.mutate({ 
         itemId: imageToEdit.itemId, 
         file: editedFile,
-        imageIndex: imageIndex 
+        imageIndex: imageIndex,
+        photoId,
       });
     }
   };
@@ -806,7 +833,18 @@ export default function InventoryPage() {
     try {
       // Find the item from inventory
       const item = inventoryItems.find(i => i.id === imageToEdit.itemId);
-      if (!item || !item.images || item.images.length === 0) {
+      const basePhotos = (() => {
+        const p = Array.isArray(item?.photos) ? item.photos.filter(Boolean) : [];
+        if (p.length > 0) return p;
+        const imgs = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
+        return imgs.map((u, idx) => ({
+          id: `img_${idx}`,
+          imageUrl: typeof u === 'string' ? u : (u?.imageUrl || u?.url || u?.image_url || ''),
+          isMain: idx === 0,
+        }));
+      })();
+
+      if (!item || basePhotos.length === 0) {
         alert('No images found for this item.');
         return;
       }
@@ -822,9 +860,15 @@ export default function InventoryPage() {
       }
       
       // Update the inventory item with new images
+      const updatedPhotos = basePhotos.map((p, idx) => ({
+        ...p,
+        imageUrl: uploadedUrls[idx] || p.imageUrl,
+        isMain: idx === 0,
+      }));
       await base44.entities.InventoryItem.update(imageToEdit.itemId, {
         images: uploadedUrls,
-        image_url: uploadedUrls[0] || item.image_url
+        image_url: uploadedUrls[0] || item.image_url,
+        photos: updatedPhotos,
       });
       
       // Invalidate and refetch
@@ -1187,7 +1231,6 @@ export default function InventoryPage() {
     // Navigate to Add Inventory page with pre-filled data
     const params = new URLSearchParams();
     if (inventoryData.item_name) params.set('name', inventoryData.item_name);
-    if (inventoryData.purchase_price) params.set('price', inventoryData.purchase_price);
     if (inventoryData.image_url) params.set('imageUrl', inventoryData.image_url);
     if (inventoryData.category) params.set('category', inventoryData.category);
     if (inventoryData.source) params.set('source', inventoryData.source);
@@ -2860,7 +2903,7 @@ export default function InventoryPage() {
         imageSrc={imageToEdit.url}
         onSave={handleSaveEditedImage}
         fileName={`${imageToEdit.itemId}-edited.jpg`}
-        allImages={imageToEdit.itemId ? (inventoryItems.find(i => i.id === imageToEdit.itemId)?.images || []) : []}
+        allImages={imageToEdit.itemId ? ((inventoryItems.find(i => i.id === imageToEdit.itemId)?.photos) || (inventoryItems.find(i => i.id === imageToEdit.itemId)?.images) || []) : []}
         onApplyToAll={handleApplyFiltersToAll}
         itemId={imageToEdit.itemId}
         onAddImage={async (newImageUrl) => {
