@@ -610,14 +610,20 @@ export default function AddInventoryItem() {
         if (parsed?.purchase_date) next.purchase_date = String(parsed.purchase_date);
         if (parsed?.total) next.purchase_price = String(parsed.total);
 
-        // Append parsed line items into Notes (keep user's existing notes).
+        // Append parsed line items into Description (this carries into Crosslist).
         if (Array.isArray(parsed?.line_items) && parsed.line_items.length > 0) {
           const lines = parsed.line_items
             .filter(Boolean)
             .map((li) => `- ${li?.name || ''}${li?.price ? `: $${li.price}` : ''}`.trim())
             .filter(Boolean);
-          const block = lines.length ? `Receipt items:\n${lines.join('\n')}` : '';
-          if (block) next.notes = prev.notes ? `${prev.notes}\n\n${block}` : block;
+          const headerBits = [
+            parsed?.merchant ? String(parsed.merchant) : null,
+            parsed?.purchase_date ? String(parsed.purchase_date) : null,
+            parsed?.total ? `Total: $${parsed.total}` : null,
+          ].filter(Boolean);
+          const header = headerBits.length ? `Receipt (${headerBits.join(" • ")}):` : "Receipt:";
+          const block = lines.length ? `${header}\n${lines.join('\n')}` : '';
+          if (block) next.description = prev.description ? `${prev.description}\n\n${block}` : block;
         }
         return next;
       });
