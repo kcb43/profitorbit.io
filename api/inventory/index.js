@@ -33,6 +33,7 @@ function buildSelectFromFields(fieldsCsv) {
     'id',
     'user_id',
     'item_name',
+    'brand',
     'purchase_price',
     'purchase_date',
     'source',
@@ -136,10 +137,11 @@ async function insertWithOptionalPhotos(table, row) {
   const { data, error } = await supabase.from(table).insert([row]).select().single();
   if (!error) return { data, error: null };
   const missing = extractMissingColumnFromSupabaseError(error.message);
-  if (missing === 'photos' || missing === 'description') {
+  if (missing === 'photos' || missing === 'description' || missing === 'brand') {
     const retryRow = { ...row };
     delete retryRow.photos;
     delete retryRow.description;
+    delete retryRow.brand;
     return supabase.from(table).insert([retryRow]).select().single();
   }
   return { data: null, error };
@@ -155,10 +157,11 @@ async function updateWithOptionalPhotos(table, id, userId, patch) {
     .single();
   if (!error) return { data, error: null };
   const missing = extractMissingColumnFromSupabaseError(error.message);
-  if (missing === 'photos' || missing === 'description') {
+  if (missing === 'photos' || missing === 'description' || missing === 'brand') {
     const retryPatch = { ...patch };
     delete retryPatch.photos;
     delete retryPatch.description;
+    delete retryPatch.brand;
     return supabase
       .from(table)
       .update(retryPatch)
