@@ -401,6 +401,44 @@ const MERCARI_PERSISTED = {
   },
 };
 
+function parseMercariPrice(raw) {
+  // Accept:
+  // - number (dollars or cents)
+  // - string like "$12.99", "12.99", "1,299.00"
+  // Heuristic:
+  // - If parsed value is out of Mercari range, also try interpreting as cents (value/100).
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const asNumber = (v) => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (!s) return NaN;
+      // Remove currency symbols/spaces, keep digits, dot, comma, minus
+      const cleaned = s.replace(/[^\d.,-]/g, '');
+      // Remove thousands separators: if both comma and dot exist, assume comma is thousands.
+      let normalized = cleaned;
+      if (cleaned.includes('.') && cleaned.includes(',')) normalized = cleaned.replace(/,/g, '');
+      // If only comma exists, treat it as decimal separator.
+      if (!cleaned.includes('.') && cleaned.includes(',')) normalized = cleaned.replace(/,/g, '.');
+      return Number.parseFloat(normalized);
+    }
+    return NaN;
+  };
+
+  const n = asNumber(raw);
+  if (!Number.isFinite(n)) return { ok: false, value: null, raw };
+
+  const a = round2(n);
+  const inRangeA = a >= 1 && a <= 2000;
+  if (inRangeA) return { ok: true, value: a, raw, interpretedAsCents: false };
+
+  const b = round2(n / 100);
+  const inRangeB = b >= 1 && b <= 2000;
+  if (inRangeB) return { ok: true, value: b, raw, interpretedAsCents: true };
+
+  return { ok: false, value: a, raw, interpretedAsCents: false, attemptedCentsValue: b };
+}
+
 function deepFindFirst(obj, predicate, seen = new Set()) {
   if (!obj || typeof obj !== 'object') return null;
   if (seen.has(obj)) return null;
@@ -1596,7 +1634,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const title = String(payload.title || payload.name || '').trim();
         const description = String(payload.description || '').trim();
-        const price = Number(payload.price);
+        const rawPrice = payload.price ?? payload.listing_price ?? payload.amount ?? payload.priceCents ?? payload.price_cents ?? null;
+        const parsedPrice = parseMercariPrice(rawPrice);
+        const price = parsedPrice?.ok ? parsedPrice.value : Number.NaN;
 
         // Accept a few common payload shapes and normalize to images[]
         const toUrl = (v) => {
@@ -1630,7 +1670,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           []).map(toUrl).filter(Boolean);
 
         if (!title) throw new Error('Missing title');
-        if (!Number.isFinite(price) || price <= 0) throw new Error('Missing/invalid price');
+        if (!Number.isFinite(price) || price <= 0) {
+          throw new Error(`Missing/invalid price (raw=${rawPrice === null ? 'null' : JSON.stringify(rawPrice)})`);
+        }
+        if (price < 1 || price > 2000) {
+          throw new Error(
+            `Invalid Mercari price ${price}. Expected $1.00–$2,000.00. ` +
+              `If your app provides cents (e.g. 1299 for $12.99), it should be handled automatically; ` +
+              `raw=${rawPrice === null ? 'null' : JSON.stringify(rawPrice)} interpretedAsCents=${!!parsedPrice?.interpretedAsCents}`
+          );
+        }
+        if (parsedPrice?.interpretedAsCents) {
+          console.log('🟦 [MERCARI] Interpreted price as cents; converted to dollars', { rawPrice, price });
+        }
         if (!images.length) throw new Error('Missing images (need at least 1 image URL). Expected payload.images[] or payload.image_url.');
 
         // Load defaults learned from prior successful listings (zipCode, shipping defaults, etc.)
