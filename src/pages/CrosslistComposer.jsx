@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RichTextarea } from "@/components/ui/rich-textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
   Dialog,
   DialogContent,
@@ -35745,10 +35746,24 @@ export default function CrosslistComposer() {
         }
       } catch (error) {
         console.error('Error creating Facebook listing:', error);
+        const msg = String(error?.message || error || '');
+        const isSessionGlitch = msg.includes('1357004');
         toast({
           title: "Failed to create listing",
-          description: error.message || "An error occurred while creating the listing. Please try again.",
+          description: isSessionGlitch
+            ? "Facebook returned error 1357004 (usually a stale session). Click Reconnect, then try again. If it persists, fully close and reopen the browser."
+            : (error.message || "An error occurred while creating the listing. Please try again."),
           variant: "destructive",
+          duration: isSessionGlitch ? 10000 : undefined,
+          action: isSessionGlitch ? (
+            <ToastAction
+              onClick={() => {
+                try { handleConnectFacebook(); } catch (_) {}
+              }}
+            >
+              Reconnect Facebook
+            </ToastAction>
+          ) : undefined,
         });
       } finally {
         setIsSaving(false);

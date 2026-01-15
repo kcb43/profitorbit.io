@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * TagInput component for managing tags
- * Allows adding tags by pressing space or comma+space
+ * Allows adding tags by pressing Enter or comma
  * Tags are displayed as removable badges
  * 
  * @param {string} value - Comma-separated string of tags
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 export function TagInput({ 
   value = "", 
   onChange, 
-  placeholder = "Type and press space or comma to add tags",
+  placeholder = "Type a tag and press Enter or comma",
   className,
   disabled = false,
   ...props 
@@ -34,8 +34,8 @@ export function TagInput({
   };
 
   const handleInputKeyDown = (e) => {
-    // Handle Enter, Space, or Comma to add tag
-    if (e.key === "Enter" || e.key === " " || e.key === ",") {
+    // Commit only on Enter or comma (multi-word tags stay intact until committed).
+    if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addTagFromInput();
     }
@@ -48,14 +48,10 @@ export function TagInput({
   const addTagFromInput = () => {
     if (!inputValue.trim()) return;
     
-    // Check if input contains comma - if so, split by comma first
-    let partsToAdd = [];
-    if (inputValue.includes(',')) {
-      partsToAdd = inputValue.split(',').map(p => p.trim()).filter(Boolean);
-    } else {
-      // Split by space
-      partsToAdd = inputValue.trim().split(/\s+/).filter(Boolean);
-    }
+    // If the input contains commas, treat them as separators. Otherwise, treat the whole input as one tag.
+    const partsToAdd = inputValue.includes(',')
+      ? inputValue.split(',').map((p) => p.trim()).filter(Boolean)
+      : [inputValue.trim()];
     
     // Add all new tags that don't already exist
     const existingTags = new Set(tags.map(t => t.toLowerCase()));
@@ -88,7 +84,7 @@ export function TagInput({
           <Badge 
             key={`${tag}-${index}`} 
             variant="secondary" 
-            className="flex items-center gap-1.5 px-2 py-1 text-xs"
+            className="flex items-center gap-1.5 px-2 py-1 text-xs bg-muted/50 text-foreground border border-border/60"
           >
             <span>{tag}</span>
             {!disabled && (
@@ -111,7 +107,6 @@ export function TagInput({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
-          onBlur={addTagFromInput}
           placeholder={tags.length === 0 ? placeholder : ""}
           disabled={disabled}
           className="flex-1 min-w-[120px] border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
@@ -120,7 +115,7 @@ export function TagInput({
       </div>
       {tags.length > 0 && (
         <p className="text-xs text-muted-foreground mt-1">
-          {tags.length} {tags.length === 1 ? 'tag' : 'tags'}. Press space or comma to add more. Click × to remove.
+          {tags.length} {tags.length === 1 ? 'tag' : 'tags'}. Press Enter or comma to add more. Click × to remove.
         </p>
       )}
     </div>
