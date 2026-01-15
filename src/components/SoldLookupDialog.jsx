@@ -61,7 +61,7 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {onEbaySearch ? (
             <Button 
               variant="outline"
@@ -69,40 +69,40 @@ export default function SoldLookupDialog({ open, onOpenChange, itemName = "", on
                 onEbaySearch();
                 onOpenChange(false);
               }}
-              className="w-full"
+              className="w-full h-12 sm:h-14 text-sm sm:text-base"
             >
-              <img src={EBAY_ICON_URL} alt="eBay" className="w-4 h-4 mr-2 object-contain" />
+              <img src={EBAY_ICON_URL} alt="eBay" className="w-5 h-5 sm:w-6 sm:h-6 mr-2 object-contain" />
               eBay
             </Button>
           ) : (
-          <Button asChild className="w-full">
+          <Button asChild className="w-full h-12 sm:h-14 text-sm sm:text-base">
               <a href={ebaySoldUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-                <img src={EBAY_ICON_URL} alt="eBay" className="w-4 h-4 object-contain" />
+                <img src={EBAY_ICON_URL} alt="eBay" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
               eBay (Sold + Completed)
             </a>
           </Button>
           )}
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild variant="outline" className="w-full h-12 sm:h-14 text-sm sm:text-base">
             <a href={mercariGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-              <img src={MERCARI_ICON_URL} alt="Mercari" className="w-4 h-4 object-contain" />
+              <img src={MERCARI_ICON_URL} alt="Mercari" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
               Mercari
             </a>
           </Button>
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild variant="outline" className="w-full h-12 sm:h-14 text-sm sm:text-base">
             <a href={fbGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-              <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-4 h-4 object-contain" />
+              <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
               Facebook
             </a>
           </Button>
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild variant="outline" className="w-full h-12 sm:h-14 text-sm sm:text-base">
             <a href={etsyGoogle} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-              <img src={ETSY_ICON_URL} alt="Etsy" className="w-4 h-4 object-contain" />
+              <img src={ETSY_ICON_URL} alt="Etsy" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
               Etsy
             </a>
           </Button>
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild variant="outline" className="w-full h-12 sm:h-14 text-sm sm:text-base">
             <a href={comparePrices} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
-              <GlobeIcon className="w-4 h-4" />
+              <GlobeIcon className="w-5 h-5 sm:w-6 sm:h-6" />
               Compare Prices
             </a>
           </Button>
