@@ -1682,23 +1682,50 @@ export default function Crosslist() {
                     <div className="flex flex-wrap items-center gap-2">
                       {MARKETPLACES.map((m) => {
                         const isListed = map[m.id];
-                        const status = getListingStatus(it.id, m.id);
                         const listings = getItemListings(it.id);
-                        const listing = listings.find(l => l.marketplace === m.id);
+                        const listing =
+                          listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                          listings.find((l) => l.marketplace === m.id) ||
+                          null;
                         const isConnected = isPlatformConnected(m.id);
                         const hasActiveJob = activeJobs[it.id];
+                        const listingUrl =
+                          typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
+                            ? listing.marketplace_listing_url
+                            : null;
                         
                         return (
                           <div key={m.id} className="flex flex-col items-center gap-1">
                             <div
-                              className={`inline-flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
+                              className={`relative inline-flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
                                 isListed
                                   ? "bg-white dark:bg-slate-900 border-emerald-500/40 opacity-100 shadow-sm"
                                   : "bg-gray-500/10 border-gray-300 dark:border-slate-600 opacity-50 hover:opacity-70"
                               }`}
-                              title={isListed ? `✓ Listed on ${m.label}` : `Not listed on ${m.label}`}
+                              title={
+                                isListed
+                                  ? (listingUrl ? `✓ Listed on ${m.label} (click to open)` : `✓ Listed on ${m.label}`)
+                                  : `Not listed on ${m.label}`
+                              }
+                              role={listingUrl ? "button" : undefined}
+                              tabIndex={listingUrl ? 0 : undefined}
+                              onClick={() => {
+                                if (listingUrl) window.open(listingUrl, '_blank');
+                              }}
+                              onKeyDown={(e) => {
+                                if (!listingUrl) return;
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  window.open(listingUrl, '_blank');
+                                }
+                              }}
                             >
                               {renderMarketplaceIcon(m, "w-6 h-6")}
+                              {isListed && listingUrl && (
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-1 shadow">
+                                  <ExternalLink className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
+                                </span>
+                              )}
                             </div>
                             {!isListed && isConnected && !hasActiveJob && m.id === 'mercari' && (
                               <MercariListButton
@@ -1801,9 +1828,16 @@ export default function Crosslist() {
                         const isListed = map[m.id];
                         const status = getListingStatus(it.id, m.id);
                         const listings = getItemListings(it.id);
-                        const listing = listings.find(l => l.marketplace === m.id);
+                        const listing =
+                          listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                          listings.find((l) => l.marketplace === m.id) ||
+                          null;
                         const isConnected = isPlatformConnected(m.id);
                         const hasActiveJob = activeJobs[it.id];
+                        const listingUrl =
+                          typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
+                            ? listing.marketplace_listing_url
+                            : null;
                         
                         return (
                           <div
@@ -1811,14 +1845,35 @@ export default function Crosslist() {
                             className="flex flex-col items-center gap-1"
                           >
                             <div
-                              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all backdrop-blur-sm ${
+                              className={`relative inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all backdrop-blur-sm ${
                                 isListed
                                   ? "bg-green-600/30 border-green-500/50 opacity-100"
                                   : "bg-gray-200 border-gray-300 opacity-40"
                               }`}
-                              title={isListed ? `Listed on ${m.label}` : `Not listed on ${m.label}`}
+                              title={
+                                isListed
+                                  ? (listingUrl ? `Listed on ${m.label} (click to open)` : `Listed on ${m.label}`)
+                                  : `Not listed on ${m.label}`
+                              }
+                              role={listingUrl ? "button" : undefined}
+                              tabIndex={listingUrl ? 0 : undefined}
+                              onClick={() => {
+                                if (listingUrl) window.open(listingUrl, '_blank');
+                              }}
+                              onKeyDown={(e) => {
+                                if (!listingUrl) return;
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  window.open(listingUrl, '_blank');
+                                }
+                              }}
                             >
                               {renderMarketplaceIcon(m, "w-4 h-4")}
+                              {isListed && listingUrl && (
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-0.5 shadow">
+                                  <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
+                                </span>
+                              )}
                             </div>
                             {status === 'not_listed' ? (
                               isConnected && m.id === 'mercari' && !hasActiveJob ? (
@@ -1829,27 +1884,8 @@ export default function Crosslist() {
                                 />
                               ) : null
                             ) : (
-                              <div className="flex gap-1">
-                                {listing?.marketplace_listing_url && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => window.open(listing.marketplace_listing_url, '_blank')}
-                                    className="text-xs h-6 px-1"
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDelistFromMarketplace(it.id, listing?.marketplace_listing_id, m.id)}
-                                  disabled={crosslistLoading}
-                                  className="text-xs h-6 px-1 text-destructive"
-                                >
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              </div>
+                              // Listed: the icon itself is clickable when we have a URL; no per-item "X" buttons here.
+                              null
                             )}
                             {hasActiveJob && activeJobs[it.id] && (
                               <span className="text-xs text-blue-600">Processing...</span>
