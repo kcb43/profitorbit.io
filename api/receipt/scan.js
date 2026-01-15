@@ -29,6 +29,27 @@ function buildMockReceipt({ fileName } = {}) {
   };
 }
 
+function isAllowedOrigin(origin) {
+  if (!origin || typeof origin !== "string") return false;
+  // Allow first-party + common dev + Vercel preview.
+  if (origin === "https://profitorbit.io") return true;
+  if (/^https:\/\/([a-z0-9-]+\.)?profitorbit\.io$/i.test(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
+  if (/^http:\/\/localhost:\d+$/i.test(origin)) return true;
+  if (/^http:\/\/127\.0\.0\.1:\d+$/i.test(origin)) return true;
+  return false;
+}
+
+function setCors(req, res) {
+  const origin = req.headers?.origin;
+  if (isAllowedOrigin(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Receipt-Scan-Mock");
+}
+
 function extractJsonObject(text) {
   if (!text || typeof text !== "string") return null;
   const start = text.indexOf("{");
@@ -68,9 +89,7 @@ function normalizeReceiptPayload(raw) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCors(req, res);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -78,10 +97,17 @@ export default async function handler(req, res) {
   try {
     const openaiApiKey = process.env.OPENAI_API_KEY;
     const mode = String(process.env.RECEIPT_SCANNER_MODE || "").toLowerCase(); // "mock" | "openai"
+    const debug = String(process.env.RECEIPT_SCANNER_DEBUG || "") === "1";
 
     const { imageBase64, fileName } = req.body || {};
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       return res.status(400).json({ error: 'imageBase64 is required' });
+    }
+
+    // Basic safety: prevent extremely large payloads from exhausting memory/time.
+    // (fileToBase64DataUrl produces a data URL, which is bigger than raw bytes).
+    if (imageBase64.length > 12_000_000) {
+      return res.status(413).json({ error: "Receipt image too large. Please upload a smaller image." });
     }
 
     // Always allow forcing mock mode (useful for development + demos).
@@ -116,6 +142,7 @@ Return ONLY valid JSON with exactly these keys. Do not include markdown.`;
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         temperature: 0.0,
+        max_tokens: 700,
         messages: [
           { role: 'system', content: 'Return only JSON.' },
           {
@@ -138,12 +165,15 @@ Return ONLY valid JSON with exactly these keys. Do not include markdown.`;
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Unknown error' }));
       // Fail soft: return a mock payload so the UI stays unblocked.
-      return res.status(200).json({
+      const base = {
         ...buildMockReceipt({ fileName }),
         confidence: "fallback",
-        error: "Receipt scan failed",
-        details: err,
-      });
+      };
+      return res.status(200).json(
+        debug
+          ? { ...base, error: "Receipt scan failed", details: err }
+          : base
+      );
     }
 
     const data = await response.json();
@@ -159,12 +189,15 @@ Return ONLY valid JSON with exactly these keys. Do not include markdown.`;
 
     if (!parsed) {
       // Fail soft: return mock payload so UI stays fast.
-      return res.status(200).json({
+      const base = {
         ...buildMockReceipt({ fileName }),
         confidence: "fallback",
-        error: "Model did not return valid JSON",
-        raw: content,
-      });
+      };
+      return res.status(200).json(
+        debug
+          ? { ...base, error: "Model did not return valid JSON", raw: content }
+          : base
+      );
     }
 
     return res.status(200).json(normalizeReceiptPayload(parsed));
@@ -172,12 +205,15 @@ Return ONLY valid JSON with exactly these keys. Do not include markdown.`;
     console.error('Receipt scan error:', e);
     // Fail soft: return mock payload so UI stays unblocked.
     const message = String(e?.message || e);
-    return res.status(200).json({
+    const base = {
       ...buildMockReceipt(),
       confidence: "fallback",
-      error: "Internal error",
-      details: message,
-    });
+    };
+    return res.status(200).json(
+      debug
+        ? { ...base, error: "Internal error", details: message }
+        : base
+    );
   }
 }
 
