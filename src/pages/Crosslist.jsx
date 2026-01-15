@@ -414,9 +414,6 @@ export default function Crosslist() {
     'photos',
     'notes',
     'deleted_at',
-    'marketplace_listings',
-    'ebay_listing_id',
-    'facebook_listing_id',
   ].join(',')), []);
 
   const {
