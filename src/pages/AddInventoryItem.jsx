@@ -871,21 +871,19 @@ export default function AddInventoryItem() {
                   )}
 
                   {/* Additional Actions */}
-                  {formData.photos.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setReceiptDialogOpen(true)}
-                        disabled={uploadingPhotos}
-                        className="flex items-center gap-2"
-                      >
-                        <Scan className="w-4 h-4" />
-                        Scan Receipt
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setReceiptDialogOpen(true)}
+                      disabled={uploadingPhotos || isReceiptScanning}
+                      className="flex items-center gap-2"
+                    >
+                      <Scan className="w-4 h-4" />
+                      Scan Receipt
+                    </Button>
+                  </div>
 
                   {/* Hidden file inputs */}
                   <input
