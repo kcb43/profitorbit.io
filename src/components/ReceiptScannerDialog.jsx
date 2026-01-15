@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ export default function ReceiptScannerDialog({
 }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
+  const lastAutoScannedNameRef = useRef("");
 
   const handleFileChange = (event) => {
     setError("");
@@ -29,17 +30,27 @@ export default function ReceiptScannerDialog({
       setFile(null);
       return;
     }
-    if (!selected.type.startsWith("image/") && !selected.type.includes("pdf")) {
-      setError("Please upload an image or PDF receipt.");
+    // V1: images only (OpenAI Vision expects images). PDFs can be supported later by rasterizing.
+    if (!selected.type.startsWith("image/")) {
+      setError("Please upload a receipt image (JPG, PNG, HEIC). PDFs are not supported yet.");
       setFile(null);
       return;
     }
     setFile(selected);
+
+    // Auto-scan immediately after selecting a file (prevents the “nothing happens” flow).
+    if (!isScanning && open) {
+      const key = `${selected.name}:${selected.size}:${selected.lastModified}`;
+      if (lastAutoScannedNameRef.current !== key) {
+        lastAutoScannedNameRef.current = key;
+        onScan?.(selected);
+      }
+    }
   };
 
   const handleScan = () => {
     if (!file) {
-      setError("Upload a receipt image or PDF before scanning.");
+      setError("Upload a receipt image before scanning.");
       return;
     }
     setError("");
@@ -64,24 +75,24 @@ export default function ReceiptScannerDialog({
             Scan Receipt
           </DialogTitle>
           <DialogDescription>
-            Upload a receipt image (JPG, PNG, HEIC) or PDF to auto-fill inventory
-            details using your receipt scanning service. This is a placeholder until
-            you connect a real OCR provider.
+            Upload a receipt image (JPG, PNG, HEIC) to auto-fill fields like title, total,
+            date, and line items.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="receipt-upload">Receipt image or PDF</Label>
+            <Label htmlFor="receipt-upload">Receipt image</Label>
             <Input
               id="receipt-upload"
               type="file"
-              accept="image/*,.pdf"
+              accept="image/*"
               onChange={handleFileChange}
               disabled={isScanning}
             />
             <p className="text-xs text-muted-foreground">
-              Supported: JPG, PNG, HEIC, PDF. Max size 10MB (enforced by provider).
+              Supported: JPG, PNG, HEIC. Tip: if nothing happens after selecting a file,
+              try a smaller image.
             </p>
             {file && (
               <div className="text-xs text-muted-foreground">

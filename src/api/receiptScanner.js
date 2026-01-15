@@ -1,8 +1,13 @@
 async function fileToBase64DataUrl(file) {
+  if (!file) throw new Error("No file selected");
+  // Keep client-side errors explicit so “nothing happens” is never silent.
+  if (typeof file.size === "number" && file.size > 7_500_000) {
+    throw new Error("Receipt image is too large. Please upload a smaller image (under ~7MB).");
+  }
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error("Failed to read receipt file on this device/browser."));
     reader.readAsDataURL(file);
   });
   return String(base64);
