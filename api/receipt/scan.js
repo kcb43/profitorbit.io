@@ -5,7 +5,7 @@
  * https://github.com/datasciencecampus/receipt_scanner?tab=readme-ov-file
  *
  * Input: { imageBase64, fileName? }
- * Output: { merchant, purchase_date, total, payment_method, currency, line_items[] }
+ * Output: { merchant, purchase_date, total, payment_method, currency, suggested_title, line_items[] }
  */
 
 function buildMockReceipt({ fileName } = {}) {
@@ -17,6 +17,7 @@ function buildMockReceipt({ fileName } = {}) {
     total: "",
     payment_method: "",
     currency: "USD",
+    suggested_title: safeName ? `Purchase from ${safeName}` : "Receipt purchase",
     line_items: [
       { name: safeName ? `Receipt image: ${safeName}` : "Sample item", price: "" },
       { name: "Another item", price: "" },
@@ -58,6 +59,7 @@ function normalizeReceiptPayload(raw) {
     total: obj.total ? String(obj.total) : "",
     payment_method: obj.payment_method ? String(obj.payment_method) : "",
     currency: obj.currency ? String(obj.currency) : "USD",
+    suggested_title: obj.suggested_title ? String(obj.suggested_title) : "",
     line_items,
     subtotal: obj.subtotal ? String(obj.subtotal) : "",
     tax: obj.tax ? String(obj.tax) : "",
@@ -100,6 +102,7 @@ Extract the following fields from the receipt image:
 - total (number as string, e.g. "23.45", else empty string)
 - payment_method (string like "Visa", "Mastercard", "Cash", else empty string)
 - currency (string like "USD", else "USD")
+- suggested_title (short human-friendly title summarizing what was purchased; 3-8 words; no quotes; else empty string)
 - line_items (array of { name: string, price: string })
 
 Return ONLY valid JSON with exactly these keys. Do not include markdown.`;

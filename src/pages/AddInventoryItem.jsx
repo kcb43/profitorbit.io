@@ -606,9 +606,19 @@ export default function AddInventoryItem() {
       const parsed = await scanReceipt(file);
       setFormData((prev) => {
         const next = { ...prev };
+        // Fill item title if empty (never overwrite what the user already typed).
+        if (!prev.item_name?.trim()) {
+          const suggested = parsed?.suggested_title ? String(parsed.suggested_title).trim() : "";
+          const fromLineItems = Array.isArray(parsed?.line_items)
+            ? (parsed.line_items.find((li) => String(li?.name || "").trim())?.name || "")
+            : "";
+          const fallback = suggested || String(fromLineItems || "").trim();
+          if (fallback) next.item_name = fallback;
+        }
         if (parsed?.merchant) next.source = String(parsed.merchant);
         if (parsed?.purchase_date) next.purchase_date = String(parsed.purchase_date);
-        if (parsed?.total) next.purchase_price = String(parsed.total);
+        // Fill purchase price (total) if empty (do not overwrite user input).
+        if (parsed?.total && !String(prev.purchase_price || "").trim()) next.purchase_price = String(parsed.total);
 
         // Append parsed line items into Description (this carries into Crosslist).
         if (Array.isArray(parsed?.line_items) && parsed.line_items.length > 0) {
