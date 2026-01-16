@@ -33372,7 +33372,7 @@ export default function CrosslistComposer() {
                   toast({ title: 'Missing listing id', description: 'No Mercari listing id found for this item.', variant: 'destructive' });
                   return;
                 }
-                if (!confirm('Delete on Mercari?')) return;
+                if (!confirm('Delist on Mercari?')) return;
 
                 const ext = window?.ProfitOrbitExtension;
                 if (!ext?.delistMercariListing) {
@@ -33405,7 +33405,7 @@ export default function CrosslistComposer() {
                     await refreshListingRecords(currentEditingItemId);
                   }
 
-                  toast({ title: 'Deleted', description: 'Mercari listing deleted.' });
+                  toast({ title: 'Delisted', description: 'Mercari listing removed.' });
                 } catch (e) {
                   toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
                 } finally {
@@ -33414,57 +33414,7 @@ export default function CrosslistComposer() {
               }}
             >
               <Unlock className="h-4 w-4" />
-              Delete on Mercari
-            </Button>
-          )}
-
-          {(marketplaceId === 'mercari' || marketplaceId === 'facebook') && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-              disabled={isSaving}
-              onClick={async () => {
-                if (!confirm('Remove this listing from Profit Orbit? (This does NOT delist it on the marketplace yet.)')) return;
-                try {
-                  setIsSaving(true);
-                  if (currentEditingItemId) {
-                    await crosslistingEngine.removeMarketplaceListingForItem(currentEditingItemId, marketplaceId);
-                    await refreshListingRecords(currentEditingItemId);
-                  }
-                  if (marketplaceId === 'mercari') {
-                    setMercariListingUrl('');
-                    setMercariListingId(null);
-                    setMercariJobId(null);
-                    if (currentEditingItemId) {
-                      await base44.entities.InventoryItem.update(currentEditingItemId, {
-                        status: 'available',
-                        mercari_listing_id: '',
-                      });
-                      queryClient.invalidateQueries(['inventoryItems']);
-                    }
-                  }
-                  if (marketplaceId === 'facebook') {
-                    setFacebookListingUrl('');
-                    setFacebookListingId(null);
-                    if (currentEditingItemId) {
-                      await base44.entities.InventoryItem.update(currentEditingItemId, {
-                        status: 'available',
-                        facebook_listing_id: '',
-                      });
-                      queryClient.invalidateQueries(['inventoryItems']);
-                    }
-                  }
-                  toast({ title: 'Removed from app', description: 'Marketplace delist is not implemented yet.' });
-                } catch (e) {
-                  toast({ title: 'Failed', description: e?.message || String(e), variant: 'destructive' });
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            >
-              <X className="h-4 w-4" />
-              Remove from App
+              Delist on Mercari
             </Button>
           )}
         </div>
@@ -33511,6 +33461,8 @@ export default function CrosslistComposer() {
                 listed_at: new Date().toISOString(),
                 metadata: { jobId: job?.id || null, result: job?.result?.mercari || null },
               });
+              // Ensure Listing Info panel updates immediately (it's driven by listingRecordsByMarketplace)
+              await refreshListingRecords(inventoryItemId);
             }
           } catch (_) {}
 
@@ -36494,8 +36446,8 @@ export default function CrosslistComposer() {
           return;
         }
 
-        // Validate that brand is selected (required for Mercari)
-        if (!mercariForm.brand) {
+        // Validate that brand is selected (required for Mercari unless user marks "No Brand / Unsure")
+        if (!mercariForm.noBrand && !mercariForm.brand) {
           toast({
             title: "Brand Required",
             description: "Please select a brand from the Mercari brand list before listing.",
@@ -36586,7 +36538,7 @@ export default function CrosslistComposer() {
           mercariCategory: mercariForm.mercariCategory || '', // Mercari-specific category
           mercariCategoryId: mercariForm.mercariCategoryId || '', // Mercari category ID
           condition: mercariForm.condition || generalForm.condition,
-          brand: mercariForm.brand || generalForm.brand,
+          brand: mercariForm.noBrand ? '' : (mercariForm.brand || generalForm.brand),
           color: mercariForm.color || generalForm.color,
           size: mercariForm.size || generalForm.size,
           photos: mercariForm.photos?.length > 0 ? mercariForm.photos : generalForm.photos || [],
@@ -36639,6 +36591,15 @@ export default function CrosslistComposer() {
                 metadata: { jobId: jid, note: 'Mercari listing in progress (extension fake job)' },
               }).catch(() => {});
             }
+          }
+        } catch (_) {}
+
+        // If the intercept returns a completed fake job immediately, the poller will pick it up,
+        // but we also want the UI to refresh promptly.
+        try {
+          if (resp?.jobId && String(resp?.status || '').toLowerCase() === 'completed' && currentEditingItemId) {
+            // Kick a refresh so Listing Info can appear ASAP; the poller will fill URL/ID.
+            refreshListingRecords(currentEditingItemId).catch(() => {});
           }
         } catch (_) {}
 
@@ -41265,13 +41226,36 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Brand Section - Mercari-specific brands only, required */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                  <Label className="text-xs mb-1.5 block">
+                    Brand {!mercariForm.noBrand && <span className="text-red-500">*</span>}
+                  </Label>
+
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground mb-2 select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!mercariForm.noBrand}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        handleMarketplaceChange("mercari", "noBrand", checked);
+                        if (checked) {
+                          // Match Vendoo UX: lock brand picker + remove requirement
+                          handleMarketplaceChange("mercari", "brand", "");
+                          handleMarketplaceChange("mercari", "inheritGeneral", false);
+                          setMercariBrandSearchOpenMobile(false);
+                          setMercariBrandSearchOpenDesktop(false);
+                          setMercariBrandSearchValue("");
+                        }
+                      }}
+                    />
+                    No Brand / Unsure
+                  </label>
                   <Popover 
-                    open={mercariBrandSearchOpenMobile} 
+                    open={!mercariForm.noBrand && mercariBrandSearchOpenMobile} 
                     onOpenChange={(open) => {
+                      if (mercariForm.noBrand) return;
                       setMercariBrandSearchOpenMobile(open);
                       setMercariBrandSearchOpenDesktop(false); // Close desktop if mobile opens
                       if (open) {
@@ -41289,7 +41273,8 @@ export default function CrosslistComposer() {
                         variant="outline"
                         role="combobox"
                         aria-expanded={mercariBrandSearchOpenMobile}
-                        className="w-full justify-between"
+                        disabled={!!mercariForm.noBrand}
+                        className={cn("w-full justify-between", mercariForm.noBrand ? "opacity-60 cursor-not-allowed" : "")}
                       >
                         {(() => {
                           // If inheritGeneral is true, prioritize showing the inherited brand
@@ -41324,6 +41309,7 @@ export default function CrosslistComposer() {
                       >
                         <CommandInput 
                           placeholder="Search brand..." 
+                          disabled={!!mercariForm.noBrand}
                           value={mercariBrandSearchValue}
                           onValueChange={(value) => {
                             setMercariBrandSearchValue(value);
