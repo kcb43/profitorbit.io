@@ -33223,7 +33223,8 @@ export default function CrosslistComposer() {
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
+        // Prefer the most actionable message (Trading API often returns XML in `details`)
+        throw new Error(errorData.message || errorData.details || errorData.error || `HTTP ${response.status}`);
       }
       const result = await response.json();
       if (result.Ack !== 'Success' && result.Ack !== 'Warning') {

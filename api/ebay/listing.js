@@ -58,19 +58,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Operation parameter is required (AddFixedPriceItem, ReviseItem, EndItem, GetItem)' });
     }
 
-    // Determine environment
+    // Determine environment (default to production unless explicitly sandbox)
     const clientId = process.env.VITE_EBAY_CLIENT_ID || process.env.EBAY_CLIENT_ID;
     const devId = process.env.VITE_EBAY_DEV_ID || process.env.EBAY_DEV_ID;
     const clientSecret = process.env.VITE_EBAY_CLIENT_SECRET || process.env.EBAY_CLIENT_SECRET;
-    const ebayEnv = process.env.EBAY_ENV;
-    const isProductionByEnv = ebayEnv === 'production' || ebayEnv?.trim() === 'production';
-    const isProductionByClientId = clientId && (
-      clientId.includes('-PRD-') || 
-      clientId.includes('-PRD') || 
-      clientId.startsWith('PRD-') ||
-      /PRD/i.test(clientId)
-    );
-    const useProduction = isProductionByEnv || isProductionByClientId;
+    const ebayEnvRaw = process.env.EBAY_ENV;
+    const ebayEnv = String(ebayEnvRaw || 'production').toLowerCase().trim();
+    const useProduction = ebayEnv !== 'sandbox';
     
     const baseUrl = useProduction
       ? 'https://api.ebay.com/ws/api.dll'
@@ -118,6 +112,9 @@ export default async function handler(req, res) {
           'X-EBAY-API-DEV-NAME': devId,
           'X-EBAY-API-APP-NAME': clientId || '',
           'X-EBAY-API-CERT-NAME': clientSecret || '',
+          // Some Trading API operations require OAuth user token via header
+          // Even when an eBayAuthToken is provided in XML, sending this header improves compatibility.
+          'X-EBAY-API-IAF-TOKEN': token,
           'X-EBAY-API-DETAIL-LEVEL': '0',
           'Content-Type': 'text/xml',
         },
@@ -128,8 +125,11 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         console.error('eBay Trading API error:', response.status, responseText);
+        const parsed = parseTradingAPIResponse(responseText);
         return res.status(response.status).json({
           error: 'eBay Trading API error',
+          message: parsed?.Errors?.length ? parsed.Errors.join(', ') : undefined,
+          errors: parsed?.Errors,
           details: responseText,
           status: response.status,
         });
@@ -170,6 +170,7 @@ export default async function handler(req, res) {
           'X-EBAY-API-DEV-NAME': devId,
           'X-EBAY-API-APP-NAME': clientId || '',
           'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-IAF-TOKEN': token,
           'X-EBAY-API-DETAIL-LEVEL': '0',
           'Content-Type': 'text/xml',
         },
@@ -180,8 +181,11 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         console.error('eBay Trading API error:', response.status, responseText);
+        const parsed = parseTradingAPIResponse(responseText);
         return res.status(response.status).json({
           error: 'eBay Trading API error',
+          message: parsed?.Errors?.length ? parsed.Errors.join(', ') : undefined,
+          errors: parsed?.Errors,
           details: responseText,
         });
       }
@@ -213,6 +217,7 @@ export default async function handler(req, res) {
           'X-EBAY-API-DEV-NAME': devId,
           'X-EBAY-API-APP-NAME': clientId || '',
           'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-IAF-TOKEN': token,
           'X-EBAY-API-DETAIL-LEVEL': '0',
           'Content-Type': 'text/xml',
         },
@@ -223,8 +228,11 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         console.error('eBay Trading API error:', response.status, responseText);
+        const parsed = parseTradingAPIResponse(responseText);
         return res.status(response.status).json({
           error: 'eBay Trading API error',
+          message: parsed?.Errors?.length ? parsed.Errors.join(', ') : undefined,
+          errors: parsed?.Errors,
           details: responseText,
         });
       }
@@ -266,6 +274,7 @@ export default async function handler(req, res) {
           'X-EBAY-API-DEV-NAME': devId,
           'X-EBAY-API-APP-NAME': clientId || '',
           'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-IAF-TOKEN': token,
           'X-EBAY-API-DETAIL-LEVEL': '0',
           'Content-Type': 'text/xml',
         },
@@ -276,8 +285,11 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         console.error('eBay Trading API error:', response.status, responseText);
+        const parsed = parseTradingAPIResponse(responseText);
         return res.status(response.status).json({
           error: 'eBay Trading API error',
+          message: parsed?.Errors?.length ? parsed.Errors.join(', ') : undefined,
+          errors: parsed?.Errors,
           details: responseText,
           status: response.status,
         });
@@ -317,6 +329,7 @@ export default async function handler(req, res) {
           'X-EBAY-API-DEV-NAME': devId,
           'X-EBAY-API-APP-NAME': clientId || '',
           'X-EBAY-API-CERT-NAME': clientSecret || '',
+          'X-EBAY-API-IAF-TOKEN': token,
           'X-EBAY-API-DETAIL-LEVEL': '0',
           'Content-Type': 'text/xml',
         },
@@ -327,8 +340,11 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         console.error('eBay Trading API error:', response.status, responseText);
+        const parsed = parseTradingAPIResponse(responseText);
         return res.status(response.status).json({
           error: 'eBay Trading API error',
+          message: parsed?.Errors?.length ? parsed.Errors.join(', ') : undefined,
+          errors: parsed?.Errors,
           details: responseText,
           status: response.status,
         });
@@ -674,9 +690,9 @@ function buildEndItemXML(itemId, token) {
   return `<?xml version="1.0" encoding="utf-8"?>
 <EndItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
-    <eBayAuthToken>${token}</eBayAuthToken>
+    <eBayAuthToken>${escapeXML(token || '')}</eBayAuthToken>
   </RequesterCredentials>
-  <ItemID>${itemId}</ItemID>
+  <ItemID>${escapeXML(itemId)}</ItemID>
   <EndingReason>NotAvailable</EndingReason>
 </EndItemRequest>`;
 }
