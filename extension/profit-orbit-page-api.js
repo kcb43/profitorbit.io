@@ -231,6 +231,28 @@
       return resp;
     },
 
+    async checkEbayListingStatus(payload) {
+      const listingUrl = String(payload?.listingUrl ?? payload?.url ?? '').trim();
+      const listingId = String(payload?.listingId ?? payload?.itemId ?? payload?.id ?? '').trim();
+      console.log('🟣 [eBay] Page API -> checkEbayListingStatus', { hasUrl: !!listingUrl, hasId: !!listingId });
+
+      const resp = await postAndWait(
+        'PO_CHECK_EBAY_LISTING_STATUS',
+        'PO_CHECK_EBAY_LISTING_STATUS_RESULT',
+        { listingUrl: listingUrl || null, listingId: listingId || null },
+        20000
+      );
+
+      try {
+        localStorage.setItem(
+          'profit_orbit_last_ebay_status_check',
+          JSON.stringify({ t: Date.now(), listingUrl: listingUrl || null, listingId: listingId || null, resp })
+        );
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Facebook API-mode listing entrypoint (no tabs/windows)
     async createFacebookListing(listingData, options = null) {
       const normalized = listingData && listingData.payload

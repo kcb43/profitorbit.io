@@ -1042,6 +1042,43 @@ async function mercariCheckPublicListingUrl(listingUrlOrId) {
   return { ok: true, url, httpStatus: status, availability: 'active' };
 }
 
+async function ebayCheckPublicListingUrl(listingUrlOrId) {
+  const input = String(listingUrlOrId || '').trim();
+  if (!input) throw new Error('Missing listingUrl/listingId');
+
+  const url = input.startsWith('http')
+    ? input
+    : `https://www.ebay.com/itm/${encodeURIComponent(input)}`;
+
+  const resp = await fetch(url, {
+    method: 'GET',
+    cache: 'no-store',
+    credentials: 'omit',
+  });
+  const status = resp.status;
+  const text = await resp.text().catch(() => '');
+  const lower = String(text || '').toLowerCase();
+
+  // Heuristics (best-effort, language-dependent)
+  const isEnded =
+    lower.includes('this listing was ended') ||
+    lower.includes('this listing has ended') ||
+    lower.includes('this listing is no longer available');
+
+  // Sold indicators vary; capture common phrases:
+  const isSold =
+    lower.includes('sold for') ||
+    lower.includes('this item has been sold') ||
+    (lower.includes('sold') && lower.includes('ended')) ||
+    (lower.includes('sold') && lower.includes('listing has ended'));
+
+  if (status === 404) return { ok: true, url, httpStatus: status, availability: 'not_found' };
+  if (isSold) return { ok: true, url, httpStatus: status, availability: 'sold' };
+  if (isEnded) return { ok: true, url, httpStatus: status, availability: 'ended' };
+  if (!resp.ok) return { ok: false, url, httpStatus: status, availability: 'unknown', error: `HTTP ${status}` };
+  return { ok: true, url, httpStatus: status, availability: 'active' };
+}
+
 function shouldRecordMercariUrl(url) {
   if (!url) return false;
   return (
@@ -2091,6 +2128,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, result });
       } catch (e) {
         console.error('🔴 [MERCARI] CHECK_MERCARI_LISTING_STATUS failed', e);
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (type === 'CHECK_EBAY_LISTING_STATUS') {
+    (async () => {
+      try {
+        const listingUrl =
+          message?.listingUrl ??
+          message?.url ??
+          message?.payload?.listingUrl ??
+          message?.payload?.url ??
+          null;
+        const listingId =
+          message?.listingId ??
+          message?.itemId ??
+          message?.payload?.listingId ??
+          message?.payload?.itemId ??
+          message?.payload?.id ??
+          null;
+
+        const target = listingUrl || listingId;
+        console.log('🟣 [EBAY] CHECK_EBAY_LISTING_STATUS received', {
+          fromTabId: sender?.tab?.id ?? null,
+          hasUrl: !!listingUrl,
+          hasId: !!listingId,
+        });
+
+        const result = await ebayCheckPublicListingUrl(target);
+        sendResponse({ success: true, result });
+      } catch (e) {
+        console.error('🔴 [EBAY] CHECK_EBAY_LISTING_STATUS failed', e);
         sendResponse({ success: false, error: e?.message || String(e) });
       }
     })();

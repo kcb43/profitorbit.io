@@ -61,6 +61,7 @@ import { UnifiedListingForm } from "@/components/UnifiedListingForm";
 import { ExternalLink, List } from "lucide-react";
 import { listingJobsApi, platformApi } from "@/api/listingApiClient";
 import { ListingJobTracker } from "@/components/ListingJobTracker";
+import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -1467,6 +1468,40 @@ export default function Crosslist() {
             </p>
           </div>
           <div className="hidden md:flex gap-2 flex-shrink-0 flex-wrap">
+            <Button
+              variant="outline"
+              className="whitespace-nowrap"
+              disabled={crosslistLoading}
+              onClick={async () => {
+                try {
+                  const ids = Array.isArray(inventory) ? inventory.map((i) => i?.id).filter(Boolean) : [];
+                  if (!ids.length) {
+                    toast({ title: 'Nothing to sync', description: 'No inventory items loaded yet.' });
+                    return;
+                  }
+                  setCrosslistLoading(true);
+                  toast({ title: 'Syncing sales…', description: 'Checking Mercari + eBay listing statuses.' });
+                  const summary = await syncSalesForInventoryItemIds(ids, { marketplaces: ['mercari', 'ebay'] });
+                  toast({
+                    title: 'Sales sync complete',
+                    description: `Sold: ${summary.sold} • Delisted: ${summary.delisted} • Sales created: ${summary.createdSales}`,
+                  });
+                  // Refresh UI (local listing records + inventory list)
+                  try {
+                    await Promise.all(ids.slice(0, 50).map((id) => crosslistingEngine.getMarketplaceListings(id).catch(() => [])));
+                  } catch (_) {}
+                  queryClient.invalidateQueries(['inventoryItems']);
+                  queryClient.invalidateQueries(['sales']);
+                } catch (e) {
+                  toast({ title: 'Sync failed', description: e?.message || String(e), variant: 'destructive' });
+                } finally {
+                  setCrosslistLoading(false);
+                }
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Sync Sales
+            </Button>
             <Button
               variant="outline"
               onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}

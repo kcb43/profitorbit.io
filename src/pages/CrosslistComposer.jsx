@@ -81,6 +81,7 @@ import { Check } from "lucide-react";
 // not the Facebook developer OAuth flow.
 import { listingJobsApi } from "@/api/listingApiClient";
 import { crosslistingEngine } from "@/services/CrosslistingEngine";
+import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -36669,6 +36670,42 @@ export default function CrosslistComposer() {
     });
   };
 
+  const getComposerItemIdsForSync = () => {
+    try {
+      // Prefer explicit ids query param
+      const params = new URLSearchParams(location.search);
+      const raw = params.get('ids') || '';
+      const ids = raw.split(',').map((s) => s.trim()).filter(Boolean);
+      if (ids.length) return ids;
+    } catch (_) {}
+    // Fallback to current item
+    return currentEditingItemId ? [currentEditingItemId] : [];
+  };
+
+  const handleSyncSales = async () => {
+    const ids = getComposerItemIdsForSync();
+    if (!ids.length) {
+      toast({ title: 'Nothing to sync', description: 'No item ids available to sync.' });
+      return;
+    }
+    try {
+      setIsSaving(true);
+      toast({ title: 'Syncing sales…', description: 'Checking Mercari + eBay listing statuses.' });
+      const summary = await syncSalesForInventoryItemIds(ids, { marketplaces: ['mercari', 'ebay'] });
+      toast({
+        title: 'Sales sync complete',
+        description: `Sold: ${summary.sold} • Delisted: ${summary.delisted} • Sales created: ${summary.createdSales}`,
+      });
+      if (currentEditingItemId) await refreshListingRecords(currentEditingItemId);
+      queryClient.invalidateQueries(['inventoryItems']);
+      queryClient.invalidateQueries(['sales']);
+    } catch (e) {
+      toast({ title: 'Sync failed', description: e?.message || String(e), variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleCrosslist = async (marketplaces) => {
     // List on multiple marketplaces
     const marketplacesToUse = marketplaces || ["ebay", "etsy", "mercari", "facebook"];
@@ -38767,6 +38804,10 @@ export default function CrosslistComposer() {
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
+                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                  <RefreshCw className="h-4 w-4" />
+                  Sync Sales
+                </Button>
               </div>
             </div>
           )}
@@ -40108,6 +40149,10 @@ export default function CrosslistComposer() {
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
+                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                  <RefreshCw className="h-4 w-4" />
+                  Sync Sales
+                </Button>
                 {isEbayListed() ? (
                   <Button variant="destructive" className="gap-2" onClick={handleEbayDelist} disabled={isSaving}>
                     <Unlock className="h-4 w-4" />
@@ -40687,6 +40732,10 @@ export default function CrosslistComposer() {
                 <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("etsy")}>
                   <Save className="h-4 w-4" />
                   Save
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                  <RefreshCw className="h-4 w-4" />
+                  Sync Sales
                 </Button>
                 <Button className="gap-2" onClick={() => handleListOnMarketplace("etsy")}>
                   List on Etsy
@@ -41715,6 +41764,10 @@ export default function CrosslistComposer() {
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
+                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                  <RefreshCw className="h-4 w-4" />
+                  Sync Sales
+                </Button>
                 <Button 
                   className="gap-2" 
                   onClick={() => handleListOnMarketplace("mercari")}
@@ -42734,6 +42787,10 @@ export default function CrosslistComposer() {
                 <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("facebook")}>
                   <Save className="h-4 w-4" />
                   Save
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                  <RefreshCw className="h-4 w-4" />
+                  Sync Sales
                 </Button>
                 <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")} disabled={isFacebookListing}>
                   {isFacebookListing ? (
@@ -44163,6 +44220,10 @@ export default function CrosslistComposer() {
                           <Save className="h-4 w-4" />
                           Save
                         </Button>
+                        <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                          <RefreshCw className="h-4 w-4" />
+                          Sync Sales
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -45484,6 +45545,10 @@ export default function CrosslistComposer() {
                           <Save className="h-4 w-4" />
                           Save
                         </Button>
+                        <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                          <RefreshCw className="h-4 w-4" />
+                          Sync Sales
+                        </Button>
                         {isEbayListed() ? (
                           <Button variant="destructive" className="gap-2" onClick={handleEbayDelist} disabled={isSaving}>
                             <Unlock className="h-4 w-4" />
@@ -46051,6 +46116,10 @@ export default function CrosslistComposer() {
                         <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("etsy")}>
                           <Save className="h-4 w-4" />
                           Save
+                        </Button>
+                        <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                          <RefreshCw className="h-4 w-4" />
+                          Sync Sales
                         </Button>
                         <Button className="gap-2" onClick={() => handleListOnMarketplace("etsy")}>
                           List on Etsy
@@ -47008,6 +47077,10 @@ export default function CrosslistComposer() {
                         <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("mercari")}>
                           <Save className="h-4 w-4" />
                           Save
+                        </Button>
+                        <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                          <RefreshCw className="h-4 w-4" />
+                          Sync Sales
                         </Button>
                         <Button 
                           className="gap-2" 
@@ -48003,6 +48076,10 @@ export default function CrosslistComposer() {
                         <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("facebook")}>
                           <Save className="h-4 w-4" />
                           Save
+                        </Button>
+                        <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                          <RefreshCw className="h-4 w-4" />
+                          Sync Sales
                         </Button>
                         <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")} disabled={isFacebookListing}>
                           {isFacebookListing ? (
