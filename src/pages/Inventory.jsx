@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { inventoryApi } from "@/api/inventoryApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -299,7 +300,7 @@ export default function InventoryPage() {
       try {
         await Promise.all(
           // Hard delete after 30 days (soft delete uses deleted_at).
-          itemsToHardDelete.map(item => base44.entities.InventoryItem.delete(item.id, true))
+          itemsToHardDelete.map(item => inventoryApi.delete(item.id, true))
         );
         queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       } catch (error) {
@@ -321,7 +322,7 @@ export default function InventoryPage() {
       
       // First, check if the item exists and what fields it has
       try {
-        const beforeItem = await base44.entities.InventoryItem.get(itemId);
+        const beforeItem = await inventoryApi.get(itemId);
         console.log("Item before update:", beforeItem);
         console.log("Item fields:", Object.keys(beforeItem));
       } catch (e) {
@@ -329,7 +330,7 @@ export default function InventoryPage() {
       }
       
       // Perform the update
-      const updateResponse = await base44.entities.InventoryItem.update(itemId, {
+      const updateResponse = await inventoryApi.update(itemId, {
         deleted_at: deletedAt
       });
       console.log("Update response:", updateResponse);
@@ -339,7 +340,7 @@ export default function InventoryPage() {
       
       // Verify the update was successful by fetching the item
       try {
-        const updatedItem = await base44.entities.InventoryItem.get(itemId);
+        const updatedItem = await inventoryApi.get(itemId);
         console.log("Item after update:", updatedItem);
         console.log("Item fields after update:", Object.keys(updatedItem));
         console.log("deleted_at value:", updatedItem.deleted_at);
@@ -384,7 +385,7 @@ export default function InventoryPage() {
         try {
           await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
           // Update the cache with the verified server data
-          const updatedItem = await base44.entities.InventoryItem.get(itemId);
+          const updatedItem = await inventoryApi.get(itemId);
           if (updatedItem.deleted_at) {
             // Ensure cache has the correct deleted_at value
             queryClient.setQueryData(['inventoryItems'], (old = []) => {
@@ -422,7 +423,7 @@ export default function InventoryPage() {
   const recoverItemMutation = useMutation({
     mutationFn: async (itemId) => {
       try {
-        await base44.entities.InventoryItem.update(itemId, {
+        await inventoryApi.update(itemId, {
           deleted_at: null
         });
         return itemId;
@@ -451,7 +452,7 @@ export default function InventoryPage() {
     mutationFn: async (itemId) => {
       try {
         // Hard delete (permanent) — bypass soft delete.
-        await base44.entities.InventoryItem.delete(itemId, true);
+        await inventoryApi.delete(itemId, true);
         return itemId;
       } catch (error) {
         throw new Error(`Failed to permanently delete item: ${error.message}`);
@@ -502,7 +503,7 @@ export default function InventoryPage() {
       
       for (const id of itemIds) {
         try {
-          await base44.entities.InventoryItem.update(id, {
+          await inventoryApi.update(id, {
             deleted_at: deletedAt
           });
           results.push({ id, success: true });
@@ -545,7 +546,7 @@ export default function InventoryPage() {
           const successfulIds = results.filter(r => r.success).map(r => r.id);
           for (const id of successfulIds) {
             try {
-              const updatedItem = await base44.entities.InventoryItem.get(id);
+              const updatedItem = await inventoryApi.get(id);
               if (updatedItem.deleted_at) {
                 // Ensure cache has the correct deleted_at value
                 queryClient.setQueryData(['inventoryItems'], (old = []) => {
@@ -596,7 +597,7 @@ export default function InventoryPage() {
       const results = [];
       for (const id of ids) {
         try {
-          await base44.entities.InventoryItem.update(id, updates);
+          await inventoryApi.update(id, updates);
           results.push({ id, success: true });
         } catch (error) {
           results.push({ id, success: false, error: error.message });
@@ -690,7 +691,7 @@ export default function InventoryPage() {
           photos: updatedPhotos,
         };
         console.log('Update payload:', updatePayload);
-        await base44.entities.InventoryItem.update(itemId, updatePayload);
+        await inventoryApi.update(itemId, updatePayload);
       } else {
         // No images array or not specified - update both image_url and create/update images array
         console.log('Updating single image - updating both image_url and images array');
@@ -703,7 +704,7 @@ export default function InventoryPage() {
           photos: updatedPhotos,
         };
         console.log('Update payload:', updatePayload);
-        await base44.entities.InventoryItem.update(itemId, updatePayload);
+        await inventoryApi.update(itemId, updatePayload);
       }
       
       console.log('Database update complete - new image should be visible');
@@ -773,7 +774,7 @@ export default function InventoryPage() {
   // Mutation for dismissing/undismissing return deadline
   const toggleReturnDeadlineDismissMutation = useMutation({
     mutationFn: async ({ itemId, dismissed }) => {
-      await base44.entities.InventoryItem.update(itemId, {
+      await inventoryApi.update(itemId, {
         return_deadline_dismissed: dismissed
       });
       return { itemId, dismissed };
@@ -865,7 +866,7 @@ export default function InventoryPage() {
         imageUrl: uploadedUrls[idx] || p.imageUrl,
         isMain: idx === 0,
       }));
-      await base44.entities.InventoryItem.update(imageToEdit.itemId, {
+      await inventoryApi.update(imageToEdit.itemId, {
         images: uploadedUrls,
         image_url: uploadedUrls[0] || item.image_url,
         photos: updatedPhotos,
@@ -2916,7 +2917,7 @@ export default function InventoryPage() {
           
           try {
             // Update the item with the new images array
-            await base44.entities.InventoryItem.update(item.id, {
+            await inventoryApi.update(item.id, {
               images: updatedImages
             });
             

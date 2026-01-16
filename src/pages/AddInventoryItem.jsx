@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { inventoryApi } from "@/api/inventoryApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -139,13 +140,13 @@ export default function AddInventoryItem() {
 
   const { data: existingItem, isLoading: isLoadingItem } = useQuery({
     queryKey: ['inventoryItem', itemId],
-    queryFn: () => base44.entities.InventoryItem.get(itemId),
+    queryFn: () => inventoryApi.get(itemId),
     enabled: !!itemId && !copyId,
   });
 
   const { data: itemToCopy, isLoading: isLoadingCopy } = useQuery({
     queryKey: ['inventoryItem', copyId],
-    queryFn: () => base44.entities.InventoryItem.get(copyId),
+    queryFn: () => inventoryApi.get(copyId),
     enabled: !!copyId,
   });
 
@@ -297,8 +298,8 @@ export default function AddInventoryItem() {
     mutationFn: (data) => {
       const numericData = buildInventoryPayload(data);
       return (itemId && !copyId)
-        ? base44.entities.InventoryItem.update(itemId, numericData)
-        : base44.entities.InventoryItem.create(numericData);
+        ? inventoryApi.update(itemId, numericData)
+        : inventoryApi.create(numericData);
     },
     onMutate: async (data) => {
       const payload = buildInventoryPayload(data);

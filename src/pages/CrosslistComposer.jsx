@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { inventoryApi } from "@/api/inventoryApi";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -33107,14 +33108,14 @@ export default function CrosslistComposer() {
       if (itemIds.length > 0) {
         const results = await Promise.all(
           itemIds.map((id) =>
-            base44.entities.InventoryItem.get(id).catch(() => null)
+            inventoryApi.get(id).catch(() => null)
           )
         );
         return results.filter(Boolean);
       }
 
       // Fallback: when no ids are provided, load inventory for manual selection flows.
-      return await base44.entities.InventoryItem.list("-purchase_date", { limit: 5000 });
+      return await inventoryApi.list("-purchase_date", { limit: 5000 });
     },
     placeholderData: prefillItemsFromNav.length > 0 ? prefillItemsFromNav : [],
     staleTime: 60_000,
@@ -33240,7 +33241,7 @@ export default function CrosslistComposer() {
 
       if (currentEditingItemId) {
         try {
-          await base44.entities.InventoryItem.update(currentEditingItemId, {
+          await inventoryApi.update(currentEditingItemId, {
             status: 'available',
             ebay_listing_id: '',
           });
@@ -35913,10 +35914,10 @@ export default function CrosslistComposer() {
           let savedItem;
           if (currentEditingItemId) {
             // Update existing inventory item
-            savedItem = await base44.entities.InventoryItem.update(currentEditingItemId, inventoryData);
+            savedItem = await inventoryApi.update(currentEditingItemId, inventoryData);
           } else {
             // Create new inventory item
-            savedItem = await base44.entities.InventoryItem.create(inventoryData);
+            savedItem = await inventoryApi.create(inventoryData);
           }
 
           if (savedItem?.id) {
@@ -36189,7 +36190,7 @@ export default function CrosslistComposer() {
           if (currentEditingItemId && listingItemId) {
             try {
               // Update inventory item status with listing info
-              const updatedItem = await base44.entities.InventoryItem.update(currentEditingItemId, {
+              const updatedItem = await inventoryApi.update(currentEditingItemId, {
                 status: 'listed',
                 ebay_listing_id: String(listingItemId),
                 marketplace_listings: {
@@ -36350,7 +36351,7 @@ export default function CrosslistComposer() {
             try {
               const marketplaceId = listingIdStr;
               // Update inventory item status with listing info
-              await base44.entities.InventoryItem.update(currentEditingItemId, {
+              await inventoryApi.update(currentEditingItemId, {
                 status: 'listed',
                 facebook_listing_id: marketplaceId || null,
                 marketplace_listings: {
@@ -36906,7 +36907,7 @@ export default function CrosslistComposer() {
       // Update inventory item status if all listings succeeded
       if (results.length > 0 && currentEditingItemId) {
         try {
-          await base44.entities.InventoryItem.update(currentEditingItemId, {
+          await inventoryApi.update(currentEditingItemId, {
             status: 'listed',
           });
           queryClient.invalidateQueries(['inventoryItems']);
@@ -37407,10 +37408,10 @@ export default function CrosslistComposer() {
       let savedItem;
       if (currentEditingItemId) {
         // Update existing item
-        savedItem = await base44.entities.InventoryItem.update(currentEditingItemId, inventoryData);
+        savedItem = await inventoryApi.update(currentEditingItemId, inventoryData);
       } else {
         // Create new item
-        savedItem = await base44.entities.InventoryItem.create(inventoryData);
+        savedItem = await inventoryApi.create(inventoryData);
       }
 
       if (savedItem?.id) {

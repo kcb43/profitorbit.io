@@ -1,6 +1,7 @@
 import { base44 } from "@/api/base44Client";
 import { crosslistingEngine } from "@/services/CrosslistingEngine";
 import { getEbayItemUrl } from "@/utils/ebayHelpers";
+import { inventoryApi } from "@/api/inventoryApi";
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -120,7 +121,7 @@ export async function syncSalesForInventoryItemIds(itemIds, options = {}) {
 
           if (!already) {
             // Create a Sale record with best-effort data from inventory item.
-            const inv = await base44.entities.InventoryItem.get(inventoryItemId);
+            const inv = await inventoryApi.get(inventoryItemId);
 
             const salePayload = {
               inventory_id: inventoryItemId,
@@ -155,7 +156,7 @@ export async function syncSalesForInventoryItemIds(itemIds, options = {}) {
               const sold = Number(inv?.quantity_sold || 0);
               const nextSold = Number.isFinite(qty) && qty > 0 ? Math.min(qty, sold + 1) : sold + 1;
               const isSoldOut = Number.isFinite(qty) && qty > 0 ? nextSold >= qty : true;
-              await base44.entities.InventoryItem.update(inventoryItemId, {
+              await inventoryApi.update(inventoryItemId, {
                 quantity_sold: nextSold,
                 status: isSoldOut ? "sold" : inv?.status,
               });

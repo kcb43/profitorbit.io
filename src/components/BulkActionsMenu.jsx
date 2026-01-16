@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChevronDown, Copy, Edit, Trash2, ListChecks, ListX, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
+import { inventoryApi } from "@/api/inventoryApi";
 
 export default function BulkActionsMenu({ selectedItems = [], onActionComplete }) {
   const { toast } = useToast();
@@ -51,11 +51,11 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
       // Soft delete all selected items with verification
       for (const itemId of selectedItems) {
         try {
-          await base44.entities.InventoryItem.update(itemId, {
+          await inventoryApi.update(itemId, {
             deleted_at: deletedAt
           });
           // Verify the update was successful
-          const updatedItem = await base44.entities.InventoryItem.get(itemId);
+          const updatedItem = await inventoryApi.get(itemId);
           if (!updatedItem.deleted_at) {
             throw new Error("Server did not save deleted_at field");
           }
@@ -77,7 +77,7 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
           const successfulIds = results.filter(r => r.success).map(r => r.id);
           for (const id of successfulIds) {
             try {
-              const updatedItem = await base44.entities.InventoryItem.get(id);
+              const updatedItem = await inventoryApi.get(id);
               if (updatedItem.deleted_at) {
                 // Ensure cache has the correct deleted_at value
                 queryClient.setQueryData(['inventoryItems'], (old = []) => {
@@ -127,7 +127,7 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
     setIsProcessing(true);
     try {
       const updatePromises = selectedItems.map(itemId =>
-        base44.entities.InventoryItem.update(itemId, { status: 'available' })
+        inventoryApi.update(itemId, { status: 'available' })
       );
       await Promise.all(updatePromises);
 
@@ -155,12 +155,12 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
     try {
       // Fetch items, duplicate them
       const items = await Promise.all(
-        selectedItems.map(id => base44.entities.InventoryItem.get(id))
+        selectedItems.map(id => inventoryApi.get(id))
       );
 
       const copyPromises = items.map(item => {
         const { id, ...itemData } = item;
-        return base44.entities.InventoryItem.create({
+        return inventoryApi.create({
           ...itemData,
           item_name: `${itemData.item_name || 'Item'} (Copy)`,
         });

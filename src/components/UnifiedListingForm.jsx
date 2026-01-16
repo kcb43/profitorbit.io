@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Upload, X, Image as ImageIcon, Plus, Loader2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
-import { base44 } from '@/api/base44Client';
+import { inventoryApi } from '@/api/inventoryApi';
 import { cleanHtmlText } from '@/lib/utils';
 
 const MAX_PHOTOS = 12;
@@ -221,9 +221,9 @@ export function UnifiedListingForm({
       // Save inventory item
       let savedItem;
       if (itemId) {
-        savedItem = await base44.entities.InventoryItem.update(itemId, inventoryData);
+        savedItem = await inventoryApi.update(itemId, inventoryData);
       } else {
-        savedItem = await base44.entities.InventoryItem.create(inventoryData);
+        savedItem = await inventoryApi.create(inventoryData);
       }
 
       toast({

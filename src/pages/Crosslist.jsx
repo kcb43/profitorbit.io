@@ -61,6 +61,7 @@ import { UnifiedListingForm } from "@/components/UnifiedListingForm";
 import { ExternalLink, List } from "lucide-react";
 import { listingJobsApi, platformApi } from "@/api/listingApiClient";
 import { ListingJobTracker } from "@/components/ListingJobTracker";
+import { inventoryApi } from "@/api/inventoryApi";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
@@ -427,7 +428,7 @@ export default function Crosslist() {
     queryKey: ["inventoryItems", "crosslist"],
     queryFn: async () => {
       try {
-        return await base44.entities.InventoryItem.list("-purchase_date", {
+        return await inventoryApi.list("-purchase_date", {
           limit: 5000,
           fields: inventoryFields,
         });
@@ -1118,7 +1119,7 @@ export default function Crosslist() {
           }
         })();
         if (inventoryItemId) {
-          base44.entities.InventoryItem.update(inventoryItemId, {
+          inventoryApi.update(inventoryItemId, {
             status: 'listed',
             mercari_listing_id: mercariListingUrl,
           }).catch(() => {});
