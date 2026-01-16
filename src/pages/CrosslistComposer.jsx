@@ -41483,27 +41483,26 @@ export default function CrosslistComposer() {
                               onCheckedChange={(checked) => handleMarketplaceChange("mercari", "smartPricing", checked)}
                             />
                           </div>
-                        {mercariForm.smartPricing && (
-                          <div className="mt-3">
-                            <Label htmlFor="mercari-floor-price" className="text-xs mb-1.5 block">
-                              Floor Price
-                            </Label>
-                            <Input
-                              id="mercari-floor-price"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="Enter minimum price"
-                              value={mercariForm.floorPrice || ""}
-                              onChange={(e) => handleMarketplaceChange("mercari", "floorPrice", e.target.value)}
-                              className="text-sm"
-                            />
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Applicable fees will be deducted from the final sale price.
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                          {mercariForm.smartPricing && (
+                            <div className="mt-3">
+                              <Label htmlFor="mercari-floor-price" className="text-xs mb-1.5 block">
+                                Floor Price
+                              </Label>
+                              <Input
+                                id="mercari-floor-price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Enter minimum price"
+                                value={mercariForm.floorPrice || ""}
+                                onChange={(e) => handleMarketplaceChange("mercari", "floorPrice", e.target.value)}
+                                className="text-sm"
+                              />
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Applicable fees will be deducted from the final sale price.
+                              </p>
+                            </div>
+                          )}
                         </div>
                         <div className="pt-3">
                           {renderMercariDefaultToggle("smartPricing", mercariForm.smartPricing || false, (v) =>
