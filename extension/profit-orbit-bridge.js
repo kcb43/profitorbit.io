@@ -117,6 +117,17 @@ window.addEventListener("message", (event) => {
     );
     return;
   }
+  if (msg.type === "PO_CHECK_MERCARI_LISTING_STATUS") {
+    poTrySendMessage(
+      {
+        type: "CHECK_MERCARI_LISTING_STATUS",
+        listingUrl: msg?.payload?.listingUrl ?? msg?.payload?.url ?? null,
+        listingId: msg?.payload?.listingId ?? msg?.payload?.itemId ?? null,
+      },
+      "PO_CHECK_MERCARI_LISTING_STATUS_RESULT"
+    );
+    return;
+  }
   if (msg.type === "PO_CREATE_FACEBOOK_LISTING") {
     poTrySendMessage({ type: "CREATE_FACEBOOK_LISTING", listingData: msg.payload }, "PO_CREATE_FACEBOOK_LISTING_RESULT");
     return;

@@ -33352,8 +33352,45 @@ export default function CrosslistComposer() {
             size="sm"
             className="gap-2"
             disabled={!canView}
-            onClick={() => {
+            onClick={async () => {
               if (!canView) return;
+              // Best-effort: if user manually deleted the Mercari listing, detect and update our app state.
+              try {
+                if (marketplaceId === 'mercari') {
+                  const ext = window?.ProfitOrbitExtension;
+                  const canCheck = typeof ext?.checkMercariListingStatus === 'function';
+                  if (canCheck && listingUrl) {
+                    const check = await ext.checkMercariListingStatus({ listingUrl });
+                    const availability = String(check?.result?.availability || '').toLowerCase();
+                    if (check?.success && (availability === 'not_for_sale' || availability === 'not_found' || availability === 'sold')) {
+                      const nextStatus = availability === 'sold' ? 'sold' : 'delisted';
+                      if (currentEditingItemId) {
+                        await crosslistingEngine.upsertMarketplaceListing({
+                          inventory_item_id: currentEditingItemId,
+                          marketplace: 'mercari',
+                          marketplace_listing_id: String(listingId || rec?.marketplace_listing_id || ''),
+                          marketplace_listing_url: String(listingUrl),
+                          status: nextStatus,
+                          updated_at: new Date().toISOString(),
+                        });
+                        await refreshListingRecords(currentEditingItemId);
+                      }
+                      if (availability !== 'active') {
+                        toast({
+                          title: 'Listing status updated',
+                          description:
+                            availability === 'sold'
+                              ? 'Mercari listing appears sold.'
+                              : 'Mercari listing appears no longer for sale.',
+                        });
+                      }
+                    }
+                  }
+                }
+              } catch (_) {
+                // ignore; still open the listing
+              }
+
               window.open(listingUrl, '_blank', 'noopener,noreferrer');
             }}
           >
