@@ -37828,118 +37828,51 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div className="mt-2 space-y-3">
-                  {/* Main preview (not sortable): prevents layout jumping while dragging */}
-                  {(generalForm.photos?.length || 0) > 0 && (() => {
-                    const src = generalForm.photos[0]?.preview || generalForm.photos[0]?.imageUrl || generalForm.photos[0]?.url;
-                    const photo = generalForm.photos[0];
-                    if (!src) return null;
-                    return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
-                        <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                        <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                          Main
-                        </div>
-                        <div className="absolute top-1 right-1 flex gap-1 z-10">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImageToEdit({
-                                url: src,
-                                photoId: photo?.id,
-                                marketplace: "general",
-                                index: 0
-                              });
-                              setEditorOpen(true);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                            title="Edit photo"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            <span className="sr-only">Edit photo</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePhotoRemove(photo?.id);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                            title="Remove photo"
-                          >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Remove photo</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Thumbnails (sortable) */}
+                  {/* Photos grid (sortable): supports swapping main and thumbnails */}
                   <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                     <ReactSortable
-                      list={(generalForm.photos || []).slice(1)}
-                      setList={(nextThumbs) => {
-                        const main = (generalForm.photos || [])[0];
-                        const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
-                        handlePhotoSetList(nextAll, "general");
-                      }}
+                      list={generalForm.photos || []}
+                      setList={(next) => handlePhotoSetList(next, "general")}
                       className="contents"
                       animation={180}
                       forceFallback={true}
                       fallbackOnBody={true}
-                      fallbackTolerance={5}
-                      touchStartThreshold={5}
-                      handle=".po-thumb-handle"
+                      fallbackTolerance={1}
+                      touchStartThreshold={1}
+                      swapThreshold={0.6}
+                      invertSwap={true}
+                      invertedSwapThreshold={0.35}
                       ghostClass="opacity-30"
-                      chosenClass="opacity-80"
+                      chosenClass="opacity-90"
+                      dragClass="opacity-90"
                       setData={(dataTransfer) => dataTransfer.setData("text", "")}
-                      onStart={(evt) => {
-                        // store dragged thumbnail on DOM for onEnd hit-test
-                        try { evt?.item?.setAttribute?.("data-po-dragging", "1"); } catch {}
-                      }}
-                      onEnd={(evt) => {
-                        // If drop ends over the main preview, promote dragged thumb to main (index 0)
-                        const original = evt?.originalEvent;
-                        const touch = original?.changedTouches?.[0] || original?.touches?.[0];
-                        const pt = touch
-                          ? { x: touch.clientX, y: touch.clientY }
-                          : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
-                        if (!pt) return;
-                        const elAtPoint = document.elementFromPoint(pt.x, pt.y);
-                        const overMain = !!elAtPoint?.closest?.(".po-main-drop");
-                        if (!overMain) return;
-
-                        const thumbs = (generalForm.photos || []).slice(1);
-                        const draggedThumb = thumbs?.[evt.oldIndex];
-                        if (!draggedThumb) return;
-                        const next = [draggedThumb, ...(generalForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
-                        handlePhotoSetList(next, "general");
-                      }}
+                      // Allow dragging from most of the tile, but not from action buttons.
+                      filter=".po-no-drag"
+                      preventOnFilter={false}
                     >
-                      {((generalForm.photos || []).slice(1)).map((photo, index) => {
+                      {(generalForm.photos || []).map((photo, index) => {
+                        const isMain = index === 0;
                         const src = photo.preview || photo.imageUrl || photo.url;
                         return (
                           <div
                             key={photo.id || `${src || "photo"}-${index}`}
-                            className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
+                            className={cn(
+                              "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
+                              isMain && "col-span-4 border-2 border-primary"
+                            )}
                           >
                             {src && (
                               <img
                                 src={src}
-                                alt={photo.fileName || "Listing photo"}
+                                alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")}
                                 className="h-full w-full object-cover"
                               />
                             )}
-
-                            <button
-                              type="button"
-                              className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
-                              title="Drag to reorder"
-                            >
-                              <GripVertical className="h-4 w-4" />
-                              <span className="sr-only">Drag to reorder</span>
-                            </button>
+                            {isMain && (
+                              <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase po-no-drag">
+                                Main
+                              </div>
+                            )}
 
                             <button
                               type="button"
@@ -37949,11 +37882,14 @@ export default function CrosslistComposer() {
                                   url: src,
                                   photoId: photo.id,
                                   marketplace: "general",
-                                  index: index + 1
+                                  index
                                 });
                                 setEditorOpen(true);
                               }}
-                              className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                              className={cn(
+                                "po-no-drag absolute top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90",
+                                isMain ? "left-10" : "left-1"
+                              )}
                               title="Edit photo"
                             >
                               <ImageIcon className="h-3 w-3" />
@@ -37965,7 +37901,7 @@ export default function CrosslistComposer() {
                                 e.stopPropagation();
                                 handlePhotoRemove(photo.id);
                               }}
-                              className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                              className="po-no-drag absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                               title="Remove photo"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -37981,7 +37917,7 @@ export default function CrosslistComposer() {
                         type="button"
                         onClick={() => photoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
-                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0 po-no-drag"
                       >
                         <ImagePlus className="h-5 w-5 text-muted-foreground" />
                         <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
@@ -38897,104 +38833,44 @@ export default function CrosslistComposer() {
                     </Button>
                   )}
                 </div>
-                <div className="mt-2 space-y-3">
-                  {(ebayForm.photos?.length || 0) > 0 && (() => {
-                    const src = ebayForm.photos[0]?.preview || ebayForm.photos[0]?.imageUrl || ebayForm.photos[0]?.url;
-                    const photo = ebayForm.photos[0];
-                    if (!src) return null;
-                    return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
-                        <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                        <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                          Main
-                        </div>
-                        <div className="absolute top-1 right-1 flex gap-1 z-10">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImageToEdit({ 
-                                url: src, 
-                                photoId: photo?.id, 
-                                marketplace: 'ebay',
-                                index: 0
-                              });
-                              setEditorOpen(true);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                            title="Edit photo"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            <span className="sr-only">Edit photo</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePhotoRemove(photo?.id, 'ebay');
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                            title="Remove photo"
-                          >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Remove photo</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
+                <div className="mt-2">
                   <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                     <ReactSortable
-                      list={(ebayForm.photos || []).slice(1)}
-                      setList={(nextThumbs) => {
-                        const main = (ebayForm.photos || [])[0];
-                        const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
-                        handlePhotoSetList(nextAll, "ebay");
-                      }}
+                      list={ebayForm.photos || []}
+                      setList={(next) => handlePhotoSetList(next, "ebay")}
                       className="contents"
                       animation={180}
                       forceFallback={true}
                       fallbackOnBody={true}
-                      fallbackTolerance={5}
-                      touchStartThreshold={5}
-                      handle=".po-thumb-handle"
+                      fallbackTolerance={1}
+                      touchStartThreshold={1}
+                      swapThreshold={0.6}
+                      invertSwap={true}
+                      invertedSwapThreshold={0.35}
                       ghostClass="opacity-30"
-                      chosenClass="opacity-80"
+                      chosenClass="opacity-90"
+                      dragClass="opacity-90"
                       setData={(dataTransfer) => dataTransfer.setData("text", "")}
-                      onEnd={(evt) => {
-                        const original = evt?.originalEvent;
-                        const touch = original?.changedTouches?.[0] || original?.touches?.[0];
-                        const pt = touch
-                          ? { x: touch.clientX, y: touch.clientY }
-                          : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
-                        if (!pt) return;
-                        const elAtPoint = document.elementFromPoint(pt.x, pt.y);
-                        const overMain = !!elAtPoint?.closest?.(".po-main-drop");
-                        if (!overMain) return;
-                        const thumbs = (ebayForm.photos || []).slice(1);
-                        const draggedThumb = thumbs?.[evt.oldIndex];
-                        if (!draggedThumb) return;
-                        const next = [draggedThumb, ...(ebayForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
-                        handlePhotoSetList(next, "ebay");
-                      }}
+                      filter=".po-no-drag"
+                      preventOnFilter={false}
                     >
-                      {((ebayForm.photos || []).slice(1)).map((photo, index) => {
+                      {(ebayForm.photos || []).map((photo, index) => {
+                        const isMain = index === 0;
                         const src = photo.preview || photo.imageUrl || photo.url;
                         return (
                           <div
                             key={photo.id || `${src || "photo"}-${index}`}
-                            className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
+                            className={cn(
+                              "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
+                              isMain && "col-span-4 border-2 border-primary"
+                            )}
                           >
-                            {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
-                            <button
-                              type="button"
-                              className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
-                              title="Drag to reorder"
-                            >
-                              <GripVertical className="h-4 w-4" />
-                              <span className="sr-only">Drag to reorder</span>
-                            </button>
+                            {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
+                            {isMain && (
+                              <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase po-no-drag">
+                                Main
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -39003,11 +38879,14 @@ export default function CrosslistComposer() {
                                   url: src, 
                                   photoId: photo.id, 
                                   marketplace: 'ebay',
-                                  index: index + 1
+                                  index
                                 });
                                 setEditorOpen(true);
                               }}
-                              className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                              className={cn(
+                                "po-no-drag absolute top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90",
+                                isMain ? "left-10" : "left-1"
+                              )}
                               title="Edit photo"
                             >
                               <ImageIcon className="h-3 w-3" />
@@ -39019,7 +38898,7 @@ export default function CrosslistComposer() {
                                 e.stopPropagation();
                                 handlePhotoRemove(photo.id, 'ebay');
                               }}
-                              className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                              className="po-no-drag absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                               title="Remove photo"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -39035,7 +38914,7 @@ export default function CrosslistComposer() {
                         type="button"
                         onClick={() => ebayPhotoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
-                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0 po-no-drag"
                       >
                         <ImagePlus className="h-5 w-5 text-muted-foreground" />
                         <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
@@ -40257,104 +40136,44 @@ export default function CrosslistComposer() {
                       </Button>
                     )}
                   </div>
-                  <div className="mt-2 space-y-3">
-                    {(etsyForm.photos?.length || 0) > 0 && (() => {
-                      const src = etsyForm.photos[0]?.preview || etsyForm.photos[0]?.imageUrl || etsyForm.photos[0]?.url;
-                      const photo = etsyForm.photos[0];
-                      if (!src) return null;
-                    return (
-                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
-                          <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                          <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                            Main
-                          </div>
-                          <div className="absolute top-1 right-1 flex gap-1 z-10">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setImageToEdit({ 
-                                  url: src, 
-                                  photoId: photo?.id, 
-                                  marketplace: 'etsy',
-                                  index: 0
-                                });
-                                setEditorOpen(true);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                              title="Edit photo"
-                            >
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              <span className="sr-only">Edit photo</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePhotoRemove(photo?.id, 'etsy');
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                              title="Remove photo"
-                            >
-                              <X className="h-4 w-4" />
-                              <span className="sr-only">Remove photo</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
+                  <div className="mt-2">
                     <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                       <ReactSortable
-                        list={(etsyForm.photos || []).slice(1)}
-                        setList={(nextThumbs) => {
-                          const main = (etsyForm.photos || [])[0];
-                          const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
-                          handlePhotoSetList(nextAll, "etsy");
-                        }}
+                        list={etsyForm.photos || []}
+                        setList={(next) => handlePhotoSetList(next, "etsy")}
                         className="contents"
                         animation={180}
                         forceFallback={true}
                         fallbackOnBody={true}
-                        fallbackTolerance={5}
-                        touchStartThreshold={5}
-                        handle=".po-thumb-handle"
+                        fallbackTolerance={1}
+                        touchStartThreshold={1}
+                        swapThreshold={0.6}
+                        invertSwap={true}
+                        invertedSwapThreshold={0.35}
                         ghostClass="opacity-30"
-                        chosenClass="opacity-80"
+                        chosenClass="opacity-90"
+                        dragClass="opacity-90"
                         setData={(dataTransfer) => dataTransfer.setData("text", "")}
-                        onEnd={(evt) => {
-                          const original = evt?.originalEvent;
-                          const touch = original?.changedTouches?.[0] || original?.touches?.[0];
-                          const pt = touch
-                            ? { x: touch.clientX, y: touch.clientY }
-                            : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
-                          if (!pt) return;
-                          const elAtPoint = document.elementFromPoint(pt.x, pt.y);
-                          const overMain = !!elAtPoint?.closest?.(".po-main-drop");
-                          if (!overMain) return;
-                          const thumbs = (etsyForm.photos || []).slice(1);
-                          const draggedThumb = thumbs?.[evt.oldIndex];
-                          if (!draggedThumb) return;
-                          const next = [draggedThumb, ...(etsyForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
-                          handlePhotoSetList(next, "etsy");
-                        }}
+                        filter=".po-no-drag"
+                        preventOnFilter={false}
                       >
-                        {((etsyForm.photos || []).slice(1)).map((photo, index) => {
+                        {(etsyForm.photos || []).map((photo, index) => {
+                          const isMain = index === 0;
                           const src = photo.preview || photo.imageUrl || photo.url;
                           return (
                             <div
                               key={photo.id || `${src || "photo"}-${index}`}
-                              className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
+                              className={cn(
+                                "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
+                                isMain && "col-span-4 border-2 border-primary"
+                              )}
                             >
-                              {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
-                              <button
-                                type="button"
-                                className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
-                                title="Drag to reorder"
-                              >
-                                <GripVertical className="h-4 w-4" />
-                                <span className="sr-only">Drag to reorder</span>
-                              </button>
+                              {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
+                              {isMain && (
+                                <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase po-no-drag">
+                                  Main
+                                </div>
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -40363,11 +40182,14 @@ export default function CrosslistComposer() {
                                     url: src, 
                                     photoId: photo.id, 
                                     marketplace: 'etsy',
-                                    index: index + 1
+                                    index
                                   });
                                   setEditorOpen(true);
                                 }}
-                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                                className={cn(
+                                  "po-no-drag absolute top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90",
+                                  isMain ? "left-10" : "left-1"
+                                )}
                                 title="Edit photo"
                               >
                                 <ImageIcon className="h-3 w-3" />
@@ -40379,7 +40201,7 @@ export default function CrosslistComposer() {
                                   e.stopPropagation();
                                   handlePhotoRemove(photo.id, 'etsy');
                                 }}
-                                className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                                className="po-no-drag absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                                 title="Remove photo"
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -40389,12 +40211,13 @@ export default function CrosslistComposer() {
                           );
                         })}
                       </ReactSortable>
+
                       {(etsyForm.photos?.length || 0) < MAX_PHOTOS && (
                         <button
                           type="button"
                           onClick={() => etsyPhotoInputRef.current?.click()}
                           disabled={isUploadingPhotos}
-                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0 po-no-drag"
                         >
                           <ImagePlus className="h-5 w-5 text-muted-foreground" />
                           <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
@@ -40834,104 +40657,44 @@ export default function CrosslistComposer() {
                       </Button>
                     )}
                   </div>
-                  <div className="mt-2 space-y-3">
-                    {(mercariForm.photos?.length || 0) > 0 && (() => {
-                      const src = mercariForm.photos[0]?.preview || mercariForm.photos[0]?.imageUrl || mercariForm.photos[0]?.url;
-                      const photo = mercariForm.photos[0];
-                      if (!src) return null;
-                      return (
-                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
-                          <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                          <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                            Main
-                          </div>
-                          <div className="absolute top-1 right-1 flex gap-1 z-10">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setImageToEdit({ 
-                                  url: src, 
-                                  photoId: photo?.id, 
-                                  marketplace: 'mercari',
-                                  index: 0
-                                });
-                                setEditorOpen(true);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                              title="Edit photo"
-                            >
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              <span className="sr-only">Edit photo</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePhotoRemove(photo?.id, 'mercari');
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                              title="Remove photo"
-                            >
-                              <X className="h-4 w-4" />
-                              <span className="sr-only">Remove photo</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
+                  <div className="mt-2">
                     <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                       <ReactSortable
-                        list={(mercariForm.photos || []).slice(1)}
-                        setList={(nextThumbs) => {
-                          const main = (mercariForm.photos || [])[0];
-                          const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
-                          handlePhotoSetList(nextAll, "mercari");
-                        }}
+                        list={mercariForm.photos || []}
+                        setList={(next) => handlePhotoSetList(next, "mercari")}
                         className="contents"
                         animation={180}
                         forceFallback={true}
                         fallbackOnBody={true}
-                        fallbackTolerance={5}
-                        touchStartThreshold={5}
-                        handle=".po-thumb-handle"
+                        fallbackTolerance={1}
+                        touchStartThreshold={1}
+                        swapThreshold={0.6}
+                        invertSwap={true}
+                        invertedSwapThreshold={0.35}
                         ghostClass="opacity-30"
-                        chosenClass="opacity-80"
+                        chosenClass="opacity-90"
+                        dragClass="opacity-90"
                         setData={(dataTransfer) => dataTransfer.setData("text", "")}
-                        onEnd={(evt) => {
-                          const original = evt?.originalEvent;
-                          const touch = original?.changedTouches?.[0] || original?.touches?.[0];
-                          const pt = touch
-                            ? { x: touch.clientX, y: touch.clientY }
-                            : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
-                          if (!pt) return;
-                          const elAtPoint = document.elementFromPoint(pt.x, pt.y);
-                          const overMain = !!elAtPoint?.closest?.(".po-main-drop");
-                          if (!overMain) return;
-                          const thumbs = (mercariForm.photos || []).slice(1);
-                          const draggedThumb = thumbs?.[evt.oldIndex];
-                          if (!draggedThumb) return;
-                          const next = [draggedThumb, ...(mercariForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
-                          handlePhotoSetList(next, "mercari");
-                        }}
+                        filter=".po-no-drag"
+                        preventOnFilter={false}
                       >
-                        {((mercariForm.photos || []).slice(1)).map((photo, index) => {
+                        {(mercariForm.photos || []).map((photo, index) => {
+                          const isMain = index === 0;
                           const src = photo.preview || photo.imageUrl || photo.url;
                           return (
                             <div
                               key={photo.id || `${src || "photo"}-${index}`}
-                              className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
+                              className={cn(
+                                "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
+                                isMain && "col-span-4 border-2 border-primary"
+                              )}
                             >
-                              {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
-                              <button
-                                type="button"
-                                className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
-                                title="Drag to reorder"
-                              >
-                                <GripVertical className="h-4 w-4" />
-                                <span className="sr-only">Drag to reorder</span>
-                              </button>
+                              {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
+                              {isMain && (
+                                <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase po-no-drag">
+                                  Main
+                                </div>
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -40940,11 +40703,14 @@ export default function CrosslistComposer() {
                                     url: src, 
                                     photoId: photo.id, 
                                     marketplace: 'mercari',
-                                    index: index + 1
+                                    index
                                   });
                                   setEditorOpen(true);
                                 }}
-                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                                className={cn(
+                                  "po-no-drag absolute top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90",
+                                  isMain ? "left-10" : "left-1"
+                                )}
                                 title="Edit photo"
                               >
                                 <ImageIcon className="h-3 w-3" />
@@ -40956,7 +40722,7 @@ export default function CrosslistComposer() {
                                   e.stopPropagation();
                                   handlePhotoRemove(photo.id, 'mercari');
                                 }}
-                                className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                                className="po-no-drag absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                                 title="Remove photo"
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -40972,7 +40738,7 @@ export default function CrosslistComposer() {
                           type="button"
                           onClick={() => mercariPhotoInputRef.current?.click()}
                           disabled={isUploadingPhotos}
-                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0 po-no-drag"
                         >
                           <ImagePlus className="h-5 w-5 text-muted-foreground" />
                           <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
@@ -41879,104 +41645,44 @@ export default function CrosslistComposer() {
                       </Button>
                     )}
                   </div>
-                  <div className="mt-2 space-y-3">
-                    {(facebookForm.photos?.length || 0) > 0 && (() => {
-                      const src = facebookForm.photos[0]?.preview || facebookForm.photos[0]?.imageUrl || facebookForm.photos[0]?.url;
-                      const photo = facebookForm.photos[0];
-                      if (!src) return null;
-                      return (
-                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
-                          <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                          <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                            Main
-                          </div>
-                          <div className="absolute top-1 right-1 flex gap-1 z-10">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setImageToEdit({ 
-                                  url: src, 
-                                  photoId: photo?.id, 
-                                  marketplace: 'facebook',
-                                  index: 0
-                                });
-                                setEditorOpen(true);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                              title="Edit photo"
-                            >
-                              <ImageIcon className="h-3.5 w-3.5" />
-                              <span className="sr-only">Edit photo</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePhotoRemove(photo?.id, 'facebook');
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                              title="Remove photo"
-                            >
-                              <X className="h-4 w-4" />
-                              <span className="sr-only">Remove photo</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
+                  <div className="mt-2">
                     <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                       <ReactSortable
-                        list={(facebookForm.photos || []).slice(1)}
-                        setList={(nextThumbs) => {
-                          const main = (facebookForm.photos || [])[0];
-                          const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
-                          handlePhotoSetList(nextAll, "facebook");
-                        }}
+                        list={facebookForm.photos || []}
+                        setList={(next) => handlePhotoSetList(next, "facebook")}
                         className="contents"
                         animation={180}
                         forceFallback={true}
                         fallbackOnBody={true}
-                        fallbackTolerance={5}
-                        touchStartThreshold={5}
-                        handle=".po-thumb-handle"
+                        fallbackTolerance={1}
+                        touchStartThreshold={1}
+                        swapThreshold={0.6}
+                        invertSwap={true}
+                        invertedSwapThreshold={0.35}
                         ghostClass="opacity-30"
-                        chosenClass="opacity-80"
+                        chosenClass="opacity-90"
+                        dragClass="opacity-90"
                         setData={(dataTransfer) => dataTransfer.setData("text", "")}
-                        onEnd={(evt) => {
-                          const original = evt?.originalEvent;
-                          const touch = original?.changedTouches?.[0] || original?.touches?.[0];
-                          const pt = touch
-                            ? { x: touch.clientX, y: touch.clientY }
-                            : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
-                          if (!pt) return;
-                          const elAtPoint = document.elementFromPoint(pt.x, pt.y);
-                          const overMain = !!elAtPoint?.closest?.(".po-main-drop");
-                          if (!overMain) return;
-                          const thumbs = (facebookForm.photos || []).slice(1);
-                          const draggedThumb = thumbs?.[evt.oldIndex];
-                          if (!draggedThumb) return;
-                          const next = [draggedThumb, ...(facebookForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
-                          handlePhotoSetList(next, "facebook");
-                        }}
+                        filter=".po-no-drag"
+                        preventOnFilter={false}
                       >
-                        {((facebookForm.photos || []).slice(1)).map((photo, index) => {
+                        {(facebookForm.photos || []).map((photo, index) => {
+                          const isMain = index === 0;
                           const src = photo.preview || photo.imageUrl || photo.url;
                           return (
                             <div
                               key={photo.id || `${src || "photo"}-${index}`}
-                              className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
+                              className={cn(
+                                "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
+                                isMain && "col-span-4 border-2 border-primary"
+                              )}
                             >
-                              {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
-                              <button
-                                type="button"
-                                className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
-                                title="Drag to reorder"
-                              >
-                                <GripVertical className="h-4 w-4" />
-                                <span className="sr-only">Drag to reorder</span>
-                              </button>
+                              {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
+                              {isMain && (
+                                <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase po-no-drag">
+                                  Main
+                                </div>
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -41985,11 +41691,14 @@ export default function CrosslistComposer() {
                                     url: src, 
                                     photoId: photo.id, 
                                     marketplace: 'facebook',
-                                    index: index + 1
+                                    index
                                   });
                                   setEditorOpen(true);
                                 }}
-                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                                className={cn(
+                                  "po-no-drag absolute top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90",
+                                  isMain ? "left-10" : "left-1"
+                                )}
                                 title="Edit photo"
                               >
                                 <ImageIcon className="h-3 w-3" />
@@ -42001,7 +41710,7 @@ export default function CrosslistComposer() {
                                   e.stopPropagation();
                                   handlePhotoRemove(photo.id, 'facebook');
                                 }}
-                                className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                                className="po-no-drag absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                                 title="Remove photo"
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -42017,7 +41726,7 @@ export default function CrosslistComposer() {
                           type="button"
                           onClick={() => facebookPhotoInputRef.current?.click()}
                           disabled={isUploadingPhotos}
-                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                          className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0 po-no-drag"
                         >
                           <ImagePlus className="h-5 w-5 text-muted-foreground" />
                           <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
@@ -42901,53 +42610,7 @@ export default function CrosslistComposer() {
                   )}
                 </div>
 
-                <div className="mt-2 space-y-3">
-                  {(generalForm.photos?.length || 0) > 0 && (() => {
-                    const src = generalForm.photos[0]?.preview || generalForm.photos[0]?.imageUrl || generalForm.photos[0]?.url;
-                    const photo = generalForm.photos[0];
-                    if (!src) return null;
-                    return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted">
-                        <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                        <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                          Main
-                        </div>
-                        <div className="absolute top-1 right-1 flex gap-1 z-10">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImageToEdit({
-                                url: src,
-                                photoId: photo?.id,
-                                marketplace: "general",
-                                index: 0
-                              });
-                              setEditorOpen(true);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                            title="Edit photo"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            <span className="sr-only">Edit photo</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePhotoRemove(photo?.id);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                            title="Remove photo"
-                          >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Remove photo</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
+                <div className="mt-2">
                   <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                     <ReactSortable
                       list={generalForm.photos || []}
@@ -42956,12 +42619,17 @@ export default function CrosslistComposer() {
                       animation={180}
                       forceFallback={true}
                       fallbackOnBody={true}
-                      fallbackTolerance={5}
-                      touchStartThreshold={5}
-                      handle=".po-thumb-handle"
+                      fallbackTolerance={1}
+                      touchStartThreshold={1}
+                      swapThreshold={0.6}
+                      invertSwap={true}
+                      invertedSwapThreshold={0.35}
                       ghostClass="opacity-30"
-                      chosenClass="opacity-80"
+                      chosenClass="opacity-90"
+                      dragClass="opacity-90"
                       setData={(dataTransfer) => dataTransfer.setData("text", "")}
+                      filter=".po-no-drag"
+                      preventOnFilter={false}
                     >
                       {(generalForm.photos || []).map((photo, index) => {
                         const isMain = index === 0;
@@ -42971,50 +42639,43 @@ export default function CrosslistComposer() {
                             key={photo.id || `${src || "photo"}-${index}`}
                             className={cn(
                               "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
-                              isMain && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                              isMain && "col-span-4 border-2 border-primary"
                             )}
                           >
                             {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
                             {isMain && (
-                              <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
+                              <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase po-no-drag">
                                 Main
                               </div>
                             )}
                             <button
                               type="button"
-                              className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
-                              title="Drag to reorder"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setImageToEdit({
+                                  url: src,
+                                  photoId: photo.id,
+                                  marketplace: "general",
+                                  index
+                                });
+                                setEditorOpen(true);
+                              }}
+                              className={cn(
+                                "po-no-drag absolute top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90",
+                                isMain ? "left-10" : "left-1"
+                              )}
+                              title="Edit photo"
                             >
-                              <GripVertical className="h-4 w-4" />
-                              <span className="sr-only">Drag to reorder</span>
+                              <ImageIcon className="h-3 w-3" />
+                              <span className="sr-only">Edit photo</span>
                             </button>
-                            {!isMain && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setImageToEdit({
-                                    url: src,
-                                    photoId: photo.id,
-                                    marketplace: "general",
-                                    index
-                                  });
-                                  setEditorOpen(true);
-                                }}
-                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                                title="Edit photo"
-                              >
-                                <ImageIcon className="h-3 w-3" />
-                                <span className="sr-only">Edit photo</span>
-                              </button>
-                            )}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePhotoRemove(photo.id);
                               }}
-                              className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                              className="po-no-drag absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                               title="Remove photo"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -43030,7 +42691,7 @@ export default function CrosslistComposer() {
                         type="button"
                         onClick={() => photoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
-                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0 po-no-drag"
                       >
                         <ImagePlus className="h-5 w-5 text-muted-foreground" />
                         <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
