@@ -3,6 +3,8 @@ import React from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { salesApi } from "@/api/salesApi";
+import { inventoryApi } from "@/api/inventoryApi";
 import { createPageUrl } from "@/utils";
 import { stripCustomFeeNotes } from "@/utils/customFees";
 
@@ -63,22 +65,22 @@ export default function SoldItemDetail() {
 
   const { data: sale, isLoading, isError } = useQuery({
     queryKey: ['sale', saleId],
-    queryFn: () => base44.entities.Sale.get(saleId),
+    queryFn: () => salesApi.get(saleId),
     enabled: !!saleId,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (saleId) => {
-      const saleToDelete = await base44.entities.Sale.get(saleId);
+      const saleToDelete = await salesApi.get(saleId);
       
       if (saleToDelete.inventory_id) {
         try {
-          const inventoryItem = await base44.entities.InventoryItem.get(saleToDelete.inventory_id);
+          const inventoryItem = await inventoryApi.get(saleToDelete.inventory_id);
           const quantitySoldInSale = saleToDelete.quantity_sold || 1;
           const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
           const isSoldOut = newQuantitySold >= inventoryItem.quantity;
           
-          await base44.entities.InventoryItem.update(saleToDelete.inventory_id, {
+          await inventoryApi.update(saleToDelete.inventory_id, {
             quantity_sold: newQuantitySold,
             status: isSoldOut ? "sold" : (newQuantitySold > 0 ? inventoryItem.status : "available")
           });
@@ -87,7 +89,7 @@ export default function SoldItemDetail() {
         }
       }
       
-      return base44.entities.Sale.delete(saleId);
+      return salesApi.delete(saleId, true);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });

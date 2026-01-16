@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
+import { imageEditorTemplatesApi } from '@/api/imageEditorTemplatesApi';
 import { 
   Camera, 
   Upload, 
@@ -131,9 +131,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
     queryKey: ['imageEditorTemplates'],
     queryFn: async () => {
       try {
-        const allTemplates = await base44.entities.ImageEditorTemplate.list({
-          deleted_at: null  // Only get non-deleted templates
-        });
+        const allTemplates = await imageEditorTemplatesApi.list(null, { deleted_at: null });
         return allTemplates || [];
       } catch (error) {
         console.error('Error fetching templates:', error);
@@ -1239,7 +1237,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
     
     try {
       // Soft delete by setting deleted_at
-      await base44.entities.ImageEditorTemplate.update(templateToDelete.id, {
+      await imageEditorTemplatesApi.update(templateToDelete.id, {
         deleted_at: new Date().toISOString()
       });
       
@@ -1296,7 +1294,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
         }
       };
 
-      await base44.entities.ImageEditorTemplate.create(templateData);
+      await imageEditorTemplatesApi.create(templateData);
       
       // Refresh templates list
       await refetchTemplates();

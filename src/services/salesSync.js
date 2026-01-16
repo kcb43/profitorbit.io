@@ -1,7 +1,7 @@
-import { base44 } from "@/api/base44Client";
 import { crosslistingEngine } from "@/services/CrosslistingEngine";
 import { getEbayItemUrl } from "@/utils/ebayHelpers";
 import { inventoryApi } from "@/api/inventoryApi";
+import { salesApi } from "@/api/salesApi";
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -145,7 +145,7 @@ export async function syncSalesForInventoryItemIds(itemIds, options = {}) {
               if (v === null || v === undefined || v === "") delete salePayload[k];
             });
 
-            const created = await base44.entities.Sale.create(salePayload);
+            const created = await salesApi.create(salePayload);
             dedupe[dedupeKey] = created?.id || true;
             saveDedupe(dedupe);
             summary.createdSales += 1;

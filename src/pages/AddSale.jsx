@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { salesApi } from "@/api/salesApi";
+import { inventoryApi } from "@/api/inventoryApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -90,14 +92,14 @@ export default function AddSale() {
 
   const { data: existingSale, isLoading: isLoadingSale } = useQuery({
     queryKey: ['sale', idToLoad],
-    queryFn: () => base44.entities.Sale.get(idToLoad),
+    queryFn: () => salesApi.get(idToLoad),
     enabled: !!idToLoad, // Only fetch if saleId or copyId is present
   });
 
   // NEW: Fetch inventory item details if inventoryId is present and we're creating a new sale
   const { data: inventoryItemDetails, isLoading: isLoadingInventoryItem } = useQuery({
     queryKey: ['inventoryItemForSaleCreation', inventoryId], // Unique key for this specific use case
-    queryFn: () => base44.entities.InventoryItem.get(inventoryId),
+    queryFn: () => inventoryApi.get(inventoryId),
     enabled: !!inventoryId && !idToLoad, // Only fetch if linking from inventory and not editing/copying a sale
     staleTime: 0, // Ensure we get the latest quantity_sold when creating a new sale
   });
@@ -302,8 +304,8 @@ export default function AddSale() {
     mutationFn: (saleData) => {
       const finalData = buildSalePayload(saleData);
       return saleId
-        ? base44.entities.Sale.update(saleId, finalData)
-        : base44.entities.Sale.create(finalData);
+        ? salesApi.update(saleId, finalData)
+        : salesApi.create(finalData);
     },
     onMutate: async (saleData) => {
       const payload = buildSalePayload(saleData);
@@ -347,12 +349,12 @@ export default function AddSale() {
       // Update related inventory records if sourced from inventory
       if (inventoryId && !saleId && !copyId) {
         try {
-          const originalItem = await base44.entities.InventoryItem.get(inventoryId);
+          const originalItem = await inventoryApi.get(inventoryId);
           const quantitySold = parseInt(formData.quantity_sold, 10) || 1;
           const newQuantitySold = (originalItem.quantity_sold || 0) + quantitySold;
           const isSoldOut = newQuantitySold >= originalItem.quantity;
 
-          await base44.entities.InventoryItem.update(inventoryId, {
+          await inventoryApi.update(inventoryId, {
             quantity_sold: newQuantitySold,
             status: isSoldOut ? "sold" : originalItem.status,
           });
@@ -394,7 +396,7 @@ export default function AddSale() {
             created_date: new Date().toISOString(),
           };
 
-          const createdItem = await base44.entities.InventoryItem.create(newInventoryItem);
+          const createdItem = await inventoryApi.create(newInventoryItem);
 
           // Update the cache with the new inventory item
           queryClient.setQueryData(['inventoryItems'], (old = []) => {
@@ -404,7 +406,7 @@ export default function AddSale() {
 
           // Link the sale to the newly created inventory item
           if (result && result.id) {
-            await base44.entities.Sale.update(result.id, {
+            await salesApi.update(result.id, {
               inventory_id: createdItem.id
             });
           }

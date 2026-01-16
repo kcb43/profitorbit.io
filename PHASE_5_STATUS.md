@@ -61,7 +61,7 @@ If you want to complete Phase 5 fully:
    - Check that sales are linked to inventory items correctly
 
 3. **Cleanup (Optional)**
-   - Remove `@base44/sdk` from `package.json` if you're confident everything works
+   - Remove `@base44/sdk` from `package.json` if you're confident everything works (done)
    - Delete `src/api/base44Client.js` (or keep as backup)
 
 ## Conclusion

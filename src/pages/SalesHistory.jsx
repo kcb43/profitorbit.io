@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { sortSalesByRecency } from "@/utils/sales";
+import { salesApi } from "@/api/salesApi";
+import { inventoryApi } from "@/api/inventoryApi";
 import { splitBase44Tags } from "@/utils/base44Notes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/api/supabaseClient";
+import { salesApi } from "@/api/salesApi";
+import { inventoryApi } from "@/api/inventoryApi";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
@@ -304,7 +308,7 @@ export default function SalesHistory() {
       if (!sale.purchase_date && inventoryItem.purchase_date) patch.purchase_date = inventoryItem.purchase_date;
       if (!sale.source && inventoryItem.source) patch.source = inventoryItem.source;
       if (!sale.category && inventoryItem.category) patch.category = inventoryItem.category;
-      await base44.entities.Sale.update(sale.id, patch);
+      await salesApi.update(sale.id, patch);
       return patch;
     },
     onSuccess: () => {
@@ -415,11 +419,11 @@ export default function SalesHistory() {
         for (const sale of salesToHardDelete) {
           if (sale.inventory_id) {
             try {
-              const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+              const inventoryItem = await inventoryApi.get(sale.inventory_id);
               const quantitySoldInSale = sale.quantity_sold || 1;
               const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
               
-              await base44.entities.InventoryItem.update(sale.inventory_id, {
+              await inventoryApi.update(sale.inventory_id, {
                 quantity_sold: newQuantitySold,
                 status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
               });
@@ -431,7 +435,7 @@ export default function SalesHistory() {
         
         // Then hard delete the sales
         await Promise.all(
-          salesToHardDelete.map(sale => base44.entities.Sale.delete(sale.id))
+          salesToHardDelete.map(sale => salesApi.delete(sale.id, true))
         );
         queryClient.invalidateQueries({ queryKey: ['sales'] });
         queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
@@ -454,7 +458,7 @@ export default function SalesHistory() {
       
       // First, check if the sale exists and what fields it has
       try {
-        const beforeSale = await base44.entities.Sale.get(sale.id);
+        const beforeSale = await salesApi.get(sale.id);
         console.log("Sale before update:", beforeSale);
         console.log("Sale fields:", Object.keys(beforeSale));
       } catch (e) {
@@ -462,7 +466,7 @@ export default function SalesHistory() {
       }
       
       // Soft delete: set deleted_at timestamp
-      const updateResult = await base44.entities.Sale.update(sale.id, {
+      const updateResult = await salesApi.update(sale.id, {
         deleted_at: deletedAt
       });
       console.log("Update response:", updateResult);
@@ -473,7 +477,7 @@ export default function SalesHistory() {
       // Verify the update was successful by fetching the sale
       let actualDeletedAt = deletedAt;
       try {
-        const updatedSale = await base44.entities.Sale.get(sale.id);
+        const updatedSale = await salesApi.get(sale.id);
         console.log("Sale after update:", updatedSale);
         console.log("Sale fields after update:", Object.keys(updatedSale));
         console.log("deleted_at value:", updatedSale.deleted_at);
@@ -495,11 +499,11 @@ export default function SalesHistory() {
       // Update inventory item quantity
       if (sale.inventory_id) {
         try {
-          const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+          const inventoryItem = await inventoryApi.get(sale.inventory_id);
           const quantitySoldInSale = sale.quantity_sold || 1;
           const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
           
-          await base44.entities.InventoryItem.update(sale.inventory_id, {
+          await inventoryApi.update(sale.inventory_id, {
             quantity_sold: newQuantitySold,
             status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
           });
@@ -532,7 +536,7 @@ export default function SalesHistory() {
         try {
           await queryClient.invalidateQueries({ queryKey: ['sales'] });
           // Update the cache with the verified server data
-          const updatedSale = await base44.entities.Sale.get(sale.id);
+          const updatedSale = await salesApi.get(sale.id);
           if (updatedSale.deleted_at) {
             // Ensure cache has the correct deleted_at value
             queryClient.setQueryData(['sales'], (old = []) => {
@@ -573,18 +577,18 @@ export default function SalesHistory() {
   const recoverSaleMutation = useMutation({
     mutationFn: async (sale) => {
       // Recover: remove deleted_at and restore inventory quantity
-      await base44.entities.Sale.update(sale.id, {
+      await salesApi.update(sale.id, {
         deleted_at: null
       });
       
       // Restore inventory item quantity
       if (sale.inventory_id) {
         try {
-          const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+          const inventoryItem = await inventoryApi.get(sale.inventory_id);
           const quantitySoldInSale = sale.quantity_sold || 1;
           const newQuantitySold = (inventoryItem.quantity_sold || 0) + quantitySoldInSale;
           
-          await base44.entities.InventoryItem.update(sale.inventory_id, {
+          await inventoryApi.update(sale.inventory_id, {
             quantity_sold: newQuantitySold,
             status: newQuantitySold >= inventoryItem.quantity ? "sold" : inventoryItem.status
           });
@@ -619,11 +623,11 @@ export default function SalesHistory() {
       // First update inventory item quantity if needed
       if (sale.inventory_id) {
         try {
-          const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+          const inventoryItem = await inventoryApi.get(sale.inventory_id);
           const quantitySoldInSale = sale.quantity_sold || 1;
           const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
           
-          await base44.entities.InventoryItem.update(sale.inventory_id, {
+          await inventoryApi.update(sale.inventory_id, {
             quantity_sold: newQuantitySold,
             status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
           });
@@ -633,7 +637,7 @@ export default function SalesHistory() {
       }
       
       // Hard delete the sale
-      await base44.entities.Sale.delete(sale.id);
+      await salesApi.delete(sale.id, true);
       return sale.id;
     },
     onSuccess: (saleId) => {
@@ -666,11 +670,11 @@ export default function SalesHistory() {
       for (const sale of salesToDelete) {
         if (sale.inventory_id) {
           try {
-            const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+            const inventoryItem = await inventoryApi.get(sale.inventory_id);
             const quantitySoldInSale = sale.quantity_sold || 1;
             const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
             
-            await base44.entities.InventoryItem.update(sale.inventory_id, {
+            await inventoryApi.update(sale.inventory_id, {
               quantity_sold: newQuantitySold,
               status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
             });
@@ -682,7 +686,7 @@ export default function SalesHistory() {
       
       // Hard delete all sales
       await Promise.all(
-        saleIds.map(id => base44.entities.Sale.delete(id))
+        saleIds.map(id => salesApi.delete(id, true))
       );
       
       return saleIds;
@@ -717,10 +721,10 @@ export default function SalesHistory() {
       // Soft delete all sales with verification
       await Promise.all(
         saleIds.map(async (id) => {
-          await base44.entities.Sale.update(id, { deleted_at: deletedAt });
+          await salesApi.update(id, { deleted_at: deletedAt });
           // Verify each update
           try {
-            const updatedSale = await base44.entities.Sale.get(id);
+            const updatedSale = await salesApi.get(id);
             if (!updatedSale.deleted_at) {
               console.error(`Server update failed for sale ${id}: deleted_at not set`);
               throw new Error(`Failed to persist deletion for sale ${id}`);
@@ -736,11 +740,11 @@ export default function SalesHistory() {
       for (const sale of salesToDelete) {
         if (sale.inventory_id) {
           try {
-            const inventoryItem = await base44.entities.InventoryItem.get(sale.inventory_id);
+            const inventoryItem = await inventoryApi.get(sale.inventory_id);
             const quantitySoldInSale = sale.quantity_sold || 1;
             const newQuantitySold = Math.max(0, (inventoryItem.quantity_sold || 0) - quantitySoldInSale);
             
-            await base44.entities.InventoryItem.update(sale.inventory_id, {
+            await inventoryApi.update(sale.inventory_id, {
               quantity_sold: newQuantitySold,
               status: newQuantitySold === 0 ? "available" : (newQuantitySold < inventoryItem.quantity ? inventoryItem.status : "sold")
             });
@@ -778,7 +782,7 @@ export default function SalesHistory() {
           // Verify all sales have deleted_at set on server
           for (const id of saleIds) {
             try {
-              const updatedSale = await base44.entities.Sale.get(id);
+              const updatedSale = await salesApi.get(id);
               if (updatedSale.deleted_at) {
                 // Ensure cache has the correct deleted_at value
                 queryClient.setQueryData(['sales'], (old = []) => {
@@ -849,7 +853,7 @@ export default function SalesHistory() {
       const results = [];
       for (const id of ids) {
         try {
-          await base44.entities.Sale.update(id, updates);
+          await salesApi.update(id, updates);
           results.push({ id, success: true });
         } catch (error) {
           results.push({ id, success: false, error: error.message });

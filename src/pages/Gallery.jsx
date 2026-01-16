@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { salesApi } from '@/api/salesApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,7 +28,7 @@ export default function GalleryPage() {
     queryKey: ['sales', 'gallery'],
     // Showcase: prefer correctness (all-time) while keeping an upper bound for performance.
     queryFn: () => {
-      return base44.entities.Sale.list('-sale_date', {
+      return salesApi.list('-sale_date', {
         since: '1970-01-01',
         limit: 5000,
         fields: [
