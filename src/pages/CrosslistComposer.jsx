@@ -34551,6 +34551,104 @@ export default function CrosslistComposer() {
     );
   };
 
+  // Facebook defaults storage
+  const FACEBOOK_DEFAULTS_KEY = 'facebook-defaults';
+  const loadFacebookDefaults = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem(FACEBOOK_DEFAULTS_KEY);
+      if (!stored) return null;
+      return JSON.parse(stored);
+    } catch (error) {
+      console.warn('Failed to load Facebook defaults:', error);
+      return null;
+    }
+  };
+
+  const saveFacebookDefaults = (defaults, opts = {}) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(FACEBOOK_DEFAULTS_KEY, JSON.stringify(defaults));
+      if (!opts?.silent) {
+        toast({
+          title: opts?.toastTitle || "Defaults saved",
+          description: opts?.toastDescription || "Your Facebook defaults have been saved and will be applied to new listings.",
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to save Facebook defaults:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save defaults. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const [facebookDefaults, setFacebookDefaults] = useState(() => loadFacebookDefaults() || {});
+
+  const updateFacebookDefault = (field, value, opts = {}) => {
+    const next = { ...(facebookDefaults || {}), [field]: value };
+    setFacebookDefaults(next);
+    saveFacebookDefaults(next, opts);
+  };
+
+  const clearFacebookDefault = (field, opts = {}) => {
+    const next = { ...(facebookDefaults || {}) };
+    delete next[field];
+    setFacebookDefaults(next);
+    saveFacebookDefaults(next, opts);
+  };
+
+  const renderFacebookDefaultToggle = (field, currentValue, setValue) => {
+    const hasDefault = Object.prototype.hasOwnProperty.call(facebookDefaults || {}, field);
+    const savedValue = hasDefault ? facebookDefaults[field] : undefined;
+    const isUsingDefault = hasDefault && String(savedValue ?? '') === String(currentValue ?? '');
+    const labelText = isUsingDefault ? 'Using Default (click to reset)' : hasDefault ? 'Update Default' : 'Save As Default';
+
+    const onClick = async () => {
+      if (isUsingDefault) {
+        clearFacebookDefault(field, { silent: true });
+        const appDefault = MARKETPLACE_TEMPLATE_DEFAULTS?.facebook?.[field];
+        setValue(appDefault ?? '');
+        return;
+      }
+
+      const isBoolean = typeof currentValue === 'boolean';
+      const valueToSave = isBoolean ? currentValue : String(currentValue ?? '').trim();
+      if (!isBoolean && !valueToSave) {
+        toast({
+          title: 'Set a value first',
+          description: 'Enter/select a value before saving it as default.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      updateFacebookDefault(field, isBoolean ? currentValue : valueToSave, { silent: true });
+    };
+
+    return (
+      <button
+        type="button"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        onClick={onClick}
+        aria-label={labelText}
+      >
+        <span className="absolute right-full mr-2 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none">
+          <span className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
+            {labelText}
+          </span>
+        </span>
+        {isUsingDefault ? (
+          <Check className="h-4 w-4 text-black" />
+        ) : (
+          <Save className="h-4 w-4 text-black" />
+        )}
+      </button>
+    );
+  };
+
   // Load defaults on mount
   useEffect(() => {
     const defaults = loadEbayDefaults();
@@ -34576,6 +34674,18 @@ export default function CrosslistComposer() {
         },
       }));
     }
+
+    const fb = loadFacebookDefaults();
+    if (fb) {
+      setFacebookDefaults(fb);
+      setTemplateForms((prev) => ({
+        ...prev,
+        facebook: {
+          ...prev.facebook,
+          ...fb,
+        },
+      }));
+    }
   }, []);
   
   const populateTemplates = React.useCallback((item) => {
@@ -34597,7 +34707,7 @@ export default function CrosslistComposer() {
       ebay: savedEbay ? { ...initial.ebay, ...savedEbay } : { ...initial.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.etsy, ...savedEtsy } : initial.etsy,
       mercari: savedMercari ? { ...initial.mercari, ...savedMercari } : { ...initial.mercari, ...(mercariDefaults || {}) },
-      facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : initial.facebook,
+      facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : { ...initial.facebook, ...(facebookDefaults || {}) },
     };
     
     setTemplateForms(merged);
@@ -34610,7 +34720,7 @@ export default function CrosslistComposer() {
     } else {
       setBrandIsCustom(false);
     }
-  }, [ebayDefaults, mercariDefaults]);
+  }, [ebayDefaults, mercariDefaults, facebookDefaults]);
   
   // Load saved templates from localStorage - per-item if editing, global templates for new items
   // Note: This runs when item ID changes, but populateTemplates also loads saved data
@@ -42357,7 +42467,12 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs mb-1.5 block">Delivery Method</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Delivery Method</Label>
+                    {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
+                      handleMarketplaceChange("facebook", "deliveryMethod", v)
+                    )}
+                  </div>
                   <Select
                     value={facebookForm.deliveryMethod}
                     onValueChange={(value) => handleMarketplaceChange("facebook", "deliveryMethod", value)}
@@ -42387,7 +42502,12 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Meetup Location</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
+                    {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
+                      handleMarketplaceChange("facebook", "meetUpLocation", v)
+                    )}
+                  </div>
                   <Input
                     placeholder={generalForm.zip ? `Inherited from General: ${generalForm.zip}` : "Preferred meetup details"}
                     value={facebookForm.meetUpLocation}
@@ -42475,7 +42595,12 @@ export default function CrosslistComposer() {
                     onCheckedChange={(checked) => handleMarketplaceChange("facebook", "hideFromFriends", checked)}
                   />
                   <div>
-                    <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
+                            {renderFacebookDefaultToggle("hideFromFriends", facebookForm.hideFromFriends, (v) =>
+                              handleMarketplaceChange("facebook", "hideFromFriends", v)
+                            )}
+                          </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       This listing will be hidden from your Facebook friends but visible to other people on Facebook
                     </p>
@@ -46643,15 +46768,17 @@ export default function CrosslistComposer() {
                                       Smart Pricing
                                     </Label>
                                     <span className="text-xs text-muted-foreground">(Auto-adjust price based on market)</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
                                     {renderMercariDefaultToggle("smartPricing", mercariForm.smartPricing || false, (v) =>
                                       handleMarketplaceChange("mercari", "smartPricing", v)
                                     )}
+                                    <Switch
+                                      id="mercari-smart-pricing"
+                                      checked={mercariForm.smartPricing || false}
+                                      onCheckedChange={(checked) => handleMarketplaceChange("mercari", "smartPricing", checked)}
+                                    />
                                   </div>
-                                  <Switch
-                                    id="mercari-smart-pricing"
-                                    checked={mercariForm.smartPricing || false}
-                                    onCheckedChange={(checked) => handleMarketplaceChange("mercari", "smartPricing", checked)}
-                                  />
                                 </div>
                                 {mercariForm.smartPricing && (
                                   <div className="mt-3">
@@ -46681,15 +46808,17 @@ export default function CrosslistComposer() {
                                       Smart Offers
                                     </Label>
                                     <span className="text-xs text-muted-foreground">(Auto-accept reasonable offers)</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
                                     {renderMercariDefaultToggle("smartOffers", mercariForm.smartOffers || false, (v) =>
                                       handleMarketplaceChange("mercari", "smartOffers", v)
                                     )}
+                                    <Switch
+                                      id="mercari-smart-offers"
+                                      checked={mercariForm.smartOffers || false}
+                                      onCheckedChange={(checked) => handleMarketplaceChange("mercari", "smartOffers", checked)}
+                                    />
                                   </div>
-                                  <Switch
-                                    id="mercari-smart-offers"
-                                    checked={mercariForm.smartOffers || false}
-                                    onCheckedChange={(checked) => handleMarketplaceChange("mercari", "smartOffers", checked)}
-                                  />
                                 </div>
                                 {mercariForm.smartOffers && (
                                   <div className="mt-3">
@@ -47608,7 +47737,12 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Delivery Method</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Delivery Method</Label>
+                            {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
+                              handleMarketplaceChange("facebook", "deliveryMethod", v)
+                            )}
+                          </div>
                           <Select
                             value={facebookForm.deliveryMethod}
                             onValueChange={(value) => handleMarketplaceChange("facebook", "deliveryMethod", value)}
@@ -47638,7 +47772,12 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Meetup Location</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
+                            {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
+                              handleMarketplaceChange("facebook", "meetUpLocation", v)
+                            )}
+                          </div>
                           <Input
                             placeholder={generalForm.zip ? `Inherited from General: ${generalForm.zip}` : "Preferred meetup details"}
                             value={facebookForm.meetUpLocation}
@@ -47724,7 +47863,12 @@ export default function CrosslistComposer() {
                             onCheckedChange={(checked) => handleMarketplaceChange("facebook", "hideFromFriends", checked)}
                           />
                           <div>
-                            <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
+                              {renderFacebookDefaultToggle("hideFromFriends", facebookForm.hideFromFriends, (v) =>
+                                handleMarketplaceChange("facebook", "hideFromFriends", v)
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               This listing will be hidden from your Facebook friends but visible to other people on Facebook
                             </p>
