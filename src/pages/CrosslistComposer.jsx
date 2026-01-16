@@ -34452,6 +34452,105 @@ export default function CrosslistComposer() {
     );
   };
 
+  // Mercari defaults storage
+  const MERCARI_DEFAULTS_KEY = 'mercari-defaults';
+  const loadMercariDefaults = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem(MERCARI_DEFAULTS_KEY);
+      if (!stored) return null;
+      return JSON.parse(stored);
+    } catch (error) {
+      console.warn('Failed to load Mercari defaults:', error);
+      return null;
+    }
+  };
+
+  const saveMercariDefaults = (defaults, opts = {}) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(MERCARI_DEFAULTS_KEY, JSON.stringify(defaults));
+      // silent by default; no popup toasts for these buttons
+      if (!opts?.silent) {
+        toast({
+          title: opts?.toastTitle || "Defaults saved",
+          description: opts?.toastDescription || "Your Mercari defaults have been saved and will be applied to new listings.",
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to save Mercari defaults:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save defaults. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const [mercariDefaults, setMercariDefaults] = useState(() => loadMercariDefaults() || {});
+
+  const updateMercariDefault = (field, value, opts = {}) => {
+    const next = { ...(mercariDefaults || {}), [field]: value };
+    setMercariDefaults(next);
+    saveMercariDefaults(next, opts);
+  };
+
+  const clearMercariDefault = (field, opts = {}) => {
+    const next = { ...(mercariDefaults || {}) };
+    delete next[field];
+    setMercariDefaults(next);
+    saveMercariDefaults(next, opts);
+  };
+
+  const renderMercariDefaultToggle = (field, currentValue, setValue) => {
+    const hasDefault = Object.prototype.hasOwnProperty.call(mercariDefaults || {}, field);
+    const savedValue = hasDefault ? mercariDefaults[field] : undefined;
+    const isUsingDefault = hasDefault && String(savedValue ?? '') === String(currentValue ?? '');
+    const labelText = isUsingDefault ? 'Using Default (click to reset)' : hasDefault ? 'Update Default' : 'Save As Default';
+
+    const onClick = async () => {
+      if (isUsingDefault) {
+        clearMercariDefault(field, { silent: true });
+        const appDefault = MARKETPLACE_TEMPLATE_DEFAULTS?.mercari?.[field];
+        setValue(appDefault ?? '');
+        return;
+      }
+
+      const isBoolean = typeof currentValue === 'boolean';
+      const valueToSave = isBoolean ? currentValue : String(currentValue ?? '').trim();
+      if (!isBoolean && !valueToSave) {
+        toast({
+          title: 'Set a value first',
+          description: 'Enter/select a value before saving it as default.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      updateMercariDefault(field, isBoolean ? currentValue : valueToSave, { silent: true });
+    };
+
+    return (
+      <button
+        type="button"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        onClick={onClick}
+        aria-label={labelText}
+      >
+        <span className="absolute right-full mr-2 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none">
+          <span className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
+            {labelText}
+          </span>
+        </span>
+        {isUsingDefault ? (
+          <Check className="h-4 w-4 text-black" />
+        ) : (
+          <Save className="h-4 w-4 text-black" />
+        )}
+      </button>
+    );
+  };
+
   // Load defaults on mount
   useEffect(() => {
     const defaults = loadEbayDefaults();
@@ -34462,6 +34561,18 @@ export default function CrosslistComposer() {
         ebay: {
           ...prev.ebay,
           ...defaults,
+        },
+      }));
+    }
+
+    const mercari = loadMercariDefaults();
+    if (mercari) {
+      setMercariDefaults(mercari);
+      setTemplateForms((prev) => ({
+        ...prev,
+        mercari: {
+          ...prev.mercari,
+          ...mercari,
         },
       }));
     }
@@ -34485,7 +34596,7 @@ export default function CrosslistComposer() {
       general: savedGeneral ? { ...initial.general, ...savedGeneral } : initial.general,
       ebay: savedEbay ? { ...initial.ebay, ...savedEbay } : { ...initial.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.etsy, ...savedEtsy } : initial.etsy,
-      mercari: savedMercari ? { ...initial.mercari, ...savedMercari } : initial.mercari,
+      mercari: savedMercari ? { ...initial.mercari, ...savedMercari } : { ...initial.mercari, ...(mercariDefaults || {}) },
       facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : initial.facebook,
     };
     
@@ -34499,7 +34610,7 @@ export default function CrosslistComposer() {
     } else {
       setBrandIsCustom(false);
     }
-  }, [ebayDefaults]);
+  }, [ebayDefaults, mercariDefaults]);
   
   // Load saved templates from localStorage - per-item if editing, global templates for new items
   // Note: This runs when item ID changes, but populateTemplates also loads saved data
@@ -41254,6 +41365,9 @@ export default function CrosslistComposer() {
                               Smart Pricing
                             </Label>
                             <span className="text-xs text-muted-foreground">(Auto-adjust price based on market)</span>
+                                {renderMercariDefaultToggle("smartPricing", mercariForm.smartPricing || false, (v) =>
+                                  handleMarketplaceChange("mercari", "smartPricing", v)
+                                )}
                           </div>
                           <Switch
                             id="mercari-smart-pricing"
@@ -41289,6 +41403,9 @@ export default function CrosslistComposer() {
                               Smart Offers
                             </Label>
                             <span className="text-xs text-muted-foreground">(Auto-accept reasonable offers)</span>
+                                {renderMercariDefaultToggle("smartOffers", mercariForm.smartOffers || false, (v) =>
+                                  handleMarketplaceChange("mercari", "smartOffers", v)
+                                )}
                           </div>
                           <Switch
                             id="mercari-smart-offers"
@@ -41350,7 +41467,12 @@ export default function CrosslistComposer() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Ships From (Zip Code) */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
+                    {renderMercariDefaultToggle("shipsFrom", mercariForm.shipsFrom, (v) =>
+                      handleMarketplaceChange("mercari", "shipsFrom", v)
+                    )}
+                  </div>
                   <Input
                     placeholder="Enter your zip code"
                     value={mercariForm.shipsFrom || ""}
@@ -41361,7 +41483,12 @@ export default function CrosslistComposer() {
 
                 {/* Delivery Method */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                    {renderMercariDefaultToggle("deliveryMethod", mercariForm.deliveryMethod || "prepaid", (v) =>
+                      handleMarketplaceChange("mercari", "deliveryMethod", v)
+                    )}
+                  </div>
                   <Select
                     value={mercariForm.deliveryMethod || "prepaid"}
                     onValueChange={(value) => handleMarketplaceChange("mercari", "deliveryMethod", value)}
@@ -46516,6 +46643,9 @@ export default function CrosslistComposer() {
                                       Smart Pricing
                                     </Label>
                                     <span className="text-xs text-muted-foreground">(Auto-adjust price based on market)</span>
+                                    {renderMercariDefaultToggle("smartPricing", mercariForm.smartPricing || false, (v) =>
+                                      handleMarketplaceChange("mercari", "smartPricing", v)
+                                    )}
                                   </div>
                                   <Switch
                                     id="mercari-smart-pricing"
@@ -46551,6 +46681,9 @@ export default function CrosslistComposer() {
                                       Smart Offers
                                     </Label>
                                     <span className="text-xs text-muted-foreground">(Auto-accept reasonable offers)</span>
+                                    {renderMercariDefaultToggle("smartOffers", mercariForm.smartOffers || false, (v) =>
+                                      handleMarketplaceChange("mercari", "smartOffers", v)
+                                    )}
                                   </div>
                                   <Switch
                                     id="mercari-smart-offers"
@@ -46610,7 +46743,12 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
+                            {renderMercariDefaultToggle("shipsFrom", mercariForm.shipsFrom, (v) =>
+                              handleMarketplaceChange("mercari", "shipsFrom", v)
+                            )}
+                          </div>
                           <Input
                             placeholder="Enter your zip code"
                             value={mercariForm.shipsFrom || ""}
@@ -46620,7 +46758,12 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                            {renderMercariDefaultToggle("deliveryMethod", mercariForm.deliveryMethod || "prepaid", (v) =>
+                              handleMarketplaceChange("mercari", "deliveryMethod", v)
+                            )}
+                          </div>
                           <Select
                             value={mercariForm.deliveryMethod || "prepaid"}
                             onValueChange={(value) => handleMarketplaceChange("mercari", "deliveryMethod", value)}
