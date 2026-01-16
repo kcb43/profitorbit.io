@@ -33191,6 +33191,78 @@ export default function CrosslistComposer() {
     return '—';
   };
 
+  const getEbayListingIdForActions = () => {
+    const rec = listingRecordsByMarketplace?.ebay || null;
+    const id = rec?.marketplace_listing_id || ebayListingId || null;
+    return id ? String(id) : null;
+  };
+
+  const isEbayListed = () => {
+    const rec = listingRecordsByMarketplace?.ebay || null;
+    if (String(rec?.status || '').toLowerCase() === 'active') return true;
+    return !!ebayListingId;
+  };
+
+  const handleEbayDelist = async () => {
+    const id = getEbayListingIdForActions();
+    if (!id) {
+      toast({ title: 'Missing listing id', description: 'Could not determine eBay listing id to delist.', variant: 'destructive' });
+      return;
+    }
+    if (!confirm('Are you sure you want to delist this eBay item?')) return;
+    try {
+      setIsSaving(true);
+      const response = await fetch('/api/ebay/listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'EndItem',
+          itemId: id,
+          userToken: ebayToken?.access_token,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.Ack !== 'Success' && result.Ack !== 'Warning') {
+        throw new Error(result.Errors?.join(', ') || 'Failed to end listing');
+      }
+
+      if (currentEditingItemId) {
+        try {
+          await base44.entities.InventoryItem.update(currentEditingItemId, {
+            status: 'available',
+            ebay_listing_id: '',
+          });
+          queryClient.invalidateQueries(['inventoryItems']);
+        } catch (_) {}
+
+        await crosslistingEngine.upsertMarketplaceListing({
+          inventory_item_id: currentEditingItemId,
+          marketplace: 'ebay',
+          marketplace_listing_id: id,
+          marketplace_listing_url: getEbayItemUrl(id),
+          status: 'ended',
+          listed_at: listingRecordsByMarketplace?.ebay?.listed_at || listingRecordsByMarketplace?.ebay?.created_at || new Date().toISOString(),
+          metadata: { ...(listingRecordsByMarketplace?.ebay?.metadata || {}), endedAt: new Date().toISOString() },
+        });
+        await refreshListingRecords(currentEditingItemId);
+      }
+
+      setEbayListingId(null);
+      if (currentEditingItemId) {
+        try { localStorage.removeItem(`ebay_listing_${currentEditingItemId}`); } catch (_) {}
+      }
+      toast({ title: 'Delisted', description: 'eBay listing ended.' });
+    } catch (e) {
+      toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const renderListingInfoPanel = (marketplaceId, titleLabel) => {
     const rec = listingRecordsByMarketplace?.[marketplaceId] || null;
     if (!rec) return null;
@@ -33270,62 +33342,7 @@ export default function CrosslistComposer() {
               className="gap-2"
               disabled={isSaving}
               onClick={async () => {
-                if (!confirm('Are you sure you want to delist this eBay item?')) return;
-                try {
-                  setIsSaving(true);
-                  const response = await fetch('/api/ebay/listing', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      operation: 'EndItem',
-                      itemId: String(listingId),
-                      userToken: ebayToken?.access_token,
-                    }),
-                  });
-                  if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                    throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
-                  }
-                  const result = await response.json();
-                  if (result.Ack !== 'Success' && result.Ack !== 'Warning') {
-                    throw new Error(result.Errors?.join(', ') || 'Failed to end listing');
-                  }
-
-                  if (currentEditingItemId) {
-                    try {
-                      await base44.entities.InventoryItem.update(currentEditingItemId, {
-                        status: 'available',
-                        ebay_listing_id: '',
-                      });
-                      queryClient.invalidateQueries(['inventoryItems']);
-                    } catch (_) {}
-                  }
-
-                  // Mark record ended so Crosslist list + composer remember it's delisted.
-                  if (currentEditingItemId) {
-                    await crosslistingEngine.upsertMarketplaceListing({
-                      inventory_item_id: currentEditingItemId,
-                      marketplace: 'ebay',
-                      marketplace_listing_id: String(listingId),
-                      marketplace_listing_url: listingUrl || '',
-                      status: 'ended',
-                      listed_at: rec.listed_at || rec.created_at || new Date().toISOString(),
-                      metadata: { ...(rec.metadata || {}), endedAt: new Date().toISOString() },
-                    });
-                    await refreshListingRecords(currentEditingItemId);
-                  }
-
-                  setEbayListingId(null);
-                  if (currentEditingItemId) {
-                    try { localStorage.removeItem(`ebay_listing_${currentEditingItemId}`); } catch (_) {}
-                  }
-
-                  toast({ title: 'Delisted', description: 'eBay listing ended.' });
-                } catch (e) {
-                  toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
-                } finally {
-                  setIsSaving(false);
-                }
+                await handleEbayDelist();
               }}
             >
               <Unlock className="h-4 w-4" />
@@ -39703,17 +39720,22 @@ export default function CrosslistComposer() {
 
               {/* Vendoo-style listing info is shown at the bottom of the form (see action area). */}
 
-              {!ebayListingId && (
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
-                    <Save className="h-4 w-4" />
-                    Save
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
+                  <Save className="h-4 w-4" />
+                  Save
+                </Button>
+                {isEbayListed() ? (
+                  <Button variant="destructive" className="gap-2" onClick={handleEbayDelist} disabled={isSaving}>
+                    <Unlock className="h-4 w-4" />
+                    Delist on eBay
                   </Button>
+                ) : (
                   <Button className="gap-2" onClick={() => handleListOnMarketplace("ebay")}>
                     List on eBay
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
@@ -44980,17 +45002,22 @@ export default function CrosslistComposer() {
                       {/* Vendoo-style listing info (bottom of form) */}
                       {renderListingInfoPanel('ebay', 'eBay Listing')}
 
-                      {!ebayListingId && (
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
-                            <Save className="h-4 w-4" />
-                            Save
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
+                          <Save className="h-4 w-4" />
+                          Save
+                        </Button>
+                        {isEbayListed() ? (
+                          <Button variant="destructive" className="gap-2" onClick={handleEbayDelist} disabled={isSaving}>
+                            <Unlock className="h-4 w-4" />
+                            Delist on eBay
                           </Button>
+                        ) : (
                           <Button className="gap-2" onClick={() => handleListOnMarketplace("ebay")}>
                             List on eBay
                           </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
 
