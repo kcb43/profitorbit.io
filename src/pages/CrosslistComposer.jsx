@@ -42588,22 +42588,24 @@ export default function CrosslistComposer() {
               </div>
 
               <div className="mb-6">
-                <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-3">
-                  <Switch
-                    id="facebook-hide-from-friends"
-                    checked={facebookForm.hideFromFriends}
-                    onCheckedChange={(checked) => handleMarketplaceChange("facebook", "hideFromFriends", checked)}
-                  />
-                  <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
-                            {renderFacebookDefaultToggle("hideFromFriends", facebookForm.hideFromFriends, (v) =>
-                              handleMarketplaceChange("facebook", "hideFromFriends", v)
-                            )}
-                          </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      This listing will be hidden from your Facebook friends but visible to other people on Facebook
-                    </p>
+                <div className="relative">
+                  <div className="absolute right-0 top-0">
+                    {renderFacebookDefaultToggle("hideFromFriends", facebookForm.hideFromFriends, (v) =>
+                      handleMarketplaceChange("facebook", "hideFromFriends", v)
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-3 pr-10">
+                    <Switch
+                      id="facebook-hide-from-friends"
+                      checked={facebookForm.hideFromFriends}
+                      onCheckedChange={(checked) => handleMarketplaceChange("facebook", "hideFromFriends", checked)}
+                    />
+                    <div>
+                      <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        This listing will be hidden from your Facebook friends but visible to other people on Facebook
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -46761,7 +46763,12 @@ export default function CrosslistComposer() {
                           
                           {(mercariForm.price || generalForm.price) && (
                             <div className="mt-4 space-y-3">
-                              <div className="p-3 border rounded-md bg-muted/30">
+                              <div className="relative p-3 border rounded-md bg-muted/30">
+                                <div className="absolute right-3 top-3">
+                                  {renderMercariDefaultToggle("smartPricing", mercariForm.smartPricing || false, (v) =>
+                                    handleMarketplaceChange("mercari", "smartPricing", v)
+                                  )}
+                                </div>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <Label htmlFor="mercari-smart-pricing" className="text-xs font-medium cursor-pointer">
@@ -46770,9 +46777,6 @@ export default function CrosslistComposer() {
                                     <span className="text-xs text-muted-foreground">(Auto-adjust price based on market)</span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {renderMercariDefaultToggle("smartPricing", mercariForm.smartPricing || false, (v) =>
-                                      handleMarketplaceChange("mercari", "smartPricing", v)
-                                    )}
                                     <Switch
                                       id="mercari-smart-pricing"
                                       checked={mercariForm.smartPricing || false}
@@ -46801,7 +46805,12 @@ export default function CrosslistComposer() {
                                   </div>
                                 )}
                               </div>
-                              <div className="p-3 border rounded-md bg-muted/30">
+                              <div className="relative p-3 border rounded-md bg-muted/30">
+                                <div className="absolute right-3 top-3">
+                                  {renderMercariDefaultToggle("smartOffers", mercariForm.smartOffers || false, (v) =>
+                                    handleMarketplaceChange("mercari", "smartOffers", v)
+                                  )}
+                                </div>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <Label htmlFor="mercari-smart-offers" className="text-xs font-medium cursor-pointer">
@@ -46810,9 +46819,6 @@ export default function CrosslistComposer() {
                                     <span className="text-xs text-muted-foreground">(Auto-accept reasonable offers)</span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {renderMercariDefaultToggle("smartOffers", mercariForm.smartOffers || false, (v) =>
-                                      handleMarketplaceChange("mercari", "smartOffers", v)
-                                    )}
                                     <Switch
                                       id="mercari-smart-offers"
                                       checked={mercariForm.smartOffers || false}
@@ -47856,22 +47862,24 @@ export default function CrosslistComposer() {
                       </div>
 
                       <div className="mb-6">
-                        <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-3">
-                          <Switch
-                            id="facebook-hide-from-friends"
-                            checked={facebookForm.hideFromFriends}
-                            onCheckedChange={(checked) => handleMarketplaceChange("facebook", "hideFromFriends", checked)}
-                          />
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
+                        <div className="relative">
+                          <div className="absolute right-0 top-0">
+                            {renderFacebookDefaultToggle("hideFromFriends", facebookForm.hideFromFriends, (v) =>
+                              handleMarketplaceChange("facebook", "hideFromFriends", v)
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-3 pr-10">
+                            <Switch
+                              id="facebook-hide-from-friends"
+                              checked={facebookForm.hideFromFriends}
+                              onCheckedChange={(checked) => handleMarketplaceChange("facebook", "hideFromFriends", checked)}
+                            />
+                            <div>
                               <Label htmlFor="facebook-hide-from-friends" className="text-sm cursor-pointer">Hide from friends</Label>
-                              {renderFacebookDefaultToggle("hideFromFriends", facebookForm.hideFromFriends, (v) =>
-                                handleMarketplaceChange("facebook", "hideFromFriends", v)
-                              )}
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                This listing will be hidden from your Facebook friends but visible to other people on Facebook
+                              </p>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              This listing will be hidden from your Facebook friends but visible to other people on Facebook
-                            </p>
                           </div>
                         </div>
                       </div>
