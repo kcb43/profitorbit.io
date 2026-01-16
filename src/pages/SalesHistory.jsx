@@ -41,8 +41,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/api/supabaseClient";
-import { salesApi } from "@/api/salesApi";
-import { inventoryApi } from "@/api/inventoryApi";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
