@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { imageEditorTemplatesApi } from '@/api/imageEditorTemplatesApi';
+import { uploadApi } from '@/api/uploadApi';
 import { 
   Camera, 
   Upload, 
@@ -1002,7 +1003,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
         });
         const fileToUpload = compressedFile || file;
         const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+        const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
         
         // Call the callback to add the new image
         onAddImage(file_url);

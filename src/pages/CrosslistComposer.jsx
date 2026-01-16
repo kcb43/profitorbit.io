@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
+import { uploadApi } from "@/api/uploadApi";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -36051,7 +36052,7 @@ export default function CrosslistComposer() {
                 ? photo.file 
                 : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
               
-              const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+              const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
               photosToUse.push({
                 ...photo,
                 preview: file_url,
@@ -36290,7 +36291,7 @@ export default function CrosslistComposer() {
                 ? photo.file 
                 : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
               
-              const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+              const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
               photosToUse.push(file_url);
             } catch (uploadError) {
               console.error('Error uploading photo:', uploadError);
@@ -36744,7 +36745,7 @@ export default function CrosslistComposer() {
                     ? photo.file 
                     : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
                   
-                  const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+                  const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
                   photosToUse.push({
                     ...photo,
                     preview: file_url,
@@ -36842,7 +36843,7 @@ export default function CrosslistComposer() {
                     ? photo.file 
                     : new File([photo.file], photo.fileName || 'photo.jpg', { type: photo.file.type || 'image/jpeg' });
                   
-                  const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+                  const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
                   photosToUse.push(file_url);
                 } catch (uploadError) {
                   console.error('Error uploading photo:', uploadError);
@@ -37342,7 +37343,7 @@ export default function CrosslistComposer() {
           ? photo.file 
           : new File([photo.file], photo.fileName || `photo_${i}.jpg`, { type: photo.file.type || 'image/jpeg' });
         
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+        const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
         imageUrl = file_url;
       } else if (photo.preview && !photo.preview.startsWith('blob:')) {
         imageUrl = photo.preview;

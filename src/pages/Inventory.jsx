@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
+import { uploadApi } from "@/api/uploadApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -655,7 +656,7 @@ export default function InventoryPage() {
       const uploadPayload = file instanceof File ? file : new File([file], file.name || 'edited-image.jpg', { type: file.type || 'image/jpeg' });
       console.log('Uploading file...', { fileName: uploadPayload.name, size: uploadPayload.size });
       
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
       console.log('File uploaded:', file_url);
       
       // Get the current item
@@ -855,7 +856,7 @@ export default function InventoryPage() {
       for (let i = 0; i < processedImages.length; i++) {
         const processedItem = processedImages[i];
         if (processedItem.file) {
-          const { file_url } = await base44.integrations.Core.UploadFile({ file: processedItem.file });
+          const { file_url } = await uploadApi.uploadFile({ file: processedItem.file });
           uploadedUrls.push(file_url);
         }
       }

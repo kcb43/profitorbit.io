@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/components/ui/use-toast";
 import { Plus, Edit, Trash2, Copy, X, ImagePlus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { uploadApi } from "@/api/uploadApi";
 import imageCompression from "browser-image-compression";
 
 // Categories for dropdown
@@ -220,7 +221,7 @@ export default function Crosslisting() {
           ? compressedFile 
           : new File([compressedFile], file.name, { type: file.type });
         
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+        const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
         uploadedImages.push(file_url);
       }
 

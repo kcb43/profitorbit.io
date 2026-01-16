@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Upload, X, Image as ImageIcon, Plus, Loader2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { inventoryApi } from '@/api/inventoryApi';
+import { uploadApi } from '@/api/uploadApi';
 import { cleanHtmlText } from '@/lib/utils';
 
 const MAX_PHOTOS = 12;
@@ -126,15 +127,11 @@ export function UnifiedListingForm({
         const formDataUpload = new FormData();
         formDataUpload.append('file', compressedFile);
 
-        // Use Base44 file upload
-        const uploadResult = await base44.integrations.Core.UploadFile({
-          file: compressedFile,
-          fileName: `listing_${Date.now()}_${file.name}`,
-        });
+        const { file_url } = await uploadApi.uploadFile({ file: compressedFile });
 
         uploadedPhotos.push({
           id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          imageUrl: uploadResult.url || uploadResult.fileUrl,
+          imageUrl: file_url,
           fileName: file.name,
           isMain: formData.photos.length === 0, // First photo is main
         });

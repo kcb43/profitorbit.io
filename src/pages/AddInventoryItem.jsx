@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
+import { uploadApi } from "@/api/uploadApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -382,7 +383,7 @@ export default function AddInventoryItem() {
       });
       const fileToUpload = compressedFile || file;
       const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
       handleChange('image_url', file_url);
     } catch (error) {
       console.error("Image upload failed:", error);
@@ -408,7 +409,7 @@ export default function AddInventoryItem() {
     setIsUploading(true);
     try {
       const uploadPayload = editedFile instanceof File ? editedFile : new File([editedFile], editedFile.name || 'edited-image.jpg', { type: editedFile.type || 'image/jpeg' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
       
       // Update the photo in the photos array (either main or secondary)
       setFormData(prev => {
@@ -445,8 +446,8 @@ export default function AddInventoryItem() {
         const originalPhoto = formData.photos[i];
         
         // Upload the filtered image
-        const { file_url } = await base44.integrations.Core.UploadFile({ 
-          file: processedItem.file 
+        const { file_url } = await uploadApi.uploadFile({
+          file: processedItem.file
         });
         
         // Keep the photo structure but update the imageUrl
@@ -501,7 +502,7 @@ export default function AddInventoryItem() {
         });
         const fileToUpload = compressedFile || file;
         const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+        const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
 
         uploadedPhotos.push({
           id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { salesApi } from "@/api/salesApi";
 import { inventoryApi } from "@/api/inventoryApi";
+import { uploadApi } from "@/api/uploadApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -515,7 +516,7 @@ export default function AddSale() {
       });
       const fileToUpload = compressedFile || file;
       const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadPayload });
+      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
       handleChange('image_url', file_url);
     } catch (error) {
       console.error("Image upload failed:", error);
