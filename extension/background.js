@@ -399,6 +399,13 @@ const MERCARI_PERSISTED = {
     operationName: 'createListing',
     sha256Hash: '265dab5d0d382d3c83dda7d65e9ad111f47c27aa5d92c7d9a4bacd890d5e32c0',
   },
+  // Recorded from Mercari web "Delete" action on Active Listings:
+  // operationName: UpdateItemStatusMutation
+  // variables: { input: { status: "cancel", id: "m..." } }
+  updateItemStatus: {
+    operationName: 'UpdateItemStatusMutation',
+    sha256Hash: '55bd4e7d2bc2936638e1451da3231e484993635d7603431d1a2978e3d59656f8',
+  },
 };
 
 function parseMercariPrice(raw) {
@@ -974,6 +981,22 @@ async function mercariCreateListing(input) {
     } catch (_) {}
   }
   return { itemId, raw: data };
+}
+
+async function mercariUpdateItemStatusCancel(itemId) {
+  const id = String(itemId || '').trim();
+  if (!id) throw new Error('Missing Mercari item id');
+  // Mercari item IDs look like "m123..." (alphanumeric).
+  if (!/^m[0-9a-zA-Z]+$/.test(id)) {
+    throw new Error(`Invalid Mercari item id: ${id}`);
+  }
+
+  const data = await mercariPersistedJson(
+    MERCARI_PERSISTED.updateItemStatus.operationName,
+    MERCARI_PERSISTED.updateItemStatus.sha256Hash,
+    { input: { status: 'cancel', id } }
+  );
+  return { itemId: id, raw: data };
 }
 
 function shouldRecordMercariUrl(url) {
@@ -1956,6 +1979,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       } catch (e) {
         console.error('🔴 [MERCARI] CREATE_MERCARI_LISTING failed', e);
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (type === 'DELIST_MERCARI_LISTING') {
+    (async () => {
+      try {
+        const listingId =
+          message?.listingId ??
+          message?.itemId ??
+          message?.payload?.listingId ??
+          message?.payload?.itemId ??
+          message?.payload?.id ??
+          null;
+
+        console.log('🟣 [MERCARI] DELIST_MERCARI_LISTING received', {
+          fromTabId: sender?.tab?.id ?? null,
+          listingId: listingId ? String(listingId) : null,
+        });
+
+        const result = await mercariUpdateItemStatusCancel(listingId);
+
+        // Persist last delist attempt for debugging
+        try {
+          chrome.storage.local.set(
+            { mercariLastDelistAttempt: { t: Date.now(), listingId: String(listingId || ''), result } },
+            () => {}
+          );
+        } catch (_) {}
+
+        sendResponse({ success: true, listingId: result.itemId, status: 'cancel' });
+      } catch (e) {
+        console.error('🔴 [MERCARI] DELIST_MERCARI_LISTING failed', e);
         sendResponse({ success: false, error: e?.message || String(e) });
       }
     })();

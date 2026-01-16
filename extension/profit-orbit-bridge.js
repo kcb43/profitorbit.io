@@ -110,6 +110,13 @@ window.addEventListener("message", (event) => {
     poTrySendMessage({ type: "CREATE_MERCARI_LISTING", listingData: msg.payload }, "PO_CREATE_MERCARI_LISTING_RESULT");
     return;
   }
+  if (msg.type === "PO_DELIST_MERCARI_LISTING") {
+    poTrySendMessage(
+      { type: "DELIST_MERCARI_LISTING", listingId: msg?.payload?.listingId ?? msg?.payload?.itemId ?? null },
+      "PO_DELIST_MERCARI_LISTING_RESULT"
+    );
+    return;
+  }
   if (msg.type === "PO_CREATE_FACEBOOK_LISTING") {
     poTrySendMessage({ type: "CREATE_FACEBOOK_LISTING", listingData: msg.payload }, "PO_CREATE_FACEBOOK_LISTING_RESULT");
     return;

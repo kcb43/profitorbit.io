@@ -33186,7 +33186,7 @@ export default function CrosslistComposer() {
     const s = String(status || '').toLowerCase();
     if (s === 'active') return 'Listed';
     if (s === 'processing') return 'In Progress';
-    if (s === 'ended' || s === 'delisted') return 'Delisted';
+    if (s === 'ended' || s === 'delisted' || s === 'deleted' || s === 'cancel') return 'Delisted';
     if (s) return s;
     return '—';
   };
@@ -33294,7 +33294,7 @@ export default function CrosslistComposer() {
     const isActive = String(rec.status || '').toLowerCase() === 'active';
     const statusLower = String(rec.status || '').toLowerCase();
     const statusText = listingStatusLabel(rec.status);
-    const isDelisted = statusLower === 'ended' || statusLower === 'delisted';
+    const isDelisted = statusLower === 'ended' || statusLower === 'delisted' || statusLower === 'deleted' || statusLower === 'cancel';
 
     return (
       <div className="mt-4 p-4 border rounded-lg bg-muted/50">
@@ -33362,9 +33362,59 @@ export default function CrosslistComposer() {
           </Button>
 
           {marketplaceId === 'mercari' && isActive && (
-            <Button variant="destructive" size="sm" className="gap-2" disabled>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              disabled={isSaving}
+              onClick={async () => {
+                if (!listingId || listingId === '—') {
+                  toast({ title: 'Missing listing id', description: 'No Mercari listing id found for this item.', variant: 'destructive' });
+                  return;
+                }
+                if (!confirm('Delete on Mercari?')) return;
+
+                const ext = window?.ProfitOrbitExtension;
+                if (!ext?.delistMercariListing) {
+                  toast({
+                    title: 'Extension not available',
+                    description: 'Mercari delist requires the Profit Orbit extension. Please refresh and try again.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
+
+                try {
+                  setIsSaving(true);
+                  const resp = await ext.delistMercariListing({ listingId: String(listingId) });
+                  if (!resp?.success) {
+                    throw new Error(resp?.error || 'Failed to delist on Mercari');
+                  }
+
+                  // Update our local listing record so Crosslist + reopen remembers the delist.
+                  if (currentEditingItemId) {
+                    await crosslistingEngine.upsertMarketplaceListing({
+                      inventory_item_id: currentEditingItemId,
+                      marketplace: 'mercari',
+                      marketplace_listing_id: String(listingId),
+                      marketplace_listing_url: canView ? String(listingUrl) : '',
+                      status: 'delisted',
+                      delisted_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    });
+                    await refreshListingRecords(currentEditingItemId);
+                  }
+
+                  toast({ title: 'Deleted', description: 'Mercari listing deleted.' });
+                } catch (e) {
+                  toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+            >
               <Unlock className="h-4 w-4" />
-              Delist (coming soon)
+              Delete on Mercari
             </Button>
           )}
 

@@ -187,6 +187,25 @@
       return resp;
     },
 
+    // Mercari API-mode "Delist/Delete" entrypoint (Recorded as UpdateItemStatusMutation status="cancel")
+    async delistMercariListing(payload) {
+      const listingId = String(payload?.listingId ?? payload?.itemId ?? payload?.id ?? '').trim();
+      console.log('🟣 [Mercari] Page API -> delistMercariListing', { listingId: listingId || null });
+
+      const resp = await postAndWait(
+        'PO_DELIST_MERCARI_LISTING',
+        'PO_DELIST_MERCARI_LISTING_RESULT',
+        { listingId },
+        60000
+      );
+
+      try {
+        localStorage.setItem('profit_orbit_last_mercari_delist_result', JSON.stringify({ t: Date.now(), listingId, resp }));
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Facebook API-mode listing entrypoint (no tabs/windows)
     async createFacebookListing(listingData, options = null) {
       const normalized = listingData && listingData.payload
