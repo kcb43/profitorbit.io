@@ -457,16 +457,20 @@ export default function Crosslist() {
   // Source of truth: marketplace listing records (fast + consistent with DB schema).
   const computeListingState = (item) => {
     const listings = getItemListings(item.id);
-    const activeListings = listings.filter(l => l.status === 'active');
-    
-    const checkListed = (marketplace) => activeListings.some((l) => l.marketplace === marketplace);
-    
+    const getState = (marketplace) => {
+      const active = listings.find((l) => l.marketplace === marketplace && l.status === 'active');
+      if (active) return 'active';
+      const processing = listings.find((l) => l.marketplace === marketplace && l.status === 'processing');
+      if (processing) return 'processing';
+      return null;
+    };
+
     const state = {
-      ebay:     checkListed('ebay'),
-      facebook: checkListed('facebook'),
-      mercari:  checkListed('mercari'),
-      etsy:     checkListed('etsy'),
-      poshmark: checkListed('poshmark'),
+      ebay:     getState('ebay'),
+      facebook: getState('facebook'),
+      mercari:  getState('mercari'),
+      etsy:     getState('etsy'),
+      poshmark: getState('poshmark'),
     };
     
     return state;
@@ -1643,7 +1647,7 @@ export default function Crosslist() {
           <div className="space-y-4">
             {filtered.map((it) => {
               const map = computeListingState(it);
-              const listedCount = Object.values(map).filter(Boolean).length;
+              const listedCount = Object.values(map).filter((v) => v === 'active').length;
               
               return (
                 <div
@@ -1709,10 +1713,13 @@ export default function Crosslist() {
                     {/* Marketplace Icons & List Buttons */}
                     <div className="flex flex-wrap items-center gap-2">
                       {MARKETPLACES.map((m) => {
-                        const isListed = map[m.id];
+                        const state = map[m.id];
+                        const isListed = state === 'active';
+                        const isProcessing = state === 'processing';
                         const listings = getItemListings(it.id);
                         const listing =
                           listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                          listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
                           listings.find((l) => l.marketplace === m.id) ||
                           null;
                         const isConnected = isPlatformConnected(m.id);
@@ -1728,11 +1735,15 @@ export default function Crosslist() {
                               className={`relative inline-flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
                                 isListed
                                   ? "bg-white dark:bg-slate-900 border-emerald-500/40 opacity-100 shadow-sm"
+                                  : isProcessing
+                                    ? "bg-white dark:bg-slate-900 border-blue-500/40 opacity-100 shadow-sm"
                                   : "bg-gray-500/10 border-gray-300 dark:border-slate-600 opacity-50 hover:opacity-70"
                               }`}
                               title={
                                 isListed
                                   ? (listingUrl ? `✓ Listed on ${m.label} (click to open)` : `✓ Listed on ${m.label}`)
+                                  : isProcessing
+                                    ? `Listing in progress on ${m.label}`
                                   : `Not listed on ${m.label}`
                               }
                               role={listingUrl ? "button" : undefined}
@@ -1754,8 +1765,13 @@ export default function Crosslist() {
                                   <ExternalLink className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                                 </span>
                               )}
+                              {isProcessing && (
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-1 shadow">
+                                  <RefreshCw className="w-3 h-3 text-blue-600 animate-spin" />
+                                </span>
+                              )}
                             </div>
-                            {!isListed && isConnected && !hasActiveJob && m.id === 'mercari' && (
+                            {!isListed && !isProcessing && isConnected && !hasActiveJob && m.id === 'mercari' && (
                               <MercariListButton
                                 itemId={it.id}
                                 marketplaceId={m.id}
@@ -1810,7 +1826,7 @@ export default function Crosslist() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full overflow-hidden">
             {filtered.map((it) => {
               const map = computeListingState(it);
-              const listedCount = Object.values(map).filter(Boolean).length;
+              const listedCount = Object.values(map).filter((v) => v === 'active').length;
               return (
                 <Card 
                   key={it.id} 
@@ -1853,11 +1869,13 @@ export default function Crosslist() {
                     <div className="text-xs text-gray-700 dark:text-gray-300 mb-3">{it.category || "—"}</div>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {MARKETPLACES.map((m) => {
-                        const isListed = map[m.id];
-                        const status = getListingStatus(it.id, m.id);
+                        const state = map[m.id];
+                        const isListed = state === 'active';
+                        const isProcessing = state === 'processing';
                         const listings = getItemListings(it.id);
                         const listing =
                           listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                          listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
                           listings.find((l) => l.marketplace === m.id) ||
                           null;
                         const isConnected = isPlatformConnected(m.id);
@@ -1876,11 +1894,15 @@ export default function Crosslist() {
                               className={`relative inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all backdrop-blur-sm ${
                                 isListed
                                   ? "bg-green-600/30 border-green-500/50 opacity-100"
-                                  : "bg-gray-200 border-gray-300 opacity-40"
+                                  : isProcessing
+                                    ? "bg-blue-600/20 border-blue-500/50 opacity-100"
+                                    : "bg-gray-200 border-gray-300 opacity-40"
                               }`}
                               title={
                                 isListed
                                   ? (listingUrl ? `Listed on ${m.label} (click to open)` : `Listed on ${m.label}`)
+                                  : isProcessing
+                                    ? `Listing in progress on ${m.label}`
                                   : `Not listed on ${m.label}`
                               }
                               role={listingUrl ? "button" : undefined}
@@ -1902,8 +1924,13 @@ export default function Crosslist() {
                                   <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
                                 </span>
                               )}
+                              {isProcessing && (
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-0.5 shadow">
+                                  <RefreshCw className="w-2.5 h-2.5 text-blue-600 animate-spin" />
+                                </span>
+                              )}
                             </div>
-                            {status === 'not_listed' ? (
+                            {!isListed && !isProcessing ? (
                               isConnected && m.id === 'mercari' && !hasActiveJob ? (
                                 <MercariListButton
                                   itemId={it.id}

@@ -60,6 +60,7 @@ import { TagInput } from "@/components/TagInput";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
 import { getEbayItemUrl } from "@/utils/ebayHelpers";
 import { ImageEditor } from "@/components/ImageEditor";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import {
   Command,
   CommandDialog,
@@ -33136,6 +33137,262 @@ export default function CrosslistComposer() {
   const [mercariJobId, setMercariJobId] = useState(null);
   const [mercariListingUrl, setMercariListingUrl] = useState('');
   const [mercariListingId, setMercariListingId] = useState(null);
+  const [listingRecordsByMarketplace, setListingRecordsByMarketplace] = useState(() => ({}));
+
+  const refreshListingRecords = React.useCallback(async (itemId) => {
+    if (!itemId) return;
+    try {
+      const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+      const pick = (marketplace) =>
+        listings.find((l) => l.marketplace === marketplace && l.status === 'active') ||
+        listings.find((l) => l.marketplace === marketplace && l.status === 'processing') ||
+        listings.find((l) => l.marketplace === marketplace) ||
+        null;
+      setListingRecordsByMarketplace({
+        ebay: pick('ebay'),
+        mercari: pick('mercari'),
+        facebook: pick('facebook'),
+        etsy: pick('etsy'),
+        poshmark: pick('poshmark'),
+      });
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    refreshListingRecords(currentEditingItemId);
+  }, [currentEditingItemId, refreshListingRecords]);
+
+  const formatListingDate = (isoLike) => {
+    if (!isoLike) return '—';
+    try {
+      const d = parseISO(String(isoLike));
+      return format(d, 'M/d/yyyy');
+    } catch (_) {
+      return '—';
+    }
+  };
+
+  const formatLastSaved = (isoLike) => {
+    if (!isoLike) return '—';
+    try {
+      const d = parseISO(String(isoLike));
+      return formatDistanceToNow(d, { addSuffix: true });
+    } catch (_) {
+      return '—';
+    }
+  };
+
+  const listingStatusLabel = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'active') return 'Listed';
+    if (s === 'processing') return 'In Progress';
+    if (s === 'ended' || s === 'delisted') return 'Delisted';
+    if (s) return s;
+    return '—';
+  };
+
+  const renderListingInfoPanel = (marketplaceId, titleLabel) => {
+    const rec = listingRecordsByMarketplace?.[marketplaceId] || null;
+    if (!rec) return null;
+
+    const createdAt = rec.listed_at || rec.created_at || null;
+    const lastSavedAt = rec.updated_at || rec.created_at || rec.listed_at || null;
+    const listingId = rec.marketplace_listing_id || '—';
+    const fallbackUrl =
+      marketplaceId === 'ebay' && listingId && listingId !== '—'
+        ? getEbayItemUrl(String(listingId))
+        : '';
+    const listingUrl = rec.marketplace_listing_url || fallbackUrl || '';
+    const canView = typeof listingUrl === 'string' && listingUrl.startsWith('http');
+    const isActive = String(rec.status || '').toLowerCase() === 'active';
+
+    return (
+      <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-green-600" />
+            <Label className="text-sm font-semibold">{titleLabel || 'Listing Info'}</Label>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1">Listing Status</Label>
+            <div className="font-medium">{listingStatusLabel(rec.status)}</div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1">Created</Label>
+            <div className="font-medium">{formatListingDate(createdAt)}</div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1">Last Saved</Label>
+            <div className="font-medium">{formatLastSaved(lastSavedAt)}</div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1">Listing ID</Label>
+            <code className="text-sm bg-background px-2 py-1 rounded border break-all inline-block">{String(listingId)}</code>
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs text-muted-foreground mb-1">Listing URL</Label>
+            <div className="text-sm break-all">
+              {canView ? (
+                <button
+                  type="button"
+                  className="underline text-emerald-700 dark:text-emerald-400"
+                  onClick={() => window.open(listingUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  {listingUrl}
+                </button>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={!canView}
+            onClick={() => {
+              if (!canView) return;
+              window.open(listingUrl, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            <ExternalLink className="h-4 w-4" />
+            View Listing
+          </Button>
+
+          {marketplaceId === 'ebay' && isActive && listingId && listingId !== '—' && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              disabled={isSaving}
+              onClick={async () => {
+                if (!confirm('Are you sure you want to delist this eBay item?')) return;
+                try {
+                  setIsSaving(true);
+                  const response = await fetch('/api/ebay/listing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      operation: 'EndItem',
+                      itemId: String(listingId),
+                      userToken: ebayToken?.access_token,
+                    }),
+                  });
+                  if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
+                  }
+                  const result = await response.json();
+                  if (result.Ack !== 'Success' && result.Ack !== 'Warning') {
+                    throw new Error(result.Errors?.join(', ') || 'Failed to end listing');
+                  }
+
+                  if (currentEditingItemId) {
+                    try {
+                      await base44.entities.InventoryItem.update(currentEditingItemId, {
+                        status: 'available',
+                        ebay_listing_id: '',
+                      });
+                      queryClient.invalidateQueries(['inventoryItems']);
+                    } catch (_) {}
+                  }
+
+                  // Mark record ended so Crosslist list + composer remember it's delisted.
+                  if (currentEditingItemId) {
+                    await crosslistingEngine.upsertMarketplaceListing({
+                      inventory_item_id: currentEditingItemId,
+                      marketplace: 'ebay',
+                      marketplace_listing_id: String(listingId),
+                      marketplace_listing_url: listingUrl || '',
+                      status: 'ended',
+                      listed_at: rec.listed_at || rec.created_at || new Date().toISOString(),
+                      metadata: { ...(rec.metadata || {}), endedAt: new Date().toISOString() },
+                    });
+                    await refreshListingRecords(currentEditingItemId);
+                  }
+
+                  setEbayListingId(null);
+                  if (currentEditingItemId) {
+                    try { localStorage.removeItem(`ebay_listing_${currentEditingItemId}`); } catch (_) {}
+                  }
+
+                  toast({ title: 'Delisted', description: 'eBay listing ended.' });
+                } catch (e) {
+                  toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+            >
+              <Unlock className="h-4 w-4" />
+              Delist
+            </Button>
+          )}
+
+          {marketplaceId === 'mercari' && isActive && (
+            <Button variant="destructive" size="sm" className="gap-2" disabled>
+              <Unlock className="h-4 w-4" />
+              Delist (coming soon)
+            </Button>
+          )}
+
+          {(marketplaceId === 'mercari' || marketplaceId === 'facebook') && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              disabled={isSaving}
+              onClick={async () => {
+                if (!confirm('Remove this listing from Profit Orbit? (This does NOT delist it on the marketplace yet.)')) return;
+                try {
+                  setIsSaving(true);
+                  if (currentEditingItemId) {
+                    await crosslistingEngine.removeMarketplaceListingForItem(currentEditingItemId, marketplaceId);
+                    await refreshListingRecords(currentEditingItemId);
+                  }
+                  if (marketplaceId === 'mercari') {
+                    setMercariListingUrl('');
+                    setMercariListingId(null);
+                    setMercariJobId(null);
+                    if (currentEditingItemId) {
+                      await base44.entities.InventoryItem.update(currentEditingItemId, {
+                        status: 'available',
+                        mercari_listing_id: '',
+                      });
+                      queryClient.invalidateQueries(['inventoryItems']);
+                    }
+                  }
+                  if (marketplaceId === 'facebook') {
+                    setFacebookListingUrl('');
+                    setFacebookListingId(null);
+                    if (currentEditingItemId) {
+                      await base44.entities.InventoryItem.update(currentEditingItemId, {
+                        status: 'available',
+                        facebook_listing_id: '',
+                      });
+                      queryClient.invalidateQueries(['inventoryItems']);
+                    }
+                  }
+                  toast({ title: 'Removed from app', description: 'Marketplace delist is not implemented yet.' });
+                } catch (e) {
+                  toast({ title: 'Failed', description: e?.message || String(e), variant: 'destructive' });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+            >
+              <X className="h-4 w-4" />
+              Remove from App
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // When Mercari listing runs via job-mode, poll until completed so we can show View/Delete buttons in-form.
   useEffect(() => {
@@ -35586,8 +35843,8 @@ export default function CrosslistComposer() {
                 }
               });
               
-              // Save marketplace listing record to localStorage
-              const listingData = {
+              // Persist listing record (upsert so we don't "forget" across pages)
+              await crosslistingEngine.upsertMarketplaceListing({
                 inventory_item_id: currentEditingItemId,
                 marketplace: 'ebay',
                 marketplace_listing_id: String(listingItemId),
@@ -35595,15 +35852,8 @@ export default function CrosslistComposer() {
                 status: 'active',
                 listed_at: new Date().toISOString(),
                 metadata: result,
-              };
-              
-              const listings = JSON.parse(localStorage.getItem('marketplace_listings') || '[]');
-              listings.push({
-                ...listingData,
-                id: `listing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                created_at: new Date().toISOString(),
               });
-              localStorage.setItem('marketplace_listings', JSON.stringify(listings));
+              refreshListingRecords(currentEditingItemId);
               
               // Force immediate refresh of inventory data
               await queryClient.invalidateQueries(['inventoryItems']);
@@ -35754,8 +36004,8 @@ export default function CrosslistComposer() {
                 }
               });
               
-              // Save marketplace listing record to localStorage
-              const listingData = {
+              // Persist listing record (upsert so we don't "forget" across pages)
+              await crosslistingEngine.upsertMarketplaceListing({
                 inventory_item_id: currentEditingItemId,
                 marketplace: 'facebook',
                 marketplace_listing_id: marketplaceId || '',
@@ -35763,15 +36013,8 @@ export default function CrosslistComposer() {
                 status: 'active',
                 listed_at: new Date().toISOString(),
                 metadata: result,
-              };
-              
-              const listings = JSON.parse(localStorage.getItem('marketplace_listings') || '[]');
-              listings.push({
-                ...listingData,
-                id: `listing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                created_at: new Date().toISOString(),
               });
-              localStorage.setItem('marketplace_listings', JSON.stringify(listings));
+              refreshListingRecords(currentEditingItemId);
               
               // Force immediate refresh of inventory data
               await queryClient.invalidateQueries(['inventoryItems']);
@@ -39458,111 +39701,7 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              {/* eBay Listing Status - Show when item is listed */}
-              {ebayListingId && (
-                <div className="mt-6 p-4 border rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-green-600" />
-                      <Label className="text-sm font-semibold">Listing Active</Label>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground mb-1">eBay Listing ID</Label>
-                      <div className="flex items-center gap-2">
-                        <code className="text-sm bg-background px-2 py-1 rounded border">{ebayListingId}</code>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                          const url = getEbayItemUrl(ebayListingId);
-                          window.open(url, '_blank', 'noopener,noreferrer');
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        View Listing
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="gap-2"
-                        onClick={async () => {
-                          if (!confirm('Are you sure you want to end this eBay listing? This action cannot be undone.')) {
-                            return;
-                          }
-                          
-                          try {
-                            setIsSaving(true);
-                            const response = await fetch('/api/ebay/listing', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                operation: 'EndItem',
-                                itemId: ebayListingId,
-                                userToken: ebayToken?.access_token,
-                              }),
-                            });
-
-                            if (!response.ok) {
-                              const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                              throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
-                            }
-
-                            const result = await response.json();
-                            
-                            if (result.Ack === 'Success' || result.Ack === 'Warning') {
-                              // Clear listing ID
-                              setEbayListingId(null);
-                              if (currentEditingItemId) {
-                                localStorage.removeItem(`ebay_listing_${currentEditingItemId}`);
-                              }
-                              
-                              // Update inventory item status
-                              if (currentEditingItemId) {
-                                try {
-                                  await base44.entities.InventoryItem.update(currentEditingItemId, {
-                                    status: 'available',
-                                    ebay_listing_id: '',
-                                  });
-                                  queryClient.invalidateQueries(['inventoryItems']);
-                                } catch (updateError) {
-                                  console.error('Error updating inventory item:', updateError);
-                                }
-                              }
-
-                              toast({
-                                title: "Listing ended",
-                                description: "Your eBay listing has been ended successfully.",
-                              });
-                            } else {
-                              throw new Error(result.Errors?.join(', ') || 'Failed to end listing');
-                            }
-                          } catch (error) {
-                            console.error('Error ending eBay listing:', error);
-                            toast({
-                              title: "Failed to end listing",
-                              description: error.message || "An error occurred while ending the listing. Please try again.",
-                              variant: "destructive",
-                            });
-                          } finally {
-                            setIsSaving(false);
-                          }
-                        }}
-                      >
-                        <Unlock className="h-4 w-4" />
-                        Delist
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Vendoo-style listing info is shown at the bottom of the form (see action area). */}
 
               {!ebayListingId && (
                 <div className="flex justify-end gap-2">
@@ -42142,66 +42281,8 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
 
-              {/* Facebook listing actions */}
-              {(facebookListingUrl || facebookListingId) && (
-                <div className="mt-4 p-4 border rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-green-600" />
-                      <Label className="text-sm font-semibold">Listing Active</Label>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {facebookListingId && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1">Facebook Listing ID</Label>
-                        <code className="text-xs bg-background px-2 py-1 rounded border break-all">{facebookListingId}</code>
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                          const url = facebookListingUrl || (facebookListingId ? `https://www.facebook.com/marketplace/item/${facebookListingId}/` : '');
-                          if (url) window.open(url, '_blank', 'noopener,noreferrer');
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        View Listing
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="gap-2"
-                        onClick={async () => {
-                          if (!confirm('Remove this listing from Profit Orbit? (This does NOT delete it on Facebook yet.)')) return;
-                          try {
-                            setIsSaving(true);
-                            setFacebookListingUrl('');
-                            setFacebookListingId(null);
-                            if (currentEditingItemId) {
-                              await base44.entities.InventoryItem.update(currentEditingItemId, {
-                                status: 'available',
-                                facebook_listing_id: '',
-                              });
-                              queryClient.invalidateQueries(['inventoryItems']);
-                            }
-                            toast({ title: 'Removed from app', description: 'Facebook delete/delist is not implemented yet.' });
-                          } catch (e) {
-                            toast({ title: 'Failed', description: e?.message || String(e), variant: 'destructive' });
-                          } finally {
-                            setIsSaving(false);
-                          }
-                        }}
-                      >
-                        Delete Listing
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Vendoo-style listing info (bottom of form) */}
+              {renderListingInfoPanel('facebook', 'Facebook Listing')}
             </div>
           )}
         </div>
@@ -44896,108 +44977,8 @@ export default function CrosslistComposer() {
                         </div>
                       </div>
 
-                      {ebayListingId && (
-                        <div className="mt-6 p-4 border rounded-lg bg-muted/50">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Lock className="h-4 w-4 text-green-600" />
-                              <Label className="text-sm font-semibold">Listing Active</Label>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <Label className="text-xs text-muted-foreground mb-1">eBay Listing ID</Label>
-                              <div className="flex items-center gap-2">
-                                <code className="text-sm bg-background px-2 py-1 rounded border">{ebayListingId}</code>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-2"
-                                onClick={() => {
-                                  const url = getEbayItemUrl(ebayListingId);
-                                  window.open(url, '_blank', 'noopener,noreferrer');
-                                }}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                View Listing
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="gap-2"
-                                onClick={async () => {
-                                  if (!confirm('Are you sure you want to end this eBay listing? This action cannot be undone.')) {
-                                    return;
-                                  }
-                                  
-                                  try {
-                                    setIsSaving(true);
-                                    const response = await fetch('/api/ebay/listing', {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: JSON.stringify({
-                                        operation: 'EndItem',
-                                        itemId: ebayListingId,
-                                        userToken: ebayToken?.access_token,
-                                      }),
-                                    });
-
-                                    if (!response.ok) {
-                                      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                                      throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
-                                    }
-
-                                    const result = await response.json();
-                                    
-                                    if (result.Ack === 'Success' || result.Ack === 'Warning') {
-                                      setEbayListingId(null);
-                                      if (currentEditingItemId) {
-                                        localStorage.removeItem(`ebay_listing_${currentEditingItemId}`);
-                                      }
-                                      
-                                      if (currentEditingItemId) {
-                                        try {
-                                          await base44.entities.InventoryItem.update(currentEditingItemId, {
-                                            status: 'available',
-                                            ebay_listing_id: '',
-                                          });
-                                          queryClient.invalidateQueries(['inventoryItems']);
-                                        } catch (updateError) {
-                                          console.error('Error updating inventory item:', updateError);
-                                        }
-                                      }
-
-                                      toast({
-                                        title: "Listing ended",
-                                        description: "Your eBay listing has been ended successfully.",
-                                      });
-                                    } else {
-                                      throw new Error(result.Errors?.join(', ') || 'Failed to end listing');
-                                    }
-                                  } catch (error) {
-                                    console.error('Error ending eBay listing:', error);
-                                    toast({
-                                      title: "Failed to end listing",
-                                      description: error.message || "An error occurred while ending the listing. Please try again.",
-                                      variant: "destructive",
-                                    });
-                                  } finally {
-                                    setIsSaving(false);
-                                  }
-                                }}
-                              >
-                                <Unlock className="h-4 w-4" />
-                                Delist
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {/* Vendoo-style listing info (bottom of form) */}
+                      {renderListingInfoPanel('ebay', 'eBay Listing')}
 
                       {!ebayListingId && (
                         <div className="flex justify-end gap-2">
@@ -46521,73 +46502,8 @@ export default function CrosslistComposer() {
                         </Button>
                       </div>
 
-                      {/* Mercari listing actions (after job completes) */}
-                      {(mercariListingUrl || mercariJobId) && (
-                        <div className="mt-4 p-4 border rounded-lg bg-muted/50">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Lock className="h-4 w-4 text-green-600" />
-                              <Label className="text-sm font-semibold">
-                                {mercariListingUrl ? 'Listing Active' : 'Listing In Progress'}
-                              </Label>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            {mercariJobId && (
-                              <div>
-                                <Label className="text-xs text-muted-foreground mb-1">Job ID</Label>
-                                <code className="text-xs bg-background px-2 py-1 rounded border break-all">{mercariJobId}</code>
-                              </div>
-                            )}
-                            {mercariListingUrl && (
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-2"
-                                  onClick={() => window.open(mercariListingUrl, '_blank', 'noopener,noreferrer')}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                  View Listing
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="gap-2"
-                                  onClick={async () => {
-                                    if (!confirm('Remove this listing from Profit Orbit? (This does NOT delist it on Mercari yet.)')) return;
-                                    try {
-                                      setIsSaving(true);
-                                      setMercariListingUrl('');
-                                      setMercariListingId(null);
-                                      setMercariJobId(null);
-                                      if (currentEditingItemId) {
-                                        try {
-                                          await crosslistingEngine.removeMarketplaceListingForItem(currentEditingItemId, 'mercari');
-                                        } catch (_) {}
-                                      }
-                                      if (currentEditingItemId) {
-                                        await base44.entities.InventoryItem.update(currentEditingItemId, {
-                                          status: 'available',
-                                          mercari_listing_id: '',
-                                        });
-                                        queryClient.invalidateQueries(['inventoryItems']);
-                                      }
-                                      toast({ title: 'Removed from app', description: 'Mercari delist is not implemented yet.' });
-                                    } catch (e) {
-                                      toast({ title: 'Failed', description: e?.message || String(e), variant: 'destructive' });
-                                    } finally {
-                                      setIsSaving(false);
-                                    }
-                                  }}
-                                >
-                                  Delete Listing
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      {/* Vendoo-style listing info (bottom of form) */}
+                      {renderListingInfoPanel('mercari', 'Mercari Listing')}
                     </div>
                   )}
 
