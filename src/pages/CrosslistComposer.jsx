@@ -33335,21 +33335,6 @@ export default function CrosslistComposer() {
             View Listing
           </Button>
 
-          {marketplaceId === 'ebay' && isActive && listingId && listingId !== '—' && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-              disabled={isSaving}
-              onClick={async () => {
-                await handleEbayDelist();
-              }}
-            >
-              <Unlock className="h-4 w-4" />
-              Delist
-            </Button>
-          )}
-
           {marketplaceId === 'mercari' && isActive && (
             <Button variant="destructive" size="sm" className="gap-2" disabled>
               <Unlock className="h-4 w-4" />
