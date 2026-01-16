@@ -34365,14 +34365,16 @@ export default function CrosslistComposer() {
     }
   };
 
-  const saveEbayDefaults = (defaults) => {
+  const saveEbayDefaults = (defaults, opts = {}) => {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(EBAY_DEFAULTS_KEY, JSON.stringify(defaults));
-      toast({
-        title: "Defaults saved",
-        description: "Your shipping defaults have been saved and will be applied to new listings.",
-      });
+      if (!opts?.silent) {
+        toast({
+          title: opts?.toastTitle || "Defaults saved",
+          description: opts?.toastDescription || "Your eBay defaults have been saved and will be applied to new listings.",
+        });
+      }
     } catch (error) {
       console.warn('Failed to save eBay defaults:', error);
       toast({
@@ -34383,10 +34385,84 @@ export default function CrosslistComposer() {
     }
   };
 
+  const [ebayDefaults, setEbayDefaults] = useState(() => loadEbayDefaults() || {});
+
+  const updateEbayDefault = (field, value, opts = {}) => {
+    const next = { ...(ebayDefaults || {}), [field]: value };
+    setEbayDefaults(next);
+    saveEbayDefaults(next, opts);
+  };
+
+  const clearEbayDefault = (field, opts = {}) => {
+    const next = { ...(ebayDefaults || {}) };
+    delete next[field];
+    setEbayDefaults(next);
+    saveEbayDefaults(next, opts);
+  };
+
+  const renderEbayDefaultToggle = (field, currentValue, setValue) => {
+    const hasDefault = Object.prototype.hasOwnProperty.call(ebayDefaults || {}, field);
+    const savedValue = hasDefault ? ebayDefaults[field] : undefined;
+    const isUsingDefault = hasDefault && String(savedValue ?? '') === String(currentValue ?? '');
+    const labelText = isUsingDefault ? 'Using Default (click to reset)' : hasDefault ? 'Update Default' : 'Save As Default';
+
+    const onClick = async () => {
+      // If currently using default, clicking should clear it and revert this field to the app default.
+      if (isUsingDefault) {
+        clearEbayDefault(field, {
+          toastTitle: 'Default cleared',
+          toastDescription: 'This field will use the standard default going forward.',
+        });
+        const appDefault = MARKETPLACE_TEMPLATE_DEFAULTS?.ebay?.[field];
+        setValue(appDefault ?? '');
+        return;
+      }
+
+      // Otherwise, save/update default using current value.
+      // Prevent saving "empty" values for string fields.
+      const isBoolean = typeof currentValue === 'boolean';
+      const valueToSave = isBoolean ? currentValue : String(currentValue ?? '').trim();
+      if (!isBoolean && !valueToSave) {
+        toast({
+          title: 'Set a value first',
+          description: 'Enter/select a value before saving it as default.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      updateEbayDefault(field, isBoolean ? currentValue : valueToSave, {
+        toastTitle: 'Default saved',
+        toastDescription: `Saved ${field} as your default for eBay.`,
+      });
+    };
+
+    return (
+      <button
+        type="button"
+        className="group relative inline-flex items-center"
+        onClick={onClick}
+        aria-label={labelText}
+      >
+        <span className="absolute right-full mr-2 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none">
+          <span className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
+            {labelText}
+          </span>
+        </span>
+        {isUsingDefault ? (
+          <Check className="h-4 w-4 text-emerald-600" />
+        ) : (
+          <Save className="h-4 w-4 text-blue-600" />
+        )}
+      </button>
+    );
+  };
+
   // Load defaults on mount
   useEffect(() => {
     const defaults = loadEbayDefaults();
     if (defaults) {
+      setEbayDefaults(defaults);
       setTemplateForms((prev) => ({
         ...prev,
         ebay: {
@@ -34413,7 +34489,7 @@ export default function CrosslistComposer() {
     // Merge with saved form data (saved data takes precedence over initial state)
     const merged = {
       general: savedGeneral ? { ...initial.general, ...savedGeneral } : initial.general,
-      ebay: savedEbay ? { ...initial.ebay, ...savedEbay } : initial.ebay,
+      ebay: savedEbay ? { ...initial.ebay, ...savedEbay } : { ...initial.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.etsy, ...savedEtsy } : initial.etsy,
       mercari: savedMercari ? { ...initial.mercari, ...savedMercari } : initial.mercari,
       facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : initial.facebook,
@@ -34429,7 +34505,7 @@ export default function CrosslistComposer() {
     } else {
       setBrandIsCustom(false);
     }
-  }, []);
+  }, [ebayDefaults]);
   
   // Load saved templates from localStorage - per-item if editing, global templates for new items
   // Note: This runs when item ID changes, but populateTemplates also loads saved data
@@ -39479,7 +39555,12 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Allow Best Offer</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Allow Best Offer</Label>
+                    {renderEbayDefaultToggle("allowBestOffer", ebayForm.allowBestOffer, (v) =>
+                      handleMarketplaceChange("ebay", "allowBestOffer", v)
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                     <Switch
                       id="ebay-best-offer"
@@ -39491,34 +39572,22 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              {/* Save Default Button for Shipping Fields */}
+              {/* Shipping Settings */}
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Save className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Shipping Settings</Label>
                 </div>
-                <div className="group relative">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSaveShippingDefaults}
-                    className="gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    Save
-                  </Button>
-                  <div className="absolute right-0 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
-                    <div className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
-                      Save Default
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
+                    {renderEbayDefaultToggle("shippingMethod", ebayForm.shippingMethod, (v) =>
+                      handleMarketplaceChange("ebay", "shippingMethod", v)
+                    )}
+                  </div>
                   <Select
                     value={ebayForm.shippingMethod ? String(ebayForm.shippingMethod) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingMethod", value)}
@@ -39533,7 +39602,12 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                    {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
+                      handleMarketplaceChange("ebay", "shippingCostType", v)
+                    )}
+                  </div>
                   <Select
                     value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
@@ -39548,7 +39622,12 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                    {renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
+                      handleMarketplaceChange("ebay", "shippingCost", v)
+                    )}
+                  </div>
                   <Input
                     type="number"
                     min="0"
@@ -39559,7 +39638,12 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                    {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
+                      handleMarketplaceChange("ebay", "handlingTime", v)
+                    )}
+                  </div>
                   <Select
                     value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
@@ -39575,7 +39659,12 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Ship From Country</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Ship From Country</Label>
+                    {renderEbayDefaultToggle("shipFromCountry", ebayForm.shipFromCountry, (v) =>
+                      handleMarketplaceChange("ebay", "shipFromCountry", v)
+                    )}
+                  </div>
                   <Select
                     value={ebayForm.shipFromCountry ? String(ebayForm.shipFromCountry) : "United States"}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shipFromCountry", value)}
@@ -39593,7 +39682,12 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                    {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
+                      handleMarketplaceChange("ebay", "shippingService", v)
+                    )}
+                  </div>
                   <Select
                     value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
@@ -39609,7 +39703,12 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                    {renderEbayDefaultToggle("locationDescriptions", ebayForm.locationDescriptions, (v) =>
+                      handleMarketplaceChange("ebay", "locationDescriptions", v)
+                    )}
+                  </div>
                   <Input
                     placeholder="(e.g., 'Spain')"
                     value={ebayForm.locationDescriptions || ""}
@@ -39620,7 +39719,12 @@ export default function CrosslistComposer() {
                   </p>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Shipping Location</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Shipping Location</Label>
+                    {renderEbayDefaultToggle("shippingLocation", ebayForm.shippingLocation, (v) =>
+                      handleMarketplaceChange("ebay", "shippingLocation", v)
+                    )}
+                  </div>
                   <Input
                     placeholder={generalForm.zip || "Zip or region"}
                     value={ebayForm.shippingLocation || ""}
@@ -39633,7 +39737,12 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
+                    {renderEbayDefaultToggle("acceptReturns", ebayForm.acceptReturns, (v) =>
+                      handleMarketplaceChange("ebay", "acceptReturns", v)
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                     <Switch
                       id="ebay-accept-returns"
@@ -44761,7 +44870,12 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Allow Best Offer</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Allow Best Offer</Label>
+                            {renderEbayDefaultToggle("allowBestOffer", ebayForm.allowBestOffer, (v) =>
+                              handleMarketplaceChange("ebay", "allowBestOffer", v)
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                             <Switch
                               id="ebay-best-offer"
@@ -44773,34 +44887,22 @@ export default function CrosslistComposer() {
                         </div>
                       </div>
 
-                      {/* Save Default Button for Shipping Fields */}
+                      {/* Shipping Settings */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Save className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-sm font-medium">Shipping Settings</Label>
                         </div>
-                        <div className="group relative">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleSaveShippingDefaults}
-                            className="gap-2"
-                          >
-                            <Save className="h-4 w-4" />
-                            Save
-                          </Button>
-                          <div className="absolute right-0 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
-                            <div className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
-                              Save Default
-                            </div>
-                          </div>
-                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
+                            {renderEbayDefaultToggle("shippingMethod", ebayForm.shippingMethod, (v) =>
+                              handleMarketplaceChange("ebay", "shippingMethod", v)
+                            )}
+                          </div>
                           <Select
                             value={ebayForm.shippingMethod ? String(ebayForm.shippingMethod) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "shippingMethod", value)}
@@ -44815,7 +44917,12 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                            {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
+                              handleMarketplaceChange("ebay", "shippingCostType", v)
+                            )}
+                          </div>
                           <Select
                             value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
@@ -44830,7 +44937,12 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                            {renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
+                              handleMarketplaceChange("ebay", "shippingCost", v)
+                            )}
+                          </div>
                           <Input
                             type="number"
                             min="0"
@@ -44841,7 +44953,12 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                            {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
+                              handleMarketplaceChange("ebay", "handlingTime", v)
+                            )}
+                          </div>
                           <Select
                             value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
@@ -44857,7 +44974,12 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Ship From Country</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Ship From Country</Label>
+                            {renderEbayDefaultToggle("shipFromCountry", ebayForm.shipFromCountry, (v) =>
+                              handleMarketplaceChange("ebay", "shipFromCountry", v)
+                            )}
+                          </div>
                           <Select
                             value={ebayForm.shipFromCountry ? String(ebayForm.shipFromCountry) : "United States"}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "shipFromCountry", value)}
@@ -44875,7 +44997,12 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                            {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
+                              handleMarketplaceChange("ebay", "shippingService", v)
+                            )}
+                          </div>
                           <Select
                             value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
@@ -44891,7 +45018,12 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                            {renderEbayDefaultToggle("locationDescriptions", ebayForm.locationDescriptions, (v) =>
+                              handleMarketplaceChange("ebay", "locationDescriptions", v)
+                            )}
+                          </div>
                           <Input
                             placeholder="(e.g., 'Spain')"
                             value={ebayForm.locationDescriptions || ""}
@@ -44902,7 +45034,12 @@ export default function CrosslistComposer() {
                           </p>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Shipping Location</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping Location</Label>
+                            {renderEbayDefaultToggle("shippingLocation", ebayForm.shippingLocation, (v) =>
+                              handleMarketplaceChange("ebay", "shippingLocation", v)
+                            )}
+                          </div>
                           <Input
                             placeholder={generalForm.zip || "Zip or region"}
                             value={ebayForm.shippingLocation || ""}
@@ -44915,7 +45052,12 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
+                            {renderEbayDefaultToggle("acceptReturns", ebayForm.acceptReturns, (v) =>
+                              handleMarketplaceChange("ebay", "acceptReturns", v)
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                             <Switch
                               id="ebay-accept-returns"
