@@ -33257,6 +33257,14 @@ export default function CrosslistComposer() {
         try { localStorage.removeItem(`ebay_listing_${currentEditingItemId}`); } catch (_) {}
       }
       toast({ title: 'Delisted', description: 'eBay listing ended.' });
+
+      // Optional relist flow: immediately offer to relist using the existing "List on eBay" behavior
+      const shouldRelist = confirm('Delisted on eBay. Would you like to relist it now?');
+      if (shouldRelist) {
+        // Release saving state so the listing handler can run normally
+        setIsSaving(false);
+        await handleListOnMarketplace('ebay');
+      }
     } catch (e) {
       toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
     } finally {
@@ -33278,6 +33286,9 @@ export default function CrosslistComposer() {
     const listingUrl = rec.marketplace_listing_url || fallbackUrl || '';
     const canView = typeof listingUrl === 'string' && listingUrl.startsWith('http');
     const isActive = String(rec.status || '').toLowerCase() === 'active';
+    const statusLower = String(rec.status || '').toLowerCase();
+    const statusText = listingStatusLabel(rec.status);
+    const isDelisted = statusLower === 'ended' || statusLower === 'delisted';
 
     return (
       <div className="mt-4 p-4 border rounded-lg bg-muted/50">
@@ -33290,7 +33301,15 @@ export default function CrosslistComposer() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div>
             <Label className="text-xs text-muted-foreground mb-1">Listing Status</Label>
-            <div className="font-medium">{listingStatusLabel(rec.status)}</div>
+            <div className="font-medium">
+              {isDelisted ? (
+                <span className="inline-flex items-center rounded px-2 py-1 text-xs font-semibold bg-red-600 text-white">
+                  {statusText}
+                </span>
+              ) : (
+                <span>{statusText}</span>
+              )}
+            </div>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground mb-1">Created</Label>
