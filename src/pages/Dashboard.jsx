@@ -83,8 +83,8 @@ const SUPPORTED_MARKETPLACES = [
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [profitChartRange, setProfitChartRange] = useState('14d');
-  const [desktopProfitRange, setDesktopProfitRange] = useState('14d');
+  const [profitChartRange, setProfitChartRange] = useState('monthly');
+  const [desktopProfitRange, setDesktopProfitRange] = useState('monthly');
   const [desktopCustomRange, setDesktopCustomRange] = useState(undefined);
   const [stockAlertsOpen, setStockAlertsOpen] = useState(false);
 
