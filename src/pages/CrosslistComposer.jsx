@@ -34409,10 +34409,7 @@ export default function CrosslistComposer() {
     const onClick = async () => {
       // If currently using default, clicking should clear it and revert this field to the app default.
       if (isUsingDefault) {
-        clearEbayDefault(field, {
-          toastTitle: 'Default cleared',
-          toastDescription: 'This field will use the standard default going forward.',
-        });
+        clearEbayDefault(field, { silent: true });
         const appDefault = MARKETPLACE_TEMPLATE_DEFAULTS?.ebay?.[field];
         setValue(appDefault ?? '');
         return;
@@ -34431,16 +34428,13 @@ export default function CrosslistComposer() {
         return;
       }
 
-      updateEbayDefault(field, isBoolean ? currentValue : valueToSave, {
-        toastTitle: 'Default saved',
-        toastDescription: `Saved ${field} as your default for eBay.`,
-      });
+      updateEbayDefault(field, isBoolean ? currentValue : valueToSave, { silent: true });
     };
 
     return (
       <button
         type="button"
-        className="group relative inline-flex items-center"
+        className="group relative inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
         onClick={onClick}
         aria-label={labelText}
       >
@@ -34450,9 +34444,9 @@ export default function CrosslistComposer() {
           </span>
         </span>
         {isUsingDefault ? (
-          <Check className="h-4 w-4 text-emerald-600" />
+          <Check className="h-4 w-4 text-black" />
         ) : (
-          <Save className="h-4 w-4 text-blue-600" />
+          <Save className="h-4 w-4 text-black" />
         )}
       </button>
     );
