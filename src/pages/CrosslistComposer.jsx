@@ -34434,7 +34434,7 @@ export default function CrosslistComposer() {
     return (
       <button
         type="button"
-        className="group relative inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        className="group relative -top-0.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
         onClick={onClick}
         aria-label={labelText}
       >
