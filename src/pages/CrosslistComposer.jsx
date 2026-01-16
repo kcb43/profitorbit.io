@@ -37799,8 +37799,8 @@ export default function CrosslistComposer() {
                     </Button>
                   )}
                 </div>
-                <div className="mt-2 grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
-                  {/* Main Photo - spans 2 columns and 2 rows */}
+                <div className="mt-2 space-y-3">
+                  {/* Main Photo (mobile: full width, bigger than thumbs) */}
                   {generalForm.photos.length > 0 && (
                     <div
                       draggable
@@ -37825,9 +37825,13 @@ export default function CrosslistComposer() {
                         }
                         e.currentTarget.classList.remove("opacity-50");
                       }}
-                      className="relative col-span-2 row-span-2 aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
+                      className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
                     >
-                      <img src={generalForm.photos[0].preview} alt={generalForm.photos[0].fileName || "Main photo"} className="h-full w-full object-cover" />
+                      <img
+                        src={generalForm.photos[0].preview}
+                        alt={generalForm.photos[0].fileName || "Main photo"}
+                        className="h-full w-full object-cover"
+                      />
                       <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                         Main
                       </div>
@@ -37836,18 +37840,18 @@ export default function CrosslistComposer() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setImageToEdit({ 
-                              url: generalForm.photos[0].preview, 
-                              photoId: generalForm.photos[0].id, 
+                            setImageToEdit({
+                              url: generalForm.photos[0].preview,
+                              photoId: generalForm.photos[0].id,
                               marketplace: 'general',
                               index: 0
                             });
                             setEditorOpen(true);
                           }}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
                           title="Edit photo"
                         >
-                          <ImageIcon className="h-3 w-3" />
+                          <ImageIcon className="h-3.5 w-3.5" />
                           <span className="sr-only">Edit photo</span>
                         </button>
                         <button
@@ -37856,94 +37860,95 @@ export default function CrosslistComposer() {
                             e.stopPropagation();
                             handlePhotoRemove(generalForm.photos[0].id);
                           }}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-4 w-4" />
                           <span className="sr-only">Remove photo</span>
                         </button>
                       </div>
                     </div>
                   )}
-                  
-                  {/* Other Photos */}
-                  {generalForm.photos.slice(1).map((photo, index) => (
-                    <div
-                      key={photo.id}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.effectAllowed = "move";
-                        e.dataTransfer.setData("text/plain", String(index + 1));
-                        e.currentTarget.classList.add("opacity-50");
-                      }}
-                      onDragEnd={(e) => {
-                        e.currentTarget.classList.remove("opacity-50");
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const dragIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-                        const dropIndex = index + 1;
-                        if (dragIndex !== dropIndex) {
-                          handlePhotoReorder(dragIndex, dropIndex);
-                        }
-                        e.currentTarget.classList.remove("opacity-50");
-                      }}
-                      className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition"
-                    >
-                      <img src={photo.preview} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />
-                      <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
-                        <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
+
+                  {/* Thumbnails row (mobile: side-by-side, includes Add tile) */}
+                  <div className="grid grid-cols-4 gap-2 auto-rows-fr">
+                    {generalForm.photos.slice(1).map((photo, index) => (
+                      <div
+                        key={photo.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", String(index + 1));
+                          e.currentTarget.classList.add("opacity-50");
+                        }}
+                        onDragEnd={(e) => {
+                          e.currentTarget.classList.remove("opacity-50");
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const dragIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+                          const dropIndex = index + 1;
+                          if (dragIndex !== dropIndex) {
+                            handlePhotoReorder(dragIndex, dropIndex);
+                          }
+                          e.currentTarget.classList.remove("opacity-50");
+                        }}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition min-w-0"
+                      >
+                        <img src={photo.preview} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />
+                        <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
+                          <GripVertical className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({
+                                url: photo.preview,
+                                photoId: photo.id,
+                                marketplace: 'general',
+                                index: index + 1
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(photo.id);
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="absolute top-1 right-1 flex gap-1 z-10">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setImageToEdit({ 
-                              url: photo.preview, 
-                              photoId: photo.id, 
-                              marketplace: 'general',
-                              index: index + 1
-                            });
-                            setEditorOpen(true);
-                          }}
-                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                          title="Edit photo"
-                        >
-                          <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                          <span className="sr-only">Edit photo</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(photo.id);
-                          }}
-                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                        >
-                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Add Photo Button - same size as photo tiles */}
-                  {(generalForm.photos?.length || 0) < MAX_PHOTOS && (
-                    <button
-                      type="button"
-                      onClick={() => photoInputRef.current?.click()}
-                      disabled={isUploadingPhotos}
-                      className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                      style={{ width: '150px' }}
-                    >
-                      <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
-                      <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
-                    </button>
-                  )}
+                    ))}
+
+                    {(generalForm.photos?.length || 0) < MAX_PHOTOS && (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={isUploadingPhotos}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
+                      >
+                        <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                        <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
+                      </button>
+                    )}
+                  </div>
+
                   <input
                     ref={photoInputRef}
                     type="file"
@@ -37970,7 +37975,7 @@ export default function CrosslistComposer() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title</Label>
-                  <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       id="general-title"
                       name="general-title"
@@ -37986,7 +37991,7 @@ export default function CrosslistComposer() {
                         onClick={() => {
                           setSoldDialogOpen(true);
                         }}
-                        className="whitespace-nowrap"
+                        className="whitespace-nowrap w-full sm:w-auto"
                       >
                         <BarChart className="w-4 h-4 mr-2" />
                         Search
@@ -38850,73 +38855,72 @@ export default function CrosslistComposer() {
                     </Button>
                   )}
                 </div>
-                  <div className="mt-2 grid grid-cols-4 md:grid-cols-6 gap-3 auto-rows-fr">
-                    {/* Main Photo - spans 2 columns and 2 rows */}
-                    {ebayForm.photos?.length > 0 && (
-                      <div
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "move";
-                          e.dataTransfer.setData("text/plain", "0");
-                          e.currentTarget.classList.add("opacity-50");
-                        }}
-                        onDragEnd={(e) => {
-                          e.currentTarget.classList.remove("opacity-50");
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const dragIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-                          const dropIndex = 0;
-                          if (dragIndex !== dropIndex) {
-                            handlePhotoReorder(dragIndex, dropIndex, 'ebay');
-                          }
-                          e.currentTarget.classList.remove("opacity-50");
-                        }}
-                        className="relative col-span-2 row-span-2 aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
-                      >
-                        <img src={ebayForm.photos[0].preview || ebayForm.photos[0].imageUrl} alt={ebayForm.photos[0].fileName || "Main photo"} className="h-full w-full object-cover" />
-                        <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                          Main
-                        </div>
-                        <div className="absolute top-1 right-1 flex gap-1 z-10">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImageToEdit({ 
-                                url: ebayForm.photos[0].preview || ebayForm.photos[0].imageUrl, 
-                                photoId: ebayForm.photos[0].id, 
-                                marketplace: 'ebay',
-                                index: 0
-                              });
-                              setEditorOpen(true);
-                            }}
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                            title="Edit photo"
-                          >
-                            <ImageIcon className="h-3 w-3" />
-                            <span className="sr-only">Edit photo</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePhotoRemove(ebayForm.photos[0].id, 'ebay');
-                            }}
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                            <span className="sr-only">Remove photo</span>
-                          </button>
-                        </div>
+                <div className="mt-2 space-y-3">
+                  {ebayForm.photos?.length > 0 && (
+                    <div
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", "0");
+                        e.currentTarget.classList.add("opacity-50");
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.classList.remove("opacity-50");
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const dragIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+                        const dropIndex = 0;
+                        if (dragIndex !== dropIndex) {
+                          handlePhotoReorder(dragIndex, dropIndex, 'ebay');
+                        }
+                        e.currentTarget.classList.remove("opacity-50");
+                      }}
+                      className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted cursor-move"
+                    >
+                      <img src={ebayForm.photos[0].preview || ebayForm.photos[0].imageUrl} alt={ebayForm.photos[0].fileName || "Main photo"} className="h-full w-full object-cover" />
+                      <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
+                        Main
                       </div>
-                    )}
-                    
-                    {/* Other Photos */}
+                      <div className="absolute top-1 right-1 flex gap-1 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageToEdit({ 
+                              url: ebayForm.photos[0].preview || ebayForm.photos[0].imageUrl, 
+                              photoId: ebayForm.photos[0].id, 
+                              marketplace: 'ebay',
+                              index: 0
+                            });
+                            setEditorOpen(true);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                          title="Edit photo"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" />
+                          <span className="sr-only">Edit photo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePhotoRemove(ebayForm.photos[0].id, 'ebay');
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                        >
+                          <X className="h-4 w-4" />
+                          <span className="sr-only">Remove photo</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                     {ebayForm.photos?.slice(1).map((photo, index) => (
                       <div
                         key={photo.id || index + 1}
@@ -38942,59 +38946,58 @@ export default function CrosslistComposer() {
                           }
                           e.currentTarget.classList.remove("opacity-50");
                         }}
-                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition"
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/40 bg-muted cursor-move hover:border-muted-foreground/60 transition min-w-0"
                       >
                         <img src={photo.preview || photo.imageUrl} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />
                         <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition">
-                          <GripVertical className="h-4 w-4 md:h-6 md:w-6 text-white" />
+                          <GripVertical className="h-4 w-4 text-white" />
                         </div>
-                      <div className="absolute top-1 right-1 flex gap-1 z-10">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setImageToEdit({ 
-                              url: photo.preview || photo.imageUrl, 
-                              photoId: photo.id, 
-                              marketplace: 'ebay',
-                              index: index + 1
-                            });
-                            setEditorOpen(true);
-                          }}
-                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                          title="Edit photo"
-                        >
-                          <ImageIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                          <span className="sr-only">Edit photo</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePhotoRemove(photo.id, 'ebay');
-                          }}
-                          className="inline-flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                        >
-                          <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          <span className="sr-only">Remove photo</span>
-                        </button>
-                      </div>
+                        <div className="absolute top-1 right-1 flex gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageToEdit({ 
+                                url: photo.preview || photo.imageUrl, 
+                                photoId: photo.id, 
+                                marketplace: 'ebay',
+                                index: index + 1
+                              });
+                              setEditorOpen(true);
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            title="Edit photo"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                            <span className="sr-only">Edit photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoRemove(photo.id, 'ebay');
+                            }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span className="sr-only">Remove photo</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                     
-                    {/* Add Photo Button - same size as photo tiles */}
                     {(ebayForm.photos?.length || 0) < MAX_PHOTOS && (
                       <button
                         type="button"
                         onClick={() => ebayPhotoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
-                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                        style={{ width: '150px' }}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-w-0"
                       >
-                        <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
-                        <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
+                        <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                        <span className="mt-1 text-[10px] font-medium text-muted-foreground">Add</span>
                       </button>
                     )}
+
                     <input
                       ref={ebayPhotoInputRef}
                       type="file"
@@ -39004,6 +39007,7 @@ export default function CrosslistComposer() {
                       onChange={(e) => handlePhotoUpload(e, 'ebay')}
                     />
                   </div>
+                </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {ebayForm.photos?.length || 0}/{MAX_PHOTOS} used.
                   {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
@@ -40346,7 +40350,6 @@ export default function CrosslistComposer() {
                         onClick={() => etsyPhotoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
                         className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                        style={{ width: '150px' }}
                       >
                         <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                         <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -40923,7 +40926,6 @@ export default function CrosslistComposer() {
                         onClick={() => mercariPhotoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
                         className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                        style={{ width: '150px' }}
                       >
                         <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                         <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -41967,7 +41969,6 @@ export default function CrosslistComposer() {
                         onClick={() => facebookPhotoInputRef.current?.click()}
                         disabled={isUploadingPhotos}
                         className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                        style={{ width: '150px' }}
                       >
                         <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                         <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -43365,7 +43366,7 @@ export default function CrosslistComposer() {
                           
                           {/* Upload Button */}
                           {generalForm.photos.length < 16 && (
-                            <label className="relative aspect-square overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/40 bg-muted hover:border-primary/50 hover:bg-muted/80 cursor-pointer transition flex flex-col items-center justify-center" style={{ width: '140px' }}>
+                            <label className="relative aspect-square overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/40 bg-muted hover:border-primary/50 hover:bg-muted/80 cursor-pointer transition flex flex-col items-center justify-center">
                               <input
                                 type="file"
                                 multiple
@@ -44402,7 +44403,6 @@ export default function CrosslistComposer() {
                               onClick={() => ebayPhotoInputRef.current?.click()}
                               disabled={isUploadingPhotos}
                               className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                              style={{ width: '150px' }}
                             >
                               <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                               <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -45737,7 +45737,6 @@ export default function CrosslistComposer() {
                               onClick={() => etsyPhotoInputRef.current?.click()}
                               disabled={isUploadingPhotos}
                               className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                              style={{ width: '150px' }}
                             >
                               <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                               <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -46302,7 +46301,6 @@ export default function CrosslistComposer() {
                               onClick={() => mercariPhotoInputRef.current?.click()}
                               disabled={isUploadingPhotos}
                               className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                              style={{ width: '150px' }}
                             >
                               <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                               <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -47279,7 +47277,6 @@ export default function CrosslistComposer() {
                               onClick={() => facebookPhotoInputRef.current?.click()}
                               disabled={isUploadingPhotos}
                               className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                              style={{ width: '150px' }}
                             >
                               <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                               <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
@@ -48269,7 +48266,6 @@ export default function CrosslistComposer() {
                               onClick={() => photoInputRef.current?.click()}
                               disabled={isUploadingPhotos}
                               className="relative aspect-square overflow-hidden rounded-lg border border-dashed border-muted-foreground/50 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center"
-                              style={{ width: '150px' }}
                             >
                               <ImagePlus className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />
                               <span className="mt-1 text-[10px] md:text-xs font-medium text-muted-foreground">Add</span>
