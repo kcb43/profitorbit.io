@@ -37510,18 +37510,18 @@ export default function CrosslistComposer() {
               <Label className="text-base font-semibold">eBay Account</Label>
             </div>
             {ebayToken ? (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("ebay")}>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto whitespace-normal" onClick={() => handleReconnect("ebay")}>
                   <RefreshCw className="h-4 w-4" />
                   Reconnect
                 </Button>
-                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleDisconnectEbay}>
+                <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto whitespace-normal text-destructive hover:text-destructive" onClick={handleDisconnectEbay}>
                   <X className="h-4 w-4" />
                   Disconnect
                 </Button>
               </div>
             ) : (
-              <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectEbay}>
+              <Button variant="default" size="sm" className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" onClick={handleConnectEbay}>
                 <Check className="h-4 w-4" />
                 Connect eBay Account
               </Button>
@@ -37583,18 +37583,18 @@ export default function CrosslistComposer() {
               <Label className="text-base font-semibold">Facebook Account</Label>
             </div>
             {facebookConnected ? (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleReconnect("facebook")}>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto whitespace-normal" onClick={() => handleReconnect("facebook")}>
                   <RefreshCw className="h-4 w-4" />
                   Reconnect
                 </Button>
-                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleDisconnectFacebook}>
+                <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto whitespace-normal text-destructive hover:text-destructive" onClick={handleDisconnectFacebook}>
                   <X className="h-4 w-4" />
                   Disconnect
                 </Button>
               </div>
             ) : (
-              <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectFacebook}>
+              <Button variant="default" size="sm" className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" onClick={handleConnectFacebook}>
                 <Check className="h-4 w-4" />
                 Connect Facebook Account
               </Button>
@@ -37693,11 +37693,11 @@ export default function CrosslistComposer() {
                 <Label className="text-base font-semibold">Mercari Account</Label>
               </div>
               {mercariConnected ? (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="gap-2 text-destructive hover:text-destructive" 
+                    className="gap-2 w-full sm:w-auto whitespace-normal text-destructive hover:text-destructive" 
                     onClick={() => {
                       localStorage.removeItem('profit_orbit_mercari_connected');
                       localStorage.removeItem('profit_orbit_mercari_username');
@@ -37717,7 +37717,7 @@ export default function CrosslistComposer() {
                 <Button 
                   variant="default" 
                   size="sm" 
-                  className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" 
+                  className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
                   onClick={() => {
                     // Open Mercari login popup via extension
                     window.open('https://www.mercari.com/mypage/', 'mercari-login', 'width=600,height=700');
@@ -37834,7 +37834,7 @@ export default function CrosslistComposer() {
                     const photo = generalForm.photos[0];
                     if (!src) return null;
                     return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted">
+                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
                         <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
                         <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                           Main
@@ -37878,8 +37878,12 @@ export default function CrosslistComposer() {
                   {/* Thumbnails (sortable) */}
                   <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                     <ReactSortable
-                      list={generalForm.photos || []}
-                      setList={(next) => handlePhotoSetList(next, "general")}
+                      list={(generalForm.photos || []).slice(1)}
+                      setList={(nextThumbs) => {
+                        const main = (generalForm.photos || [])[0];
+                        const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
+                        handlePhotoSetList(nextAll, "general");
+                      }}
                       className="contents"
                       animation={180}
                       forceFallback={true}
@@ -37890,29 +37894,42 @@ export default function CrosslistComposer() {
                       ghostClass="opacity-30"
                       chosenClass="opacity-80"
                       setData={(dataTransfer) => dataTransfer.setData("text", "")}
+                      onStart={(evt) => {
+                        // store dragged thumbnail on DOM for onEnd hit-test
+                        try { evt?.item?.setAttribute?.("data-po-dragging", "1"); } catch {}
+                      }}
+                      onEnd={(evt) => {
+                        // If drop ends over the main preview, promote dragged thumb to main (index 0)
+                        const original = evt?.originalEvent;
+                        const touch = original?.changedTouches?.[0] || original?.touches?.[0];
+                        const pt = touch
+                          ? { x: touch.clientX, y: touch.clientY }
+                          : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
+                        if (!pt) return;
+                        const elAtPoint = document.elementFromPoint(pt.x, pt.y);
+                        const overMain = !!elAtPoint?.closest?.(".po-main-drop");
+                        if (!overMain) return;
+
+                        const thumbs = (generalForm.photos || []).slice(1);
+                        const draggedThumb = thumbs?.[evt.oldIndex];
+                        if (!draggedThumb) return;
+                        const next = [draggedThumb, ...(generalForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
+                        handlePhotoSetList(next, "general");
+                      }}
                     >
-                      {(generalForm.photos || []).map((photo, index) => {
-                        const isMain = index === 0;
+                      {((generalForm.photos || []).slice(1)).map((photo, index) => {
                         const src = photo.preview || photo.imageUrl || photo.url;
                         return (
                           <div
                             key={photo.id || `${src || "photo"}-${index}`}
-                            className={cn(
-                              "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
-                              isMain && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                            )}
+                            className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
                           >
                             {src && (
                               <img
                                 src={src}
-                                alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")}
+                                alt={photo.fileName || "Listing photo"}
                                 className="h-full w-full object-cover"
                               />
-                            )}
-                            {isMain && (
-                              <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                                Main
-                              </div>
                             )}
 
                             <button
@@ -37924,26 +37941,24 @@ export default function CrosslistComposer() {
                               <span className="sr-only">Drag to reorder</span>
                             </button>
 
-                            {!isMain && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setImageToEdit({
-                                    url: src,
-                                    photoId: photo.id,
-                                    marketplace: "general",
-                                    index
-                                  });
-                                  setEditorOpen(true);
-                                }}
-                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                                title="Edit photo"
-                              >
-                                <ImageIcon className="h-3 w-3" />
-                                <span className="sr-only">Edit photo</span>
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setImageToEdit({
+                                  url: src,
+                                  photoId: photo.id,
+                                  marketplace: "general",
+                                  index: index + 1
+                                });
+                                setEditorOpen(true);
+                              }}
+                              className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                              title="Edit photo"
+                            >
+                              <ImageIcon className="h-3 w-3" />
+                              <span className="sr-only">Edit photo</span>
+                            </button>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -38833,12 +38848,12 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("general")}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("general")}>
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
                   <RefreshCw className="h-4 w-4" />
                   Sync Sales
                 </Button>
@@ -38888,7 +38903,7 @@ export default function CrosslistComposer() {
                     const photo = ebayForm.photos[0];
                     if (!src) return null;
                     return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted">
+                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
                         <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
                         <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                           Main
@@ -38931,8 +38946,12 @@ export default function CrosslistComposer() {
 
                   <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                     <ReactSortable
-                      list={ebayForm.photos || []}
-                      setList={(next) => handlePhotoSetList(next, "ebay")}
+                      list={(ebayForm.photos || []).slice(1)}
+                      setList={(nextThumbs) => {
+                        const main = (ebayForm.photos || [])[0];
+                        const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
+                        handlePhotoSetList(nextAll, "ebay");
+                      }}
                       className="contents"
                       animation={180}
                       forceFallback={true}
@@ -38943,24 +38962,31 @@ export default function CrosslistComposer() {
                       ghostClass="opacity-30"
                       chosenClass="opacity-80"
                       setData={(dataTransfer) => dataTransfer.setData("text", "")}
+                      onEnd={(evt) => {
+                        const original = evt?.originalEvent;
+                        const touch = original?.changedTouches?.[0] || original?.touches?.[0];
+                        const pt = touch
+                          ? { x: touch.clientX, y: touch.clientY }
+                          : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
+                        if (!pt) return;
+                        const elAtPoint = document.elementFromPoint(pt.x, pt.y);
+                        const overMain = !!elAtPoint?.closest?.(".po-main-drop");
+                        if (!overMain) return;
+                        const thumbs = (ebayForm.photos || []).slice(1);
+                        const draggedThumb = thumbs?.[evt.oldIndex];
+                        if (!draggedThumb) return;
+                        const next = [draggedThumb, ...(ebayForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
+                        handlePhotoSetList(next, "ebay");
+                      }}
                     >
-                      {(ebayForm.photos || []).map((photo, index) => {
-                        const isMain = index === 0;
+                      {((ebayForm.photos || []).slice(1)).map((photo, index) => {
                         const src = photo.preview || photo.imageUrl || photo.url;
                         return (
                           <div
                             key={photo.id || `${src || "photo"}-${index}`}
-                            className={cn(
-                              "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
-                              isMain && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                            )}
+                            className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
                           >
-                            {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
-                            {isMain && (
-                              <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                                Main
-                              </div>
-                            )}
+                            {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
                             <button
                               type="button"
                               className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
@@ -38969,26 +38995,24 @@ export default function CrosslistComposer() {
                               <GripVertical className="h-4 w-4" />
                               <span className="sr-only">Drag to reorder</span>
                             </button>
-                            {!isMain && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setImageToEdit({ 
-                                    url: src, 
-                                    photoId: photo.id, 
-                                    marketplace: 'ebay',
-                                    index
-                                  });
-                                  setEditorOpen(true);
-                                }}
-                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                                title="Edit photo"
-                              >
-                                <ImageIcon className="h-3 w-3" />
-                                <span className="sr-only">Edit photo</span>
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setImageToEdit({ 
+                                  url: src, 
+                                  photoId: photo.id, 
+                                  marketplace: 'ebay',
+                                  index: index + 1
+                                });
+                                setEditorOpen(true);
+                              }}
+                              className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                              title="Edit photo"
+                            >
+                              <ImageIcon className="h-3 w-3" />
+                              <span className="sr-only">Edit photo</span>
+                            </button>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -40172,22 +40196,22 @@ export default function CrosslistComposer() {
 
               {/* Vendoo-style listing info is shown at the bottom of the form (see action area). */}
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("ebay")}>
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
                   <RefreshCw className="h-4 w-4" />
                   Sync Sales
                 </Button>
                 {isEbayListed() ? (
-                  <Button variant="destructive" className="gap-2" onClick={handleEbayDelist} disabled={isSaving}>
+                  <Button variant="destructive" className="gap-2 w-full sm:w-auto" onClick={handleEbayDelist} disabled={isSaving}>
                     <Unlock className="h-4 w-4" />
                     Delist on eBay
                   </Button>
                 ) : (
-                  <Button className="gap-2" onClick={() => handleListOnMarketplace("ebay")}>
+                  <Button className="gap-2 w-full sm:w-auto" onClick={() => handleListOnMarketplace("ebay")}>
                     {isEbayDelisted() ? "Relist on eBay" : "List on eBay"}
                   </Button>
                 )}
@@ -40238,8 +40262,8 @@ export default function CrosslistComposer() {
                       const src = etsyForm.photos[0]?.preview || etsyForm.photos[0]?.imageUrl || etsyForm.photos[0]?.url;
                       const photo = etsyForm.photos[0];
                       if (!src) return null;
-                      return (
-                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted">
+                    return (
+                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
                           <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
                           <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                             Main
@@ -40282,8 +40306,12 @@ export default function CrosslistComposer() {
 
                     <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                       <ReactSortable
-                        list={etsyForm.photos || []}
-                        setList={(next) => handlePhotoSetList(next, "etsy")}
+                        list={(etsyForm.photos || []).slice(1)}
+                        setList={(nextThumbs) => {
+                          const main = (etsyForm.photos || [])[0];
+                          const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
+                          handlePhotoSetList(nextAll, "etsy");
+                        }}
                         className="contents"
                         animation={180}
                         forceFallback={true}
@@ -40294,24 +40322,31 @@ export default function CrosslistComposer() {
                         ghostClass="opacity-30"
                         chosenClass="opacity-80"
                         setData={(dataTransfer) => dataTransfer.setData("text", "")}
+                        onEnd={(evt) => {
+                          const original = evt?.originalEvent;
+                          const touch = original?.changedTouches?.[0] || original?.touches?.[0];
+                          const pt = touch
+                            ? { x: touch.clientX, y: touch.clientY }
+                            : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
+                          if (!pt) return;
+                          const elAtPoint = document.elementFromPoint(pt.x, pt.y);
+                          const overMain = !!elAtPoint?.closest?.(".po-main-drop");
+                          if (!overMain) return;
+                          const thumbs = (etsyForm.photos || []).slice(1);
+                          const draggedThumb = thumbs?.[evt.oldIndex];
+                          if (!draggedThumb) return;
+                          const next = [draggedThumb, ...(etsyForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
+                          handlePhotoSetList(next, "etsy");
+                        }}
                       >
-                        {(etsyForm.photos || []).map((photo, index) => {
-                          const isMain = index === 0;
+                        {((etsyForm.photos || []).slice(1)).map((photo, index) => {
                           const src = photo.preview || photo.imageUrl || photo.url;
                           return (
                             <div
                               key={photo.id || `${src || "photo"}-${index}`}
-                              className={cn(
-                                "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
-                                isMain && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                              )}
+                              className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
                             >
-                              {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
-                              {isMain && (
-                                <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                                  Main
-                                </div>
-                              )}
+                              {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
                               <button
                                 type="button"
                                 className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
@@ -40320,26 +40355,24 @@ export default function CrosslistComposer() {
                                 <GripVertical className="h-4 w-4" />
                                 <span className="sr-only">Drag to reorder</span>
                               </button>
-                              {!isMain && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setImageToEdit({ 
-                                      url: src, 
-                                      photoId: photo.id, 
-                                      marketplace: 'etsy',
-                                      index
-                                    });
-                                    setEditorOpen(true);
-                                  }}
-                                  className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                                  title="Edit photo"
-                                >
-                                  <ImageIcon className="h-3 w-3" />
-                                  <span className="sr-only">Edit photo</span>
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setImageToEdit({ 
+                                    url: src, 
+                                    photoId: photo.id, 
+                                    marketplace: 'etsy',
+                                    index: index + 1
+                                  });
+                                  setEditorOpen(true);
+                                }}
+                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                                title="Edit photo"
+                              >
+                                <ImageIcon className="h-3 w-3" />
+                                <span className="sr-only">Edit photo</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -40747,16 +40780,16 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("etsy")}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("etsy")}>
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
                   <RefreshCw className="h-4 w-4" />
                   Sync Sales
                 </Button>
-                <Button className="gap-2" onClick={() => handleListOnMarketplace("etsy")}>
+                <Button className="gap-2 w-full sm:w-auto" onClick={() => handleListOnMarketplace("etsy")}>
                   List on Etsy
                 </Button>
               </div>
@@ -40807,7 +40840,7 @@ export default function CrosslistComposer() {
                       const photo = mercariForm.photos[0];
                       if (!src) return null;
                       return (
-                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted">
+                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
                           <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
                           <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                             Main
@@ -40850,8 +40883,12 @@ export default function CrosslistComposer() {
 
                     <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                       <ReactSortable
-                        list={mercariForm.photos || []}
-                        setList={(next) => handlePhotoSetList(next, "mercari")}
+                        list={(mercariForm.photos || []).slice(1)}
+                        setList={(nextThumbs) => {
+                          const main = (mercariForm.photos || [])[0];
+                          const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
+                          handlePhotoSetList(nextAll, "mercari");
+                        }}
                         className="contents"
                         animation={180}
                         forceFallback={true}
@@ -40862,24 +40899,31 @@ export default function CrosslistComposer() {
                         ghostClass="opacity-30"
                         chosenClass="opacity-80"
                         setData={(dataTransfer) => dataTransfer.setData("text", "")}
+                        onEnd={(evt) => {
+                          const original = evt?.originalEvent;
+                          const touch = original?.changedTouches?.[0] || original?.touches?.[0];
+                          const pt = touch
+                            ? { x: touch.clientX, y: touch.clientY }
+                            : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
+                          if (!pt) return;
+                          const elAtPoint = document.elementFromPoint(pt.x, pt.y);
+                          const overMain = !!elAtPoint?.closest?.(".po-main-drop");
+                          if (!overMain) return;
+                          const thumbs = (mercariForm.photos || []).slice(1);
+                          const draggedThumb = thumbs?.[evt.oldIndex];
+                          if (!draggedThumb) return;
+                          const next = [draggedThumb, ...(mercariForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
+                          handlePhotoSetList(next, "mercari");
+                        }}
                       >
-                        {(mercariForm.photos || []).map((photo, index) => {
-                          const isMain = index === 0;
+                        {((mercariForm.photos || []).slice(1)).map((photo, index) => {
                           const src = photo.preview || photo.imageUrl || photo.url;
                           return (
                             <div
                               key={photo.id || `${src || "photo"}-${index}`}
-                              className={cn(
-                                "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
-                                isMain && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                              )}
+                              className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
                             >
-                              {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
-                              {isMain && (
-                                <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                                  Main
-                                </div>
-                              )}
+                              {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
                               <button
                                 type="button"
                                 className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
@@ -40888,26 +40932,24 @@ export default function CrosslistComposer() {
                                 <GripVertical className="h-4 w-4" />
                                 <span className="sr-only">Drag to reorder</span>
                               </button>
-                              {!isMain && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setImageToEdit({ 
-                                      url: src, 
-                                      photoId: photo.id, 
-                                      marketplace: 'mercari',
-                                      index
-                                    });
-                                    setEditorOpen(true);
-                                  }}
-                                  className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                                  title="Edit photo"
-                                >
-                                  <ImageIcon className="h-3 w-3" />
-                                  <span className="sr-only">Edit photo</span>
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setImageToEdit({ 
+                                    url: src, 
+                                    photoId: photo.id, 
+                                    marketplace: 'mercari',
+                                    index: index + 1
+                                  });
+                                  setEditorOpen(true);
+                                }}
+                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                                title="Edit photo"
+                              >
+                                <ImageIcon className="h-3 w-3" />
+                                <span className="sr-only">Edit photo</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -41770,17 +41812,17 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("mercari")}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("mercari")}>
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
                   <RefreshCw className="h-4 w-4" />
                   Sync Sales
                 </Button>
                 <Button 
-                  className="gap-2" 
+                  className="gap-2 w-full sm:w-auto" 
                   onClick={() => handleListOnMarketplace("mercari")}
                   disabled={isMercariListing}
                 >
@@ -41843,7 +41885,7 @@ export default function CrosslistComposer() {
                       const photo = facebookForm.photos[0];
                       if (!src) return null;
                       return (
-                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted">
+                        <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
                           <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
                           <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
                             Main
@@ -41886,8 +41928,12 @@ export default function CrosslistComposer() {
 
                     <div className="grid grid-cols-4 gap-2 auto-rows-fr">
                       <ReactSortable
-                        list={facebookForm.photos || []}
-                        setList={(next) => handlePhotoSetList(next, "facebook")}
+                        list={(facebookForm.photos || []).slice(1)}
+                        setList={(nextThumbs) => {
+                          const main = (facebookForm.photos || [])[0];
+                          const nextAll = main ? [main, ...(nextThumbs || [])] : (nextThumbs || []);
+                          handlePhotoSetList(nextAll, "facebook");
+                        }}
                         className="contents"
                         animation={180}
                         forceFallback={true}
@@ -41898,24 +41944,31 @@ export default function CrosslistComposer() {
                         ghostClass="opacity-30"
                         chosenClass="opacity-80"
                         setData={(dataTransfer) => dataTransfer.setData("text", "")}
+                        onEnd={(evt) => {
+                          const original = evt?.originalEvent;
+                          const touch = original?.changedTouches?.[0] || original?.touches?.[0];
+                          const pt = touch
+                            ? { x: touch.clientX, y: touch.clientY }
+                            : (typeof original?.clientX === "number" ? { x: original.clientX, y: original.clientY } : null);
+                          if (!pt) return;
+                          const elAtPoint = document.elementFromPoint(pt.x, pt.y);
+                          const overMain = !!elAtPoint?.closest?.(".po-main-drop");
+                          if (!overMain) return;
+                          const thumbs = (facebookForm.photos || []).slice(1);
+                          const draggedThumb = thumbs?.[evt.oldIndex];
+                          if (!draggedThumb) return;
+                          const next = [draggedThumb, ...(facebookForm.photos || []).filter((p) => p?.id !== draggedThumb?.id)];
+                          handlePhotoSetList(next, "facebook");
+                        }}
                       >
-                        {(facebookForm.photos || []).map((photo, index) => {
-                          const isMain = index === 0;
+                        {((facebookForm.photos || []).slice(1)).map((photo, index) => {
                           const src = photo.preview || photo.imageUrl || photo.url;
                           return (
                             <div
                               key={photo.id || `${src || "photo"}-${index}`}
-                              className={cn(
-                                "relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0",
-                                isMain && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                              )}
+                              className="relative aspect-square overflow-hidden rounded-lg bg-muted border border-dashed border-muted-foreground/40 hover:border-muted-foreground/60 transition min-w-0"
                             >
-                              {src && <img src={src} alt={photo.fileName || (isMain ? "Main photo" : "Listing photo")} className="h-full w-full object-cover" />}
-                              {isMain && (
-                                <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
-                                  Main
-                                </div>
-                              )}
+                              {src && <img src={src} alt={photo.fileName || "Listing photo"} className="h-full w-full object-cover" />}
                               <button
                                 type="button"
                                 className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
@@ -41924,26 +41977,24 @@ export default function CrosslistComposer() {
                                 <GripVertical className="h-4 w-4" />
                                 <span className="sr-only">Drag to reorder</span>
                               </button>
-                              {!isMain && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setImageToEdit({ 
-                                      url: src, 
-                                      photoId: photo.id, 
-                                      marketplace: 'facebook',
-                                      index
-                                    });
-                                    setEditorOpen(true);
-                                  }}
-                                  className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
-                                  title="Edit photo"
-                                >
-                                  <ImageIcon className="h-3 w-3" />
-                                  <span className="sr-only">Edit photo</span>
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setImageToEdit({ 
+                                    url: src, 
+                                    photoId: photo.id, 
+                                    marketplace: 'facebook',
+                                    index: index + 1
+                                  });
+                                  setEditorOpen(true);
+                                }}
+                                className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                                title="Edit photo"
+                              >
+                                <ImageIcon className="h-3 w-3" />
+                                <span className="sr-only">Edit photo</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -42786,16 +42837,16 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("facebook")}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("facebook")}>
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
                   <RefreshCw className="h-4 w-4" />
                   Sync Sales
                 </Button>
-                <Button className="gap-2" onClick={() => handleListOnMarketplace("facebook")} disabled={isFacebookListing}>
+                <Button className="gap-2 w-full sm:w-auto" onClick={() => handleListOnMarketplace("facebook")} disabled={isFacebookListing}>
                   {isFacebookListing ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -43074,16 +43125,16 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("general")}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("general")}>
                   <Save className="h-4 w-4" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleSyncSales} disabled={isSaving}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
                   <RefreshCw className="h-4 w-4" />
                   Sync Sales
                 </Button>
-                <Button className="gap-2" onClick={() => handleListOnMarketplace("poshmark")}>
+                <Button className="gap-2 w-full sm:w-auto" onClick={() => handleListOnMarketplace("poshmark")}>
                   List on Poshmark
                 </Button>
               </div>
