@@ -117,6 +117,13 @@ window.addEventListener("message", (event) => {
     );
     return;
   }
+  if (msg.type === "PO_DELIST_FACEBOOK_LISTING") {
+    poTrySendMessage(
+      { type: "DELIST_FACEBOOK_LISTING", listingId: msg?.payload?.listingId ?? msg?.payload?.itemId ?? msg?.payload?.id ?? null },
+      "PO_DELIST_FACEBOOK_LISTING_RESULT"
+    );
+    return;
+  }
   if (msg.type === "PO_CHECK_MERCARI_LISTING_STATUS") {
     poTrySendMessage(
       {

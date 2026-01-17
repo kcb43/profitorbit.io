@@ -1156,6 +1156,40 @@ export default function Crosslist() {
   const handleDelistFromMarketplace = async (itemId, listingId, marketplace) => {
     setCrosslistLoading(true);
     try {
+      // Facebook delist is extension-based (API-mode replay), not the legacy CrosslistingEngine integration.
+      if (marketplace === 'facebook') {
+        const ext = window?.ProfitOrbitExtension;
+        if (!ext?.delistFacebookListing) {
+          toast({
+            title: 'Extension Required',
+            description: 'Facebook delist requires the Profit Orbit extension. Please refresh and try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        if (!confirm('Delist on Facebook Marketplace?')) return;
+        const resp = await ext.delistFacebookListing({ listingId: String(listingId) });
+        if (!resp?.success) throw new Error(resp?.error || 'Failed to delist on Facebook');
+
+        await crosslistingEngine.updateMarketplaceListing(String(listingId), {
+          status: 'removed',
+          delisted_at: new Date().toISOString(),
+        });
+
+        toast({
+          title: 'Delisted Successfully',
+          description: 'Item removed from facebook.',
+        });
+
+        const listings = await crosslistingEngine.getMarketplaceListings(itemId);
+        setMarketplaceListings(prev => ({
+          ...prev,
+          [itemId]: listings,
+        }));
+        queryClient.invalidateQueries(['inventoryItems']);
+        return;
+      }
+
       const accounts = await crosslistingEngine.getMarketplaceAccounts();
       const account = accounts[marketplace];
 

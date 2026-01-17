@@ -2168,6 +2168,359 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (type === 'DELIST_FACEBOOK_LISTING') {
+    (async () => {
+      try {
+        const listingId =
+          message?.listingId ??
+          message?.itemId ??
+          message?.payload?.listingId ??
+          message?.payload?.itemId ??
+          message?.payload?.id ??
+          null;
+        const listingIdStr = String(listingId || '').trim();
+
+        console.log('🟣 [FACEBOOK] DELIST_FACEBOOK_LISTING received', {
+          fromTabId: sender?.tab?.id ?? null,
+          listingId: listingIdStr || null,
+        });
+
+        if (!listingIdStr) throw new Error('Missing listingId');
+
+        // Load last FB recording as a "template" for endpoints/doc_ids/headers.
+        // For delist, the recording must include the delete/delist mutation.
+        const inMemoryRecords = Array.isArray(facebookApiRecorder?.records) ? facebookApiRecorder.records.slice() : [];
+        let last = null;
+        let records = inMemoryRecords;
+
+        if (!records.length) {
+          last = await new Promise((resolve) => {
+            try {
+              chrome.storage.local.get(['facebookApiLastRecording'], (r) => resolve(r?.facebookApiLastRecording || null));
+            } catch (_) {
+              resolve(null);
+            }
+          });
+          records = Array.isArray(last?.records) ? last.records : Array.isArray(last) ? last : [];
+        } else {
+          try {
+            chrome.storage.local.set(
+              { facebookApiLastRecording: { t: Date.now(), count: inMemoryRecords.length, records: inMemoryRecords } },
+              () => {}
+            );
+          } catch (_) {}
+        }
+
+        if (!records.length) {
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastDelistDebug: {
+                  t: Date.now(),
+                  stage: 'load_recording',
+                  error: 'missing_facebook_recording',
+                  inMemoryCount: inMemoryRecords.length,
+                  hint:
+                    'On a profitorbit.io tab, run ProfitOrbitExtension.startFacebookApiRecording(), then in a facebook.com tab delete/delist a Marketplace listing, then run ProfitOrbitExtension.stopFacebookApiRecording().',
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+          throw new Error(
+            'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while deleting/delisting a Marketplace listing.'
+          );
+        }
+
+        const getRecordedBodyText = (rec) => {
+          const rb = rec?.requestBody;
+          if (!rb) return '';
+          if (typeof rb === 'string') return rb;
+          if (typeof rb !== 'object') return String(rb || '');
+          if (rb.kind === 'rawText' && typeof rb.value === 'string') return rb.value;
+          if (rb.kind === 'formData' && rb.value && typeof rb.value === 'object') {
+            const parts = [];
+            for (const [k, v] of Object.entries(rb.value)) {
+              if (!k) continue;
+              const arr = Array.isArray(v) ? v : [String(v)];
+              for (const item of arr) {
+                if (item === undefined || item === null) continue;
+                parts.push(`${encodeURIComponent(String(k))}=${encodeURIComponent(String(item))}`);
+              }
+            }
+            return parts.join('&');
+          }
+          try {
+            return JSON.stringify(rb);
+          } catch (_) {
+            return String(rb || '');
+          }
+        };
+
+        const parseFormBody = (bodyText) => {
+          const out = {};
+          const s = String(bodyText || '');
+          for (const part of s.split('&')) {
+            if (!part) continue;
+            const [k, v = ''] = part.split('=');
+            try {
+              out[decodeURIComponent(k)] = decodeURIComponent(v);
+            } catch (_) {
+              out[k] = v;
+            }
+          }
+          return out;
+        };
+
+        const encodeFormBody = (obj) => {
+          const parts = [];
+          for (const [k, v] of Object.entries(obj || {})) {
+            if (v === undefined || v === null) continue;
+            parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+          }
+          return parts.join('&');
+        };
+
+        const deepMutate = (obj, visit) => {
+          if (!obj || typeof obj !== 'object') return;
+          if (Array.isArray(obj)) return obj.forEach((v) => deepMutate(v, visit));
+          for (const k of Object.keys(obj)) {
+            visit(obj, k);
+            deepMutate(obj[k], visit);
+          }
+        };
+
+        const pickDeleteGraphqlTemplate = (recs) => {
+          const graphql = recs.filter(
+            (r) =>
+              typeof r?.url === 'string' &&
+              r.url.includes('/api/graphql') &&
+              String(r.method || '').toUpperCase() === 'POST'
+          );
+
+          const scored = graphql
+            .map((r) => {
+              const body = getRecordedBodyText(r);
+              const friendlyEnc = /fb_api_req_friendly_name=([^&]+)/.exec(body)?.[1] || '';
+              let friendly = '';
+              try {
+                friendly = decodeURIComponent(friendlyEnc || '');
+              } catch (_) {
+                friendly = String(friendlyEnc || '');
+              }
+
+              const hasDoc = /doc_id=\d+/.test(body);
+              const isQuery = /\bquery\b/i.test(friendly) || /Query/i.test(friendly);
+              const isMutation = /\bmutation\b/i.test(friendly) || /Mutation/i.test(friendly);
+              const hasVars = body.includes('variables=');
+
+              const hasMarketplace =
+                body.includes('Marketplace') ||
+                friendly.includes('Marketplace') ||
+                friendly.toLowerCase().includes('marketplace');
+
+              const lower = `${friendly} ${body}`.toLowerCase();
+              const hasDeleteish =
+                lower.includes('delete') ||
+                lower.includes('remove') ||
+                lower.includes('delist') ||
+                lower.includes('archive') ||
+                lower.includes('deactivate') ||
+                lower.includes('mark_as_sold') ||
+                lower.includes('markassold') ||
+                lower.includes('sold');
+
+              const score =
+                (hasMarketplace ? 10 : 0) +
+                (hasDeleteish ? 30 : 0) +
+                (hasDoc ? 8 : 0) +
+                (hasVars ? 3 : 0) +
+                (isMutation ? 25 : 0) -
+                (isQuery ? 20 : 0);
+
+              return { r, score };
+            })
+            .sort((a, b) => b.score - a.score);
+
+          const best = scored[0]?.r || null;
+          if (!best) return null;
+          const bestBody = getRecordedBodyText(best);
+          if (!/doc_id=\d+/.test(bestBody)) return null;
+          return best;
+        };
+
+        const graphqlTemplate = pickDeleteGraphqlTemplate(records);
+        if (!graphqlTemplate) {
+          throw new Error(
+            'Could not find a Facebook Marketplace delete/delist GraphQL template in the recording. Re-record while deleting a Marketplace listing.'
+          );
+        }
+
+        // Get user id from cookies (used by FB bodies as __user/av)
+        const fbUserId = await new Promise((resolve) => {
+          try {
+            chrome.cookies.get({ url: 'https://www.facebook.com', name: 'c_user' }, (c) => resolve(c?.value || null));
+          } catch (_) {
+            resolve(null);
+          }
+        });
+
+        const gqlBodyText = getRecordedBodyText(graphqlTemplate);
+        const form = parseFormBody(gqlBodyText);
+        const friendlyName = form.fb_api_req_friendly_name || null;
+        const docId = form.doc_id || null;
+        if (!docId) throw new Error('Facebook GraphQL template missing doc_id');
+
+        let vars = {};
+        try {
+          vars = form.variables ? JSON.parse(form.variables) : {};
+        } catch (_) {
+          vars = {};
+        }
+
+        // Best-effort: inject listingId into likely fields
+        let injected = false;
+        deepMutate(vars, (o, k) => {
+          if (injected) return;
+          const lk = String(k).toLowerCase();
+          const v = o?.[k];
+          const isIdLikeStr = typeof v === 'string' && /^\d{8,}$/.test(v);
+          const isIdLikeNum = typeof v === 'number' && v > 0;
+          const isIdLike = isIdLikeStr || isIdLikeNum;
+
+          const keyLooksRight =
+            lk === 'listing_id' ||
+            lk === 'listingid' ||
+            lk === 'marketplace_listing_id' ||
+            lk === 'marketplacelistingid' ||
+            lk === 'marketplace_item_id' ||
+            lk === 'marketplaceitemid' ||
+            lk === 'item_id' ||
+            lk === 'itemid' ||
+            lk === 'target_id' ||
+            lk === 'targetid';
+
+          if (keyLooksRight) {
+            o[k] = listingIdStr;
+            injected = true;
+            return;
+          }
+
+          if (!injected && isIdLike) {
+            const hasNoun =
+              lk.includes('listing') || lk.includes('marketplace') || lk.includes('item') || lk.includes('commerce');
+            const hasId = lk.endsWith('id') || lk.includes('_id') || lk.includes('id');
+            if (hasNoun && hasId) {
+              o[k] = listingIdStr;
+              injected = true;
+            }
+          }
+        });
+
+        if (!injected) {
+          deepMutate(vars, (o, k) => {
+            if (injected) return;
+            const v = o?.[k];
+            if (typeof v === 'string' && /^\d{8,}$/.test(v)) {
+              o[k] = listingIdStr;
+              injected = true;
+            }
+          });
+        }
+
+        if (!injected) {
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastDelistDebug: {
+                  t: Date.now(),
+                  stage: 'inject_listing_id',
+                  error: 'could_not_inject_listing_id',
+                  listingId: listingIdStr,
+                  docId,
+                  friendlyName,
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+          throw new Error('Could not inject listingId into the recorded Facebook GraphQL variables. Please re-record while deleting a listing.');
+        }
+
+        if (fbUserId) {
+          if (form.__user) form.__user = fbUserId;
+          if (form.av) form.av = fbUserId;
+        }
+        form.doc_id = docId;
+        if (friendlyName) form.fb_api_req_friendly_name = friendlyName;
+        form.variables = JSON.stringify(vars);
+
+        const gqlHeaders = { ...(graphqlTemplate.requestHeaders || {}) };
+        delete gqlHeaders['content-length'];
+        delete gqlHeaders['host'];
+        delete gqlHeaders['cookie'];
+        if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
+
+        let gqlResult = null;
+        try {
+          const direct = await facebookFetchDirect(graphqlTemplate.url, {
+            method: 'POST',
+            headers: gqlHeaders,
+            body: encodeFormBody(form),
+          });
+          gqlResult = { ...direct, error: null, href: null };
+        } catch (e) {
+          const fbTabIdForGql = await pickFacebookTabId();
+          gqlResult = await facebookFetchInTab(fbTabIdForGql, {
+            url: graphqlTemplate.url,
+            method: 'POST',
+            headers: gqlHeaders,
+            bodyType: 'text',
+            bodyText: encodeFormBody(form),
+          });
+        }
+
+        const gqlText = gqlResult?.text || '';
+        const gqlOk = !!gqlResult?.ok;
+        const gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
+        let gqlJson = null;
+        try {
+          gqlJson = gqlText ? JSON.parse(gqlText) : null;
+        } catch (_) {
+          gqlJson = null;
+        }
+
+        try {
+          chrome.storage.local.set(
+            {
+              facebookLastDelistDebug: {
+                t: Date.now(),
+                ok: gqlOk,
+                status: gqlStatus,
+                url: graphqlTemplate.url,
+                docId,
+                friendlyName,
+                listingId: listingIdStr,
+                response: gqlJson || gqlText.slice(0, 20000),
+              },
+            },
+            () => {}
+          );
+        } catch (_) {}
+
+        if (!gqlOk) {
+          throw new Error(`Facebook GraphQL delist failed: ${gqlStatus}`);
+        }
+
+        sendResponse({ success: true, listingId: listingIdStr });
+      } catch (e) {
+        console.error('🔴 [FACEBOOK] DELIST_FACEBOOK_LISTING failed', e);
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   if (type === 'CREATE_FACEBOOK_LISTING') {
     (async () => {
       try {

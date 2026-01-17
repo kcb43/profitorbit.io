@@ -33458,6 +33458,62 @@ export default function CrosslistComposer() {
               Delist on Mercari
             </Button>
           )}
+
+          {marketplaceId === 'facebook' && isActive && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              disabled={isSaving}
+              onClick={async () => {
+                if (!listingId || listingId === '—') {
+                  toast({ title: 'Missing listing id', description: 'No Facebook listing id found for this item.', variant: 'destructive' });
+                  return;
+                }
+                if (!confirm('Delist on Facebook Marketplace?')) return;
+
+                const ext = window?.ProfitOrbitExtension;
+                if (!ext?.delistFacebookListing) {
+                  toast({
+                    title: 'Extension not available',
+                    description: 'Facebook delist requires the Profit Orbit extension. Please refresh and try again.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
+
+                try {
+                  setIsSaving(true);
+                  const resp = await ext.delistFacebookListing({ listingId: String(listingId) });
+                  if (!resp?.success) {
+                    throw new Error(resp?.error || 'Failed to delist on Facebook');
+                  }
+
+                  if (currentEditingItemId) {
+                    await crosslistingEngine.upsertMarketplaceListing({
+                      inventory_item_id: currentEditingItemId,
+                      marketplace: 'facebook',
+                      marketplace_listing_id: String(listingId),
+                      marketplace_listing_url: canView ? String(listingUrl) : '',
+                      status: 'delisted',
+                      delisted_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    });
+                    await refreshListingRecords(currentEditingItemId);
+                  }
+
+                  toast({ title: 'Delisted', description: 'Facebook listing removed.' });
+                } catch (e) {
+                  toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+            >
+              <Unlock className="h-4 w-4" />
+              Delist on Facebook
+            </Button>
+          )}
         </div>
       </div>
     );

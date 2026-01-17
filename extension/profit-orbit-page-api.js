@@ -316,6 +316,25 @@
       return resp;
     },
 
+    // Facebook API-mode "Delist/Delete" entrypoint
+    async delistFacebookListing(payload) {
+      const listingId = String(payload?.listingId ?? payload?.itemId ?? payload?.id ?? '').trim();
+      console.log('🟣 [FACEBOOK] Page API -> delistFacebookListing', { listingId: listingId || null });
+
+      const resp = await postAndWait(
+        'PO_DELIST_FACEBOOK_LISTING',
+        'PO_DELIST_FACEBOOK_LISTING_RESULT',
+        { listingId },
+        60000
+      );
+
+      try {
+        localStorage.setItem('profit_orbit_last_facebook_delist_result', JSON.stringify({ t: Date.now(), listingId, resp }));
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Recorder controls
     startMercariApiRecording() {
       return postAndWait('PO_START_MERCARI_API_RECORDING', 'PO_START_MERCARI_API_RECORDING_RESULT', null, 5000);
