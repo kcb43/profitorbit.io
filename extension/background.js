@@ -109,6 +109,7 @@ async function ensureFacebookTabId(options = {}) {
     };
 
     // Attempt 1: minimized popup (best UX)
+    // NOTE: Some Chrome/Windows setups reject off-screen bounds. Keep bounds within visible screen space.
     let created = await tryCreateWindow({
       url,
       focused: false,
@@ -116,11 +117,12 @@ async function ensureFacebookTabId(options = {}) {
       state: 'minimized',
       width: 520,
       height: 700,
-      left: -2000,
-      top: -2000,
+      left: 0,
+      top: 0,
     });
 
-    // Attempt 2: popup off-screen (some Chrome configs disallow minimized popups)
+    // Attempt 2: popup (non-minimized) fallback if minimized popup is disallowed by config/policy.
+    // Keep it unfocused; bounds must be within visible screen space on some systems.
     if (!created.tabId) {
       created = await tryCreateWindow({
         url,
@@ -128,8 +130,8 @@ async function ensureFacebookTabId(options = {}) {
         type: 'popup',
         width: 520,
         height: 700,
-        left: -2000,
-        top: -2000,
+        left: 0,
+        top: 0,
       });
     }
 
