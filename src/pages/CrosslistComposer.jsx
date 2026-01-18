@@ -35795,23 +35795,8 @@ export default function CrosslistComposer() {
     // Save to sessionStorage (cleared when tab closes)
     sessionStorage.setItem('ebay_oauth_state', JSON.stringify(stateToSave));
     
-    // First check OAuth configuration
-    try {
-      const debugResponse = await fetch('/api/ebay/auth?debug=true');
-      const debugInfo = await debugResponse.json();
-      
-      console.log('eBay OAuth Configuration:', debugInfo);
-      
-      // Proceed with OAuth flow
-      window.location.href = '/api/ebay/auth';
-    } catch (error) {
-      console.error('Error checking eBay OAuth config:', error);
-      toast({
-        title: "Configuration Error",
-        description: "Unable to connect to eBay. Please check the console for details.",
-        variant: "destructive",
-      });
-    }
+    // Proceed with OAuth flow (no preflight fetch; that can fail on mobile and block the redirect).
+    window.location.href = '/api/ebay/auth';
   };
 
   const handleDisconnectFacebook = () => {
@@ -37617,7 +37602,7 @@ export default function CrosslistComposer() {
   return (
     <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
       {/* Mobile Layout - Keep existing structure */}
-      <div className="md:hidden max-w-5xl mx-auto space-y-6 min-w-0">
+      <div className="lg:hidden max-w-5xl mx-auto space-y-6 min-w-0">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -37858,11 +37843,11 @@ export default function CrosslistComposer() {
                   size="sm" 
                   className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
                   onClick={() => {
-                    // Open Mercari login popup via extension
-                    window.open('https://www.mercari.com/mypage/', 'mercari-login', 'width=600,height=700');
                     toast({
                       title: "Mercari Login",
-                      description: "Please log into your Mercari account in the popup window.",
+                      description: "Mercari connect requires the Profit Orbit Chrome extension (desktop). Mobile browsers cannot connect via the extension.",
+                      variant: "destructive",
+                      duration: 10000,
                     });
                   }}
                 >
@@ -37907,7 +37892,7 @@ export default function CrosslistComposer() {
         )}
 
         {/* Form selector - Mobile only */}
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <Label className="text-sm mb-2 block font-semibold">Select Form</Label>
           <div className="flex flex-wrap gap-3">
             <button
@@ -43296,7 +43281,7 @@ export default function CrosslistComposer() {
       </div>
 
       {/* Desktop Layout - Top Nav, Left Sidebar, Main Content */}
-      <div className="hidden md:flex flex-col min-h-screen">
+      <div className="hidden lg:flex flex-col min-h-screen">
         {/* Top Navigation Bar */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="max-w-[1200px] mx-auto px-5 py-4 w-full">
@@ -43589,10 +43574,11 @@ export default function CrosslistComposer() {
                           size="sm" 
                           className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" 
                           onClick={() => {
-                            window.open('https://www.mercari.com/mypage/', 'mercari-login', 'width=600,height=700');
                             toast({
                               title: "Mercari Login",
-                              description: "Please log into your Mercari account in the popup window.",
+                              description: "Mercari connect requires the Profit Orbit Chrome extension (desktop). Mobile browsers cannot connect via the extension.",
+                              variant: "destructive",
+                              duration: 10000,
                             });
                           }}
                         >
