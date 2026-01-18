@@ -3168,9 +3168,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
         // Special case: 1357004 often means FB rejects extension-origin requests; retry in an *existing* FB tab.
         if (uploadJson && typeof uploadJson === 'object' && (uploadJson.error || uploadJson.errorSummary || uploadJson.errorDescription)) {
-          const code = uploadJson.error ? String(uploadJson.error) : null;
-          const summary = uploadJson.errorSummary ? String(uploadJson.errorSummary) : 'Facebook upload error';
-          const desc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
+          const initialCode = uploadJson.error ? String(uploadJson.error) : null;
+          const initialSummary = uploadJson.errorSummary ? String(uploadJson.errorSummary) : 'Facebook upload error';
+          const initialDesc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
+          let code = initialCode;
+          let summary = initialSummary;
+          let desc = initialDesc;
 
           if (code === '1357004' && uploadAttemptMeta?.directFetch) {
             console.warn('🟨 [FACEBOOK] Detected 1357004 on upload. Attempting retry in existing FB tab…');
@@ -3231,6 +3234,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // Success: continue with the now-updated uploadResult downstream.
             uploadJson = retryJson;
             console.warn('🟨 [FACEBOOK] Retry after 1357004 succeeded; continuing with listing flow.');
+            // Update error info variables in case we log debug below.
+            code = null;
+            summary = 'Facebook upload ok';
+            desc = '';
           }
 
           try {
@@ -3254,7 +3261,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               () => {}
             );
           } catch (_) {}
-          throw new Error(`${summary}${code ? ` (code ${code})` : ''}${desc ? `: ${desc}` : ''}`);
+          // Only throw if we STILL have an error payload after any retry attempts.
+          if (uploadJson && typeof uploadJson === 'object' && (uploadJson.error || uploadJson.errorSummary || uploadJson.errorDescription)) {
+            const finalCode = uploadJson.error ? String(uploadJson.error) : null;
+            const finalSummary = uploadJson.errorSummary ? String(uploadJson.errorSummary) : 'Facebook upload error';
+            const finalDesc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
+            throw new Error(`${finalSummary}${finalCode ? ` (code ${finalCode})` : ''}${finalDesc ? `: ${finalDesc}` : ''}`);
+          }
         }
 
         const headerFirstId = (() => {
