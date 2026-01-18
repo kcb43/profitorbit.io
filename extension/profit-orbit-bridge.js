@@ -461,7 +461,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Check if extension context is still valid
       if (extensionContextInvalidated) {
-        console.warn('⚠️ Bridge: Ignoring message - extension context invalidated');
+        // Avoid spamming the console for users; the app will handle the event.
         return false;
       }
       
@@ -517,8 +517,20 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 let statusRequestInterval = null;
 let pollingInterval = null;
 
-function stopAllPolling() {
-  console.warn('⚠️ Bridge: Stopping all polling - extension context invalidated');
+// Avoid console spam + stack traces for normal users.
+// This can happen if the extension is reloaded while a tab is open.
+let __poPollingStopped = false;
+let __poStopAllPollingLogged = false;
+function stopAllPolling(reason = 'extension_context_invalidated') {
+  if (__poPollingStopped) return;
+  __poPollingStopped = true;
+  if (!__poStopAllPollingLogged) {
+    __poStopAllPollingLogged = true;
+    try {
+      // Debug-only: keep it quiet in normal usage.
+      console.debug('ℹ️ Bridge: polling stopped', { reason });
+    } catch (_) {}
+  }
   if (statusRequestInterval) {
     clearInterval(statusRequestInterval);
     statusRequestInterval = null;
@@ -538,14 +550,14 @@ function startStatusRequestPolling() {
   statusRequestInterval = setInterval(() => {
     // Stop polling if extension context is invalidated
     if (extensionContextInvalidated) {
-      stopAllPolling();
+      stopAllPolling('extension_context_invalidated');
       return;
     }
     
     // Check context validity before processing requests
     if (!isExtensionContextValid()) {
       extensionContextInvalidated = true;
-      stopAllPolling();
+      stopAllPolling('extension_context_invalidated');
       return;
     }
     
