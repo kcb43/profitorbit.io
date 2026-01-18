@@ -72,13 +72,26 @@ async function pickFacebookTabId() {
 
 async function ensureFacebookTabId(options = {}) {
   const existing = await pickFacebookTabId();
-  if (existing) return { tabId: existing, created: false };
+  if (existing) return { tabId: existing, created: false, windowId: null };
 
   const url = options?.url || 'https://www.facebook.com/marketplace/';
   try {
-    const created = await chrome.tabs.create({ url, active: false });
-    const tabId = created?.id;
-    if (typeof tabId !== 'number') return { tabId: null, created: false };
+    // Create an *unfocused minimized popup window* so users don't see a new tab in their main window.
+    // This more closely matches "Vendoo-like" background behavior while still using a real facebook.com context.
+    const win = await chrome.windows.create({
+      url,
+      focused: false,
+      type: 'popup',
+      state: 'minimized',
+      width: 520,
+      height: 700,
+      left: -2000,
+      top: -2000,
+    });
+
+    const tabId = win?.tabs?.[0]?.id;
+    const windowId = win?.id ?? null;
+    if (typeof tabId !== 'number') return { tabId: null, created: false, windowId: null };
 
     // Best-effort: wait for the tab to finish loading so cookies/session are ready.
     await new Promise((resolve) => {
@@ -94,12 +107,12 @@ async function ensureFacebookTabId(options = {}) {
         if (info && info.status === 'complete') finish();
       };
       try { chrome.tabs.onUpdated.addListener(listener); } catch (_) {}
-      setTimeout(finish, 8000);
+      setTimeout(finish, 10000);
     });
 
-    return { tabId, created: true };
+    return { tabId, created: true, windowId };
   } catch (_) {
-    return { tabId: null, created: false };
+    return { tabId: null, created: false, windowId: null };
   }
 }
 
@@ -2565,12 +2578,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const listingData = message?.listingData || {};
         const payload = listingData?.payload || listingData || {};
         let __poTempFacebookTabId = null;
-        const rememberTempFbTab = (tabId, created) => {
+        let __poTempFacebookWindowId = null;
+        const rememberTempFbTab = (tabId, created, windowId = null) => {
           try {
             if (created && typeof tabId === 'number' && !__poTempFacebookTabId) __poTempFacebookTabId = tabId;
+            if (created && windowId && !__poTempFacebookWindowId) __poTempFacebookWindowId = windowId;
           } catch (_) {}
         };
         const closeTempFbTab = async () => {
+          if (__poTempFacebookWindowId) {
+            try { await chrome.windows.remove(__poTempFacebookWindowId); } catch (_) {}
+            __poTempFacebookWindowId = null;
+            __poTempFacebookTabId = null;
+            return;
+          }
           if (!__poTempFacebookTabId) return;
           try { await chrome.tabs.remove(__poTempFacebookTabId); } catch (_) {}
           __poTempFacebookTabId = null;
@@ -3155,7 +3176,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.warn('🟨 [FACEBOOK] Detected 1357004 on upload. Attempting retry in existing FB tab…');
             const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
             const fbTabId = ensured?.tabId;
-            rememberTempFbTab(fbTabId, ensured?.created);
+            rememberTempFbTab(fbTabId, ensured?.created, ensured?.windowId);
             if (!fbTabId) {
               throw new Error(`${summary} (code ${code})${desc ? `: ${desc}` : ''} (Could not create a Facebook tab for retry.)`);
             }
@@ -3525,7 +3546,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.warn('🟨 [FACEBOOK] Detected 1357004 on GraphQL create. Retrying in existing FB tab…');
           const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
           const fbTabIdForGql = ensured?.tabId;
-          rememberTempFbTab(fbTabIdForGql, ensured?.created);
+          rememberTempFbTab(fbTabIdForGql, ensured?.created, ensured?.windowId);
           if (!fbTabIdForGql) {
             throw new Error(`${firstErr.summary} (code ${firstErr.code}) (Could not create a Facebook tab for retry.)`);
           }
@@ -3618,8 +3639,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('🔴 [FACEBOOK] CREATE_FACEBOOK_LISTING failed', e);
         try {
           // best-effort cleanup
-          const tabId = typeof __poTempFacebookTabId === 'number' ? __poTempFacebookTabId : null;
-          if (tabId) await chrome.tabs.remove(tabId);
+          if (__poTempFacebookWindowId) {
+            await chrome.windows.remove(__poTempFacebookWindowId);
+          } else {
+            const tabId = typeof __poTempFacebookTabId === 'number' ? __poTempFacebookTabId : null;
+            if (tabId) await chrome.tabs.remove(tabId);
+          }
         } catch (_) {}
         sendResponse({ success: false, error: e?.message || String(e) });
       }
