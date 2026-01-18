@@ -489,7 +489,7 @@ export default function ProfitCalendar() {
                 </div>
 
                 {Array.isArray(topSoldItems) && topSoldItems.length > 0 ? (
-                  <div className="mt-2 grid grid-cols-3 gap-2">
+                  <div className="mt-3 grid grid-cols-3 gap-3">
                     {topSoldItems.map((s) => (
                       <button
                         key={s.id}
@@ -503,7 +503,7 @@ export default function ProfitCalendar() {
                         <img
                           src={s.image_url || DEFAULT_IMAGE_URL}
                           alt={s?.item_name || 'Sold item'}
-                          className="h-16 w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                          className="h-20 xl:h-24 w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                           loading="lazy"
                         />
                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1">
