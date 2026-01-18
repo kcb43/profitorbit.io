@@ -70,6 +70,39 @@ async function pickFacebookTabId() {
   }
 }
 
+async function ensureFacebookTabId(options = {}) {
+  const existing = await pickFacebookTabId();
+  if (existing) return { tabId: existing, created: false };
+
+  const url = options?.url || 'https://www.facebook.com/marketplace/';
+  try {
+    const created = await chrome.tabs.create({ url, active: false });
+    const tabId = created?.id;
+    if (typeof tabId !== 'number') return { tabId: null, created: false };
+
+    // Best-effort: wait for the tab to finish loading so cookies/session are ready.
+    await new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        try { chrome.tabs.onUpdated.removeListener(listener); } catch (_) {}
+        resolve(true);
+      };
+      const listener = (id, info) => {
+        if (id !== tabId) return;
+        if (info && info.status === 'complete') finish();
+      };
+      try { chrome.tabs.onUpdated.addListener(listener); } catch (_) {}
+      setTimeout(finish, 8000);
+    });
+
+    return { tabId, created: true };
+  } catch (_) {
+    return { tabId: null, created: false };
+  }
+}
+
 async function pickMercariTabId() {
   try {
     const tabs = await chrome.tabs.query({ url: ['https://www.mercari.com/*', 'https://mercari.com/*', 'https://*.mercari.com/*'] });
@@ -2531,6 +2564,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const listingData = message?.listingData || {};
         const payload = listingData?.payload || listingData || {};
+        let __poTempFacebookTabId = null;
+        const rememberTempFbTab = (tabId, created) => {
+          try {
+            if (created && typeof tabId === 'number' && !__poTempFacebookTabId) __poTempFacebookTabId = tabId;
+          } catch (_) {}
+        };
+        const closeTempFbTab = async () => {
+          if (!__poTempFacebookTabId) return;
+          try { await chrome.tabs.remove(__poTempFacebookTabId); } catch (_) {}
+          __poTempFacebookTabId = null;
+        };
 
         const title = String(payload.title || payload.name || '').trim();
         const description = String(payload.description || '').trim();
@@ -3109,14 +3153,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           if (code === '1357004' && uploadAttemptMeta?.directFetch) {
             console.warn('🟨 [FACEBOOK] Detected 1357004 on upload. Attempting retry in existing FB tab…');
-            const fbTabId = await pickFacebookTabId();
+            const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
+            const fbTabId = ensured?.tabId;
+            rememberTempFbTab(fbTabId, ensured?.created);
             if (!fbTabId) {
-              console.warn('🟨 [FACEBOOK] Retry skipped: no existing facebook.com tab found.');
-              throw new Error(
-                `${summary} (code ${code})` +
-                  `${desc ? `: ${desc}` : ''} ` +
-                  `(Fix: open Facebook Marketplace in a tab in this Chrome profile, then retry. The extension will reuse the existing tab; it will not open a new one.)`
-              );
+              throw new Error(`${summary} (code ${code})${desc ? `: ${desc}` : ''} (Could not create a Facebook tab for retry.)`);
             }
 
             console.warn('🟨 [FACEBOOK] Retrying upload in existing FB tab', { fbTabId });
@@ -3482,12 +3523,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const firstErr = extractFbErrorInfo(gqlJson);
         if (firstErr?.code === '1357004' && gqlAttemptMeta.directFetch) {
           console.warn('🟨 [FACEBOOK] Detected 1357004 on GraphQL create. Retrying in existing FB tab…');
-          const fbTabIdForGql = await pickFacebookTabId();
+          const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
+          const fbTabIdForGql = ensured?.tabId;
+          rememberTempFbTab(fbTabIdForGql, ensured?.created);
           if (!fbTabIdForGql) {
-            throw new Error(
-              `${firstErr.summary} (code ${firstErr.code})` +
-                ` (Fix: open Facebook Marketplace in a tab in this Chrome profile, then retry. The extension will reuse the existing tab; it will not open a new one.)`
-            );
+            throw new Error(`${firstErr.summary} (code ${firstErr.code}) (Could not create a Facebook tab for retry.)`);
           }
           gqlAttemptMeta.retry1357004 = true;
           gqlAttemptMeta.fbTabId = fbTabIdForGql;
@@ -3572,9 +3612,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         console.log('🟢 [FACEBOOK] Listing request completed', { listingId, url });
+        await closeTempFbTab();
         sendResponse({ success: true, listingId, url, photoId });
       } catch (e) {
         console.error('🔴 [FACEBOOK] CREATE_FACEBOOK_LISTING failed', e);
+        try {
+          // best-effort cleanup
+          const tabId = typeof __poTempFacebookTabId === 'number' ? __poTempFacebookTabId : null;
+          if (tabId) await chrome.tabs.remove(tabId);
+        } catch (_) {}
         sendResponse({ success: false, error: e?.message || String(e) });
       }
     })();
