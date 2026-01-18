@@ -33283,7 +33283,21 @@ export default function CrosslistComposer() {
   };
 
   const renderListingInfoPanel = (marketplaceId, titleLabel) => {
-    const rec = listingRecordsByMarketplace?.[marketplaceId] || null;
+    const recFromStore = listingRecordsByMarketplace?.[marketplaceId] || null;
+    // Fallback: for Facebook, show listing info immediately from state even if localStorage refresh lags.
+    const rec =
+      recFromStore ||
+      (marketplaceId === 'facebook' && (facebookListingId || facebookListingUrl)
+        ? {
+            inventory_item_id: currentEditingItemId || null,
+            marketplace: 'facebook',
+            marketplace_listing_id: facebookListingId || '',
+            marketplace_listing_url: facebookListingUrl || '',
+            status: 'active',
+            listed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        : null);
     if (!rec) return null;
 
     const createdAt = rec.listed_at || rec.created_at || null;
@@ -36962,10 +36976,47 @@ export default function CrosslistComposer() {
               const listingUrl =
                 result?.listingUrl ||
                 result?.url ||
-                (result?.itemId ? `https://www.facebook.com/marketplace/item/${result.itemId}` : '');
+                (result?.listingId ? `https://www.facebook.com/marketplace/item/${result.listingId}/` : '') ||
+                (result?.itemId ? `https://www.facebook.com/marketplace/item/${result.itemId}/` : '');
+
+              const listingIdStr = String(result?.listingId || result?.itemId || result?.id || '').trim();
+              // Keep the Facebook form in sync even when listing from multi-marketplace flows.
+              if (listingIdStr || listingUrl) {
+                setFacebookListingId(listingIdStr || null);
+                setFacebookListingUrl(listingUrl || '');
+                const nowIso = new Date().toISOString();
+                setListingRecordsByMarketplace((prev) => ({
+                  ...(prev || {}),
+                  facebook: {
+                    ...(prev?.facebook || {}),
+                    inventory_item_id: currentEditingItemId || prev?.facebook?.inventory_item_id || null,
+                    marketplace: 'facebook',
+                    marketplace_listing_id: listingIdStr || prev?.facebook?.marketplace_listing_id || '',
+                    marketplace_listing_url: listingUrl || prev?.facebook?.marketplace_listing_url || '',
+                    status: 'active',
+                    listed_at: prev?.facebook?.listed_at || nowIso,
+                    updated_at: nowIso,
+                  },
+                }));
+
+                if (currentEditingItemId) {
+                  try {
+                    await crosslistingEngine.upsertMarketplaceListing({
+                      inventory_item_id: currentEditingItemId,
+                      marketplace: 'facebook',
+                      marketplace_listing_id: listingIdStr || '',
+                      marketplace_listing_url: listingUrl || '',
+                      status: 'active',
+                      listed_at: nowIso,
+                      metadata: result,
+                    });
+                    refreshListingRecords(currentEditingItemId);
+                  } catch (_) {}
+                }
+              }
               results.push({ 
                 marketplace, 
-                itemId: result?.itemId || result?.id,
+                itemId: listingIdStr || null,
                 listingUrl,
               });
             } else {
