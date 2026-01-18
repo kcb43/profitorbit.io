@@ -639,9 +639,9 @@ export default function ProfitCalendar() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto overflow-x-hidden po-scrollbar-hide">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-foreground break-words">
               Sales on {selectedDay && format(selectedDay, 'MMMM d, yyyy')}
             </DialogTitle>
           </DialogHeader>
@@ -679,7 +679,7 @@ export default function ProfitCalendar() {
                       onClick={() => {
                         window.location.href = `/SoldItemDetail?id=${encodeURIComponent(sale.id)}&expandFees=true`;
                       }}
-                      className="inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                      className="inline-flex w-full sm:w-auto max-w-full items-center justify-center gap-2 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                     >
                       View Sale Details
                     </button>

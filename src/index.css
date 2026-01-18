@@ -249,6 +249,15 @@ button:focus-visible {
   background-color: hsl(var(--background)) !important;
 }
 
+/* Hide scrollbars but keep scrolling (used for dialogs like Profit Calendar day details) */
+.po-scrollbar-hide {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.po-scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* Page title - target h1 with white text on md screens */
 [data-theme="default-light"] h1[class*="md:text-white"] {
   color: hsl(var(--foreground)) !important;
