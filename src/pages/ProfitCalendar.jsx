@@ -29,6 +29,8 @@ import { format as formatDate } from 'date-fns';
 // Dummy createPageUrl for compilation. In a real app, this would be a real utility.
 const createPageUrl = (url) => url;
 
+const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
+
 export default function ProfitCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -79,6 +81,7 @@ export default function ProfitCalendar() {
   const salesFields = [
     'id',
     'item_name',
+    'image_url',
     'purchase_date',
     'sale_date',
     'platform',
@@ -248,7 +251,7 @@ export default function ProfitCalendar() {
   }, [sales, calendarWindow]);
 
   // Re-evaluation of monthly stats
-  const { monthlyProfit, monthlySalesCount, avgDailyProfit, monthlyTotalSpend, monthlyRevenue, monthlyCosts } = useMemo(() => {
+  const { monthlyProfit, monthlySalesCount, avgDailyProfit, monthlyTotalSpend, monthlyRevenue, monthlyCosts, topSoldItems } = useMemo(() => {
     let totalProfit = 0;
     let totalSpend = 0;
     let totalRevenue = 0;
@@ -272,6 +275,29 @@ export default function ProfitCalendar() {
       salesCount++;
     });
 
+    // "Top sold" thumbnails (desktop only UI). Prefer higher profit; fallback on revenue, then recency.
+    const top = [...salesInCurrentMonth]
+      .sort((a, b) => {
+        const ap = Number(a?.profit || 0);
+        const bp = Number(b?.profit || 0);
+        if (bp !== ap) return bp - ap;
+        const ar = Number(a?.selling_price || 0);
+        const br = Number(b?.selling_price || 0);
+        if (br !== ar) return br - ar;
+        return String(b?.sale_date || '').localeCompare(String(a?.sale_date || ''));
+      })
+      .slice(0, 12) // sample some top candidates
+      .filter(Boolean)
+      .map((s) => ({
+        id: s?.id,
+        item_name: s?.item_name,
+        image_url: s?.image_url,
+        profit: s?.profit,
+        selling_price: s?.selling_price,
+      }))
+      .filter((s) => !!s?.id)
+      .slice(0, 3);
+
     const averageDaily = daysInCurrentMonth > 0 ? totalProfit / daysInCurrentMonth : 0;
 
     return {
@@ -280,7 +306,8 @@ export default function ProfitCalendar() {
       avgDailyProfit: averageDaily,
       monthlyTotalSpend: totalSpend,
       monthlyRevenue: totalRevenue,
-      monthlyCosts: totalCosts
+      monthlyCosts: totalCosts,
+      topSoldItems: top,
     };
   }, [sales, currentMonth]);
 
@@ -454,6 +481,46 @@ export default function ProfitCalendar() {
           <div className="hidden lg:block lg:col-span-4">
             <div className="rounded-2xl border border-white/5 bg-[#111b2d] p-4 shadow-lg">
               <div className="text-xs uppercase tracking-wide text-slate-400">This Month</div>
+
+              <div className="mt-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-medium text-slate-300">Top sold</div>
+                  <div className="text-[11px] text-slate-500">Tap to view details</div>
+                </div>
+
+                {Array.isArray(topSoldItems) && topSoldItems.length > 0 ? (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {topSoldItems.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#0d1728]"
+                        onClick={() => {
+                          window.location.href = `/SoldItemDetail?id=${encodeURIComponent(s.id)}&expandFees=true`;
+                        }}
+                        title={s?.item_name || 'View sold item'}
+                      >
+                        <img
+                          src={s.image_url || DEFAULT_IMAGE_URL}
+                          alt={s?.item_name || 'Sold item'}
+                          className="h-16 w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1">
+                          <div className="truncate text-[11px] font-medium text-white/95">
+                            {s?.item_name || 'Sold item'}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs text-slate-500">
+                    No sold items with photos yet.
+                  </div>
+                )}
+              </div>
+
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
                   <div className="flex items-center gap-2 text-xs text-slate-400">
