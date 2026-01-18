@@ -18,6 +18,7 @@ import { RichTextarea } from "@/components/ui/rich-textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -33081,6 +33082,7 @@ export default function CrosslistComposer() {
   const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const { addTag } = useInventoryTags();
   // Prevent post-OAuth initialization effects from overriding restored UI state (e.g., resetting to Universal form).
   const skipAutoInitFromOAuthRef = React.useRef(false);
@@ -37718,7 +37720,24 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
             ) : (
-              <Button variant="default" size="sm" className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" onClick={handleConnectFacebook}>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal"
+                disabled={isMobile}
+                onClick={() => {
+                  if (isMobile) {
+                    toast({
+                      title: "Desktop required",
+                      description: "Facebook connect requires the Profit Orbit Chrome extension (desktop).",
+                      variant: "destructive",
+                      duration: 10000,
+                    });
+                    return;
+                  }
+                  handleConnectFacebook();
+                }}
+              >
                 <Check className="h-4 w-4" />
                 Connect Facebook Account
               </Button>
@@ -37842,10 +37861,20 @@ export default function CrosslistComposer() {
                   variant="default" 
                   size="sm" 
                   className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
+                  disabled={isMobile}
                   onClick={() => {
+                    if (isMobile) {
+                      toast({
+                        title: "Desktop required",
+                        description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
+                        variant: "destructive",
+                        duration: 10000,
+                      });
+                      return;
+                    }
                     toast({
-                      title: "Mercari Login",
-                      description: "Mercari connect requires the Profit Orbit Chrome extension (desktop). Mobile browsers cannot connect via the extension.",
+                      title: "Desktop required",
+                      description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
                       variant: "destructive",
                       duration: 10000,
                     });
@@ -37900,8 +37929,8 @@ export default function CrosslistComposer() {
               onClick={() => setActiveForm("general")}
               className={`inline-flex items-center gap-2 px-5 py-3 rounded-lg border-2 text-base font-medium transition-all
                 ${activeForm === "general"
-                  ? "bg-foreground text-background dark:bg-foreground dark:text-background shadow-md scale-105"
-                  : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground hover:scale-102"
+                  ? "bg-foreground text-background dark:bg-foreground dark:text-background shadow-md ring-2 ring-foreground/30"
+                  : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
                 }`}
             >
               General
@@ -37915,8 +37944,8 @@ export default function CrosslistComposer() {
                   onClick={() => setActiveForm(m.id)}
                   className={`inline-flex items-center gap-2 px-5 py-3 rounded-lg border-2 text-base font-medium transition-all
                     ${active
-                      ? "bg-foreground text-background dark:bg-foreground dark:text-background shadow-md scale-105"
-                      : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground hover:scale-102"
+                      ? "bg-foreground text-background dark:bg-foreground dark:text-background shadow-md ring-2 ring-foreground/30"
+                      : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
                     }`}
                 >
                   {renderMarketplaceIcon(m)}
@@ -43572,11 +43601,21 @@ export default function CrosslistComposer() {
                         <Button 
                           variant="default" 
                           size="sm" 
-                          className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" 
+                          className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
+                          disabled={isMobile}
                           onClick={() => {
+                            if (isMobile) {
+                              toast({
+                                title: "Desktop required",
+                                description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
+                                variant: "destructive",
+                                duration: 10000,
+                              });
+                              return;
+                            }
                             toast({
-                              title: "Mercari Login",
-                              description: "Mercari connect requires the Profit Orbit Chrome extension (desktop). Mobile browsers cannot connect via the extension.",
+                              title: "Desktop required",
+                              description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
                               variant: "destructive",
                               duration: 10000,
                             });
