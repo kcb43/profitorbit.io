@@ -639,13 +639,13 @@ export default function ProfitCalendar() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-2xl top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] max-h-[calc(100dvh-2rem)] sm:max-h-[80vh] overflow-y-auto overflow-x-hidden po-scrollbar-hide">
-          <DialogHeader className="text-left">
-            <DialogTitle className="text-foreground break-words">
+        <DialogContent className="w-[calc(100dvw-1rem)] max-w-[calc(100dvw-1rem)] sm:max-w-2xl top-2 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] max-h-[calc(100dvh-1rem)] sm:max-h-[80vh] overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="text-left pr-10">
+            <DialogTitle className="text-foreground break-words whitespace-normal">
               Sales on {selectedDay && format(selectedDay, 'MMMM d, yyyy')}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-6">
+          <div className="po-scrollbar-hide overflow-y-auto overflow-x-hidden space-y-6">
             {selectedSales.map(sale => (
               <Card key={sale.id} className="hover:shadow-md transition-shadow border border-border/60 rounded-xl mb-4">
                 <CardContent className="p-4 space-y-3">
@@ -661,7 +661,9 @@ export default function ProfitCalendar() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-foreground break-words line-clamp-2">{sale.item_name}</h3>
+                          <h3 className="font-semibold text-foreground break-words whitespace-normal line-clamp-2">
+                            {sale.item_name}
+                          </h3>
                           <p className="text-sm text-muted-foreground mt-1">
                             Sold for ${Number(sale.selling_price ?? 0).toFixed(2)}
                           </p>
