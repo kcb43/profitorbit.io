@@ -54,6 +54,12 @@ async function notifyProfitOrbit(message) {
 // Facebook helpers (run requests in a real facebook.com tab)
 // -----------------------------
 
+// Persistent minimized FB "worker" window/tab so we don't open/close UI every listing attempt.
+// Facebook requires real facebook.com context for some requests (1357004). Reusing one minimized window
+// avoids repeatedly "opening a new tab/window" during listing.
+let __poFacebookWorkerWindowId = null;
+let __poFacebookWorkerTabId = null;
+
 async function pickFacebookTabId() {
   try {
     const tabs = await chrome.tabs.query({ url: ['https://www.facebook.com/*', 'https://m.facebook.com/*'] });
@@ -71,6 +77,17 @@ async function pickFacebookTabId() {
 }
 
 async function ensureFacebookTabId(options = {}) {
+  // If we already have a persistent worker tab, prefer it.
+  try {
+    if (typeof __poFacebookWorkerTabId === 'number') {
+      const t = await chrome.tabs.get(__poFacebookWorkerTabId);
+      if (t?.id) return { tabId: t.id, created: false, windowId: __poFacebookWorkerWindowId, method: 'worker', error: null };
+    }
+  } catch (_) {
+    __poFacebookWorkerTabId = null;
+    __poFacebookWorkerWindowId = null;
+  }
+
   const existing = await pickFacebookTabId();
   if (existing) return { tabId: existing, created: false, windowId: null };
 
@@ -136,6 +153,9 @@ async function ensureFacebookTabId(options = {}) {
     }
 
     if (created.tabId) {
+      // Remember as the persistent worker.
+      __poFacebookWorkerTabId = created.tabId;
+      __poFacebookWorkerWindowId = created.windowId;
       return { tabId: created.tabId, created: true, windowId: created.windowId, method: 'window', error: null };
     }
 
@@ -212,9 +232,10 @@ async function ensureHiddenIframe(tabId, origin) {
 async function facebookFetchInTab(tabId, args, frameId = null) {
   if (!tabId) throw new Error('No suitable tab found for running this request.');
 
-  const results = await chrome.scripting.executeScript({
-    target: frameId === null ? { tabId } : { tabId, frameIds: [frameId] },
-    func: async (payload) => {
+  const runOnce = async () =>
+    chrome.scripting.executeScript({
+      target: frameId === null ? { tabId } : { tabId, frameIds: [frameId] },
+      func: async (payload) => {
       const safeHeaders = { ...(payload?.headers || {}) };
       // Avoid forbidden/meaningless headers; the browser sets these. Passing them can cause failures.
       const drop = (k) => {
@@ -276,9 +297,93 @@ async function facebookFetchInTab(tabId, args, frameId = null) {
       } catch (e) {
         return { ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed'), href: String(location?.href || '') };
       }
-    },
-    args: [args],
-  });
+      },
+      args: [args],
+    });
+
+  let results;
+  try {
+    results = await runOnce();
+  } catch (e) {
+    // Chrome sometimes throws if the tab navigated between scheduling and execution.
+    const msg = String(e?.message || e || '');
+    const isFrameRemoved = /Frame with ID/i.test(msg) && /was removed/i.test(msg);
+    if (isFrameRemoved) {
+      // Retry once after a short delay, and avoid targeting a specific frame.
+      await new Promise((r) => setTimeout(r, 250));
+      try {
+        results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: async (payload) => {
+            const safeHeaders = { ...(payload?.headers || {}) };
+            const drop = (k) => {
+              delete safeHeaders[k];
+              delete safeHeaders[String(k || '').toLowerCase()];
+            };
+            drop('host');
+            drop('content-length');
+            drop('cookie');
+            drop('origin');
+            drop('referer');
+            drop('user-agent');
+            for (const k of Object.keys(safeHeaders)) {
+              if (String(k).toLowerCase().startsWith('sec-fetch-')) drop(k);
+            }
+
+            const init = {
+              method: payload?.method || 'GET',
+              headers: safeHeaders,
+              credentials: 'include',
+              mode: payload?.mode || 'cors',
+              redirect: 'follow',
+            };
+
+            if (payload?.bodyType === 'formData') {
+              const fd = new FormData();
+              const fields = Array.isArray(payload?.formFields) ? payload.formFields : [];
+              for (const f of fields) {
+                if (!f) continue;
+                const name = String(f.name || '');
+                if (!name) continue;
+                fd.append(name, String(f.value ?? ''));
+              }
+
+              const file = payload?.file || null;
+              if (file?.base64 && file?.fieldName) {
+                const b64 = String(file.base64 || '');
+                const bin = atob(b64);
+                const u8 = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i) & 0xff;
+                const blob = new Blob([u8], { type: String(file.type || 'application/octet-stream') });
+                fd.append(String(file.fieldName), blob, String(file.fileName || 'photo.jpg'));
+              }
+
+              init.body = fd;
+            } else if (payload?.bodyType === 'text') {
+              init.body = String(payload?.bodyText || '');
+            }
+
+            try {
+              const resp = await fetch(String(payload?.url || ''), init);
+              const text = await resp.text().catch(() => '');
+              const headers = {};
+              try {
+                for (const [k, v] of resp.headers.entries()) headers[k] = v;
+              } catch (_) {}
+              return { ok: resp.ok, status: resp.status, text, headers, error: null, href: String(location?.href || '') };
+            } catch (err) {
+              return { ok: false, status: 0, text: '', headers: {}, error: String(err?.message || err || 'fetch_failed'), href: String(location?.href || '') };
+            }
+          },
+          args: [args],
+        });
+      } catch (e2) {
+        throw e2;
+      }
+    } else {
+      throw e;
+    }
+  }
 
   // executeScript returns an array; take first result
   const first = Array.isArray(results) ? results[0] : null;
@@ -3683,18 +3788,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         console.log('🟢 [FACEBOOK] Listing request completed', { listingId, url });
-        await closeTempFbTab();
+        // Keep the FB worker window open (minimized) so subsequent listings don't "open a new tab/window".
         sendResponse({ success: true, listingId, url, photoId });
       } catch (e) {
         console.error('🔴 [FACEBOOK] CREATE_FACEBOOK_LISTING failed', e);
         try {
           // best-effort cleanup
-          if (__poTempFacebookWindowId) {
-            await chrome.windows.remove(__poTempFacebookWindowId);
-          } else {
-            const tabId = typeof __poTempFacebookTabId === 'number' ? __poTempFacebookTabId : null;
-            if (tabId) await chrome.tabs.remove(tabId);
-          }
+          // Do not auto-close the FB worker window/tab; leaving it minimized avoids future UI popups.
         } catch (_) {}
         sendResponse({ success: false, error: e?.message || String(e) });
       }
