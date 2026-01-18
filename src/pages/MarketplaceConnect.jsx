@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Facebook, 
   ShoppingBag, 
@@ -66,9 +67,23 @@ export default function MarketplaceConnect() {
   const [accounts, setAccounts] = useState({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [extensionReady, setExtensionReady] = useState(false);
 
   useEffect(() => {
     loadAccounts();
+
+    const checkExt = () => {
+      try {
+        const ext = window?.ProfitOrbitExtension;
+        const ok = typeof ext?.isAvailable === 'function' ? !!ext.isAvailable() : !!ext;
+        setExtensionReady(ok);
+      } catch (_) {
+        setExtensionReady(false);
+      }
+    };
+    checkExt();
+    const id = setInterval(checkExt, 1500);
     
     // Listen for embedded signup messages
     const handleMessage = (event) => {
@@ -86,7 +101,10 @@ export default function MarketplaceConnect() {
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   const loadAccounts = async () => {
@@ -102,6 +120,25 @@ export default function MarketplaceConnect() {
 
   const handleFacebookConnect = async () => {
     // Vendoo-like connection: use extension cookie/session detection, not Facebook developer OAuth.
+    if (isMobile) {
+      toast({
+        title: 'Desktop required',
+        description: 'Facebook connect requires the Profit Orbit Chrome extension, which is not available on mobile browsers.',
+        variant: 'destructive',
+        duration: 10000,
+      });
+      return;
+    }
+    if (!extensionReady) {
+      toast({
+        title: 'Extension not available',
+        description: 'Install/enable the Profit Orbit Chrome extension, then refresh this page and try again.',
+        variant: 'destructive',
+        duration: 10000,
+      });
+      return;
+    }
+
     toast({
       title: 'Connecting to Facebook...',
       description: 'Make sure you are logged into facebook.com in this Chrome profile, then click Connect again.',
@@ -212,7 +249,7 @@ export default function MarketplaceConnect() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           Marketplace Connections
@@ -297,7 +334,7 @@ export default function MarketplaceConnect() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   {status.connected ? (
                     <>
                       <Button
@@ -305,7 +342,7 @@ export default function MarketplaceConnect() {
                         size="sm"
                         onClick={() => handleReconnect(marketplace.id)}
                         disabled={isComingSoon}
-                        className="flex-1"
+                        className="w-full sm:flex-1 whitespace-normal"
                       >
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Reconnect
@@ -315,7 +352,7 @@ export default function MarketplaceConnect() {
                         size="sm"
                         onClick={() => handleDisconnect(marketplace.id)}
                         disabled={isComingSoon}
-                        className="flex-1 text-destructive hover:text-destructive"
+                        className="w-full sm:flex-1 text-destructive hover:text-destructive whitespace-normal"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Disconnect
@@ -324,11 +361,13 @@ export default function MarketplaceConnect() {
                   ) : (
                     <Button
                       onClick={() => handleConnect(marketplace.id)}
-                      disabled={isComingSoon || (marketplace.id === 'facebook' && !sdkReady)}
-                      className="flex-1"
+                      disabled={isComingSoon || (marketplace.id === 'facebook' && (!extensionReady || isMobile))}
+                      className="w-full whitespace-normal"
                     >
                       <Icon className="w-4 h-4 mr-2" />
-                      {marketplace.id === 'facebook' && !sdkReady ? 'Loading...' : `Connect ${marketplace.name}`}
+                      {marketplace.id === 'facebook' && (isMobile || !extensionReady)
+                        ? 'Connect on Desktop'
+                        : `Connect ${marketplace.name}`}
                     </Button>
                   )}
                 </div>

@@ -35840,6 +35840,24 @@ export default function CrosslistComposer() {
   const handleConnectFacebook = async () => {
     // Vendoo-like connection: extension detects logged-in facebook.com session (no developer OAuth redirect).
     try {
+      const extOk = (() => {
+        try {
+          const ext = window?.ProfitOrbitExtension;
+          return typeof ext?.isAvailable === 'function' ? !!ext.isAvailable() : !!ext;
+        } catch (_) {
+          return false;
+        }
+      })();
+      if (!extOk) {
+        toast({
+          title: "Extension required",
+          description: "Facebook connect requires the Profit Orbit Chrome extension (desktop Chrome). Mobile browsers cannot connect via the extension.",
+          variant: "destructive",
+          duration: 10000,
+        });
+        return;
+      }
+
       toast({
         title: "Connecting to Facebook...",
         description: "Checking extension login status...",
@@ -35868,14 +35886,9 @@ export default function CrosslistComposer() {
 
       const connected = await waitFor(5000);
       if (!connected) {
-        // Let the user login in the same Chrome profile; we can’t “background login” to Facebook.
-        try {
-          window.open('https://www.facebook.com/marketplace/', '_blank', 'noopener,noreferrer');
-        } catch (_) {}
-
         toast({
           title: "Facebook Not Detected",
-          description: "Log into Facebook in the tab that opened, then come back and click Connect again.",
+          description: "Open facebook.com in this Chrome profile, log in, then come back and click Connect again.",
           variant: "destructive",
           duration: 10000,
         });
