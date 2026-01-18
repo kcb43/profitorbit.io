@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,16 @@ export default function ProfitCalendar() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedSales, setSelectedSales] = useState([]);
+
+  // Swipe / drag-to-change-month (mouse + touch)
+  const swipeRef = useRef({
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    moved: false,
+  });
+  const suppressNextDayClickRef = useRef(false);
 
   const calendarWindow = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
@@ -131,9 +141,81 @@ export default function ProfitCalendar() {
 
   // Helper function for day click (dialog)
   const handleDayClick = (day, salesForDay) => {
+    // If the user just swiped to change months, don't open the day dialog.
+    if (suppressNextDayClickRef.current) {
+      suppressNextDayClickRef.current = false;
+      return;
+    }
     setSelectedDay(day);
     setSelectedSales(salesForDay);
     setDialogOpen(true);
+  };
+
+  const onCalendarPointerDown = (e) => {
+    // Only primary mouse button; allow touch/pen.
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    swipeRef.current = {
+      active: true,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
+
+    try {
+      e.currentTarget?.setPointerCapture?.(e.pointerId);
+    } catch (_) {
+      // ignore
+    }
+  };
+
+  const onCalendarPointerMove = (e) => {
+    const st = swipeRef.current;
+    if (!st?.active) return;
+    if (st.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+
+    const ACTIVATION_PX = 8; // prevent tiny jitters
+    if (!st.moved && Math.hypot(dx, dy) >= ACTIVATION_PX) {
+      st.moved = true;
+    }
+
+    // Prevent text selection while dragging with mouse when horizontal intent is clear.
+    if (st.moved && e.pointerType === 'mouse' && Math.abs(dx) > Math.abs(dy)) {
+      try {
+        e.preventDefault();
+      } catch (_) {}
+    }
+  };
+
+  const onCalendarPointerEnd = (e) => {
+    const st = swipeRef.current;
+    if (!st?.active) return;
+    if (st.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+
+    swipeRef.current.active = false;
+    swipeRef.current.pointerId = null;
+
+    // Treat as swipe only if it's clearly horizontal and long enough.
+    const SWIPE_TRIGGER_PX = 60;
+    const HORIZONTAL_RATIO = 1.2; // dx must be > dy*ratio
+    const isHorizontal = Math.abs(dx) > Math.abs(dy) * HORIZONTAL_RATIO;
+
+    if (Math.abs(dx) >= SWIPE_TRIGGER_PX && isHorizontal) {
+      // Suppress day click that would otherwise fire on pointer up.
+      suppressNextDayClickRef.current = true;
+
+      if (dx < 0) {
+        handleNextMonth();
+      } else {
+        handlePreviousMonth();
+      }
+    }
   };
 
   // Re-evaluation of calendar data and profit aggregation
@@ -303,58 +385,67 @@ export default function ProfitCalendar() {
             </div>
 
             <CardContent className="p-2 sm:p-3 md:px-6 md:py-5 md:bg-transparent">
-              <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-2 md:gap-2 md:mb-3">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div
-                    key={day}
-                    className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-1 md:text-slate-400 md:uppercase md:text-[11px]"
-                  >
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
-                {calendarDays.map((day, index) => {
-                  const dayData = profitByDay[format(day, 'yyyy-MM-dd')];
-                  const profit = dayData?.profit || 0;
-                  const isToday = isSameDay(day, new Date());
-                  const isCurrentMonth = isSameMonth(day, currentMonth);
-
-                  const heatLevel = getHeatLevel(profit);
-
-                  return (
+              <div
+                className="select-none touch-pan-y"
+                style={{ touchAction: 'pan-y' }}
+                onPointerDown={onCalendarPointerDown}
+                onPointerMove={onCalendarPointerMove}
+                onPointerUp={onCalendarPointerEnd}
+                onPointerCancel={onCalendarPointerEnd}
+              >
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-2 md:gap-2 md:mb-3">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div
-                      key={index}
-                      onClick={() => dayData && handleDayClick(day, dayData.sales)}
-                      className={`
-                        rounded-lg text-center flex flex-col justify-between items-center
-                        p-1 md:p-1.5
-                        h-12 sm:h-14 md:h-16 lg:h-14 xl:h-16
-                        ${!isCurrentMonth ? 'opacity-30' : ''}
-                        ${isToday ? 'ring-2 ring-blue-500 md:ring-emerald-400/70' : ''}
-                        ${dayData ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}
-                        ${profit > 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-gray-50 dark:bg-gray-800/50'}
-                        ${heatStyles[heatLevel]}
-                      `}
+                      key={day}
+                      className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-1 md:text-slate-400 md:uppercase md:text-[11px]"
                     >
-                      <div
-                        className={`text-[10px] sm:text-xs font-medium md:text-sm ${
-                          dayData
-                            ? 'text-foreground md:text-inherit'
-                            : 'text-muted-foreground md:text-inherit'
-                        }`}
-                      >
-                        {format(day, 'd')}
-                      </div>
-                      {dayData && (
-                        <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm md:text-inherit">
-                          ${profit.toFixed(0)}
-                        </div>
-                      )}
+                      {day}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
+                  {calendarDays.map((day, index) => {
+                    const dayData = profitByDay[format(day, 'yyyy-MM-dd')];
+                    const profit = dayData?.profit || 0;
+                    const isToday = isSameDay(day, new Date());
+                    const isCurrentMonth = isSameMonth(day, currentMonth);
+
+                    const heatLevel = getHeatLevel(profit);
+
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => dayData && handleDayClick(day, dayData.sales)}
+                        className={`
+                          rounded-lg text-center flex flex-col justify-between items-center
+                          p-1 md:p-1.5
+                          h-12 sm:h-14 md:h-16 lg:h-14 xl:h-16
+                          ${!isCurrentMonth ? 'opacity-30' : ''}
+                          ${isToday ? 'ring-2 ring-blue-500 md:ring-emerald-400/70' : ''}
+                          ${dayData ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}
+                          ${profit > 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-gray-50 dark:bg-gray-800/50'}
+                          ${heatStyles[heatLevel]}
+                        `}
+                      >
+                        <div
+                          className={`text-[10px] sm:text-xs font-medium md:text-sm ${
+                            dayData
+                              ? 'text-foreground md:text-inherit'
+                              : 'text-muted-foreground md:text-inherit'
+                          }`}
+                        >
+                          {format(day, 'd')}
+                        </div>
+                        {dayData && (
+                          <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm md:text-inherit">
+                            ${profit.toFixed(0)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>
