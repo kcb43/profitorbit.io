@@ -3413,6 +3413,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
         let gqlResult = null;
+        const gqlAttemptMeta = { directFetch: false, retry1357004: false, fbTabId: null };
         try {
           const direct = await facebookFetchDirect(graphqlTemplate.url, {
             method: 'POST',
@@ -3420,8 +3421,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             body: encodeFormBody(form),
           });
           gqlResult = { ...direct, error: null, href: null };
+          gqlAttemptMeta.directFetch = true;
         } catch (e) {
           const fbTabIdForGql = await pickFacebookTabId();
+          gqlAttemptMeta.fbTabId = fbTabIdForGql;
           gqlResult = await facebookFetchInTab(fbTabIdForGql, {
             url: graphqlTemplate.url,
             method: 'POST',
@@ -3430,11 +3433,88 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             bodyText: encodeFormBody(form),
           });
         }
-        const gqlText = gqlResult?.text || '';
-        const gqlOk = !!gqlResult?.ok;
-        const gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
-        let gqlJson = null;
-        try { gqlJson = gqlText ? JSON.parse(gqlText) : null; } catch (_) { gqlJson = null; }
+
+        const parseFacebookJson = (text) => {
+          const t = String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
+          try {
+            return t ? JSON.parse(t) : null;
+          } catch (_) {
+            return null;
+          }
+        };
+
+        const extractFbErrorInfo = (j) => {
+          try {
+            if (!j || typeof j !== 'object') return null;
+            // Upload-style errors
+            if (j.error || j.errorSummary || j.errorDescription) {
+              const code = j.error ? String(j.error) : null;
+              const summary = j.errorSummary ? String(j.errorSummary) : 'Facebook error';
+              const desc = j.errorDescription ? String(j.errorDescription) : '';
+              return { code, summary, desc };
+            }
+            // GraphQL-style errors
+            if (Array.isArray(j.errors) && j.errors.length) {
+              const e0 = j.errors[0] || {};
+              const code =
+                e0?.code !== undefined ? String(e0.code) :
+                e0?.errorCode !== undefined ? String(e0.errorCode) :
+                e0?.extensions?.code !== undefined ? String(e0.extensions.code) :
+                e0?.extensions?.error_code !== undefined ? String(e0.extensions.error_code) :
+                null;
+              const summary = e0?.message ? String(e0.message) : 'Facebook GraphQL error';
+              return { code, summary, desc: '' };
+            }
+            // Sometimes nested
+            const nestedCode = j?.error?.code !== undefined ? String(j.error.code) : null;
+            const nestedMsg = j?.error?.message ? String(j.error.message) : null;
+            if (nestedCode || nestedMsg) return { code: nestedCode, summary: nestedMsg || 'Facebook error', desc: '' };
+          } catch (_) {}
+          return null;
+        };
+
+        let gqlText = gqlResult?.text || '';
+        let gqlOk = !!gqlResult?.ok;
+        let gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
+        let gqlJson = parseFacebookJson(gqlText);
+
+        // Special case: 1357004 can happen on GraphQL too (extension-origin). Retry in an existing FB tab.
+        const firstErr = extractFbErrorInfo(gqlJson);
+        if (firstErr?.code === '1357004' && gqlAttemptMeta.directFetch) {
+          console.warn('🟨 [FACEBOOK] Detected 1357004 on GraphQL create. Retrying in existing FB tab…');
+          const fbTabIdForGql = await pickFacebookTabId();
+          if (!fbTabIdForGql) {
+            throw new Error(
+              `${firstErr.summary} (code ${firstErr.code})` +
+                ` (Fix: open Facebook Marketplace in a tab in this Chrome profile, then retry. The extension will reuse the existing tab; it will not open a new one.)`
+            );
+          }
+          gqlAttemptMeta.retry1357004 = true;
+          gqlAttemptMeta.fbTabId = fbTabIdForGql;
+          const retry = await facebookFetchInTab(fbTabIdForGql, {
+            url: graphqlTemplate.url,
+            method: 'POST',
+            headers: gqlHeaders,
+            bodyType: 'text',
+            bodyText: encodeFormBody(form),
+          });
+          gqlText = retry?.text || '';
+          gqlOk = !!retry?.ok;
+          gqlStatus = typeof retry?.status === 'number' ? retry.status : 0;
+          gqlJson = parseFacebookJson(gqlText);
+        }
+
+        // If FB returned an error payload, surface it clearly (HTTP can still be 200).
+        const gqlErrFinal = extractFbErrorInfo(gqlJson);
+        if (gqlErrFinal?.code || gqlErrFinal?.summary) {
+          if (gqlErrFinal?.code === '1357004') {
+            throw new Error(
+              `${gqlErrFinal.summary} (code ${gqlErrFinal.code})` +
+                `: Please refresh your Facebook tab and try again.`
+            );
+          }
+          throw new Error(`${gqlErrFinal.summary}${gqlErrFinal.code ? ` (code ${gqlErrFinal.code})` : ''}${gqlErrFinal.desc ? `: ${gqlErrFinal.desc}` : ''}`);
+        }
 
         // Extract listing id best-effort.
         // NOTE: Some composer queries return Marketplace IDs (e.g. current_marketplace.id) which are NOT listing IDs.
@@ -3479,7 +3559,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const url = listingId ? `https://www.facebook.com/marketplace/item/${listingId}/` : null;
 
-        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlOk, status: gqlStatus, url: graphqlTemplate.url, docId, friendlyName, listingId, marketplaceId, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
+        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlOk, status: gqlStatus, url: graphqlTemplate.url, docId, friendlyName, listingId, marketplaceId, gqlAttemptMeta, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
 
         if (!gqlOk) {
           throw new Error(`Facebook GraphQL create failed: ${gqlStatus}`);
