@@ -3217,51 +3217,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (uploadHeaders?.accept) directUploadHeaders.accept = uploadHeaders.accept;
         } catch (_) {}
 
-        let uploadResult = null;
-        try {
-          const fd = new FormData();
-          for (const f of uploadFormFields) {
-            if (!f?.name) continue;
-            fd.append(String(f.name), String(f.value ?? ''));
-          }
-          fd.append(String(fileFieldName), imgBlob, String(fileName));
-          const direct = await facebookFetchDirect(uploadTemplate.url, {
-            method: 'POST',
-            headers: directUploadHeaders,
-            body: fd,
-          });
-          uploadResult = { ...direct, error: null, href: null };
-          uploadAttemptMeta.directFetch = true;
-        } catch (e) {
-          uploadAttemptMeta.directFetch = false;
-          uploadAttemptMeta.directError = String(e?.message || e || 'direct_upload_failed');
-          const fbTabId = await pickFacebookTabId();
-          uploadAttemptMeta.fbTabId = fbTabId;
-          uploadAttemptMeta.tabFetch = true;
-
-          // executeScript args must be JSON-serializable; pass file bytes as base64 string.
-          const toBase64 = (ab) => {
-            const u8 = new Uint8Array(ab);
-            let s = '';
-            const chunk = 0x8000;
-            for (let i = 0; i < u8.length; i += chunk) {
-              s += String.fromCharCode(...u8.subarray(i, i + chunk));
-            }
-            return btoa(s);
-          };
-          const fileBase64 = toBase64(await imgBlob.arrayBuffer());
-          uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
-          uploadAttemptMeta.fileBase64Chars = fileBase64.length;
-
-          uploadResult = await facebookFetchInTab(fbTabId, {
-            url: uploadTemplate.url,
-            method: 'POST',
-            headers: directUploadHeaders,
-            bodyType: 'formData',
-            formFields: uploadFormFields,
-            file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
-          });
+        // Facebook frequently rejects extension-origin requests (1357004). To keep UX fast and consistent,
+        // always run uploads inside a real facebook.com tab/window context instead of doing a direct attempt first.
+        const ensuredForUpload = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
+        const fbTabId = ensuredForUpload?.tabId;
+        rememberTempFbTab(fbTabId, ensuredForUpload?.created, ensuredForUpload?.windowId);
+        if (!fbTabId) {
+          throw new Error(
+            `Could not create a Facebook context for upload. method=${ensuredForUpload?.method || 'unknown'} error=${ensuredForUpload?.error || 'unknown'}`
+          );
         }
+
+        uploadAttemptMeta.directFetch = false;
+        uploadAttemptMeta.tabFetch = true;
+        uploadAttemptMeta.fbTabId = fbTabId;
+
+        // executeScript args must be JSON-serializable; pass file bytes as base64 string.
+        const toBase64 = (ab) => {
+          const u8 = new Uint8Array(ab);
+          let s = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < u8.length; i += chunk) {
+            s += String.fromCharCode(...u8.subarray(i, i + chunk));
+          }
+          return btoa(s);
+        };
+        const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+        uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
+        uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+
+        const uploadResult = await facebookFetchInTab(fbTabId, {
+          url: uploadTemplate.url,
+          method: 'POST',
+          headers: directUploadHeaders,
+          bodyType: 'formData',
+          formFields: uploadFormFields,
+          file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+        });
         let uploadTextRaw = uploadResult?.text || '';
         let uploadOk = !!uploadResult?.ok;
         let uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
@@ -3627,27 +3619,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         delete gqlHeaders['cookie'];
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
-        let gqlResult = null;
         const gqlAttemptMeta = { directFetch: false, retry1357004: false, fbTabId: null };
-        try {
-          const direct = await facebookFetchDirect(graphqlTemplate.url, {
-            method: 'POST',
-            headers: gqlHeaders,
-            body: encodeFormBody(form),
-          });
-          gqlResult = { ...direct, error: null, href: null };
-          gqlAttemptMeta.directFetch = true;
-        } catch (e) {
-          const fbTabIdForGql = await pickFacebookTabId();
-          gqlAttemptMeta.fbTabId = fbTabIdForGql;
-          gqlResult = await facebookFetchInTab(fbTabIdForGql, {
-            url: graphqlTemplate.url,
-            method: 'POST',
-            headers: gqlHeaders,
-            bodyType: 'text',
-            bodyText: encodeFormBody(form),
-          });
+        const ensuredForGql = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
+        const fbTabIdForGql = ensuredForGql?.tabId;
+        rememberTempFbTab(fbTabIdForGql, ensuredForGql?.created, ensuredForGql?.windowId);
+        if (!fbTabIdForGql) {
+          throw new Error(
+            `Could not create a Facebook context for GraphQL. method=${ensuredForGql?.method || 'unknown'} error=${ensuredForGql?.error || 'unknown'}`
+          );
         }
+        gqlAttemptMeta.fbTabId = fbTabIdForGql;
+        const gqlResult = await facebookFetchInTab(fbTabIdForGql, {
+          url: graphqlTemplate.url,
+          method: 'POST',
+          headers: gqlHeaders,
+          bodyType: 'text',
+          bodyText: encodeFormBody(form),
+        });
 
         const parseFacebookJson = (text) => {
           const t = String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
@@ -3693,32 +3681,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
         let gqlJson = parseFacebookJson(gqlText);
 
-        // Special case: 1357004 can happen on GraphQL too (extension-origin). Retry in an existing FB tab.
-        const firstErr = extractFbErrorInfo(gqlJson);
-        if (firstErr?.code === '1357004' && gqlAttemptMeta.directFetch) {
-          console.debug('🟨 [FACEBOOK] Detected 1357004 on GraphQL create. Retrying in existing FB tab…');
-          const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
-          const fbTabIdForGql = ensured?.tabId;
-          rememberTempFbTab(fbTabIdForGql, ensured?.created, ensured?.windowId);
-          if (!fbTabIdForGql) {
-            throw new Error(
-              `${firstErr.summary} (code ${firstErr.code}) (Could not create a Facebook tab for retry. method=${ensured?.method || 'unknown'} error=${ensured?.error || 'unknown'})`
-            );
-          }
-          gqlAttemptMeta.retry1357004 = true;
-          gqlAttemptMeta.fbTabId = fbTabIdForGql;
-          const retry = await facebookFetchInTab(fbTabIdForGql, {
-            url: graphqlTemplate.url,
-            method: 'POST',
-            headers: gqlHeaders,
-            bodyType: 'text',
-            bodyText: encodeFormBody(form),
-          });
-          gqlText = retry?.text || '';
-          gqlOk = !!retry?.ok;
-          gqlStatus = typeof retry?.status === 'number' ? retry.status : 0;
-          gqlJson = parseFacebookJson(gqlText);
-        }
+        // No 1357004 retry needed here because we always run GraphQL inside facebook.com context.
 
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
         const gqlErrFinal = extractFbErrorInfo(gqlJson);
