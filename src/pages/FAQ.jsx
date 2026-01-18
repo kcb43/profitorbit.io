@@ -43,6 +43,9 @@ export default function FAQ() {
                 <li>
                   <span className="font-medium">WebP:</span> supported. (Some marketplaces prefer JPG; we can convert when needed.)
                 </li>
+                <li>
+                  <span className="font-medium">Automatic conversion:</span> WebP and HEIC/HEIF are converted to JPG on upload for maximum marketplace compatibility.
+                </li>
               </ul>
             </CardContent>
           </Card>

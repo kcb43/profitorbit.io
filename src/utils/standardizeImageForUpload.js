@@ -17,6 +17,12 @@ function isHeicLike(file) {
   return t === "image/heic" || t === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
 }
 
+function isWebpLike(file) {
+  const t = String(file?.type || "").toLowerCase();
+  const name = String(file?.name || "").toLowerCase();
+  return t === "image/webp" || name.endsWith(".webp");
+}
+
 async function convertHeicToJpeg(file) {
   // Dynamic import to keep initial bundle smaller.
   const mod = await import("heic2any");
@@ -41,9 +47,56 @@ async function convertHeicToJpeg(file) {
   });
 }
 
+async function convertWebpToJpeg(file) {
+  // Use canvas-based conversion (works in modern browsers). If it fails, we keep the original.
+  const blobUrl = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = blobUrl;
+    await new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = (e) => reject(e);
+    });
+
+    const w = img.naturalWidth || img.width || 0;
+    const h = img.naturalHeight || img.height || 0;
+    if (!w || !h) throw new Error("Invalid WebP image dimensions");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas context not available");
+
+    // WebP may have transparency; JPEG does not. Fill with white first.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const outBlob = await new Promise((resolve) => {
+      canvas.toBlob(
+        (b) => resolve(b),
+        "image/jpeg",
+        0.92
+      );
+    });
+    if (!outBlob) throw new Error("WebP conversion failed");
+
+    const baseName = String(file?.name || "photo").replace(/\.webp$/i, "");
+    return new File([outBlob], `${baseName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
+}
+
 /**
  * Standardize listing images before upload:
  * - Convert HEIC/HEIF to JPEG (best-effort)
+ * - Convert WebP to JPEG for maximum marketplace compatibility (best-effort)
  * - Compress oversized photos so uploads are fast and consistent
  */
 export async function standardizeImageForUpload(file, options = {}) {
@@ -55,6 +108,14 @@ export async function standardizeImageForUpload(file, options = {}) {
   const maxBytes = maxMb * 1024 * 1024;
 
   let working = file;
+  if (isWebpLike(working)) {
+    try {
+      working = await convertWebpToJpeg(working);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("WebP conversion failed; uploading original file", e);
+    }
+  }
   if (isHeicLike(working)) {
     try {
       working = await convertHeicToJpeg(working);
