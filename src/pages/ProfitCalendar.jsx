@@ -44,6 +44,7 @@ export default function ProfitCalendar() {
     startX: 0,
     startY: 0,
     moved: false,
+    captured: false,
   });
   const suppressNextDayClickRef = useRef(false);
 
@@ -163,13 +164,8 @@ export default function ProfitCalendar() {
       startX: e.clientX,
       startY: e.clientY,
       moved: false,
+      captured: false,
     };
-
-    try {
-      e.currentTarget?.setPointerCapture?.(e.pointerId);
-    } catch (_) {
-      // ignore
-    }
   };
 
   const onCalendarPointerMove = (e) => {
@@ -183,6 +179,17 @@ export default function ProfitCalendar() {
     const ACTIVATION_PX = 8; // prevent tiny jitters
     if (!st.moved && Math.hypot(dx, dy) >= ACTIVATION_PX) {
       st.moved = true;
+    }
+
+    // Only start pointer capture once we detect real horizontal drag intent.
+    // Capturing too early can prevent individual day tiles from receiving normal click/tap events.
+    if (st.moved && !st.captured && Math.abs(dx) > Math.abs(dy)) {
+      try {
+        e.currentTarget?.setPointerCapture?.(e.pointerId);
+        st.captured = true;
+      } catch (_) {
+        // ignore
+      }
     }
 
     // Prevent text selection while dragging with mouse when horizontal intent is clear.
@@ -201,8 +208,17 @@ export default function ProfitCalendar() {
     const dx = e.clientX - st.startX;
     const dy = e.clientY - st.startY;
 
+    if (st.captured) {
+      try {
+        e.currentTarget?.releasePointerCapture?.(e.pointerId);
+      } catch (_) {
+        // ignore
+      }
+    }
+
     swipeRef.current.active = false;
     swipeRef.current.pointerId = null;
+    swipeRef.current.captured = false;
 
     // Treat as swipe only if it's clearly horizontal and long enough.
     const SWIPE_TRIGGER_PX = 60;
@@ -633,16 +649,28 @@ export default function ProfitCalendar() {
             {selectedSales.map(sale => (
               <Card key={sale.id} className="hover:shadow-md transition-shadow border border-border/60 rounded-xl mb-4">
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{sale.item_name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Sold for ${sale.selling_price?.toFixed(2)}
-                      </p>
+                  <div className="flex items-start gap-3">
+                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted">
+                      <img
+                        src={sale?.image_url || DEFAULT_IMAGE_URL}
+                        alt={sale?.item_name || 'Sold item'}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
-                    <Badge className={`${sale.profit >= 0 ? "bg-green-600" : "bg-red-600"} text-white`}>
-                      {sale.profit >= 0 ? "+" : "-"}${Math.abs(sale.profit ?? 0).toFixed(2)}
-                    </Badge>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold text-foreground">{sale.item_name}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Sold for ${Number(sale.selling_price ?? 0).toFixed(2)}
+                          </p>
+                        </div>
+                        <Badge className={`${sale.profit >= 0 ? "bg-green-600" : "bg-red-600"} text-white flex-shrink-0`}>
+                          {sale.profit >= 0 ? "+" : "-"}${Math.abs(sale.profit ?? 0).toFixed(2)}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                   <div className="h-px bg-border/70" />
                   <div>
