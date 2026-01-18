@@ -2665,6 +2665,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const isQuery = /\bquery\b/i.test(friendly) || /Query/i.test(friendly);
               const isMutation = /\bmutation\b/i.test(friendly) || /Mutation/i.test(friendly);
               const hasVars = body.includes('variables=');
+              // Hard-prefer the actual publish/create mutation if we recorded it.
+              const isKnownCreateMutation = friendly === 'useCometMarketplaceListingCreateMutation';
               // Strongly prefer mutations (publish/create) over composer "Query" templates.
               const score =
                 (hasMarketplace ? 10 : 0) +
@@ -2672,7 +2674,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 (hasDoc ? 8 : 0) +
                 (hasVars ? 3 : 0) +
                 (isMutation ? 25 : 0) -
-                (isQuery ? 20 : 0);
+                (isQuery ? 20 : 0) +
+                (isKnownCreateMutation ? 100 : 0);
               return { r, score };
             })
             .sort((a, b) => b.score - a.score);
@@ -3313,6 +3316,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let vars = {};
         try { vars = form.variables ? JSON.parse(form.variables) : {}; } catch (_) { vars = {}; }
 
+        // If we're using the real Marketplace create mutation, override the *specific* fields we know are required.
+        // This prevents accidentally overwriting unrelated fields like shipping_price with the item price.
+        const setDeep = (obj, pathArr, value) => {
+          try {
+            let cur = obj;
+            for (let i = 0; i < pathArr.length - 1; i++) {
+              const k = pathArr[i];
+              if (!cur || typeof cur !== 'object') return;
+              if (!cur[k] || typeof cur[k] !== 'object') cur[k] = {};
+              cur = cur[k];
+            }
+            const last = pathArr[pathArr.length - 1];
+            if (cur && typeof cur === 'object') cur[last] = value;
+          } catch (_) {}
+        };
+
+        const isCometCreateMutation =
+          String(friendlyName || '') === 'useCometMarketplaceListingCreateMutation' ||
+          String(docId || '') === '9551550371629242' ||
+          (!!vars?.input?.data?.common?.item_price && Array.isArray(vars?.input?.data?.common?.photo_ids));
+
+        if (isCometCreateMutation) {
+          setDeep(vars, ['input', 'data', 'common', 'title'], title);
+          setDeep(vars, ['input', 'data', 'common', 'description', 'text'], description);
+
+          // FB uses a numeric dollars value here in the recorded mutation (not cents).
+          const p = Number(price);
+          if (Number.isFinite(p)) {
+            setDeep(vars, ['input', 'data', 'common', 'item_price', 'price'], p);
+            setDeep(vars, ['input', 'data', 'common', 'item_price', 'currency'], 'USD');
+          }
+
+          // Populate photo_ids explicitly (this mutation uses input.data.common.photo_ids[])
+          setDeep(vars, ['input', 'data', 'common', 'photo_ids'], [photoId]);
+          setDeep(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller'], true);
+        }
+
         // Best-effort variable overrides
         const deepMutate = (obj, visit) => {
           if (!obj || typeof obj !== 'object') return;
@@ -3322,15 +3362,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             deepMutate(obj[k], visit);
           }
         };
-        deepMutate(vars, (o, k) => {
-          const lk = String(k).toLowerCase();
-          if (lk.includes('title') && typeof o[k] === 'string') o[k] = title;
-          if (lk.includes('description') && typeof o[k] === 'string') o[k] = description;
-          if (lk.includes('price')) {
-            if (typeof o[k] === 'number') o[k] = Number(price) || o[k];
-            if (typeof o[k] === 'string' && String(price ?? '').trim()) o[k] = String(price);
-          }
-        });
+        // Only do the broad heuristic overrides when we *didn't* detect the known create mutation,
+        // otherwise we risk breaking required nested fields.
+        if (!isCometCreateMutation) {
+          deepMutate(vars, (o, k) => {
+            const lk = String(k).toLowerCase();
+            if (lk.includes('title') && typeof o[k] === 'string') o[k] = title;
+            if (lk.includes('description') && typeof o[k] === 'string') o[k] = description;
+            if (lk.includes('price')) {
+              if (typeof o[k] === 'number') o[k] = Number(price) || o[k];
+              if (typeof o[k] === 'string' && String(price ?? '').trim()) o[k] = String(price);
+            }
+          });
+        }
 
         // Inject photoId into common fields
         const setFirstPhotoField = (obj) => {
@@ -3351,7 +3395,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           return did;
         };
-        setFirstPhotoField(vars);
+        if (!isCometCreateMutation) setFirstPhotoField(vars);
 
         // Override known token fields if present
         if (fbUserId) {
@@ -3409,7 +3453,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
 
         const ids = gqlJson ? collectIds(gqlJson) : [];
-        const filtered = ids.filter((id) => id !== marketplaceId && id !== fbUserId);
+        const filtered = ids.filter((id) => id !== marketplaceId && id !== fbUserId && id !== String(photoId));
 
         // Prefer ids near keys that look like item/listing/draft
         const preferredNode = gqlJson
