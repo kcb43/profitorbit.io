@@ -1,4 +1,5 @@
 import { uploadFile as uploadFileImpl } from "@/api/newApiClient";
+import { standardizeImageForUpload } from "@/utils/standardizeImageForUpload";
 
 /**
  * Upload API (Supabase-backed)
@@ -7,8 +8,9 @@ import { uploadFile as uploadFileImpl } from "@/api/newApiClient";
  * Purpose: remove remaining `base44.integrations.Core.UploadFile` usage.
  */
 export const uploadApi = {
-  uploadFile({ file }) {
-    return uploadFileImpl({ file });
+  async uploadFile({ file }) {
+    const processed = await standardizeImageForUpload(file);
+    return uploadFileImpl({ file: processed });
   },
 };
 

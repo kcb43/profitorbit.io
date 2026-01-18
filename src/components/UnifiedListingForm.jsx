@@ -20,6 +20,7 @@ import imageCompression from 'browser-image-compression';
 import { inventoryApi } from '@/api/inventoryApi';
 import { uploadApi } from '@/api/uploadApi';
 import { cleanHtmlText } from '@/lib/utils';
+import { listingUploadHintText } from '@/utils/imageUploadStandards';
 
 const MAX_PHOTOS = 12;
 const MAX_FILE_SIZE_MB = 10;
@@ -442,6 +443,9 @@ export function UnifiedListingForm({
                   </>
                 )}
               </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {listingUploadHintText()}
+              </p>
             </div>
           )}
         </CardContent>

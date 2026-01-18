@@ -28,6 +28,7 @@ const Settings = React.lazy(() => import("./Settings"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
 const PrivacyPolicy = React.lazy(() => import("./PrivacyPolicy"));
+const FAQ = React.lazy(() => import("./FAQ"));
 const MigrateData = React.lazy(() => import("./MigrateData"));
 
 const EbayOauthLanding = React.lazy(() => import("./EbayOauthLanding"));
@@ -340,6 +341,7 @@ function PagesContent() {
               {/* Public Routes */}
               <Route path="/oauth/ebay" element={withSuspense(<EbayOauthLanding />)} />
               <Route path="/PrivacyPolicy" element={withSuspense(<PrivacyPolicy />)} />
+              <Route path="/FAQ" element={withSuspense(<FAQ />)} />
             </Routes>
         </>
     );

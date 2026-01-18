@@ -640,6 +640,7 @@ export default function Landing() {
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
                 <li><a href="#contact" className="hover:text-emerald-400 transition-colors">Contact</a></li>
+                <li><a href="/FAQ" className="hover:text-emerald-400 transition-colors">FAQ</a></li>
                 <li><a href="/PrivacyPolicy" className="hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
               </ul>
             </div>

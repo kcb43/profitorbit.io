@@ -746,6 +746,9 @@ export default function AddInventoryItem() {
                   <p className="text-xs sm:text-sm text-muted-foreground">
                     Upload up to {MAX_PHOTOS} photos. First photo will be the main image.
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supported: JPG, PNG, HEIC/HEIF, WebP. No PDFs. Large photos are compressed automatically.
+                  </p>
                   
                   {/* Photos with SortableJS - Single Unified List */}
                   {formData.photos.length > 0 && (
