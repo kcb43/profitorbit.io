@@ -36399,6 +36399,25 @@ export default function CrosslistComposer() {
           setFacebookListingId(listingIdStr || null);
           setFacebookListingUrl(listingUrl || '');
 
+          // Optimistic UI: Listing Info panel is driven by listingRecordsByMarketplace (from localStorage).
+          // Update it immediately so the Facebook form shows the listing without needing a refresh/poll.
+          if (listingIdStr || listingUrl) {
+            const nowIso = new Date().toISOString();
+            setListingRecordsByMarketplace((prev) => ({
+              ...(prev || {}),
+              facebook: {
+                ...(prev?.facebook || {}),
+                inventory_item_id: currentEditingItemId || prev?.facebook?.inventory_item_id || null,
+                marketplace: 'facebook',
+                marketplace_listing_id: listingIdStr || prev?.facebook?.marketplace_listing_id || '',
+                marketplace_listing_url: listingUrl || prev?.facebook?.marketplace_listing_url || '',
+                status: 'active',
+                listed_at: prev?.facebook?.listed_at || nowIso,
+                updated_at: nowIso,
+              },
+            }));
+          }
+
           toast({
             title: "Facebook listing created successfully!",
             description: listingUrl ? `Listed! ${listingUrl}` : (result?.message || 'Listed successfully.'),

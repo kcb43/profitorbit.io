@@ -3208,7 +3208,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           let desc = initialDesc;
 
           if (code === '1357004' && uploadAttemptMeta?.directFetch) {
-            console.warn('🟨 [FACEBOOK] Detected 1357004 on upload. Attempting retry in existing FB tab…');
+            // 1357004 is an expected "wrong execution context" signal; we auto-retry in a facebook.com tab.
+            console.debug('🟨 [FACEBOOK] Detected 1357004 on upload. Retrying in FB tab…');
             const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
             const fbTabId = ensured?.tabId;
             rememberTempFbTab(fbTabId, ensured?.created, ensured?.windowId);
@@ -3218,7 +3219,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               );
             }
 
-            console.warn('🟨 [FACEBOOK] Retrying upload in existing FB tab', { fbTabId });
+            console.debug('🟨 [FACEBOOK] Retrying upload in existing FB tab', { fbTabId });
             // Build base64 only for this retry path to keep the normal path fast.
             const toBase64 = (ab) => {
               const u8 = new Uint8Array(ab);
@@ -3267,7 +3268,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             // Success: continue with the now-updated uploadResult downstream.
             uploadJson = retryJson;
-            console.warn('🟨 [FACEBOOK] Retry after 1357004 succeeded; continuing with listing flow.');
+            console.debug('🟨 [FACEBOOK] Retry after 1357004 succeeded; continuing with listing flow.');
             // Update error info variables in case we log debug below.
             code = null;
             summary = 'Facebook upload ok';
@@ -3590,7 +3591,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Special case: 1357004 can happen on GraphQL too (extension-origin). Retry in an existing FB tab.
         const firstErr = extractFbErrorInfo(gqlJson);
         if (firstErr?.code === '1357004' && gqlAttemptMeta.directFetch) {
-          console.warn('🟨 [FACEBOOK] Detected 1357004 on GraphQL create. Retrying in existing FB tab…');
+          console.debug('🟨 [FACEBOOK] Detected 1357004 on GraphQL create. Retrying in existing FB tab…');
           const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
           const fbTabIdForGql = ensured?.tabId;
           rememberTempFbTab(fbTabIdForGql, ensured?.created, ensured?.windowId);
