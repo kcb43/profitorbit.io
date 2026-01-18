@@ -639,13 +639,13 @@ export default function ProfitCalendar() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[calc(100dvw-1rem)] max-w-[calc(100dvw-1rem)] sm:max-w-2xl top-2 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] max-h-[calc(100dvh-1rem)] sm:max-h-[80vh] overflow-hidden p-4 sm:p-6">
-          <DialogHeader className="text-left pr-10">
+        <DialogContent className="flex flex-col w-[calc(100dvw-1rem)] max-w-[calc(100dvw-1rem)] sm:max-w-2xl top-2 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] max-h-[calc(100dvh-1rem)] sm:max-h-[80vh] overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="text-left pr-10 flex-shrink-0">
             <DialogTitle className="text-foreground break-words whitespace-normal">
               Sales on {selectedDay && format(selectedDay, 'MMMM d, yyyy')}
             </DialogTitle>
           </DialogHeader>
-          <div className="po-scrollbar-hide overflow-y-auto overflow-x-hidden space-y-6">
+          <div className="po-scrollbar-hide flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-6 pt-2">
             {selectedSales.map(sale => (
               <Card key={sale.id} className="hover:shadow-md transition-shadow border border-border/60 rounded-xl mb-4">
                 <CardContent className="p-4 space-y-3">
