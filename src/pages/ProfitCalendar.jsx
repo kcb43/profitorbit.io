@@ -639,7 +639,7 @@ export default function ProfitCalendar() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto overflow-x-hidden po-scrollbar-hide">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-2xl top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%] max-h-[calc(100dvh-2rem)] sm:max-h-[80vh] overflow-y-auto overflow-x-hidden po-scrollbar-hide">
           <DialogHeader className="text-left">
             <DialogTitle className="text-foreground break-words">
               Sales on {selectedDay && format(selectedDay, 'MMMM d, yyyy')}
@@ -661,7 +661,7 @@ export default function ProfitCalendar() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="truncate font-semibold text-foreground">{sale.item_name}</h3>
+                          <h3 className="font-semibold text-foreground break-words line-clamp-2">{sale.item_name}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
                             Sold for ${Number(sale.selling_price ?? 0).toFixed(2)}
                           </p>
