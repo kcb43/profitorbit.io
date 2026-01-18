@@ -137,18 +137,9 @@ async function ensureFacebookTabId(options = {}) {
       return { tabId: created.tabId, created: true, windowId: created.windowId, method: 'window', error: null };
     }
 
-    // Attempt 3: inactive background tab (least ideal, but better than failing)
-    try {
-      const tab = await chrome.tabs.create({ url, active: false });
-      const tabId = tab?.id;
-      if (typeof tabId !== 'number') {
-        return { tabId: null, created: false, windowId: null, method: 'tab', error: 'tabs_create_failed_no_id' };
-      }
-      await waitTabComplete(tabId);
-      return { tabId, created: true, windowId: null, method: 'tab', error: null };
-    } catch (e) {
-      return { tabId: null, created: false, windowId: null, method: 'tab', error: String(e?.message || e || 'tabs_create_failed') };
-    }
+    // IMPORTANT: Do NOT fall back to creating a regular tab. Users explicitly do not want new tabs opening.
+    // If we can't create a hidden popup window, bubble up an error so we can diagnose the environment/settings.
+    return { tabId: null, created: false, windowId: null, method: 'window', error: created?.err || 'windows_create_failed' };
 
   } catch (_) {
     return { tabId: null, created: false, windowId: null, method: 'unknown', error: 'ensure_facebook_tab_failed' };
