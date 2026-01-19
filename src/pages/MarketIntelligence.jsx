@@ -129,38 +129,44 @@ export default function MarketIntelligence() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Discounted Items Alert Banner */}
+        {/* Discounted Items Alert Banner - Uber style card */}
         <div className="mb-6">
-          <Alert className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20 border-emerald-200 dark:border-emerald-800">
-            <AlertCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            <AlertDescription className="ml-2">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Tag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-emerald-900 dark:text-emerald-100 mb-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base md:text-lg">
                     Hot Deals Alert
                   </h3>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {DISCOUNTED_ITEMS.slice(0, 2).map((item) => (
-                      <div key={item.id} className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-200">
-                        <Tag className="w-3 h-3" />
-                        <span className="font-medium">{item.title}</span>
-                        <span className="text-emerald-600 dark:text-emerald-300">{item.price}</span>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400">({item.timeAgo})</span>
+                      <div key={item.id} className="flex items-center gap-2 text-sm">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-gray-900 dark:text-white">{item.title}</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{item.price}</span>
+                            <span className="text-gray-400 dark:text-gray-500 line-through text-xs">{item.originalPrice}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">• {item.timeAgo}</span>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => handleMarketplaceClick('market-deals')}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  View All
-                  <ArrowRight className="ml-1 w-4 h-4" />
-                </Button>
               </div>
-            </AlertDescription>
-          </Alert>
+              <Button
+                size="sm"
+                onClick={() => handleMarketplaceClick('market-deals')}
+                className="bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white flex-shrink-0"
+              >
+                View All
+                <ArrowRight className="ml-1 w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Marketplace Grid - Uber Style */}
@@ -168,216 +174,210 @@ export default function MarketIntelligence() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             Marketplace Insights
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {MARKETPLACES.map((marketplace) => {
               const Icon = marketplace.icon;
               return (
                 <button
                   key={marketplace.id}
                   onClick={() => handleMarketplaceClick(marketplace.id)}
-                  className="group relative bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-600 transition-all duration-200 hover:shadow-lg text-left"
+                  className="group relative bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-600 transition-all duration-200 hover:shadow-xl active:scale-95 text-center flex flex-col items-center justify-center min-h-[140px] md:min-h-[160px]"
                 >
-                  {/* Badge */}
+                  {/* Badge - Top Left (Uber style) */}
                   {marketplace.badge && (
                     <Badge 
-                      className={`absolute top-2 right-2 ${
+                      className={`absolute top-2 left-2 text-xs font-semibold px-2 py-0.5 ${
                         marketplace.badge === 'New' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-emerald-500 text-white'
+                          ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
+                          : 'bg-emerald-500 hover:bg-emerald-600 text-white'
                       }`}
                     >
                       {marketplace.badge}
                     </Badge>
                   )}
 
-                  {/* Icon */}
-                  <div className={`w-16 h-16 ${marketplace.bgColor} dark:bg-opacity-20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                    <Icon className={`w-8 h-8 ${marketplace.iconColor} dark:text-opacity-80`} />
+                  {/* Icon - Larger and more prominent */}
+                  <div className={`w-16 h-16 md:w-20 md:h-20 ${marketplace.bgColor} dark:bg-gray-700 rounded-2xl flex items-center justify-center mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                    <Icon className={`w-10 h-10 md:w-12 md:h-12 ${marketplace.iconColor} dark:text-gray-300`} />
                   </div>
 
                   {/* Name */}
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-1">
                     {marketplace.name}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 leading-tight">
                     {marketplace.description}
                   </p>
-
-                  {/* Arrow */}
-                  <div className="flex items-center text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-sm font-medium">Explore</span>
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </div>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Quick Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Trending Categories</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">12</p>
-                </div>
-                <TrendingUp className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+        {/* Quick Stats Section - Uber style cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1">Trending Categories</p>
+                <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">12</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </div>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Active Deals</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{DISCOUNTED_ITEMS.length}</p>
-                </div>
-                <Tag className="w-10 h-10 text-purple-600 dark:text-purple-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1">Active Deals</p>
+                <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{DISCOUNTED_ITEMS.length}</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                <Tag className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </div>
 
-          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/20 dark:to-emerald-900/20 border-emerald-200 dark:border-emerald-800">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Community Tips</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">48</p>
-                </div>
-                <Lightbulb className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1">Community Tips</p>
+                <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">48</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                <Lightbulb className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Recent Activity / Insights Preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity / Insights Preview - Uber style cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Trending Now */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-emerald-600" />
-                  Trending Now
-                </h3>
-                <Button variant="ghost" size="sm" onClick={() => handleMarketplaceClick('ebay')}>
-                  View All
-                  <ArrowRight className="ml-1 w-4 h-4" />
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { name: 'Vintage Electronics', platform: 'eBay', change: '+23%' },
-                  { name: 'Designer Handbags', platform: 'Mercari', change: '+18%' },
-                  { name: 'Home Fitness Equipment', platform: 'Facebook', change: '+15%' },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{item.name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{item.platform}</p>
-                    </div>
-                    <Badge variant="outline" className="text-emerald-600 border-emerald-600">
-                      {item.change}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Top Categories */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-blue-600" />
-                  Top Categories
-                </h3>
-                <Button variant="ghost" size="sm">
-                  View All
-                  <ArrowRight className="ml-1 w-4 h-4" />
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { name: 'Electronics', items: '1,234', avgPrice: '$89' },
-                  { name: 'Clothing & Accessories', items: '987', avgPrice: '$45' },
-                  { name: 'Home & Garden', items: '756', avgPrice: '$67' },
-                ].map((category, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{category.name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {category.items} items • Avg: {category.avgPrice}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Community Tips Preview */}
-        <Card className="mt-6">
-          <CardContent className="p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-purple-600" />
-                Community Tips & Tricks
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                Trending Now
               </h3>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={() => handleMarketplaceClick('ebay')} className="text-xs md:text-sm">
                 View All
-                <ArrowRight className="ml-1 w-4 h-4" />
+                <ArrowRight className="ml-1 w-3 h-3 md:w-4 md:h-4" />
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:space-y-3">
               {[
-                {
-                  title: 'Best Time to List on eBay',
-                  description: 'List items on Sunday evenings for maximum visibility',
-                  platform: 'eBay',
-                  likes: 24,
-                },
-                {
-                  title: 'Facebook Marketplace Photography Tips',
-                  description: 'Use natural lighting and show all angles for better sales',
-                  platform: 'Facebook',
-                  likes: 18,
-                },
-                {
-                  title: 'Mercari Pricing Strategy',
-                  description: 'Price competitively and use Mercari\'s offer feature',
-                  platform: 'Mercari',
-                  likes: 31,
-                },
-              ].map((tip, idx) => (
-                <div key={idx} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{tip.title}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{tip.description}</p>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="text-xs">
-                          {tip.platform}
-                        </Badge>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {tip.likes} likes
-                        </span>
-                      </div>
-                    </div>
+                { name: 'Vintage Electronics', platform: 'eBay', change: '+23%' },
+                { name: 'Designer Handbags', platform: 'Mercari', change: '+18%' },
+                { name: 'Home Fitness Equipment', platform: 'Facebook', change: '+15%' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white text-sm md:text-base truncate">{item.name}</p>
+                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">{item.platform}</p>
                   </div>
+                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs md:text-sm ml-2 flex-shrink-0">
+                    {item.change}
+                  </Badge>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Top Categories */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                Top Categories
+              </h3>
+              <Button variant="ghost" size="sm" className="text-xs md:text-sm">
+                View All
+                <ArrowRight className="ml-1 w-3 h-3 md:w-4 md:h-4" />
+              </Button>
+            </div>
+            <div className="space-y-2 md:space-y-3">
+              {[
+                { name: 'Electronics', items: '1,234', avgPrice: '$89' },
+                { name: 'Clothing & Accessories', items: '987', avgPrice: '$45' },
+                { name: 'Home & Garden', items: '756', avgPrice: '$67' },
+              ].map((category, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white text-sm md:text-base truncate">{category.name}</p>
+                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                      {category.items} items • Avg: {category.avgPrice}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 ml-2" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Community Tips Preview - Uber style */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              Community Tips & Tricks
+            </h3>
+            <Button variant="ghost" size="sm" className="text-xs md:text-sm">
+              View All
+              <ArrowRight className="ml-1 w-3 h-3 md:w-4 md:h-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            {[
+              {
+                title: 'Best Time to List on eBay',
+                description: 'List items on Sunday evenings for maximum visibility',
+                platform: 'eBay',
+                likes: 24,
+              },
+              {
+                title: 'Facebook Marketplace Photography Tips',
+                description: 'Use natural lighting and show all angles for better sales',
+                platform: 'Facebook',
+                likes: 18,
+              },
+              {
+                title: 'Mercari Pricing Strategy',
+                description: 'Price competitively and use Mercari\'s offer feature',
+                platform: 'Mercari',
+                likes: 31,
+              },
+            ].map((tip, idx) => (
+              <div key={idx} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm md:text-base">{tip.title}</h4>
+                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2">{tip.description}</p>
+                    <div className="flex items-center gap-3">
+                      <Badge className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs">
+                        {tip.platform}
+                      </Badge>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {tip.likes} likes
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
