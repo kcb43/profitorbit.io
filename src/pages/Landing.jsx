@@ -1,5 +1,5 @@
 /**
- * Landing/Cover Page
+ * Landing/Cover Page - Obsidian-inspired design
  * Main entry point for unauthenticated users
  */
 
@@ -9,18 +9,23 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/api/supabaseClient';
 import { getPublicSiteOrigin } from '@/utils/publicSiteUrl';
 import { 
-  Rocket, 
-  Zap, 
-  Shield, 
-  BarChart3, 
-  Users, 
-  CheckCircle2,
+  BarChart3,
   ArrowRight,
   Menu,
   X,
-  TrendingUp,
   Package,
-  Sparkles
+  Rocket,
+  TrendingUp,
+  Lock,
+  Zap,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+  Shield,
+  Link as LinkIcon,
+  Network,
+  Palette,
+  MessageCircle,
 } from 'lucide-react';
 
 export default function Landing() {
@@ -29,8 +34,6 @@ export default function Landing() {
   const [checkingSession, setCheckingSession] = React.useState(true);
 
   // If user is already signed in, skip the marketing landing and go straight to dashboard.
-  // Important: Supabase session hydration can be async on cold loads; we briefly wait/subscribe
-  // so users don't get "sent to the cover page" while already signed in.
   React.useEffect(() => {
     let cancelled = false;
     let subscription = null;
@@ -46,7 +49,6 @@ export default function Landing() {
           return;
         }
 
-        // Session can appear shortly after hydration; retry a couple times quickly.
         for (let i = 0; i < 4; i++) {
           await new Promise((r) => setTimeout(r, 200));
           const { data: { session: retry } } = await supabase.auth.getSession();
@@ -63,7 +65,6 @@ export default function Landing() {
       }
     };
 
-    // Also subscribe: if something refreshes/sets session, jump immediately.
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
       if (session) goDashboard();
@@ -78,33 +79,21 @@ export default function Landing() {
     };
   }, [navigate]);
 
-  // Handle OAuth callback - check for hash fragment with access_token
+  // Handle OAuth callback
   React.useEffect(() => {
     const handleOAuthCallback = async () => {
-      // Check if we have OAuth callback hash fragment
       const hash = window.location.hash;
       if (hash && hash.includes('access_token')) {
-        console.log('🔐 OAuth callback detected, processing...');
-        
-        // Wait for Supabase to process the hash fragment
-        // Supabase automatically processes hash fragments on initialization
-        // But we need to wait a bit for it to complete
         try {
-          // Check session after a short delay to allow Supabase to process
           await new Promise(resolve => setTimeout(resolve, 500));
-          
           const { data: { session }, error } = await supabase.auth.getSession();
           
           if (session) {
-            console.log('✅ OAuth callback successful, session established');
-            // Clear the hash fragment and redirect to dashboard
             window.history.replaceState(null, '', window.location.pathname);
             navigate('/dashboard', { replace: true });
           } else if (error) {
             console.error('❌ OAuth callback error:', error);
           } else {
-            console.warn('⚠️ OAuth callback detected but no session found');
-            // Retry once more after a longer delay
             await new Promise(resolve => setTimeout(resolve, 1000));
             const { data: { session: retrySession } } = await supabase.auth.getSession();
             if (retrySession) {
@@ -147,7 +136,7 @@ export default function Landing() {
 
   if (checkingSession) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
@@ -157,63 +146,43 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-200/50 shadow-sm">
+    <div className="min-h-screen bg-white">
+      {/* Navigation Header - Obsidian style */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200/50">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                <BarChart3 className="w-6 h-6 text-white" />
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Orben
-              </h1>
+              <span className="text-xl font-semibold text-gray-900">Profit Orbit</span>
             </div>
             
-            {/* Centered Navigation Buttons */}
-            <div className="hidden md:flex items-center gap-2 absolute left-1/2 transform -translate-x-1/2">
-              <Button 
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-6">
+              <button 
                 onClick={() => scrollToSection('features')} 
-                variant="ghost" 
-                size="sm"
-                className="text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-emerald-50"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
               >
                 Features
-              </Button>
-              <Button 
+              </button>
+              <button 
                 onClick={() => scrollToSection('pricing')} 
-                variant="ghost" 
-                size="sm"
-                className="text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-emerald-50"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
               >
-                Plans
-              </Button>
-              <Button 
-                onClick={() => scrollToSection('services')} 
-                variant="ghost" 
-                size="sm"
-                className="text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-emerald-50"
+                Pricing
+              </button>
+              <button 
+                onClick={() => scrollToSection('community')} 
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
               >
-                Services
-              </Button>
-              <Button 
-                onClick={() => scrollToSection('contact')} 
-                variant="ghost" 
-                size="sm"
-                className="text-sm font-medium text-gray-700 hover:text-emerald-600 hover:bg-emerald-50"
-              >
-                Contact
-              </Button>
-            </div>
-
-            {/* Right Side Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <Button onClick={handleSignIn} variant="ghost" size="sm" className="text-gray-700 hover:text-emerald-600">
+                Community
+              </button>
+              <Button onClick={handleSignIn} variant="ghost" size="sm" className="text-gray-700">
                 Sign In
               </Button>
-              <Button onClick={handleGetStarted} size="sm" className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-md">
+              <Button onClick={handleGetStarted} size="sm" className="bg-gray-900 hover:bg-gray-800 text-white">
                 Get Started
               </Button>
             </div>
@@ -233,39 +202,29 @@ export default function Landing() {
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="md:hidden py-4 space-y-2 border-t border-gray-200">
-              <Button 
+              <button 
                 onClick={() => scrollToSection('features')} 
-                variant="ghost" 
-                className="w-full justify-start text-gray-700"
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
               >
                 Features
-              </Button>
-              <Button 
+              </button>
+              <button 
                 onClick={() => scrollToSection('pricing')} 
-                variant="ghost" 
-                className="w-full justify-start text-gray-700"
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
               >
-                Plans
-              </Button>
-              <Button 
-                onClick={() => scrollToSection('services')} 
-                variant="ghost" 
-                className="w-full justify-start text-gray-700"
+                Pricing
+              </button>
+              <button 
+                onClick={() => scrollToSection('community')} 
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
               >
-                Services
-              </Button>
-              <Button 
-                onClick={() => scrollToSection('contact')} 
-                variant="ghost" 
-                className="w-full justify-start text-gray-700"
-              >
-                Contact
-              </Button>
-              <div className="flex gap-2 pt-2 border-t border-gray-200">
+                Community
+              </button>
+              <div className="flex gap-2 pt-2 border-t border-gray-200 px-4">
                 <Button onClick={handleSignIn} variant="outline" size="sm" className="flex-1">
                   Sign In
                 </Button>
-                <Button onClick={handleGetStarted} size="sm" className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white">
+                <Button onClick={handleGetStarted} size="sm" className="flex-1 bg-gray-900 hover:bg-gray-800 text-white">
                   Get Started
                 </Button>
               </div>
@@ -274,179 +233,191 @@ export default function Landing() {
         </nav>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl"></div>
-        </div>
-        
-        <div className="relative text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100/80 backdrop-blur-sm border border-emerald-200/50 mb-8">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm font-medium text-emerald-700">The all-in-one resale platform</span>
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="bg-gradient-to-r from-gray-900 via-gray-800 to-emerald-700 bg-clip-text text-transparent">
-              Streamline Your
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-500 bg-clip-text text-transparent">
-              Resale Business
-            </span>
+      {/* Hero Section - Obsidian style */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+        <div className="text-center">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-gray-900 leading-tight">
+            Grow your resale business
           </h1>
-          
-          <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Manage inventory, track sales, and automate crosslisting across multiple marketplaces. 
-            <span className="font-semibold text-gray-800"> Everything you need to grow your resale business in one place.</span>
+          <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            The free and flexible platform for managing inventory, tracking sales, and automating crosslisting across marketplaces.
           </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               onClick={handleGetStarted} 
               size="lg" 
-              className="text-lg px-8 py-6 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300"
+              className="text-lg px-8 py-6 bg-gray-900 hover:bg-gray-800 text-white shadow-lg"
             >
               Get Started Free
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button 
-              onClick={handleSignIn} 
+              onClick={() => scrollToSection('features')} 
               variant="outline" 
               size="lg" 
-              className="text-lg px-8 py-6 border-2 border-gray-300 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-300"
+              className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50"
             >
-              Sign In
+              Learn More
             </Button>
           </div>
+        </div>
+      </section>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-8 border-t border-gray-200">
-            <div>
-              <div className="text-3xl font-bold text-gray-900">100+</div>
-              <div className="text-sm text-gray-600 mt-1">Active Users</div>
+      {/* Three Key Value Props - Obsidian style */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+            {/* Your data is yours */}
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-6">
+                <Lock className="w-8 h-8 text-emerald-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Your data is yours</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Your inventory, sales, and business information stays private and secure. We never sell your data.
+              </p>
             </div>
-            <div>
-              <div className="text-3xl font-bold text-gray-900">10K+</div>
-              <div className="text-sm text-gray-600 mt-1">Items Listed</div>
+
+            {/* Your workflow is unique */}
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-6">
+                <Palette className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Your workflow is unique</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Customize your dashboard, organize inventory your way, and automate listings across the marketplaces you choose.
+              </p>
             </div>
-            <div>
-              <div className="text-3xl font-bold text-gray-900">$500K+</div>
-              <div className="text-sm text-gray-600 mt-1">Sales Tracked</div>
+
+            {/* Your business should grow */}
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-6">
+                <TrendingUp className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Your business should grow</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Track profits, analyze trends, and make data-driven decisions to scale your resale business efficiently.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="relative py-24 bg-gradient-to-b from-white to-gray-50">
+      {/* Feature Sections - Obsidian style */}
+      <section id="features" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Powerful Features for <span className="text-emerald-600">Resellers</span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Everything you need to scale your resale business efficiently
-            </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-20">
+            {/* Left: Visual placeholder */}
+            <div className="order-2 lg:order-1">
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-12 aspect-square flex items-center justify-center">
+                <div className="text-center">
+                  <Layers className="w-24 h-24 text-emerald-600 mx-auto mb-4" />
+                  <div className="text-sm text-gray-600">Crosslisting Visualization</div>
+                </div>
+              </div>
+            </div>
+            {/* Right: Content */}
+            <div className="order-1 lg:order-2">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Crosslist everywhere
+              </h2>
+              <p className="text-xl text-gray-600 mb-6 leading-relaxed">
+                List your items on multiple marketplaces with a single click. Connect to eBay, Mercari, Facebook Marketplace, Etsy, and Poshmark—all from one place.
+              </p>
+              <a href="#features" className="text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-2">
+                Learn more
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-emerald-200">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Package className="w-7 h-7" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-20">
+            {/* Left: Content */}
+            <div>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Track your progress
+              </h2>
+              <p className="text-xl text-gray-600 mb-6 leading-relaxed">
+                Visualize your sales performance, profit trends, and growth patterns with comprehensive analytics. Know exactly how your business is performing.
+              </p>
+              <a href="#features" className="text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-2">
+                Learn more
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+            {/* Right: Visual placeholder */}
+            <div>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-12 aspect-square flex items-center justify-center">
+                <div className="text-center">
+                  <Network className="w-24 h-24 text-blue-600 mx-auto mb-4" />
+                  <div className="text-sm text-gray-600">Analytics Dashboard</div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Inventory Management</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Track all your items, manage stock levels, and organize your inventory with ease. Never lose track of what you have.
-                </p>
               </div>
             </div>
-            <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-emerald-200">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 text-white mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Rocket className="w-7 h-7" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left: Visual placeholder */}
+            <div className="order-2 lg:order-1">
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-12 aspect-square flex items-center justify-center">
+                <div className="text-center">
+                  <Sparkles className="w-24 h-24 text-purple-600 mx-auto mb-4" />
+                  <div className="text-sm text-gray-600">Pro Tools</div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Automated Crosslisting</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  List your items on multiple marketplaces automatically. Save hours of manual work and reach more buyers instantly.
-                </p>
               </div>
             </div>
-            <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-emerald-200">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Sales Analytics</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Get deep insights into your sales performance, profit margins, and growth trends. Make data-driven decisions.
-                </p>
-              </div>
-            </div>
-            <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-emerald-200">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 text-white mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Shield className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Secure & Reliable</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Your data is encrypted and secure. We take privacy seriously and ensure your business information stays protected.
-                </p>
-              </div>
-            </div>
-            <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-emerald-200">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Users className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Built for Resellers</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Designed specifically for resellers, by resellers. Everything you need, nothing you don't. Focus on what matters.
-                </p>
-              </div>
-            </div>
-            <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-emerald-200">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Zap className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Easy to Use</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Intuitive interface that makes managing your business simple and enjoyable. Get started in minutes, not hours.
-                </p>
-              </div>
+            {/* Right: Content */}
+            <div className="order-1 lg:order-2">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Automate your workflow
+              </h2>
+              <p className="text-xl text-gray-600 mb-6 leading-relaxed">
+                Send bulk offers, create auto-offer rules, and automate marketplace sharing. Build your ideal reselling workflow with powerful automation tools.
+              </p>
+              <a href="#features" className="text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-2">
+                Learn more
+                <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="relative py-24 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+      {/* Sync Section - Obsidian style */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Sync across devices.
+          </h2>
+          <p className="text-xl text-gray-600 mb-6 leading-relaxed">
+            Access your inventory, sales, and analytics on any device. Your data syncs securely and stays up to date everywhere you work.
+          </p>
+          <a href="#features" className="text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-2">
+            Learn more.
+            <ArrowRight className="w-4 h-4" />
+          </a>
+        </div>
+      </section>
+
+      {/* Pricing Section - Obsidian style */}
+      <section id="pricing" className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Simple, <span className="text-emerald-600">Transparent</span> Pricing
+              Simple, transparent pricing
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Choose the plan that fits your business needs
+            <p className="text-xl text-gray-600">
+              Start free. Upgrade when you're ready to scale.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200 hover:shadow-2xl transition-all duration-300">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Starter</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <div className="bg-white rounded-xl p-8 border border-gray-200">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Free</h3>
               <div className="mb-6">
-                <span className="text-5xl font-bold text-gray-900">Free</span>
+                <span className="text-4xl font-bold text-gray-900">$0</span>
+                <span className="text-gray-600">/month</span>
               </div>
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-3 mb-8">
                 <li className="flex items-start text-gray-600">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0" />
                   <span>Up to 100 items</span>
@@ -460,204 +431,123 @@ export default function Landing() {
                   <span>Manual crosslisting</span>
                 </li>
               </ul>
-              <Button onClick={handleGetStarted} className="w-full" variant="outline" size="lg">
+              <Button onClick={handleGetStarted} className="w-full" variant="outline">
                 Get Started
               </Button>
             </div>
-            <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl shadow-2xl p-8 border-4 border-emerald-400 relative transform scale-105 hover:scale-110 transition-transform duration-300">
-              <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-xs font-bold px-4 py-1 rounded-bl-lg rounded-tr-2xl">
-                POPULAR
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-2 mt-4">Pro</h3>
+            <div className="bg-gray-900 rounded-xl p-8 border-2 border-gray-900 text-white">
+              <h3 className="text-2xl font-bold mb-2">Pro</h3>
               <div className="mb-6">
-                <span className="text-5xl font-bold text-white">$29</span>
-                <span className="text-lg text-emerald-100 ml-2">/mo</span>
+                <span className="text-4xl font-bold">$9.99</span>
+                <span className="text-gray-400">/month</span>
               </div>
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start text-white">
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start">
                   <CheckCircle2 className="w-5 h-5 text-white mr-3 mt-0.5 flex-shrink-0" />
                   <span>Unlimited items</span>
                 </li>
-                <li className="flex items-start text-white">
+                <li className="flex items-start">
                   <CheckCircle2 className="w-5 h-5 text-white mr-3 mt-0.5 flex-shrink-0" />
                   <span>Advanced analytics</span>
                 </li>
-                <li className="flex items-start text-white">
+                <li className="flex items-start">
                   <CheckCircle2 className="w-5 h-5 text-white mr-3 mt-0.5 flex-shrink-0" />
                   <span>Automated crosslisting</span>
                 </li>
-                <li className="flex items-start text-white">
+                <li className="flex items-start">
                   <CheckCircle2 className="w-5 h-5 text-white mr-3 mt-0.5 flex-shrink-0" />
-                  <span>Priority support</span>
+                  <span>Pro Tools (offers, sharing)</span>
                 </li>
               </ul>
-              <Button onClick={handleGetStarted} className="w-full bg-white text-emerald-600 hover:bg-gray-100" size="lg">
+              <Button onClick={handleGetStarted} className="w-full bg-white text-gray-900 hover:bg-gray-100">
                 Get Started
               </Button>
             </div>
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200 hover:shadow-2xl transition-all duration-300">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Enterprise</h3>
-              <div className="mb-6">
-                <span className="text-5xl font-bold text-gray-900">Custom</span>
-              </div>
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start text-gray-600">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0" />
-                  <span>Everything in Pro</span>
-                </li>
-                <li className="flex items-start text-gray-600">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0" />
-                  <span>Custom integrations</span>
-                </li>
-                <li className="flex items-start text-gray-600">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0" />
-                  <span>Dedicated support</span>
-                </li>
-              </ul>
-              <Button onClick={handleGetStarted} className="w-full" variant="outline" size="lg">
-                Contact Us
-              </Button>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Services Section */}
-      <section id="services" className="relative py-24 bg-gradient-to-b from-white via-emerald-50/30 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Everything You Need to <span className="text-emerald-600">Succeed</span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Comprehensive tools designed to help your resale business thrive
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-emerald-500">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-emerald-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Inventory Management</h3>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                Keep track of all your items with detailed information, photos, and pricing. 
-                Organize by category, tags, or custom labels. Never lose track of what you have in stock.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-blue-500">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Rocket className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Crosslisting Automation</h3>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                Automatically list your items on multiple marketplaces including Mercari, Facebook Marketplace, 
-                and more. Save hours of manual work and reach more buyers instantly.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-purple-500">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Sales Tracking</h3>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                Monitor your sales performance, track profits, and analyze trends to make better business decisions. 
-                Know exactly where your money is coming from.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-indigo-500">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-indigo-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Analytics & Reports</h3>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                Get detailed insights into your business with comprehensive reports and visualizations. 
-                Understand your growth patterns and optimize your strategy.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="relative py-24 bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700">
-        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to Get Started?</h2>
-          <p className="text-xl text-emerald-50 mb-10 max-w-2xl mx-auto">
-            Join hundreds of resellers who are already streamlining their business with Orben. 
-            Start your free account today and see the difference.
+      {/* Community Section - Obsidian style */}
+      <section id="community" className="py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Connect with resellers.
+          </h2>
+          <p className="text-xl text-gray-600 mb-6 leading-relaxed">
+            Join a community of resellers sharing tips, strategies, and success stories. Learn from others and grow your business together.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={handleGetStarted} 
-              size="lg" 
-              className="text-lg px-8 py-6 bg-white text-emerald-600 hover:bg-gray-100 shadow-xl"
-            >
-              Get Started Free
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button 
-              onClick={() => window.location.href = 'mailto:support@orben.com'} 
-              size="lg" 
-              className="text-lg px-8 py-6 border-2 border-white text-white bg-transparent hover:bg-white/20 hover:text-white shadow-lg"
-            >
-              Contact Us
-            </Button>
-          </div>
+          <a href="#features" className="text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-2">
+            Learn more.
+            <ArrowRight className="w-4 h-4" />
+          </a>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-16">
+      {/* CTA Section - Obsidian style */}
+      <section className="py-20 bg-gray-900 text-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            It's your time to grow.
+          </h2>
+          <Button 
+            onClick={handleGetStarted} 
+            size="lg" 
+            className="text-lg px-8 py-6 bg-white text-gray-900 hover:bg-gray-100"
+          >
+            Get Started Free
+            <ArrowRight className="ml-2 w-5 h-5" />
+          </Button>
+        </div>
+      </section>
+
+      {/* Footer - Obsidian style */}
+      <footer className="bg-white border-t border-gray-200 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white">Orben</h3>
-              </div>
-              <p className="text-sm">Streamline your resale business with powerful tools and analytics.</p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#features" className="hover:text-emerald-400 transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-emerald-400 transition-colors">Pricing</a></li>
-                <li><a href="#services" className="hover:text-emerald-400 transition-colors">Services</a></li>
+              <h4 className="font-semibold text-gray-900 mb-4">Get started</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><button onClick={handleGetStarted} className="hover:text-gray-900">Sign Up</button></li>
+                <li><button onClick={() => scrollToSection('pricing')} className="hover:text-gray-900">Pricing</button></li>
+                <li><a href="/FAQ" className="hover:text-gray-900">FAQ</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#contact" className="hover:text-emerald-400 transition-colors">Contact</a></li>
-                <li><a href="/FAQ" className="hover:text-emerald-400 transition-colors">FAQ</a></li>
-                <li><a href="/PrivacyPolicy" className="hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
+              <h4 className="font-semibold text-gray-900 mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><button onClick={() => scrollToSection('features')} className="hover:text-gray-900">Features</button></li>
+                <li><button onClick={() => scrollToSection('community')} className="hover:text-gray-900">Community</button></li>
+                <li><a href="/FAQ" className="hover:text-gray-900">Help</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Get Started</h4>
-              <Button onClick={handleGetStarted} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                Sign Up Free
-              </Button>
+              <h4 className="font-semibold text-gray-900 mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><a href="/PrivacyPolicy" className="hover:text-gray-900">Privacy</a></li>
+                <li><a href="/PrivacyPolicy" className="hover:text-gray-900">Security</a></li>
+                <li><a href="/FAQ" className="hover:text-gray-900">About</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-4">Community</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><button onClick={() => scrollToSection('community')} className="hover:text-gray-900">Join Community</button></li>
+                <li><a href="/FAQ" className="hover:text-gray-900">Discord</a></li>
+                <li><a href="/FAQ" className="hover:text-gray-900">Forum</a></li>
+              </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>© {new Date().getFullYear()} Orben. All rights reserved.</p>
+          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row items-center justify-between">
+            <div className="flex items-center gap-2 mb-4 md:mb-0">
+              <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-green-600 rounded flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-sm font-semibold text-gray-900">Profit Orbit</span>
+            </div>
+            <p className="text-sm text-gray-600">© {new Date().getFullYear()} Profit Orbit. All rights reserved.</p>
           </div>
         </div>
       </footer>
     </div>
   );
 }
-
-
