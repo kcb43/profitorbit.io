@@ -2740,7 +2740,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             resolve(true);
           }
         });
-        console.log('🟦 [FACEBOOK] Create mode', { noWindow: facebookNoWindowMode });
+        // If true: never create a window/tab. If a facebook.com tab already exists, we can run inside it.
+        // If none exists, no-window mode will likely hit 1357004 (FB requires a facebook.com document context).
+        const facebookRequireExistingTabInNoWindow = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['facebookRequireExistingTabInNoWindow'], (r) => {
+              if (typeof r?.facebookRequireExistingTabInNoWindow === 'boolean') return resolve(r.facebookRequireExistingTabInNoWindow);
+              return resolve(true);
+            });
+          } catch (_) {
+            resolve(true);
+          }
+        });
+
+        console.log('🟦 [FACEBOOK] Create mode', { noWindow: facebookNoWindowMode, requireExistingTab: facebookRequireExistingTabInNoWindow });
         let __poTempFacebookTabId = null;
         let __poTempFacebookWindowId = null;
         const rememberTempFbTab = (tabId, created, windowId = null) => {
@@ -3250,21 +3263,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         let uploadResult = null;
         if (facebookNoWindowMode) {
-          // No-window mode: direct service-worker fetch only (no tab/window creation).
-          const fd = new FormData();
-          for (const f of uploadFormFields) {
-            if (!f?.name) continue;
-            fd.append(String(f.name), String(f.value ?? ''));
+          // No-window mode:
+          // - If a facebook.com tab already exists, use it (no new windows/tabs opened).
+          // - Otherwise, try direct fetch (may be blocked by FB 1357004).
+          let existingFbTabId = null;
+          try { existingFbTabId = await pickFacebookTabId(); } catch (_) { existingFbTabId = null; }
+
+          if (existingFbTabId) {
+            uploadAttemptMeta.directFetch = false;
+            uploadAttemptMeta.tabFetch = true;
+            uploadAttemptMeta.fbTabId = existingFbTabId;
+
+            const toBase64 = (ab) => {
+              const u8 = new Uint8Array(ab);
+              let s = '';
+              const chunk = 0x8000;
+              for (let i = 0; i < u8.length; i += chunk) {
+                s += String.fromCharCode(...u8.subarray(i, i + chunk));
+              }
+              return btoa(s);
+            };
+            const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+            uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
+            uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+
+            uploadResult = await facebookFetchInTab(existingFbTabId, {
+              url: uploadTemplate.url,
+              method: 'POST',
+              headers: directUploadHeaders,
+              bodyType: 'formData',
+              formFields: uploadFormFields,
+              file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+            });
+          } else {
+            if (facebookRequireExistingTabInNoWindow) {
+              throw new Error(
+                'Facebook listing requires a facebook.com tab context. No-window mode is enabled and is set to not open tabs/windows. Please open facebook.com (can be pinned/in the background) and try again.'
+              );
+            }
+            const fd = new FormData();
+            for (const f of uploadFormFields) {
+              if (!f?.name) continue;
+              fd.append(String(f.name), String(f.value ?? ''));
+            }
+            fd.append(String(fileFieldName), imgBlob, String(fileName));
+            const direct = await facebookFetchDirect(uploadTemplate.url, {
+              method: 'POST',
+              headers: directUploadHeaders,
+              body: fd,
+            });
+            uploadAttemptMeta.directFetch = true;
+            uploadAttemptMeta.tabFetch = false;
+            uploadResult = { ...direct, error: null, href: null };
           }
-          fd.append(String(fileFieldName), imgBlob, String(fileName));
-          const direct = await facebookFetchDirect(uploadTemplate.url, {
-            method: 'POST',
-            headers: directUploadHeaders,
-            body: fd,
-          });
-          uploadAttemptMeta.directFetch = true;
-          uploadAttemptMeta.tabFetch = false;
-          uploadResult = { ...direct, error: null, href: null };
         } else {
           // Worker-window mode: run inside facebook.com context.
           const ensuredForUpload = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
@@ -3676,13 +3727,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const gqlAttemptMeta = { directFetch: false, retry1357004: false, fbTabId: null };
         let gqlResult = null;
         if (facebookNoWindowMode) {
-          const direct = await facebookFetchDirect(graphqlTemplate.url, {
-            method: 'POST',
-            headers: gqlHeaders,
-            body: encodeFormBody(form),
-          });
-          gqlAttemptMeta.directFetch = true;
-          gqlResult = { ...direct, error: null, href: null };
+          // Prefer existing facebook.com tab context if present (no new windows/tabs opened).
+          let existingFbTabId = null;
+          try { existingFbTabId = await pickFacebookTabId(); } catch (_) { existingFbTabId = null; }
+
+          if (existingFbTabId) {
+            gqlAttemptMeta.directFetch = false;
+            gqlAttemptMeta.fbTabId = existingFbTabId;
+            gqlResult = await facebookFetchInTab(existingFbTabId, {
+              url: graphqlTemplate.url,
+              method: 'POST',
+              headers: gqlHeaders,
+              bodyType: 'text',
+              bodyText: encodeFormBody(form),
+            });
+          } else {
+            if (facebookRequireExistingTabInNoWindow) {
+              throw new Error(
+                'Facebook listing requires a facebook.com tab context. No-window mode is enabled and is set to not open tabs/windows. Please open facebook.com (can be pinned/in the background) and try again.'
+              );
+            }
+            const direct = await facebookFetchDirect(graphqlTemplate.url, {
+              method: 'POST',
+              headers: gqlHeaders,
+              body: encodeFormBody(form),
+            });
+            gqlAttemptMeta.directFetch = true;
+            gqlResult = { ...direct, error: null, href: null };
+          }
         } else {
           const ensuredForGql = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
           const fbTabIdForGql = ensuredForGql?.tabId;
