@@ -419,6 +419,14 @@ async function facebookFetchDirect(url, init) {
   return { ok: resp.ok, status: resp.status, text, headers };
 }
 
+// Vendoo-confirmed Facebook Marketplace create mutation template (working in service worker)
+const FACEBOOK_VENDOO_COMET_CREATE = {
+  docId: '5033081016747999',
+  friendlyName: 'useCometMarketplaceListingCreateMutation',
+  graphqlUrl: 'https://www.facebook.com/api/graphql/',
+  uploadUrlBase: 'https://upload.facebook.com/ajax/react_composer/attachments/photo/upload',
+};
+
 function stripForSemiPrefix(text) {
   return String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
 }
@@ -2921,9 +2929,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               () => {}
             );
           } catch (_) {}
-          throw new Error(
-            'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while creating a Marketplace item (upload at least 1 photo).'
-          );
+          // Vendoo proves tabless create can work without a recording if we fetch fresh fb_dtsg/lsd.
+          // Allow running without recording in no-window mode; keep the old hard-error otherwise.
+          if (!facebookNoWindowMode) {
+            throw new Error(
+              'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while creating a Marketplace item (upload at least 1 photo).'
+            );
+          }
         }
 
         const getRecordedBodyText = (rec) => {
@@ -3023,13 +3035,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return uploads[0]?.r || null;
         };
 
-        const graphqlTemplate = pickGraphqlTemplate(records);
-        if (!graphqlTemplate) throw new Error('Could not find a Facebook Marketplace GraphQL template in the recording.');
+        // Prefer recording templates when available, but support Vendoo-style tabless mode without any recording.
+        const graphqlTemplate =
+          pickGraphqlTemplate(records) ||
+          ({
+            url: FACEBOOK_VENDOO_COMET_CREATE.graphqlUrl,
+            method: 'POST',
+            requestHeaders: { 'content-type': 'application/x-www-form-urlencoded' },
+            requestBody: { kind: 'rawText', value: '' },
+          });
 
-        const uploadTemplate = pickUploadTemplate(records);
-        if (!uploadTemplate) {
-          throw new Error('Could not find a Facebook upload template in the recording (rupload/upload). Re-record while uploading at least 1 photo.');
-        }
+        const uploadTemplate =
+          pickUploadTemplate(records) ||
+          ({
+            url: FACEBOOK_VENDOO_COMET_CREATE.uploadUrlBase,
+            method: 'POST',
+            requestHeaders: {},
+            requestBody: null,
+          });
 
         const parseFormBody = (bodyText) => {
           const out = {};
@@ -3728,9 +3751,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Build GraphQL request from template, overriding variables + tokens where possible
         const gqlBodyText = getRecordedBodyText(graphqlTemplate);
         const form = parseFormBody(gqlBodyText);
-        const friendlyName = form.fb_api_req_friendly_name || null;
-        const docId = form.doc_id || null;
-        if (!docId) throw new Error('Facebook GraphQL template missing doc_id');
+        const friendlyName = form.fb_api_req_friendly_name || FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
+        const docId = form.doc_id || FACEBOOK_VENDOO_COMET_CREATE.docId;
 
         let vars = {};
         try { vars = form.variables ? JSON.parse(form.variables) : {}; } catch (_) { vars = {}; }
@@ -3754,6 +3776,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const isCometCreateMutation =
           String(friendlyName || '') === 'useCometMarketplaceListingCreateMutation' ||
           String(docId || '') === '9551550371629242' ||
+          String(docId || '') === FACEBOOK_VENDOO_COMET_CREATE.docId ||
           (!!vars?.input?.data?.common?.item_price && Array.isArray(vars?.input?.data?.common?.photo_ids));
 
         if (isCometCreateMutation) {
@@ -3816,10 +3839,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
         if (!isCometCreateMutation) setFirstPhotoField(vars);
 
-        // Override known token fields if present
+        // Override/ensure known token fields
         if (fbUserId) {
-          if (form.__user) form.__user = fbUserId;
-          if (form.av) form.av = fbUserId;
+          form.__user = fbUserId;
+          form.av = fbUserId;
         }
         // Refresh CSRF/session tokens if we could fetch them tabless (prevents stale-token failures).
         if (fbDtsg) form.fb_dtsg = fbDtsg;
@@ -3827,6 +3850,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (fbJazoest) form.jazoest = fbJazoest;
         form.doc_id = docId;
         if (friendlyName) form.fb_api_req_friendly_name = friendlyName;
+        // Vendoo includes these flags; keep them stable.
+        if (!form.__a) form.__a = '1';
+        if (!form.__comet_req) form.__comet_req = '1';
         form.variables = JSON.stringify(vars);
 
         const gqlHeaders = { ...(graphqlTemplate.requestHeaders || {}) };
