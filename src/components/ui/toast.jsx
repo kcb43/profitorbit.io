@@ -36,14 +36,14 @@ const ToastViewport = React.forwardRef(({ ...props }, ref) => (
 ToastViewport.displayName = "ToastViewport";
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start overflow-hidden rounded-lg border-0 bg-white text-foreground transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-start overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
-        default: "border-0 bg-white text-foreground",
+        default: "bg-background text-foreground",
         destructive:
-          "destructive group border-0 bg-white text-destructive-foreground",
-        success: "border-0 bg-white text-foreground",
+          "destructive group border-destructive/30 bg-destructive text-destructive-foreground",
+        success: "bg-background text-foreground",
       },
     },
     defaultVariants: {
@@ -58,10 +58,8 @@ const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       style={{
-        width: '384px',
         padding: '16px 24px',
         borderRadius: '8px',
-        boxShadow: 'rgba(0, 0, 0, 0.12) 0px 3px 6px -4px, rgba(0, 0, 0, 0.08) 0px 6px 16px 0px, rgba(0, 0, 0, 0.05) 0px 9px 28px 8px',
         fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
         fontSize: '14px',
         lineHeight: '22px',
@@ -90,7 +88,7 @@ const ToastClose = React.forwardRef(({ className, ...props }, ref) => (
     ref={ref}
     tabIndex={0}
     className={cn(
-      "absolute right-6 top-4 cursor-pointer text-[rgba(0,0,0,0.45)] transition-colors hover:text-[rgba(0,0,0,0.75)] focus:outline-none",
+      "absolute right-6 top-4 cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus:outline-none",
       className
     )}
     style={{
@@ -104,7 +102,7 @@ const ToastClose = React.forwardRef(({ className, ...props }, ref) => (
     {...props}
   >
     <span className="inline-flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
-      <X className="h-4 w-4" style={{ fill: 'rgba(0, 0, 0, 0.45)' }} />
+      <X className="h-4 w-4" />
     </span>
   </a>
 ));
@@ -113,7 +111,7 @@ ToastClose.displayName = "ToastClose";
 const ToastTitle = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm font-medium text-[rgba(0,0,0,0.85)] mb-1", className)}
+    className={cn("text-sm font-medium text-foreground mb-1", className)}
     style={{
       fontSize: '14px',
       lineHeight: '24px',
@@ -129,7 +127,7 @@ ToastTitle.displayName = "ToastTitle";
 const ToastDescription = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-[rgba(0,0,0,0.8)]", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     style={{
       fontSize: '14px',
       lineHeight: '22px',
@@ -162,7 +160,7 @@ const ToastIcon = React.forwardRef(({ variant = "default", className, ...props }
         aria-label="check"
         {...props}
       >
-        <Check className="w-5 h-5" style={{ color: 'rgb(82, 196, 26)', strokeWidth: 3, width: '20px', height: '20px' }} />
+        <Check className="w-5 h-5" style={{ strokeWidth: 3, width: '20px', height: '20px' }} />
       </span>
     );
   }

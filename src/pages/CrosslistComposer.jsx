@@ -40369,6 +40369,9 @@ export default function CrosslistComposer() {
                   </Button>
                 )}
               </div>
+
+              {/* Vendoo-style listing info (bottom of form) */}
+              {renderListingInfoPanel('ebay', 'eBay Listing')}
             </div>
           )}
 
@@ -40379,7 +40382,7 @@ export default function CrosslistComposer() {
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">Item ID:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                  <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -40946,6 +40949,9 @@ export default function CrosslistComposer() {
                   List on Etsy
                 </Button>
               </div>
+
+              {/* Vendoo-style listing info (bottom of form) */}
+              {renderListingInfoPanel('etsy', 'Etsy Listing')}
             </div>
           )}
 
@@ -40956,7 +40962,7 @@ export default function CrosslistComposer() {
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">Item ID:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                  <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -41991,6 +41997,9 @@ export default function CrosslistComposer() {
                   )}
                 </Button>
               </div>
+
+              {/* Vendoo-style listing info (bottom of form) */}
+              {renderListingInfoPanel('mercari', 'Mercari Listing')}
             </div>
           )}
 
@@ -42001,7 +42010,7 @@ export default function CrosslistComposer() {
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">Item ID:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                  <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -43027,7 +43036,7 @@ export default function CrosslistComposer() {
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">Item ID:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                  <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
 
@@ -44737,7 +44746,7 @@ export default function CrosslistComposer() {
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm font-medium text-foreground">Item ID:</span>
-                          <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                          <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -46071,7 +46080,7 @@ export default function CrosslistComposer() {
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm font-medium text-foreground">Item ID:</span>
-                          <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                          <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -46625,6 +46634,9 @@ export default function CrosslistComposer() {
                           List on Etsy
                         </Button>
                       </div>
+
+                      {/* Vendoo-style listing info (bottom of form) */}
+                      {renderListingInfoPanel('etsy', 'Etsy Listing')}
                     </div>
                   )}
 
@@ -46635,7 +46647,7 @@ export default function CrosslistComposer() {
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm font-medium text-foreground">Item ID:</span>
-                          <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                          <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -47611,7 +47623,7 @@ export default function CrosslistComposer() {
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm font-medium text-foreground">Item ID:</span>
-                          <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                          <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -48590,6 +48602,9 @@ export default function CrosslistComposer() {
                           )}
                         </Button>
                       </div>
+
+                      {/* Vendoo-style listing info (bottom of form) */}
+                      {renderListingInfoPanel('facebook', 'Facebook Listing')}
                     </div>
                   )}
 
@@ -48600,7 +48615,7 @@ export default function CrosslistComposer() {
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm font-medium text-foreground">Item ID:</span>
-                          <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                          <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -48905,6 +48920,9 @@ export default function CrosslistComposer() {
                           List on Poshmark
                         </Button>
                       </div>
+
+                      {/* Vendoo-style listing info (bottom of form) */}
+                      {renderListingInfoPanel('poshmark', 'Poshmark Listing')}
                     </div>
                   )}
                 </div>
