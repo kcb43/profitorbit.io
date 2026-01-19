@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-vendoo-docid-tabless-graphfix-1';
+const EXT_BUILD = '2026-01-19-facebook-token-resilience-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -585,6 +585,16 @@ async function facebookGetFreshTokens() {
     return null;
   };
 
+  // Cookie presence is a much stronger login signal than HTML substring heuristics.
+  const cUserCookie = await new Promise((resolve) => {
+    try {
+      chrome.cookies.get({ url: 'https://www.facebook.com', name: 'c_user' }, (c) => resolve(c?.value || null));
+    } catch (_) {
+      resolve(null);
+    }
+  });
+  const hasCUserCookie = !!(cUserCookie && String(cUserCookie).trim());
+
   const URLS_TO_TRY = [
     'https://www.facebook.com/marketplace/',
     'https://www.facebook.com/',
@@ -606,14 +616,20 @@ async function facebookGetFreshTokens() {
     const status = typeof resp?.status === 'number' ? resp.status : 0;
 
     // If we got a login/checkpoint page, tokens won't be present.
-    const looksLoggedOut =
+    const looksLoggedOutByHtml =
       /login\.php/i.test(html) ||
-      /checkpoint/i.test(html) ||
-      /two_factor/i.test(html) ||
-      /recover/i.test(html) ||
       /"not logged in"/i.test(html) ||
       /Please log in/i.test(html) ||
-      /name="pass"/i.test(html);
+      /name="pass"/i.test(html) ||
+      /name="email"/i.test(html);
+    // IMPORTANT:
+    // "checkpoint"/"two_factor"/"recover" strings can appear in logged-in HTML/JS bundles.
+    // Only treat those as logged out if we *also* lack the c_user cookie.
+    const looksCheckpointish =
+      /checkpoint/i.test(html) ||
+      /two_factor/i.test(html) ||
+      /recover/i.test(html);
+    const looksLoggedOut = looksLoggedOutByHtml || (!hasCUserCookie && looksCheckpointish);
 
     const fb_dtsg = pick(html, [
       // Common Comet bootstraps
@@ -638,6 +654,7 @@ async function facebookGetFreshTokens() {
       ok: !!resp?.ok,
       status,
       looksLoggedOut,
+      hasCUserCookie,
       fb_dtsg,
       lsd,
       jazoest: fb_dtsg ? computeJazoest(fb_dtsg) : null,
@@ -657,7 +674,10 @@ async function facebookGetFreshTokens() {
         hasLSD: /\bLSD\b/i.test(html),
         hasLoginPhp: /login\.php/i.test(html),
         hasPassField: /name="pass"/i.test(html),
+        hasEmailField: /name="email"/i.test(html),
         hasMarket: /marketplace/i.test(html),
+        hasCheckpointish: /checkpoint|two_factor|recover/i.test(html),
+        hasCUserCookie,
       },
     });
 
@@ -671,8 +691,8 @@ async function facebookGetFreshTokens() {
     if (!best) best = out;
   }
 
-  // If tokens are missing, persist a small debug snapshot so we can adjust parsing without guessing.
-  if (best && !best.fb_dtsg && !best.lsd) {
+  // Persist a small debug snapshot whenever token extraction looks suspicious.
+  if (best && (!best.fb_dtsg && !best.lsd || best.looksLoggedOut)) {
     try {
       chrome.storage.local.set(
         {
@@ -680,6 +700,7 @@ async function facebookGetFreshTokens() {
             extBuild: EXT_BUILD,
             t: Date.now(),
             attempts,
+            hasCUserCookie,
           },
         },
         () => {}
@@ -691,6 +712,7 @@ async function facebookGetFreshTokens() {
     ok: false,
     status: 0,
     looksLoggedOut: true,
+    hasCUserCookie,
     fb_dtsg: null,
     lsd: null,
     jazoest: null,
@@ -3863,13 +3885,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // In no-window mode we *must* self-heal without opening any new tab/window.
           if (code === '1357005') {
             const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-            const maxRetries1357005 = 2;
+            const maxRetries1357005 = 4;
             for (let attempt = 1; attempt <= maxRetries1357005 && code === '1357005'; attempt++) {
               uploadAttemptMeta.retry1357005 = attempt;
               try { await ensureFacebookDnrRules(); } catch (_) {}
 
               // Small backoff to avoid hammering FB.
-              await delay(250 * attempt + Math.floor(Math.random() * 200));
+              const base = attempt === 1 ? 350 : attempt === 2 ? 750 : attempt === 3 ? 1400 : 2400;
+              await delay(base + Math.floor(Math.random() * 250));
 
               let refreshed = null;
               try { refreshed = await facebookGetFreshTokens(); } catch (_) { refreshed = null; }
@@ -3877,11 +3900,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 ok: !!refreshed?.ok,
                 status: typeof refreshed?.status === 'number' ? refreshed.status : 0,
                 looksLoggedOut: !!refreshed?.looksLoggedOut,
+                hasCUserCookie: !!refreshed?.hasCUserCookie,
                 hasFbDtsg: !!refreshed?.fb_dtsg,
                 hasLsd: !!refreshed?.lsd,
               };
 
-              if (refreshed?.looksLoggedOut) {
+              if (refreshed?.looksLoggedOut && !refreshed?.hasCUserCookie) {
                 throw new Error(
                   'Facebook session appears logged out (or checkpointed). Please log into facebook.com in this Chrome profile, then retry listing.'
                 );
