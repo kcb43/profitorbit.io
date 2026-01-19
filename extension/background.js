@@ -585,34 +585,115 @@ async function facebookGetFreshTokens() {
     return null;
   };
 
-  const resp = await facebookFetchDirect('https://www.facebook.com/marketplace/', { method: 'GET' });
-  const html = String(resp?.text || '');
+  const URLS_TO_TRY = [
+    'https://www.facebook.com/marketplace/',
+    'https://www.facebook.com/',
+    'https://www.facebook.com/marketplace/create/',
+  ];
 
-  // If we got a login page, tokens won't be present.
-  const looksLoggedOut =
-    /login\.php/i.test(html) ||
-    /"not logged in"/i.test(html) ||
-    /Please log in/i.test(html) ||
-    /name="pass"/i.test(html);
+  const attempts = [];
+  let best = null;
 
-  const fb_dtsg = pick(html, [
-    /"DTSGInitialData",\[\],\{"token":"([^"]+)"/,
-    /"fb_dtsg"\s*:\s*"([^"]+)"/,
-    /name="fb_dtsg"\s+value="([^"]+)"/,
-  ]);
-  const lsd = pick(html, [
-    /"LSD",\[\],\{"token":"([^"]+)"/,
-    /"LSDToken","token":"([^"]+)"/,
-    /name="lsd"\s+value="([^"]+)"/,
-  ]);
+  for (const url of URLS_TO_TRY) {
+    let resp = null;
+    try {
+      resp = await facebookFetchDirect(url, { method: 'GET' });
+    } catch (e) {
+      resp = { ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed') };
+    }
 
-  return {
-    ok: !!resp?.ok,
-    status: typeof resp?.status === 'number' ? resp.status : 0,
-    looksLoggedOut,
-    fb_dtsg,
-    lsd,
-    jazoest: fb_dtsg ? computeJazoest(fb_dtsg) : null,
+    const html = String(resp?.text || '');
+    const status = typeof resp?.status === 'number' ? resp.status : 0;
+
+    // If we got a login/checkpoint page, tokens won't be present.
+    const looksLoggedOut =
+      /login\.php/i.test(html) ||
+      /checkpoint/i.test(html) ||
+      /two_factor/i.test(html) ||
+      /recover/i.test(html) ||
+      /"not logged in"/i.test(html) ||
+      /Please log in/i.test(html) ||
+      /name="pass"/i.test(html);
+
+    const fb_dtsg = pick(html, [
+      // Common Comet bootstraps
+      /"DTSGInitialData",\[\],\{"token":"([^"]+)"/,
+      /"DTSGInitialData".+?"token":"([^"]+)"/,
+      /"DTSG".+?"token":"([^"]+)"/,
+      // Classic forms / embedded JSON
+      /"fb_dtsg"\s*:\s*"([^"]+)"/,
+      /name="fb_dtsg"\s+value="([^"]+)"/,
+      /"token"\s*:\s*"([^"]+)"\s*,\s*"async_get_token"/,
+    ]);
+
+    const lsd = pick(html, [
+      /"LSD",\[\],\{"token":"([^"]+)"/,
+      /"LSD".+?"token":"([^"]+)"/,
+      /"LSDToken","token":"([^"]+)"/,
+      /name="lsd"\s+value="([^"]+)"/,
+    ]);
+
+    const out = {
+      url,
+      ok: !!resp?.ok,
+      status,
+      looksLoggedOut,
+      fb_dtsg,
+      lsd,
+      jazoest: fb_dtsg ? computeJazoest(fb_dtsg) : null,
+    };
+
+    attempts.push({
+      url,
+      ok: out.ok,
+      status,
+      looksLoggedOut,
+      hasFbDtsg: !!fb_dtsg,
+      hasLsd: !!lsd,
+      htmlLen: html.length,
+      // High-signal hints without storing the whole HTML (avoid leaking tokens).
+      hints: {
+        hasDTSGInitialData: /DTSGInitialData/i.test(html),
+        hasLSD: /\bLSD\b/i.test(html),
+        hasLoginPhp: /login\.php/i.test(html),
+        hasPassField: /name="pass"/i.test(html),
+        hasMarket: /marketplace/i.test(html),
+      },
+    });
+
+    if ((fb_dtsg || lsd) && !looksLoggedOut) {
+      best = out;
+      break;
+    }
+
+    // Prefer any attempt that at least yields tokens, even if it looks "logged out" (sometimes false positives).
+    if (!best && (fb_dtsg || lsd)) best = out;
+    if (!best) best = out;
+  }
+
+  // If tokens are missing, persist a small debug snapshot so we can adjust parsing without guessing.
+  if (best && !best.fb_dtsg && !best.lsd) {
+    try {
+      chrome.storage.local.set(
+        {
+          facebookLastTokenDebug: {
+            extBuild: EXT_BUILD,
+            t: Date.now(),
+            attempts,
+          },
+        },
+        () => {}
+      );
+    } catch (_) {}
+  }
+
+  return best || {
+    ok: false,
+    status: 0,
+    looksLoggedOut: true,
+    fb_dtsg: null,
+    lsd: null,
+    jazoest: null,
   };
 }
 
@@ -3800,10 +3881,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 hasLsd: !!refreshed?.lsd,
               };
 
-              if (refreshed?.looksLoggedOut || (!refreshed?.fb_dtsg && !refreshed?.lsd)) {
+              if (refreshed?.looksLoggedOut) {
                 throw new Error(
-                  'Facebook session appears logged out or missing CSRF tokens. Please log into facebook.com, then retry listing.'
+                  'Facebook session appears logged out (or checkpointed). Please log into facebook.com in this Chrome profile, then retry listing.'
                 );
+              }
+              if (!refreshed?.fb_dtsg && !refreshed?.lsd) {
+                // FB sometimes serves HTML that hides tokens (A/B tests, edge rollouts, or transient backend issues).
+                // Do not hard-fail; continue retrying with the existing recorded/body token bundle.
+                uploadAttemptMeta.retry1357005_tokensMissing = true;
+                continue;
               }
 
               // Update multipart body tokens + URL query token (Vendoo endpoint includes fb_dtsg in query).
