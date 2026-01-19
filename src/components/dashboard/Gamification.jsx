@@ -293,38 +293,10 @@ export default function Gamification({ sales, stats, variant }) {
         </div>
         
         <div>
-
-          {/* Custom Progress Bar */}
-          {nextLevel && tierInfo.nextTier && (
-            <div className="relative z-10 mt-6 max-w-md">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-700 dark:text-slate-300 text-sm font-medium">Progress to {tierInfo.nextTier}</span>
-                <span className="text-green-600 dark:text-green-400 text-sm font-bold">{Math.round(tierProgress.percentage)}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-gray-200 dark:bg-white/10 border border-gray-300 dark:border-transparent overflow-hidden">
-                <div 
-                  className="h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 transition-[width] duration-1000 ease-out"
-                  style={{ width: `${tierProgress.percentage}%` }}
-                />
-              </div>
-              {tierProgress.pointsNeeded > 0 && (
-                <div className="text-gray-600 dark:text-slate-400 text-xs mt-2">
-                  ${tierProgress.pointsNeeded.toFixed(0)} more needed
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        
-        <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Achievements</p>
-            <Link to={createPageUrl("Rewards")} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
-              <Gift className="w-3 h-3" />
-              View Rewards
-            </Link>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {achievements.length > 0 ? (
               <TooltipProvider>
                 {achievements.map(ach => (
@@ -343,6 +315,20 @@ export default function Gamification({ sales, stats, variant }) {
             ) : (
               <p className="text-xs text-gray-500">Your first achievement is just around the corner!</p>
             )}
+          </div>
+          
+          {/* View Rewards Button */}
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 text-center">
+              Earn points, enjoy Rewards
+            </p>
+            <Link 
+              to={createPageUrl("Rewards")} 
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+            >
+              <Gift className="w-4 h-4" />
+              View Rewards
+            </Link>
           </div>
         </div>
       </CardContent>

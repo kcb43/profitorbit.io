@@ -24,10 +24,21 @@ import {
   MapPin,
   Globe,
   ChevronRight,
+  Package,
 } from "lucide-react";
 
 // Marketplace data
 const MARKETPLACES = [
+  {
+    id: 'market-deals',
+    name: 'Market Deals',
+    icon: Tag,
+    color: 'from-emerald-500 to-emerald-600',
+    bgColor: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
+    description: 'Discounted items & alerts',
+    badge: 'Hot',
+  },
   {
     id: 'ebay',
     name: 'eBay',
@@ -39,13 +50,13 @@ const MARKETPLACES = [
     badge: null,
   },
   {
-    id: 'mercari',
-    name: 'Mercari',
-    icon: Sparkles,
-    color: 'from-purple-500 to-purple-600',
-    bgColor: 'bg-purple-50',
-    iconColor: 'text-purple-600',
-    description: 'Selling strategies & trends',
+    id: 'amazon',
+    name: 'Amazon',
+    icon: Package,
+    color: 'from-orange-500 to-orange-600',
+    bgColor: 'bg-orange-50',
+    iconColor: 'text-orange-600',
+    description: 'Sourcing strategies & trends',
     badge: null,
   },
   {
@@ -57,16 +68,6 @@ const MARKETPLACES = [
     iconColor: 'text-indigo-600',
     description: 'Local & online insights',
     badge: 'New',
-  },
-  {
-    id: 'market-deals',
-    name: 'Market Deals',
-    icon: Tag,
-    color: 'from-emerald-500 to-emerald-600',
-    bgColor: 'bg-emerald-50',
-    iconColor: 'text-emerald-600',
-    description: 'Discounted items & alerts',
-    badge: 'Hot',
   },
 ];
 

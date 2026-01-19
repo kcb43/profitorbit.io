@@ -23,6 +23,7 @@ import {
   Sparkles,
   Zap,
   ChevronRight,
+  Package,
 } from "lucide-react";
 
 const MARKETPLACE_INFO = {
@@ -32,11 +33,11 @@ const MARKETPLACE_INFO = {
     color: 'blue',
     description: 'Tips, trends & insights for eBay sellers',
   },
-  mercari: {
-    name: 'Mercari',
-    icon: Sparkles,
-    color: 'purple',
-    description: 'Selling strategies & trends for Mercari',
+  amazon: {
+    name: 'Amazon',
+    icon: Package,
+    color: 'orange',
+    description: 'Sourcing strategies & trends for Amazon resellers',
   },
   facebook: {
     name: 'Facebook Marketplace',
@@ -139,13 +140,13 @@ export default function MarketIntelligenceDetail() {
             </Button>
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
               marketplace.color === 'blue' ? 'bg-blue-50 dark:bg-blue-950/20' :
-              marketplace.color === 'purple' ? 'bg-purple-50 dark:bg-purple-950/20' :
+              marketplace.color === 'orange' ? 'bg-orange-50 dark:bg-orange-950/20' :
               marketplace.color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-950/20' :
               'bg-emerald-50 dark:bg-emerald-950/20'
             }`}>
               <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${
                 marketplace.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                marketplace.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
+                marketplace.color === 'orange' ? 'text-orange-600 dark:text-orange-400' :
                 marketplace.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
                 'text-emerald-600 dark:text-emerald-400'
               }`} />
@@ -373,7 +374,7 @@ export default function MarketIntelligenceDetail() {
                       title: 'Best Time to List',
                       description: marketplaceId === 'ebay' 
                         ? 'List items on Sunday evenings (6-9 PM) for maximum visibility. eBay traffic peaks during these hours.'
-                        : marketplaceId === 'mercari'
+                        : marketplaceId === 'amazon'
                         ? 'Post new listings on weekday mornings (9-11 AM) when users are browsing during breaks.'
                         : 'Post on Thursday-Saturday mornings for best local engagement. Weekend shoppers are most active.',
                       category: 'Timing',
@@ -387,8 +388,8 @@ export default function MarketIntelligenceDetail() {
                       title: marketplaceId === 'ebay' ? 'Auction vs Buy It Now' : 'Pricing Strategy',
                       description: marketplaceId === 'ebay'
                         ? 'Use Buy It Now for common items, auctions for rare/unique items. Research completed listings first.'
-                        : marketplaceId === 'mercari'
-                        ? 'Price competitively and use Mercari\'s offer feature. Start 10-15% above your minimum.'
+                        : marketplaceId === 'amazon'
+                        ? 'Price competitively and monitor Amazon pricing trends. Use Amazon\'s FBA calculator for profitability.'
                         : 'Price competitively but leave room for negotiation. Research similar local listings first.',
                       category: 'Pricing',
                     },

@@ -3,7 +3,7 @@ import { supabase } from "@/api/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Percent, TrendingUp, Timer, Sparkles, Trophy, Target, Activity } from "lucide-react";
+import { Percent, TrendingUp, Timer, Sparkles, Trophy, Target, Activity, Package, DollarSign } from "lucide-react";
 import { parseISO, format } from "date-fns";
 import MonthlyPnlChart from "../components/reports/MonthlyPnlChart";
 import CategoryPerformance from "../components/reports/CategoryPerformance";
@@ -193,6 +193,83 @@ export default function ReportsPage() {
         {/* Tax Summary Section */}
         <div className="mt-6">
           <TaxSummary sales={[]} totalProfit={metrics.totalProfit} ytdProfitOverride={reportSummary?.ytdProfit ?? 0} />
+        </div>
+
+        {/* Shipping Info & Fees Section */}
+        <div className="mt-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl font-semibold text-foreground">
+                <Package className="w-5 h-5" />
+                Shipping Info & Fees by Platform
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Overview of shipping costs and platform fees across all marketplaces for {rangeLabel}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(PLATFORM_DISPLAY_NAMES).map(([key, name]) => {
+                  // Mock data - replace with actual data from API
+                  const platformData = {
+                    totalShippingCost: 0,
+                    totalFees: 0,
+                    averageShippingCost: 0,
+                    averageFees: 0,
+                    transactionCount: 0,
+                  };
+
+                  return (
+                    <Card key={key} className="border border-border/60">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold text-foreground">{name}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Total Shipping</span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {currency(platformData.totalShippingCost)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Total Fees</span>
+                          <span className="text-sm font-semibold text-foreground">
+                            {currency(platformData.totalFees)}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-border/60">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Avg Shipping</span>
+                            <span className="text-xs font-medium text-foreground">
+                              {currency(platformData.averageShippingCost)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs text-muted-foreground">Avg Fees</span>
+                            <span className="text-xs font-medium text-foreground">
+                              {currency(platformData.averageFees)}
+                            </span>
+                          </div>
+                        </div>
+                        {platformData.transactionCount > 0 && (
+                          <div className="pt-2 border-t border-border/60">
+                            <div className="text-xs text-muted-foreground">
+                              {platformData.transactionCount} transaction{platformData.transactionCount !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              {!hasData && (
+                <div className="mt-6 py-8 text-center text-sm text-muted-foreground">
+                  Add sales data to see shipping costs and platform fees breakdown.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
