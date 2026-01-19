@@ -71,14 +71,36 @@ async function pickFacebookTabId() {
         'https://*.facebook.com/*',
       ],
     });
-    const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
+    const valid = (tabs || []).filter((t) => {
+      if (!t || typeof t.id !== 'number') return false;
+      const u = String(t.url || '');
+      try {
+        const host = new URL(u).hostname.toLowerCase();
+        // Never use upload/rupload tabs for GraphQL. They cause CORS failures (status=0 / Failed to fetch).
+        if (host === 'upload.facebook.com' || host === 'rupload.facebook.com') return false;
+      } catch (_) {
+        // If we can't parse, still allow (it might be a special chrome URL, though unlikely here).
+      }
+      return true;
+    });
     if (!valid.length) return null;
-    // Prefer active tab, then last focused, then first.
-    const active = valid.find((t) => t.active);
+    // Prefer "real" facebook.com pages over other subdomains.
+    const score = (t) => {
+      try {
+        const host = new URL(String(t.url || '')).hostname.toLowerCase();
+        if (host === 'www.facebook.com') return 100;
+        if (host === 'm.facebook.com') return 90;
+        if (host === 'facebook.com') return 80;
+        if (host.endsWith('.facebook.com')) return 50;
+      } catch (_) {}
+      return 10;
+    };
+    const sorted = valid.slice().sort((a, b) => score(b) - score(a));
+    const active = sorted.find((t) => t.active);
     if (active?.id) return active.id;
-    const lastFocused = valid.find((t) => t.lastAccessed);
+    const lastFocused = sorted.find((t) => t.lastAccessed);
     if (lastFocused?.id) return lastFocused.id;
-    return valid[0].id;
+    return sorted[0].id;
   } catch (_) {
     return null;
   }
@@ -3751,8 +3773,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Build GraphQL request from template, overriding variables + tokens where possible
         const gqlBodyText = getRecordedBodyText(graphqlTemplate);
         const form = parseFormBody(gqlBodyText);
-        const friendlyName = form.fb_api_req_friendly_name || FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
-        const docId = form.doc_id || FACEBOOK_VENDOO_COMET_CREATE.docId;
+        let friendlyName = form.fb_api_req_friendly_name || FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
+        let docId = form.doc_id || FACEBOOK_VENDOO_COMET_CREATE.docId;
+        // In no-window mode, force Vendoo's known-good create mutation template.
+        if (facebookNoWindowMode) {
+          friendlyName = FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
+          docId = FACEBOOK_VENDOO_COMET_CREATE.docId;
+        }
 
         let vars = {};
         try { vars = form.variables ? JSON.parse(form.variables) : {}; } catch (_) { vars = {}; }
@@ -3864,33 +3891,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const gqlAttemptMeta = { directFetch: false, retry1357004: false, fbTabId: null };
         let gqlResult = null;
         if (facebookNoWindowMode) {
-          // Prefer existing facebook.com tab context if present (no new windows/tabs opened).
-          let existingFbTabId = null;
-          try { existingFbTabId = await pickFacebookTabId(); } catch (_) { existingFbTabId = null; }
-
-          if (existingFbTabId) {
-            gqlAttemptMeta.directFetch = false;
-            gqlAttemptMeta.fbTabId = existingFbTabId;
-            gqlResult = await facebookFetchInTab(existingFbTabId, {
-              url: graphqlTemplate.url,
+          // Prefer direct extension fetch to avoid CORS/opaque failures when running inside a tab context.
+          // If FB returns 1357004, we can optionally retry inside an existing www.facebook.com tab (no new windows).
+          const bodyText = encodeFormBody(form);
+          try {
+            const direct = await facebookFetchDirect(FACEBOOK_VENDOO_COMET_CREATE.graphqlUrl, {
               method: 'POST',
               headers: gqlHeaders,
-              bodyType: 'text',
-              bodyText: encodeFormBody(form),
+              body: bodyText,
             });
-          } else {
-            if (facebookRequireExistingTabInNoWindow) {
+            gqlAttemptMeta.directFetch = true;
+            gqlResult = { ...direct, error: null, href: null };
+          } catch (e) {
+            gqlAttemptMeta.directFetch = true;
+            gqlResult = { ok: false, status: 0, text: '', headers: {}, error: String(e?.message || e || 'fetch_failed'), href: null };
+          }
+
+          const directJson = parseFacebookJson(gqlResult?.text || '');
+          const directErr = extractFbErrorInfo(directJson);
+          if (directErr?.code === '1357004') {
+            let existingFbTabId = null;
+            try { existingFbTabId = await pickFacebookTabId(); } catch (_) { existingFbTabId = null; }
+            if (existingFbTabId) {
+              gqlAttemptMeta.directFetch = false;
+              gqlAttemptMeta.fbTabId = existingFbTabId;
+              gqlAttemptMeta.retry1357004 = true;
+              gqlResult = await facebookFetchInTabAtOrigin(existingFbTabId, 'https://www.facebook.com', {
+                url: FACEBOOK_VENDOO_COMET_CREATE.graphqlUrl,
+                method: 'POST',
+                headers: gqlHeaders,
+                bodyType: 'text',
+                bodyText,
+              });
+            } else if (facebookRequireExistingTabInNoWindow) {
               throw new Error(
                 'Facebook listing requires a facebook.com tab context. No-window mode is enabled and is set to not open tabs/windows. Please open facebook.com (can be pinned/in the background) and try again.'
               );
             }
-            const direct = await facebookFetchDirect(graphqlTemplate.url, {
-              method: 'POST',
-              headers: gqlHeaders,
-              body: encodeFormBody(form),
-            });
-            gqlAttemptMeta.directFetch = true;
-            gqlResult = { ...direct, error: null, href: null };
           }
         } else {
           const ensuredForGql = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
