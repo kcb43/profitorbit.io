@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-rate-limit-create-1';
+const EXT_BUILD = '2026-01-19-facebook-recorder-buffer-fix-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -2323,6 +2323,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.warn('⚠️ [FACEBOOK] Failed to persist API recording to storage', e);
       }
 
+      // IMPORTANT:
+      // After stopping, clear the in-memory buffer so CREATE/DELIST don’t accidentally “prefer” the last recording
+      // (e.g. a delist recording) over the stored create recording.
+      try {
+        facebookApiRecorder.records = [];
+        facebookApiRecorder.pending = new Map();
+        facebookApiRecorder.startedAt = null;
+      } catch (_) {}
+
       sendResponse({ success: true, startedAt: facebookApiRecorder.startedAt, endedAt, count: records.length, records });
     })();
     return true;
@@ -2793,7 +2802,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Load last FB recording as a "template" for endpoints/doc_ids/headers.
         // For delist, the recording must include the delete/delist mutation.
-        const inMemoryRecords = Array.isArray(facebookApiRecorder?.records) ? facebookApiRecorder.records.slice() : [];
+        const inMemoryRecords =
+          facebookApiRecorder?.enabled && Array.isArray(facebookApiRecorder?.records)
+            ? facebookApiRecorder.records.slice()
+            : [];
         let last = null;
         let records = inMemoryRecords;
 
@@ -3305,7 +3317,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         //
         // Prefer the in-memory recorder buffer if the user clicked "Start recording" but forgot to click "Stop".
         // (In MV3 service workers, state can be lost on suspension; we still fall back to storage.)
-        const inMemoryRecords = Array.isArray(facebookApiRecorder?.records) ? facebookApiRecorder.records.slice() : [];
+        const inMemoryRecords =
+          facebookApiRecorder?.enabled && Array.isArray(facebookApiRecorder?.records)
+            ? facebookApiRecorder.records.slice()
+            : [];
         let last = null;
         let records = inMemoryRecords;
 
