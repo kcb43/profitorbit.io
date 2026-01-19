@@ -535,6 +535,36 @@ function parseFacebookJson(text) {
   }
 }
 
+function extractFbErrorInfo(j) {
+  try {
+    if (!j || typeof j !== 'object') return null;
+    // Upload-style errors
+    if (j.error || j.errorSummary || j.errorDescription) {
+      const code = j.error ? String(j.error) : null;
+      const summary = j.errorSummary ? String(j.errorSummary) : 'Facebook error';
+      const desc = j.errorDescription ? String(j.errorDescription) : '';
+      return { code, summary, desc };
+    }
+    // GraphQL-style errors
+    if (Array.isArray(j.errors) && j.errors.length) {
+      const e0 = j.errors[0] || {};
+      const code =
+        e0?.code !== undefined ? String(e0.code) :
+        e0?.errorCode !== undefined ? String(e0.errorCode) :
+        e0?.extensions?.code !== undefined ? String(e0.extensions.code) :
+        e0?.extensions?.error_code !== undefined ? String(e0.extensions.error_code) :
+        null;
+      const summary = e0?.message ? String(e0.message) : 'Facebook GraphQL error';
+      return { code, summary, desc: '' };
+    }
+    // Sometimes nested
+    const nestedCode = j?.error?.code !== undefined ? String(j.error.code) : null;
+    const nestedMsg = j?.error?.message ? String(j.error.message) : null;
+    if (nestedCode || nestedMsg) return { code: nestedCode, summary: nestedMsg || 'Facebook error', desc: '' };
+  } catch (_) {}
+  return null;
+}
+
 function computeJazoest(fbDtsg) {
   // Common FB pattern: "2" + sum(charCode(token))
   const s = String(fbDtsg || '');
@@ -4054,36 +4084,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             bodyText: encodeFormBody(form),
           });
         }
-
-        const extractFbErrorInfo = (j) => {
-          try {
-            if (!j || typeof j !== 'object') return null;
-            // Upload-style errors
-            if (j.error || j.errorSummary || j.errorDescription) {
-              const code = j.error ? String(j.error) : null;
-              const summary = j.errorSummary ? String(j.errorSummary) : 'Facebook error';
-              const desc = j.errorDescription ? String(j.errorDescription) : '';
-              return { code, summary, desc };
-            }
-            // GraphQL-style errors
-            if (Array.isArray(j.errors) && j.errors.length) {
-              const e0 = j.errors[0] || {};
-              const code =
-                e0?.code !== undefined ? String(e0.code) :
-                e0?.errorCode !== undefined ? String(e0.errorCode) :
-                e0?.extensions?.code !== undefined ? String(e0.extensions.code) :
-                e0?.extensions?.error_code !== undefined ? String(e0.extensions.error_code) :
-                null;
-              const summary = e0?.message ? String(e0.message) : 'Facebook GraphQL error';
-              return { code, summary, desc: '' };
-            }
-            // Sometimes nested
-            const nestedCode = j?.error?.code !== undefined ? String(j.error.code) : null;
-            const nestedMsg = j?.error?.message ? String(j.error.message) : null;
-            if (nestedCode || nestedMsg) return { code: nestedCode, summary: nestedMsg || 'Facebook error', desc: '' };
-          } catch (_) {}
-          return null;
-        };
 
         let gqlText = gqlResult?.text || '';
         let gqlOk = !!gqlResult?.ok;
