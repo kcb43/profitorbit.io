@@ -5,8 +5,9 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
+const EXT_BUILD = '2026-01-19-facebook-vendoo-docid-tabless-graphfix-1';
 console.log('Profit Orbit Extension: Background script loaded');
-console.log('EXT BUILD:', '2026-01-15-background-mercari-device-token-from-tab-fb-1357004-retrylog-1');
+console.log('EXT BUILD:', EXT_BUILD);
 
 // -----------------------------
 // Helpers
@@ -3527,6 +3528,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.storage.local.set(
               {
                 facebookLastUploadDebug: {
+                  extBuild: EXT_BUILD,
                   t: Date.now(),
                   ok: uploadOk,
                   status: uploadStatus,
@@ -3733,6 +3735,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.storage.local.set(
               {
                 facebookLastUploadDebug: {
+                  extBuild: EXT_BUILD,
                   t: Date.now(),
                   ok: uploadOk,
                   status: uploadStatus,
@@ -3753,6 +3756,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.storage.local.set(
             {
               facebookLastUploadDebug: {
+                extBuild: EXT_BUILD,
                 t: Date.now(),
                 ok: uploadOk,
                 status: uploadStatus,
@@ -4055,6 +4059,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.storage.local.set(
             {
               facebookLastCreateDebug: {
+                extBuild: EXT_BUILD,
                 t: Date.now(),
                 ok: gqlOk,
                 status: gqlStatus,
