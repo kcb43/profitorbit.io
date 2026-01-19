@@ -526,6 +526,15 @@ function stripForSemiPrefix(text) {
   return String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
 }
 
+function parseFacebookJson(text) {
+  const t = stripForSemiPrefix(text);
+  try {
+    return t ? JSON.parse(t) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function computeJazoest(fbDtsg) {
   // Common FB pattern: "2" + sum(charCode(token))
   const s = String(fbDtsg || '');
@@ -4045,15 +4054,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             bodyText: encodeFormBody(form),
           });
         }
-
-        const parseFacebookJson = (text) => {
-          const t = String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
-          try {
-            return t ? JSON.parse(t) : null;
-          } catch (_) {
-            return null;
-          }
-        };
 
         const extractFbErrorInfo = (j) => {
           try {
