@@ -419,6 +419,61 @@ async function facebookFetchDirect(url, init) {
   return { ok: resp.ok, status: resp.status, text, headers };
 }
 
+function stripForSemiPrefix(text) {
+  return String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
+}
+
+function computeJazoest(fbDtsg) {
+  // Common FB pattern: "2" + sum(charCode(token))
+  const s = String(fbDtsg || '');
+  let sum = 0;
+  for (let i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+  return `2${sum}`;
+}
+
+async function facebookGetFreshTokens() {
+  // Tabless fetch to retrieve fresh CSRF tokens (fb_dtsg / lsd) from FB HTML.
+  // This is the missing piece that often makes direct service-worker GraphQL/upload succeed (Vendoo does this).
+  const pick = (html, reList) => {
+    const s = String(html || '');
+    for (const re of reList) {
+      const m = re.exec(s);
+      if (m?.[1]) return String(m[1]);
+    }
+    return null;
+  };
+
+  const resp = await facebookFetchDirect('https://www.facebook.com/marketplace/', { method: 'GET' });
+  const html = String(resp?.text || '');
+
+  // If we got a login page, tokens won't be present.
+  const looksLoggedOut =
+    /login\.php/i.test(html) ||
+    /"not logged in"/i.test(html) ||
+    /Please log in/i.test(html) ||
+    /name="pass"/i.test(html);
+
+  const fb_dtsg = pick(html, [
+    /"DTSGInitialData",\[\],\{"token":"([^"]+)"/,
+    /"fb_dtsg"\s*:\s*"([^"]+)"/,
+    /name="fb_dtsg"\s+value="([^"]+)"/,
+  ]);
+  const lsd = pick(html, [
+    /"LSD",\[\],\{"token":"([^"]+)"/,
+    /"LSDToken","token":"([^"]+)"/,
+    /name="lsd"\s+value="([^"]+)"/,
+  ]);
+
+  return {
+    ok: !!resp?.ok,
+    status: typeof resp?.status === 'number' ? resp.status : 0,
+    looksLoggedOut,
+    fb_dtsg,
+    lsd,
+    jazoest: fb_dtsg ? computeJazoest(fb_dtsg) : null,
+  };
+}
+
 async function facebookFetchInTabAtOrigin(tabId, origin, args, timeoutMs = 15000) {
   // Runs a fetch in ALL frames and only executes it in the frame whose location.origin matches `origin`.
   // This avoids needing webNavigation permissions to discover frameIds.
@@ -2754,10 +2809,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try {
             chrome.storage.local.get(['facebookRequireExistingTabInNoWindow'], (r) => {
               if (typeof r?.facebookRequireExistingTabInNoWindow === 'boolean') return resolve(r.facebookRequireExistingTabInNoWindow);
-              return resolve(true);
+              // Default to false: Vendoo proves this can work tabless when we have fresh fb_dtsg + correct payload.
+              return resolve(false);
             });
           } catch (_) {
-            resolve(true);
+            resolve(false);
           }
         });
 
@@ -3008,6 +3064,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         });
 
+        // Fetch fresh fb_dtsg/lsd tokens for tabless flows (Vendoo-style).
+        // Even if we have a recording, those tokens can go stale and trigger 1357004/1357001.
+        let freshTokens = null;
+        try {
+          freshTokens = await facebookGetFreshTokens();
+        } catch (_) {
+          freshTokens = null;
+        }
+        const fbDtsg = freshTokens?.fb_dtsg || null;
+        const fbLsd = freshTokens?.lsd || null;
+        const fbJazoest = freshTokens?.jazoest || null;
+
         const inferImageMime = async (blob, urlHint) => {
           const byExt = (() => {
             const u = String(urlHint || '').toLowerCase();
@@ -3248,6 +3316,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             uploadFormFields.push({ name: k, value: v });
           }
         } catch (_) {}
+
+        // If we have fresh tokens, force-inject them (overriding any stale recorded values).
+        // This is crucial for tabless mode.
+        const upsertField = (arr, name, value) => {
+          if (!name || value === undefined || value === null) return;
+          const n = String(name);
+          const v = String(value);
+          const idx = arr.findIndex((f) => String(f?.name || '') === n);
+          if (idx >= 0) arr[idx] = { name: n, value: v };
+          else arr.push({ name: n, value: v });
+        };
+        if (fbUserId) {
+          upsertField(uploadFormFields, '__user', fbUserId);
+          upsertField(uploadFormFields, 'av', fbUserId);
+        }
+        if (fbDtsg) upsertField(uploadFormFields, 'fb_dtsg', fbDtsg);
+        if (fbLsd) upsertField(uploadFormFields, 'lsd', fbLsd);
+        if (fbJazoest) upsertField(uploadFormFields, 'jazoest', fbJazoest);
+
+        // Also keep the upload URL in sync if it has fb_dtsg in the query (Vendoo endpoint does).
+        if (fbDtsg) {
+          try {
+            const u = new URL(uploadTemplate.url);
+            u.searchParams.set('fb_dtsg', fbDtsg);
+            // Vendoo-style endpoints commonly include __a=1
+            if (!u.searchParams.get('__a')) u.searchParams.set('__a', '1');
+            uploadTemplate.url = u.toString();
+          } catch (_) {}
+        }
 
         // Use the recorded multipart file field name if we can detect it; otherwise default to "file"
         const fileFieldName = fieldsInfo?.fileFieldName || 'file';
@@ -3724,6 +3821,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (form.__user) form.__user = fbUserId;
           if (form.av) form.av = fbUserId;
         }
+        // Refresh CSRF/session tokens if we could fetch them tabless (prevents stale-token failures).
+        if (fbDtsg) form.fb_dtsg = fbDtsg;
+        if (fbLsd) form.lsd = fbLsd;
+        if (fbJazoest) form.jazoest = fbJazoest;
         form.doc_id = docId;
         if (friendlyName) form.fb_api_req_friendly_name = friendlyName;
         form.variables = JSON.stringify(vars);
