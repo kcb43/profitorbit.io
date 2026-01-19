@@ -62,7 +62,15 @@ let __poFacebookWorkerTabId = null;
 
 async function pickFacebookTabId() {
   try {
-    const tabs = await chrome.tabs.query({ url: ['https://www.facebook.com/*', 'https://m.facebook.com/*'] });
+    // Include facebook.com (no www) and any subdomain variants so "open Facebook tab" is reliably detected.
+    const tabs = await chrome.tabs.query({
+      url: [
+        'https://www.facebook.com/*',
+        'https://facebook.com/*',
+        'https://m.facebook.com/*',
+        'https://*.facebook.com/*',
+      ],
+    });
     const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
     if (!valid.length) return null;
     // Prefer active tab, then last focused, then first.
@@ -3290,7 +3298,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             uploadResult = await facebookFetchInTab(existingFbTabId, {
               url: uploadTemplate.url,
               method: 'POST',
-              headers: directUploadHeaders,
+              // In-tab fetch: avoid custom headers to prevent CORS preflight causing "Failed to fetch".
+              // Tokens are carried via cookies + multipart fields from the recording.
+              headers: { accept: directUploadHeaders?.accept || '*/*' },
               bodyType: 'formData',
               formFields: uploadFormFields,
               file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
