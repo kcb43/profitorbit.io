@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-upload-1357005-hardening-1';
+const EXT_BUILD = '2026-01-19-facebook-dnr-fix-and-gql-type-coercion-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -41,7 +41,8 @@ async function ensureFacebookDnrRules() {
         },
         condition: {
           requestDomains: ['upload.facebook.com'],
-          resourceTypes: ['xmlhttprequest', 'fetch'],
+          // MV3 DNR does not support "fetch" as a resource type; extension fetches are categorized as XHR.
+          resourceTypes: ['xmlhttprequest'],
           urlFilter: 'upload.facebook.com/ajax/react_composer/attachments/photo/upload',
         },
       },
@@ -60,7 +61,8 @@ async function ensureFacebookDnrRules() {
         },
         condition: {
           requestDomains: ['www.facebook.com'],
-          resourceTypes: ['xmlhttprequest', 'fetch'],
+          // MV3 DNR does not support "fetch" as a resource type; extension fetches are categorized as XHR.
+          resourceTypes: ['xmlhttprequest'],
           urlFilter: 'www.facebook.com/api/graphql',
         },
       },
@@ -4194,6 +4196,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           } catch (_) {}
         };
 
+        const getDeep = (obj, pathArr) => {
+          try {
+            let cur = obj;
+            for (const k of pathArr) {
+              if (!cur || typeof cur !== 'object') return undefined;
+              cur = cur[k];
+            }
+            return cur;
+          } catch (_) {
+            return undefined;
+          }
+        };
+
+        // Preserve the existing variable types from the recorded template. FB will hard-fail with
+        // noncoercible_variable_value if we send a string where a number is expected (or vice versa).
+        const setDeepPreserveType = (obj, pathArr, rawValue) => {
+          const existing = getDeep(obj, pathArr);
+          const want = rawValue;
+
+          // If existing is explicitly null/undefined, we can't infer; set raw.
+          if (existing === undefined || existing === null) {
+            setDeep(obj, pathArr, want);
+            return;
+          }
+
+          if (typeof existing === 'number') {
+            const n = Number(want);
+            if (Number.isFinite(n)) setDeep(obj, pathArr, n);
+            return;
+          }
+          if (typeof existing === 'string') {
+            setDeep(obj, pathArr, String(want));
+            return;
+          }
+          if (typeof existing === 'boolean') {
+            setDeep(obj, pathArr, !!want);
+            return;
+          }
+          // Fallback
+          setDeep(obj, pathArr, want);
+        };
+
         const isCometCreateMutation =
           String(friendlyName || '') === 'useCometMarketplaceListingCreateMutation' ||
           String(docId || '') === '9551550371629242' ||
@@ -4207,13 +4251,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // FB uses a numeric dollars value here in the recorded mutation (not cents).
           const p = Number(price);
           if (Number.isFinite(p)) {
-            setDeep(vars, ['input', 'data', 'common', 'item_price', 'price'], p);
-            setDeep(vars, ['input', 'data', 'common', 'item_price', 'currency'], 'USD');
+            setDeepPreserveType(vars, ['input', 'data', 'common', 'item_price', 'price'], p);
+            setDeepPreserveType(vars, ['input', 'data', 'common', 'item_price', 'currency'], 'USD');
           }
 
           // Populate photo_ids explicitly (this mutation uses input.data.common.photo_ids[])
-          setDeep(vars, ['input', 'data', 'common', 'photo_ids'], [photoId]);
-          setDeep(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller'], true);
+          const existingPhotoIds = getDeep(vars, ['input', 'data', 'common', 'photo_ids']);
+          const wantsNumber = Array.isArray(existingPhotoIds) && typeof existingPhotoIds?.[0] === 'number';
+          const coercedPhotoId = wantsNumber ? Number(photoId) : String(photoId);
+          setDeep(vars, ['input', 'data', 'common', 'photo_ids'], [coercedPhotoId]);
+          setDeepPreserveType(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller'], true);
         }
 
         // Best-effort variable overrides
