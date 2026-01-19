@@ -58,9 +58,9 @@ export default function Tools() {
             gradient="from-emerald-500 to-green-500"
           />
           <HubCard
-            title="Market Intelligence"
+            title="Pulse"
             description="Research comps and trends"
-            to={createPageUrl("MarketIntelligence")}
+            to={createPageUrl("Pulse")}
             icon={TrendingUp}
             gradient="from-indigo-500 to-violet-600"
           />

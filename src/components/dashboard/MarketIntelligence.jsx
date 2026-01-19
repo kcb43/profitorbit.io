@@ -25,7 +25,7 @@ export default function MarketIntelligence() {
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2 text-lg">
               <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              Market Intelligence
+              Pulse
             </CardTitle>
             <CardDescription className="mt-1">
               Discover new inventory opportunities using eBay Feed APIs
