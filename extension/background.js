@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-gql-1675012-debug2-1';
+const EXT_BUILD = '2026-01-19-facebook-gql-1675012-fix-desc-html-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -526,6 +526,36 @@ const FACEBOOK_VENDOO_COMET_CREATE = {
 
 function stripForSemiPrefix(text) {
   return String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
+}
+
+function sanitizeFacebookText(raw, { singleLine = false, maxLen = 5000 } = {}) {
+  // Service worker safe: no DOMParser. Pragmatic sanitizer for rich-text HTML coming from editors.
+  let s = String(raw ?? '');
+  // Remove fragment markers often produced by clipboard/rich text editors.
+  s = s.replace(/<!--\s*StartFragment\s*-->/gi, '');
+  s = s.replace(/<!--\s*EndFragment\s*-->/gi, '');
+  // Convert common block/line break tags to newlines.
+  s = s.replace(/<\s*br\s*\/?\s*>/gi, '\n');
+  s = s.replace(/<\/\s*p\s*>/gi, '\n');
+  s = s.replace(/<\/\s*div\s*>/gi, '\n');
+  // Strip remaining tags.
+  s = s.replace(/<[^>]*>/g, '');
+  // Basic entity decode for the most common ones.
+  s = s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+  // Normalize whitespace
+  s = s.replace(/\r\n/g, '\n');
+  s = s.replace(/[ \t]+\n/g, '\n');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  s = s.trim();
+  if (singleLine) s = s.replace(/\s+/g, ' ').trim();
+  if (typeof maxLen === 'number' && maxLen > 0 && s.length > maxLen) s = s.slice(0, maxLen);
+  return s;
 }
 
 function parseFacebookJson(text) {
@@ -3099,8 +3129,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           __poTempFacebookTabId = null;
         };
 
-        const title = String(payload.title || payload.name || '').trim();
-        const description = String(payload.description || '').trim();
+        const titleRaw = String(payload.title || payload.name || '').trim();
+        const descriptionRaw = String(payload.description || '').trim();
+        // Facebook create mutation expects plain text, but our app sometimes supplies rich-text HTML.
+        // Sending HTML here can trigger generic GraphQL coercion errors (e.g. 1675012).
+        const title = sanitizeFacebookText(titleRaw, { singleLine: true, maxLen: 120 });
+        const description = sanitizeFacebookText(descriptionRaw, { singleLine: false, maxLen: 5000 });
         const price = payload.price ?? payload.listing_price ?? payload.amount ?? null;
 
         const toUrl = (v) => {
