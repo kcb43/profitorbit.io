@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-dnr-fix-and-gql-type-coercion-1';
+const EXT_BUILD = '2026-01-19-facebook-gql-1675012-debug-and-type-preserve-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -4245,8 +4245,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           (!!vars?.input?.data?.common?.item_price && Array.isArray(vars?.input?.data?.common?.photo_ids));
 
         if (isCometCreateMutation) {
-          setDeep(vars, ['input', 'data', 'common', 'title'], title);
-          setDeep(vars, ['input', 'data', 'common', 'description', 'text'], description);
+          // Preserve the template's types for these fields too (rarely, FB templates change types).
+          setDeepPreserveType(vars, ['input', 'data', 'common', 'title'], title);
+          setDeepPreserveType(vars, ['input', 'data', 'common', 'description', 'text'], description);
 
           // FB uses a numeric dollars value here in the recorded mutation (not cents).
           const p = Number(price);
@@ -4399,6 +4400,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
         const gqlErrFinal = extractFbErrorInfo(gqlJson);
         if (gqlErrFinal?.code || gqlErrFinal?.summary) {
+          // Persist debug even on GraphQL payload errors (we used to throw before saving, leaving stale debug in storage).
+          const typeOfPath = (obj, pathArr) => {
+            try {
+              let cur = obj;
+              for (const k of pathArr) {
+                if (!cur || typeof cur !== 'object') return 'missing';
+                cur = cur[k];
+              }
+              if (Array.isArray(cur)) return `array(${cur.length})`;
+              return typeof cur;
+            } catch (_) {
+              return 'error';
+            }
+          };
+
+          const valuePreview = (obj, pathArr) => {
+            try {
+              let cur = obj;
+              for (const k of pathArr) {
+                if (!cur || typeof cur !== 'object') return null;
+                cur = cur[k];
+              }
+              if (typeof cur === 'string') return cur.slice(0, 120);
+              if (typeof cur === 'number' || typeof cur === 'boolean') return cur;
+              if (Array.isArray(cur)) return cur.slice(0, 3);
+              return cur ? '[object]' : null;
+            } catch (_) {
+              return null;
+            }
+          };
+
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastCreateDebug: {
+                  extBuild: EXT_BUILD,
+                  t: Date.now(),
+                  ok: gqlOk,
+                  status: gqlStatus,
+                  url: FACEBOOK_VENDOO_COMET_CREATE.graphqlUrl,
+                  docId,
+                  friendlyName,
+                  gqlAttemptMeta,
+                  transportError: gqlResult?.error ? String(gqlResult.error) : null,
+                  transportHref: gqlResult?.href ? String(gqlResult.href) : null,
+                  responseHeaders: gqlResult?.headers && typeof gqlResult.headers === 'object' ? gqlResult.headers : {},
+                  gqlError: gqlErrFinal,
+                  // High-signal type/value snapshot of the fields we override
+                  varsSnapshot: {
+                    title: { type: typeOfPath(vars, ['input', 'data', 'common', 'title']), value: valuePreview(vars, ['input', 'data', 'common', 'title']) },
+                    descText: { type: typeOfPath(vars, ['input', 'data', 'common', 'description', 'text']), value: valuePreview(vars, ['input', 'data', 'common', 'description', 'text']) },
+                    price: { type: typeOfPath(vars, ['input', 'data', 'common', 'item_price', 'price']), value: valuePreview(vars, ['input', 'data', 'common', 'item_price', 'price']) },
+                    currency: { type: typeOfPath(vars, ['input', 'data', 'common', 'item_price', 'currency']), value: valuePreview(vars, ['input', 'data', 'common', 'item_price', 'currency']) },
+                    photoIds: { type: typeOfPath(vars, ['input', 'data', 'common', 'photo_ids']), value: valuePreview(vars, ['input', 'data', 'common', 'photo_ids']) },
+                    isPhotoOrderSet: { type: typeOfPath(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller']), value: valuePreview(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller']) },
+                  },
+                  response: gqlJson || gqlText.slice(0, 20000),
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+
           if (gqlErrFinal?.code === '1357004') {
             throw new Error(
               `${gqlErrFinal.summary} (code ${gqlErrFinal.code})` +
