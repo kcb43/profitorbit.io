@@ -4014,10 +4014,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const url = listingId ? `https://www.facebook.com/marketplace/item/${listingId}/` : null;
 
-        try { chrome.storage.local.set({ facebookLastCreateDebug: { t: Date.now(), ok: gqlOk, status: gqlStatus, url: graphqlTemplate.url, docId, friendlyName, listingId, marketplaceId, gqlAttemptMeta, response: gqlJson || gqlText.slice(0, 20000) } }, () => {}); } catch (_) {}
+        try {
+          chrome.storage.local.set(
+            {
+              facebookLastCreateDebug: {
+                t: Date.now(),
+                ok: gqlOk,
+                status: gqlStatus,
+                url: graphqlTemplate.url,
+                docId,
+                friendlyName,
+                listingId,
+                marketplaceId,
+                gqlAttemptMeta,
+                // Include transport-level error info (common when status=0).
+                transportError: gqlResult?.error ? String(gqlResult.error) : null,
+                transportHref: gqlResult?.href ? String(gqlResult.href) : null,
+                responseHeaders: gqlResult?.headers && typeof gqlResult.headers === 'object' ? gqlResult.headers : {},
+                response: gqlJson || gqlText.slice(0, 20000),
+              },
+            },
+            () => {}
+          );
+        } catch (_) {}
 
         if (!gqlOk) {
-          throw new Error(`Facebook GraphQL create failed: ${gqlStatus}`);
+          const extra =
+            gqlResult?.error ? ` (${String(gqlResult.error)})` : gqlStatus === 0 ? ' (status 0: network/opaque/blocked)' : '';
+          throw new Error(`Facebook GraphQL create failed: ${gqlStatus}${extra}`);
         }
 
         if (!listingId) {
