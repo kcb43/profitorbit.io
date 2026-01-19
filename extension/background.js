@@ -1954,6 +1954,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const listingData = message?.listingData || {};
         const payload = listingData?.payload || listingData || {};
+        // Toggle: try *no-window* mode by default (direct fetch only). If FB blocks it (1357004),
+        // we'll have high-signal debug to decide what to re-record/patch next.
+        const facebookNoWindowMode = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['facebookNoWindowMode'], (r) => {
+              if (typeof r?.facebookNoWindowMode === 'boolean') return resolve(r.facebookNoWindowMode);
+              return resolve(true);
+            });
+          } catch (_) {
+            resolve(true);
+          }
+        });
+        console.log('🟦 [FACEBOOK] Create mode', { noWindow: facebookNoWindowMode });
 
         const title = String(payload.title || payload.name || '').trim();
         const description = sanitizeHtmlToPlainText(payload.description || '');
@@ -3217,43 +3230,60 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (uploadHeaders?.accept) directUploadHeaders.accept = uploadHeaders.accept;
         } catch (_) {}
 
-        // Facebook frequently rejects extension-origin requests (1357004). To keep UX fast and consistent,
-        // always run uploads inside a real facebook.com tab/window context instead of doing a direct attempt first.
-        const ensuredForUpload = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
-        const fbTabId = ensuredForUpload?.tabId;
-        rememberTempFbTab(fbTabId, ensuredForUpload?.created, ensuredForUpload?.windowId);
-        if (!fbTabId) {
-          throw new Error(
-            `Could not create a Facebook context for upload. method=${ensuredForUpload?.method || 'unknown'} error=${ensuredForUpload?.error || 'unknown'}`
-          );
-        }
-
-        uploadAttemptMeta.directFetch = false;
-        uploadAttemptMeta.tabFetch = true;
-        uploadAttemptMeta.fbTabId = fbTabId;
-
-        // executeScript args must be JSON-serializable; pass file bytes as base64 string.
-        const toBase64 = (ab) => {
-          const u8 = new Uint8Array(ab);
-          let s = '';
-          const chunk = 0x8000;
-          for (let i = 0; i < u8.length; i += chunk) {
-            s += String.fromCharCode(...u8.subarray(i, i + chunk));
+        let uploadResult = null;
+        if (facebookNoWindowMode) {
+          // No-window mode: direct service-worker fetch only (no tab/window creation).
+          const fd = new FormData();
+          for (const f of uploadFormFields) {
+            if (!f?.name) continue;
+            fd.append(String(f.name), String(f.value ?? ''));
           }
-          return btoa(s);
-        };
-        const fileBase64 = toBase64(await imgBlob.arrayBuffer());
-        uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
-        uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+          fd.append(String(fileFieldName), imgBlob, String(fileName));
+          const direct = await facebookFetchDirect(uploadTemplate.url, {
+            method: 'POST',
+            headers: directUploadHeaders,
+            body: fd,
+          });
+          uploadAttemptMeta.directFetch = true;
+          uploadAttemptMeta.tabFetch = false;
+          uploadResult = { ...direct, error: null, href: null };
+        } else {
+          // Worker-window mode: run inside facebook.com context.
+          const ensuredForUpload = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
+          const fbTabId = ensuredForUpload?.tabId;
+          rememberTempFbTab(fbTabId, ensuredForUpload?.created, ensuredForUpload?.windowId);
+          if (!fbTabId) {
+            throw new Error(
+              `Could not create a Facebook context for upload. method=${ensuredForUpload?.method || 'unknown'} error=${ensuredForUpload?.error || 'unknown'}`
+            );
+          }
+          uploadAttemptMeta.directFetch = false;
+          uploadAttemptMeta.tabFetch = true;
+          uploadAttemptMeta.fbTabId = fbTabId;
 
-        const uploadResult = await facebookFetchInTab(fbTabId, {
-          url: uploadTemplate.url,
-          method: 'POST',
-          headers: directUploadHeaders,
-          bodyType: 'formData',
-          formFields: uploadFormFields,
-          file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
-        });
+          // executeScript args must be JSON-serializable; pass file bytes as base64 string.
+          const toBase64 = (ab) => {
+            const u8 = new Uint8Array(ab);
+            let s = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < u8.length; i += chunk) {
+              s += String.fromCharCode(...u8.subarray(i, i + chunk));
+            }
+            return btoa(s);
+          };
+          const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+          uploadAttemptMeta.fileBase64Bytes = imgBlob?.size || null;
+          uploadAttemptMeta.fileBase64Chars = fileBase64.length;
+
+          uploadResult = await facebookFetchInTab(fbTabId, {
+            url: uploadTemplate.url,
+            method: 'POST',
+            headers: directUploadHeaders,
+            bodyType: 'formData',
+            formFields: uploadFormFields,
+            file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+          });
+        }
         let uploadTextRaw = uploadResult?.text || '';
         let uploadOk = !!uploadResult?.ok;
         let uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
@@ -3291,7 +3321,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               () => {}
             );
           } catch (_) {}
-          throw new Error(`Facebook upload failed in hidden upload frame${uploadErr ? `: ${uploadErr}` : ''}`);
+          throw new Error(`Facebook upload failed${uploadErr ? `: ${uploadErr}` : ''}`);
         }
 
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
@@ -3305,7 +3335,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           let desc = initialDesc;
 
           if (code === '1357004' && uploadAttemptMeta?.directFetch) {
-            // 1357004 is an expected "wrong execution context" signal; we auto-retry in a facebook.com tab.
+            if (facebookNoWindowMode) {
+              // In no-window mode we deliberately do NOT open any facebook.com context. Surface the block.
+              throw new Error(
+                `${summary} (code ${code})${desc ? `: ${desc}` : ''} (Blocked in no-window mode; set chrome.storage.local.facebookNoWindowMode=false to allow worker window.)`
+              );
+            }
+            // Otherwise, 1357004 means wrong context; auto-retry in a facebook.com tab/window.
             console.debug('🟨 [FACEBOOK] Detected 1357004 on upload. Retrying in FB tab…');
             const ensured = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
             const fbTabId = ensured?.tabId;
@@ -3620,22 +3656,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
         const gqlAttemptMeta = { directFetch: false, retry1357004: false, fbTabId: null };
-        const ensuredForGql = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
-        const fbTabIdForGql = ensuredForGql?.tabId;
-        rememberTempFbTab(fbTabIdForGql, ensuredForGql?.created, ensuredForGql?.windowId);
-        if (!fbTabIdForGql) {
-          throw new Error(
-            `Could not create a Facebook context for GraphQL. method=${ensuredForGql?.method || 'unknown'} error=${ensuredForGql?.error || 'unknown'}`
-          );
+        let gqlResult = null;
+        if (facebookNoWindowMode) {
+          const direct = await facebookFetchDirect(graphqlTemplate.url, {
+            method: 'POST',
+            headers: gqlHeaders,
+            body: encodeFormBody(form),
+          });
+          gqlAttemptMeta.directFetch = true;
+          gqlResult = { ...direct, error: null, href: null };
+        } else {
+          const ensuredForGql = await ensureFacebookTabId({ url: 'https://www.facebook.com/marketplace/' });
+          const fbTabIdForGql = ensuredForGql?.tabId;
+          rememberTempFbTab(fbTabIdForGql, ensuredForGql?.created, ensuredForGql?.windowId);
+          if (!fbTabIdForGql) {
+            throw new Error(
+              `Could not create a Facebook context for GraphQL. method=${ensuredForGql?.method || 'unknown'} error=${ensuredForGql?.error || 'unknown'}`
+            );
+          }
+          gqlAttemptMeta.fbTabId = fbTabIdForGql;
+          gqlResult = await facebookFetchInTab(fbTabIdForGql, {
+            url: graphqlTemplate.url,
+            method: 'POST',
+            headers: gqlHeaders,
+            bodyType: 'text',
+            bodyText: encodeFormBody(form),
+          });
         }
-        gqlAttemptMeta.fbTabId = fbTabIdForGql;
-        const gqlResult = await facebookFetchInTab(fbTabIdForGql, {
-          url: graphqlTemplate.url,
-          method: 'POST',
-          headers: gqlHeaders,
-          bodyType: 'text',
-          bodyText: encodeFormBody(form),
-        });
 
         const parseFacebookJson = (text) => {
           const t = String(text || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
@@ -3681,7 +3728,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
         let gqlJson = parseFacebookJson(gqlText);
 
-        // No 1357004 retry needed here because we always run GraphQL inside facebook.com context.
+        // In no-window mode, FB may return 1357004; surface it clearly so we can decide next steps.
 
         // If FB returned an error payload, surface it clearly (HTTP can still be 200).
         const gqlErrFinal = extractFbErrorInfo(gqlJson);
@@ -3689,7 +3736,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (gqlErrFinal?.code === '1357004') {
             throw new Error(
               `${gqlErrFinal.summary} (code ${gqlErrFinal.code})` +
-                `: Please refresh your Facebook tab and try again.`
+                (facebookNoWindowMode
+                  ? ` (Blocked in no-window mode; set chrome.storage.local.facebookNoWindowMode=false to allow worker window.)`
+                  : `: Please refresh your Facebook tab and try again.`)
             );
           }
           throw new Error(`${gqlErrFinal.summary}${gqlErrFinal.code ? ` (code ${gqlErrFinal.code})` : ''}${gqlErrFinal.desc ? `: ${gqlErrFinal.desc}` : ''}`);
