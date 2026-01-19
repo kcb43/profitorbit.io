@@ -14,8 +14,18 @@
  * - It does not bypass auth; it only helps us mirror the same request shapes in our extension.
  */
 
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
+import path from "node:path";
+
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  const flags = new Set(args.filter((a) => a.startsWith("--")));
+  const positional = args.filter((a) => !a.startsWith("--"));
+  return {
+    file: positional[0] || null,
+    debug: flags.has("--debug") || flags.has("--verbose"),
+  };
+}
 
 function safeDecode(s) {
   try {
@@ -119,16 +129,53 @@ function shortJson(obj, max = 900) {
   return s;
 }
 
+function tryGetHost(url) {
+  try {
+    return new URL(url).host || "";
+  } catch {
+    return "";
+  }
+}
+
+function printHarSummary(entries, { limitHosts = 25, limitFacebookUrls = 50 } = {}) {
+  const hostCounts = new Map();
+  const facebookish = [];
+
+  for (const e of entries) {
+    const url = String(e?.request?.url || "");
+    const host = tryGetHost(url);
+    if (host) hostCounts.set(host, (hostCounts.get(host) || 0) + 1);
+
+    const lower = url.toLowerCase();
+    if (lower.includes("facebook") || lower.includes("fbcdn") || lower.includes("instagram")) {
+      facebookish.push(url);
+    }
+  }
+
+  const topHosts = [...hostCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limitHosts);
+  console.log("\n=== HAR host summary (top) ===");
+  for (const [host, count] of topHosts) console.log(`- ${host}: ${count}`);
+
+  console.log(`\n=== URLs containing facebook/fbcdn/instagram (first ${limitFacebookUrls}) ===`);
+  if (facebookish.length === 0) {
+    console.log("(none)");
+  } else {
+    for (const u of facebookish.slice(0, limitFacebookUrls)) console.log(`- ${u}`);
+  }
+}
+
 function main() {
-  const file = process.argv[2];
+  const { file, debug } = parseArgs(process.argv);
   if (!file) {
-    console.error("Usage: node scripts/analyze-facebook-har.js path/to/export.har");
+    console.error("Usage: node scripts/analyze-facebook-har.js path/to/export.har [--debug]");
     process.exit(1);
   }
   const abs = path.resolve(process.cwd(), file);
   const text = fs.readFileSync(abs, "utf8");
   const har = JSON.parse(text);
   const entries = har?.log?.entries || [];
+
+  if (debug) printHarSummary(entries);
 
   const graphql = [];
   const uploads = [];
