@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-gql-1675012-fix-desc-html-1';
+const EXT_BUILD = '2026-01-19-facebook-gql-1675012-fix-photoid-type-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -4291,9 +4291,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
 
           // Populate photo_ids explicitly (this mutation uses input.data.common.photo_ids[])
-          const existingPhotoIds = getDeep(vars, ['input', 'data', 'common', 'photo_ids']);
-          const wantsNumber = Array.isArray(existingPhotoIds) && typeof existingPhotoIds?.[0] === 'number';
-          const coercedPhotoId = wantsNumber ? Number(photoId) : String(photoId);
+          // Photo IDs are numeric strings; FB tends to be happiest when we send them as numbers.
+          // GraphQL `ID` accepts integers, so this avoids string/noncoercible issues in some templates.
+          const photoIdNum = Number(photoId);
+          const coercedPhotoId = Number.isFinite(photoIdNum) ? photoIdNum : String(photoId);
           setDeep(vars, ['input', 'data', 'common', 'photo_ids'], [coercedPhotoId]);
           setDeepPreserveType(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller'], true);
         }
