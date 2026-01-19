@@ -39021,7 +39021,7 @@ export default function CrosslistComposer() {
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">Item ID:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{currentEditingItemId}</span>
+                  <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -42332,8 +42332,10 @@ export default function CrosslistComposer() {
                 {((facebookForm.category !== undefined ? facebookForm.category : generalForm.category) || generalCategoryPath.length > 0) && (
                   <div className="mb-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        Selected: {facebookForm.category !== undefined ? facebookForm.category : generalForm.category}
+                      <Badge variant="secondary" className="text-xs max-w-full whitespace-normal break-words min-w-0">
+                        <span className="break-words whitespace-normal">
+                          Selected: {facebookForm.category !== undefined ? facebookForm.category : generalForm.category}
+                        </span>
                       </Badge>
                       <Button
                         type="button"
@@ -42379,11 +42381,13 @@ export default function CrosslistComposer() {
                           variant="outline"
                           role="combobox"
                           aria-expanded={generalCategorySearchOpenMobile && activeForm === "facebook"}
-                          className="w-full justify-between"
+                          className="w-full justify-between min-w-0"
                         >
-                          {facebookForm.category || generalForm.category || generalCategoryPath.length > 0
-                            ? (facebookForm.category || generalForm.category || generalCategoryPath.map(c => c.categoryName).join(" > "))
-                            : (generalCategoryPath.length > 0 ? "Select subcategory" : "Search category...")}
+                          <span className="flex-1 text-left break-words whitespace-normal min-w-0">
+                            {facebookForm.category || generalForm.category || generalCategoryPath.length > 0
+                              ? (facebookForm.category || generalForm.category || generalCategoryPath.map(c => c.categoryName).join(" > "))
+                              : (generalCategoryPath.length > 0 ? "Select subcategory" : "Search category...")}
+                          </span>
                           <ArrowRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
