@@ -186,6 +186,16 @@ window.addEventListener("message", (event) => {
     poTrySendMessage({ type: "CLEAR_FACEBOOK_API_RECORDING" }, "PO_CLEAR_FACEBOOK_API_RECORDING_RESULT");
     return;
   }
+
+  if (msg.type === "PO_EXPORT_FACEBOOK_GOLDEN_TEMPLATES") {
+    poTrySendMessage({ type: "EXPORT_FACEBOOK_GOLDEN_TEMPLATES" }, "PO_EXPORT_FACEBOOK_GOLDEN_TEMPLATES_RESULT");
+    return;
+  }
+
+  if (msg.type === "PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES") {
+    poTrySendMessage({ type: "INSTALL_FACEBOOK_GOLDEN_TEMPLATES" }, "PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES_RESULT");
+    return;
+  }
 });
 
 // Helper: extract Supabase access token from localStorage

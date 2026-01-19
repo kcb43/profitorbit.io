@@ -362,6 +362,14 @@
     clearFacebookApiRecording() {
       return postAndWait('PO_CLEAR_FACEBOOK_API_RECORDING', 'PO_CLEAR_FACEBOOK_API_RECORDING_RESULT', null, 5000);
     },
+
+    // Golden templates (global fallback)
+    exportFacebookGoldenTemplates() {
+      return postAndWait('PO_EXPORT_FACEBOOK_GOLDEN_TEMPLATES', 'PO_EXPORT_FACEBOOK_GOLDEN_TEMPLATES_RESULT', null, 20000);
+    },
+    installFacebookGoldenTemplates() {
+      return postAndWait('PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES', 'PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES_RESULT', null, 20000);
+    },
   };
 
   // Convenience globals (so typing works in console)
@@ -415,6 +423,27 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     return { success: true, count: records.length, filename, records };
+  };
+
+  window.downloadFacebookGoldenTemplates = async () => {
+    const r = await window.ProfitOrbitExtension.exportFacebookGoldenTemplates();
+    if (!r?.success) {
+      console.error('🔴 [FACEBOOK] Golden template export failed:', r?.error || r);
+      return r;
+    }
+    const data = r?.data || r?.payload || r;
+    const filename = `facebook-golden-templates-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log('🟢 [FACEBOOK] Downloaded golden templates JSON:', filename);
+    return { success: true, filename, data };
   };
 
   // -----------------------------

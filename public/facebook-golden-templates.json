@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "generatedAt": null,
+  "notes": [
+    "This file is served at /facebook-golden-templates.json and used by the extension as a fallback when local recordings are missing.",
+    "Populate it by running ProfitOrbitExtension.downloadFacebookGoldenTemplates() in the profitorbit.io console (with the extension installed), then committing the downloaded JSON here.",
+    "Tokens (fb_dtsg/lsd/jazoest) and user IDs are refreshed at runtime; do not store cookies here."
+  ],
+  "createRecording": null,
+  "delistRecording": null
+}
+

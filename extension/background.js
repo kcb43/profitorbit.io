@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-recorder-buffer-fix-1';
+const EXT_BUILD = '2026-01-19-facebook-golden-templates-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -138,6 +138,124 @@ let __poFacebookWorkerTabId = null;
 // Facebook: protect against bursts (field_exception / transient failures) by limiting concurrency and rate.
 let __poFacebookCreateInFlight = false;
 const FB_CREATE_MIN_GAP_MS = 15_000; // 1 listing per 15s per Chrome profile (safe default)
+
+// -----------------------------
+// Facebook Golden Templates (global fallback)
+// -----------------------------
+// Served by the webapp at: /facebook-golden-templates.json
+// Goal: new users (or cleared storage) can still list/delist without manual recording.
+const FB_GOLDEN_TEMPLATES_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+async function getProfitOrbitBaseUrlForTemplates() {
+  // Prefer the currently open ProfitOrbit tab origin (supports localhost/vercel previews),
+  // otherwise fall back to production.
+  const candidates = await chrome.tabs.query({
+    url: [
+      'https://profitorbit.io/*',
+      'https://*.vercel.app/*',
+      'http://localhost:5173/*',
+      'http://localhost:5174/*',
+    ],
+  });
+
+  // Prefer localhost if present
+  for (const t of candidates) {
+    try {
+      const u = new URL(String(t?.url || ''));
+      if (u.hostname === 'localhost') return `${u.protocol}//${u.host}`;
+    } catch (_) {}
+  }
+  // Then prefer vercel preview
+  for (const t of candidates) {
+    try {
+      const u = new URL(String(t?.url || ''));
+      if (u.hostname.endsWith('.vercel.app')) return `${u.protocol}//${u.host}`;
+    } catch (_) {}
+  }
+  return 'https://profitorbit.io';
+}
+
+async function fetchFacebookGoldenTemplates() {
+  const base = await getProfitOrbitBaseUrlForTemplates();
+  const url = `${base}/facebook-golden-templates.json?ts=${Date.now()}`;
+  const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+  if (!resp.ok) throw new Error(`Failed to fetch golden templates: ${resp.status}`);
+  const json = await resp.json();
+  return { base, url, json };
+}
+
+async function getFacebookGoldenTemplatesCached() {
+  const cached = await new Promise((resolve) => {
+    try {
+      chrome.storage.local.get(['facebookGoldenTemplatesCache'], (r) => resolve(r?.facebookGoldenTemplatesCache || null));
+    } catch (_) {
+      resolve(null);
+    }
+  });
+  const now = Date.now();
+  if (cached?.t && now - cached.t < FB_GOLDEN_TEMPLATES_TTL_MS && cached?.json) return cached;
+
+  try {
+    const fetched = await fetchFacebookGoldenTemplates();
+    const pack = { t: now, base: fetched.base, url: fetched.url, json: fetched.json };
+    try { chrome.storage.local.set({ facebookGoldenTemplatesCache: pack }, () => {}); } catch (_) {}
+    return pack;
+  } catch (e) {
+    // If fetch fails, fall back to whatever we had (even stale) so we don't regress users.
+    if (cached?.json) return cached;
+    return null;
+  }
+}
+
+function recordingLooksLikeCreate(rec) {
+  try {
+    const meta = rec?.meta;
+    if (meta && meta.hasCreate) return true;
+    const records = Array.isArray(rec?.records) ? rec.records : Array.isArray(rec) ? rec : [];
+    return records.some((r) => {
+      const rb = r?.requestBody;
+      let body = '';
+      if (rb?.kind === 'rawText') body = String(rb.value || '');
+      else if (rb?.kind === 'formData' && rb.value) body = JSON.stringify(rb.value);
+      else body = '';
+      return body.includes('useCometMarketplaceListingCreateMutation');
+    });
+  } catch (_) {
+    return false;
+  }
+}
+
+function recordingLooksLikeDelist(rec) {
+  try {
+    const meta = rec?.meta;
+    if (meta && meta.hasDelist) return true;
+    const records = Array.isArray(rec?.records) ? rec.records : Array.isArray(rec) ? rec : [];
+    return records.some((r) => {
+      const rb = r?.requestBody;
+      let body = '';
+      if (rb?.kind === 'rawText') body = String(rb.value || '');
+      else if (rb?.kind === 'formData' && rb.value) body = JSON.stringify(rb.value);
+      else body = '';
+      return body.includes('ForSaleItemDelete') || body.toLowerCase().includes('commerce_for_sale_item_delete');
+    });
+  } catch (_) {
+    return false;
+  }
+}
+
+async function maybeFallbackToGoldenRecording(kind, currentRecordingOrRecords) {
+  const looksOk = kind === 'create' ? recordingLooksLikeCreate(currentRecordingOrRecords) : recordingLooksLikeDelist(currentRecordingOrRecords);
+  if (looksOk) return currentRecordingOrRecords;
+
+  const cache = await getFacebookGoldenTemplatesCached();
+  const json = cache?.json || null;
+  const candidate = kind === 'create' ? json?.createRecording : json?.delistRecording;
+  if (!candidate) return currentRecordingOrRecords;
+
+  const ok = kind === 'create' ? recordingLooksLikeCreate(candidate) : recordingLooksLikeDelist(candidate);
+  if (!ok) return currentRecordingOrRecords;
+  return candidate;
+}
 
 async function pickFacebookTabId() {
   try {
@@ -2369,6 +2487,119 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (type === 'EXPORT_FACEBOOK_GOLDEN_TEMPLATES') {
+    (async () => {
+      try {
+        const storage = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['facebookApiLastCreateRecording', 'facebookApiLastDelistRecording'], (r) => resolve(r || {}));
+          } catch (_) {
+            resolve({});
+          }
+        });
+
+        const create = storage?.facebookApiLastCreateRecording || null;
+        const delist = storage?.facebookApiLastDelistRecording || null;
+
+        const redactHeaders = (hdrs) => {
+          const out = { ...(hdrs || {}) };
+          // never ship cookies or auth
+          delete out.cookie;
+          delete out.Cookie;
+          delete out.authorization;
+          delete out.Authorization;
+          delete out['x-fb-friendly-name']; // sometimes huge
+          return out;
+        };
+
+        const replaceTokenParams = (s) => {
+          let t = String(s || '');
+          // Replace common token fields in urlencoded bodies
+          t = t.replace(/fb_dtsg=[^&]+/g, 'fb_dtsg=__PO_FB_DTSG__');
+          t = t.replace(/lsd=[^&]+/g, 'lsd=__PO_FB_LSD__');
+          t = t.replace(/jazoest=[^&]+/g, 'jazoest=__PO_FB_JAZOEST__');
+          t = t.replace(/__user=[^&]+/g, '__user=__PO_FB_USER__');
+          t = t.replace(/av=[^&]+/g, 'av=__PO_FB_USER__');
+          return t;
+        };
+
+        const sanitizeRecord = (r) => {
+          const rec = { ...r };
+          rec.requestHeaders = redactHeaders(rec.requestHeaders);
+          // Never ship response bodies
+          delete rec.responseBody;
+          delete rec.responseHeaders;
+          delete rec.statusCode;
+
+          const rb = rec.requestBody;
+          if (rb?.kind === 'rawText' && typeof rb.value === 'string') {
+            rec.requestBody = { kind: 'rawText', value: replaceTokenParams(rb.value) };
+          } else if (rb?.kind === 'formData' && rb.value && typeof rb.value === 'object') {
+            const fd = {};
+            for (const [k, v] of Object.entries(rb.value)) {
+              const key = String(k);
+              const arr = Array.isArray(v) ? v : [String(v)];
+              fd[key] = arr.map((item) => replaceTokenParams(String(item)));
+            }
+            rec.requestBody = { kind: 'formData', value: fd };
+          } else {
+            // keep as-is (or null)
+            rec.requestBody = rb || null;
+          }
+          return rec;
+        };
+
+        const sanitizeRecording = (rec) => {
+          if (!rec) return null;
+          const records = Array.isArray(rec?.records) ? rec.records : Array.isArray(rec) ? rec : [];
+          return {
+            t: typeof rec?.t === 'number' ? rec.t : Date.now(),
+            count: records.length,
+            meta: rec?.meta || null,
+            records: records.map(sanitizeRecord),
+          };
+        };
+
+        const out = {
+          version: 1,
+          generatedAt: new Date().toISOString(),
+          notes: [
+            'Generated by Profit Orbit extension. Contains sanitized request templates (no cookies).',
+            'fb_dtsg/lsd/jazoest/__user placeholders are replaced at runtime with fresh values.',
+          ],
+          createRecording: sanitizeRecording(create),
+          delistRecording: sanitizeRecording(delist),
+        };
+
+        sendResponse({ success: true, data: out });
+      } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (type === 'INSTALL_FACEBOOK_GOLDEN_TEMPLATES') {
+    (async () => {
+      try {
+        const cache = await getFacebookGoldenTemplatesCached();
+        const json = cache?.json || null;
+        if (!json) throw new Error('No golden templates available (fetch failed).');
+        const writes = {};
+        if (json?.createRecording) writes.facebookApiLastCreateRecording = json.createRecording;
+        if (json?.delistRecording) writes.facebookApiLastDelistRecording = json.delistRecording;
+        if (!Object.keys(writes).length) throw new Error('Golden templates JSON is missing createRecording/delistRecording.');
+        await new Promise((resolve) => {
+          try { chrome.storage.local.set(writes, () => resolve(true)); } catch (_) { resolve(false); }
+        });
+        sendResponse({ success: true, installed: Object.keys(writes), source: cache?.url || null });
+      } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   // (removed duplicate Facebook recorder message handler block)
 
   if (type === 'CREATE_MERCARI_LISTING') {
@@ -2849,6 +3080,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           throw new Error(
             'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while deleting/delisting a Marketplace listing.'
           );
+        }
+
+        // Golden fallback: if we don't have a usable local delist recording, try the golden template.
+        if (!recordingLooksLikeDelist({ records })) {
+          const maybeGolden = await maybeFallbackToGoldenRecording('delist', { records });
+          const gRecords = Array.isArray(maybeGolden?.records) ? maybeGolden.records : Array.isArray(maybeGolden) ? maybeGolden : [];
+          if (gRecords.length && recordingLooksLikeDelist({ records: gRecords })) {
+            records = gRecords;
+          }
         }
 
         const getRecordedBodyText = (rec) => {
@@ -3370,6 +3610,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             throw new Error(
               'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while creating a Marketplace item (upload at least 1 photo).'
             );
+          }
+        }
+
+        // Golden fallback: if we don't have a usable local create recording, try the golden template.
+        if (!recordingLooksLikeCreate({ records })) {
+          const maybeGolden = await maybeFallbackToGoldenRecording('create', { records });
+          const gRecords = Array.isArray(maybeGolden?.records) ? maybeGolden.records : Array.isArray(maybeGolden) ? maybeGolden : [];
+          if (gRecords.length && recordingLooksLikeCreate({ records: gRecords })) {
+            records = gRecords;
           }
         }
 
