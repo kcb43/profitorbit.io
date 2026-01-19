@@ -3,7 +3,7 @@
  * Shows detailed insights for a specific marketplace
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,8 @@ const MARKETPLACE_INFO = {
   },
 };
 
+const TABS = ['trending', 'items', 'tips', 'community'];
+
 export default function MarketIntelligenceDetail() {
   const { marketplaceId } = useParams();
   const navigate = useNavigate();
@@ -60,6 +62,65 @@ export default function MarketIntelligenceDetail() {
 
   // Mock data - will be replaced with real API calls
   const [activeTab, setActiveTab] = useState('trending');
+
+  // Swipe navigation for tabs
+  const swipeRef = useRef({
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    moved: false,
+  });
+
+  const handleSwipeStart = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    swipeRef.current = {
+      active: true,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
+  };
+
+  const handleSwipeMove = (e) => {
+    const st = swipeRef.current;
+    if (!st?.active || st.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+
+    const ACTIVATION_PX = 10;
+    if (!st.moved && Math.abs(dx) > ACTIVATION_PX && Math.abs(dx) > Math.abs(dy)) {
+      st.moved = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+  };
+
+  const handleSwipeEnd = (e) => {
+    const st = swipeRef.current;
+    if (!st?.active || st.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - st.startX;
+    const SWIPE_THRESHOLD = 50;
+
+    if (st.moved && Math.abs(dx) > SWIPE_THRESHOLD) {
+      const currentIndex = TABS.indexOf(activeTab);
+      if (dx > 0 && currentIndex > 0) {
+        // Swipe right - previous tab
+        setActiveTab(TABS[currentIndex - 1]);
+      } else if (dx < 0 && currentIndex < TABS.length - 1) {
+        // Swipe left - next tab
+        setActiveTab(TABS[currentIndex + 1]);
+      }
+    }
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    swipeRef.current = { active: false, pointerId: null, startX: 0, startY: 0, moved: false };
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full">
@@ -124,18 +185,27 @@ export default function MarketIntelligenceDetail() {
             </TabsList>
           </div>
 
+          {/* Swipeable content area */}
+          <div
+            onPointerDown={handleSwipeStart}
+            onPointerMove={handleSwipeMove}
+            onPointerUp={handleSwipeEnd}
+            onPointerCancel={handleSwipeEnd}
+            className="touch-none sm:touch-auto"
+          >
+
           {/* Trending Tab */}
-          <TabsContent value="trending" className="space-y-4 sm:space-y-6 mt-0">
+          <TabsContent value="trending" className="space-y-4 sm:space-y-6 mt-0 w-full max-w-full overflow-x-hidden">
             {/* Top Categories */}
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+            <Card className="w-full max-w-full overflow-hidden">
+              <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
                   <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 flex-shrink-0" />
                   <span className="break-words">Top Categories Selling Now</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full">
+              <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full max-w-full">
                   {[
                     { name: 'Electronics', items: '1,234', avgPrice: '$89', change: '+23%' },
                     { name: 'Clothing & Accessories', items: '987', avgPrice: '$45', change: '+18%' },
@@ -162,25 +232,25 @@ export default function MarketIntelligenceDetail() {
             </Card>
 
             {/* Trending Items */}
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+            <Card className="w-full max-w-full overflow-hidden">
+              <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
                   <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />
                   <span className="break-words">Trending Items This Week</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="space-y-2 sm:space-y-3 w-full">
+              <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
+                <div className="space-y-2 sm:space-y-3 w-full max-w-full">
                   {[
                     { name: 'Vintage Electronics', platform: marketplace.name, avgPrice: '$89', sales: '234', change: '+23%' },
                     { name: 'Designer Handbags', platform: marketplace.name, avgPrice: '$145', sales: '189', change: '+18%' },
                     { name: 'Home Fitness Equipment', platform: marketplace.name, avgPrice: '$67', sales: '156', change: '+15%' },
                     { name: 'Smart Home Devices', platform: marketplace.name, avgPrice: '$112', sales: '143', change: '+12%' },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full overflow-hidden gap-2">
-                      <div className="flex-1 min-w-0">
+                    <div key={idx} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden gap-2">
+                      <div className="flex-1 min-w-0 max-w-full">
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base break-words">{item.name}</h4>
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">
                           <span>Avg: {item.avgPrice}</span>
                           <span>•</span>
                           <span>{item.sales} sales</span>
@@ -195,19 +265,19 @@ export default function MarketIntelligenceDetail() {
           </TabsContent>
 
           {/* Items Tab */}
-          <TabsContent value="items" className="space-y-4 sm:space-y-6 mt-0">
+          <TabsContent value="items" className="space-y-4 sm:space-y-6 mt-0 w-full max-w-full overflow-x-hidden">
             {marketplaceId === 'facebook' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full">
-                <Button variant="outline" className="h-auto p-3 sm:p-4 flex items-center gap-2 sm:gap-3 w-full overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full">
+                <Button variant="outline" className="h-auto p-3 sm:p-4 flex items-center gap-2 sm:gap-3 w-full max-w-full overflow-hidden">
                   <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-                  <div className="text-left flex-1 min-w-0">
+                  <div className="text-left flex-1 min-w-0 max-w-full">
                     <div className="font-semibold text-sm sm:text-base break-words">Local Items</div>
                     <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Items near you</div>
                   </div>
                 </Button>
-                <Button variant="outline" className="h-auto p-3 sm:p-4 flex items-center gap-2 sm:gap-3 w-full overflow-hidden">
+                <Button variant="outline" className="h-auto p-3 sm:p-4 flex items-center gap-2 sm:gap-3 w-full max-w-full overflow-hidden">
                   <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-                  <div className="text-left flex-1 min-w-0">
+                  <div className="text-left flex-1 min-w-0 max-w-full">
                     <div className="font-semibold text-sm sm:text-base break-words">Online Items</div>
                     <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Nationwide listings</div>
                   </div>
@@ -216,25 +286,25 @@ export default function MarketIntelligenceDetail() {
             )}
 
             {marketplaceId === 'market-deals' && (
-              <Card className="mb-4 sm:mb-6 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20 border-emerald-200 dark:border-emerald-800 w-full overflow-hidden">
-                <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+              <Card className="mb-4 sm:mb-6 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20 border-emerald-200 dark:border-emerald-800 w-full max-w-full overflow-hidden">
+                <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
                     <Tag className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 flex-shrink-0" />
                     <span className="break-words">Discounted Items Alert</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="space-y-2 sm:space-y-3 w-full">
+                <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
+                  <div className="space-y-2 sm:space-y-3 w-full max-w-full">
                     {[
                       { title: 'Nike Air Max 90 - 40% Off', price: '$59.99', originalPrice: '$99.99', source: 'Nike Outlet', timeAgo: '2 hours ago' },
                       { title: 'Apple AirPods Pro - $50 Off', price: '$199.99', originalPrice: '$249.99', source: 'Best Buy', timeAgo: '5 hours ago' },
                       { title: 'Levi\'s 501 Jeans - Buy 1 Get 1', price: '$39.99', originalPrice: '$79.98', source: 'Levi\'s Store', timeAgo: '1 day ago' },
                     ].map((deal, idx) => (
-                      <div key={idx} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-emerald-200 dark:border-emerald-800 w-full overflow-hidden">
+                      <div key={idx} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-emerald-200 dark:border-emerald-800 w-full max-w-full overflow-hidden">
                         <div className="flex items-start justify-between mb-2 gap-2">
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 max-w-full">
                             <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base break-words">{deal.title}</h4>
-                            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">
                               <span className="font-medium text-emerald-600">{deal.price}</span>
                               <span className="line-through">{deal.originalPrice}</span>
                               <span>•</span>
@@ -254,24 +324,24 @@ export default function MarketIntelligenceDetail() {
               </Card>
             )}
 
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg break-words">Items Selling Well</CardTitle>
+            <Card className="w-full max-w-full overflow-hidden">
+              <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                <CardTitle className="text-sm sm:text-base md:text-lg break-words">Items Selling Well</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="space-y-2 sm:space-y-3 w-full">
+              <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
+                <div className="space-y-2 sm:space-y-3 w-full max-w-full">
                   {[
                     { name: 'iPhone 13 Pro Max', price: '$699', sales: '45', avgDays: '3', image: null },
                     { name: 'Nike Dunk Low', price: '$120', sales: '38', avgDays: '2', image: null },
                     { name: 'Dyson V15 Vacuum', price: '$549', sales: '32', avgDays: '4', image: null },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+                    <div key={idx} className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
                         <ShoppingBag className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 max-w-full">
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base break-words">{item.name}</h4>
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">
                           <span>{item.price}</span>
                           <span>•</span>
                           <span>{item.sales} sales</span>
@@ -288,16 +358,16 @@ export default function MarketIntelligenceDetail() {
           </TabsContent>
 
           {/* Tips Tab */}
-          <TabsContent value="tips" className="space-y-4 sm:space-y-6 mt-0">
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+          <TabsContent value="tips" className="space-y-4 sm:space-y-6 mt-0 w-full max-w-full overflow-x-hidden">
+            <Card className="w-full max-w-full overflow-hidden">
+              <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
                   <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />
                   <span className="break-words">Tips & Tricks for {marketplace.name}</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="space-y-3 sm:space-y-4 w-full">
+              <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
+                <div className="space-y-3 sm:space-y-4 w-full max-w-full">
                   {[
                     {
                       title: 'Best Time to List',
@@ -335,9 +405,9 @@ export default function MarketIntelligenceDetail() {
                       category: 'Shipping',
                     },
                   ].map((tip, idx) => (
-                    <div key={idx} className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+                    <div key={idx} className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden">
                       <div className="flex items-start justify-between mb-2 gap-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base break-words flex-1 min-w-0">{tip.title}</h4>
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base break-words flex-1 min-w-0 max-w-full">{tip.title}</h4>
                         <Badge variant="outline" className="text-xs flex-shrink-0">{tip.category}</Badge>
                       </div>
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">{tip.description}</p>
@@ -349,16 +419,16 @@ export default function MarketIntelligenceDetail() {
           </TabsContent>
 
           {/* Community Tab */}
-          <TabsContent value="community" className="space-y-4 sm:space-y-6 mt-0">
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+          <TabsContent value="community" className="space-y-4 sm:space-y-6 mt-0 w-full max-w-full overflow-x-hidden">
+            <Card className="w-full max-w-full overflow-hidden">
+              <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
                   <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
                   <span className="break-words">Community Chat & Discussions</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <div className="space-y-3 sm:space-y-4 w-full">
+              <CardContent className="p-4 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
+                <div className="space-y-3 sm:space-y-4 w-full max-w-full">
                   {[
                     {
                       author: 'Sarah M.',
@@ -382,12 +452,12 @@ export default function MarketIntelligenceDetail() {
                       timeAgo: '1 day ago',
                     },
                   ].map((post, idx) => (
-                    <div key={idx} className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+                    <div key={idx} className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden">
                       <div className="flex items-start gap-2 sm:gap-3 mb-2">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-white font-semibold text-xs sm:text-sm">{post.author[0]}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 max-w-full">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
                             <span className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm break-words">{post.author}</span>
                             <Badge variant="outline" className="text-xs flex-shrink-0">{post.platform}</Badge>
@@ -407,10 +477,10 @@ export default function MarketIntelligenceDetail() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden">
                   <textarea
                     placeholder="Share your tips or ask a question..."
-                    className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs sm:text-sm resize-none"
+                    className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs sm:text-sm resize-none max-w-full"
                     rows={3}
                   />
                   <Button className="mt-3 w-full sm:w-auto text-xs sm:text-sm">Post</Button>
@@ -418,6 +488,7 @@ export default function MarketIntelligenceDetail() {
               </CardContent>
             </Card>
           </TabsContent>
+          </div>
         </Tabs>
       </div>
     </div>
