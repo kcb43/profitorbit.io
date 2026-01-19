@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-delist-hardening-1';
+const EXT_BUILD = '2026-01-19-facebook-rate-limit-create-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -134,6 +134,10 @@ async function notifyProfitOrbit(message) {
 // avoids repeatedly "opening a new tab/window" during listing.
 let __poFacebookWorkerWindowId = null;
 let __poFacebookWorkerTabId = null;
+
+// Facebook: protect against bursts (field_exception / transient failures) by limiting concurrency and rate.
+let __poFacebookCreateInFlight = false;
+const FB_CREATE_MIN_GAP_MS = 15_000; // 1 listing per 15s per Chrome profile (safe default)
 
 async function pickFacebookTabId() {
   try {
@@ -3182,6 +3186,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (type === 'CREATE_FACEBOOK_LISTING') {
     (async () => {
       try {
+        if (__poFacebookCreateInFlight) {
+          throw new Error('Facebook listing is already in progress. Please wait a moment and try again.');
+        }
+        __poFacebookCreateInFlight = true;
+
+        // Rate limit: reduce FB "field_exception"/transient failures caused by bursts.
+        const lastCreateAt = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['facebookLastCreateAt'], (r) => resolve(typeof r?.facebookLastCreateAt === 'number' ? r.facebookLastCreateAt : 0));
+          } catch (_) {
+            resolve(0);
+          }
+        });
+        const now = Date.now();
+        const waitMs = Math.max(0, FB_CREATE_MIN_GAP_MS - (now - lastCreateAt));
+        if (waitMs > 0) {
+          throw new Error(`Facebook rate limit: please wait ${Math.ceil(waitMs / 1000)}s before creating another listing.`);
+        }
+        try { chrome.storage.local.set({ facebookLastCreateAt: now }, () => {}); } catch (_) {}
+
         console.log('🟣 [FACEBOOK] CREATE_FACEBOOK_LISTING received', {
           fromTabId: sender?.tab?.id ?? null,
           hasListingData: !!message?.listingData,
@@ -4773,6 +4797,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Do not auto-close the FB worker window/tab; leaving it minimized avoids future UI popups.
         } catch (_) {}
         sendResponse({ success: false, error: e?.message || String(e) });
+      } finally {
+        __poFacebookCreateInFlight = false;
       }
     })();
     return true;
