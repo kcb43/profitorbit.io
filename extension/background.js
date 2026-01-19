@@ -393,7 +393,16 @@ async function facebookFetchInTab(tabId, args, frameId = null) {
 async function facebookFetchDirect(url, init) {
   // Tabless path: uses extension fetch (host_permissions allow cross-origin).
   // This does NOT require any facebook.com tab to be open.
-  const resp = await fetch(String(url || ''), { ...(init || {}), credentials: 'include' });
+  // Try to look as close as possible to a real FB-initiated request without needing a tab/window.
+  // We cannot set forbidden headers like Origin/Referer directly, but we can set fetch referrer options.
+  const resp = await fetch(String(url || ''), {
+    mode: 'cors',
+    redirect: 'follow',
+    referrer: 'https://www.facebook.com/marketplace/',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    ...(init || {}),
+    credentials: 'include',
+  });
   const text = await resp.text().catch(() => '');
   const headers = {};
   try {
@@ -2642,6 +2651,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         delete gqlHeaders['content-length'];
         delete gqlHeaders['host'];
         delete gqlHeaders['cookie'];
+        // These are fetch-forbidden headers; use fetch options instead (referrer/referrerPolicy).
+        delete gqlHeaders['origin'];
+        delete gqlHeaders['Origin'];
+        delete gqlHeaders['referer'];
+        delete gqlHeaders['Referer'];
         if (!gqlHeaders['content-type']) gqlHeaders['content-type'] = 'application/x-www-form-urlencoded';
 
         let gqlResult = null;
@@ -3228,6 +3242,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const directUploadHeaders = {};
         try {
           if (uploadHeaders?.accept) directUploadHeaders.accept = uploadHeaders.accept;
+          // These are custom headers (allowed) and often present in real FB traffic.
+          if (uploadHeaders?.['x-fb-lsd']) directUploadHeaders['x-fb-lsd'] = uploadHeaders['x-fb-lsd'];
+          if (uploadHeaders?.['x-asbd-id']) directUploadHeaders['x-asbd-id'] = uploadHeaders['x-asbd-id'];
+          if (uploadHeaders?.['x-fb-photo-content-type']) directUploadHeaders['x-fb-photo-content-type'] = uploadHeaders['x-fb-photo-content-type'];
         } catch (_) {}
 
         let uploadResult = null;
