@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-gql-stop-mixing-docid-1';
+const EXT_BUILD = '2026-01-19-facebook-pick-correct-create-mutation-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -3258,12 +3258,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const pickGraphqlTemplate = (recs) => {
           // Heuristic: find a Marketplace create/publish mutation call
           const graphql = recs.filter((r) => typeof r?.url === 'string' && r.url.includes('/api/graphql') && String(r.method || '').toUpperCase() === 'POST');
+
+          // Absolute preference: the actual Marketplace create mutation.
+          for (const r of graphql) {
+            const body = getRecordedBodyText(r);
+            const friendlyEnc = /fb_api_req_friendly_name=([^&]+)/.exec(body)?.[1] || '';
+            let friendly = '';
+            try { friendly = decodeURIComponent(friendlyEnc || ''); } catch (_) { friendly = String(friendlyEnc || ''); }
+            if (friendly === 'useCometMarketplaceListingCreateMutation' && /doc_id=\d+/.test(body)) return r;
+          }
+
           const scored = graphql
             .map((r) => {
               const body = getRecordedBodyText(r);
               const friendlyEnc = /fb_api_req_friendly_name=([^&]+)/.exec(body)?.[1] || '';
               let friendly = '';
               try { friendly = decodeURIComponent(friendlyEnc || ''); } catch (_) { friendly = String(friendlyEnc || ''); }
+              const lowerFriendly = friendly.toLowerCase();
+              const lowerBody = body.toLowerCase();
               const hasMarketplace = body.includes('Marketplace') || friendly.includes('Marketplace');
               const hasCreate = body.toLowerCase().includes('create') || friendly.toLowerCase().includes('create');
               const hasDoc = /doc_id=\d+/.test(body);
@@ -3272,6 +3284,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const hasVars = body.includes('variables=');
               // Hard-prefer the actual publish/create mutation if we recorded it.
               const isKnownCreateMutation = friendly === 'useCometMarketplaceListingCreateMutation';
+
+              // Strongly exclude non-create mutations (delete/delist/archive/mark-as-sold).
+              const looksDeleteish =
+                lowerFriendly.includes('delete') ||
+                lowerFriendly.includes('delist') ||
+                lowerFriendly.includes('remove') ||
+                lowerFriendly.includes('archive') ||
+                lowerFriendly.includes('deactivate') ||
+                lowerFriendly.includes('mark') && lowerFriendly.includes('sold') ||
+                lowerBody.includes('delete') ||
+                lowerBody.includes('delist') ||
+                lowerBody.includes('archive');
+
               // Strongly prefer mutations (publish/create) over composer "Query" templates.
               const score =
                 (hasMarketplace ? 10 : 0) +
@@ -3280,7 +3305,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 (hasVars ? 3 : 0) +
                 (isMutation ? 25 : 0) -
                 (isQuery ? 20 : 0) +
-                (isKnownCreateMutation ? 100 : 0);
+                (isKnownCreateMutation ? 100 : 0) -
+                (looksDeleteish ? 200 : 0);
               return { r, score };
             })
             .sort((a, b) => b.score - a.score);
