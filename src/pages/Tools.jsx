@@ -33,9 +33,6 @@ export default function Tools() {
               Tools
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 text-sm text-muted-foreground">
-            Quick access to your most-used workflows.
-          </CardContent>
         </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -66,20 +63,6 @@ export default function Tools() {
             to={createPageUrl("MarketIntelligence")}
             icon={TrendingUp}
             gradient="from-indigo-500 to-violet-600"
-          />
-          <HubCard
-            title="Sales History"
-            description="View and manage all sales"
-            to={createPageUrl("SalesHistory")}
-            icon={History}
-            gradient="from-blue-500 to-indigo-600"
-          />
-          <HubCard
-            title="Settings"
-            description="Connections and preferences"
-            to={createPageUrl("Settings")}
-            icon={Settings}
-            gradient="from-gray-600 to-gray-800"
           />
         </div>
       </div>

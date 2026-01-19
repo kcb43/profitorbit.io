@@ -31,6 +31,7 @@ const ProTools = React.lazy(() => import("./ProTools"));
 const ProToolsSendOffers = React.lazy(() => import("./ProToolsSendOffers"));
 const ProToolsAutoOffers = React.lazy(() => import("./ProToolsAutoOffers"));
 const ProToolsMarketplaceSharing = React.lazy(() => import("./ProToolsMarketplaceSharing"));
+const Rewards = React.lazy(() => import("./Rewards"));
 const PrivacyPolicy = React.lazy(() => import("./PrivacyPolicy"));
 const FAQ = React.lazy(() => import("./FAQ"));
 const MigrateData = React.lazy(() => import("./MigrateData"));
@@ -398,6 +399,18 @@ function PagesContent() {
               <Route path="/oauth/ebay" element={withSuspense(<EbayOauthLanding />)} />
               <Route path="/PrivacyPolicy" element={withSuspense(<PrivacyPolicy />)} />
               <Route path="/FAQ" element={withSuspense(<FAQ />)} />
+              <Route
+                path="/Rewards"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Rewards">
+                        {withSuspense(<Rewards />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
             </Routes>
         </>
     );

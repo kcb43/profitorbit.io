@@ -1,8 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { BarChart3, CalendarDays, GalleryHorizontal, FileText } from "lucide-react";
+import { BarChart3, CalendarDays, GalleryHorizontal, FileText, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 function HubCard({ title, description, to, icon: Icon, gradient }) {
   return (
@@ -28,14 +29,18 @@ export default function Analytics() {
       <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-4">
         <Card className="border border-border/60 shadow-sm bg-card/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Analytics
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Analytics
+              </CardTitle>
+              <Link to={createPageUrl("Settings")} className="lg:hidden inline-flex">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
-          <CardContent className="pt-0 text-sm text-muted-foreground">
-            Reports and insights across your reselling business.
-          </CardContent>
         </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

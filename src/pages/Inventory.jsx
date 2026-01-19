@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -1262,9 +1262,16 @@ export default function InventoryPage() {
       <div className="p-4 md:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 min-w-0">
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Inventory</h1>
-              <p className="text-sm text-muted-foreground mt-1">Track items you have for sale.</p>
+            <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Inventory</h1>
+                <p className="hidden lg:block text-sm text-muted-foreground mt-1">Track items you have for sale.</p>
+              </div>
+              <Link to={createPageUrl("Settings")} className="lg:hidden inline-flex ml-4">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </Link>
             </div>
             <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0">
               <Button

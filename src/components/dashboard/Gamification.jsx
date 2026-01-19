@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal } from "lucide-react";
+import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal, Gift } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import narutoIcon from "@/assets/naruto-icon.svg?url";
 import sakuraIcon from "@/assets/sakura-icon.svg?url";
 import kakashiIcon from "@/assets/kakashi-icon.svg?url";
@@ -198,14 +206,30 @@ export default function Gamification({ sales, stats, variant }) {
           )}
 
           <div>
-            <div className="text-sm font-medium text-muted-foreground mb-2">Achievements</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-muted-foreground">Achievements</div>
+              <Link to={createPageUrl("Rewards")} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+                <Gift className="w-3 h-3" />
+                View Rewards
+              </Link>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {achievements.length > 0 ? achievements.map((ach) => (
-                <Badge key={ach.name} variant="secondary" className="px-3 py-1.5">
-                  <ach.icon className={`w-4 h-4 mr-2 ${ach.color}`} />
-                  <span className="font-semibold">{ach.name}</span>
-                </Badge>
-              )) : (
+              {achievements.length > 0 ? (
+                <TooltipProvider>
+                  {achievements.map((ach) => (
+                    <Tooltip key={ach.name}>
+                      <TooltipTrigger asChild>
+                        <button className="p-2 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                          <ach.icon className={`w-5 h-5 ${ach.color}`} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-semibold">{ach.name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </TooltipProvider>
+              ) : (
                 <div className="text-xs text-muted-foreground">Your first achievement is just around the corner!</div>
               )}
             </div>
@@ -293,14 +317,30 @@ export default function Gamification({ sales, stats, variant }) {
         </div>
         
         <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Achievements</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Achievements</p>
+            <Link to={createPageUrl("Rewards")} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+              <Gift className="w-3 h-3" />
+              View Rewards
+            </Link>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {achievements.length > 0 ? achievements.map(ach => (
-              <Badge key={ach.name} variant="secondary" className="px-3 py-1.5 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <ach.icon className={`w-4 h-4 mr-2 ${ach.color}`} />
-                <span className="font-semibold text-gray-700 dark:text-gray-300">{ach.name}</span>
-              </Badge>
-            )) : (
+            {achievements.length > 0 ? (
+              <TooltipProvider>
+                {achievements.map(ach => (
+                  <Tooltip key={ach.name}>
+                    <TooltipTrigger asChild>
+                      <button className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <ach.icon className={`w-5 h-5 ${ach.color}`} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="font-semibold">{ach.name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </TooltipProvider>
+            ) : (
               <p className="text-xs text-gray-500">Your first achievement is just around the corner!</p>
             )}
           </div>

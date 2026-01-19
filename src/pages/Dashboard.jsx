@@ -18,7 +18,7 @@ import {
   subYears,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock, Lightbulb, Timer, Star, Box, Bell, ChevronDown } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock, Lightbulb, Timer, Star, Box, Bell, ChevronDown, Settings } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,6 +31,7 @@ import RecentSales from "../components/dashboard/RecentSales";
 import Gamification from "../components/dashboard/Gamification";
 import TipOfTheDay from "../components/dashboard/TipOfTheDay";
 import QuickActions from "../components/dashboard/QuickActions";
+import LiveChat from "../components/dashboard/LiveChat";
 import KpiSparkCard from "../components/dashboard/mosaic/KpiSparkCard";
 import ProfitTrendCard from "../components/dashboard/mosaic/ProfitTrendCard";
 import PlatformRevenueTableCard from "../components/dashboard/mosaic/PlatformRevenueTableCard";
@@ -400,9 +401,16 @@ export default function Dashboard() {
         )}
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 lg:mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track your business performance</p>
+          <div className="flex items-center justify-between w-full lg:w-auto">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+              <p className="hidden lg:block text-sm text-gray-500 dark:text-gray-400 mt-1">Track your business performance</p>
+            </div>
+            <Link to={createPageUrl("Settings")} className="lg:hidden inline-flex">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Settings className="w-5 h-5" />
+              </Button>
+            </Link>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Tip banner (Desktop only: next to Add Sale) */}
@@ -590,13 +598,16 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Your progress + quick actions */}
-          <div className="col-span-12">
+          {/* Your progress + live chat + quick actions */}
+          <div className="col-span-12 lg:col-span-8">
             <Gamification
               sales={sales}
               stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
               variant="mosaic"
             />
+          </div>
+          <div className="col-span-12 lg:col-span-4">
+            <LiveChat variant="compact" />
           </div>
           <div className="col-span-12">
             <QuickActions />

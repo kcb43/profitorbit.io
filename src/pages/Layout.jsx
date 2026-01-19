@@ -39,7 +39,6 @@ const navigationCategories = [
     items: [
       { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
       { title: "Inventory", url: createPageUrl("Inventory"), icon: Package },
-      { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
     ]
   },
   {
@@ -56,6 +55,7 @@ const navigationCategories = [
     title: "Analytics",
     icon: BarChart3,
     items: [
+      { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
       { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
       { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal },
       { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
@@ -303,9 +303,16 @@ export default function Layout({ children }) {
 
         <main className="flex-1 flex flex-col">
           <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 md:hidden">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors duration-200" />
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Orben</h1>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors duration-200" />
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Orben</h1>
+              </div>
+              <Link to={createPageUrl("Settings")} className="inline-flex">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </Link>
             </div>
           </header>
 
