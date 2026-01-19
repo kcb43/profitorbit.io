@@ -33190,7 +33190,9 @@ export default function CrosslistComposer() {
 
   const listingStatusLabel = (status) => {
     const s = String(status || '').toLowerCase();
-    if (s === 'active') return 'Listed';
+    // Normalize: backend/marketplaces often use "active" for a live listing.
+    // We display this as "Active" (not "Listed") consistently across all forms.
+    if (s === 'active' || s === 'listed') return 'Active';
     if (s === 'processing') return 'In Progress';
     if (s === 'ended' || s === 'delisted' || s === 'deleted' || s === 'cancel') return 'Delisted';
     if (s) return s;
@@ -33330,6 +33332,10 @@ export default function CrosslistComposer() {
             <div className="font-medium">
               {isDelisted ? (
                 <span className="inline-flex items-center rounded px-2 py-1 text-xs font-semibold bg-red-600 text-white">
+                  {statusText}
+                </span>
+              ) : isActive ? (
+                <span className="inline-flex items-center rounded px-2 py-1 text-xs font-semibold bg-emerald-600 text-white">
                   {statusText}
                 </span>
               ) : (
