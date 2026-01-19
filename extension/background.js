@@ -10,6 +10,78 @@ console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
 // -----------------------------
+// Facebook: DNR header shaping (Vendoo-like tabless requests)
+// -----------------------------
+//
+// In MV3, fetches from the extension have Origin=chrome-extension://..., which Facebook often rejects with 1357004.
+// Vendoo is able to run this tabless; the most likely mechanism is rewriting request headers at the network layer.
+// We use declarativeNetRequest to set Origin/Referer (and a couple of sec-fetch headers) ONLY for the FB endpoints we call.
+const FB_DNR_RULE_IDS = { upload: 9001, graphql: 9002 };
+
+async function ensureFacebookDnrRules() {
+  try {
+    if (!chrome?.declarativeNetRequest?.updateDynamicRules) return;
+
+    const origin = 'https://www.facebook.com';
+    const referer = 'https://www.facebook.com/';
+
+    const rules = [
+      {
+        id: FB_DNR_RULE_IDS.upload,
+        priority: 1,
+        action: {
+          type: 'modifyHeaders',
+          requestHeaders: [
+            { header: 'Origin', operation: 'set', value: origin },
+            { header: 'Referer', operation: 'set', value: referer },
+            { header: 'Sec-Fetch-Site', operation: 'set', value: 'same-site' },
+            { header: 'Sec-Fetch-Mode', operation: 'set', value: 'cors' },
+            { header: 'Sec-Fetch-Dest', operation: 'set', value: 'empty' },
+          ],
+        },
+        condition: {
+          requestDomains: ['upload.facebook.com'],
+          resourceTypes: ['xmlhttprequest'],
+          urlFilter: 'upload.facebook.com/ajax/react_composer/attachments/photo/upload',
+        },
+      },
+      {
+        id: FB_DNR_RULE_IDS.graphql,
+        priority: 1,
+        action: {
+          type: 'modifyHeaders',
+          requestHeaders: [
+            { header: 'Origin', operation: 'set', value: origin },
+            { header: 'Referer', operation: 'set', value: referer },
+            { header: 'Sec-Fetch-Site', operation: 'set', value: 'same-origin' },
+            { header: 'Sec-Fetch-Mode', operation: 'set', value: 'cors' },
+            { header: 'Sec-Fetch-Dest', operation: 'set', value: 'empty' },
+          ],
+        },
+        condition: {
+          requestDomains: ['www.facebook.com'],
+          resourceTypes: ['xmlhttprequest'],
+          urlFilter: 'www.facebook.com/api/graphql',
+        },
+      },
+    ];
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [FB_DNR_RULE_IDS.upload, FB_DNR_RULE_IDS.graphql],
+      addRules: rules,
+    });
+  } catch (e) {
+    console.warn('⚠️ [FACEBOOK] Failed to install DNR rules (tabless header shaping).', e);
+  }
+}
+
+try {
+  // Best-effort install at startup.
+  ensureFacebookDnrRules();
+  chrome.runtime?.onInstalled?.addListener(() => ensureFacebookDnrRules());
+} catch (_) {}
+
+// -----------------------------
 // Helpers
 // -----------------------------
 

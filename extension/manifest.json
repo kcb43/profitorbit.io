@@ -9,7 +9,9 @@
     "tabs",
     "windows",
     "scripting",
-    "webRequest"
+    "webRequest",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://www.mercari.com/*",
