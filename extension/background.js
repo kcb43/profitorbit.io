@@ -2584,6 +2584,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         if (!listingIdStr) throw new Error('Missing listingId');
 
+        // Ensure DNR rules are installed (needed for tabless FB calls to avoid 1357004).
+        try { await ensureFacebookDnrRules(); } catch (_) {}
+
         // Load last FB recording as a "template" for endpoints/doc_ids/headers.
         // For delist, the recording must include the delete/delist mutation.
         const inMemoryRecords = Array.isArray(facebookApiRecorder?.records) ? facebookApiRecorder.records.slice() : [];
@@ -2613,6 +2616,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.storage.local.set(
               {
                 facebookLastDelistDebug: {
+                  extBuild: EXT_BUILD,
                   t: Date.now(),
                   stage: 'load_recording',
                   error: 'missing_facebook_recording',
@@ -2762,6 +2766,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         });
 
+        // Fresh CSRF/session tokens (avoid stale recorded tokens)
+        let freshTokens = null;
+        try { freshTokens = await facebookGetFreshTokens(); } catch (_) { freshTokens = null; }
+        const fbDtsg = freshTokens?.fb_dtsg || null;
+        const fbLsd = freshTokens?.lsd || null;
+        const fbJazoest = freshTokens?.jazoest || null;
+
         const gqlBodyText = getRecordedBodyText(graphqlTemplate);
         const form = parseFormBody(gqlBodyText);
         const friendlyName = form.fb_api_req_friendly_name || null;
@@ -2830,6 +2841,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.storage.local.set(
               {
                 facebookLastDelistDebug: {
+                  extBuild: EXT_BUILD,
                   t: Date.now(),
                   stage: 'inject_listing_id',
                   error: 'could_not_inject_listing_id',
@@ -2845,11 +2857,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         if (fbUserId) {
-          if (form.__user) form.__user = fbUserId;
-          if (form.av) form.av = fbUserId;
+          form.__user = fbUserId;
+          form.av = fbUserId;
         }
+        if (fbDtsg) form.fb_dtsg = fbDtsg;
+        if (fbLsd) form.lsd = fbLsd;
+        if (fbJazoest) form.jazoest = fbJazoest;
         form.doc_id = docId;
         if (friendlyName) form.fb_api_req_friendly_name = friendlyName;
+        if (!form.__a) form.__a = '1';
+        if (!form.__comet_req) form.__comet_req = '1';
         form.variables = JSON.stringify(vars);
 
         const gqlHeaders = { ...(graphqlTemplate.requestHeaders || {}) };
@@ -2885,17 +2902,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const gqlText = gqlResult?.text || '';
         const gqlOk = !!gqlResult?.ok;
         const gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
-        let gqlJson = null;
-        try {
-          gqlJson = gqlText ? JSON.parse(gqlText) : null;
-        } catch (_) {
-          gqlJson = null;
-        }
+        const gqlJson = parseFacebookJson(gqlText);
 
         try {
           chrome.storage.local.set(
             {
               facebookLastDelistDebug: {
+                extBuild: EXT_BUILD,
                 t: Date.now(),
                 ok: gqlOk,
                 status: gqlStatus,
@@ -2914,6 +2927,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           throw new Error(`Facebook GraphQL delist failed: ${gqlStatus}`);
         }
 
+        console.log('🟢 [FACEBOOK] DELIST_FACEBOOK_LISTING completed', { listingId: listingIdStr, docId, friendlyName });
         sendResponse({ success: true, listingId: listingIdStr });
       } catch (e) {
         console.error('🔴 [FACEBOOK] DELIST_FACEBOOK_LISTING failed', e);
