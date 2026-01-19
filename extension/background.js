@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-pick-correct-create-mutation-1';
+const EXT_BUILD = '2026-01-19-facebook-delist-hardening-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -2980,6 +2980,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const friendlyName = form.fb_api_req_friendly_name || null;
         const docId = form.doc_id || null;
         if (!docId) throw new Error('Facebook GraphQL template missing doc_id');
+        // Guardrail: prevent "success" using unrelated mutations/queries.
+        // If we don't have a clearly delete/delist-like mutation name/body, force a re-record.
+        const friendlyLower = String(friendlyName || '').toLowerCase();
+        const bodyLower = String(gqlBodyText || '').toLowerCase();
+        const looksDeleteish =
+          friendlyLower.includes('delete') ||
+          friendlyLower.includes('delist') ||
+          friendlyLower.includes('remove') ||
+          friendlyLower.includes('archive') ||
+          friendlyLower.includes('deactivate') ||
+          bodyLower.includes('delete') ||
+          bodyLower.includes('delist') ||
+          bodyLower.includes('remove') ||
+          bodyLower.includes('archive') ||
+          bodyLower.includes('deactivate');
+        if (!looksDeleteish) {
+          try {
+            chrome.storage.local.set(
+              {
+                facebookLastDelistDebug: {
+                  extBuild: EXT_BUILD,
+                  t: Date.now(),
+                  stage: 'pick_template',
+                  error: 'picked_non_delist_template',
+                  listingId: listingIdStr,
+                  docId,
+                  friendlyName,
+                },
+              },
+              () => {}
+            );
+          } catch (_) {}
+          throw new Error(
+            `Delist recording is missing the real "delete listing" mutation. (Picked: ${friendlyName || 'unknown'}). ` +
+              `Please re-record while clicking "Delete listing" and confirming the dialog on the Facebook item page.`
+          );
+        }
 
         let vars = {};
         try {
@@ -3105,6 +3142,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const gqlOk = !!gqlResult?.ok;
         const gqlStatus = typeof gqlResult?.status === 'number' ? gqlResult.status : 0;
         const gqlJson = parseFacebookJson(gqlText);
+        const gqlErr = extractFbErrorInfo(gqlJson);
 
         try {
           chrome.storage.local.set(
@@ -3118,6 +3156,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 docId,
                 friendlyName,
                 listingId: listingIdStr,
+                gqlError: gqlErr,
                 response: gqlJson || gqlText.slice(0, 20000),
               },
             },
@@ -3125,7 +3164,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           );
         } catch (_) {}
 
-        if (!gqlOk) {
+        // FB often returns HTTP 200 with an errors[] payload; treat that as a failure.
+        if (!gqlOk || gqlErr?.code || gqlErr?.summary) {
           throw new Error(`Facebook GraphQL delist failed: ${gqlStatus}`);
         }
 
