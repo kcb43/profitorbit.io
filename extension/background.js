@@ -3560,6 +3560,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (code === '1357004' && uploadAttemptMeta?.directFetch) {
             if (facebookNoWindowMode) {
               // In no-window mode we deliberately do NOT open any facebook.com context. Surface the block.
+              // IMPORTANT: Persist debug snapshot before throwing so storage reflects the latest attempt.
+              try {
+                chrome.storage.local.set(
+                  {
+                    facebookLastUploadDebug: {
+                      extBuild: EXT_BUILD,
+                      t: Date.now(),
+                      ok: uploadOk,
+                      status: uploadStatus,
+                      url: uploadTemplate.url,
+                      requestHeaders: uploadHeaders,
+                      attemptMeta: uploadAttemptMeta,
+                      responseHeaders: uploadRespHeaders,
+                      error: uploadErr,
+                      href: uploadHref,
+                      responseJson: uploadJson,
+                      text: uploadTextRaw ? String(uploadTextRaw).slice(0, 20000) : '',
+                    },
+                  },
+                  () => {}
+                );
+              } catch (_) {}
               throw new Error(
                 `${summary} (code ${code})${desc ? `: ${desc}` : ''} (Blocked in no-window mode; set chrome.storage.local.facebookNoWindowMode=false to allow worker window.)`
               );
