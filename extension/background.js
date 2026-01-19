@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-gql-1675012-debug-and-type-preserve-1';
+const EXT_BUILD = '2026-01-19-facebook-gql-1675012-debug2-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -4431,7 +4431,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           };
 
+          const sanitizeGraphqlError = (e) => {
+            try {
+              if (!e || typeof e !== 'object') return null;
+              const out = {
+                message: e?.message ? String(e.message) : null,
+                code:
+                  e?.code !== undefined ? String(e.code) :
+                  e?.errorCode !== undefined ? String(e.errorCode) :
+                  e?.extensions?.code !== undefined ? String(e.extensions.code) :
+                  e?.extensions?.error_code !== undefined ? String(e.extensions.error_code) :
+                  null,
+                // The part we really need for noncoercible_variable_value: FB often includes variable name/path here.
+                extensions: e?.extensions && typeof e.extensions === 'object' ? e.extensions : null,
+                path: Array.isArray(e?.path) ? e.path.slice(0, 20) : null,
+              };
+              // Avoid huge nested blobs
+              if (out.extensions && typeof out.extensions === 'object') {
+                const ex = { ...out.extensions };
+                for (const k of Object.keys(ex)) {
+                  const v = ex[k];
+                  if (typeof v === 'string' && v.length > 1000) ex[k] = v.slice(0, 1000) + '…';
+                  if (Array.isArray(v) && v.length > 50) ex[k] = v.slice(0, 50);
+                }
+                out.extensions = ex;
+              }
+              return out;
+            } catch (_) {
+              return null;
+            }
+          };
+
           try {
+            const rawErr0 = Array.isArray(gqlJson?.errors) ? gqlJson.errors[0] : null;
+            const err0 = sanitizeGraphqlError(rawErr0);
             chrome.storage.local.set(
               {
                 facebookLastCreateDebug: {
@@ -4447,6 +4480,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   transportHref: gqlResult?.href ? String(gqlResult.href) : null,
                   responseHeaders: gqlResult?.headers && typeof gqlResult.headers === 'object' ? gqlResult.headers : {},
                   gqlError: gqlErrFinal,
+                  gqlError0: err0,
                   // High-signal type/value snapshot of the fields we override
                   varsSnapshot: {
                     title: { type: typeOfPath(vars, ['input', 'data', 'common', 'title']), value: valuePreview(vars, ['input', 'data', 'common', 'title']) },
