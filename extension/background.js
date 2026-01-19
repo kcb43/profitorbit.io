@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-gql-1675012-fix-photoid-type-1';
+const EXT_BUILD = '2026-01-19-facebook-gql-stop-mixing-docid-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -4203,10 +4203,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Build GraphQL request from template, overriding variables + tokens where possible
         const gqlBodyText = getRecordedBodyText(graphqlTemplate);
         const form = parseFormBody(gqlBodyText);
-        let friendlyName = form.fb_api_req_friendly_name || FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
-        let docId = form.doc_id || FACEBOOK_VENDOO_COMET_CREATE.docId;
-        // In no-window mode, force Vendoo's known-good create mutation template.
-        if (facebookNoWindowMode) {
+        const templateFriendly = form.fb_api_req_friendly_name || null;
+        const templateDocId = form.doc_id || null;
+        let friendlyName = templateFriendly || FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
+        let docId = templateDocId || FACEBOOK_VENDOO_COMET_CREATE.docId;
+        // CRITICAL:
+        // Do NOT mix a forced Vendoo doc_id with variables captured from a different template.
+        // That mismatch can trigger generic noncoercible_variable_value (1675012).
+        // Only fall back to Vendoo's doc_id if we *don't* have a recorded create template doc_id.
+        if (facebookNoWindowMode && !templateDocId) {
           friendlyName = FACEBOOK_VENDOO_COMET_CREATE.friendlyName;
           docId = FACEBOOK_VENDOO_COMET_CREATE.docId;
         }
