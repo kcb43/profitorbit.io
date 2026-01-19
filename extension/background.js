@@ -3778,6 +3778,122 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             desc = '';
           }
 
+          // 1357005 is commonly a transient FB-side failure (rate/abuse/back-end hiccup or stale token bundle).
+          // In no-window mode we *must* self-heal without opening any new tab/window.
+          if (code === '1357005') {
+            const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            const maxRetries1357005 = 2;
+            for (let attempt = 1; attempt <= maxRetries1357005 && code === '1357005'; attempt++) {
+              uploadAttemptMeta.retry1357005 = attempt;
+              try { await ensureFacebookDnrRules(); } catch (_) {}
+
+              // Small backoff to avoid hammering FB.
+              await delay(250 * attempt + Math.floor(Math.random() * 200));
+
+              let refreshed = null;
+              try { refreshed = await facebookGetFreshTokens(); } catch (_) { refreshed = null; }
+              uploadAttemptMeta.retry1357005_tokens = {
+                ok: !!refreshed?.ok,
+                status: typeof refreshed?.status === 'number' ? refreshed.status : 0,
+                looksLoggedOut: !!refreshed?.looksLoggedOut,
+                hasFbDtsg: !!refreshed?.fb_dtsg,
+                hasLsd: !!refreshed?.lsd,
+              };
+
+              if (refreshed?.looksLoggedOut || (!refreshed?.fb_dtsg && !refreshed?.lsd)) {
+                throw new Error(
+                  'Facebook session appears logged out or missing CSRF tokens. Please log into facebook.com, then retry listing.'
+                );
+              }
+
+              // Update multipart body tokens + URL query token (Vendoo endpoint includes fb_dtsg in query).
+              const upsertField = (arr, name, value) => {
+                if (!name || value === undefined || value === null) return;
+                const n = String(name);
+                const v = String(value);
+                const idx = arr.findIndex((f) => String(f?.name || '') === n);
+                if (idx >= 0) arr[idx] = { name: n, value: v };
+                else arr.push({ name: n, value: v });
+              };
+              if (refreshed?.fb_dtsg) upsertField(uploadFormFields, 'fb_dtsg', refreshed.fb_dtsg);
+              if (refreshed?.lsd) upsertField(uploadFormFields, 'lsd', refreshed.lsd);
+              if (refreshed?.jazoest) upsertField(uploadFormFields, 'jazoest', refreshed.jazoest);
+
+              if (refreshed?.fb_dtsg) {
+                try {
+                  const u = new URL(uploadTemplate.url);
+                  u.searchParams.set('fb_dtsg', String(refreshed.fb_dtsg));
+                  if (!u.searchParams.get('__a')) u.searchParams.set('__a', '1');
+                  uploadTemplate.url = u.toString();
+                } catch (_) {}
+              }
+
+              // Retry upload using the same mode we used initially:
+              // - If we already used an existing fb tab (user opened one), reuse it.
+              // - Otherwise retry tabless direct fetch.
+              let retry = null;
+              if (uploadAttemptMeta?.tabFetch && uploadAttemptMeta?.fbTabId) {
+                const toBase64 = (ab) => {
+                  const u8 = new Uint8Array(ab);
+                  let s = '';
+                  const chunk = 0x8000;
+                  for (let i = 0; i < u8.length; i += chunk) {
+                    s += String.fromCharCode(...u8.subarray(i, i + chunk));
+                  }
+                  return btoa(s);
+                };
+                const fileBase64 = toBase64(await imgBlob.arrayBuffer());
+                retry = await facebookFetchInTab(uploadAttemptMeta.fbTabId, {
+                  url: uploadTemplate.url,
+                  method: 'POST',
+                  headers: { accept: directUploadHeaders?.accept || '*/*' },
+                  bodyType: 'formData',
+                  formFields: uploadFormFields,
+                  file: { fieldName: fileFieldName, fileName, type: inferredMime, base64: fileBase64 },
+                });
+              } else {
+                const fd = new FormData();
+                for (const f of uploadFormFields) {
+                  if (!f?.name) continue;
+                  fd.append(String(f.name), String(f.value ?? ''));
+                }
+                fd.append(String(fileFieldName), imgBlob, String(fileName));
+                const direct = await facebookFetchDirect(uploadTemplate.url, {
+                  method: 'POST',
+                  headers: directUploadHeaders,
+                  body: fd,
+                });
+                retry = { ...direct, error: null, href: null };
+              }
+
+              // Re-parse response
+              uploadResult = retry;
+              uploadTextRaw = uploadResult?.text || '';
+              uploadOk = !!uploadResult?.ok;
+              uploadStatus = typeof uploadResult?.status === 'number' ? uploadResult.status : 0;
+              uploadRespHeaders = uploadResult?.headers && typeof uploadResult.headers === 'object' ? uploadResult.headers : {};
+              uploadErr = uploadResult?.error ? String(uploadResult.error) : null;
+              uploadHref = uploadResult?.href ? String(uploadResult.href) : null;
+              uploadText = String(uploadTextRaw || '').replace(/^\s*for\s*\(\s*;\s*;\s*\)\s*;\s*/i, '').trim();
+              let retryJson = null;
+              try { retryJson = uploadText ? JSON.parse(uploadText) : null; } catch (_) { retryJson = null; }
+              uploadJson = retryJson;
+
+              if (uploadJson && typeof uploadJson === 'object' && (uploadJson.error || uploadJson.errorSummary || uploadJson.errorDescription)) {
+                code = uploadJson.error ? String(uploadJson.error) : null;
+                summary = uploadJson.errorSummary ? String(uploadJson.errorSummary) : 'Facebook upload error';
+                desc = uploadJson.errorDescription ? String(uploadJson.errorDescription) : '';
+                continue;
+              }
+
+              // Success
+              code = null;
+              summary = 'Facebook upload ok';
+              desc = '';
+              break;
+            }
+          }
+
           try {
             chrome.storage.local.set(
               {
