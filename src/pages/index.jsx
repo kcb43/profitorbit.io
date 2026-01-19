@@ -24,6 +24,7 @@ const Crosslist = React.lazy(() => import("./Crosslist"));
 const CrosslistComposer = React.lazy(() => import("./CrosslistComposer"));
 const Crosslisting = React.lazy(() => import("./Crosslisting"));
 const MarketIntelligence = React.lazy(() => import("./MarketIntelligence"));
+const MarketIntelligenceDetail = React.lazy(() => import("./MarketIntelligenceDetail"));
 const Settings = React.lazy(() => import("./Settings"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
@@ -283,6 +284,19 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="MarketIntelligence">
                         {withSuspense(<MarketIntelligence />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              
+              <Route
+                path="/market-intelligence/:marketplaceId"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="MarketIntelligence">
+                        {withSuspense(<MarketIntelligenceDetail />)}
                       </Layout>
                     )}
                   </AuthGuard>
