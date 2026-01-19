@@ -47,6 +47,7 @@ import {
   Package,
   Check,
   Palette,
+  Sparkles,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
@@ -1650,6 +1651,15 @@ export default function Crosslist() {
                   selectedItems={selected}
                   onActionComplete={() => setSelected([])}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="whitespace-nowrap w-auto"
+                  onClick={() => navigate(createPageUrl("Pro Tools"))}
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Pro Tools
+                </Button>
                 <Button
                   onClick={() => {
                     if (selected.length > 0) {

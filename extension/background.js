@@ -2600,6 +2600,60 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // -----------------------------
+  // Pro Tools (offers + sharing) — stubs for now
+  // -----------------------------
+  if (type === 'SEND_OFFERS_BULK') {
+    (async () => {
+      try {
+        const payload = message?.payload || null;
+        try {
+          chrome.storage.local.set({ poLastSendOffersBulkRequest: { t: Date.now(), payload } }, () => {});
+        } catch (_) {}
+        sendResponse({
+          success: false,
+          error: 'Not implemented yet: Send Offers automation will be added via per-marketplace recording/replay.',
+        });
+      } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (type === 'SET_AUTO_OFFERS_CONFIG') {
+    (async () => {
+      try {
+        const payload = message?.payload || null;
+        try {
+          chrome.storage.local.set({ poAutoOffersConfig: { t: Date.now(), payload } }, () => {});
+        } catch (_) {}
+        sendResponse({ success: true, saved: true });
+      } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (type === 'RUN_MARKETPLACE_SHARING_ONCE') {
+    (async () => {
+      try {
+        const payload = message?.payload || null;
+        try {
+          chrome.storage.local.set({ poLastMarketplaceSharingRun: { t: Date.now(), payload } }, () => {});
+        } catch (_) {}
+        sendResponse({
+          success: false,
+          error: 'Not implemented yet: Marketplace Sharing automation will be added via per-marketplace recording/replay.',
+        });
+      } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   // (removed duplicate Facebook recorder message handler block)
 
   if (type === 'CREATE_MERCARI_LISTING') {

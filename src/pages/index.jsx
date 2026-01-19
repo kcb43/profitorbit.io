@@ -27,6 +27,10 @@ const MarketIntelligence = React.lazy(() => import("./MarketIntelligence"));
 const Settings = React.lazy(() => import("./Settings"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
+const ProTools = React.lazy(() => import("./ProTools"));
+const ProToolsSendOffers = React.lazy(() => import("./ProToolsSendOffers"));
+const ProToolsAutoOffers = React.lazy(() => import("./ProToolsAutoOffers"));
+const ProToolsMarketplaceSharing = React.lazy(() => import("./ProToolsMarketplaceSharing"));
 const PrivacyPolicy = React.lazy(() => import("./PrivacyPolicy"));
 const FAQ = React.lazy(() => import("./FAQ"));
 const MigrateData = React.lazy(() => import("./MigrateData"));
@@ -304,6 +308,58 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Tools">
                         {withSuspense(<Tools />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              <Route
+                path="/pro-tools"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Pro Tools">
+                        {withSuspense(<ProTools />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              <Route
+                path="/pro-tools/send-offers"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Send Offers">
+                        {withSuspense(<ProToolsSendOffers />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              <Route
+                path="/pro-tools/auto-offers"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Auto Offers">
+                        {withSuspense(<ProToolsAutoOffers />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              <Route
+                path="/pro-tools/marketplace-sharing"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Marketplace Sharing">
+                        {withSuspense(<ProToolsMarketplaceSharing />)}
                       </Layout>
                     )}
                   </AuthGuard>

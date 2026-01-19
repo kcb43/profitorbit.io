@@ -370,6 +370,19 @@
     installFacebookGoldenTemplates() {
       return postAndWait('PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES', 'PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES_RESULT', null, 20000);
     },
+
+    // -----------------------------
+    // Pro Tools (offers + sharing) — wiring comes next
+    // -----------------------------
+    sendOffersBulk(payload) {
+      return postAndWait('PO_SEND_OFFERS_BULK', 'PO_SEND_OFFERS_BULK_RESULT', payload, 60000);
+    },
+    setAutoOffersConfig(payload) {
+      return postAndWait('PO_SET_AUTO_OFFERS_CONFIG', 'PO_SET_AUTO_OFFERS_CONFIG_RESULT', payload, 10000);
+    },
+    runMarketplaceSharingOnce(payload) {
+      return postAndWait('PO_RUN_MARKETPLACE_SHARING_ONCE', 'PO_RUN_MARKETPLACE_SHARING_ONCE_RESULT', payload, 60000);
+    },
   };
 
   // Convenience globals (so typing works in console)

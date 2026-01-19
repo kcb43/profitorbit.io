@@ -196,6 +196,22 @@ window.addEventListener("message", (event) => {
     poTrySendMessage({ type: "INSTALL_FACEBOOK_GOLDEN_TEMPLATES" }, "PO_INSTALL_FACEBOOK_GOLDEN_TEMPLATES_RESULT");
     return;
   }
+
+  // -----------------------------
+  // Pro Tools (offers + sharing)
+  // -----------------------------
+  if (msg.type === "PO_SEND_OFFERS_BULK") {
+    poTrySendMessage({ type: "SEND_OFFERS_BULK", payload: msg?.payload || null }, "PO_SEND_OFFERS_BULK_RESULT");
+    return;
+  }
+  if (msg.type === "PO_SET_AUTO_OFFERS_CONFIG") {
+    poTrySendMessage({ type: "SET_AUTO_OFFERS_CONFIG", payload: msg?.payload || null }, "PO_SET_AUTO_OFFERS_CONFIG_RESULT");
+    return;
+  }
+  if (msg.type === "PO_RUN_MARKETPLACE_SHARING_ONCE") {
+    poTrySendMessage({ type: "RUN_MARKETPLACE_SHARING_ONCE", payload: msg?.payload || null }, "PO_RUN_MARKETPLACE_SHARING_ONCE_RESULT");
+    return;
+  }
 });
 
 // Helper: extract Supabase access token from localStorage

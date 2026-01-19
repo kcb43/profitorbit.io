@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Wrench, Layers, Plus, TrendingUp, History, Settings } from "lucide-react";
+import { Wrench, Layers, Plus, TrendingUp, History, Settings, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function HubCard({ title, description, to, icon: Icon, gradient }) {
@@ -45,6 +45,13 @@ export default function Tools() {
             to={createPageUrl("Crosslist")}
             icon={Layers}
             gradient="from-cyan-500 via-sky-500 to-blue-600"
+          />
+          <HubCard
+            title="Pro Tools"
+            description="Offers + auto offers + sharing"
+            to={createPageUrl("Pro Tools")}
+            icon={Sparkles}
+            gradient="from-emerald-500 to-green-500"
           />
           <HubCard
             title="Add Sale"

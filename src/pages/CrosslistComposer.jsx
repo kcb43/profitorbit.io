@@ -33374,6 +33374,21 @@ export default function CrosslistComposer() {
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              const qs = new URLSearchParams();
+              if (marketplaceId) qs.set('marketplace', String(marketplaceId));
+              if (currentEditingItemId) qs.set('itemId', String(currentEditingItemId));
+              window.location.assign(`/pro-tools/send-offers?${qs.toString()}`);
+            }}
+          >
+            <Sparkles className="h-4 w-4" />
+            Pro Tools
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             className="gap-2"
