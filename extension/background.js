@@ -1954,19 +1954,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const listingData = message?.listingData || {};
         const payload = listingData?.payload || listingData || {};
-        // Toggle: try *no-window* mode by default (direct fetch only). If FB blocks it (1357004),
-        // we'll have high-signal debug to decide what to re-record/patch next.
-        const facebookNoWindowMode = await new Promise((resolve) => {
-          try {
-            chrome.storage.local.get(['facebookNoWindowMode'], (r) => {
-              if (typeof r?.facebookNoWindowMode === 'boolean') return resolve(r.facebookNoWindowMode);
-              return resolve(true);
-            });
-          } catch (_) {
-            resolve(true);
-          }
-        });
-        console.log('🟦 [FACEBOOK] Create mode', { noWindow: facebookNoWindowMode });
 
         const title = String(payload.title || payload.name || '').trim();
         const description = sanitizeHtmlToPlainText(payload.description || '');
@@ -2727,6 +2714,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const listingData = message?.listingData || {};
         const payload = listingData?.payload || listingData || {};
+        // Toggle: try *no-window* mode by default (direct fetch only). If FB blocks it (1357004),
+        // we'll have high-signal debug to decide what to re-record/patch next.
+        const facebookNoWindowMode = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(['facebookNoWindowMode'], (r) => {
+              if (typeof r?.facebookNoWindowMode === 'boolean') return resolve(r.facebookNoWindowMode);
+              return resolve(true);
+            });
+          } catch (_) {
+            resolve(true);
+          }
+        });
+        console.log('🟦 [FACEBOOK] Create mode', { noWindow: facebookNoWindowMode });
         let __poTempFacebookTabId = null;
         let __poTempFacebookWindowId = null;
         const rememberTempFbTab = (tabId, created, windowId = null) => {
