@@ -62,19 +62,19 @@ export default function MarketIntelligenceDetail() {
   const [activeTab, setActiveTab] = useState('trending');
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full">
+          <div className="flex items-center gap-2 sm:gap-4 w-full">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/market-intelligence')}
+              onClick={() => navigate('/pulse')}
               className="flex-shrink-0"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Button>
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
               marketplace.color === 'blue' ? 'bg-blue-50 dark:bg-blue-950/20' :
@@ -90,10 +90,10 @@ export default function MarketIntelligenceDetail() {
               }`} />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white break-words">
                 {marketplace.name}
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">
                 {marketplace.description}
               </p>
             </div>
@@ -101,9 +101,9 @@ export default function MarketIntelligenceDetail() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full overflow-x-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6 overflow-x-auto">
             <TabsTrigger value="trending" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               <span className="hidden sm:inline">Trending</span>

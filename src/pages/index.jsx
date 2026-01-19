@@ -278,11 +278,11 @@ function PagesContent() {
               />
               
               <Route
-                path="/MarketIntelligence"
+                path="/Pulse"
                 element={
                   <AuthGuard>
                     {withSuspense(
-                      <Layout currentPageName="MarketIntelligence">
+                      <Layout currentPageName="Pulse">
                         {withSuspense(<MarketIntelligence />)}
                       </Layout>
                     )}
@@ -291,11 +291,11 @@ function PagesContent() {
               />
               
               <Route
-                path="/market-intelligence/:marketplaceId"
+                path="/pulse/:marketplaceId"
                 element={
                   <AuthGuard>
                     {withSuspense(
-                      <Layout currentPageName="MarketIntelligence">
+                      <Layout currentPageName="Pulse">
                         {withSuspense(<MarketIntelligenceDetail />)}
                       </Layout>
                     )}
