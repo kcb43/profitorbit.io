@@ -2222,6 +2222,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const records = facebookApiRecorder.records.slice();
       console.log('🟦 [FACEBOOK] API recording stopped', { count: records.length });
 
+      // Classify the recording so create/delist don't stomp each other.
+      const classifyFacebookRecording = (recs) => {
+        const out = { hasCreate: false, hasDelist: false, createCount: 0, delistCount: 0 };
+        for (const r of recs) {
+          if (!r || typeof r?.url !== 'string') continue;
+          if (!r.url.includes('/api/graphql')) continue;
+          if (String(r.method || '').toUpperCase() !== 'POST') continue;
+          const rb = r?.requestBody;
+          let bodyText = '';
+          if (typeof rb === 'string') bodyText = rb;
+          else if (rb?.kind === 'rawText' && typeof rb.value === 'string') bodyText = rb.value;
+          else if (rb?.kind === 'formData' && rb.value && typeof rb.value === 'object') {
+            const parts = [];
+            for (const [k, v] of Object.entries(rb.value)) {
+              const arr = Array.isArray(v) ? v : [String(v)];
+              for (const item of arr) parts.push(`${encodeURIComponent(String(k))}=${encodeURIComponent(String(item))}`);
+            }
+            bodyText = parts.join('&');
+          } else {
+            try { bodyText = JSON.stringify(rb || ''); } catch (_) { bodyText = String(rb || ''); }
+          }
+
+          const friendlyEnc = /fb_api_req_friendly_name=([^&]+)/.exec(bodyText)?.[1] || '';
+          let friendly = '';
+          try { friendly = decodeURIComponent(friendlyEnc || ''); } catch (_) { friendly = String(friendlyEnc || ''); }
+          const lower = `${friendly} ${bodyText}`.toLowerCase();
+
+          if (friendly === 'useCometMarketplaceListingCreateMutation' || lower.includes('usecometmarketplacelistingcreatemutation')) {
+            out.hasCreate = true;
+            out.createCount += 1;
+            continue;
+          }
+
+          const delistish =
+            lower.includes('delete') ||
+            lower.includes('delist') ||
+            lower.includes('remove') ||
+            lower.includes('archive') ||
+            lower.includes('deactivate') ||
+            lower.includes('mark_as_sold') ||
+            lower.includes('markassold');
+          if (delistish) {
+            out.hasDelist = true;
+            out.delistCount += 1;
+          }
+        }
+        return out;
+      };
+
       // IMPORTANT (MV3 service workers):
       // If we fire-and-forget chrome.storage writes, the service worker can go idle and the write may not persist.
       // Await the write to guarantee durability before responding.
@@ -2236,6 +2285,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             resolve(false);
           }
         });
+
+        // Also persist purpose-specific recordings so CREATE and DELIST can't accidentally pick the wrong templates.
+        try {
+          const cls = classifyFacebookRecording(records);
+          const writes = {};
+          if (cls.hasCreate) writes.facebookApiLastCreateRecording = { t: endedAt, count: records.length, records, meta: cls };
+          if (cls.hasDelist) writes.facebookApiLastDelistRecording = { t: endedAt, count: records.length, records, meta: cls };
+          if (Object.keys(writes).length) {
+            await new Promise((resolve) => {
+              try { chrome.storage.local.set(writes, () => resolve(true)); } catch (_) { resolve(false); }
+            });
+          }
+          console.log('🟦 [FACEBOOK] Recording classified', cls);
+        } catch (e2) {
+          console.warn('⚠️ [FACEBOOK] Failed to classify recording', e2);
+        }
 
         // Best-effort readback to prove persistence (helps debug "recorded N calls but create can't find it")
         const saved = await new Promise((resolve) => {
@@ -2731,7 +2796,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!records.length) {
           last = await new Promise((resolve) => {
             try {
-              chrome.storage.local.get(['facebookApiLastRecording'], (r) => resolve(r?.facebookApiLastRecording || null));
+              chrome.storage.local.get(['facebookApiLastDelistRecording', 'facebookApiLastRecording'], (r) =>
+                resolve(r?.facebookApiLastDelistRecording || r?.facebookApiLastRecording || null)
+              );
             } catch (_) {
               resolve(null);
             }
@@ -3181,7 +3248,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!records.length) {
           last = await new Promise((resolve) => {
             try {
-              chrome.storage.local.get(['facebookApiLastRecording'], (r) => resolve(r?.facebookApiLastRecording || null));
+              chrome.storage.local.get(['facebookApiLastCreateRecording', 'facebookApiLastRecording'], (r) =>
+                resolve(r?.facebookApiLastCreateRecording || r?.facebookApiLastRecording || null)
+              );
             } catch (_) {
               resolve(null);
             }
