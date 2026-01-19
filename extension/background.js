@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-01-19-facebook-token-resilience-1';
+const EXT_BUILD = '2026-01-19-facebook-upload-1357005-hardening-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -41,7 +41,7 @@ async function ensureFacebookDnrRules() {
         },
         condition: {
           requestDomains: ['upload.facebook.com'],
-          resourceTypes: ['xmlhttprequest'],
+          resourceTypes: ['xmlhttprequest', 'fetch'],
           urlFilter: 'upload.facebook.com/ajax/react_composer/attachments/photo/upload',
         },
       },
@@ -60,7 +60,7 @@ async function ensureFacebookDnrRules() {
         },
         condition: {
           requestDomains: ['www.facebook.com'],
-          resourceTypes: ['xmlhttprequest'],
+          resourceTypes: ['xmlhttprequest', 'fetch'],
           urlFilter: 'www.facebook.com/api/graphql',
         },
       },
@@ -3559,6 +3559,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return { fileFieldName: null, fieldsAdded: false, appendedNames };
         })();
 
+        // If we have no recorded upload template (Vendoo-style fallback), add baseline fields that FB expects.
+        // Without these, FB often returns 1357005 (HTTP 200 + error payload).
+        if (!fieldsInfo?.fieldsAdded) {
+          const baseline = [
+            { name: '__a', value: '1' },
+            { name: '__comet_req', value: '1' },
+            // Commonly present on composer uploads; harmless if ignored.
+            { name: 'source', value: '8' },
+          ];
+          for (const f of baseline) uploadFormFields.push(f);
+        }
+
         const uploadAttemptMeta = {
           inferredMime,
           templateRequestBodyKind: uploadTemplate?.requestBody?.kind || null,
@@ -3633,12 +3645,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Fallback to in-tab fetch only if direct upload fails.
         const directUploadHeaders = {};
         try {
-          if (uploadHeaders?.accept) directUploadHeaders.accept = uploadHeaders.accept;
+          directUploadHeaders.accept = uploadHeaders?.accept || '*/*';
           // These are custom headers (allowed) and often present in real FB traffic.
           if (uploadHeaders?.['x-fb-lsd']) directUploadHeaders['x-fb-lsd'] = uploadHeaders['x-fb-lsd'];
           if (uploadHeaders?.['x-asbd-id']) directUploadHeaders['x-asbd-id'] = uploadHeaders['x-asbd-id'];
           if (uploadHeaders?.['x-fb-photo-content-type']) directUploadHeaders['x-fb-photo-content-type'] = uploadHeaders['x-fb-photo-content-type'];
         } catch (_) {}
+
+        // Vendoo-like defaults when we don't have a recorded upload header set.
+        if (!directUploadHeaders['x-fb-lsd'] && fbLsd) directUploadHeaders['x-fb-lsd'] = fbLsd;
+        if (!directUploadHeaders['x-asbd-id']) directUploadHeaders['x-asbd-id'] = '129477';
 
         let uploadResult = null;
         if (facebookNoWindowMode) {
