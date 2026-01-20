@@ -295,6 +295,8 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
 
     // Variation 3: Gaming Style - Bold, colorful with animated elements
     if (progressVariant === "gaming") {
+      const [selectedAchievement, setSelectedAchievement] = useState(null);
+
       return (
         <Card className="border-0 shadow-xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 relative overflow-hidden">
           {/* Top gradient bar */}
@@ -308,15 +310,18 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
           </CardHeader>
           <CardContent className="pt-0 space-y-4 relative z-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Tier */}
-              <div className={`rounded-xl bg-gradient-to-br ${tierInfo.color.replace('/20', '')} border-2 ${tierInfo.border.replace('/30', '')} p-4 shadow-xl relative overflow-hidden`}>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75" />
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer-slow" />
+              {/* Tier - styled like glass variant */}
+              <div className={`relative rounded-2xl bg-gradient-to-br ${tierInfo.color} backdrop-blur-md border ${tierInfo.border} p-4 shadow-xl overflow-hidden group`}>
+                {/* Green dot positioned outside/on top */}
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-20" />
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-20" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <div className="relative z-10">
-                  <div className="text-xs text-white/70 uppercase tracking-wide mb-1">Tier</div>
-                  <div className="text-2xl font-black text-white">{tierInfo.name}</div>
+                  <div className="text-xs text-white/70 uppercase tracking-wider mb-1">Your Tier</div>
+                  <div className="text-2xl font-black text-white mb-1">{tierInfo.name}</div>
+                  <div className="text-sm text-white/90 font-medium">{points.toLocaleString()} pts</div>
                 </div>
+                <Medal className="absolute bottom-2 right-2 w-12 h-12 text-white/20" />
               </div>
 
               {/* Points */}
@@ -326,8 +331,54 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
             </div>
 
+            {/* Achievements Section - Custom for Gaming */}
             <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700/50">
-              {renderAchievementsAndRewards()}
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-medium text-white">Achievements</div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                {achievements.length > 0 ? (
+                  <>
+                    {achievements.map((ach) => (
+                      <div key={ach.name} className="relative flex-shrink-0">
+                        <button
+                          onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
+                          className="relative p-3 sm:p-4 rounded-xl bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 hover:border-gray-500/70 transition-all group"
+                        >
+                          <ach.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${ach.color}`} />
+                          {/* Smooth label on click */}
+                          {selectedAchievement === ach.name && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 animate-in fade-in slide-in-from-bottom-2 z-30">
+                              {ach.name}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 border-r border-b border-gray-700 rotate-45"></div>
+                            </div>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                    <Link
+                      to={createPageUrl("Rewards")}
+                      className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                    >
+                      <span>More...</span>
+                      <Gift className="w-4 h-4" />
+                    </Link>
+                  </>
+                ) : (
+                  <div className="text-xs text-gray-400">Your first achievement is just around the corner!</div>
+                )}
+              </div>
+              
+              {/* View Rewards Button */}
+              <div className="pt-4 mt-4 border-t border-gray-700/50">
+                <Link 
+                  to={createPageUrl("Rewards")} 
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+                >
+                  <Gift className="w-4 h-4" />
+                  View Rewards
+                </Link>
+              </div>
             </div>
           </CardContent>
         </Card>
