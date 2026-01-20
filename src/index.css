@@ -258,6 +258,20 @@ button:focus-visible {
   display: none; /* Chrome/Safari */
 }
 
+/* Custom animations for progress variants */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
 /* Page title - target h1 with white text on md screens */
 [data-theme="default-light"] h1[class*="md:text-white"] {
   color: hsl(var(--foreground)) !important;
