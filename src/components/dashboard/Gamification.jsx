@@ -300,7 +300,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
       return (
         <Card className="your-progress-card border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
           {/* Top gradient bar */}
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500" />
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500" />
           
           <CardHeader className="pb-3 relative z-10">
             <CardTitle className="text-base font-bold text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white flex items-center gap-2">
