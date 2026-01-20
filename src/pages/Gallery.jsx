@@ -126,9 +126,9 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="p-4 md:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full">
+      <div className="p-4 md:p-6 lg:p-8 w-full overflow-x-hidden">
+        <div className="max-w-7xl mx-auto w-full overflow-x-hidden min-w-0">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Showcase</h1>
@@ -140,7 +140,7 @@ export default function GalleryPage() {
           </div>
 
           {/* Stats Cards - Horizontal layout with text at bottom */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 w-full max-w-full min-w-0">
             <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
               <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
                 <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
@@ -174,18 +174,18 @@ export default function GalleryPage() {
 
           {/* Main Grid */}
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0">
               {Array.from({ length: 10 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-square rounded-lg" />
+                <Skeleton key={i} className="aspect-square rounded-lg w-full max-w-full" />
               ))}
             </div>
           ) : salesWithMetrics.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0">
               {salesWithMetrics.map(sale => (
                 <Card 
                   key={sale.id}
                   onClick={() => handleItemClick(sale)}
-                  className="group overflow-hidden shadow-sm hover:shadow-lg transition-shadow cursor-pointer"
+                  className="group overflow-hidden shadow-sm hover:shadow-lg transition-shadow cursor-pointer w-full max-w-full min-w-0"
                 >
                   <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
                     <OptimizedImage
