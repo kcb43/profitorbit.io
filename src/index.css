@@ -249,6 +249,51 @@ button:focus-visible {
   background-color: hsl(var(--background)) !important;
 }
 
+/* Fix Profit Calendar "This Month" section for Light theme */
+[data-theme="default-light"] .profit-calendar-this-month {
+  background-color: white !important;
+  border-color: rgb(229, 231, 235) !important; /* gray-200 */
+}
+
+[data-theme="default-light"] .profit-calendar-this-month .text-slate-400 {
+  color: rgb(75, 85, 99) !important; /* gray-600 */
+}
+
+[data-theme="default-light"] .profit-calendar-this-month .text-slate-300 {
+  color: rgb(55, 65, 81) !important; /* gray-700 */
+}
+
+[data-theme="default-light"] .profit-calendar-this-month .text-slate-500 {
+  color: rgb(107, 114, 128) !important; /* gray-500 */
+}
+
+[data-theme="default-light"] .profit-calendar-this-month .text-white {
+  color: rgb(17, 24, 39) !important; /* gray-900 */
+}
+
+[data-theme="default-light"] .profit-calendar-stat-card,
+[data-theme="default-light"] .profit-calendar-item-btn {
+  background-color: rgb(249, 250, 251) !important; /* gray-50 */
+  border-color: rgb(229, 231, 235) !important; /* gray-200 */
+}
+
+[data-theme="default-light"] .profit-calendar-stat-card .text-emerald-300,
+[data-theme="default-light"] .profit-calendar-item-btn .text-emerald-300 {
+  color: rgb(5, 150, 105) !important; /* emerald-600 */
+}
+
+[data-theme="default-light"] .profit-calendar-stat-card .text-blue-300 {
+  color: rgb(37, 99, 235) !important; /* blue-600 */
+}
+
+[data-theme="default-light"] .profit-calendar-stat-card .text-purple-300 {
+  color: rgb(147, 51, 234) !important; /* purple-600 */
+}
+
+[data-theme="default-light"] .profit-calendar-stat-card .text-white {
+  color: rgb(17, 24, 39) !important; /* gray-900 */
+}
+
 /* Hide scrollbars but keep scrolling (used for dialogs like Profit Calendar day details) */
 .po-scrollbar-hide {
   -ms-overflow-style: none; /* IE/Edge */
