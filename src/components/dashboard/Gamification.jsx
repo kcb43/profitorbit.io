@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal, Gift } from "lucide-react";
 import {
   Tooltip,
@@ -190,30 +189,11 @@ export default function Gamification({ sales, stats, variant }) {
             </div>
           </div>
 
-          {tierInfo.nextTier && (
-            <div>
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Progress to {tierInfo.nextTier}</span>
-                <span className="font-semibold text-foreground">{Math.round(tierProgress.percentage)}%</span>
-              </div>
-              <Progress value={tierProgress.percentage} className="h-2" />
-              {tierProgress.pointsNeeded > 0 ? (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  ${tierProgress.pointsNeeded.toFixed(0)} more needed
-                </div>
-              ) : null}
-            </div>
-          )}
-
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium text-muted-foreground">Achievements</div>
-              <Link to={createPageUrl("Rewards")} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
-                <Gift className="w-3 h-3" />
-                View Rewards
-              </Link>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-4">
               {achievements.length > 0 ? (
                 <TooltipProvider>
                   {achievements.map((ach) => (
@@ -232,6 +212,20 @@ export default function Gamification({ sales, stats, variant }) {
               ) : (
                 <div className="text-xs text-muted-foreground">Your first achievement is just around the corner!</div>
               )}
+            </div>
+            
+            {/* View Rewards Button */}
+            <div className="pt-4 border-t border-border/60">
+              <p className="text-xs text-muted-foreground mb-3 text-center">
+                Earn points, enjoy Rewards
+              </p>
+              <Link 
+                to={createPageUrl("Rewards")} 
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+              >
+                <Gift className="w-4 h-4" />
+                View Rewards
+              </Link>
             </div>
           </div>
         </CardContent>
