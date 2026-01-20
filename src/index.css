@@ -1068,6 +1068,10 @@ input[type="range"].modern-slider::-moz-range-thumb:active {
   background-color: hsl(var(--card)) !important;
 }
 
+[data-theme="money-green-dark"] .your-progress-rewards-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
 [data-theme="money-green-dark"] .your-progress-rewards-btn:hover {
   background-color: hsl(var(--card) / 0.9) !important;
 }
