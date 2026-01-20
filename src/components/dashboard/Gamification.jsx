@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal, Gift, Sparkles, Zap } from "lucide-react";
+import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal, Gift, Sparkles, Zap, ChevronDown } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
   TooltipContent,
@@ -296,6 +297,8 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
     // Variation 3: Gaming Style - Bold, colorful with animated elements
     if (progressVariant === "gaming") {
       const [selectedAchievement, setSelectedAchievement] = useState(null);
+      const [isExpanded, setIsExpanded] = useState(false);
+      const isMobile = useIsMobile();
 
       return (
         <Card className="your-progress-card border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
@@ -309,66 +312,139 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-4 relative z-10">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'} gap-3`}>
               {/* Tier - styled like glass variant with blue colors */}
               <div className="relative rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 dark:from-blue-500/20 dark:to-indigo-500/20 backdrop-blur-md border border-blue-500/30 dark:border-blue-500/30 p-4 shadow-xl overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 rounded-2xl" />
                 <div className="relative z-10">
                   <div className="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-1">Your Tier</div>
-                  <div className="text-2xl font-black text-blue-900 dark:text-white">{tierInfo.name}</div>
+                  <div className="text-2xl font-black text-blue-900 dark:text-white">
+                    {tierInfo.name}
+                    {isMobile && <span className="text-base font-semibold ml-2 text-blue-700 dark:text-blue-300">- {points.toLocaleString()} points</span>}
+                  </div>
                 </div>
                 <Medal className="absolute bottom-2 right-2 w-12 h-12 text-blue-400/30 dark:text-white/20" />
               </div>
 
-              {/* Points */}
-              <div className="your-progress-points rounded-xl bg-blue-50/80 dark:bg-gray-950 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
-                <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-slate-300 mb-1 uppercase tracking-wide font-semibold">Points</div>
-                <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white">{points.toLocaleString()}</div>
-              </div>
+              {/* Points - Hidden on mobile */}
+              {!isMobile && (
+                <div className="your-progress-points rounded-xl bg-blue-50/80 dark:bg-gray-950 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
+                  <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-slate-300 mb-1 uppercase tracking-wide font-semibold">Points</div>
+                  <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white">{points.toLocaleString()}</div>
+                </div>
+              )}
             </div>
 
-            {/* Achievements Section - Custom for Gaming */}
-            <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-                {achievements.length > 0 ? (
-                  achievements.map((ach) => (
-                    <div key={ach.name} className="relative flex-shrink-0">
-                      <button
-                        onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
-                        className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
-                      >
-                        <ach.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${ach.color}`} />
-                        {/* Smooth label on click */}
-                        {selectedAchievement === ach.name && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
-                            {ach.name}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
-                          </div>
-                        )}
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-gray-600 dark:text-gray-400">Your first achievement is just around the corner!</div>
-                )}
-              </div>
-              
-              {/* View Rewards Button */}
-              <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
-                <Link 
-                  to={createPageUrl("Rewards")} 
-                  className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
+            {/* Mobile: Collapsible View Rewards dropdown */}
+            {isMobile ? (
+              <>
+                {/* View Rewards Dropdown Button */}
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5 relative"
                 >
-                  {/* Green dot positioned on top right of button */}
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
-                  View Rewards
-                </Link>
+                  <span>View Rewards</span>
+                  <div className="flex items-center gap-2">
+                    {/* Green dot - only show when not expanded */}
+                    {!isExpanded && (
+                      <>
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
+                      </>
+                    )}
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 animate-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
+                    </div>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                      {achievements.length > 0 ? (
+                        achievements.map((ach) => (
+                          <div key={ach.name} className="relative flex-shrink-0">
+                            <button
+                              onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
+                              className="relative p-3 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
+                            >
+                              <ach.icon className={`w-6 h-6 ${ach.color}`} />
+                              {/* Smooth label on click */}
+                              {selectedAchievement === ach.name && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
+                                  {ach.name}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
+                                </div>
+                              )}
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Your first achievement is just around the corner!</div>
+                      )}
+                    </div>
+                    
+                    {/* View Rewards Button */}
+                    <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
+                      <Link 
+                        to={createPageUrl("Rewards")} 
+                        className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
+                      >
+                        {/* Green dot positioned on top right of button - only show when expanded */}
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
+                        View Rewards
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Desktop: Show achievements and rewards button always */
+              <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                  {achievements.length > 0 ? (
+                    achievements.map((ach) => (
+                      <div key={ach.name} className="relative flex-shrink-0">
+                        <button
+                          onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
+                          className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
+                        >
+                          <ach.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${ach.color}`} />
+                          {/* Smooth label on click */}
+                          {selectedAchievement === ach.name && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
+                              {ach.name}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
+                            </div>
+                          )}
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Your first achievement is just around the corner!</div>
+                  )}
+                </div>
+                
+                {/* View Rewards Button */}
+                <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
+                  <Link 
+                    to={createPageUrl("Rewards")} 
+                    className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
+                  >
+                    {/* Green dot positioned on top right of button */}
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
+                    View Rewards
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       );

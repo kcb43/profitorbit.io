@@ -475,6 +475,16 @@ export default function Dashboard() {
             <TipOfTheDay variant="banner" />
           </div>
 
+          {/* Your Progress (Mobile only: below Tip of the Day) */}
+          <div className="col-span-12 lg:hidden">
+            <Gamification
+              sales={sales}
+              stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
+              variant="mosaic"
+              progressVariant="gaming"
+            />
+          </div>
+
           {/* KPI Row */}
           <div className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             <KpiSparkCard
@@ -593,8 +603,8 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Your progress + live chat + quick actions */}
-          <div className="col-span-12 lg:col-span-8">
+          {/* Your progress + live chat + quick actions (Desktop only) */}
+          <div className="hidden lg:block col-span-12 lg:col-span-8">
             <Gamification
               sales={sales}
               stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
