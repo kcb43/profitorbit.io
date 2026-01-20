@@ -348,7 +348,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             <CardContent className="pt-4 space-y-4">
               {/* Tier Badge - Elevated */}
               <div className={`relative rounded-xl bg-gradient-to-br ${tierInfo.color} border-2 ${tierInfo.border} p-4 shadow-xl transform hover:scale-105 transition-transform`}>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping opacity-75" />
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75" />
                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full" />
                 <div className="flex items-center justify-between">
                   <div>

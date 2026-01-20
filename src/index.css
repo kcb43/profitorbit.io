@@ -276,6 +276,17 @@ button:focus-visible {
   animation: shimmer 2.8s infinite;
 }
 
+@keyframes ping-slow {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping-slow {
+  animation: ping-slow 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
 /* Page title - target h1 with white text on md screens */
 [data-theme="default-light"] h1[class*="md:text-white"] {
   color: hsl(var(--foreground)) !important;
