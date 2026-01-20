@@ -1686,7 +1686,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
 
               {/* Adjustments Section - Hidden when cropping */}
               {!isCropping && (
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
                       <span className="capitalize font-medium">{activeFilter}</span>
                       <span className="text-gray-900 font-semibold">{sliderValue}%</span>
