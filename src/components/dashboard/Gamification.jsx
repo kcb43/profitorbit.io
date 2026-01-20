@@ -207,30 +207,11 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             <CardTitle className="text-base font-semibold text-foreground">Your Progress</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-4">
-            <div className="flex items-start justify-between gap-6">
-              <div className="min-w-0">
-                <div className="text-sm text-muted-foreground">Current level</div>
-                <div className="mt-1 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-muted/40 flex items-center justify-center overflow-hidden">
-                    {typeof currentLevel.icon === "string" ? (
-                      <img src={currentLevel.icon} alt="Level" className="h-8 w-8 object-contain" />
-                    ) : (
-                      renderIcon(currentLevel.icon, "text-gray-700 dark:text-gray-200 w-8 h-8")
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-lg font-semibold text-foreground">{currentLevel.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {nextLevel ? `Next: ${nextLevel.name}` : "Max level reached"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border/60 bg-muted/20 px-2.5 py-2 sm:px-4 sm:py-3 max-w-[112px] sm:max-w-none">
+            <div className="flex items-center justify-center sm:justify-start">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tier</div>
-                <div className="mt-1 text-base sm:text-xl font-bold text-foreground leading-tight">{tierInfo.name}</div>
-                <div className="text-[11px] sm:text-xs text-muted-foreground mt-1">{points.toLocaleString()} pts</div>
+                <div className="mt-1 text-xl font-bold text-foreground leading-tight">{tierInfo.name}</div>
+                <div className="text-xs text-muted-foreground mt-1">{points.toLocaleString()} pts</div>
               </div>
             </div>
 
@@ -246,8 +227,6 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
     if (progressVariant === "glass") {
       return (
         <Card className="border-0 shadow-lg bg-gradient-to-br from-white/80 via-white/60 to-white/40 dark:from-gray-900/80 dark:via-gray-900/60 dark:to-gray-900/40 backdrop-blur-xl relative overflow-hidden">
-          {/* Animated gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-purple-500/10 to-blue-500/10 animate-pulse opacity-50" />
           <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-transparent" />
           
           <CardHeader className="pb-3 relative z-10">
@@ -258,28 +237,6 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
           </CardHeader>
           <CardContent className="pt-0 space-y-4 relative z-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Level Section */}
-              <div className="rounded-2xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-md border border-white/20 dark:border-gray-700/20 p-4 shadow-lg">
-                <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Current Level</div>
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 p-0.5 shadow-lg">
-                    <div className="h-full w-full rounded-xl bg-white dark:bg-gray-900 flex items-center justify-center">
-                      {typeof currentLevel.icon === "string" ? (
-                        <img src={currentLevel.icon} alt="Level" className="h-8 w-8 object-contain" />
-                      ) : (
-                        renderIcon(currentLevel.icon, "text-gray-700 dark:text-gray-200 w-8 h-8")
-                      )}
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-lg font-bold text-foreground">{currentLevel.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {nextLevel ? `→ ${nextLevel.name}` : "Max level"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Tier Badge */}
               <div className={`rounded-2xl bg-gradient-to-br ${tierInfo.color} backdrop-blur-md border ${tierInfo.border} p-4 shadow-xl relative overflow-hidden group`}>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -289,6 +246,12 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                   <div className="text-sm text-white/90 font-medium">{points.toLocaleString()} pts</div>
                 </div>
                 <Medal className="absolute bottom-2 right-2 w-12 h-12 text-white/20" />
+              </div>
+
+              {/* Points Card */}
+              <div className="rounded-2xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-md border border-white/20 dark:border-gray-700/20 p-4 shadow-lg">
+                <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Total Points</div>
+                <div className="text-2xl font-bold text-foreground">{points.toLocaleString()}</div>
               </div>
             </div>
 
@@ -320,24 +283,6 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
             </div>
 
-            {/* Level Info */}
-            <div className="flex items-center justify-center gap-4 pt-2">
-              <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center">
-                {typeof currentLevel.icon === "string" ? (
-                  <img src={currentLevel.icon} alt="Level" className="h-8 w-8 object-contain" />
-                ) : (
-                  renderIcon(currentLevel.icon, "text-gray-700 dark:text-gray-200 w-8 h-8")
-                )}
-              </div>
-              <div className="text-left">
-                <div className="text-sm font-medium text-muted-foreground">Level</div>
-                <div className="text-lg font-bold text-foreground">{currentLevel.name}</div>
-                {nextLevel && (
-                  <div className="text-xs text-muted-foreground">Next: {nextLevel.name}</div>
-                )}
-              </div>
-            </div>
-
             <div>
               {renderAchievementsAndRewards()}
             </div>
@@ -350,51 +295,30 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
     if (progressVariant === "gaming") {
       return (
         <Card className="border-0 shadow-xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 relative overflow-hidden">
-          {/* Animated background effects */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-purple-500/20 to-blue-500/20 animate-pulse" />
+          {/* Top gradient bar */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500" />
           
           <CardHeader className="pb-3 relative z-10">
             <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <Zap className="w-4 h-4 text-emerald-400" />
               Your Progress
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-4 relative z-10">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Level */}
-              <div className="rounded-xl bg-gray-800/80 backdrop-blur-sm border border-emerald-500/30 p-3 shadow-lg">
-                <div className="text-xs text-emerald-400 mb-1 uppercase tracking-wide font-semibold">Level</div>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                    {typeof currentLevel.icon === "string" ? (
-                      <img src={currentLevel.icon} alt="Level" className="h-6 w-6 object-contain" />
-                    ) : (
-                      renderIcon(currentLevel.icon, "text-emerald-400 w-6 h-6")
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-white truncate">{currentLevel.name}</div>
-                    {nextLevel && (
-                      <div className="text-xs text-gray-400 truncate">→ {nextLevel.name}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Tier */}
-              <div className={`rounded-xl bg-gradient-to-br ${tierInfo.color.replace('/20', '')} border-2 ${tierInfo.border.replace('/30', '')} p-3 shadow-xl relative overflow-hidden`}>
+              <div className={`rounded-xl bg-gradient-to-br ${tierInfo.color.replace('/20', '')} border-2 ${tierInfo.border.replace('/30', '')} p-4 shadow-xl relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
                 <div className="relative z-10">
-                  <div className="text-xs text-white/70 uppercase tracking-wide mb-0.5">Tier</div>
-                  <div className="text-xl font-black text-white">{tierInfo.name}</div>
+                  <div className="text-xs text-white/70 uppercase tracking-wide mb-1">Tier</div>
+                  <div className="text-2xl font-black text-white">{tierInfo.name}</div>
                 </div>
               </div>
 
               {/* Points */}
-              <div className="rounded-xl bg-gray-800/80 backdrop-blur-sm border border-purple-500/30 p-3 shadow-lg">
+              <div className="rounded-xl bg-gray-800/80 backdrop-blur-sm border border-purple-500/30 p-4 shadow-lg">
                 <div className="text-xs text-purple-400 mb-1 uppercase tracking-wide font-semibold">Points</div>
-                <div className="text-xl font-bold text-white">{points.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-white">{points.toLocaleString()}</div>
               </div>
             </div>
 
@@ -433,26 +357,6 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                     <div className="text-sm text-white/90 mt-1">{points.toLocaleString()} pts</div>
                   </div>
                   <Medal className="w-12 h-12 text-white/30" />
-                </div>
-              </div>
-
-              {/* Level Info */}
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 p-0.5 shadow-md">
-                  <div className="h-full w-full rounded-xl bg-white dark:bg-gray-900 flex items-center justify-center">
-                    {typeof currentLevel.icon === "string" ? (
-                      <img src={currentLevel.icon} alt="Level" className="h-8 w-8 object-contain" />
-                    ) : (
-                      renderIcon(currentLevel.icon, "text-gray-700 dark:text-gray-200 w-8 h-8")
-                    )}
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="text-xs text-muted-foreground mb-1">Current Level</div>
-                  <div className="text-lg font-bold text-foreground">{currentLevel.name}</div>
-                  {nextLevel && (
-                    <div className="text-xs text-muted-foreground mt-1">Next: {nextLevel.name}</div>
-                  )}
                 </div>
               </div>
 
