@@ -130,19 +130,19 @@ export default function GalleryPage() {
       <div className="p-4 md:p-6 lg:p-8 w-full overflow-x-hidden">
         <div className="max-w-7xl mx-auto w-full overflow-x-hidden min-w-0">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Showcase</h1>
-            <p className="text-sm text-muted-foreground mt-1">Your successful sales at a glance.</p>
+          <div className="mb-6 w-full max-w-full min-w-0 overflow-x-hidden">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Showcase</h1>
+            <p className="text-sm text-muted-foreground mt-1 break-words">Your successful sales at a glance.</p>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 w-full max-w-full min-w-0 overflow-x-hidden">
             <DealOfTheMonth sales={sortedSales} monthKey={displayMonthKey} />
           </div>
 
           {/* Stats Cards - Horizontal layout with text at bottom */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 w-full max-w-full min-w-0">
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 w-full max-w-full min-w-0 overflow-x-hidden">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden">
+              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0">
                 <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
                   <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -151,18 +151,18 @@ export default function GalleryPage() {
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden">
+              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0">
                 <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
                   <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
                 </div>
-                <p className="text-lg sm:text-2xl font-bold text-foreground mb-1">${monthlyStats.totalProfit.toFixed(0)}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">Profit</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground mb-1 break-words">${monthlyStats.totalProfit.toFixed(0)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">Profit</p>
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden">
+              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0">
                 <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
                   <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
                 </div>
