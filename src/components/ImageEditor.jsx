@@ -1848,7 +1848,6 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                 </div>
               )}
             </div>
-          </div>
 
             {/* Main Content - Image preview */}
             <div className="w-full md:flex-1 flex flex-col min-w-0 flex-1 overflow-hidden bg-transparent dark:bg-transparent mt-1 md:mt-0 md:pl-3 order-2" style={{ scale: 1, outline: 'none' }}>
