@@ -139,41 +139,35 @@ export default function GalleryPage() {
             <DealOfTheMonth sales={sortedSales} monthKey={displayMonthKey} />
           </div>
 
-          {/* Stats Cards - Stack on mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
+          {/* Stats Cards - Horizontal layout with text at bottom */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
+                <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
+                  <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Sales</p>
-                  <p className="text-xl font-bold text-foreground">{monthlyStats.salesCount}</p>
-                </div>
+                <p className="text-lg sm:text-2xl font-bold text-foreground mb-1">{monthlyStats.salesCount}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Sales</p>
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-green-600" />
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
+                <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
+                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Profit</p>
-                  <p className="text-xl font-bold text-foreground">${monthlyStats.totalProfit.toFixed(0)}</p>
-                </div>
+                <p className="text-lg sm:text-2xl font-bold text-foreground mb-1">${monthlyStats.totalProfit.toFixed(0)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Profit</p>
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                  <Clock className="w-5 h-5 text-orange-600" />
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px]">
+                <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
+                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Avg Time</p>
-                  <p className="text-xl font-bold text-foreground">{monthlyStats.avgSellTime.toFixed(0)}d</p>
-                </div>
+                <p className="text-lg sm:text-2xl font-bold text-foreground mb-1">{monthlyStats.avgSellTime.toFixed(0)}d</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Avg Time</p>
               </CardContent>
             </Card>
           </div>
