@@ -308,7 +308,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Tier */}
               <div className={`rounded-xl bg-gradient-to-br ${tierInfo.color.replace('/20', '')} border-2 ${tierInfo.border.replace('/30', '')} p-4 shadow-xl relative overflow-hidden`}>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer-slow" />
                 <div className="relative z-10">
                   <div className="text-xs text-white/70 uppercase tracking-wide mb-1">Tier</div>
                   <div className="text-2xl font-black text-white">{tierInfo.name}</div>

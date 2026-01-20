@@ -272,6 +272,10 @@ button:focus-visible {
   animation: shimmer 2s infinite;
 }
 
+.animate-shimmer-slow {
+  animation: shimmer 2.8s infinite;
+}
+
 /* Page title - target h1 with white text on md screens */
 [data-theme="default-light"] h1[class*="md:text-white"] {
   color: hsl(var(--foreground)) !important;
