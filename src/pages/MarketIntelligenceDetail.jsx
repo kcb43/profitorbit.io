@@ -26,28 +26,37 @@ import {
   Package,
 } from "lucide-react";
 
+// Import marketplace logos
+const EBAY_LOGO = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
+const AMAZON_LOGO = "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg";
+const FACEBOOK_LOGO = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
+
 const MARKETPLACE_INFO = {
   ebay: {
     name: 'eBay',
-    icon: ShoppingBag,
+    icon: EBAY_LOGO,
+    iconType: 'image',
     color: 'blue',
     description: 'Tips, trends & insights for eBay sellers',
   },
   amazon: {
     name: 'Amazon',
-    icon: Package,
+    icon: AMAZON_LOGO,
+    iconType: 'image',
     color: 'orange',
     description: 'Sourcing strategies & trends for Amazon resellers',
   },
   facebook: {
     name: 'Facebook Marketplace',
-    icon: MessageCircle,
+    icon: FACEBOOK_LOGO,
+    iconType: 'image',
     color: 'indigo',
     description: 'Local & online insights for Facebook Marketplace',
   },
   'market-deals': {
     name: 'Market Deals',
     icon: Tag,
+    iconType: 'component',
     color: 'emerald',
     description: 'Discounted items & money-making opportunities',
   },
@@ -59,7 +68,8 @@ export default function MarketIntelligenceDetail() {
   const { marketplaceId } = useParams();
   const navigate = useNavigate();
   const marketplace = MARKETPLACE_INFO[marketplaceId] || MARKETPLACE_INFO.ebay;
-  const Icon = marketplace.icon;
+  const Icon = marketplace.iconType === 'component' ? marketplace.icon : null;
+  const iconSrc = marketplace.iconType === 'image' ? marketplace.icon : null;
 
   // Mock data - will be replaced with real API calls
   const [activeTab, setActiveTab] = useState('trending');
@@ -144,12 +154,20 @@ export default function MarketIntelligenceDetail() {
               marketplace.color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-950/20' :
               'bg-emerald-50 dark:bg-emerald-950/20'
             }`}>
-              <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                marketplace.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                marketplace.color === 'orange' ? 'text-orange-600 dark:text-orange-400' :
-                marketplace.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
-                'text-emerald-600 dark:text-emerald-400'
-              }`} />
+              {marketplace.iconType === 'image' && iconSrc ? (
+                <img 
+                  src={iconSrc} 
+                  alt={marketplace.name} 
+                  className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
+                />
+              ) : Icon ? (
+                <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                  marketplace.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                  marketplace.color === 'orange' ? 'text-orange-600 dark:text-orange-400' :
+                  marketplace.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
+                  'text-emerald-600 dark:text-emerald-400'
+                }`} />
+              ) : null}
             </div>
             <div className="flex-1 min-w-0 max-w-full">
               <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white break-words">
