@@ -310,27 +310,27 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
           </CardHeader>
           <CardContent className="pt-0 space-y-4 relative z-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Tier - styled like glass variant */}
-              <div className={`relative rounded-2xl bg-gradient-to-br ${tierInfo.color} backdrop-blur-md border ${tierInfo.border} p-4 shadow-xl overflow-hidden group`}>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 rounded-2xl" />
+              {/* Tier - styled like glass variant with blue colors */}
+              <div className="relative rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 dark:from-blue-500/20 dark:to-indigo-500/20 backdrop-blur-md border border-blue-500/30 dark:border-blue-500/30 p-4 shadow-xl overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 rounded-2xl" />
                 <div className="relative z-10">
-                  <div className="text-xs text-white/70 uppercase tracking-wider mb-1">Your Tier</div>
-                  <div className="text-2xl font-black text-white">{tierInfo.name}</div>
+                  <div className="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-1">Your Tier</div>
+                  <div className="text-2xl font-black text-blue-900 dark:text-white">{tierInfo.name}</div>
                 </div>
-                <Medal className="absolute bottom-2 right-2 w-12 h-12 text-white/20" />
+                <Medal className="absolute bottom-2 right-2 w-12 h-12 text-blue-400/30 dark:text-white/20" />
               </div>
 
               {/* Points */}
-              <div className="rounded-xl bg-gray-800/80 backdrop-blur-sm border border-purple-500/30 p-4 shadow-lg">
-                <div className="text-xs text-purple-400 mb-1 uppercase tracking-wide font-semibold">Points</div>
-                <div className="text-2xl font-bold text-white">{points.toLocaleString()}</div>
+              <div className="rounded-xl bg-blue-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 p-4 shadow-lg">
+                <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wide font-semibold">Points</div>
+                <div className="text-2xl font-bold text-blue-900 dark:text-white">{points.toLocaleString()}</div>
               </div>
             </div>
 
             {/* Achievements Section - Custom for Gaming */}
-            <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700/50">
+            <div className="bg-gray-100/60 dark:bg-gray-800/60 rounded-xl p-4 border border-gray-300/50 dark:border-gray-700/50">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-white">Achievements</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white">Achievements</div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {achievements.length > 0 ? (
@@ -338,29 +338,29 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                     <div key={ach.name} className="relative flex-shrink-0">
                       <button
                         onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
-                        className="relative p-3 sm:p-4 rounded-xl bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 hover:border-gray-500/70 transition-all group"
+                        className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
                       >
                         <ach.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${ach.color}`} />
                         {/* Smooth label on click */}
                         {selectedAchievement === ach.name && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 animate-in fade-in slide-in-from-bottom-2 z-30">
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
                             {ach.name}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 border-r border-b border-gray-700 rotate-45"></div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
                           </div>
                         )}
                       </button>
                     </div>
                   ))
                 ) : (
-                  <div className="text-xs text-gray-400">Your first achievement is just around the corner!</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">Your first achievement is just around the corner!</div>
                 )}
               </div>
               
               {/* View Rewards Button */}
-              <div className="pt-4 mt-4 border-t border-gray-700/50 relative">
+              <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-700/50 relative">
                 <Link 
                   to={createPageUrl("Rewards")} 
-                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative"
+                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-600"
                 >
                   {/* Green dot positioned on top right of button */}
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
