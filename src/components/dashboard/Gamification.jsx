@@ -321,16 +321,16 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
 
               {/* Points */}
-              <div className="rounded-xl bg-blue-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 p-4 shadow-lg">
-                <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wide font-semibold">Points</div>
-                <div className="text-2xl font-bold text-blue-900 dark:text-white">{points.toLocaleString()}</div>
+              <div className="rounded-xl bg-blue-50/80 dark:bg-gray-900/90 [data-theme='money-green-dark']:bg-gray-900/90 [data-theme='money-green-light']:bg-blue-50/80 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-blue-500/30 [data-theme='money-green-light']:border-blue-500/30 p-4 shadow-lg">
+                <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-blue-400 [data-theme='money-green-light']:text-blue-600 mb-1 uppercase tracking-wide font-semibold">Points</div>
+                <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-blue-900">{points.toLocaleString()}</div>
               </div>
             </div>
 
             {/* Achievements Section - Custom for Gaming */}
-            <div className="bg-gray-100/60 dark:bg-gray-800/60 rounded-xl p-4 border border-gray-300/50 dark:border-gray-700/50">
+            <div className="bg-gray-100/60 dark:bg-gray-900/90 [data-theme='money-green-dark']:bg-gray-900/90 [data-theme='money-green-light']:bg-gray-100/60 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-gray-800/50 [data-theme='money-green-light']:border-gray-300/50">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-gray-900 dark:text-white">Achievements</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-gray-900">Achievements</div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {achievements.length > 0 ? (
@@ -357,10 +357,10 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
               
               {/* View Rewards Button */}
-              <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-700/50 relative">
+              <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-gray-800/50 [data-theme='money-green-light']:border-gray-300/50 relative">
                 <Link 
                   to={createPageUrl("Rewards")} 
-                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-600"
+                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-900 [data-theme='money-green-dark']:bg-gray-900 [data-theme='money-green-light']:bg-white hover:bg-gray-50 dark:hover:bg-gray-800 [data-theme='money-green-dark']:hover:bg-gray-800 [data-theme='money-green-light']:hover:bg-gray-50 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-gray-900 font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-700 [data-theme='money-green-dark']:border-gray-700 [data-theme='money-green-light']:border-gray-300"
                 >
                   {/* Green dot positioned on top right of button */}
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
