@@ -27,12 +27,18 @@ import {
   Package,
 } from "lucide-react";
 
+// Marketplace logo URLs
+const EBAY_LOGO = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
+const AMAZON_LOGO = "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg";
+const FACEBOOK_LOGO = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
+
 // Marketplace data
 const MARKETPLACES = [
   {
     id: 'market-deals',
     name: 'Market Deals',
     icon: Tag,
+    iconType: 'component',
     color: 'from-emerald-500 to-emerald-600',
     bgColor: 'bg-emerald-50',
     iconColor: 'text-emerald-600',
@@ -42,7 +48,8 @@ const MARKETPLACES = [
   {
     id: 'ebay',
     name: 'eBay',
-    icon: ShoppingBag,
+    icon: EBAY_LOGO,
+    iconType: 'image',
     color: 'from-blue-500 to-blue-600',
     bgColor: 'bg-blue-50',
     iconColor: 'text-blue-600',
@@ -52,7 +59,8 @@ const MARKETPLACES = [
   {
     id: 'amazon',
     name: 'Amazon',
-    icon: Package,
+    icon: AMAZON_LOGO,
+    iconType: 'image',
     color: 'from-orange-500 to-orange-600',
     bgColor: 'bg-orange-50',
     iconColor: 'text-orange-600',
@@ -62,7 +70,8 @@ const MARKETPLACES = [
   {
     id: 'facebook',
     name: 'Facebook',
-    icon: MessageCircle,
+    icon: FACEBOOK_LOGO,
+    iconType: 'image',
     color: 'from-indigo-500 to-indigo-600',
     bgColor: 'bg-indigo-50',
     iconColor: 'text-indigo-600',
@@ -177,7 +186,8 @@ export default function MarketIntelligence() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 w-full">
             {MARKETPLACES.map((marketplace) => {
-              const Icon = marketplace.icon;
+              const Icon = marketplace.iconType === 'component' ? marketplace.icon : null;
+              const iconSrc = marketplace.iconType === 'image' ? marketplace.icon : null;
               return (
                 <button
                   key={marketplace.id}
@@ -199,7 +209,15 @@ export default function MarketIntelligence() {
 
                   {/* Icon - Larger and more prominent */}
                   <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 ${marketplace.bgColor} dark:bg-gray-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-200 flex-shrink-0`}>
-                    <Icon className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 ${marketplace.iconColor} dark:text-gray-300`} />
+                    {marketplace.iconType === 'image' && iconSrc ? (
+                      <img 
+                        src={iconSrc} 
+                        alt={marketplace.name} 
+                        className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain"
+                      />
+                    ) : Icon ? (
+                      <Icon className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 ${marketplace.iconColor} dark:text-gray-300`} />
+                    ) : null}
                   </div>
 
                   {/* Name */}
