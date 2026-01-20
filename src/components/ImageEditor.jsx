@@ -1738,9 +1738,9 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                   </div>
                 )}
 
-                {/* Filters Section - Hidden when cropping */}
-                {!isCropping && (
-                  <div className="space-y-2">
+              {/* Filters Section - Hidden when cropping */}
+              {!isCropping && (
+                <div className="space-y-2">
                     {/* Brightness and Contrast Row */}
                     <div className="grid grid-cols-2 gap-1.5">
                     {[
