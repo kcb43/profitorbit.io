@@ -1741,8 +1741,8 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
               {/* Filters Section - Hidden when cropping */}
               {!isCropping && (
                 <div className="space-y-2">
-                    {/* Brightness and Contrast Row */}
-                    <div className="grid grid-cols-2 gap-1.5">
+                  {/* Brightness and Contrast Row */}
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
                       { id: 'brightness', icon: BrightnessIcon, label: 'Bright' },
                       { id: 'contrast', icon: Contrast, label: 'Contrast' },
@@ -1760,9 +1760,9 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                         <span className="text-[10px] leading-tight">{label}</span>
                       </button>
                     ))}
-                    </div>
-                    {/* Saturation and Shadow Row */}
-                    <div className="grid grid-cols-2 gap-1.5">
+                  </div>
+                  {/* Saturation and Shadow Row */}
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
                       { id: 'saturate', icon: Palette, label: 'Saturate' },
                       { id: 'shadow', icon: Layers, label: 'Shadow' },
