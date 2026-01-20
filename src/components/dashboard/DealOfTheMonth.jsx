@@ -95,16 +95,16 @@ export default function DealOfTheMonth({ sales, monthKey }) {
   }, [sales, effectiveMonthKey]);
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden w-full max-w-full min-w-0">
-      <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 overflow-hidden w-full max-w-full min-w-0">
-        <CardTitle className="text-lg sm:text-xl font-bold text-foreground flex items-center flex-wrap gap-2 sm:gap-3 min-w-0 w-full">
-          <span className="leading-tight min-w-0">Deal of the Month</span>
-          <span className="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 sm:px-2.5 text-[10px] sm:text-xs font-semibold bg-blue-600 text-white shadow-sm flex-shrink-0">
+    <Card className="border-0 shadow-sm overflow-hidden w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+      <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 overflow-hidden w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+        <CardTitle className="text-lg sm:text-xl font-bold text-foreground flex items-center flex-wrap gap-2 sm:gap-3 min-w-0 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+          <span className="leading-tight min-w-0 break-words">Deal of the Month</span>
+          <span className="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 sm:px-2.5 text-[10px] sm:text-xs font-semibold bg-blue-600 text-white shadow-sm flex-shrink-0 whitespace-nowrap">
             {monthLabel}
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 sm:p-6 pt-4 sm:pt-6 overflow-hidden w-full max-w-full min-w-0">
+      <CardContent className="p-4 sm:p-6 pt-4 sm:pt-6 overflow-hidden w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
         <DealHighlight
           itemName={highestProfit?.item_name}
           saleId={highestProfit?.id}

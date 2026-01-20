@@ -126,9 +126,9 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full">
-      <div className="p-4 md:p-6 lg:p-8 w-full overflow-x-hidden">
-        <div className="max-w-7xl mx-auto w-full overflow-x-hidden min-w-0">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+      <div className="p-4 md:p-6 lg:p-8 w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+        <div className="max-w-7xl mx-auto w-full overflow-x-hidden min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
           {/* Header */}
           <div className="mb-6 w-full max-w-full min-w-0 overflow-x-hidden">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Showcase</h1>
@@ -174,13 +174,13 @@ export default function GalleryPage() {
 
           {/* Main Grid */}
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
               {Array.from({ length: 10 }).map((_, i) => (
                 <Skeleton key={i} className="aspect-square rounded-lg w-full max-w-full" />
               ))}
             </div>
           ) : salesWithMetrics.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
               {salesWithMetrics.map(sale => (
                 <Card 
                   key={sale.id}
