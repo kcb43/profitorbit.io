@@ -311,10 +311,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
           <CardContent className="pt-0 space-y-4 relative z-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Tier - styled like glass variant */}
-              <div className={`relative rounded-2xl bg-gradient-to-br ${tierInfo.color} backdrop-blur-md border ${tierInfo.border} p-4 shadow-xl overflow-visible group`}>
-                {/* Green dot positioned outside/on top of the tier div */}
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
+              <div className={`relative rounded-2xl bg-gradient-to-br ${tierInfo.color} backdrop-blur-md border ${tierInfo.border} p-4 shadow-xl overflow-hidden group`}>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 rounded-2xl" />
                 <div className="relative z-10">
                   <div className="text-xs text-white/70 uppercase tracking-wider mb-1">Your Tier</div>
@@ -360,12 +357,14 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
               
               {/* View Rewards Button */}
-              <div className="pt-4 mt-4 border-t border-gray-700/50">
+              <div className="pt-4 mt-4 border-t border-gray-700/50 relative">
                 <Link 
                   to={createPageUrl("Rewards")} 
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative"
                 >
-                  <Gift className="w-4 h-4" />
+                  {/* Green dot positioned on top right of button */}
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
                   View Rewards
                 </Link>
               </div>
