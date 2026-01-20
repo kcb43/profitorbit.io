@@ -31,10 +31,9 @@ import { crosslistingEngine } from '@/services/CrosslistingEngine';
 import { useFacebookSDK } from '@/hooks/useFacebookSDK';
 
 const themes = {
-  'default-light': 'Default Light',
-  'default-dark': 'Default Dark',
-  'money-green-light': 'Money Green Light',
-  'money-green-dark': 'Money Green Dark',
+  'default-light': 'Light',
+  'default-dark': 'Dark',
+  'money-green-dark': 'Green',
 };
 
 const MARKETPLACES = [

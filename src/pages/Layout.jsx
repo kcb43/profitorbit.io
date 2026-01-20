@@ -65,7 +65,7 @@ const navigationCategories = [
 
 const themes = {
   'default-light': {
-    name: "Default Light",
+    name: "Light",
     isDark: false,
     css: `
       --background: 0 0% 100%;
@@ -93,7 +93,7 @@ const themes = {
     `
   },
 'default-dark': {
-  name: "Default Dark",
+  name: "Dark",
   isDark: true,
   css: `
     --background: 240 10% 3.9%;
@@ -121,7 +121,7 @@ const themes = {
   `
 },
   'money-green-dark': {
-    name: "Money Green",
+    name: "Green",
     isDark: true,
     css: `
       --background: 217 39% 11%;

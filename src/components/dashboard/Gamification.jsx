@@ -298,12 +298,12 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
       const [selectedAchievement, setSelectedAchievement] = useState(null);
 
       return (
-        <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-gray-800 [data-theme='money-green-light']:bg-gray-100 relative overflow-hidden">
+        <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-[#111b2d] [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
           {/* Top gradient bar */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500" />
           
           <CardHeader className="pb-3 relative z-10">
-            <CardTitle className="text-base font-bold text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-gray-900 flex items-center gap-2">
+            <CardTitle className="text-base font-bold text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-400 dark:text-emerald-400" />
               Your Progress
             </CardTitle>
@@ -321,16 +321,16 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
 
               {/* Points */}
-              <div className="rounded-xl bg-blue-50/80 dark:bg-gray-950 [data-theme='money-green-dark']:bg-gray-700 [data-theme='money-green-light']:bg-gray-200 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-gray-600 [data-theme='money-green-light']:border-gray-300 p-4 shadow-lg">
-                <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-blue-400 [data-theme='money-green-light']:text-blue-600 mb-1 uppercase tracking-wide font-semibold">Points</div>
-                <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-blue-900">{points.toLocaleString()}</div>
+              <div className="rounded-xl bg-blue-50/80 dark:bg-gray-950 [data-theme='money-green-dark']:bg-[#0d1728] backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
+                <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-slate-300 mb-1 uppercase tracking-wide font-semibold">Points</div>
+                <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white">{points.toLocaleString()}</div>
               </div>
             </div>
 
             {/* Achievements Section - Custom for Gaming */}
-            <div className="bg-gray-100/60 dark:bg-gray-950 [data-theme='money-green-dark']:bg-gray-700 [data-theme='money-green-light']:bg-gray-200 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-gray-600 [data-theme='money-green-light']:border-gray-300">
+            <div className="bg-gray-100/60 dark:bg-gray-950 [data-theme='money-green-dark']:bg-[#0d1728] rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-gray-900">Achievements</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {achievements.length > 0 ? (
@@ -357,10 +357,10 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
               
               {/* View Rewards Button */}
-              <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-gray-600 [data-theme='money-green-light']:border-gray-300 relative">
+              <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
                 <Link 
                   to={createPageUrl("Rewards")} 
-                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-gray-700 [data-theme='money-green-light']:bg-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 [data-theme='money-green-dark']:hover:bg-gray-600 [data-theme='money-green-light']:hover:bg-gray-300 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-gray-900 font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-gray-600 [data-theme='money-green-light']:border-gray-300"
+                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-[#0d1728] hover:bg-gray-50 dark:hover:bg-gray-900 [data-theme='money-green-dark']:hover:bg-[#111b2d] text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
                 >
                   {/* Green dot positioned on top right of button */}
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
@@ -420,10 +420,10 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-gray-900 relative overflow-hidden">
       
-      <CardHeader className="relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 [data-theme='money-green-light']:bg-gray-50/50 rounded-t-lg">
+      <CardHeader className="relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 rounded-t-lg">
         <CardTitle className="text-xl font-bold text-foreground">Your Progress</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 [data-theme='money-green-light']:bg-gray-50/50 rounded-b-lg min-w-0">
+      <CardContent className="space-y-6 relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 rounded-b-lg min-w-0">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 min-w-0">
           {/* Left side - Current Level */}
           <div className="flex-1 min-w-0 w-full sm:w-auto">
