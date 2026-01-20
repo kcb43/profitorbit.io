@@ -648,7 +648,15 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
       };
 
       img.src = imgSrc;
-    }, throttleDelay);
+    };
+    
+    if (isMobile) {
+      // On mobile, render immediately for live preview
+      renderPreview();
+    } else {
+      // On desktop, throttle for performance
+      previewRenderTimerRef.current = setTimeout(renderPreview, throttleDelay);
+    }
 
     return () => {
       if (previewRenderTimerRef.current) {
