@@ -36,17 +36,20 @@ import KpiSparkCard from "../components/dashboard/mosaic/KpiSparkCard";
 import ProfitTrendCard from "../components/dashboard/mosaic/ProfitTrendCard";
 import PlatformRevenueTableCard from "../components/dashboard/mosaic/PlatformRevenueTableCard";
 
+import ebayLogo from "@/assets/ebay-logo.svg";
+import facebookLogo from "@/assets/facebook-logo.svg";
+
 const SUPPORTED_MARKETPLACES = [
   {
     key: "ebay",
     name: "eBay",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
+    logo: ebayLogo,
     available: true,
   },
   {
     key: "facebook",
     name: "Facebook",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+    logo: facebookLogo,
     available: true,
   },
   {

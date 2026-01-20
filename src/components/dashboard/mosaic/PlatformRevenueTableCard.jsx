@@ -3,10 +3,18 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+import ebayLogo from "@/assets/ebay-logo.svg";
+import facebookLogo from "@/assets/facebook-logo.svg";
+import amazonLogo from "@/assets/amazon-logo.svg";
+
 const PLATFORM_META = {
   ebay: {
     name: "eBay",
-    icon: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
+    icon: ebayLogo,
+  },
+  amazon: {
+    name: "Amazon",
+    icon: amazonLogo,
   },
   mercari: {
     name: "Mercari",
@@ -14,11 +22,11 @@ const PLATFORM_META = {
   },
   facebook_marketplace: {
     name: "Facebook",
-    icon: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+    icon: facebookLogo,
   },
   facebook: {
     name: "Facebook",
-    icon: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+    icon: facebookLogo,
   },
   etsy: {
     name: "Etsy",

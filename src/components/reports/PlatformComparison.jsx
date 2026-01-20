@@ -6,14 +6,20 @@ import { Badge } from "@/components/ui/badge";
 const platformNames = {
   ebay: "eBay",
   facebook_marketplace: "Facebook",
+  amazon: "Amazon",
   etsy: "Etsy",
   mercari: "Mercari",
   offer_up: "OfferUp"
 };
 
+import ebayLogo from "@/assets/ebay-logo.svg";
+import facebookLogo from "@/assets/facebook-logo.svg";
+import amazonLogo from "@/assets/amazon-logo.svg";
+
 const platformIcons = {
-  ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+  ebay: ebayLogo,
+  facebook_marketplace: facebookLogo,
+  amazon: amazonLogo,
   mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
   etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
   offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
