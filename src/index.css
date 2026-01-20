@@ -1060,6 +1060,18 @@ input[type="range"].modern-slider::-moz-range-thumb:active {
   border-color: hsl(var(--border)) !important;
 }
 
+/* Your Progress section - Green theme backgrounds */
+[data-theme="money-green-dark"] .your-progress-card,
+[data-theme="money-green-dark"] .your-progress-points,
+[data-theme="money-green-dark"] .your-progress-achievements,
+[data-theme="money-green-dark"] .your-progress-rewards-btn {
+  background-color: hsl(var(--card)) !important;
+}
+
+[data-theme="money-green-dark"] .your-progress-rewards-btn:hover {
+  background-color: hsl(var(--card) / 0.9) !important;
+}
+
 /* DialogTitle text color */
 [data-theme="default-dark"] [role="dialog"]:has(.image-edit-container) .text-gray-900,
 [data-theme="money-green-dark"] [role="dialog"]:has(.image-edit-container) .text-gray-900 {

@@ -298,7 +298,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
       const [selectedAchievement, setSelectedAchievement] = useState(null);
 
       return (
-        <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-[hsl(var(--card))] [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
+        <Card className="your-progress-card border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
           {/* Top gradient bar */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500" />
           
@@ -321,14 +321,14 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
 
               {/* Points */}
-              <div className="rounded-xl bg-blue-50/80 dark:bg-gray-950 [data-theme='money-green-dark']:bg-[hsl(var(--card))] backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
+              <div className="your-progress-points rounded-xl bg-blue-50/80 dark:bg-gray-950 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
                 <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-slate-300 mb-1 uppercase tracking-wide font-semibold">Points</div>
                 <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white">{points.toLocaleString()}</div>
               </div>
             </div>
 
             {/* Achievements Section - Custom for Gaming */}
-            <div className="bg-gray-100/60 dark:bg-gray-950 [data-theme='money-green-dark']:bg-[hsl(var(--card))] rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
+            <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
               </div>
@@ -360,7 +360,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
                 <Link 
                   to={createPageUrl("Rewards")} 
-                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-[hsl(var(--card))] hover:bg-gray-50 dark:hover:bg-gray-900 [data-theme='money-green-dark']:hover:bg-[hsl(var(--card))]/90 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
+                  className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
                 >
                   {/* Green dot positioned on top right of button */}
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
