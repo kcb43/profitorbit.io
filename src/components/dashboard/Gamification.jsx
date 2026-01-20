@@ -298,7 +298,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
       const [selectedAchievement, setSelectedAchievement] = useState(null);
 
       return (
-        <Card className="border-0 shadow-xl bg-white dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 [data-theme='money-green-dark']:bg-gradient-to-br [data-theme='money-green-dark']:from-gray-900 [data-theme='money-green-dark']:via-gray-800 [data-theme='money-green-dark']:to-gray-900 [data-theme='money-green-light']:bg-white relative overflow-hidden">
+        <Card className="border-0 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:bg-gradient-to-br [data-theme='money-green-dark']:from-gray-900 [data-theme='money-green-dark']:via-gray-800 [data-theme='money-green-dark']:to-gray-900 [data-theme='money-green-light']:bg-white relative overflow-hidden">
           {/* Top gradient bar */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500" />
           
