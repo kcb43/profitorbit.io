@@ -298,13 +298,13 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
       const [selectedAchievement, setSelectedAchievement] = useState(null);
 
       return (
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 relative overflow-hidden">
+        <Card className="border-0 shadow-xl bg-white dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 [data-theme='money-green-dark']:bg-gradient-to-br [data-theme='money-green-dark']:from-gray-900 [data-theme='money-green-dark']:via-gray-800 [data-theme='money-green-dark']:to-gray-900 [data-theme='money-green-light']:bg-white relative overflow-hidden">
           {/* Top gradient bar */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500" />
           
           <CardHeader className="pb-3 relative z-10">
-            <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-400" />
+            <CardTitle className="text-base font-bold text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white [data-theme='money-green-light']:text-gray-900 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-emerald-400 dark:text-emerald-400" />
               Your Progress
             </CardTitle>
           </CardHeader>
