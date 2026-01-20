@@ -239,6 +239,8 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Tier Badge */}
               <div className={`rounded-2xl bg-gradient-to-br ${tierInfo.color} backdrop-blur-md border ${tierInfo.border} p-4 shadow-xl relative overflow-hidden group`}>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75" />
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full" />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <div className="relative z-10">
                   <div className="text-xs text-white/70 uppercase tracking-wider mb-1">Your Tier</div>
@@ -308,6 +310,8 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Tier */}
               <div className={`rounded-xl bg-gradient-to-br ${tierInfo.color.replace('/20', '')} border-2 ${tierInfo.border.replace('/30', '')} p-4 shadow-xl relative overflow-hidden`}>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75" />
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full" />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer-slow" />
                 <div className="relative z-10">
                   <div className="text-xs text-white/70 uppercase tracking-wide mb-1">Tier</div>

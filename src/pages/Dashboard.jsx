@@ -604,7 +604,7 @@ export default function Dashboard() {
               sales={sales}
               stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
               variant="mosaic"
-              progressVariant="glass"
+              progressVariant="gaming"
             />
           </div>
           <div className="col-span-12 lg:col-span-4">
