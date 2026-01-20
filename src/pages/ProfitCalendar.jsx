@@ -495,13 +495,13 @@ export default function ProfitCalendar() {
 
           {/* Desktop KPIs (use horizontal space; avoid vertical scrolling) */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="rounded-2xl border border-white/5 bg-[#111b2d] p-4 shadow-lg">
-              <div className="text-xs uppercase tracking-wide text-slate-400">This Month</div>
+            <div className="rounded-2xl border border-white/5 bg-[#111b2d] [data-theme='default-light']:bg-white [data-theme='default-light']:border-gray-200 p-4 shadow-lg">
+              <div className="text-xs uppercase tracking-wide text-slate-400 [data-theme='default-light']:text-gray-600">This Month</div>
 
               <div className="mt-3">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-slate-300">Top sold</div>
-                  <div className="text-[11px] text-slate-500">Tap to view details</div>
+                  <div className="text-xs font-medium text-slate-300 [data-theme='default-light']:text-gray-700">Top sold</div>
+                  <div className="text-[11px] text-slate-500 [data-theme='default-light']:text-gray-500">Tap to view details</div>
                 </div>
 
                 {Array.isArray(topSoldItems) && topSoldItems.length > 0 ? (
@@ -510,7 +510,7 @@ export default function ProfitCalendar() {
                       <button
                         key={s.id}
                         type="button"
-                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#0d1728]"
+                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200"
                         onClick={() => {
                           window.location.href = `/SoldItemDetail?id=${encodeURIComponent(s.id)}&expandFees=true`;
                         }}
@@ -531,45 +531,45 @@ export default function ProfitCalendar() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-2 text-xs text-slate-500 [data-theme='default-light']:text-gray-500">
                     No sold items with photos yet.
                   </div>
                 )}
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <DollarSign className="h-4 w-4 text-emerald-300" />
+                <div className="rounded-xl border border-white/5 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200 p-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-400 [data-theme='default-light']:text-gray-600">
+                    <DollarSign className="h-4 w-4 text-emerald-300 [data-theme='default-light']:text-emerald-600" />
                     Profit
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">${monthlyProfit.toFixed(2)}</div>
+                  <div className="mt-1 text-lg font-semibold text-white [data-theme='default-light']:text-gray-900">${monthlyProfit.toFixed(2)}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <ShoppingBag className="h-4 w-4 text-blue-300" />
+                <div className="rounded-xl border border-white/5 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200 p-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-400 [data-theme='default-light']:text-gray-600">
+                    <ShoppingBag className="h-4 w-4 text-blue-300 [data-theme='default-light']:text-blue-600" />
                     Sales
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">{monthlySalesCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-white [data-theme='default-light']:text-gray-900">{monthlySalesCount}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <TrendingUp className="h-4 w-4 text-purple-300" />
+                <div className="rounded-xl border border-white/5 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200 p-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-400 [data-theme='default-light']:text-gray-600">
+                    <TrendingUp className="h-4 w-4 text-purple-300 [data-theme='default-light']:text-purple-600" />
                     Avg / Day
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">${avgDailyProfit.toFixed(2)}</div>
+                  <div className="mt-1 text-lg font-semibold text-white [data-theme='default-light']:text-gray-900">${avgDailyProfit.toFixed(2)}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="text-xs text-slate-400">Revenue</div>
-                  <div className="mt-1 text-lg font-semibold text-white">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
+                <div className="rounded-xl border border-white/5 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200 p-3">
+                  <div className="text-xs text-slate-400 [data-theme='default-light']:text-gray-600">Revenue</div>
+                  <div className="mt-1 text-lg font-semibold text-white [data-theme='default-light']:text-gray-900">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="text-xs text-slate-400">Costs</div>
-                  <div className="mt-1 text-lg font-semibold text-white">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
+                <div className="rounded-xl border border-white/5 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200 p-3">
+                  <div className="text-xs text-slate-400 [data-theme='default-light']:text-gray-600">Costs</div>
+                  <div className="mt-1 text-lg font-semibold text-white [data-theme='default-light']:text-gray-900">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="text-xs text-slate-400">Margin</div>
-                  <div className="mt-1 text-lg font-semibold text-white">
+                <div className="rounded-xl border border-white/5 bg-[#0d1728] [data-theme='default-light']:bg-gray-50 [data-theme='default-light']:border-gray-200 p-3">
+                  <div className="text-xs text-slate-400 [data-theme='default-light']:text-gray-600">Margin</div>
+                  <div className="mt-1 text-lg font-semibold text-white [data-theme='default-light']:text-gray-900">
                     {monthlyRevenue ? `${Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10}%` : '0%'}
                   </div>
                 </div>
