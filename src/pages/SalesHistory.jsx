@@ -42,14 +42,9 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/api/supabaseClient";
 
-import ebayLogo from "@/assets/ebay-logo.svg";
-import facebookLogo from "@/assets/facebook-logo.svg";
-import amazonLogo from "@/assets/amazon-logo.svg";
-
 const platformIcons = {
-  ebay: ebayLogo,
-  facebook_marketplace: facebookLogo,
-  amazon: amazonLogo,
+  ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
+  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
   mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
   etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
   offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
@@ -58,7 +53,6 @@ const platformIcons = {
 const platformColors = {
   ebay: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
   facebook_marketplace: "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100",
-  amazon: "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100",
   etsy: "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100",
   mercari: "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-100",
   offer_up: "bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-100"
@@ -67,7 +61,6 @@ const platformColors = {
 const platformNames = {
   ebay: "eBay",
   facebook_marketplace: "Facebook",
-  amazon: "Amazon",
   etsy: "Etsy",
   mercari: "Mercari",
   offer_up: "OfferUp"

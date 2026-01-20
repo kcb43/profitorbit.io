@@ -65,15 +65,11 @@ import { ListingJobTracker } from "@/components/ListingJobTracker";
 import { inventoryApi } from "@/api/inventoryApi";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 
-import facebookLogo from "@/assets/facebook-logo.svg";
-import ebayLogo from "@/assets/ebay-logo.svg";
-import amazonLogo from "@/assets/amazon-logo.svg";
-
-const FACEBOOK_ICON_URL = facebookLogo;
+const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
 
-const EBAY_ICON_URL = ebayLogo;
+const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 
 const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
 const POSHMARK_ICON_URL = "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -81,7 +77,6 @@ const POSHMARK_ICON_URL = "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbo
 const MARKETPLACES = [
   { id: "ebay",     label: "eBay",     icon: EBAY_ICON_URL },
   { id: "facebook", label: "Facebook", icon: FACEBOOK_ICON_URL },
-  { id: "amazon",   label: "Amazon",   icon: amazonLogo },
   { id: "mercari",  label: "Mercari",  icon: MERCARI_ICON_URL  },
   { id: "etsy",     label: "Etsy",     icon: ETSY_ICON_URL },
   { id: "poshmark", label: "Poshmark", icon: POSHMARK_ICON_URL },

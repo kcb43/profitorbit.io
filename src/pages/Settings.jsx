@@ -15,8 +15,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import facebookLogo from "@/assets/facebook-logo.svg";
-import ebayLogo from "@/assets/ebay-logo.svg";
-import amazonLogo from "@/assets/amazon-logo.svg";
+// Using official eBay logo from Wikimedia Commons
+const ebayLogo = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 // Using official Mercari logo from brandfetch
 const mercariLogo = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
 import poshmarkLogo from "@/assets/poshmark-logo.svg";
