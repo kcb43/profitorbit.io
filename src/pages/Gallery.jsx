@@ -141,8 +141,8 @@ export default function GalleryPage() {
 
           {/* Stats Cards - Horizontal layout with text at bottom */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 w-full max-w-full min-w-0 overflow-x-hidden">
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden">
-              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <CardContent className="p-2 sm:p-3 md:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
                   <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -151,8 +151,8 @@ export default function GalleryPage() {
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden">
-              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <CardContent className="p-2 sm:p-3 md:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
                   <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
                 </div>
@@ -161,8 +161,8 @@ export default function GalleryPage() {
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden">
-              <CardContent className="p-3 sm:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0">
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group w-full max-w-full min-w-0 overflow-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <CardContent className="p-2 sm:p-3 md:p-4 flex flex-col items-center justify-center text-center min-h-[80px] sm:min-h-[100px] w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg mb-2 group-hover:scale-110 transition-transform">
                   <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
                 </div>
