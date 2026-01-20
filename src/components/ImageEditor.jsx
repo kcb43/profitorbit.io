@@ -589,9 +589,10 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
     previewRenderAbortRef.current.token = token;
     previewRenderAbortRef.current.cancelled = false;
 
-    // Throttle slightly to keep sliders feeling smooth. Use shorter delay on mobile for better responsiveness.
-    const throttleDelay = isMobile ? 20 : 40;
-    previewRenderTimerRef.current = setTimeout(() => {
+    // On mobile, render immediately for live preview. On desktop, throttle slightly.
+    const throttleDelay = isMobile ? 0 : 40;
+    
+    const renderPreview = () => {
       const canvas = previewCanvasRef.current;
       if (!canvas) return;
 
@@ -1497,7 +1498,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
 
           <div className="ant-modal-body flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden p-2 sm:p-4" style={{ scale: 1, outline: 'none' }}>
             {/* Compact Sidebar */}
-            <div className="w-full md:w-[220px] bg-gray-50 backdrop-blur-sm md:border-r border-gray-200 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-3 flex-shrink-0 max-h-[30dvh] md:max-h-none order-1">
+            <div className="w-full md:w-[220px] bg-gray-50 backdrop-blur-sm md:border-r border-gray-200 overflow-y-auto overflow-x-hidden px-2 md:px-3 py-2 md:py-3 space-y-2 md:space-y-3 flex-shrink-0 max-h-[25dvh] md:max-h-none order-1">
               {/* Template Section - Compact */}
               <div className="space-y-2">
                 <Select
@@ -1550,43 +1551,25 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                 </Button>
               </div>
 
-              {/* Upload Section - Compact */}
-              <div>
-                <input
-                  type="file"
-                  id="imageUploader"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  onClick={() => document.getElementById('imageUploader')?.click()}
-                  className="w-full bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center gap-1.5 text-xs h-7 border border-gray-300"
-                >
-                  <Upload className="w-3 h-3" />
-                  <span>Upload</span>
-                </Button>
-              </div>
-
-              {/* Transform Section - Compact */}
-              <div className="space-y-2">
-                {isCropping ? (
-                  // When cropping, show aspect ratio selector and crop controls
-                  <div className="space-y-2">
-                    <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
-                      <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900 text-xs h-7">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="free">Free</SelectItem>
-                        <SelectItem value="square">Square (1:1)</SelectItem>
-                        <SelectItem value="4:3">Landscape (4:3)</SelectItem>
-                        <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
-                        <SelectItem value="4:5">Portrait (4:5)</SelectItem>
-                        <SelectItem value="9:16">Vertical (9:16)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="flex gap-1.5">
+              {/* Upload & Crop Section - Combined on mobile, separate on desktop */}
+              {isMobile ? (
+                <div className="flex gap-1.5">
+                  <input
+                    type="file"
+                    id="imageUploader"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => document.getElementById('imageUploader')?.click()}
+                    className="flex-1 bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center h-7 border border-gray-300 p-0"
+                    title="Upload"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </Button>
+                  {isCropping ? (
+                    <>
                       <Button
                         onClick={cancelCrop}
                         className="flex-1 bg-red-600/80 hover:bg-red-500 text-white text-xs h-7"
@@ -1597,19 +1580,101 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                         onClick={applyCrop}
                         className="flex-1 bg-green-600/80 hover:bg-green-500 text-white text-xs h-7"
                       >
-                        ✓ Apply
+                        ✓
                       </Button>
-                    </div>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleTransform('crop')}
+                      className="flex-1 h-7 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center p-0"
+                      title="Crop"
+                    >
+                      <Crop className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Upload Section - Desktop */}
+                  <div>
+                    <input
+                      type="file"
+                      id="imageUploader"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      onClick={() => document.getElementById('imageUploader')?.click()}
+                      className="w-full bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center gap-1.5 text-xs h-7 border border-gray-300"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Upload</span>
+                    </Button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => handleTransform('crop')}
-                    className="w-full p-2 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs h-9 sm:h-[54px]"
-                  >
-                    <Crop className="w-3.5 h-3.5" />
-                    <span>Crop</span>
-                  </button>
-                )}
+
+                  {/* Transform Section - Desktop */}
+                  <div className="space-y-2">
+                    {isCropping ? (
+                      // When cropping, show aspect ratio selector and crop controls
+                      <div className="space-y-2">
+                        <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
+                          <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900 text-xs h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="free">Free</SelectItem>
+                            <SelectItem value="square">Square (1:1)</SelectItem>
+                            <SelectItem value="4:3">Landscape (4:3)</SelectItem>
+                            <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
+                            <SelectItem value="4:5">Portrait (4:5)</SelectItem>
+                            <SelectItem value="9:16">Vertical (9:16)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex gap-1.5">
+                          <Button
+                            onClick={cancelCrop}
+                            className="flex-1 bg-red-600/80 hover:bg-red-500 text-white text-xs h-7"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={applyCrop}
+                            className="flex-1 bg-green-600/80 hover:bg-green-500 text-white text-xs h-7"
+                          >
+                            ✓ Apply
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleTransform('crop')}
+                        className="w-full p-2 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs h-9 sm:h-[54px]"
+                      >
+                        <Crop className="w-3.5 h-3.5" />
+                        <span>Crop</span>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              {/* Aspect Ratio Selector - Mobile only when cropping */}
+              {isMobile && isCropping && (
+                <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
+                  <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900 text-xs h-7">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="square">Square (1:1)</SelectItem>
+                    <SelectItem value="4:3">Landscape (4:3)</SelectItem>
+                    <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
+                    <SelectItem value="4:5">Portrait (4:5)</SelectItem>
+                    <SelectItem value="9:16">Vertical (9:16)</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
 
                 {/* Adjustments Section - Hidden when cropping */}
                 {!isCropping && (
@@ -1778,9 +1843,9 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
           </div>
 
             {/* Main Content - Image preview */}
-            <div className="w-full md:flex-1 flex flex-col min-w-0 flex-1 overflow-hidden bg-transparent dark:bg-transparent mt-2 md:mt-0 md:pl-3 order-2" style={{ scale: 1, outline: 'none' }}>
+            <div className="w-full md:flex-1 flex flex-col min-w-0 flex-1 overflow-hidden bg-transparent dark:bg-transparent mt-1 md:mt-0 md:pl-3 order-2" style={{ scale: 1, outline: 'none' }}>
               <div 
-                className={`image-edit-container w-full flex-1 min-h-[58dvh] md:min-h-0 overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700'}`}
+                className={`image-edit-container w-full flex-1 min-h-[calc(100dvh-35vh)] md:min-h-0 overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700'}`}
                 style={{ 
                   scale: 1,
                   outline: 'none'
@@ -1788,7 +1853,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
               >
                 {imgSrc && (
                   <div
-                    className="relative flex items-center justify-center pb-24 md:pb-0 pt-3 md:pt-0"
+                    className="relative flex items-center justify-center pb-20 md:pb-0 pt-1 md:pt-0"
                     style={{ outline: 'none', border: 'none', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 1)' }}
                   >
                     {/* Image edited checkmark - top right */}
@@ -1867,7 +1932,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                     <div style={{
                       position: 'absolute',
                       // Keep above the mobile footer buttons (Reset/Apply/Save)
-                      bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 132px)' : '12px',
+                      bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 100px)' : '12px',
                       left: '50%',
                       transform: 'translateX(-50%)',
                       display: 'flex',
