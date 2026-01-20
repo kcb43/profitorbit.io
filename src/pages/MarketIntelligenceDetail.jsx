@@ -53,7 +53,7 @@ const MARKETPLACE_INFO = {
   },
 };
 
-const TABS = ['trending', 'items', 'tips', 'community'];
+const TABS = ['trending', 'items', 'tips'];
 
 export default function MarketIntelligenceDetail() {
   const { marketplaceId } = useParams();
@@ -166,7 +166,7 @@ export default function MarketIntelligenceDetail() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-6 w-full max-w-full overflow-x-hidden box-border">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-full">
           <div className="w-full max-w-full overflow-x-auto mb-3 sm:mb-4 md:mb-6 -mx-3 sm:-mx-4 md:mx-0 px-3 sm:px-4 md:px-0">
-            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-4 min-w-full sm:min-w-0 max-w-full">
+            <TabsList className="inline-flex w-full sm:grid sm:grid-cols-3 min-w-full sm:min-w-0 max-w-full">
               <TabsTrigger value="trending" className="flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-1 min-w-0 text-xs sm:text-sm px-1.5 sm:px-2 md:px-3">
                 <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                 <span className="truncate">Trending</span>
@@ -178,10 +178,6 @@ export default function MarketIntelligenceDetail() {
               <TabsTrigger value="tips" className="flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-1 min-w-0 text-xs sm:text-sm px-1.5 sm:px-2 md:px-3">
                 <Lightbulb className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                 <span className="truncate">Tips</span>
-              </TabsTrigger>
-              <TabsTrigger value="community" className="flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 flex-1 min-w-0 text-xs sm:text-sm px-1.5 sm:px-2 md:px-3">
-                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                <span className="truncate">Community</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -419,76 +415,6 @@ export default function MarketIntelligenceDetail() {
             </Card>
           </TabsContent>
 
-          {/* Community Tab */}
-          <TabsContent value="community" className="space-y-3 sm:space-y-4 md:space-y-6 mt-0 w-full max-w-full overflow-x-hidden">
-            <Card className="w-full max-w-full overflow-hidden box-border">
-              <CardHeader className="p-3 sm:p-4 md:p-6 pb-2 sm:pb-3 md:pb-4">
-                <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base lg:text-lg break-words">
-                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-purple-600 flex-shrink-0" />
-                  <span className="break-words">Community Chat & Discussions</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 md:p-6 pt-0 w-full max-w-full overflow-x-hidden box-border">
-                <div className="space-y-2.5 sm:space-y-3 md:space-y-4 w-full max-w-full">
-                  {[
-                    {
-                      author: 'Sarah M.',
-                      message: 'Just sold a vintage camera for $250! Listed it with detailed photos and it sold in 2 days.',
-                      platform: marketplace.name,
-                      likes: 24,
-                      timeAgo: '2 hours ago',
-                    },
-                    {
-                      author: 'Mike T.',
-                      message: 'Pro tip: Refresh your listings every few days to bump them to the top of search results.',
-                      platform: marketplace.name,
-                      likes: 18,
-                      timeAgo: '5 hours ago',
-                    },
-                    {
-                      author: 'Jessica L.',
-                      message: 'Bundle similar items together - sold 3 pairs of shoes as a bundle for more than individual prices!',
-                      platform: marketplace.name,
-                      likes: 31,
-                      timeAgo: '1 day ago',
-                    },
-                  ].map((post, idx) => (
-                    <div key={idx} className="p-2.5 sm:p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden box-border">
-                      <div className="flex items-start gap-1.5 sm:gap-2 md:gap-3 mb-1.5 sm:mb-2">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-semibold text-xs sm:text-sm">{post.author[0]}</span>
-                        </div>
-                        <div className="flex-1 min-w-0 max-w-full">
-                          <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
-                            <span className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm break-words">{post.author}</span>
-                            <Badge variant="outline" className="text-xs flex-shrink-0">{post.platform}</Badge>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 break-words">{post.timeAgo}</span>
-                          </div>
-                          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2 break-words">{post.message}</p>
-                          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
-                            <Button variant="ghost" size="sm" className="h-5 sm:h-6 md:h-7 text-xs sm:text-sm">
-                              <span>👍 {post.likes}</span>
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-5 sm:h-6 md:h-7 text-xs sm:text-sm">
-                              Reply
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 sm:mt-4 md:mt-6 p-2.5 sm:p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden box-border">
-                  <textarea
-                    placeholder="Share your tips or ask a question..."
-                    className="w-full max-w-full p-2.5 sm:p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs sm:text-sm resize-none box-border"
-                    rows={3}
-                  />
-                  <Button className="mt-2 sm:mt-3 w-full sm:w-auto text-xs sm:text-sm">Post</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
           </div>
         </Tabs>
       </div>
