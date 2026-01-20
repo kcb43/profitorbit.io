@@ -28,7 +28,7 @@ const DealHighlight = ({ itemName, saleId, imageUrl, profit }) => {
 
   return (
     <Link to={createPageUrl(`SoldItemDetail?id=${saleId}`)} className="block w-full">
-      <Card className="bg-gray-50 dark:bg-gray-800/50 border-0 shadow-sm hover:shadow-lg transition-all duration-200 hover:scale-[1.02] group overflow-hidden w-full max-w-full">
+      <Card className="bg-gray-50 dark:bg-gray-800/50 border-0 shadow-sm hover:shadow-lg transition-shadow duration-200 overflow-hidden w-full max-w-full">
         <CardContent className="p-0 relative w-full">
           {/* Image */}
           <div className="relative w-full h-32 sm:h-40 overflow-hidden bg-gray-100 dark:bg-gray-800">
@@ -36,7 +36,7 @@ const DealHighlight = ({ itemName, saleId, imageUrl, profit }) => {
               src={imageUrl || DEFAULT_IMAGE_URL}
               alt={itemName || 'Item'}
               fallback={DEFAULT_IMAGE_URL}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              className="w-full h-full object-cover"
               lazy={true}
             />
             {/* Icon overlay */}
