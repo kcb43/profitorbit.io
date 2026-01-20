@@ -172,10 +172,12 @@ export default async function handler(req, res) {
       cat.profit += profit;
       byCategory.set(category, cat);
 
-      const plat = byPlatform.get(platform) || { platformKey: platform, sales: 0, revenue: 0, profit: 0 };
+      const plat = byPlatform.get(platform) || { platformKey: platform, sales: 0, revenue: 0, profit: 0, totalShippingCost: 0, totalFees: 0 };
       plat.sales += 1;
       plat.revenue += sellingPrice;
       plat.profit += profit;
+      plat.totalShippingCost += shipping;
+      plat.totalFees += fees;
       byPlatform.set(platform, plat);
     }
 
@@ -200,6 +202,9 @@ export default async function handler(req, res) {
       ...p,
       avgProfit: p.sales ? p.profit / p.sales : 0,
       profitMargin: p.revenue ? (p.profit / p.revenue) * 100 : 0,
+      averageShippingCost: p.sales ? p.totalShippingCost / p.sales : 0,
+      averageFees: p.sales ? p.totalFees / p.sales : 0,
+      transactionCount: p.sales,
     }))
     .sort((a, b) => b.profit - a.profit);
 

@@ -589,7 +589,8 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
     previewRenderAbortRef.current.token = token;
     previewRenderAbortRef.current.cancelled = false;
 
-    // Throttle slightly to keep sliders feeling smooth.
+    // Throttle slightly to keep sliders feeling smooth. Use shorter delay on mobile for better responsiveness.
+    const throttleDelay = isMobile ? 20 : 40;
     previewRenderTimerRef.current = setTimeout(() => {
       const canvas = previewCanvasRef.current;
       if (!canvas) return;
@@ -646,7 +647,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
       };
 
       img.src = imgSrc;
-    }, 40);
+    }, throttleDelay);
 
     return () => {
       if (previewRenderTimerRef.current) {
@@ -1853,8 +1854,12 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
                           height: '100%',
                           maxWidth: '100%',
                           maxHeight: '100%',
-                          objectFit: 'contain'
+                          objectFit: 'contain',
+                          display: 'block',
+                          imageRendering: 'auto'
                         }}
+                        width={800}
+                        height={600}
                       />
                     )}
                     

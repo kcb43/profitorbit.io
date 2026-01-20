@@ -406,11 +406,6 @@ export default function Dashboard() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
               <p className="hidden lg:block text-sm text-gray-500 dark:text-gray-400 mt-1">Track your business performance</p>
             </div>
-            <Link to={createPageUrl("Settings")} className="lg:hidden inline-flex">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <Settings className="w-5 h-5" />
-              </Button>
-            </Link>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Tip banner (Desktop only: next to Add Sale) */}

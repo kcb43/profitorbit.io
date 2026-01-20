@@ -633,7 +633,13 @@ export default function AddSale() {
         <div className="flex items-center gap-4 mb-8">
           <Button
             variant="outline"
-            onClick={() => navigate(createPageUrl(saleId || copyId ? "SalesHistory" : "Dashboard"))}
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(createPageUrl(saleId || copyId ? "SalesHistory" : "Dashboard"));
+              }
+            }}
           >
             <ArrowLeft className="w-5 h-5 mr-2" /> Back
           </Button>

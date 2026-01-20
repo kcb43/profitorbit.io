@@ -142,7 +142,13 @@ export default function MarketIntelligenceDetail() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/pulse')}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate('/pulse');
+                }
+              }}
               className="flex-shrink-0"
             >
               <ArrowLeft className="w-4 h-4 sm:mr-2" />

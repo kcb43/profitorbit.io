@@ -304,15 +304,33 @@ export default function Layout({ children }) {
         <main className="flex-1 flex flex-col">
           <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 md:hidden">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors duration-200" />
-                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Orben</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Orben</h1>
+              <div className="flex items-center gap-2">
+                <UserProfile />
+                <Link to={createPageUrl("Settings")} className="inline-flex">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                      <Palette className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 mb-2" align="end">
+                    <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+                      {Object.entries(themes).map(([id, { name }]) => (
+                        <DropdownMenuRadioItem key={id} value={id}>
+                          {name}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <Link to={createPageUrl("Settings")} className="inline-flex">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Settings className="w-5 h-5" />
-                </Button>
-              </Link>
             </div>
           </header>
 
