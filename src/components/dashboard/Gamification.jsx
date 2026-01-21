@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal, Gift, Sparkles, Zap, ChevronDown } from "lucide-react";
+import { Award, Trophy, Star, Box, Wrench, Gem, Crown, TrendingUp, Medal, Gift, Sparkles, Zap, ChevronDown, Truck } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
@@ -338,51 +338,52 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             {/* Mobile: Collapsible View Rewards dropdown */}
             {isMobile ? (
               <>
-                {/* View Rewards Dropdown Button */}
-                <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5 relative"
-                >
-                  <span>View Rewards</span>
-                  <div className="flex items-center gap-2">
-                    {/* Green dot - only show when not expanded */}
-                    {!isExpanded && (
-                      <>
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
-                      </>
-                    )}
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                  </div>
-                </button>
+                {/* View Rewards Dropdown Button - only show when not expanded */}
+                {!isExpanded && (
+                  <button
+                    onClick={() => setIsExpanded(true)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5 relative"
+                  >
+                    <span>View Rewards</span>
+                    <div className="flex items-center gap-2">
+                      {/* Green dot - only show when not expanded */}
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                    </div>
+                  </button>
+                )}
 
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 animate-in slide-in-from-top-2">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Shipping Label Vouchers</div>
                     </div>
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-                      {achievements.length > 0 ? (
-                        achievements.map((ach) => (
-                          <div key={ach.name} className="relative flex-shrink-0">
-                            <button
-                              onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
-                              className="relative p-3 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
-                            >
-                              <ach.icon className={`w-6 h-6 ${ach.color}`} />
-                              {/* Smooth label on click */}
-                              {selectedAchievement === ach.name && (
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
-                                  {ach.name}
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
-                                </div>
-                              )}
-                            </button>
-                          </div>
-                        ))
+                      {shippingLabelVouchers.length > 0 ? (
+                        shippingLabelVouchers.map((voucher) => {
+                          const VoucherIcon = voucher.icon;
+                          return (
+                            <div key={voucher.id} className="relative flex-shrink-0">
+                              <button
+                                onClick={() => setSelectedAchievement(selectedAchievement === voucher.id ? null : voucher.id)}
+                                className="relative p-3 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
+                              >
+                                <VoucherIcon className={`w-6 h-6 ${voucher.color}`} />
+                                {/* Smooth label on click */}
+                                {selectedAchievement === voucher.id && (
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
+                                    {voucher.name}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })
                       ) : (
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Your first achievement is just around the corner!</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Earn more points to unlock shipping label vouchers!</div>
                       )}
                     </div>
                     
