@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { BarChart3, CalendarDays, GalleryHorizontal, FileText, Settings } from "lucide-react";
+import { BarChart3, CalendarDays, GalleryHorizontal, FileText, Settings, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -64,6 +64,13 @@ export default function Analytics() {
             to={createPageUrl("Gallery")}
             icon={GalleryHorizontal}
             gradient="from-purple-500 to-pink-600"
+          />
+          <HubCard
+            title="Sales History"
+            description="View and manage all your sales"
+            to={createPageUrl("SalesHistory")}
+            icon={History}
+            gradient="from-blue-500 to-cyan-500"
           />
         </div>
       </div>

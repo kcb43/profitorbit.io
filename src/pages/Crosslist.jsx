@@ -64,6 +64,8 @@ import { listingJobsApi, platformApi } from "@/api/listingApiClient";
 import { ListingJobTracker } from "@/components/ListingJobTracker";
 import { inventoryApi } from "@/api/inventoryApi";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -1572,7 +1574,101 @@ export default function Crosslist() {
           </div>
         )}
 
-        <Card className="border-0 shadow-lg">
+        {/* Mobile Filter Bar */}
+        <div className="md:hidden mb-4">
+          <MobileFilterBar
+            search={q}
+            onSearchChange={setQ}
+            showDeleted={false}
+            onShowDeletedToggle={() => {}}
+            showFavorites={false}
+            onShowFavoritesToggle={() => {}}
+            pageSize={undefined}
+            onPageSizeChange={undefined}
+            onExportCSV={undefined}
+            pageInfo={undefined}
+            renderAdditionalFilters={() => (
+              <>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Status</Label>
+                  <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="listed">Listed somewhere</SelectItem>
+                      <SelectItem value="unlisted">Not listed anywhere</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Marketplaces</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {MARKETPLACES.map((m) => {
+                      const active = activeMkts.includes(m.id);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => toggleMarketActive(m.id)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-sm transition whitespace-nowrap
+                            ${active
+                              ? "bg-foreground text-background dark:bg-foreground dark:text-background"
+                              : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
+                            }`}
+                          aria-pressed={active}
+                        >
+                          <span aria-hidden="true" className="flex items-center justify-center">
+                            {renderMarketplaceIcon(m, "w-4 h-4")}
+                          </span>
+                          <span>{m.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {activeMkts.length === 0
+                      ? "Showing all items. Select marketplaces to filter by crosslisting status."
+                      : activeMkts.length === MARKETPLACES.length
+                      ? "Showing items crosslisted to ALL marketplaces."
+                      : `Showing items crosslisted to ${activeMkts.length} marketplace${activeMkts.length === 1 ? "" : "s"}.`
+                    }
+                  </p>
+                </div>
+              </>
+            )}
+          />
+          <div className="mt-3 flex flex-col gap-2">
+            <BulkActionsMenu 
+              selectedItems={selected}
+              onActionComplete={() => setSelected([])}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate(createPageUrl("Pro Tools"))}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Pro Tools
+            </Button>
+            <Button
+              onClick={() => {
+                if (selected.length > 0) {
+                  openComposer(selected);
+                } else {
+                  openComposer([]);
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 w-full"
+            >
+              <Rocket className="w-4 h-4 mr-2" />
+              {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Desktop Filter Card */}
+        <Card className="hidden md:block border-0 shadow-lg">
           <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
             <CardTitle className="text-gray-900 dark:text-white text-base flex items-center gap-2">
               <Filter className="w-4 h-4" />

@@ -41,6 +41,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/api/supabaseClient";
+import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
@@ -1049,7 +1050,139 @@ export default function SalesHistory() {
           )}
         </div>
 
-        <Card className="border-0 shadow-lg mb-6">
+        {/* Mobile Filter Bar */}
+        <div className="md:hidden mb-6">
+          <MobileFilterBar
+            search={filters.searchTerm}
+            onSearchChange={(val) => handleFilterChange('searchTerm', val)}
+            showDeleted={showDeletedOnly}
+            onShowDeletedToggle={() => setShowDeletedOnly((prev) => !prev)}
+            showFavorites={false}
+            onShowFavoritesToggle={() => {}}
+            pageSize={pageSize}
+            onPageSizeChange={(val) => {
+              if (val === 25 || val === 50 || val === 100 || val === 200) setPageSize(val);
+            }}
+            onExportCSV={() => {
+              const qs = new URLSearchParams();
+              if (showDeletedOnly) qs.set('deleted_only', 'true');
+              else qs.set('include_deleted', 'false');
+              if (!filters.needsReview && filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
+              if (filters.platform && filters.platform !== 'all') qs.set('platform', filters.platform);
+              if (filters.category && filters.category !== 'all') qs.set('category', filters.category);
+              if (filters.minProfit !== '') qs.set('min_profit', String(filters.minProfit));
+              if (filters.maxProfit !== '') qs.set('max_profit', String(filters.maxProfit));
+              if (filters.startDate) qs.set('from', filters.startDate.toISOString().slice(0, 10));
+              if (filters.endDate) qs.set('to', filters.endDate.toISOString().slice(0, 10));
+              if (filters.needsReview) qs.set('needs_review', 'true');
+              qs.set('limit', '5000');
+              window.open(`/api/sales/export?${qs.toString()}`, '_blank');
+            }}
+            pageInfo={{
+              currentPage: pageIndex + 1,
+              totalPages,
+              totalItems: totalSales,
+            }}
+            renderAdditionalFilters={() => (
+              <>
+                <div>
+                  <Label htmlFor="mobile-platform" className="text-xs mb-1.5 block">Platform</Label>
+                  <Select value={filters.platform} onValueChange={(v) => handleFilterChange('platform', v)}>
+                    <SelectTrigger id="mobile-platform">
+                      <SelectValue placeholder="All Platforms" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Platforms</SelectItem>
+                      <SelectItem value="ebay">eBay</SelectItem>
+                      <SelectItem value="facebook_marketplace">Facebook</SelectItem>
+                      <SelectItem value="etsy">Etsy</SelectItem>
+                      <SelectItem value="mercari">Mercari</SelectItem>
+                      <SelectItem value="offer_up">OfferUp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="mobile-category" className="text-xs mb-1.5 block">Category</Label>
+                  <Select value={filters.category} onValueChange={(v) => handleFilterChange('category', v)}>
+                    <SelectTrigger id="mobile-category">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="__uncategorized">Uncategorized</SelectItem>
+                      {PREDEFINED_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="mobile-min-profit" className="text-xs mb-1.5 block">Min Profit</Label>
+                    <Input id="mobile-min-profit" type="number" placeholder="$ Min" value={filters.minProfit} onChange={e => handleFilterChange('minProfit', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="mobile-max-profit" className="text-xs mb-1.5 block">Max Profit</Label>
+                    <Input id="mobile-max-profit" type="number" placeholder="$ Max" value={filters.maxProfit} onChange={e => handleFilterChange('maxProfit', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Sale Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal text-xs">
+                          <Calendar className="mr-2 h-3 w-3" />
+                          <span className="truncate">{filters.startDate ? format(filters.startDate, "MMM d, yyyy") : "Pick Date"}</span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <CalendarPicker mode="single" selected={filters.startDate} onSelect={d => handleFilterChange('startDate', d)} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1.5 block">Sale End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal text-xs">
+                          <Calendar className="mr-2 h-3 w-3" />
+                          <span className="truncate">{filters.endDate ? format(filters.endDate, "MMM d, yyyy") : "Pick Date"}</span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <CalendarPicker mode="single" selected={filters.endDate} onSelect={d => handleFilterChange('endDate', d)} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="mobile-needs-review"
+                    checked={filters.needsReview}
+                    onCheckedChange={(v) => handleFilterChange('needsReview', v)}
+                  />
+                  <Label htmlFor="mobile-needs-review" className="text-xs text-foreground">
+                    Needs Review
+                  </Label>
+                </div>
+                {!showDeletedOnly && needsReviewTotal > 0 && (
+                  <Button
+                    variant={filters.needsReview ? "default" : "outline"}
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleFilterChange('needsReview', !filters.needsReview)}
+                  >
+                    {filters.needsReview ? "Showing Needs Review" : `Review (${needsReviewTotal})`}
+                  </Button>
+                )}
+              </>
+            )}
+          />
+        </div>
+
+        {/* Desktop Filter Card */}
+        <Card className="hidden md:block border-0 shadow-lg mb-6">
           <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white break-words">
               <Filter className="w-5 h-5 flex-shrink-0" />

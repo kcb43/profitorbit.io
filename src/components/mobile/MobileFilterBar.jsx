@@ -81,39 +81,45 @@ export default function MobileFilterBar({
       </div>
 
       {/* Per Page, Export CSV, Page Info */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="mobile-page-size" className="text-xs whitespace-nowrap">Per page:</Label>
-          <Select value={String(pageSize)} onValueChange={(val) => onPageSizeChange?.(Number(val))}>
-            <SelectTrigger id="mobile-page-size" className="w-20 h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="200">200</SelectItem>
-            </SelectContent>
-          </Select>
+      {(pageSize !== undefined || onExportCSV || pageInfo) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {pageSize !== undefined && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="mobile-page-size" className="text-xs whitespace-nowrap">Per page:</Label>
+              <Select value={String(pageSize)} onValueChange={(val) => onPageSizeChange?.(Number(val))}>
+                <SelectTrigger id="mobile-page-size" className="w-20 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {onExportCSV && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExportCSV}
+              className="flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">Export</span>
+            </Button>
+          )}
+
+          {pageInfo && (
+            <div className="text-xs text-muted-foreground ml-auto">
+              Page {pageInfo.currentPage} of {pageInfo.totalPages} ({pageInfo.totalItems} items)
+            </div>
+          )}
         </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onExportCSV}
-          className="flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          <span className="hidden sm:inline">Export CSV</span>
-          <span className="sm:hidden">Export</span>
-        </Button>
-
-        {pageInfo && (
-          <div className="text-xs text-muted-foreground ml-auto">
-            Page {pageInfo.currentPage} of {pageInfo.totalPages} ({pageInfo.totalItems} items)
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Filters & Sort Dropdown */}
       {(additionalFilters.length > 0 || renderAdditionalFilters) && (
