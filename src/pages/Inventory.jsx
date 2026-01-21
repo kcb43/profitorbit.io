@@ -2215,7 +2215,7 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Details */}
-                          <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-slate-700/60 px-5 py-4">
+                          <div className={`min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
                             <div className="flex items-start justify-between gap-3 mb-3">
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1 rounded-xl`}>

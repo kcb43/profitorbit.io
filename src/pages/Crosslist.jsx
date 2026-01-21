@@ -1658,13 +1658,11 @@ export default function Crosslist() {
               <Sparkles className="w-4 h-4 mr-2" />
               Pro Tools
             </Button>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <BulkActionsMenu 
-                  selectedItems={selected}
-                  onActionComplete={() => setSelected([])}
-                />
-              </div>
+            <div className="flex gap-2 justify-end">
+              <BulkActionsMenu 
+                selectedItems={selected}
+                onActionComplete={() => setSelected([])}
+              />
               <Button
                 onClick={() => {
                   if (selected.length > 0) {
@@ -1673,7 +1671,7 @@ export default function Crosslist() {
                     openComposer([]);
                   }
                 }}
-                className="bg-green-600 hover:bg-green-700 flex-1"
+                className="bg-green-600 hover:bg-green-700"
               >
                 <Rocket className="w-4 h-4 mr-2" />
                 {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
@@ -1877,7 +1875,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Details Section */}
-                    <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-slate-700/60 px-5 py-4">
+                    <div className={`min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
                     {/* Status Badge */}
                       <div className="flex items-center justify-between gap-3 mb-3">
                         <Badge className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} px-3 py-1.5 rounded-xl text-xs font-semibold`}>

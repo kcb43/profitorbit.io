@@ -1436,18 +1436,6 @@ export default function SalesHistory() {
                     {showDeletedOnly ? `Deleted Sales (${filteredSales.length})` : `All Sales (${filteredSales.length})`}
                   </CardTitle>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full sm:w-auto">
-                    <Button
-                      variant={showDeletedOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowDeletedOnly((prev) => !prev)}
-                      className="flex items-center gap-2 whitespace-nowrap text-xs sm:text-sm"
-                    >
-                      <Archive className="w-4 h-4" />
-                      {showDeletedOnly ? "Showing Deleted" : "Show Deleted"}
-                      {deletedCount > 0 && !showDeletedOnly && (
-                        <span className="text-xs font-normal opacity-80">({deletedCount})</span>
-                      )}
-                    </Button>
                     {showDeletedOnly && (
                       <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">
                         Sort by:
@@ -1544,7 +1532,7 @@ export default function SalesHistory() {
                           <div className="relative">
                             <div 
                               onClick={() => handleSelect(sale.id)}
-                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-transparent'}`}
+                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50`}
                             >
                               {sale.image_url ? (
                                 <OptimizedImage
