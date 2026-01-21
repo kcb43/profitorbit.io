@@ -16,6 +16,7 @@ const Inventory = React.lazy(() => import("./Inventory"));
 const AddInventoryItem = React.lazy(() => import("./AddInventoryItem"));
 
 const Reports = React.lazy(() => import("./Reports"));
+const PlatformPerformance = React.lazy(() => import("./PlatformPerformance"));
 const Gallery = React.lazy(() => import("./Gallery"));
 const SoldItemDetail = React.lazy(() => import("./SoldItemDetail"));
 const ProfitCalendar = React.lazy(() => import("./ProfitCalendar"));
@@ -181,6 +182,19 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Reports">
                         {withSuspense(<Reports />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              
+              <Route
+                path="/PlatformPerformance"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="PlatformPerformance">
+                        {withSuspense(<PlatformPerformance />)}
                       </Layout>
                     )}
                   </AuthGuard>

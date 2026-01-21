@@ -1891,7 +1891,7 @@ export default function InventoryPage() {
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-slate-900/50 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-600/50 hover:opacity-90 hover:shadow-md'}`}
+                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-slate-900/50 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-slate-600/50 hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
@@ -2192,7 +2192,7 @@ export default function InventoryPage() {
                               onClick={() => handleSelect(item.id)}
                               className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
                                 selectedItems.includes(item.id)
-                                  ? "border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/50"
+                                  ? "border-green-500 dark:border-green-500"
                                   : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
                               }`}
                               style={{ height: 140 }}
@@ -2497,7 +2497,7 @@ export default function InventoryPage() {
             return (
               <Card 
                 key={item.id} 
-                className={`group overflow-hidden transition-all duration-300 sm:hover:shadow-2xl sm:hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-slate-700/50'}`}
+                className={`group overflow-hidden transition-all duration-300 sm:hover:shadow-2xl sm:hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-slate-700/50'}`}
                 style={{
                   borderRadius: '16px',
                 }}
