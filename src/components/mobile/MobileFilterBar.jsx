@@ -23,6 +23,8 @@ export default function MobileFilterBar({
   onPageSizeChange,
   onExportCSV,
   pageInfo, // { currentPage, totalPages, totalItems }
+  onPrevPage,
+  onNextPage,
   
   // Additional filters (in dropdown)
   additionalFilters = [],
@@ -58,26 +60,32 @@ export default function MobileFilterBar({
         </div>
 
         {/* Show Deleted & Show Favorites */}
-        <div className="flex gap-2">
-          <Button
-            variant={showDeleted ? "default" : "outline"}
-            size="sm"
-            onClick={onShowDeletedToggle}
-            className="flex-1 flex items-center gap-2"
-          >
-            <Archive className="w-4 h-4" />
-            <span className="truncate">{showDeleted ? "Showing Deleted" : "Show Deleted"}</span>
-          </Button>
-          <Button
-            variant={showFavorites ? "default" : "outline"}
-            size="sm"
-            onClick={onShowFavoritesToggle}
-            className="flex-1 flex items-center gap-2"
-          >
-            <Star className="w-4 h-4" />
-            <span className="truncate">{showFavorites ? "Showing Favorites" : "Show Favorites"}</span>
-          </Button>
-        </div>
+        {(showDeleted !== undefined || showFavorites !== undefined) && (
+          <div className="flex gap-2">
+            {showDeleted !== undefined && (
+              <Button
+                variant={showDeleted ? "default" : "outline"}
+                size="sm"
+                onClick={onShowDeletedToggle}
+                className="flex-1 flex items-center gap-2"
+              >
+                <Archive className="w-4 h-4" />
+                <span className="truncate">{showDeleted ? "Showing Deleted" : "Show Deleted"}</span>
+              </Button>
+            )}
+            {showFavorites !== undefined && (
+              <Button
+                variant={showFavorites ? "default" : "outline"}
+                size="sm"
+                onClick={onShowFavoritesToggle}
+                className="flex-1 flex items-center gap-2"
+              >
+                <Star className="w-4 h-4" />
+                <span className="truncate">{showFavorites ? "Showing Favorites" : "Show Favorites"}</span>
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Per Page, Export CSV, Page Info */}
@@ -100,24 +108,48 @@ export default function MobileFilterBar({
             </div>
           )}
 
+          {pageInfo && (
+            <div className="text-xs text-muted-foreground">
+              Page {pageInfo.currentPage} of {pageInfo.totalPages} ({pageInfo.totalItems} items)
+            </div>
+          )}
+
           {onExportCSV && (
             <Button
               variant="outline"
               size="sm"
               onClick={onExportCSV}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 ml-auto"
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export CSV</span>
               <span className="sm:hidden">Export</span>
             </Button>
           )}
+        </div>
+      )}
 
-          {pageInfo && (
-            <div className="text-xs text-muted-foreground ml-auto">
-              Page {pageInfo.currentPage} of {pageInfo.totalPages} ({pageInfo.totalItems} items)
-            </div>
-          )}
+      {/* Mobile Pagination Buttons */}
+      {pageInfo && pageInfo.totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pageInfo.currentPage <= 1}
+            onClick={onPrevPage}
+            className="flex-1"
+          >
+            Prev
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pageInfo.currentPage >= pageInfo.totalPages}
+            onClick={onNextPage}
+            className="flex-1"
+          >
+            Next
+          </Button>
         </div>
       )}
 

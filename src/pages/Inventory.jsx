@@ -48,6 +48,7 @@ import { supabase } from "@/api/supabaseClient";
 import ModeBanner from "@/components/ModeBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
+import SelectionBanner from "@/components/SelectionBanner";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -255,12 +256,14 @@ export default function InventoryPage() {
   const canPrev = pageIndex > 0;
   const canNext = pageIndex + 1 < totalPages;
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (Array.isArray(inventoryItems)) {
-      clearRemovedItems(inventoryItems.map((item) => item.id));
-    }
-  }, [inventoryItems, clearRemovedItems, isLoading]);
+  // Don't clear tags/favorites for items not on current page - they should persist
+  // Only clear tags for items that are actually deleted (handled elsewhere if needed)
+  // useEffect(() => {
+  //   if (isLoading) return;
+  //   if (Array.isArray(inventoryItems)) {
+  //     clearRemovedItems(inventoryItems.map((item) => item.id));
+  //   }
+  // }, [inventoryItems, clearRemovedItems, isLoading]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -1275,13 +1278,26 @@ export default function InventoryPage() {
     if (showFavoritesOnly) setShowFavoritesOnly(false);
   };
 
+  const topOffset = React.useMemo(() => {
+    let offset = 0;
+    if (activeMode) offset += 50;
+    if (selectedItems.length > 0) offset += 50;
+    return offset > 0 ? (isMobile ? `calc(env(safe-area-inset-top, 0px) + ${offset}px)` : `${offset}px`) : undefined;
+  }, [activeMode, selectedItems.length, isMobile]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
       <ModeBanner 
         mode={activeMode} 
         onClose={handleCloseMode}
       />
-      <div className="p-4 md:p-6 lg:p-8" style={{ paddingTop: activeMode ? (isMobile ? 'calc(env(safe-area-inset-top, 0px) + 60px)' : '60px') : undefined }}>
+      <SelectionBanner
+        selectedCount={selectedItems.length}
+        onClear={() => setSelectedItems([])}
+        showAtTop={false}
+        threshold={200}
+      />
+      <div className="p-4 md:p-6 lg:p-8" style={{ paddingTop: topOffset }}>
         <div className="max-w-7xl mx-auto space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 min-w-0">
             <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
@@ -1382,6 +1398,8 @@ export default function InventoryPage() {
                 totalPages,
                 totalItems,
               }}
+              onPrevPage={() => setPageIndex((p) => Math.max(0, p - 1))}
+              onNextPage={() => setPageIndex((p) => p + 1)}
               renderAdditionalFilters={() => (
                 <>
                   <div>
@@ -1483,23 +1501,6 @@ export default function InventoryPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="outline"
-                      disabled={!canPrev}
-                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                      className="h-9"
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!canNext}
-                      onClick={() => setPageIndex((p) => p + 1)}
-                      className="h-9"
-                    >
-                      Next
-                    </Button>
-
-                    <Button
-                      variant="outline"
                       className="h-9"
                       onClick={() => {
                         const qs = new URLSearchParams();
@@ -1515,6 +1516,22 @@ export default function InventoryPage() {
                       }}
                     >
                       Export CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canPrev}
+                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                      className="h-9"
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canNext}
+                      onClick={() => setPageIndex((p) => p + 1)}
+                      className="h-9"
+                    >
+                      Next
                     </Button>
                   </div>
                 </div>
@@ -1576,6 +1593,25 @@ export default function InventoryPage() {
                     : "Favorites let you flag items for quick actions such as returns."}
                 </div>
                 <div className="flex gap-2 flex-wrap min-w-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const qs = new URLSearchParams();
+                      // Match current filters; export up to 5000 rows.
+                      if (showDeletedOnly) qs.set('deleted_only', 'true');
+                      else qs.set('include_deleted', 'true');
+                      if (filters.search?.trim()) qs.set('search', filters.search.trim());
+                      if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
+                      else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
+                      if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
+                      qs.set('limit', '5000');
+                      window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
+                    }}
+                    className="flex items-center gap-2 min-w-0 max-w-full"
+                  >
+                    Export CSV
+                  </Button>
                   <Button
                     variant={showDeletedOnly ? "default" : "outline"}
                     size="sm"
@@ -1771,7 +1807,7 @@ export default function InventoryPage() {
                       state={returnStateForInventory}
                       className="group block"
                     >
-                      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors">
+                      <div className={`relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-border/60'} bg-card/60 hover:bg-muted/40 transition-colors`}>
                         <div className="relative aspect-square bg-gray-50 dark:bg-slate-900/50">
                           <OptimizedImage
                             src={item.image_url || DEFAULT_IMAGE_URL}
@@ -1826,7 +1862,7 @@ export default function InventoryPage() {
                     <div key={item.id} className="w-full max-w-full">
                       {/* Mobile/Tablet list layout (unchanged) */}
                       <div
-                        className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                        className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                         style={{
                           minHeight: 'auto',
                           height: 'auto',
@@ -1837,13 +1873,13 @@ export default function InventoryPage() {
                           boxSizing: 'border-box',
                           flexShrink: 0,
                           paddingBottom: window.innerWidth < 768 ? '2.50rem' : '0',
-                          boxShadow: selectedItems.includes(item.id) ? 'rgba(34, 197, 94, 0.4) 0px 10px 30px -5px' : undefined
+                          boxShadow: selectedItems.includes(item.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
                         }}
                       >
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-slate-900/50 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-600/50 hover:opacity-90 hover:shadow-md'}`}
+                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-slate-900/50 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-600/50 hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
@@ -2135,7 +2171,7 @@ export default function InventoryPage() {
 
                       {/* Desktop list layout (new) */}
                       <div
-                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedItems.includes(item.id) ? 'ring-2 ring-green-500' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
                       >
                         <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
                           {/* Image */}
@@ -2144,7 +2180,7 @@ export default function InventoryPage() {
                               onClick={() => handleSelect(item.id)}
                               className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
                                 selectedItems.includes(item.id)
-                                  ? "border-green-500 shadow-lg shadow-green-500/20"
+                                  ? "border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/50"
                                   : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
                               }`}
                               style={{ height: 140 }}

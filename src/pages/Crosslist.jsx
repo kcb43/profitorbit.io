@@ -66,6 +66,7 @@ import { inventoryApi } from "@/api/inventoryApi";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
+import SelectionBanner from "@/components/SelectionBanner";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -1495,9 +1496,19 @@ export default function Crosslist() {
     setColorPickerOpen(true);
   };
 
+  const topOffset = React.useMemo(() => {
+    return selected.length > 0 ? (isMobile ? 'calc(env(safe-area-inset-top, 0px) + 50px)' : '50px') : undefined;
+  }, [selected.length, isMobile]);
+
   return (
     <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto space-y-6 min-w-0">
+      <SelectionBanner
+        selectedCount={selected.length}
+        onClear={() => setSelected([])}
+        showAtTop={false}
+        threshold={200}
+      />
+      <div className="max-w-7xl mx-auto space-y-6 min-w-0" style={{ paddingTop: topOffset }}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">Crosslist</h1>
@@ -1595,8 +1606,8 @@ export default function Crosslist() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="listed">Listed somewhere</SelectItem>
-                      <SelectItem value="unlisted">Not listed anywhere</SelectItem>
+                      <SelectItem value="listed">Listed</SelectItem>
+                      <SelectItem value="unlisted">In Stock</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1638,10 +1649,6 @@ export default function Crosslist() {
             )}
           />
           <div className="mt-3 flex flex-col gap-2">
-            <BulkActionsMenu 
-              selectedItems={selected}
-              onActionComplete={() => setSelected([])}
-            />
             <Button
               type="button"
               variant="outline"
@@ -1651,19 +1658,27 @@ export default function Crosslist() {
               <Sparkles className="w-4 h-4 mr-2" />
               Pro Tools
             </Button>
-            <Button
-              onClick={() => {
-                if (selected.length > 0) {
-                  openComposer(selected);
-                } else {
-                  openComposer([]);
-                }
-              }}
-              className="bg-green-600 hover:bg-green-700 w-full"
-            >
-              <Rocket className="w-4 h-4 mr-2" />
-              {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
-            </Button>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <BulkActionsMenu 
+                  selectedItems={selected}
+                  onActionComplete={() => setSelected([])}
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  if (selected.length > 0) {
+                    openComposer(selected);
+                  } else {
+                    openComposer([]);
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700 flex-1"
+              >
+                <Rocket className="w-4 h-4 mr-2" />
+                {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1743,10 +1758,6 @@ export default function Crosslist() {
                 <span className="font-medium text-foreground">{crosslistableItems.length}</span> items
               </div>
               <div className="flex flex-col md:flex-row gap-2 flex-wrap order-1 md:order-2 md:ml-auto">
-                <BulkActionsMenu 
-                  selectedItems={selected}
-                  onActionComplete={() => setSelected([])}
-                />
                 <Button
                   type="button"
                   variant="outline"
@@ -1756,6 +1767,10 @@ export default function Crosslist() {
                   <Sparkles className="w-4 h-4 mr-2" />
                   Pro Tools
                 </Button>
+                <BulkActionsMenu 
+                  selectedItems={selected}
+                  onActionComplete={() => setSelected([])}
+                />
                 <Button
                   onClick={() => {
                     if (selected.length > 0) {
@@ -1828,7 +1843,7 @@ export default function Crosslist() {
               return (
                 <div
                   key={it.id}
-                  className="product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60"
+                  className={`product-list-item group relative overflow-hidden rounded-2xl border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60`}
                 >
                   <div className="grid grid-cols-[168px_1fr_220px] gap-0 min-w-0">
                     {/* Product Image Section */}
@@ -1837,7 +1852,7 @@ export default function Crosslist() {
                         onClick={() => toggleSelect(it.id)}
                         className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
                           selected.includes(it.id)
-                            ? "border-green-500 shadow-lg shadow-green-500/20"
+                            ? "border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/50"
                             : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
                         }`}
                         style={{ height: 140 }}
@@ -2006,7 +2021,7 @@ export default function Crosslist() {
               return (
                 <Card 
                   key={it.id} 
-                  className="group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border-gray-200 dark:border-slate-700/50 bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg max-w-full"
+                  className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg max-w-full`}
                   style={{
                     borderRadius: '16px',
                   }}

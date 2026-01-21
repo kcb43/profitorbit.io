@@ -42,6 +42,7 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/api/supabaseClient";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
+import SelectionBanner from "@/components/SelectionBanner";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
@@ -1029,9 +1030,19 @@ export default function SalesHistory() {
     bulkUpdateMutation.mutate({ ids: selectedSales, updates });
   };
 
+  const topOffset = React.useMemo(() => {
+    return selectedSales.length > 0 ? (isMobile ? 'calc(env(safe-area-inset-top, 0px) + 50px)' : '50px') : undefined;
+  }, [selectedSales.length, isMobile]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
-      <div className="p-4 md:p-6 lg:p-8 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <SelectionBanner
+        selectedCount={selectedSales.length}
+        onClear={() => setSelectedSales([])}
+        showAtTop={false}
+        threshold={200}
+      />
+      <div className="p-4 md:p-6 lg:p-8 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', paddingTop: topOffset }}>
         <div className="max-w-7xl mx-auto min-w-0 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <div className="mb-8 min-w-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -1057,8 +1068,8 @@ export default function SalesHistory() {
             onSearchChange={(val) => handleFilterChange('searchTerm', val)}
             showDeleted={showDeletedOnly}
             onShowDeletedToggle={() => setShowDeletedOnly((prev) => !prev)}
-            showFavorites={false}
-            onShowFavoritesToggle={() => {}}
+            showFavorites={undefined}
+            onShowFavoritesToggle={undefined}
             pageSize={pageSize}
             onPageSizeChange={(val) => {
               if (val === 25 || val === 50 || val === 100 || val === 200) setPageSize(val);
@@ -1083,6 +1094,8 @@ export default function SalesHistory() {
               totalPages,
               totalItems: totalSales,
             }}
+            onPrevPage={() => setPageIndex((p) => Math.max(0, p - 1))}
+            onNextPage={() => setPageIndex((p) => p + 1)}
             renderAdditionalFilters={() => (
               <>
                 <div>
@@ -1523,7 +1536,7 @@ export default function SalesHistory() {
                       return (
                         <Card 
                           key={sale.id} 
-                          className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-700 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg`}
+                          className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-700 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg`}
                           style={{
                             borderRadius: '16px',
                           }}
@@ -1531,7 +1544,7 @@ export default function SalesHistory() {
                           <div className="relative">
                             <div 
                               onClick={() => handleSelect(sale.id)}
-                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50 ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-transparent'}`}
                             >
                               {sale.image_url ? (
                                 <OptimizedImage
