@@ -45,6 +45,9 @@ import { FacebookListingDialog } from "@/components/FacebookListingDialog";
 import { isConnected } from "@/api/facebookClient";
 const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { supabase } from "@/api/supabaseClient";
+import ModeBanner from "@/components/ModeBanner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -71,6 +74,7 @@ export default function InventoryPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [filters, setFilters] = useState({ search: "", status: "not_sold", daysInStock: "all" });
   const [sort, setSort] = useState("newest");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1257,9 +1261,27 @@ export default function InventoryPage() {
     }
   };
 
+  // Determine active mode for banner
+  const activeMode = React.useMemo(() => {
+    if (viewMode === "gallery") return "gallery";
+    if (showDeletedOnly) return "deleted";
+    if (showFavoritesOnly) return "favorites";
+    return null;
+  }, [viewMode, showDeletedOnly, showFavoritesOnly]);
+
+  const handleCloseMode = () => {
+    if (viewMode === "gallery") setViewMode("grid");
+    if (showDeletedOnly) setShowDeletedOnly(false);
+    if (showFavoritesOnly) setShowFavoritesOnly(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      <div className="p-4 md:p-6 lg:p-8">
+      <ModeBanner 
+        mode={activeMode} 
+        onClose={handleCloseMode}
+      />
+      <div className="p-4 md:p-6 lg:p-8" style={{ paddingTop: activeMode ? (isMobile ? 'calc(env(safe-area-inset-top, 0px) + 60px)' : '60px') : undefined }}>
         <div className="max-w-7xl mx-auto space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 min-w-0">
             <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
@@ -1328,7 +1350,97 @@ export default function InventoryPage() {
             </Card>
           </div>
 
-          <Card className="border-0 shadow-lg mb-4">
+          {/* Mobile Filter Bar */}
+          <div className="md:hidden mb-4">
+            <MobileFilterBar
+              search={filters.search}
+              onSearchChange={(val) => setFilters(f => ({ ...f, search: val }))}
+              showDeleted={showDeletedOnly}
+              onShowDeletedToggle={() => {
+                setShowDeletedOnly((prev) => !prev);
+                setShowFavoritesOnly(false);
+              }}
+              showFavorites={showFavoritesOnly}
+              onShowFavoritesToggle={() => setShowFavoritesOnly((prev) => !prev)}
+              pageSize={pageSize}
+              onPageSizeChange={(val) => {
+                if (val === 25 || val === 50 || val === 100 || val === 200) setPageSize(val);
+              }}
+              onExportCSV={() => {
+                const qs = new URLSearchParams();
+                if (showDeletedOnly) qs.set('deleted_only', 'true');
+                else qs.set('include_deleted', 'true');
+                if (filters.search?.trim()) qs.set('search', filters.search.trim());
+                if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
+                else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
+                if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
+                qs.set('limit', '5000');
+                window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
+              }}
+              pageInfo={{
+                currentPage: pageIndex + 1,
+                totalPages,
+                totalItems,
+              }}
+              renderAdditionalFilters={() => (
+                <>
+                  <div>
+                    <Label htmlFor="mobile-status" className="text-xs mb-1.5 block">Status</Label>
+                    <Select id="mobile-status" value={filters.status} onValueChange={val => setFilters(f => ({ ...f, status: val }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_sold">In Stock/Listed</SelectItem>
+                        <SelectItem value="available">In Stock</SelectItem>
+                        <SelectItem value="listed">Listed</SelectItem>
+                        <SelectItem value="sold">Sold</SelectItem>
+                        <SelectItem value="all">All Items</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="mobile-sort" className="text-xs mb-1.5 block">Sort By</Label>
+                    <Select id="mobile-sort" value={sort} onValueChange={setSort}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest First</SelectItem>
+                        <SelectItem value="oldest">Oldest First</SelectItem>
+                        <SelectItem value="price-high">Price: High to Low</SelectItem>
+                        <SelectItem value="price-low">Price: Low to High</SelectItem>
+                        <SelectItem value="name-az">Name: A to Z</SelectItem>
+                        <SelectItem value="name-za">Name: Z to A</SelectItem>
+                        <SelectItem value="purchase-newest">Purchase: Newest</SelectItem>
+                        <SelectItem value="purchase-oldest">Purchase: Oldest</SelectItem>
+                        <SelectItem value="return-soon">Return Soon</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {!showDeletedOnly && filters.daysInStock === "returnDeadline" && (
+                    <div>
+                      <Button
+                        variant={showDismissedReturns ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowDismissedReturns((prev) => !prev)}
+                        className="w-full"
+                      >
+                        <AlarmClock className="w-4 h-4 mr-2" />
+                        {showDismissedReturns ? "Showing Dismissed" : "Show Dismissed"}
+                        {dismissedReturnsCount > 0 && (
+                          <span className="ml-2 text-xs">({dismissedReturnsCount})</span>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            />
+          </div>
+
+          {/* Desktop Filter Card */}
+          <Card className="hidden md:block border-0 shadow-lg mb-4">
             <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
               <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Filters & Sort</CardTitle>
             </CardHeader>

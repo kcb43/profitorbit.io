@@ -419,32 +419,35 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                 )}
               </>
             ) : (
-              /* Desktop: Show achievements and rewards button always */
+              /* Desktop: Show shipping label vouchers and rewards button always */
               <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Achievements</div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Shipping Label Vouchers</div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-                  {achievements.length > 0 ? (
-                    achievements.map((ach) => (
-                      <div key={ach.name} className="relative flex-shrink-0">
-                        <button
-                          onClick={() => setSelectedAchievement(selectedAchievement === ach.name ? null : ach.name)}
-                          className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
-                        >
-                          <ach.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${ach.color}`} />
-                          {/* Smooth label on click */}
-                          {selectedAchievement === ach.name && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
-                              {ach.name}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
-                            </div>
-                          )}
-                        </button>
-                      </div>
-                    ))
+                  {shippingLabelVouchers.length > 0 ? (
+                    shippingLabelVouchers.map((voucher) => {
+                      const VoucherIcon = voucher.icon;
+                      return (
+                        <div key={voucher.id} className="relative flex-shrink-0">
+                          <button
+                            onClick={() => setSelectedAchievement(selectedAchievement === voucher.id ? null : voucher.id)}
+                            className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
+                          >
+                            <VoucherIcon className={`w-6 h-6 sm:w-8 sm:h-8 ${voucher.color}`} />
+                            {/* Smooth label on click */}
+                            {selectedAchievement === voucher.id && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
+                                {voucher.name}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
+                              </div>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })
                   ) : (
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Your first achievement is just around the corner!</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Earn more points to unlock shipping label vouchers!</div>
                   )}
                 </div>
                 
