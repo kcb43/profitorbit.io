@@ -1801,14 +1801,15 @@ export default function InventoryPage() {
                   const quantitySold = Number.isFinite(rawSold) && rawSold >= 0 ? rawSold : 0;
                   const remaining = Math.max(quantity - quantitySold, 0);
                   return (
-                    <Link
-                      key={item.id}
-                      to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
-                      state={returnStateForInventory}
-                      className="group block"
-                    >
+                    <div key={item.id} className="group block">
                       <div className={`relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-border/60'} bg-card/60 hover:bg-muted/40 transition-colors`}>
-                        <div className="relative aspect-square bg-gray-50 dark:bg-slate-900/50">
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelect(item.id);
+                          }}
+                          className="relative aspect-square bg-gray-50 dark:bg-slate-900/50 cursor-pointer"
+                        >
                           <OptimizedImage
                             src={item.image_url || DEFAULT_IMAGE_URL}
                             alt={item.item_name}
@@ -1816,11 +1817,22 @@ export default function InventoryPage() {
                             className="w-full h-full object-cover"
                             lazy={true}
                           />
+                          {selectedItems.includes(item.id) && (
+                            <div className="absolute top-2 left-2 z-20">
+                              <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          )}
                           <div className="absolute top-2 right-2 rounded-full bg-black/70 text-white text-[11px] px-2 py-0.5">
                             x{remaining}
                           </div>
                         </div>
-                        <div className="p-3">
+                        <Link
+                          to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
+                          state={returnStateForInventory}
+                          className="block p-3"
+                        >
                           <div className="text-sm font-semibold text-foreground line-clamp-2">
                             {item.item_name || "Untitled Item"}
                           </div>
@@ -1828,9 +1840,9 @@ export default function InventoryPage() {
                             ${Number(item.purchase_price || 0).toFixed(2)}
                             {item.purchase_date ? ` • ${format(parseISO(item.purchase_date), "MMM d, yyyy")}` : ""}
                           </div>
-                        </div>
+                        </Link>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>

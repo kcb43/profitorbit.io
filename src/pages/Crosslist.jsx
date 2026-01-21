@@ -1501,14 +1501,14 @@ export default function Crosslist() {
   }, [selected.length, isMobile]);
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full max-w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
       <SelectionBanner
         selectedCount={selected.length}
         onClear={() => setSelected([])}
         showAtTop={false}
         threshold={200}
       />
-      <div className="max-w-7xl mx-auto space-y-6 min-w-0" style={{ paddingTop: topOffset }}>
+      <div className="max-w-7xl mx-auto space-y-6 min-w-0 w-full max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden', paddingTop: topOffset }}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">Crosslist</h1>
@@ -1658,7 +1658,7 @@ export default function Crosslist() {
               <Sparkles className="w-4 h-4 mr-2" />
               Pro Tools
             </Button>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end min-w-0 w-full max-w-full overflow-hidden">
               <BulkActionsMenu 
                 selectedItems={selected}
                 onActionComplete={() => setSelected([])}
@@ -1671,10 +1671,10 @@ export default function Crosslist() {
                     openComposer([]);
                   }
                 }}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 whitespace-nowrap flex-shrink-0"
               >
                 <Rocket className="w-4 h-4 mr-2" />
-                {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
+                Crosslist
               </Button>
             </div>
           </div>
@@ -1755,11 +1755,11 @@ export default function Crosslist() {
                 Showing <span className="font-medium text-foreground">{filtered.length}</span> of{" "}
                 <span className="font-medium text-foreground">{crosslistableItems.length}</span> items
               </div>
-              <div className="flex flex-col md:flex-row gap-2 flex-wrap order-1 md:order-2 md:ml-auto">
+              <div className="flex flex-col md:flex-row gap-2 flex-wrap order-1 md:order-2 md:ml-auto min-w-0 w-full max-w-full overflow-hidden">
                 <Button
                   type="button"
                   variant="outline"
-                  className="whitespace-nowrap w-auto"
+                  className="whitespace-nowrap w-auto flex-shrink-0"
                   onClick={() => navigate(createPageUrl("Pro Tools"))}
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
@@ -1777,10 +1777,10 @@ export default function Crosslist() {
                       openComposer([]);
                     }
                   }}
-                  className="bg-green-600 hover:bg-green-700 whitespace-nowrap w-auto"
+                  className="bg-green-600 hover:bg-green-700 whitespace-nowrap w-auto flex-shrink-0"
                 >
                   <Rocket className="w-4 h-4 mr-2" />
-                  {selected.length > 0 ? `Bulk Crosslist (${selected.length})` : "Crosslist"}
+                  Crosslist
                 </Button>
               </div>
             </div>
@@ -2012,7 +2012,7 @@ export default function Crosslist() {
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
             {filtered.map((it) => {
               const map = computeListingState(it);
               const listedCount = Object.values(map).filter((v) => v === 'active').length;
