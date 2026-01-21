@@ -348,21 +348,27 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
             {/* Mobile: Collapsible View Rewards dropdown */}
             {isMobile ? (
               <>
-                {/* View Rewards Dropdown Button - only show when not expanded */}
-                {!isExpanded && (
-                  <button
-                    onClick={() => setIsExpanded(true)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5 relative"
-                  >
-                    <span>View Rewards</span>
-                    <div className="flex items-center gap-2">
-                      {/* Green dot - only show when not expanded */}
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
-                      <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                {/* View Rewards Dropdown Button */}
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5 relative"
+                >
+                  {!isExpanded ? (
+                    <>
+                      <span>View Rewards</span>
+                      <div className="flex items-center gap-2">
+                        {/* Green dot - only show when not expanded */}
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full z-30" />
+                        <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 w-full justify-end">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
-                  </button>
-                )}
+                  )}
+                </button>
 
                 {/* Expanded Content */}
                 {isExpanded && (
