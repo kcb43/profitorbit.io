@@ -139,6 +139,16 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
   // Calculate points (using total profit as points for now, can be adjusted)
   const points = Math.floor(stats.totalProfit);
 
+  // Shipping Label Vouchers - filter to only show available ones
+  const shippingLabelVouchers = React.useMemo(() => {
+    const vouchers = [
+      { id: "shipping-label-5", name: "$5", cost: 500, icon: Truck, color: "text-blue-500" },
+      { id: "shipping-label-10", name: "$10", cost: 1000, icon: Truck, color: "text-blue-600" },
+      { id: "shipping-label-25", name: "$25", cost: 2500, icon: Truck, color: "text-indigo-600" },
+    ];
+    return vouchers.filter(v => points >= v.cost);
+  }, [points]);
+
   // Calculate tier progress
   const tierProgress = React.useMemo(() => {
     if (!tierInfo.nextTier || !tierInfo.nextTierMin) return { percentage: 100, pointsNeeded: 0 };
