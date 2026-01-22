@@ -36023,6 +36023,9 @@ export default function CrosslistComposer() {
     } else if (templateKey === 'facebook') {
       // Vendoo-like reconnect: re-check extension session + re-send CONNECT_PLATFORM (no developer OAuth redirect)
       handleConnectFacebook();
+    } else if (templateKey === 'mercari') {
+      // Reconnect Mercari: re-check extension session + re-send CONNECT_PLATFORM
+      handleMercariConnectFromComposer();
     } else {
       const label = TEMPLATE_DISPLAY_NAMES[templateKey] || "Marketplace";
       toast({
@@ -43801,10 +43804,20 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="default" size="sm" className="gap-2 w-fit bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white" onClick={handleConnectFacebook}>
-                          <Check className="h-4 w-4" />
-                          Connect Facebook Account
-                        </Button>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                          <Button variant="default" size="sm" className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" disabled={isMobile} onClick={handleConnectFacebook}>
+                            <Check className="h-4 w-4" />
+                            Connect Facebook Account
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 w-full sm:w-auto whitespace-normal"
+                            onClick={handleFacebookLogin}
+                          >
+                            Login
+                          </Button>
+                        </div>
                       )}
                     </div>
 
@@ -43847,11 +43860,15 @@ export default function CrosslistComposer() {
                         <Label className="text-base font-semibold">Mercari Account</Label>
                       </div>
                       {mercariConnected ? (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                          <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto whitespace-normal" onClick={() => handleReconnect("mercari")}>
+                            <RefreshCw className="h-4 w-4" />
+                            Reconnect
+                          </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="gap-2 text-destructive hover:text-destructive" 
+                            className="gap-2 w-full sm:w-auto whitespace-normal text-destructive hover:text-destructive" 
                             onClick={() => {
                               localStorage.removeItem('profit_orbit_mercari_connected');
                               localStorage.removeItem('profit_orbit_mercari_username');
