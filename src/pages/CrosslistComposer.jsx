@@ -34121,25 +34121,71 @@ export default function CrosslistComposer() {
     const left = (window.screen.width / 2) - (width / 2);
     const top = (window.screen.height / 2) - (height / 2);
     
+    // Use unique window name to avoid conflicts
+    const windowName = `FacebookLogin_${Date.now()}`;
+    
     const popup = window.open(
       'https://www.facebook.com/marketplace/',
-      'FacebookLogin',
+      windowName,
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
     
-    // Auto-close popup after 5 seconds
+    // Store popup reference globally to ensure it persists
     if (popup) {
-      setTimeout(() => {
+      window._facebookLoginPopup = popup;
+      
+      // Auto-close popup after 5 seconds
+      const closeTimeout = setTimeout(() => {
+        let closed = false;
+        
+        // Method 1: Try closing via stored reference
         try {
-          // Check if popup is still open before closing
-          if (popup && !popup.closed) {
-            popup.close();
+          const popupRef = window._facebookLoginPopup;
+          if (popupRef && typeof popupRef.close === 'function') {
+            popupRef.close();
+            closed = true;
           }
-        } catch (e) {
-          // Popup may have been closed by user or blocked
-          console.log('Facebook popup close error:', e);
+        } catch (e1) {
+          console.log('Facebook popup close method 1 failed:', e1);
         }
+        
+        // Method 2: Try closing via original reference
+        if (!closed) {
+          try {
+            if (popup && typeof popup.close === 'function') {
+              popup.close();
+              closed = true;
+            }
+          } catch (e2) {
+            console.log('Facebook popup close method 2 failed:', e2);
+          }
+        }
+        
+        // Method 3: Try reopening with same name and closing immediately
+        if (!closed) {
+          try {
+            const testPopup = window.open('', windowName);
+            if (testPopup) {
+              testPopup.close();
+              closed = true;
+            }
+          } catch (e3) {
+            console.log('Facebook popup close method 3 failed:', e3);
+          }
+        }
+        
+        // Clean up the global reference
+        try {
+          delete window._facebookLoginPopup;
+          if (window._facebookLoginPopupTimeout) {
+            clearTimeout(window._facebookLoginPopupTimeout);
+            delete window._facebookLoginPopupTimeout;
+          }
+        } catch (_) {}
       }, 5000);
+      
+      // Store timeout ID so we can clear it if needed
+      window._facebookLoginPopupTimeout = closeTimeout;
     }
     
     toast({
