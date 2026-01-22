@@ -33768,12 +33768,22 @@ export default function CrosslistComposer() {
       return false;
     }
   });
+  // Helper function to clean username text
+  const cleanUsername = (username) => {
+    if (!username) return null;
+    return username
+      .replace(/\s*View profile.*$/i, '')
+      .replace(/^Seller Details$/i, '')
+      .trim() || null;
+  };
+
   const [facebookUsername, setFacebookUsername] = useState(() => {
     try {
       const raw = localStorage.getItem('profit_orbit_facebook_user');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return parsed?.userName || parsed?.name || null;
+      const username = parsed?.userName || parsed?.name || null;
+      return cleanUsername(username);
     } catch (_) {
       return null;
     }
@@ -33789,13 +33799,16 @@ export default function CrosslistComposer() {
     if (userData) {
       try {
         const parsed = JSON.parse(userData);
-        if (parsed.userName) return parsed.userName;
+        if (parsed.userName) {
+          return cleanUsername(parsed.userName);
+        }
       } catch (e) {
         // Fallback to old format
       }
     }
     // Fallback to old format
-    return localStorage.getItem('profit_orbit_mercari_username') || null;
+    const oldUsername = localStorage.getItem('profit_orbit_mercari_username');
+    return cleanUsername(oldUsername);
   });
   
   // Image Editor state
@@ -33838,7 +33851,7 @@ export default function CrosslistComposer() {
         try {
           const parsed = JSON.parse(userData);
           if (parsed.userName && parsed.userName !== mercariUsername) {
-            setMercariUsername(parsed.userName);
+            setMercariUsername(cleanUsername(parsed.userName));
           }
         } catch (e) {
           // Ignore parse errors
@@ -33859,7 +33872,7 @@ export default function CrosslistComposer() {
             try {
               const parsed = JSON.parse(userData);
               if (parsed.userName) {
-                setMercariUsername(parsed.userName);
+                setMercariUsername(cleanUsername(parsed.userName));
               }
             } catch (e) {
               // Ignore parse errors
@@ -33882,7 +33895,7 @@ export default function CrosslistComposer() {
         }
       } else if (e.key === 'profit_orbit_mercari_username') {
         // Fallback to old format
-        setMercariUsername(e.newValue);
+        setMercariUsername(cleanUsername(e.newValue));
       }
     };
     
@@ -33894,8 +33907,9 @@ export default function CrosslistComposer() {
         localStorage.setItem('profit_orbit_mercari_connected', String(connected));
       }
       if (username !== undefined) {
-        setMercariUsername(username);
-        localStorage.setItem('profit_orbit_mercari_username', username);
+        const cleanedUsername = cleanUsername(username);
+        setMercariUsername(cleanedUsername);
+        localStorage.setItem('profit_orbit_mercari_username', cleanedUsername || '');
       }
     };
     
@@ -33904,7 +33918,7 @@ export default function CrosslistComposer() {
       if (event.detail?.marketplace === 'mercari' && event.detail?.status?.loggedIn) {
         setMercariConnected(true);
         if (event.detail.status.userName) {
-          setMercariUsername(event.detail.status.userName);
+          setMercariUsername(cleanUsername(event.detail.status.userName));
         }
       }
     };
@@ -34043,16 +34057,24 @@ export default function CrosslistComposer() {
     });
   };
 
-  // Handle Facebook login (opens Facebook Marketplace)
+  // Handle Facebook login (opens Facebook Marketplace in popup)
   const handleFacebookLogin = () => {
-    try {
-      window.open('https://www.facebook.com/marketplace/', '_blank', 'noopener,noreferrer');
-    } catch (_) {
-      // ignore
-    }
+    // Open Facebook Marketplace in a small popup window (like Mercari)
+    const width = 500;
+    const height = 650;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    window.open(
+      'https://www.facebook.com/marketplace/',
+      'FacebookLogin',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
+    );
+    
     toast({
-      title: 'Open Facebook',
-      description: 'Log into Facebook in the tab that just opened, then come back and click Connect.',
+      title: 'Facebook Login',
+      description: 'Log into Facebook in the popup, then close it and click "Connect Facebook".',
+      duration: 6000,
     });
   };
 
@@ -34217,7 +34239,8 @@ export default function CrosslistComposer() {
         const raw = localStorage.getItem('profit_orbit_facebook_user');
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        return parsed?.userName || parsed?.name || null;
+        const username = parsed?.userName || parsed?.name || null;
+        return cleanUsername(username);
       } catch (_) {
         return null;
       }
@@ -34236,7 +34259,7 @@ export default function CrosslistComposer() {
       if (!st) return;
       if (st.loggedIn) {
         setFacebookConnected(true);
-        setFacebookUsername(st.userName || null);
+        setFacebookUsername(cleanUsername(st.userName || null));
       } else {
         setFacebookConnected(false);
         setFacebookUsername(null);
@@ -34248,7 +34271,7 @@ export default function CrosslistComposer() {
       if (!st) return;
       if (st.loggedIn) {
         setFacebookConnected(true);
-        setFacebookUsername(st.userName || null);
+        setFacebookUsername(cleanUsername(st.userName || null));
       } else {
         setFacebookConnected(false);
         setFacebookUsername(null);
@@ -38040,10 +38063,14 @@ export default function CrosslistComposer() {
             </div>
 
             {/* Logged in as */}
-            <div>
+            <div className="text-right">
               <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
               <div className="text-sm">
-                {facebookUsername ? <span className="font-medium">{facebookUsername}</span> : <span className="text-muted-foreground">—</span>}
+                {facebookUsername ? (
+                  <span className="font-medium">{facebookUsername}</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </div>
             </div>
 
@@ -43838,7 +43865,7 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                       </div>
-                      <div>
+                      <div className="text-right">
                         <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                         <div className="text-sm">
                           {facebookUsername ? (
@@ -43910,7 +43937,7 @@ export default function CrosslistComposer() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
                       <div>
-                        <Label className="text-xs text-muted-foreground mb-1">Connection Status</Label>
+                        <Label className="text-xs text-muted-foreground mb-1">Status</Label>
                         <div className="flex items-center gap-2">
                           {mercariConnected ? (
                             <>
@@ -43925,7 +43952,7 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                       </div>
-                      <div>
+                      <div className="text-right">
                         <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                         <div className="text-sm">
                           {mercariUsername ? (
