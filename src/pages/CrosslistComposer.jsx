@@ -34022,6 +34022,40 @@ export default function CrosslistComposer() {
     return false;
   };
 
+  // Handle Mercari login popup (opens login page)
+  const handleMercariLogin = () => {
+    // Open Mercari login in a small popup window (like Vendoo)
+    const width = 500;
+    const height = 650;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    window.open(
+      'https://www.mercari.com/login/',
+      'MercariLogin',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
+    );
+    
+    toast({
+      title: 'Mercari Login',
+      description: 'Log into Mercari in the popup, then close it and click "Connect Mercari".',
+      duration: 6000,
+    });
+  };
+
+  // Handle Facebook login (opens Facebook Marketplace)
+  const handleFacebookLogin = () => {
+    try {
+      window.open('https://www.facebook.com/marketplace/', '_blank', 'noopener,noreferrer');
+    } catch (_) {
+      // ignore
+    }
+    toast({
+      title: 'Open Facebook',
+      description: 'Log into Facebook in the tab that just opened, then come back and click Connect.',
+    });
+  };
+
   // Handle Mercari connection from CrosslistComposer
   const handleMercariConnectFromComposer = async () => {
     try {
@@ -37975,9 +38009,8 @@ export default function CrosslistComposer() {
                   variant="outline"
                   size="sm"
                   className="gap-2 w-full sm:w-auto whitespace-normal"
-                  onClick={() => navigate(createPageUrl("Settings"))}
+                  onClick={handleFacebookLogin}
                 >
-                  <Settings className="h-4 w-4" />
                   Login
                 </Button>
               </div>
@@ -43850,9 +43883,8 @@ export default function CrosslistComposer() {
                             variant="outline"
                             size="sm"
                             className="gap-2 w-full sm:w-auto whitespace-normal"
-                            onClick={() => navigate(createPageUrl("Settings"))}
+                            onClick={handleMercariLogin}
                           >
-                            <Settings className="h-4 w-4" />
                             Login
                           </Button>
                         </div>
