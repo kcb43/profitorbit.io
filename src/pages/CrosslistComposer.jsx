@@ -33961,6 +33961,214 @@ export default function CrosslistComposer() {
     };
   }, [mercariConnected, mercariUsername]);
 
+  // Wait for extension to be ready with retry logic
+  const waitForExtensionReady = async (timeout = 3000) => {
+    const start = Date.now();
+    
+    while (Date.now() - start < timeout) {
+      const bridgeLoaded = window.__PROFIT_ORBIT_BRIDGE_LOADED === true;
+      const apiAvailable = window.ProfitOrbitExtension && window.ProfitOrbitExtension.isAvailable();
+      
+      if (bridgeLoaded || apiAvailable) {
+        console.log('✅ Profit Orbit: Extension ready');
+        return true;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    return false;
+  };
+
+  // Wait for Mercari connection with retry logic
+  const waitForMercariConnection = async (timeout = 5000) => {
+    const start = Date.now();
+    
+    // Clear disconnect flag when user explicitly connects
+    localStorage.removeItem('profit_orbit_mercari_disconnected');
+    
+    // Set request flag to wake up extension
+    localStorage.setItem('profit_orbit_request_status', 'true');
+    
+    // Also try direct query if API is available
+    if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.isAvailable()) {
+      console.log('🟢 Profit Orbit: Using bridge API to check connection');
+      window.ProfitOrbitExtension.getAllStatus((response) => {
+        console.log('🟢 Profit Orbit: getAllStatus response:', response);
+        
+        const mercariStatus = response?.status?.mercari;
+        if (mercariStatus?.loggedIn) {
+          const userName = mercariStatus.userName || 'Mercari User';
+          localStorage.setItem('profit_orbit_mercari_connected', 'true');
+          localStorage.setItem('profit_orbit_mercari_user', JSON.stringify({
+            userName: userName,
+            marketplace: 'mercari'
+          }));
+        }
+      });
+    }
+    
+    while (Date.now() - start < timeout) {
+      const status = localStorage.getItem('profit_orbit_mercari_connected');
+      
+      if (status === 'true') {
+        console.log('✅ Profit Orbit: Mercari connection detected');
+        return true;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    return false;
+  };
+
+  // Handle Mercari connection from CrosslistComposer
+  const handleMercariConnectFromComposer = async () => {
+    try {
+      // Check if already connected
+      const isCurrentlyConnected = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
+      if (isCurrentlyConnected) {
+        toast({
+          title: 'Already Connected',
+          description: mercariUsername ? `Mercari is already connected as ${mercariUsername}` : 'Mercari is already connected.',
+        });
+        setMercariConnected(true);
+        return;
+      }
+
+      console.log('🟢🟢🟢 Profit Orbit: Starting Mercari connection from CrosslistComposer... 🟢🟢🟢');
+      
+      // Show "connecting..." state immediately
+      toast({
+        title: 'Connecting to Mercari...',
+        description: 'Checking extension and Mercari login status...',
+      });
+      
+      // Step 1: Wait for extension to be ready (with retry)
+      console.log('🟢 Profit Orbit: Waiting for extension to be ready...');
+      const extensionReady = await waitForExtensionReady(3000);
+      
+      if (!extensionReady) {
+        console.warn('⚠️ Profit Orbit: Extension not ready after timeout');
+        
+        // Check if URL matches expected patterns
+        const currentUrl = window.location.href;
+        const expectedPatterns = [
+          'https://profitorbit.io',
+          'http://localhost:5173',
+          'http://localhost:5174'
+        ];
+        const urlMatches = expectedPatterns.some(pattern => currentUrl.startsWith(pattern));
+        
+        if (!urlMatches) {
+          console.error('🔴 Profit Orbit: URL does not match expected patterns!');
+          toast({
+            title: 'Extension Not Detected',
+            description: 'The extension only works on profitorbit.io or localhost. Please check your URL.',
+            variant: 'destructive',
+            duration: 10000,
+          });
+          return;
+        }
+        
+        // Show helpful error message with link to Settings
+        toast({
+          title: 'Extension Not Ready',
+          description: 'The extension may still be loading. Please try connecting from Settings > Login, or refresh the page and try again.',
+          variant: 'destructive',
+          duration: 10000,
+          action: (
+            <ToastAction altText="Go to Settings" onClick={() => navigate(createPageUrl("Settings"))}>
+              Go to Settings
+            </ToastAction>
+          ),
+        });
+        return;
+      }
+      
+      console.log('🟢 Profit Orbit: Extension ready, checking Mercari connection...');
+      
+      // Step 2: Wait for Mercari connection (with retry)
+      const connected = await waitForMercariConnection(5000);
+      
+      if (connected) {
+        // Check if user explicitly disconnected - if so, clear the status
+        const wasExplicitlyDisconnected = localStorage.getItem('profit_orbit_mercari_disconnected') === 'true';
+        if (wasExplicitlyDisconnected) {
+          console.log('⚠️ Profit Orbit: User explicitly disconnected - clearing auto-detected connection');
+          localStorage.removeItem('profit_orbit_mercari_connected');
+          localStorage.removeItem('profit_orbit_mercari_user');
+          toast({
+            title: 'Connection Blocked',
+            description: 'You previously disconnected Mercari. Please log into Mercari first, then try connecting again.',
+            variant: 'destructive',
+            duration: 10000,
+            action: (
+              <ToastAction altText="Go to Settings" onClick={() => navigate(createPageUrl("Settings"))}>
+                Go to Settings
+              </ToastAction>
+            ),
+          });
+          return;
+        }
+        
+        // Success!
+        const wasConnected = mercariConnected;
+        setMercariConnected(true);
+        
+        // Clear disconnect flag when user explicitly connects
+        localStorage.removeItem('profit_orbit_mercari_disconnected');
+
+        // Explicitly request the extension to save a server-side session (CONNECT_PLATFORM)
+        try {
+          window.postMessage({ type: 'REQUEST_CONNECT_PLATFORM', payload: { platform: 'mercari' } }, '*');
+        } catch (_) {
+          // ignore
+        }
+        
+        // Get user info
+        const userData = JSON.parse(localStorage.getItem('profit_orbit_mercari_user') || '{}');
+        const userName = userData.userName || mercariUsername;
+        
+        // Only show success toast if transitioning from disconnected to connected
+        if (!wasConnected) {
+          toast({
+            title: 'Mercari Connected!',
+            description: userName ? `Connected as ${userName}` : 'Your Mercari account is connected.',
+          });
+        }
+      } else {
+        // Connection not found after retries
+        console.log('🔴 Profit Orbit: No connection found after retries');
+        toast({
+          title: 'Mercari Not Connected',
+          description: 'Please log into Mercari.com in a new tab first, then come back and try connecting again. Or connect from Settings > Login.',
+          variant: 'destructive',
+          duration: 12000,
+          action: (
+            <ToastAction altText="Go to Settings" onClick={() => navigate(createPageUrl("Settings"))}>
+              Go to Settings
+            </ToastAction>
+          ),
+        });
+      }
+      
+    } catch (error) {
+      console.error('🔴 Profit Orbit: Error:', error);
+      toast({
+        title: 'Connection Error',
+        description: error.message || 'Failed to check Mercari connection. Please try connecting from Settings > Login.',
+        variant: 'destructive',
+        duration: 10000,
+        action: (
+          <ToastAction altText="Go to Settings" onClick={() => navigate(createPageUrl("Settings"))}>
+            Go to Settings
+          </ToastAction>
+        ),
+      });
+    }
+  };
+
   // Listen for Facebook connection status updates from extension (same-tab safe: uses poll + events)
   useEffect(() => {
     const readConnected = () => {
@@ -37883,23 +38091,7 @@ export default function CrosslistComposer() {
                   size="sm" 
                   className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
                   disabled={isMobile}
-                  onClick={() => {
-                    if (isMobile) {
-                      toast({
-                        title: "Desktop required",
-                        description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
-                        variant: "destructive",
-                        duration: 10000,
-                      });
-                      return;
-                    }
-                    toast({
-                      title: "Desktop required",
-                      description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
-                      variant: "destructive",
-                      duration: 10000,
-                    });
-                  }}
+                  onClick={handleMercariConnectFromComposer}
                 >
                   <Check className="h-4 w-4" />
                   Connect Mercari Account

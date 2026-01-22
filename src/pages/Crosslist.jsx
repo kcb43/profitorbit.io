@@ -1032,10 +1032,12 @@ export default function Crosslist() {
       const notConnected = required.filter((p) => !isPlatformConnected(p));
 
       if (notConnected.length > 0) {
+        const platformName = notConnected[0] === 'mercari' ? 'Mercari' : notConnected[0];
         toast({
           title: 'Platform Not Connected',
-          description: `Please connect your ${notConnected.join(', ')} account first using the Chrome extension.`,
+          description: `Please connect your ${platformName} account first. You can connect from Settings > Login, or use the Chrome extension.`,
           variant: 'destructive',
+          duration: 10000,
         });
         setShowPlatformConnect(true);
         return;
