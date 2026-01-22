@@ -594,11 +594,22 @@ export default function Settings() {
     const left = (window.screen.width / 2) - (width / 2);
     const top = (window.screen.height / 2) - (height / 2);
     
-    window.open(
+    const popup = window.open(
       'https://www.mercari.com/login/',
       'MercariLogin',
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
+    
+    // Auto-close popup after 5 seconds
+    if (popup) {
+      setTimeout(() => {
+        try {
+          popup.close();
+        } catch (e) {
+          // Popup may have been closed by user or blocked
+        }
+      }, 5000);
+    }
     
     toast({
       title: 'Mercari Login',
@@ -891,14 +902,33 @@ export default function Settings() {
   };
 
   const handleFacebookLogin = () => {
-    try {
-      window.open('https://www.facebook.com/marketplace/', '_blank', 'noopener,noreferrer');
-    } catch (_) {
-      // ignore
+    // Open Facebook Marketplace in a small popup window (like Mercari)
+    const width = 500;
+    const height = 650;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    const popup = window.open(
+      'https://www.facebook.com/marketplace/',
+      'FacebookLogin',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
+    );
+    
+    // Auto-close popup after 5 seconds
+    if (popup) {
+      setTimeout(() => {
+        try {
+          popup.close();
+        } catch (e) {
+          // Popup may have been closed by user or blocked
+        }
+      }, 5000);
     }
+    
     toast({
-      title: 'Open Facebook',
-      description: 'Log into Facebook in the tab that just opened, then come back and click Connect.',
+      title: 'Facebook Login',
+      description: 'Log into Facebook in the popup, then close it and click "Connect Facebook".',
+      duration: 6000,
     });
   };
 
