@@ -37949,27 +37949,38 @@ export default function CrosslistComposer() {
                 </Button>
               </div>
             ) : (
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal"
-                disabled={isMobile}
-                onClick={() => {
-                  if (isMobile) {
-                    toast({
-                      title: "Desktop required",
-                      description: "Facebook connect requires the Profit Orbit Chrome extension (desktop).",
-                      variant: "destructive",
-                      duration: 10000,
-                    });
-                    return;
-                  }
-                  handleConnectFacebook();
-                }}
-              >
-                <Check className="h-4 w-4" />
-                Connect Facebook Account
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal"
+                  disabled={isMobile}
+                  onClick={() => {
+                    if (isMobile) {
+                      toast({
+                        title: "Connection sync needed",
+                        description: "Facebook connect sync needed. Try the Login button to properly connect.",
+                        variant: "destructive",
+                        duration: 10000,
+                      });
+                      return;
+                    }
+                    handleConnectFacebook();
+                  }}
+                >
+                  <Check className="h-4 w-4" />
+                  Connect Facebook Account
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 w-full sm:w-auto whitespace-normal"
+                  onClick={() => navigate(createPageUrl("Settings"))}
+                >
+                  <Settings className="h-4 w-4" />
+                  Login
+                </Button>
+              </div>
             )}
           </div>
 
@@ -43824,32 +43835,27 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                       ) : (
-                        <Button 
-                          variant="default" 
-                          size="sm" 
-                          className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
-                          disabled={isMobile}
-                          onClick={() => {
-                            if (isMobile) {
-                              toast({
-                                title: "Desktop required",
-                                description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
-                                variant: "destructive",
-                                duration: 10000,
-                              });
-                              return;
-                            }
-                            toast({
-                              title: "Desktop required",
-                              description: "Mercari connect requires the Profit Orbit Chrome extension (desktop).",
-                              variant: "destructive",
-                              duration: 10000,
-                            });
-                          }}
-                        >
-                          <Check className="h-4 w-4" />
-                          Connect Mercari Account
-                        </Button>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="gap-2 w-full sm:w-auto bg-[rgba(34,197,94,1)] hover:bg-[rgba(34,197,94,0.9)] text-white whitespace-normal" 
+                            disabled={isMobile}
+                            onClick={handleMercariConnectFromComposer}
+                          >
+                            <Check className="h-4 w-4" />
+                            Connect Mercari Account
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 w-full sm:w-auto whitespace-normal"
+                            onClick={() => navigate(createPageUrl("Settings"))}
+                          >
+                            <Settings className="h-4 w-4" />
+                            Login
+                          </Button>
+                        </div>
                       )}
                     </div>
 
