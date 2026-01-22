@@ -33771,19 +33771,34 @@ export default function CrosslistComposer() {
   // Helper function to clean username text
   const cleanUsername = (username) => {
     if (!username) return null;
-    let cleaned = String(username)
-      // Remove "View profile" with various spacing patterns (case insensitive)
-      // Handle cases like "callmebertView profile" or "callmebert View profile"
-      .replace(/View\s+profile/gi, '')
-      .replace(/view\s+profile/gi, '')
-      .replace(/View\s+Profile/gi, '')
-      .replace(/VIEW\s+PROFILE/gi, '')
+    let cleaned = String(username);
+    
+    // Split on "View" or "profile" keywords and take only the first part (the actual username)
+    // This handles cases like "callmebertView profile", "callmebert View profile", "callmebertViewprofile", etc.
+    const viewIndex = cleaned.toLowerCase().indexOf('view');
+    const profileIndex = cleaned.toLowerCase().indexOf('profile');
+    
+    if (viewIndex !== -1) {
+      // If "view" is found, take everything before it
+      cleaned = cleaned.substring(0, viewIndex);
+    } else if (profileIndex !== -1) {
+      // If only "profile" is found (without "view"), take everything before it
+      cleaned = cleaned.substring(0, profileIndex);
+    }
+    
+    // Also remove any remaining "View profile" patterns as fallback
+    cleaned = cleaned
+      .replace(/View\s*profile/gi, '')
+      .replace(/view\s*profile/gi, '')
+      .replace(/View\s*Profile/gi, '')
+      .replace(/VIEW\s*PROFILE/gi, '')
       .replace(/Viewprofile/gi, '')
       .replace(/viewprofile/gi, '')
       // Remove "Seller Details" exactly
       .replace(/^Seller\s+Details$/i, '')
       // Remove any trailing whitespace and clean up
       .trim();
+    
     return cleaned || null;
   };
 
@@ -38097,17 +38112,19 @@ export default function CrosslistComposer() {
             {/* Empty spacer */}
             <div></div>
 
-            {/* Logged in as */}
-            <div className="text-right">
-              <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
-              <div className="text-sm">
-                {facebookUsername ? (
-                  <span className="font-medium">{facebookUsername}</span>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
+            {/* Logged in as - only show when connected */}
+            {facebookConnected && (
+              <div className="text-right">
+                <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
+                <div className="text-sm">
+                  {facebookUsername ? (
+                    <span className="font-medium">{facebookUsername}</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
 
@@ -38227,17 +38244,19 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              {/* Username */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
-                <div className="text-sm">
-                  {mercariUsername ? (
-                    <span className="font-medium">{mercariUsername}</span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+              {/* Username - only show when connected */}
+              {mercariConnected && (
+                <div className="text-right">
+                  <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
+                  <div className="text-sm">
+                    {mercariUsername ? (
+                      <span className="font-medium">{mercariUsername}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -43904,17 +43923,19 @@ export default function CrosslistComposer() {
                       {/* Empty spacer */}
                       <div></div>
 
-                      {/* Logged in as */}
-                      <div className="text-right">
-                        <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
-                        <div className="text-sm">
-                          {facebookUsername ? (
-                            <span className="font-medium">{facebookUsername}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                      {/* Logged in as - only show when connected */}
+                      {facebookConnected && (
+                        <div className="text-right">
+                          <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
+                          <div className="text-sm">
+                            {facebookUsername ? (
+                              <span className="font-medium">{facebookUsername}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -43992,16 +44013,19 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
-                        <div className="text-sm">
-                          {mercariUsername ? (
-                            <span className="font-medium">{mercariUsername}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                      {/* Logged in as - only show when connected */}
+                      {mercariConnected && (
+                        <div className="text-right">
+                          <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
+                          <div className="text-sm">
+                            {mercariUsername ? (
+                              <span className="font-medium">{mercariUsername}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}

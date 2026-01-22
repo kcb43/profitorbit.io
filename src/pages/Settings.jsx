@@ -1316,7 +1316,7 @@ export default function Settings() {
                                 onClick={handleMercariLogin}
                                 className="flex-1 text-xs"
                               >
-                                Open Login
+                                Login
                               </Button>
                               <Button
                                 variant="default"
@@ -1336,7 +1336,7 @@ export default function Settings() {
                                 onClick={handleFacebookLogin}
                                 className="flex-1 text-xs"
                               >
-                                Open Login
+                                Login
                               </Button>
                               <Button
                                 variant="default"
