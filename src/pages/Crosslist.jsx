@@ -1757,7 +1757,7 @@ export default function Crosslist() {
                 Showing <span className="font-medium text-foreground">{filtered.length}</span> of{" "}
                 <span className="font-medium text-foreground">{crosslistableItems.length}</span> items
               </div>
-              <div className="flex flex-col md:flex-row gap-2 flex-wrap order-1 md:order-2 md:ml-auto min-w-0 w-full max-w-full overflow-hidden">
+              <div className="flex flex-col md:flex-row gap-2 flex-wrap order-1 md:order-2 md:ml-auto md:justify-end min-w-0 w-full md:w-auto max-w-full overflow-hidden">
                 <Button
                   type="button"
                   variant="outline"

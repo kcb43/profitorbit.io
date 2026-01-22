@@ -33773,10 +33773,13 @@ export default function CrosslistComposer() {
     if (!username) return null;
     let cleaned = String(username)
       // Remove "View profile" with various spacing patterns (case insensitive)
-      .replace(/\s*[Vv]iew\s+[Pp]rofile.*$/i, '')
-      .replace(/[Vv]iew\s+[Pp]rofile/i, '')
-      .replace(/\s*View\s+Profile.*$/i, '')
-      .replace(/View\s+Profile/i, '')
+      // Handle cases like "callmebertView profile" or "callmebert View profile"
+      .replace(/View\s+profile/gi, '')
+      .replace(/view\s+profile/gi, '')
+      .replace(/View\s+Profile/gi, '')
+      .replace(/VIEW\s+PROFILE/gi, '')
+      .replace(/Viewprofile/gi, '')
+      .replace(/viewprofile/gi, '')
       // Remove "Seller Details" exactly
       .replace(/^Seller\s+Details$/i, '')
       // Remove any trailing whitespace and clean up
@@ -38066,7 +38069,7 @@ export default function CrosslistComposer() {
                   className="gap-2 w-full sm:w-auto whitespace-normal"
                   onClick={handleFacebookLogin}
                 >
-                  Open Login
+                  Login
                 </Button>
               </div>
             )}
@@ -43874,7 +43877,7 @@ export default function CrosslistComposer() {
                             className="gap-2 w-full sm:w-auto whitespace-normal"
                             onClick={handleFacebookLogin}
                           >
-                            Open Login
+                            Login
                           </Button>
                         </div>
                       )}
@@ -43897,6 +43900,11 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                       </div>
+
+                      {/* Empty spacer */}
+                      <div></div>
+
+                      {/* Logged in as */}
                       <div className="text-right">
                         <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                         <div className="text-sm">
@@ -43961,7 +43969,7 @@ export default function CrosslistComposer() {
                             className="gap-2 w-full sm:w-auto whitespace-normal"
                             onClick={handleMercariLogin}
                           >
-                            Open Login
+                            Login
                           </Button>
                         </div>
                       )}
