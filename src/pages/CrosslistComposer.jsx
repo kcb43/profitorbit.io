@@ -33771,10 +33771,17 @@ export default function CrosslistComposer() {
   // Helper function to clean username text
   const cleanUsername = (username) => {
     if (!username) return null;
-    return username
-      .replace(/\s*View profile.*$/i, '')
-      .replace(/^Seller Details$/i, '')
-      .trim() || null;
+    let cleaned = String(username)
+      // Remove "View profile" with various spacing patterns (case insensitive)
+      .replace(/\s*[Vv]iew\s+[Pp]rofile.*$/i, '')
+      .replace(/[Vv]iew\s+[Pp]rofile/i, '')
+      .replace(/\s*View\s+Profile.*$/i, '')
+      .replace(/View\s+Profile/i, '')
+      // Remove "Seller Details" exactly
+      .replace(/^Seller\s+Details$/i, '')
+      // Remove any trailing whitespace and clean up
+      .trim();
+    return cleaned || null;
   };
 
   const [facebookUsername, setFacebookUsername] = useState(() => {
@@ -34044,11 +34051,22 @@ export default function CrosslistComposer() {
     const left = (window.screen.width / 2) - (width / 2);
     const top = (window.screen.height / 2) - (height / 2);
     
-    window.open(
+    const popup = window.open(
       'https://www.mercari.com/login/',
       'MercariLogin',
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
+    
+    // Auto-close popup after 5 seconds
+    if (popup) {
+      setTimeout(() => {
+        try {
+          popup.close();
+        } catch (e) {
+          // Popup may have been closed by user or blocked
+        }
+      }, 5000);
+    }
     
     toast({
       title: 'Mercari Login',
@@ -34065,11 +34083,22 @@ export default function CrosslistComposer() {
     const left = (window.screen.width / 2) - (width / 2);
     const top = (window.screen.height / 2) - (height / 2);
     
-    window.open(
+    const popup = window.open(
       'https://www.facebook.com/marketplace/',
       'FacebookLogin',
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
+    
+    // Auto-close popup after 5 seconds
+    if (popup) {
+      setTimeout(() => {
+        try {
+          popup.close();
+        } catch (e) {
+          // Popup may have been closed by user or blocked
+        }
+      }, 5000);
+    }
     
     toast({
       title: 'Facebook Login',
@@ -38037,7 +38066,7 @@ export default function CrosslistComposer() {
                   className="gap-2 w-full sm:w-auto whitespace-normal"
                   onClick={handleFacebookLogin}
                 >
-                  Login
+                  Open Login
                 </Button>
               </div>
             )}
@@ -38061,6 +38090,9 @@ export default function CrosslistComposer() {
                 )}
               </div>
             </div>
+
+            {/* Empty spacer */}
+            <div></div>
 
             {/* Logged in as */}
             <div className="text-right">
@@ -43842,7 +43874,7 @@ export default function CrosslistComposer() {
                             className="gap-2 w-full sm:w-auto whitespace-normal"
                             onClick={handleFacebookLogin}
                           >
-                            Login
+                            Open Login
                           </Button>
                         </div>
                       )}
@@ -43929,7 +43961,7 @@ export default function CrosslistComposer() {
                             className="gap-2 w-full sm:w-auto whitespace-normal"
                             onClick={handleMercariLogin}
                           >
-                            Login
+                            Open Login
                           </Button>
                         </div>
                       )}
