@@ -195,10 +195,114 @@ const USER_INFO_GETTERS = {
   },
   
   facebook: () => {
-    const profileLink = document.querySelector('[aria-label="Account"]') || 
-                       document.querySelector('a[href*="/profile/"]');
+    let userName = 'Facebook User';
+    
+    // Try multiple selectors to get the actual username/account name
+    // Method 1: Account menu button (most reliable)
+    const accountButton = document.querySelector('[aria-label="Account"]') || 
+                         document.querySelector('[aria-label="Your profile"]') ||
+                         document.querySelector('a[aria-label*="Profile"]') ||
+                         document.querySelector('a[aria-label*="Account"]');
+    if (accountButton) {
+      // Try aria-label first (often contains the name)
+      const ariaLabel = accountButton.getAttribute('aria-label');
+      if (ariaLabel && !ariaLabel.toLowerCase().includes('account') && !ariaLabel.toLowerCase().includes('profile')) {
+        userName = ariaLabel.trim();
+      } else {
+        // Try text content or title
+        userName = accountButton.textContent?.trim() || 
+                  accountButton.getAttribute('title')?.trim() || 
+                  userName;
+      }
+    }
+    
+    // Method 2: Profile link in navigation
+    if (userName === 'Facebook User') {
+      const profileLink = document.querySelector('a[href*="/me/"]') ||
+                         document.querySelector('a[href*="/profile.php"]') ||
+                         document.querySelector('a[href^="/profile/"]');
+      if (profileLink) {
+        // Look for span with the name inside
+        const nameSpan = profileLink.querySelector('span[dir="auto"]') ||
+                        profileLink.querySelector('span');
+        if (nameSpan) {
+          userName = nameSpan.textContent?.trim() || userName;
+        } else {
+          userName = profileLink.textContent?.trim() || userName;
+        }
+      }
+    }
+    
+    // Method 3: Look for user name in the top navigation bar
+    if (userName === 'Facebook User') {
+      const navBar = document.querySelector('[role="navigation"]');
+      if (navBar) {
+        // Look for links that contain profile indicators
+        const profileLinks = navBar.querySelectorAll('a[href*="/me/"], a[href*="/profile"]');
+        for (const link of profileLinks) {
+          const text = link.textContent?.trim();
+          if (text && text.length > 0 && text.length < 50 && !text.toLowerCase().includes('profile')) {
+            userName = text;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Method 4: Try to extract from page title (if on profile page)
+    if (userName === 'Facebook User' && window.location.pathname.includes('/profile')) {
+      const pageTitle = document.title;
+      if (pageTitle && !pageTitle.includes('Facebook')) {
+        // Extract name from title (format: "Name | Facebook")
+        const match = pageTitle.match(/^([^|]+)/);
+        if (match && match[1]) {
+          userName = match[1].trim();
+        }
+      }
+    }
+    
+    // Method 5: Look for the user's name in various Facebook UI elements
+    if (userName === 'Facebook User') {
+      // Try to find the user's name in the page
+      const possibleSelectors = [
+        'div[role="banner"] a[href*="/me/"]',
+        'div[role="banner"] a[href*="/profile"]',
+        '[data-pagelet="TopNavBar"] a[href*="/me/"]',
+        '[data-pagelet="TopNavBar"] a[href*="/profile"]',
+      ];
+      
+      for (const selector of possibleSelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const text = element.textContent?.trim();
+          if (text && text.length > 0 && text.length < 50 && 
+              !text.toLowerCase().includes('profile') && 
+              !text.toLowerCase().includes('account') &&
+              !text.toLowerCase().includes('seller details')) {
+            userName = text;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Clean up the username (remove common Facebook UI text)
+    if (userName && userName !== 'Facebook User') {
+      userName = userName
+        .replace(/View\s+profile/gi, '')
+        .replace(/Seller\s+Details/gi, '')
+        .replace(/Account/gi, '')
+        .replace(/Profile/gi, '')
+        .trim();
+      
+      // If cleaning resulted in empty string, revert to default
+      if (!userName || userName.length === 0) {
+        userName = 'Facebook User';
+      }
+    }
+    
     return {
-      userName: profileLink?.textContent?.trim() || 'Facebook User',
+      userName: userName,
       marketplace: 'facebook'
     };
   },
