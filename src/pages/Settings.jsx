@@ -604,9 +604,13 @@ export default function Settings() {
     if (popup) {
       setTimeout(() => {
         try {
-          popup.close();
+          // Check if popup is still open before closing
+          if (popup && !popup.closed) {
+            popup.close();
+          }
         } catch (e) {
           // Popup may have been closed by user or blocked
+          console.log('Mercari popup close error:', e);
         }
       }, 5000);
     }
@@ -918,9 +922,13 @@ export default function Settings() {
     if (popup) {
       setTimeout(() => {
         try {
-          popup.close();
+          // Check if popup is still open before closing
+          if (popup && !popup.closed) {
+            popup.close();
+          }
         } catch (e) {
           // Popup may have been closed by user or blocked
+          console.log('Facebook popup close error:', e);
         }
       }, 5000);
     }
