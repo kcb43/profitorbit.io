@@ -33769,35 +33769,51 @@ export default function CrosslistComposer() {
     }
   });
   // Helper function to clean username text
+  // Helper function to clean username text - removes "View profile" completely
   const cleanUsername = (username) => {
     if (!username) return null;
-    let cleaned = String(username);
     
-    // Split on "View" or "profile" keywords and take only the first part (the actual username)
-    // This handles cases like "callmebertView profile", "callmebert View profile", "callmebertViewprofile", etc.
-    const viewIndex = cleaned.toLowerCase().indexOf('view');
-    const profileIndex = cleaned.toLowerCase().indexOf('profile');
+    let cleaned = String(username).trim();
+    if (!cleaned) return null;
     
-    if (viewIndex !== -1) {
-      // If "view" is found, take everything before it
-      cleaned = cleaned.substring(0, viewIndex);
-    } else if (profileIndex !== -1) {
-      // If only "profile" is found (without "view"), take everything before it
-      cleaned = cleaned.substring(0, profileIndex);
+    // Use regex to find and remove everything from "View" (case insensitive) onwards
+    // This handles: "callmebertView profile", "callmebert View profile", "callmebertViewprofile", etc.
+    const viewMatch = cleaned.match(/^(.+?)(?:\s*[Vv]iew|View)/i);
+    if (viewMatch && viewMatch[1]) {
+      cleaned = viewMatch[1].trim();
+    } else {
+      // Fallback: try to find "profile" keyword
+      const profileMatch = cleaned.match(/^(.+?)(?:\s*[Pp]rofile|Profile)/i);
+      if (profileMatch && profileMatch[1]) {
+        cleaned = profileMatch[1].trim();
+      }
     }
     
-    // Also remove any remaining "View profile" patterns as fallback
+    // Additional regex cleanup to remove any remaining "View profile" patterns
     cleaned = cleaned
+      .replace(/\s*[Vv]iew\s*[Pp]rofile.*$/gi, '')
+      .replace(/[Vv]iew\s*[Pp]rofile.*$/gi, '')
+      .replace(/\s*[Vv]iew\s*[Pp]rofile/gi, '')
+      .replace(/[Vv]iew\s*[Pp]rofile/gi, '')
       .replace(/View\s*profile/gi, '')
       .replace(/view\s*profile/gi, '')
       .replace(/View\s*Profile/gi, '')
       .replace(/VIEW\s*PROFILE/gi, '')
       .replace(/Viewprofile/gi, '')
       .replace(/viewprofile/gi, '')
-      // Remove "Seller Details" exactly
       .replace(/^Seller\s+Details$/i, '')
-      // Remove any trailing whitespace and clean up
       .trim();
+    
+    // Final safety: if result still contains "view" or "profile", cut at that position
+    const lower = cleaned.toLowerCase();
+    const viewPos = lower.indexOf('view');
+    const profilePos = lower.indexOf('profile');
+    
+    if (viewPos !== -1) {
+      cleaned = cleaned.substring(0, viewPos).trim();
+    } else if (profilePos !== -1) {
+      cleaned = cleaned.substring(0, profilePos).trim();
+    }
     
     return cleaned || null;
   };
@@ -33910,7 +33926,7 @@ export default function CrosslistComposer() {
           try {
             const parsed = JSON.parse(e.newValue);
             if (parsed.userName) {
-              setMercariUsername(parsed.userName);
+              setMercariUsername(cleanUsername(parsed.userName));
             }
           } catch (e) {
             // Ignore parse errors
@@ -33962,7 +33978,7 @@ export default function CrosslistComposer() {
         try {
           const parsed = JSON.parse(userData);
           if (parsed.userName) {
-            setMercariUsername(parsed.userName);
+            setMercariUsername(cleanUsername(parsed.userName));
           }
         } catch (e) {
           // Ignore parse errors
@@ -33983,7 +33999,7 @@ export default function CrosslistComposer() {
         setMercariConnected(true);
         const mercariData = event.detail.marketplaces.mercari;
         if (mercariData.userName) {
-          setMercariUsername(mercariData.userName);
+          setMercariUsername(cleanUsername(mercariData.userName));
         }
       }
     };
@@ -34133,7 +34149,7 @@ export default function CrosslistComposer() {
       if (isCurrentlyConnected) {
         toast({
           title: 'Already Connected',
-          description: mercariUsername ? `Mercari is already connected as ${mercariUsername}` : 'Mercari is already connected.',
+          description: mercariUsername ? `Mercari is already connected as ${cleanUsername(mercariUsername)}` : 'Mercari is already connected.',
         });
         setMercariConnected(true);
         return;
@@ -34297,7 +34313,7 @@ export default function CrosslistComposer() {
       const c = readConnected();
       const u = readUserName();
       setFacebookConnected(c);
-      setFacebookUsername(u);
+      setFacebookUsername(cleanUsername(u));
     };
 
     const onMarketplaceStatusUpdate = (event) => {
@@ -38118,7 +38134,7 @@ export default function CrosslistComposer() {
                 <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                 <div className="text-sm">
                   {facebookUsername ? (
-                    <span className="font-medium">{facebookUsername}</span>
+                    <span className="font-medium">{cleanUsername(facebookUsername)}</span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
@@ -38250,7 +38266,7 @@ export default function CrosslistComposer() {
                   <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                   <div className="text-sm">
                     {mercariUsername ? (
-                      <span className="font-medium">{mercariUsername}</span>
+                      <span className="font-medium">{cleanUsername(mercariUsername)}</span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
@@ -44019,7 +44035,7 @@ export default function CrosslistComposer() {
                           <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
                           <div className="text-sm">
                             {mercariUsername ? (
-                              <span className="font-medium">{mercariUsername}</span>
+                              <span className="font-medium">{cleanUsername(mercariUsername)}</span>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
