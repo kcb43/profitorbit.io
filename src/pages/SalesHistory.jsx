@@ -1481,7 +1481,7 @@ export default function SalesHistory() {
             {isLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading...</div>
             ) : (
-              <div className="w-full min-w-0 max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden px-1 sm:px-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
                 {filteredSales.length > 0 && (
                   <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 bg-gray-50/50 dark:bg-gray-800/30 min-w-0 mb-4 rounded-lg">
                     <Checkbox
@@ -1619,7 +1619,7 @@ export default function SalesHistory() {
                     })}
                   </div>
                 ) : (
-                  <div>
+                  <div className="space-y-6 sm:space-y-6 overflow-x-hidden max-w-full">
                     {filteredSales.map((sale) => {
                       const safeNotes = splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean;
                   const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
@@ -1642,7 +1642,7 @@ export default function SalesHistory() {
                   return (
                     <div key={sale.id} className="w-full max-w-full">
                       {/* Mobile/Tablet list layout (unchanged) */}
-                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full max-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
@@ -1651,7 +1651,9 @@ export default function SalesHistory() {
                         maxWidth: '100%',
                         width: '100%',
                         boxSizing: 'border-box',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        paddingBottom: window.innerWidth < 768 ? '2.50rem' : '0',
+                        boxShadow: selectedSales.includes(sale.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
                       }}>
                     {/* Image and Description Container - Mobile stacked, desktop side-by-side */}
                     <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
