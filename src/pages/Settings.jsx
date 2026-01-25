@@ -96,6 +96,8 @@ export default function Settings() {
   // Track if we've already shown the connection notification to prevent duplicates
   const mercariNotificationShown = useRef(false);
   const currentlyConnectingMarketplace = useRef(null);
+  const mercariLoginPopup = useRef(null);
+  const facebookLoginPopup = useRef(null);
   const { sdkReady, fbInstance} = useFacebookSDK();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -306,6 +308,17 @@ export default function Settings() {
           marketplace: 'mercari'
         }));
         
+        // Close the login popup if it's open
+        if (mercariLoginPopup.current && !mercariLoginPopup.current.closed) {
+          try {
+            console.log('🔒 Closing Mercari login popup');
+            mercariLoginPopup.current.close();
+            mercariLoginPopup.current = null;
+          } catch (e) {
+            console.error('Error closing Mercari popup:', e);
+          }
+        }
+        
         // Only show toast if transitioning from disconnected to connected
         const wasConnected = mercariConnected;
         setMercariConnected(true);
@@ -317,6 +330,38 @@ export default function Settings() {
             description: `Connected as ${userName}`,
           });
         }
+      }
+      
+      // Handle Facebook connection ready
+      if (event.data && event.data.type === 'FACEBOOK_CONNECTION_READY') {
+        console.log('🟢 Profit Orbit: FACEBOOK_CONNECTION_READY received:', event.data.payload);
+        
+        // Close the login popup if it's open
+        if (facebookLoginPopup.current && !facebookLoginPopup.current.closed) {
+          try {
+            console.log('🔒 Closing Facebook login popup');
+            facebookLoginPopup.current.close();
+            facebookLoginPopup.current = null;
+          } catch (e) {
+            console.error('Error closing Facebook popup:', e);
+          }
+        }
+        
+        // Update connection state
+        const userName = event.data.payload?.userName || 'Facebook User';
+        localStorage.setItem('profit_orbit_facebook_connected', 'true');
+        localStorage.setItem('profit_orbit_facebook_user', JSON.stringify({
+          userName: userName,
+          marketplace: 'facebook'
+        }));
+        
+        toast({
+          title: 'Facebook Connected!',
+          description: `Connected as ${userName}`,
+        });
+        
+        // Refresh Facebook status
+        checkFacebookStatus();
       }
     };
     window.addEventListener('message', handleMercariConnectionReady);
@@ -601,24 +646,14 @@ export default function Settings() {
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
     
-    // Auto-close popup after 5 seconds
+    // Store popup reference for auto-close on connection
     if (popup) {
-      setTimeout(() => {
-        try {
-          // Check if popup is still open before closing
-          if (popup && !popup.closed) {
-            popup.close();
-          }
-        } catch (e) {
-          // Popup may have been closed by user or blocked
-          console.log('Mercari popup close error:', e);
-        }
-      }, 5000);
+      mercariLoginPopup.current = popup;
     }
     
     toast({
       title: 'Mercari Login',
-      description: 'Log into Mercari in the popup, then close it and click "Connect Mercari".',
+      description: 'Log into Mercari in the popup. It will close automatically when connected.',
       duration: 6000,
     });
   };
@@ -944,67 +979,14 @@ export default function Settings() {
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
     
-    // Store popup reference globally to ensure it persists
+    // Store popup reference for auto-close on connection
     if (popup) {
-      window._facebookLoginPopup = popup;
-      
-      // Auto-close popup after 5 seconds
-      const closeTimeout = setTimeout(() => {
-        let closed = false;
-        
-        // Method 1: Try closing via stored reference
-        try {
-          const popupRef = window._facebookLoginPopup;
-          if (popupRef && typeof popupRef.close === 'function') {
-            popupRef.close();
-            closed = true;
-          }
-        } catch (e1) {
-          console.log('Facebook popup close method 1 failed:', e1);
-        }
-        
-        // Method 2: Try closing via original reference
-        if (!closed) {
-          try {
-            if (popup && typeof popup.close === 'function') {
-              popup.close();
-              closed = true;
-            }
-          } catch (e2) {
-            console.log('Facebook popup close method 2 failed:', e2);
-          }
-        }
-        
-        // Method 3: Try reopening with same name and closing immediately
-        if (!closed) {
-          try {
-            const testPopup = window.open('', windowName);
-            if (testPopup) {
-              testPopup.close();
-              closed = true;
-            }
-          } catch (e3) {
-            console.log('Facebook popup close method 3 failed:', e3);
-          }
-        }
-        
-        // Clean up the global reference
-        try {
-          delete window._facebookLoginPopup;
-          if (window._facebookLoginPopupTimeout) {
-            clearTimeout(window._facebookLoginPopupTimeout);
-            delete window._facebookLoginPopupTimeout;
-          }
-        } catch (_) {}
-      }, 5000);
-      
-      // Store timeout ID so we can clear it if needed
-      window._facebookLoginPopupTimeout = closeTimeout;
+      facebookLoginPopup.current = popup;
     }
     
     toast({
       title: 'Facebook Login',
-      description: 'Log into Facebook in the popup, then close it and click "Connect Facebook".',
+      description: 'Log into Facebook in the popup. It will close automatically when connected.',
       duration: 6000,
     });
   };
