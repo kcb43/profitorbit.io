@@ -421,9 +421,33 @@ function updateLoginStatus(force = false) {
       // Capture fb_dtsg token for Facebook GraphQL API
       if (MARKETPLACE === 'facebook') {
         try {
-          // Try to find fb_dtsg in page
+          let dtsg = null;
+          
+          // Method 1: Try to find fb_dtsg in hidden input
           const dtsgInput = document.querySelector('input[name="fb_dtsg"]');
-          const dtsg = dtsgInput?.value;
+          if (dtsgInput?.value) {
+            dtsg = dtsgInput.value;
+            console.log('✅ Found fb_dtsg in input element');
+          }
+          
+          // Method 2: Search in page HTML/JavaScript for DTSGInitialData
+          if (!dtsg) {
+            const html = document.documentElement.innerHTML;
+            const patterns = [
+              /"dtsg":\{"token":"([^"]+)"/,
+              /\["DTSGInitialData",\[\],\{"token":"([^"]+)"/,
+              /"token":"([^"]+)","async_get_token"/,
+            ];
+            
+            for (const pattern of patterns) {
+              const match = html.match(pattern);
+              if (match?.[1]) {
+                dtsg = match[1];
+                console.log('✅ Found fb_dtsg via regex pattern');
+                break;
+              }
+            }
+          }
           
           if (dtsg) {
             console.log('✅ Captured fb_dtsg token:', dtsg.substring(0, 30) + '...');
@@ -444,7 +468,10 @@ function updateLoginStatus(force = false) {
               timestamp: Date.now(),
             });
           } else {
-            console.log('⚠️ fb_dtsg input not found on page');
+            console.log('⚠️ fb_dtsg not found on page - checking HTML sample...');
+            const htmlSample = document.documentElement.innerHTML.substring(0, 5000);
+            console.log('⚠️ Contains "dtsg":', htmlSample.includes('dtsg'));
+            console.log('⚠️ Contains "DTSGInitialData":', htmlSample.includes('DTSGInitialData'));
           }
         } catch (e) {
           console.warn('Could not capture fb_dtsg:', e);
