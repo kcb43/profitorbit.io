@@ -21,6 +21,7 @@ const ebayLogo = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.
 const mercariLogo = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
 import poshmarkLogo from "@/assets/poshmark-logo.svg";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { 
   getConnectionStatus, 
   clearToken, 
@@ -1195,6 +1196,19 @@ export default function Settings() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Settings</h1>
         <p className="text-gray-600 dark:text-gray-400">Customize your app appearance and preferences</p>
+      </div>
+
+      {/* View Rewards Button */}
+      <div className="mb-6">
+        <Button
+          onClick={() => navigate(createPageUrl("Rewards"))}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 relative"
+        >
+          {/* Green dot positioned on top left of button */}
+          <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-10" />
+          <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 rounded-full z-10" />
+          View Rewards
+        </Button>
       </div>
 
       <div className="space-y-6">

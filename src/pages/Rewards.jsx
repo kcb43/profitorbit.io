@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
+import Gamification from "@/components/dashboard/Gamification";
 
 // Mock points calculation - in production, this would come from actual sales/listings
 const calculatePoints = (stats) => {
@@ -160,6 +161,7 @@ export default function Rewards() {
         totalProfit,
         totalSales,
         totalListings: inventory?.length || 0,
+        sales: sales || [], // Include sales data for Gamification component
       };
     },
   });
@@ -197,6 +199,20 @@ export default function Rewards() {
             </div>
           </div>
         </div>
+
+        {/* Your Progress Section */}
+        <Gamification
+          sales={stats?.sales || []}
+          stats={{ 
+            totalProfit: stats?.totalProfit || 0, 
+            totalSales: stats?.totalSales || 0, 
+            avgProfit: stats?.totalSales ? (stats?.totalProfit / stats?.totalSales) : 0,
+            profitMargin: 0,
+            averageSaleSpeed: 0
+          }}
+          variant="mosaic"
+          progressVariant="gaming"
+        />
 
         {/* Points Summary */}
         <Card className="border border-border/60 shadow-sm">
