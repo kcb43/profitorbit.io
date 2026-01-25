@@ -349,9 +349,14 @@ export default function Import() {
       // The result should contain the listings
       const listings = result?.listings || [];
       console.log('✅ Received Facebook listings:', listings.length);
+      console.log('📦 Sample listing:', listings[0]);
       
       // Update the query data
       queryClient.setQueryData(['facebook-listings', userId], listings);
+      console.log('✅ Updated query cache with', listings.length, 'listings');
+      
+      // Force a re-render by invalidating queries
+      queryClient.invalidateQueries(['facebook-listings', userId]);
       
       toast({
         title: "Success",
