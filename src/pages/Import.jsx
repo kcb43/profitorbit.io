@@ -254,10 +254,23 @@ export default function Import() {
         description: message,
         variant: data.failed > 0 ? "destructive" : "default",
       });
-      queryClient.invalidateQueries(["ebay-listings"]);
+      
+      // Invalidate appropriate queries based on source
+      if (selectedSource === 'ebay') {
+        queryClient.invalidateQueries(["ebay-listings"]);
+      } else if (selectedSource === 'facebook') {
+        // Refresh Facebook listings from extension/cache
+        setFacebookListingsVersion(v => v + 1);
+      }
+      
+      // Always refresh inventory
       queryClient.invalidateQueries(["inventory-items"]);
       setSelectedItems([]);
-      refetch(); // Refresh the list
+      
+      // Only refetch if it's eBay (refetch is the eBay query refetch function)
+      if (selectedSource === 'ebay' && refetch) {
+        refetch();
+      }
     },
     onError: (error) => {
       console.error('❌ Import mutation error:', error);
