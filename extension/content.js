@@ -374,6 +374,9 @@ function updateLoginStatus(force = false) {
     }
     
     const userInfo = getUserInfo();
+    const wasLoggedIn = cachedLoginStatus?.loggedIn || false;
+    const nowLoggedIn = userInfo.loggedIn;
+    
     cachedLoginStatus = userInfo;
     lastLoginCheck = now;
     
@@ -414,6 +417,18 @@ function updateLoginStatus(force = false) {
         userName: userInfo.userName,
         marketplace: userInfo.marketplace
       }));
+      
+      // If login state changed from false to true, notify Settings page to close popup
+      if (!wasLoggedIn && nowLoggedIn) {
+        console.log(`✅ ${MARKETPLACE} login detected! Sending CONNECTION_READY message...`);
+        window.postMessage({
+          type: `${MARKETPLACE.toUpperCase()}_CONNECTION_READY`,
+          payload: {
+            userName: userInfo.userName,
+            marketplace: MARKETPLACE,
+          }
+        }, '*');
+      }
     }
     
     return userInfo;

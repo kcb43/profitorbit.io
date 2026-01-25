@@ -336,6 +336,22 @@ export default function Settings() {
       if (event.data && event.data.type === 'FACEBOOK_CONNECTION_READY') {
         console.log('🟢 Profit Orbit: FACEBOOK_CONNECTION_READY received:', event.data.payload);
         
+        // Check if user explicitly disconnected - if so, ignore this update
+        const wasExplicitlyDisconnected = localStorage.getItem('profit_orbit_facebook_disconnected') === 'true';
+        if (wasExplicitlyDisconnected) {
+          console.log('⚠️ Profit Orbit: Ignoring FACEBOOK_CONNECTION_READY - user explicitly disconnected');
+          return;
+        }
+        
+        const userName = event.data.payload?.userName || 'Facebook User';
+        
+        // Update localStorage
+        localStorage.setItem('profit_orbit_facebook_connected', 'true');
+        localStorage.setItem('profit_orbit_facebook_user', JSON.stringify({
+          userName: userName,
+          marketplace: 'facebook'
+        }));
+        
         // Close the login popup if it's open
         if (facebookLoginPopup.current && !facebookLoginPopup.current.closed) {
           try {
@@ -347,18 +363,16 @@ export default function Settings() {
           }
         }
         
-        // Update connection state
-        const userName = event.data.payload?.userName || 'Facebook User';
-        localStorage.setItem('profit_orbit_facebook_connected', 'true');
-        localStorage.setItem('profit_orbit_facebook_user', JSON.stringify({
-          userName: userName,
-          marketplace: 'facebook'
-        }));
+        // Only show toast if transitioning from disconnected to connected
+        const wasConnected = facebookStatus?.connected || false;
         
-        toast({
-          title: 'Facebook Connected!',
-          description: `Connected as ${userName}`,
-        });
+        if (!wasConnected && !facebookNotificationShown.current) {
+          facebookNotificationShown.current = true;
+          toast({
+            title: 'Facebook Connected!',
+            description: `Connected as ${userName}`,
+          });
+        }
         
         // Refresh Facebook status
         checkFacebookStatus();
