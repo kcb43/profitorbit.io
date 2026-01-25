@@ -129,7 +129,9 @@ export default function SoldItemDetail() {
     try {
       const saleDate = parseISO(sale.sale_date);
       const purchaseDate = parseISO(sale.purchase_date);
-      saleSpeed = differenceInDays(saleDate, purchaseDate);
+      if (saleDate && purchaseDate) {
+        saleSpeed = differenceInDays(saleDate, purchaseDate);
+      }
     } catch (e) {
       console.error("Error parsing dates for sale speed:", e);
     }
@@ -223,7 +225,7 @@ export default function SoldItemDetail() {
                 <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
                   <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Sale Date</span>
                   <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">
-                    {sale && format(parseISO(sale.sale_date), 'MMM dd, yyyy')}
+                    {sale?.sale_date ? format(parseISO(sale.sale_date), 'MMM dd, yyyy') : 'N/A'}
                   </span>
                 </div>
                 {sale?.category && (
