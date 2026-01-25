@@ -2225,7 +2225,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('📡 SCRAPE_FACEBOOK_LISTINGS received from Import page');
         
-        // Find existing Facebook tabs - DO NOT create new ones
+        // Find existing Facebook tabs first
         const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
         let targetTab = tabs.find(t => t.url.includes('/marketplace/you/selling') || t.url.includes('/marketplace/you/listings'));
         
@@ -2234,14 +2234,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           targetTab = tabs[0];
         }
         
+        let createdTab = false;
         if (!targetTab) {
-          // No Facebook tab open - return error, DO NOT create one
-          console.log('❌ No Facebook tab found');
-          sendResponse({
-            success: false,
-            error: 'Please open Facebook.com in a browser tab first, then try again.',
-          });
-          return;
+          // Create background tab - completely invisible to user
+          console.log('📡 Creating invisible background Facebook tab...');
+          
+          try {
+            targetTab = await chrome.tabs.create({
+              url: 'https://www.facebook.com/marketplace/you/selling',
+              active: false,
+            });
+            createdTab = true;
+            
+            // Wait for tab to fully load with proper listener
+            await new Promise((resolve, reject) => {
+              const timeout = setTimeout(() => {
+                chrome.tabs.onUpdated.removeListener(listener);
+                reject(new Error('Tab load timeout'));
+              }, 15000);
+              
+              const listener = (tabId, changeInfo, tab) => {
+                if (tabId === targetTab.id) {
+                  if (changeInfo.status === 'complete') {
+                    clearTimeout(timeout);
+                    chrome.tabs.onUpdated.removeListener(listener);
+                    resolve();
+                  }
+                }
+              };
+              
+              chrome.tabs.onUpdated.addListener(listener);
+            });
+            
+            // Extra wait for content script injection and initialization
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            console.log('✅ Background tab loaded and ready');
+            
+          } catch (error) {
+            console.error('❌ Failed to create/load background tab:', error);
+            if (createdTab && targetTab?.id) {
+              chrome.tabs.remove(targetTab.id).catch(() => {});
+            }
+            sendResponse({
+              success: false,
+              error: 'Failed to initialize Facebook scraper. Please try again.',
+            });
+            return;
+          }
         }
         
         console.log('📡 Sending SCRAPE_FACEBOOK_LISTINGS to tab:', targetTab.id);
@@ -2271,9 +2311,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           } catch (injectError) {
             console.error('❌ Failed to inject content script:', injectError);
             
+            if (createdTab && targetTab?.id) {
+              try {
+                await chrome.tabs.remove(targetTab.id);
+              } catch (e) {}
+            }
+            
             sendResponse({
               success: false,
-              error: 'Failed to load scraper. Please refresh the Facebook page and try again.',
+              error: 'Failed to load scraper. Please try again.',
             });
             return;
           }
@@ -2284,6 +2330,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
             chrome.runtime.onMessage.removeListener(resultListener);
             clearTimeout(timeout);
+            
+            // Close created tab after successful scraping
+            if (createdTab && targetTab?.id) {
+              try {
+                await chrome.tabs.remove(targetTab.id);
+                console.log('✅ Closed background Facebook tab');
+              } catch (e) {
+                console.warn('Could not close tab:', e);
+              }
+            }
             
             // Return the listings to the Import page
             sendResponse({
@@ -2296,15 +2352,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         chrome.runtime.onMessage.addListener(resultListener);
         
-        // Set timeout before sending message
-        const timeout = setTimeout(() => {
+        // Set timeout before sending message (45 seconds for initial load + scrape)
+        const timeout = setTimeout(async () => {
           chrome.runtime.onMessage.removeListener(resultListener);
+          
+          // Close created tab on timeout
+          if (createdTab && targetTab?.id) {
+            try {
+              await chrome.tabs.remove(targetTab.id);
+              console.log('⏱️ Timeout - closed background tab');
+            } catch (e) {}
+          }
           
           sendResponse({
             success: false,
-            error: 'Scraping timed out after 30 seconds. Please make sure you are logged into Facebook and the page has loaded.',
+            error: 'Scraping took too long. Please check your Facebook login and try again.',
           });
-        }, 30000);
+        }, 45000);
         
         // Now send the scrape message
         chrome.tabs.sendMessage(targetTab.id, {
@@ -2315,14 +2379,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             clearTimeout(timeout);
             chrome.runtime.onMessage.removeListener(resultListener);
             
+            if (createdTab && targetTab?.id) {
+              try {
+                await chrome.tabs.remove(targetTab.id);
+              } catch (e) {}
+            }
+            
             sendResponse({
               success: false,
-              error: `Failed to start scraping: ${chrome.runtime.lastError.message || 'Unknown error'}. Please make sure Facebook is loaded.`,
+              error: `Scraping failed. Please make sure you're logged into Facebook and try again.`,
             });
             return;
           }
           
-          console.log('✅ Scrape initiated, waiting for FACEBOOK_LISTINGS_SCRAPED message...', response);
+          console.log('✅ Scrape message sent, waiting for results...', response);
           // Don't call sendResponse here - we're waiting for the resultListener to handle it
         });
         
