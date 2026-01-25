@@ -113,6 +113,7 @@ export function OptimizedImage({
           } ${className}`}
           loading={lazy ? 'lazy' : 'eager'}
           decoding="async"
+          crossOrigin="anonymous"
           onLoad={handleLoad}
           onError={handleError}
           style={{

@@ -112,6 +112,15 @@ export default async function handler(req, res) {
     // Parse XML response
     const items = parseMyeBaySellingXML(xmlText);
     console.log('✅ Parsed listings:', items.length);
+    
+    // Debug: Log first item's image data
+    if (items.length > 0) {
+      console.log('🖼️ Sample item image data:', {
+        itemId: items[0].itemId,
+        imageUrl: items[0].imageUrl,
+        pictureURLs: items[0].pictureURLs,
+      });
+    }
 
     // Check which items are already imported
     const itemIds = items.map(item => item.itemId).filter(Boolean);
@@ -175,12 +184,40 @@ function parseMyeBaySellingXML(xml) {
       return match ? match[1] : null;
     };
 
-    // Extract PictureURL fields
+    // Extract PictureURL fields (can be in Item or PictureDetails)
     const pictureURLs = [];
+    
+    // Try direct PictureURL under Item
     const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
     let pictureMatch;
     while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
-      pictureURLs.push(pictureMatch[1]);
+      const url = pictureMatch[1];
+      if (url && url.startsWith('http')) {
+        pictureURLs.push(url);
+      }
+    }
+    
+    // If no pictures found, try PictureDetails > PictureURL
+    if (pictureURLs.length === 0) {
+      const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
+      if (pictureDetailsMatch) {
+        const pictureDetailsRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+        let detailsPictureMatch;
+        while ((detailsPictureMatch = pictureDetailsRegex.exec(pictureDetailsMatch[1])) !== null) {
+          const url = detailsPictureMatch[1];
+          if (url && url.startsWith('http')) {
+            pictureURLs.push(url);
+          }
+        }
+      }
+    }
+    
+    // If still no pictures, try GalleryURL as fallback
+    if (pictureURLs.length === 0) {
+      const galleryURL = getField('GalleryURL');
+      if (galleryURL && galleryURL.startsWith('http')) {
+        pictureURLs.push(galleryURL);
+      }
     }
 
     const itemId = getField('ItemID');
