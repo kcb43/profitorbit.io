@@ -699,20 +699,71 @@ if (MARKETPLACE) {
     if (message.action === 'SCRAPE_FACEBOOK_LISTINGS' && MARKETPLACE === 'facebook') {
       console.log('📥 Received Facebook scrape request');
       
+      // Check if scraper is already loaded
+      if (window.__fbScraper) {
+        console.log('✅ Scraper already loaded, reusing...');
+        
+        (async () => {
+          try {
+            const result = await window.__fbScraper.scrapeFacebookListings();
+            
+            if (result.waitForNavigation) {
+              sendResponse({ 
+                status: 'navigating',
+                message: 'Navigating to marketplace listings...' 
+              });
+              return;
+            }
+            
+            // Send listings to background
+            chrome.runtime.sendMessage({
+              action: 'FACEBOOK_LISTINGS_SCRAPED',
+              data: result.listings,
+              total: result.total,
+              timestamp: result.timestamp,
+            });
+            
+            sendResponse({ 
+              status: 'success',
+              count: result.listings.length,
+              listings: result.listings,
+            });
+          } catch (error) {
+            console.error('❌ Scraping error:', error);
+            sendResponse({ 
+              status: 'error',
+              message: error.message 
+            });
+          }
+        })();
+        
+        return true;
+      }
+      
       // Load scraper module
+      console.log('📥 Loading Facebook scraper script...');
       const script = document.createElement('script');
       script.src = chrome.runtime.getURL('facebook-scraper.js');
       document.head.appendChild(script);
       
       script.onload = async () => {
         try {
-          // Wait for scraper to be ready
-          await new Promise(resolve => setTimeout(resolve, 100));
+          console.log('📥 Scraper script loaded, waiting for initialization...');
           
-          if (!window.__fbScraper) {
-            throw new Error('Facebook scraper not loaded');
+          // Poll for scraper to be ready (max 5 seconds)
+          let attempts = 0;
+          const maxAttempts = 50; // 50 * 100ms = 5 seconds
+          
+          while (!window.__fbScraper && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
           }
           
+          if (!window.__fbScraper) {
+            throw new Error('Facebook scraper initialization timeout after 5 seconds');
+          }
+          
+          console.log('✅ Scraper ready, starting scrape...');
           const result = await window.__fbScraper.scrapeFacebookListings();
           
           if (result.waitForNavigation) {
