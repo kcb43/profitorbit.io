@@ -217,12 +217,12 @@ async function handleGet(req, res, userId) {
   const { id, ...queryParams } = req.query;
 
   if (id) {
+    // When fetching by ID, allow deleted sales (user might be viewing a deleted sale detail page)
     const { data, error } = await supabase
       .from('sales')
       .select('*')
       .eq('id', id)
       .eq('user_id', userId)
-      .is('deleted_at', null)
       .single();
 
     if (error) {
