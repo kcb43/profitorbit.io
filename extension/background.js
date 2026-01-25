@@ -2416,9 +2416,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Get Mercari authentication
         const auth = await self.__mercariApi.getMercariAuth();
         
-        // If no tokens, try to capture them from any open Mercari tab
-        if (auth.needsRefresh || !auth.bearerToken || !auth.csrfToken || !auth.sellerId) {
-          console.log('⚠️ Mercari tokens not available, checking for open Mercari tabs...');
+        // If no bearer/CSRF tokens, try to capture them from any open Mercari tab
+        // Note: seller ID will be extracted from JWT, so we don't require it here
+        if (auth.needsRefresh || !auth.bearerToken || !auth.csrfToken) {
+          console.log('⚠️ Mercari bearer/CSRF tokens not available, checking for open Mercari tabs...');
           
           const tabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
           
@@ -2462,17 +2463,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               
               // Try to get auth again
               const freshAuth = await self.__mercariApi.getMercariAuth();
-              if (freshAuth.bearerToken && freshAuth.csrfToken && freshAuth.sellerId) {
-                console.log('✅ Successfully captured Mercari tokens from tab');
+              if (freshAuth.bearerToken && freshAuth.csrfToken) {
+                console.log('✅ Successfully captured Mercari bearer and CSRF tokens from tab');
               } else {
-                throw new Error('Could not capture Mercari tokens. Please make sure you are logged in to Mercari.');
+                console.log('⚠️ Tokens still not available after capture attempt, will try to proceed anyway...');
               }
             } catch (captureError) {
               console.error('❌ Error capturing Mercari tokens:', captureError);
-              throw new Error('Failed to capture Mercari authentication tokens. Please refresh the Mercari tab and try again.');
+              console.log('Will attempt to proceed with existing tokens if any...');
             }
           } else {
-            throw new Error('No Mercari tabs open. Please open Mercari.com and log in, then try again.');
+            console.log('⚠️ No Mercari tabs open, will try with existing tokens if any...');
           }
         }
         
