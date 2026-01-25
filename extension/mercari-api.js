@@ -72,13 +72,13 @@ async function getMercariAuth() {
     });
 
     if (!bearerToken || !csrfToken) {
-      console.log('⚠️ Mercari tokens missing');
+      console.log('⚠️ Mercari auth tokens missing');
       return { bearerToken: null, csrfToken: null, sellerId: null, needsRefresh: true };
     }
     
-    // If we have tokens but no seller ID, we'll try to get it from the API call
+    // If we have tokens but no seller ID, we'll get it later - don't treat as needsRefresh
     if (!sellerId) {
-      console.log('⚠️ Seller ID missing, will try to extract from API call');
+      console.log('⚠️ Seller ID missing, will try to extract from tab URL');
     }
 
     // Tokens should be refreshed if older than 1 hour, but we'll try using them anyway
@@ -107,30 +107,35 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       throw new Error('Mercari authentication tokens are missing. Please open Mercari.com in a tab first.');
     }
     
-    // If we don't have seller ID, try to get it from the current user
+    // If we don't have seller ID, try to extract it from the bearer token (JWT)
     let actualSellerId = sellerId;
     if (!actualSellerId) {
-      console.log('⚠️ No seller ID stored, will try to get from profile...');
+      console.log('⚠️ No seller ID stored, extracting from JWT token...');
       
-      // Query the current user's tabs to find seller ID
       try {
-        const tabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
-        for (const tab of tabs) {
-          // Check URL for seller ID
-          const urlMatch = tab.url.match(/\/u\/(\d+)|sellerId[=:](\d+)/);
-          if (urlMatch) {
-            actualSellerId = urlMatch[1] || urlMatch[2];
-            console.log('✅ Found seller ID in tab URL:', actualSellerId);
-            break;
+        // JWT format: header.payload.signature
+        // Decode the payload (middle part)
+        const parts = bearerToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          console.log('📦 JWT payload:', payload);
+          
+          // Common JWT fields for user ID: sub, userId, sellerId, id, b (Mercari uses 'b')
+          actualSellerId = payload.sub || payload.userId || payload.sellerId || payload.id || payload.b;
+          
+          if (actualSellerId) {
+            console.log('✅ Extracted seller ID from JWT:', actualSellerId);
+            // Store it for next time
+            chrome.storage.local.set({ 'mercari_seller_id': actualSellerId.toString() });
           }
         }
       } catch (e) {
-        console.log('Could not check tabs for seller ID:', e);
+        console.log('Could not decode JWT:', e);
       }
       
-      // If still no seller ID, we need to make a profile query first
+      // If still no seller ID, error out
       if (!actualSellerId) {
-        throw new Error('Seller ID not found. Please visit your Mercari profile page at /mypage/ first.');
+        throw new Error('Seller ID not found in JWT token. The authentication may have changed.');
       }
     }
 
