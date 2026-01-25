@@ -343,9 +343,20 @@ export default function Import() {
                 ))}
               </div>
 
-              {/* Facebook Coming Soon */}
-              <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs text-center">
-                <span className="font-medium">Facebook</span>
+              {/* Coming Soon Dropdown */}
+              <div className="mt-3">
+                <Select disabled>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="More marketplaces coming soon..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="depop" disabled>Depop (Coming Soon)</SelectItem>
+                    <SelectItem value="poshmark" disabled>Poshmark (Coming Soon)</SelectItem>
+                    <SelectItem value="shopify" disabled>Shopify (Coming Soon)</SelectItem>
+                    <SelectItem value="grailed" disabled>Grailed (Coming Soon)</SelectItem>
+                    <SelectItem value="kidizen" disabled>Kidizen (Coming Soon)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </Card>
 
@@ -368,12 +379,12 @@ export default function Import() {
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Importing Status</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2">
                     <Button
                       variant={importingStatus === "not_imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("not_imported")}
-                      className="flex-1"
+                      className="w-full justify-start"
                     >
                       <Badge variant="secondary" className="mr-2">
                         {notImportedCount}
@@ -384,7 +395,7 @@ export default function Import() {
                       variant={importingStatus === "imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("imported")}
-                      className="flex-1"
+                      className="w-full justify-start"
                     >
                       <Badge variant="secondary" className="mr-2">
                         {importedCount}
