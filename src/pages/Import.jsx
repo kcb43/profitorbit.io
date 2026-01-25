@@ -196,14 +196,37 @@ export default function Import() {
     mutationFn: async (itemIds) => {
       console.log('📥 Importing items:', itemIds);
       
-      const response = await fetch("/api/ebay/import-items", {
-        method: "POST",
-        headers: { 
+      let endpoint, headers, body;
+      
+      if (selectedSource === 'facebook') {
+        // For Facebook, we need to get the full item data from cache
+        const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
+        const itemsToImport = facebookListings.filter(item => itemIds.includes(item.itemId));
+        
+        endpoint = "/api/facebook/import-items";
+        headers = {
           "Content-Type": "application/json",
-          'x-user-id': userId,  // lowercase to match API
+          'x-user-id': userId,
+        };
+        body = JSON.stringify({ items: itemsToImport });
+        
+      } else if (selectedSource === 'ebay') {
+        endpoint = "/api/ebay/import-items";
+        headers = {
+          "Content-Type": "application/json",
+          'x-user-id': userId,
           'x-user-token': ebayToken?.access_token || '',
-        },
-        body: JSON.stringify({ itemIds }),
+        };
+        body = JSON.stringify({ itemIds });
+        
+      } else {
+        throw new Error(`Import not yet supported for ${selectedSource}`);
+      }
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body,
       });
       
       if (!response.ok) {
