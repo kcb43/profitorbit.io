@@ -916,15 +916,7 @@ export default function Settings() {
       title: 'Mercari Not Detected',
       description: (
         <div className="text-white">
-          <span>1) Install & enable the </span>
-          <a 
-            href="/extension" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="underline hover:text-blue-200"
-          >
-            Orben extension
-          </a>
+          <span>1) Install & enable the Orben extension</span>
           <br />
           <span>2) Open Mercari.com in a new tab and log in</span>
           <br />
@@ -1039,15 +1031,7 @@ export default function Settings() {
       title: 'Facebook Not Connected',
       description: (
         <div className="text-white">
-          <span>1) Install & enable the </span>
-          <a 
-            href="/extension" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="underline hover:text-blue-200"
-          >
-            Orben extension
-          </a>
+          <span>1) Install & enable the Orben extension</span>
           <br />
           <span>2) Log into Facebook (via your Settings → Select 'Login')</span>
           <br />
