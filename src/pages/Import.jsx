@@ -44,6 +44,38 @@ export default function Import() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("newest");
   const [lastSync, setLastSync] = useState(null);
+  const [canSync, setCanSync] = useState(true);
+  const [nextSyncTime, setNextSyncTime] = useState(null);
+
+  // Check last sync time from localStorage
+  useEffect(() => {
+    const checkLastSync = () => {
+      const lastSyncStr = localStorage.getItem('ebay_last_sync');
+      if (lastSyncStr) {
+        const lastSyncDate = new Date(lastSyncStr);
+        const now = new Date();
+        const diffMinutes = (now - lastSyncDate) / 1000 / 60;
+        
+        if (diffMinutes < 5) { // 5 minute cooldown (eBay recommends this)
+          setCanSync(false);
+          const nextSync = new Date(lastSyncDate.getTime() + 5 * 60 * 1000);
+          setNextSyncTime(nextSync);
+          setLastSync(lastSyncDate);
+          
+          // Set timeout to enable sync button
+          const timeUntilSync = nextSync - now;
+          setTimeout(() => {
+            setCanSync(true);
+            setNextSyncTime(null);
+          }, timeUntilSync);
+        } else {
+          setLastSync(lastSyncDate);
+        }
+      }
+    };
+    
+    checkLastSync();
+  }, []);
 
   // Check connection status
   const [ebayToken, setEbayToken] = useState(null);
@@ -230,6 +262,26 @@ export default function Import() {
   const importedCount = ebayListings?.filter((item) => item.imported).length || 0;
 
   const handleRefresh = () => {
+    if (!canSync) {
+      toast({
+        title: "Please wait",
+        description: `You can sync again at ${format(nextSyncTime, "h:mm:ss a")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    localStorage.setItem('ebay_last_sync', new Date().toISOString());
+    setLastSync(new Date());
+    setCanSync(false);
+    setNextSyncTime(new Date(Date.now() + 5 * 60 * 1000));
+    
+    // Re-enable after 5 minutes
+    setTimeout(() => {
+      setCanSync(true);
+      setNextSyncTime(null);
+    }, 5 * 60 * 1000);
+    
     refetch();
     toast({
       title: "Refreshing...",
@@ -300,16 +352,19 @@ export default function Import() {
             </div>
             {lastSync && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Last auto sync: {format(lastSync, "h:mm a")}</span>
+                <span>Last sync: {format(lastSync, "h:mm a")}</span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleRefresh}
-                  disabled={isLoading}
+                  disabled={isLoading || !canSync}
                   className="gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-                  Get Latest {selectedSource === "ebay" ? "eBay" : ""} Items
+                  {!canSync && nextSyncTime 
+                    ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
+                    : "Get Latest eBay Items"
+                  }
                 </Button>
               </div>
             )}

@@ -63,6 +63,47 @@ function parseItemXML(xml) {
     return match ? match[1] : null;
   };
 
+  // Helper to decode HTML entities
+  const decodeHtmlEntities = (text) => {
+    if (!text) return '';
+    
+    // First decode common HTML entities
+    const entities = {
+      '&lt;': '<',
+      '&gt;': '>',
+      '&amp;': '&',
+      '&quot;': '"',
+      '&#39;': "'",
+      '&nbsp;': ' ',
+    };
+    
+    let decoded = text;
+    for (const [entity, char] of Object.entries(entities)) {
+      decoded = decoded.replace(new RegExp(entity, 'g'), char);
+    }
+    
+    return decoded;
+  };
+
+  // Helper to strip HTML tags and format as plain text
+  const stripHtmlTags = (html) => {
+    if (!html) return '';
+    
+    // Decode HTML entities first
+    let text = decodeHtmlEntities(html);
+    
+    // Replace common block elements with line breaks
+    text = text.replace(/<\/?(p|div|br|h[1-6]|li)>/gi, '\n');
+    
+    // Remove all other HTML tags
+    text = text.replace(/<[^>]+>/g, '');
+    
+    // Clean up multiple line breaks and trim
+    text = text.replace(/\n\s*\n/g, '\n\n').trim();
+    
+    return text;
+  };
+
   // Extract price with attribute handling
   const currentPriceMatch = xml.match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
   const startPriceMatch = xml.match(/<StartPrice[^>]*>([^<]+)<\/StartPrice>/);
@@ -78,11 +119,13 @@ function parseItemXML(xml) {
     }
   }
 
-  // Extract description (handle CDATA)
+  // Extract description (handle CDATA and HTML)
   let description = '';
   const descMatch = xml.match(/<Description>(<!\[CDATA\[)?([\s\S]*?)(\]\]>)?<\/Description>/);
   if (descMatch) {
-    description = descMatch[2] || '';
+    const rawDescription = descMatch[2] || '';
+    // Convert HTML to plain text
+    description = stripHtmlTags(rawDescription);
   }
 
   // Extract primary category
@@ -102,6 +145,7 @@ function parseItemXML(xml) {
     price,
     category: categoryName,
     hasDescription: description.length > 0,
+    descriptionLength: description.length,
     imageCount: pictureURLs.length,
   });
 
