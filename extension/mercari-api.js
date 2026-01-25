@@ -30,19 +30,39 @@ const USER_ITEMS_QUERY = {
  */
 async function getMercariAuth() {
   try {
-    // Get stored tokens
+    // Get stored tokens (new format)
     const storage = await chrome.storage.local.get([
       'mercari_bearer_token',
       'mercari_csrf_token',
       'mercari_seller_id',
-      'mercari_tokens_timestamp'
+      'mercari_tokens_timestamp',
+      'mercariApiHeaders' // Old format from webRequest API
     ]);
 
-    const bearerToken = storage.mercari_bearer_token;
-    const csrfToken = storage.mercari_csrf_token;
-    const sellerId = storage.mercari_seller_id;
+    let bearerToken = storage.mercari_bearer_token;
+    let csrfToken = storage.mercari_csrf_token;
+    let sellerId = storage.mercari_seller_id;
     const timestamp = storage.mercari_tokens_timestamp || 0;
     const tokenAge = Date.now() - timestamp;
+    
+    // Fallback to old format if new format not available
+    if (!bearerToken && storage.mercariApiHeaders) {
+      console.log('🔄 Reading tokens from mercariApiHeaders (old format)');
+      const headers = storage.mercariApiHeaders;
+      
+      if (headers.authorization && headers.authorization.startsWith('Bearer ')) {
+        bearerToken = headers.authorization.substring(7);
+        console.log('✅ Found bearer token in mercariApiHeaders');
+      }
+      
+      if (headers['x-csrf-token']) {
+        csrfToken = headers['x-csrf-token'];
+        console.log('✅ Found CSRF token in mercariApiHeaders');
+      }
+      
+      // Try to extract seller ID from stored headers or URL
+      // We'll need to get this from the actual API call
+    }
 
     console.log('🔑 Mercari token status:', {
       hasBearerToken: !!bearerToken,
@@ -51,9 +71,14 @@ async function getMercariAuth() {
       tokenAge: Math.round(tokenAge / 1000 / 60) + ' minutes'
     });
 
-    if (!bearerToken || !csrfToken || !sellerId) {
+    if (!bearerToken || !csrfToken) {
       console.log('⚠️ Mercari tokens missing');
       return { bearerToken: null, csrfToken: null, sellerId: null, needsRefresh: true };
+    }
+    
+    // If we have tokens but no seller ID, we'll try to get it from the API call
+    if (!sellerId) {
+      console.log('⚠️ Seller ID missing, will try to extract from API call');
     }
 
     // Tokens should be refreshed if older than 1 hour, but we'll try using them anyway
@@ -78,8 +103,35 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
     // Get authentication tokens
     const { bearerToken, csrfToken, sellerId, needsRefresh } = await getMercariAuth();
 
-    if (needsRefresh) {
+    if (needsRefresh || !bearerToken || !csrfToken) {
       throw new Error('Mercari authentication tokens are missing. Please open Mercari.com in a tab first.');
+    }
+    
+    // If we don't have seller ID, try to get it from the current user
+    let actualSellerId = sellerId;
+    if (!actualSellerId) {
+      console.log('⚠️ No seller ID stored, will try to get from profile...');
+      
+      // Query the current user's tabs to find seller ID
+      try {
+        const tabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
+        for (const tab of tabs) {
+          // Check URL for seller ID
+          const urlMatch = tab.url.match(/\/u\/(\d+)|sellerId[=:](\d+)/);
+          if (urlMatch) {
+            actualSellerId = urlMatch[1] || urlMatch[2];
+            console.log('✅ Found seller ID in tab URL:', actualSellerId);
+            break;
+          }
+        }
+      } catch (e) {
+        console.log('Could not check tabs for seller ID:', e);
+      }
+      
+      // If still no seller ID, we need to make a profile query first
+      if (!actualSellerId) {
+        throw new Error('Seller ID not found. Please visit your Mercari profile page at /mypage/ first.');
+      }
     }
 
     // Prepare query with seller ID
@@ -89,7 +141,7 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         ...USER_ITEMS_QUERY.variables,
         userItemsInput: {
           ...USER_ITEMS_QUERY.variables.userItemsInput,
-          sellerId: parseInt(sellerId, 10),
+          sellerId: parseInt(actualSellerId, 10),
           status,
           page
         }
