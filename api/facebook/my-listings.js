@@ -1,19 +1,6 @@
 /**
  * Fetch user's Facebook Marketplace listings for import
- * 
- * IMPORTANT LIMITATION:
- * Facebook does NOT provide a public API to fetch existing Marketplace listings.
- * Their Graph API only allows:
- * - Creating new listings
- * - Managing pages
- * - Getting basic page posts
- * 
- * Alternative approaches:
- * 1. Use Chrome Extension to scrape Facebook Marketplace (like Vendoo does)
- * 2. Manual export/import via CSV
- * 3. Ask user to manually re-list items
- * 
- * For now, this endpoint returns a message explaining the limitation.
+ * Uses Chrome Extension to scrape listings from Facebook Marketplace
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -64,26 +51,15 @@ export default async function handler(req, res) {
       });
     }
 
-    // Facebook Marketplace API Limitation
-    // Facebook does NOT provide an API to fetch existing marketplace listings
-    // This is a known limitation of Facebook's Graph API
-    
-    console.log('⚠️ Facebook Marketplace import requested - API limitation');
+    // For now, return empty array
+    // Extension will handle the scraping and send data directly to import endpoint
+    console.log('⚡ Facebook Marketplace import - Extension handles scraping');
 
     return res.status(200).json({
       listings: [],
       total: 0,
-      limitationNotice: true,
-      message: 'Facebook Marketplace Import via Extension',
-      explanation: [
-        'Facebook does not provide a public API to fetch your existing Marketplace listings.',
-        'To import from Facebook Marketplace, you can:',
-        '1. Use our Chrome Extension (coming soon) to import listings',
-        '2. Manually copy listing details',
-        '3. Re-create listings using our Crosslist feature',
-      ],
+      message: 'Use Chrome Extension to import Facebook listings',
       extensionRequired: true,
-      alternativeAction: 'crosslist',
     });
 
   } catch (error) {
