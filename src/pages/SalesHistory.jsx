@@ -371,9 +371,9 @@ export default function SalesHistory() {
         }
       }
 
-      const saleDate = parseISO(sale.sale_date);
+      const saleDate = sale.sale_date ? parseISO(sale.sale_date) : null;
       const purchaseDate = sale.purchase_date ? parseISO(sale.purchase_date) : null;
-      const saleSpeed = purchaseDate ? differenceInDays(saleDate, purchaseDate) : null;
+      const saleSpeed = purchaseDate && saleDate ? differenceInDays(saleDate, purchaseDate) : null;
 
       return { ...sale, profit, roi, saleSpeed };
     });
@@ -982,9 +982,9 @@ export default function SalesHistory() {
       const matchesMinProfit = filters.minProfit === "" || profit >= parseFloat(filters.minProfit);
       const matchesMaxProfit = filters.maxProfit === "" || profit <= parseFloat(filters.maxProfit);
 
-      const saleDate = parseISO(sale.sale_date);
-      const matchesStartDate = !filters.startDate || saleDate >= filters.startDate;
-      const matchesEndDate = !filters.endDate || saleDate <= endOfDay(filters.endDate);
+      const saleDate = sale.sale_date ? parseISO(sale.sale_date) : new Date();
+      const matchesStartDate = !filters.startDate || !sale.sale_date || saleDate >= filters.startDate;
+      const matchesEndDate = !filters.endDate || !sale.sale_date || saleDate <= endOfDay(filters.endDate);
 
       return matchesSearch && matchesPlatform && matchesCategory && matchesNeedsReview && matchesMinProfit && matchesMaxProfit && matchesStartDate && matchesEndDate;
     });
@@ -1601,7 +1601,9 @@ export default function SalesHistory() {
                               </div>
                               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                                 <span>Date:</span>
-                                <span className="text-gray-900 dark:text-white">{format(parseISO(sale.sale_date), 'MM/dd/yyyy')}</span>
+                                <span className="text-gray-900 dark:text-white">
+                                  {sale.sale_date ? format(parseISO(sale.sale_date), 'MM/dd/yyyy') : 'N/A'}
+                                </span>
                               </div>
                               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                                 <span>Profit:</span>
@@ -1771,7 +1773,7 @@ export default function SalesHistory() {
                       <div className="mb-0.5 sm:hidden">
                         <p className="text-gray-700 dark:text-gray-300 text-[9px] break-words leading-[12px]"
                           style={{ letterSpacing: '0.4px' }}>
-                          {format(parseISO(sale.sale_date), 'MM/dd/yyyy')}
+                          {sale.sale_date ? format(parseISO(sale.sale_date), 'MM/dd/yyyy') : 'N/A'}
                         </p>
                       </div>
 
@@ -1780,7 +1782,7 @@ export default function SalesHistory() {
                         style={{ 
                           letterSpacing: '0.7px'
                         }}>
-                        Sold {format(parseISO(sale.sale_date), 'MM/dd/yyyy')} • ${sale.selling_price?.toFixed(2)}
+                        Sold {sale.sale_date ? format(parseISO(sale.sale_date), 'MM/dd/yyyy') : 'N/A'} • ${sale.selling_price?.toFixed(2)}
                         {safeNotes && <span className="hidden sm:inline"> • {safeNotes.substring(0, 50)}{safeNotes.length > 50 ? '...' : ''}</span>}
                       </p>
 
@@ -2020,7 +2022,7 @@ export default function SalesHistory() {
                                   {resaleValue.label}
                                 </div>
                                 <div className="text-xs text-muted-foreground truncate">
-                                  {platformNames[sale.platform] || "—"} • {format(parseISO(sale.sale_date), "MMM d, yyyy")}
+                                  {platformNames[sale.platform] || "—"} • {sale.sale_date ? format(parseISO(sale.sale_date), "MMM d, yyyy") : 'N/A'}
                                 </div>
                               </div>
 

@@ -295,7 +295,8 @@ export default function Dashboard() {
       if (item.return_deadline_dismissed === true) return false; // Exclude dismissed items
       
       try {
-        const deadline = parseISO(item.return_deadline);
+        const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
+        if (!deadline) return false;
         // Check if deadline is today or in the future
         if (isAfter(deadline, today) || format(deadline, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) {
           const daysLeft = differenceInDays(deadline, today);
@@ -322,7 +323,8 @@ export default function Dashboard() {
       if (!isTrackableStatus) return false;
 
       try {
-        const purchaseDate = parseISO(item.purchase_date);
+        const purchaseDate = item.purchase_date ? parseISO(item.purchase_date) : null;
+        if (!purchaseDate) return false;
         const daysSincePurchase = differenceInDays(today, purchaseDate);
         return daysSincePurchase >= 10;
       } catch (e) {
@@ -345,7 +347,9 @@ export default function Dashboard() {
       .map(sale => {
         if (!sale.purchase_date || !sale.sale_date) return null;
         try {
-          return differenceInDays(parseISO(sale.sale_date), parseISO(sale.purchase_date));
+          const saleDate = parseISO(sale.sale_date);
+          const purchaseDate = parseISO(sale.purchase_date);
+          return differenceInDays(saleDate, purchaseDate);
         } catch (e) {
           return null;
         }
