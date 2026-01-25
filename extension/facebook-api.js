@@ -68,14 +68,37 @@ async function getFacebookAuth() {
         });
         const html = await response.text();
         
-        // Extract fb_dtsg from HTML (it's in a script tag or hidden input)
-        const dtsgMatch = html.match(/"dtsg":\{"token":"([^"]+)"/);
-        const dtsgInputMatch = html.match(/name="fb_dtsg" value="([^"]+)"/);
+        console.log('📄 Fetched HTML length:', html.length, 'bytes');
         
-        dtsg = dtsgMatch?.[1] || dtsgInputMatch?.[1];
+        // Try multiple patterns to extract fb_dtsg from HTML
+        const patterns = [
+          /"dtsg":\{"token":"([^"]+)"/,
+          /name="fb_dtsg" value="([^"]+)"/,
+          /"token":"([^"]+)","async_get_token"/,
+          /\["DTSGInitialData",\[\],\{"token":"([^"]+)"/,
+          /"DTSGInitData".*?"token":"([^"]+)"/,
+          /LSD.*?"token":"([^"]+)"/
+        ];
+        
+        for (const pattern of patterns) {
+          const match = html.match(pattern);
+          if (match?.[1]) {
+            dtsg = match[1];
+            console.log('✅ Found fb_dtsg using pattern:', pattern.source);
+            break;
+          }
+        }
+        
+        // If still not found, log a sample of the HTML to help debug
+        if (!dtsg) {
+          const sample = html.substring(0, 1000);
+          console.log('⚠️ Could not find fb_dtsg. HTML sample:', sample);
+          console.log('⚠️ Searching for "dtsg" in HTML:', html.includes('dtsg'));
+          console.log('⚠️ Searching for "DTSGInitialData" in HTML:', html.includes('DTSGInitialData'));
+        }
         
         if (dtsg) {
-          console.log('✅ Successfully extracted fb_dtsg from Facebook page');
+          console.log('✅ Successfully extracted fb_dtsg from Facebook page:', dtsg.substring(0, 30) + '...');
           // Store it for future use
           await chrome.storage.local.set({
             'facebook_dtsg': dtsg,
