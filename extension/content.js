@@ -478,6 +478,103 @@ function updateLoginStatus(force = false) {
         }
       }
       
+      // Capture Mercari tokens for GraphQL API
+      if (MARKETPLACE === 'mercari') {
+        try {
+          console.log('🔍 Attempting to capture Mercari tokens...');
+          
+          // Method 1: Try to find tokens in localStorage or sessionStorage
+          let bearerToken = null;
+          let csrfToken = null;
+          let sellerId = null;
+          
+          // Check localStorage for auth tokens
+          try {
+            const authData = localStorage.getItem('auth') || localStorage.getItem('mercari_auth');
+            if (authData) {
+              const parsed = JSON.parse(authData);
+              bearerToken = parsed.accessToken || parsed.token || parsed.bearerToken;
+              csrfToken = parsed.csrfToken || parsed.csrf;
+              sellerId = parsed.userId || parsed.sellerId || parsed.id;
+              console.log('✅ Found tokens in localStorage');
+            }
+          } catch (e) {
+            console.log('⚠️ Could not parse localStorage auth data');
+          }
+          
+          // Method 2: Try to extract from window.__INITIAL_STATE__ or similar
+          if (!bearerToken && typeof window.__INITIAL_STATE__ !== 'undefined') {
+            try {
+              const state = window.__INITIAL_STATE__;
+              if (state.user) {
+                sellerId = state.user.id || state.user.sellerId;
+              }
+              if (state.auth) {
+                bearerToken = state.auth.token || state.auth.accessToken;
+                csrfToken = state.auth.csrfToken;
+              }
+              console.log('✅ Found tokens in __INITIAL_STATE__');
+            } catch (e) {
+              console.log('⚠️ Could not parse __INITIAL_STATE__');
+            }
+          }
+          
+          // Method 3: Try to extract from meta tags
+          if (!csrfToken) {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfMeta) {
+              csrfToken = csrfMeta.content;
+              console.log('✅ Found CSRF token in meta tag');
+            }
+          }
+          
+          // Method 4: Try to extract seller ID from URL or page
+          if (!sellerId) {
+            // Check if we're on a profile/mypage URL
+            const urlMatch = window.location.pathname.match(/\/mypage\/(\d+)/);
+            if (urlMatch) {
+              sellerId = urlMatch[1];
+              console.log('✅ Found seller ID in URL');
+            }
+            
+            // Try to find seller ID in page data
+            if (!sellerId) {
+              const sellerLink = document.querySelector('a[href*="/u/"]');
+              if (sellerLink) {
+                const match = sellerLink.href.match(/\/u\/(\d+)/);
+                if (match) {
+                  sellerId = match[1];
+                  console.log('✅ Found seller ID in profile link');
+                }
+              }
+            }
+          }
+          
+          if (bearerToken || csrfToken || sellerId) {
+            console.log('✅ Captured Mercari tokens:', {
+              hasBearerToken: !!bearerToken,
+              hasCsrfToken: !!csrfToken,
+              hasSellerId: !!sellerId,
+              bearerPreview: bearerToken ? bearerToken.substring(0, 20) + '...' : 'none',
+              csrfPreview: csrfToken ? csrfToken.substring(0, 20) + '...' : 'none',
+              sellerId: sellerId
+            });
+            
+            chrome.runtime.sendMessage({
+              type: 'MERCARI_AUTH_CAPTURED',
+              bearerToken: bearerToken,
+              csrfToken: csrfToken,
+              sellerId: sellerId,
+              timestamp: Date.now(),
+            });
+          } else {
+            console.log('⚠️ Could not find Mercari tokens on page');
+          }
+        } catch (e) {
+          console.warn('Could not capture Mercari tokens:', e);
+        }
+      }
+      
       // If login state changed from false to true, notify Settings page to close popup
       if (!wasLoggedIn && nowLoggedIn) {
         console.log(`✅ ${MARKETPLACE} login detected! Sending CONNECTION_READY message...`);
@@ -501,6 +598,69 @@ function updateLoginStatus(force = false) {
 
 // Store captured Mercari API headers (from webRequest API in background script)
 let capturedMercariHeaders = null;
+
+// Intercept Mercari API calls to capture auth tokens
+if (MARKETPLACE === 'mercari') {
+  // Intercept fetch requests
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    const [url, options] = args;
+    
+    // Check if this is a Mercari API call
+    if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
+      console.log('🔍 Intercepted Mercari API call:', url);
+      
+      // Extract tokens from request
+      if (options?.headers) {
+        const headers = options.headers;
+        let bearerToken = null;
+        let csrfToken = null;
+        
+        // Check for Authorization header
+        if (headers.Authorization || headers.authorization) {
+          const authHeader = headers.Authorization || headers.authorization;
+          if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+            bearerToken = authHeader.substring(7);
+            console.log('✅ Captured bearer token from fetch');
+          }
+        }
+        
+        // Check for CSRF token
+        if (headers['x-csrf-token']) {
+          csrfToken = headers['x-csrf-token'];
+          console.log('✅ Captured CSRF token from fetch');
+        }
+        
+        // Try to extract seller ID from request body
+        let sellerId = null;
+        if (options.body) {
+          try {
+            const body = JSON.parse(options.body);
+            if (body.variables?.userItemsInput?.sellerId) {
+              sellerId = body.variables.userItemsInput.sellerId;
+              console.log('✅ Captured seller ID from request:', sellerId);
+            }
+          } catch (e) {
+            // Not JSON or couldn't parse
+          }
+        }
+        
+        // Send to background script
+        if (bearerToken || csrfToken || sellerId) {
+          chrome.runtime.sendMessage({
+            type: 'MERCARI_AUTH_CAPTURED',
+            bearerToken: bearerToken,
+            csrfToken: csrfToken,
+            sellerId: sellerId,
+            timestamp: Date.now(),
+          });
+        }
+      }
+    }
+    
+    return originalFetch.apply(this, args);
+  };
+}
 
 // Helper to check if extension context is still valid
 const checkExtensionContext = () => {

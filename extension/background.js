@@ -12,6 +12,9 @@ console.log('EXT BUILD:', EXT_BUILD);
 // Load Facebook API module for GraphQL calls
 importScripts('facebook-api.js');
 
+// Load Mercari API module for GraphQL calls
+importScripts('mercari-api.js');
+
 // Auto-capture fb_dtsg from any open Facebook tabs on extension load
 async function autoCaptureFacebookToken() {
   try {
@@ -37,6 +40,32 @@ async function autoCaptureFacebookToken() {
 
 // Run auto-capture on extension load
 autoCaptureFacebookToken();
+
+// Auto-capture Mercari tokens from any open Mercari tabs on extension load
+async function autoCaptureMercariTokens() {
+  try {
+    const tabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
+    if (tabs && tabs.length > 0) {
+      console.log('📡 Found', tabs.length, 'Mercari tab(s) on startup, injecting content script...');
+      for (const tab of tabs) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          console.log('✅ Injected content script into Mercari tab', tab.id);
+        } catch (e) {
+          console.log('⚠️ Could not inject into tab', tab.id, ':', e.message);
+        }
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ Mercari auto-capture error:', e.message);
+  }
+}
+
+// Run auto-capture on extension load
+autoCaptureMercariTokens();
 
 // -----------------------------
 // Facebook: DNR header shaping (Vendoo-like tabless requests)
@@ -2367,6 +2396,146 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
+  
+  // Handle request to scrape Mercari listings (from Import page)
+  if (type === 'SCRAPE_MERCARI_LISTINGS') {
+    (async () => {
+      try {
+        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API');
+        
+        // Check if mercari-api.js is loaded
+        if (!self.__mercariApi) {
+          console.error('❌ mercari-api.js not loaded');
+          sendResponse({
+            success: false,
+            error: 'Mercari API module not available',
+          });
+          return;
+        }
+        
+        // Check for existing Mercari tabs and try to capture tokens
+        const mercariTabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
+        
+        if (mercariTabs && mercariTabs.length > 0) {
+          console.log('📡 Found', mercariTabs.length, 'Mercari tab(s), requesting token capture...');
+          
+          // Send message to all Mercari tabs to trigger token capture
+          for (const tab of mercariTabs) {
+            try {
+              await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_LOGIN' });
+            } catch (e) {
+              console.log('⚠️ Could not send message to tab', tab.id);
+            }
+          }
+          
+          // Wait a bit for tokens to be captured
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        console.log('✅ Mercari auth ready, fetching listings via API...');
+        
+        // Fetch listings using the API module
+        const result = await self.__mercariApi.fetchMercariListings({
+          page: 1,
+          status: 'on_sale'
+        });
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch Mercari listings');
+        }
+        
+        console.log('✅ Fetched listings via API:', result.listings?.length || 0);
+        
+        // Store in extension storage for the web app
+        await chrome.storage.local.set({
+          'mercari_listings': result.listings || [],
+          'mercari_listings_total': result.pagination?.totalCount || 0,
+          'mercari_listings_timestamp': Date.now(),
+        });
+        
+        // Send response
+        sendResponse(result);
+        
+      } catch (error) {
+        console.error('❌ Error handling SCRAPE_MERCARI_LISTINGS:', error);
+        sendResponse({
+          success: false,
+          error: error.message || 'Failed to fetch Mercari listings',
+        });
+      }
+    })();
+    
+    return true; // Keep channel open for async response
+  }
+
+  // Handle Mercari auth capture from content script
+  if (type === 'MERCARI_AUTH_CAPTURED') {
+    const bearerToken = message.bearerToken;
+    const csrfToken = message.csrfToken;
+    const sellerId = message.sellerId;
+    const timestamp = message.timestamp || Date.now();
+    
+    const dataToStore = {
+      'mercari_tokens_timestamp': timestamp,
+    };
+    
+    if (bearerToken) {
+      dataToStore['mercari_bearer_token'] = bearerToken;
+      console.log('✅ Storing Mercari bearer token');
+    }
+    
+    if (csrfToken) {
+      dataToStore['mercari_csrf_token'] = csrfToken;
+      console.log('✅ Storing Mercari CSRF token');
+    }
+    
+    if (sellerId) {
+      dataToStore['mercari_seller_id'] = sellerId;
+      console.log('✅ Storing Mercari seller ID:', sellerId);
+    }
+    
+    chrome.storage.local.set(dataToStore).then(() => {
+      console.log('✅ Stored Mercari auth data');
+    });
+    
+    sendResponse({ success: true });
+    return true;
+  }
+
+  
+  // Handle Mercari auth capture from content script
+  if (type === 'MERCARI_AUTH_CAPTURED') {
+    const bearerToken = message.bearerToken;
+    const csrfToken = message.csrfToken;
+    const sellerId = message.sellerId;
+    const timestamp = message.timestamp || Date.now();
+    
+    const dataToStore = {
+      'mercari_tokens_timestamp': timestamp,
+    };
+    
+    if (bearerToken) {
+      dataToStore['mercari_bearer_token'] = bearerToken;
+      console.log('✅ Storing Mercari bearer token');
+    }
+    
+    if (csrfToken) {
+      dataToStore['mercari_csrf_token'] = csrfToken;
+      console.log('✅ Storing Mercari CSRF token');
+    }
+    
+    if (sellerId) {
+      dataToStore['mercari_seller_id'] = sellerId;
+      console.log('✅ Storing Mercari seller ID:', sellerId);
+    }
+    
+    chrome.storage.local.set(dataToStore).then(() => {
+      console.log('✅ Stored Mercari auth data');
+    });
+    
+    sendResponse({ success: true });
+    return true;
+  }
 
   // Handle Facebook listings scraped result (from content script)
   if (action === 'FACEBOOK_LISTINGS_SCRAPED') {
@@ -2394,6 +2563,77 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.error('Failed to store Facebook listings:', err);
       sendResponse({ status: 'error', message: err.message });
     });
+    
+    return true; // Keep channel open for async response
+  }
+  
+  // Handle request to scrape Mercari listings (from Import page)
+  if (type === 'SCRAPE_MERCARI_LISTINGS') {
+    (async () => {
+      try {
+        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API');
+        
+        // Check if mercari-api.js is loaded
+        if (!self.__mercariApi) {
+          console.error('❌ mercari-api.js not loaded');
+          sendResponse({
+            success: false,
+            error: 'Mercari API module not available',
+          });
+          return;
+        }
+        
+        // Check for existing Mercari tabs and try to capture tokens
+        const mercariTabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
+        
+        if (mercariTabs && mercariTabs.length > 0) {
+          console.log('📡 Found', mercariTabs.length, 'Mercari tab(s), requesting token capture...');
+          
+          // Send message to all Mercari tabs to trigger token capture
+          for (const tab of mercariTabs) {
+            try {
+              await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_LOGIN' });
+            } catch (e) {
+              console.log('⚠️ Could not send message to tab', tab.id);
+            }
+          }
+          
+          // Wait a bit for tokens to be captured
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        console.log('✅ Mercari auth ready, fetching listings via API...');
+        
+        // Fetch listings using the API module
+        const result = await self.__mercariApi.fetchMercariListings({
+          page: 1,
+          status: 'on_sale'
+        });
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch Mercari listings');
+        }
+        
+        console.log('✅ Fetched listings via API:', result.listings?.length || 0);
+        
+        // Store in extension storage for the web app
+        await chrome.storage.local.set({
+          'mercari_listings': result.listings || [],
+          'mercari_listings_total': result.pagination?.totalCount || 0,
+          'mercari_listings_timestamp': Date.now(),
+        });
+        
+        // Send response
+        sendResponse(result);
+        
+      } catch (error) {
+        console.error('❌ Error handling SCRAPE_MERCARI_LISTINGS:', error);
+        sendResponse({
+          success: false,
+          error: error.message || 'Failed to fetch Mercari listings',
+        });
+      }
+    })();
     
     return true; // Keep channel open for async response
   }

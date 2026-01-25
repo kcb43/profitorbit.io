@@ -1,0 +1,185 @@
+/**
+ * Mercari API Module for Profit Orbit Extension
+ * Handles fetching user's Mercari listings via GraphQL API
+ */
+
+// GraphQL query for fetching user items
+const USER_ITEMS_QUERY = {
+  operationName: "userItemsQuery",
+  variables: {
+    userItemsInput: {
+      sellerId: null, // Will be populated dynamically
+      status: "on_sale",
+      keyword: "",
+      sortBy: "updated",
+      sortType: "desc",
+      page: 1,
+      includeTotalCount: true
+    }
+  },
+  extensions: {
+    persistedQuery: {
+      sha256Hash: "de32fb1b4a2727c67de3f242224d5647a5db015cd5f075fc4aee10d9c43ecce7",
+      version: 1
+    }
+  }
+};
+
+/**
+ * Get Mercari authentication tokens from storage
+ */
+async function getMercariAuth() {
+  try {
+    // Get stored tokens
+    const storage = await chrome.storage.local.get([
+      'mercari_bearer_token',
+      'mercari_csrf_token',
+      'mercari_seller_id',
+      'mercari_tokens_timestamp'
+    ]);
+
+    const bearerToken = storage.mercari_bearer_token;
+    const csrfToken = storage.mercari_csrf_token;
+    const sellerId = storage.mercari_seller_id;
+    const timestamp = storage.mercari_tokens_timestamp || 0;
+    const tokenAge = Date.now() - timestamp;
+
+    console.log('🔑 Mercari token status:', {
+      hasBearerToken: !!bearerToken,
+      hasCsrfToken: !!csrfToken,
+      hasSellerId: !!sellerId,
+      tokenAge: Math.round(tokenAge / 1000 / 60) + ' minutes'
+    });
+
+    if (!bearerToken || !csrfToken || !sellerId) {
+      console.log('⚠️ Mercari tokens missing');
+      return { bearerToken: null, csrfToken: null, sellerId: null, needsRefresh: true };
+    }
+
+    // Tokens should be refreshed if older than 1 hour, but we'll try using them anyway
+    if (tokenAge > 3600000) {
+      console.log('⚠️ Mercari tokens are', Math.round(tokenAge / 1000 / 60), 'minutes old, but will try using them anyway...');
+    }
+
+    return { bearerToken, csrfToken, sellerId, needsRefresh: false };
+  } catch (error) {
+    console.error('❌ Error getting Mercari auth:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch Mercari listings via GraphQL API
+ */
+async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
+  try {
+    console.log('📡 Fetching Mercari listings via GraphQL API...', { page, status });
+
+    // Get authentication tokens
+    const { bearerToken, csrfToken, sellerId, needsRefresh } = await getMercariAuth();
+
+    if (needsRefresh) {
+      throw new Error('Mercari authentication tokens are missing. Please open Mercari.com in a tab first.');
+    }
+
+    // Prepare query with seller ID
+    const query = {
+      ...USER_ITEMS_QUERY,
+      variables: {
+        ...USER_ITEMS_QUERY.variables,
+        userItemsInput: {
+          ...USER_ITEMS_QUERY.variables.userItemsInput,
+          sellerId: parseInt(sellerId, 10),
+          status,
+          page
+        }
+      }
+    };
+
+    // Make the GraphQL request
+    const timestamp = Date.now();
+    const url = `https://www.mercari.com/v1/api?timestamp=${timestamp}`;
+
+    console.log('📡 Making request to:', url);
+    console.log('📡 Query:', JSON.stringify(query, null, 2));
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${bearerToken}`,
+        'x-csrf-token': csrfToken,
+        'content-type': 'application/json',
+        'apollo-require-preflight': 'true',
+        'x-app-version': '1',
+        'x-double-web': '1',
+        'x-gql-migration': '1',
+        'x-platform': 'web',
+      },
+      body: JSON.stringify(query),
+      credentials: 'include'
+    });
+
+    console.log('📥 GraphQL response status:', response.status);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('📥 Raw GraphQL response:', data);
+
+    if (!data.data?.userItems?.items) {
+      console.error('❌ Unexpected response structure:', data);
+      throw new Error('Invalid response structure from Mercari API');
+    }
+
+    const items = data.data.userItems.items;
+    const pagination = data.data.userItems.pagination;
+
+    console.log('✅ Fetched', items.length, 'Mercari listings');
+    console.log('📄 Pagination:', pagination);
+
+    // Transform to our format
+    const listings = items.map(item => ({
+      itemId: item.id,
+      title: item.name,
+      price: item.price ? (item.price / 100) : 0, // Convert cents to dollars
+      originalPrice: item.originalPrice ? (item.originalPrice / 100) : null,
+      status: item.status,
+      imageUrl: item.photos?.[0]?.imageUrl || item.photos?.[0]?.thumbnail || null,
+      pictureURLs: (item.photos || []).map(p => p.imageUrl || p.thumbnail).filter(Boolean),
+      numLikes: item.engagement?.numLikes || 0,
+      numViews: item.engagement?.itemPv || 0,
+      updated: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+      listingDate: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+      startTime: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+      imported: false // Will be updated by frontend
+    }));
+
+    return {
+      success: true,
+      listings,
+      pagination: {
+        currentPage: pagination.currentPage,
+        pageSize: pagination.pageSize,
+        totalCount: pagination.totalCount,
+        hasNext: pagination.hasNext
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error fetching Mercari listings:', error);
+    return {
+      success: false,
+      error: error.message,
+      listings: []
+    };
+  }
+}
+
+// Export for use in background script
+if (typeof self !== 'undefined') {
+  self.__mercariApi = {
+    getMercariAuth,
+    fetchMercariListings
+  };
+}

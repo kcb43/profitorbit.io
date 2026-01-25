@@ -353,6 +353,24 @@
       return resp;
     },
 
+    // Mercari scraper for Import page
+    async scrapeMercariListings() {
+      console.log('🟣 [MERCARI] Page API -> scrapeMercariListings');
+
+      const resp = await postAndWait(
+        'PO_SCRAPE_MERCARI_LISTINGS',
+        'PO_SCRAPE_MERCARI_LISTINGS_RESULT',
+        null,
+        120000
+      );
+
+      try {
+        localStorage.setItem('profit_orbit_last_mercari_scrape_result', JSON.stringify({ t: Date.now(), resp }));
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Recorder controls
     startMercariApiRecording() {
       return postAndWait('PO_START_MERCARI_API_RECORDING', 'PO_START_MERCARI_API_RECORDING_RESULT', null, 5000);

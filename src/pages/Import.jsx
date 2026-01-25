@@ -25,8 +25,8 @@ const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2
 const SOURCES = [
   { id: "ebay", label: "eBay", icon: EBAY_ICON_URL, available: true },
   { id: "facebook", label: "Facebook", icon: FACEBOOK_ICON_URL, available: true },
+  { id: "mercari", label: "Mercari", icon: MERCARI_ICON_URL, available: true },
   { id: "etsy", label: "Etsy", icon: ETSY_ICON_URL, available: false },
-  { id: "mercari", label: "Mercari", icon: MERCARI_ICON_URL, available: false },
 ];
 
 export default function Import() {
@@ -46,6 +46,8 @@ export default function Import() {
       setListingStatus("available");
     } else if (selectedSource === "ebay") {
       setListingStatus("Active");
+    } else if (selectedSource === "mercari") {
+      setListingStatus("on_sale");
     }
   }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -210,6 +212,38 @@ export default function Import() {
         console.error('Error checking Facebook connection:', e);
         setIsConnected(false);
       }
+    } else if (selectedSource === "mercari") {
+      // Check if Mercari is connected via extension
+      try {
+        const isConnected = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
+        const mercariUser = localStorage.getItem('profit_orbit_mercari_user');
+        
+        console.log('🔍 Mercari connection check:', { isConnected, mercariUser });
+        
+        if (isConnected && mercariUser) {
+          setIsConnected(true);
+          console.log('✅ Mercari connected');
+          
+          // Load cached Mercari listings from localStorage
+          const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+          if (cachedListings) {
+            try {
+              const parsedListings = JSON.parse(cachedListings);
+              console.log('📦 Loaded cached Mercari listings:', parsedListings.length, 'items');
+              queryClient.setQueryData(['mercari-listings', userId], parsedListings);
+              setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
+            } catch (e) {
+              console.error('Error parsing cached Mercari listings:', e);
+            }
+          }
+        } else {
+          setIsConnected(false);
+          console.log('❌ Mercari not connected');
+        }
+      } catch (e) {
+        console.error('Error checking Mercari connection:', e);
+        setIsConnected(false);
+      }
     }
   }, [selectedSource, userId, queryClient]);
 
@@ -226,6 +260,18 @@ export default function Import() {
         const itemsToImport = facebookListings.filter(item => itemIds.includes(item.itemId));
         
         endpoint = "/api/facebook/import-items";
+        headers = {
+          "Content-Type": "application/json",
+          'x-user-id': userId,
+        };
+        body = JSON.stringify({ items: itemsToImport });
+        
+      } else if (selectedSource === 'mercari') {
+        // For Mercari, we need to get the full item data from cache
+        const mercariListings = queryClient.getQueryData(['mercari-listings', userId]) || [];
+        const itemsToImport = mercariListings.filter(item => itemIds.includes(item.itemId));
+        
+        endpoint = "/api/mercari/import-items";
         headers = {
           "Content-Type": "application/json",
           'x-user-id': userId,
@@ -297,6 +343,25 @@ export default function Import() {
         
         // Trigger re-render
         setFacebookListingsVersion(v => v + 1);
+      } else if (selectedSource === 'mercari') {
+        const mercariListings = queryClient.getQueryData(['mercari-listings', userId]) || [];
+        const updatedListings = mercariListings.map(item => {
+          // Check if this item was successfully imported
+          const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
+          
+          if (importedItem) {
+            return { ...item, imported: true, inventoryId: importedItem.inventoryId };
+          }
+          return item;
+        });
+        
+        // Update cache and persist to localStorage
+        queryClient.setQueryData(['mercari-listings', userId], updatedListings);
+        localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+        console.log('✅ Marked', data.importedItems?.length || 0, 'Mercari items as imported with inventory IDs');
+        
+        // Trigger re-render
+        setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'ebay') {
         queryClient.invalidateQueries(["ebay-listings"]);
         
@@ -356,6 +421,18 @@ export default function Import() {
         queryClient.setQueryData(['facebook-listings', userId], updatedListings);
         localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
         setFacebookListingsVersion(v => v + 1);
+      } else if (selectedSource === 'mercari') {
+        const mercariListings = queryClient.getQueryData(['mercari-listings', userId]) || [];
+        const updatedListings = mercariListings.map(item => {
+          if (item.itemId === itemId) {
+            return { ...item, imported: false, inventoryId: null };
+          }
+          return item;
+        });
+        
+        queryClient.setQueryData(['mercari-listings', userId], updatedListings);
+        localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+        setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'ebay') {
         queryClient.invalidateQueries(["ebay-listings"]);
         if (refetch) {
@@ -387,6 +464,8 @@ export default function Import() {
     // Use appropriate listings based on selected source
     const sourceListings = selectedSource === "facebook" 
       ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+      : selectedSource === "mercari"
+      ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
       : (ebayListings || []);
     
     if (!sourceListings || sourceListings.length === 0) return [];
@@ -421,6 +500,8 @@ export default function Import() {
   const { notImportedCount, importedCount } = React.useMemo(() => {
     const sourceListings = selectedSource === "facebook" 
       ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+      : selectedSource === "mercari"
+      ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
       : (ebayListings || []);
     
     return {
@@ -449,6 +530,12 @@ export default function Import() {
     // Handle Facebook differently - use extension scraping
     if (selectedSource === 'facebook') {
       handleFacebookSync();
+      return;
+    }
+    
+    // Handle Mercari differently - use extension scraping
+    if (selectedSource === 'mercari') {
+      handleMercariSync();
       return;
     }
     
@@ -541,6 +628,83 @@ export default function Import() {
       toast({
         title: "Sync failed",
         description: error.message || "Failed to sync Facebook listings",
+        variant: "destructive",
+        duration: 6000,
+      });
+    }
+  };
+
+  // Handle Mercari sync via extension
+  const handleMercariSync = async () => {
+    try {
+      console.log('📡 Requesting Mercari scrape from extension...');
+      
+      // Check if extension API is available
+      if (!window.ProfitOrbitExtension || typeof window.ProfitOrbitExtension.scrapeMercariListings !== 'function') {
+        throw new Error('Extension API not available. Please make sure the Profit Orbit extension is installed and enabled.');
+      }
+      
+      toast({
+        title: "Syncing Mercari",
+        description: "Fetching your listings...",
+      });
+      
+      // Use the extension API
+      const result = await window.ProfitOrbitExtension.scrapeMercariListings();
+      
+      if (!result?.success) {
+        throw new Error(result?.error || 'Failed to fetch Mercari listings');
+      }
+      
+      // The result should contain the listings
+      const listings = result?.listings || [];
+      console.log('✅ Received Mercari listings:', listings.length);
+      console.log('📦 Sample listing:', listings[0]);
+      
+      // Load existing imported status from localStorage
+      const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+      let existingImportedIds = new Set();
+      
+      if (cachedListings) {
+        try {
+          const parsedListings = JSON.parse(cachedListings);
+          existingImportedIds = new Set(
+            parsedListings
+              .filter(item => item.imported)
+              .map(item => item.itemId)
+          );
+          console.log('📦 Found', existingImportedIds.size, 'previously imported items');
+        } catch (e) {
+          console.error('Error parsing cached listings:', e);
+        }
+      }
+      
+      // Merge with existing imported status
+      const mergedListings = listings.map(item => ({
+        ...item,
+        imported: existingImportedIds.has(item.itemId) || false
+      }));
+      
+      // Update the query data and persist to localStorage
+      queryClient.setQueryData(['mercari-listings', userId], mergedListings);
+      localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(mergedListings));
+      console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'listings');
+      
+      // Force a re-render
+      setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
+      
+      toast({
+        title: "Success",
+        description: `Found ${listings.length} Mercari listings`,
+      });
+      
+      setLastSync(new Date());
+      
+    } catch (error) {
+      console.error('❌ Mercari sync error:', error);
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync Mercari listings",
         variant: "destructive",
         duration: 6000,
       });

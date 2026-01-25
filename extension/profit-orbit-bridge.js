@@ -157,6 +157,12 @@ window.addEventListener("message", (event) => {
     return;
   }
 
+  // Scrape Mercari listings for Import page
+  if (msg.type === "PO_SCRAPE_MERCARI_LISTINGS") {
+    poTrySendMessage({ type: "SCRAPE_MERCARI_LISTINGS" }, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
+    return;
+  }
+
   // Mercari API recorder controls (for API-mode reverse engineering)
   if (msg.type === "PO_START_MERCARI_API_RECORDING") {
     poTrySendMessage({ type: "START_MERCARI_API_RECORDING" }, "PO_START_MERCARI_API_RECORDING_RESULT");
