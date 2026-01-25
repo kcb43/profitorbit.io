@@ -37,7 +37,7 @@ async function ensureFacebookDnrRules() {
           requestHeaders: [
             { header: 'Origin', operation: 'set', value: origin },
             { header: 'Referer', operation: 'set', value: referer },
-            { header: 'Sec-Fetch-Site', operation: 'set', value: 'same-site' },
+            { header: 'Sec-Fetch-Site', operation: 'set', value: 'none' },
             { header: 'Sec-Fetch-Mode', operation: 'set', value: 'cors' },
             { header: 'Sec-Fetch-Dest', operation: 'set', value: 'empty' },
           ],
@@ -56,10 +56,11 @@ async function ensureFacebookDnrRules() {
           type: 'modifyHeaders',
           requestHeaders: [
             { header: 'Origin', operation: 'set', value: origin },
-            { header: 'Referer', operation: 'set', value: referer },
-            { header: 'Sec-Fetch-Site', operation: 'set', value: 'same-origin' },
+            { header: 'Referer', operation: 'set', value: 'https://www.facebook.com/marketplace/create/item?ref=marketplace_vendoo' },
+            { header: 'Sec-Fetch-Site', operation: 'set', value: 'none' },
             { header: 'Sec-Fetch-Mode', operation: 'set', value: 'cors' },
             { header: 'Sec-Fetch-Dest', operation: 'set', value: 'empty' },
+            { header: 'x-fb-friendly-name', operation: 'set', value: 'MarketplaceYouSellingFastActiveSectionPaginationQuery' },
           ],
         },
         condition: {

@@ -171,15 +171,10 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': cookieHeader,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
         'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://www.facebook.com',
-        'Referer': 'https://www.facebook.com/marketplace/you/selling',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
+        // Don't set Origin, Referer, or Sec-Fetch-* here - they're set by DNR rules
       },
       body: formData.toString(),
       credentials: 'include',
