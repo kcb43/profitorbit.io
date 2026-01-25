@@ -2429,12 +2429,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               // Inject content script and execute token capture in all Mercari tabs
               for (const tab of tabs) {
                 try {
-                  // First, navigate to active listings page if not already there (this triggers the userItemsQuery API call)
+                  let needsReload = false;
+                  
+                  // Navigate to active listings page if not already there
                   if (!tab.url.includes('/mypage/listings')) {
-                    console.log('Navigating tab to Mercari active listings page to trigger API calls...');
+                    console.log('Navigating tab to Mercari active listings page...');
                     await chrome.tabs.update(tab.id, { url: 'https://www.mercari.com/mypage/listings/active/' });
-                    // Wait for page to load and API call to happen
-                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                  } else {
+                    console.log('Tab already on listings page, will reload after installing interceptor');
+                    needsReload = true;
                   }
                   
                   // Inject content script if not already injected
@@ -2571,6 +2575,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   });
                   
                   console.log('Token extraction result from tab', tab.id, ':', results[0]?.result);
+                  
+                  // If we need to reload to trigger the API call, do it now
+                  if (needsReload) {
+                    console.log('Reloading tab to trigger API call with interceptor installed...');
+                    await chrome.tabs.reload(tab.id);
+                    // Wait longer for page to load and API call to be intercepted
+                    await new Promise(resolve => setTimeout(resolve, 4000));
+                  }
                 } catch (e) {
                   console.log('⚠️ Could not inject/execute in tab', tab.id, ':', e);
                 }
