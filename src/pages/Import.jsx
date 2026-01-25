@@ -39,6 +39,15 @@ export default function Import() {
   const [selectedSource, setSelectedSource] = useState(searchParams.get("source") || "ebay");
   const [listingStatus, setListingStatus] = useState("Active");
   const [importingStatus, setImportingStatus] = useState("not_imported");
+
+  // Update listing status default when source changes
+  useEffect(() => {
+    if (selectedSource === "facebook") {
+      setListingStatus("available");
+    } else if (selectedSource === "ebay") {
+      setListingStatus("Active");
+    }
+  }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
@@ -343,15 +352,24 @@ export default function Import() {
     return filtered;
   }, [ebayListings, importingStatus, sortBy, selectedSource, userId, queryClient, facebookListingsVersion]);
 
+  // Calculate counts from ALL listings (not filtered)
+  const { notImportedCount, importedCount } = React.useMemo(() => {
+    const sourceListings = selectedSource === "facebook" 
+      ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+      : (ebayListings || []);
+    
+    return {
+      notImportedCount: sourceListings?.filter((item) => !item.imported).length || 0,
+      importedCount: sourceListings?.filter((item) => item.imported).length || 0,
+    };
+  }, [ebayListings, selectedSource, userId, queryClient, facebookListingsVersion]);
+
   // Pagination
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
   const paginatedListings = filteredListings.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
-  const notImportedCount = filteredListings?.filter((item) => !item.imported).length || 0;
-  const importedCount = filteredListings?.filter((item) => item.imported).length || 0;
 
   const handleRefresh = () => {
     if (!canSync) {
