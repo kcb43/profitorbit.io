@@ -196,6 +196,13 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
     const text = await response.text();
     console.log('📥 Raw GraphQL response length:', text.length);
     
+    if (text.length === 0) {
+      console.log('❌ Empty response from Facebook API - fb_dtsg token may be required');
+      throw new Error('Empty response from Facebook API. The fb_dtsg CSRF token is required but could not be obtained.');
+    }
+    
+    console.log('📥 Response preview:', text.substring(0, 200));
+    
     // Parse response (it's newline-delimited JSON)
     const lines = text.trim().split('\n').filter(l => l.trim());
     let data = null;
