@@ -62,11 +62,12 @@ export default async function handler(req, res) {
 
     console.log('🔍 Fetching eBay listings:', { useProduction, status, userId: userId.substring(0, 8) + '...' });
 
-    // Use Sell API - Inventory API to get active listings
-    // https://developer.ebay.com/api-docs/sell/inventory/resources/inventory_item/methods/getInventoryItems
-    const inventoryUrl = `${apiUrl}/sell/inventory/v1/inventory_item?limit=${limit}`;
+    // Use Sell API - Offer API to get active listings (offers)
+    // https://developer.ebay.com/api-docs/sell/inventory/resources/offer/methods/getOffers
+    // This returns actual listings, not just inventory items
+    const offerUrl = `${apiUrl}/sell/inventory/v1/offer?limit=${limit}`;
 
-    const response = await fetch(inventoryUrl, {
+    const response = await fetch(offerUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -99,45 +100,48 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('✅ Fetched inventory items:', data.inventoryItems?.length || 0);
+    console.log('✅ Fetched offers (listings):', data.offers?.length || 0);
 
-    // Transform eBay inventory items to our format
-    const items = (data.inventoryItems || []).map(item => {
-      const offer = item.offers?.[0]; // Get first offer
-      const product = item.product || {};
+    // Transform eBay offers to our format
+    const items = (data.offers || []).map(offer => {
+      const listing = offer.listing || {};
+      const pricingSummary = offer.pricingSummary || {};
       
       return {
-        itemId: item.sku, // Use SKU as item ID
-        sku: item.sku,
-        title: product.title || 'Untitled',
-        description: product.description || '',
-        price: offer?.pricingSummary?.price?.value || 0,
-        imageUrl: product.imageUrls?.[0] || null,
-        pictureURLs: product.imageUrls || [],
-        condition: item.condition || 'USED',
-        availability: item.availability,
-        listingDate: offer?.listingStartDate || null,
-        startTime: offer?.listingStartDate || null,
-        listingId: offer?.offerId || null,
+        itemId: offer.offerId, // Use offerId as item ID
+        offerId: offer.offerId,
+        sku: offer.sku,
+        title: listing.title || offer.sku || 'Untitled',
+        description: listing.description || '',
+        price: pricingSummary.price?.value || 0,
+        imageUrl: listing.pictureUrls?.[0] || null,
+        pictureURLs: listing.pictureUrls || [],
+        condition: listing.condition || 'USED',
+        quantity: offer.availableQuantity || 0,
+        listingDate: offer.listingStartDate || null,
+        startTime: offer.listingStartDate || null,
+        status: offer.status,
+        marketplaceId: offer.marketplaceId,
       };
     });
 
     // Check which items are already imported
-    const skus = items.map(item => item.sku).filter(Boolean);
+    const offerIds = items.map(item => item.offerId).filter(Boolean);
     
-    if (skus.length > 0) {
+    if (offerIds.length > 0) {
       const { data: importedItems } = await supabase
         .from('inventory_items')
-        .select('sku')
+        .select('sku, ebay_offer_id')
         .eq('user_id', userId)
-        .in('sku', skus);
+        .or(`sku.in.(${items.map(i => `"${i.sku}"`).join(',')}),ebay_offer_id.in.(${offerIds.map(id => `"${id}"`).join(',')})`);
 
-      const importedSkus = new Set(importedItems?.map(item => item.sku) || []);
+      const importedSkus = new Set(importedItems?.map(item => item.sku).filter(Boolean) || []);
+      const importedOfferIds = new Set(importedItems?.map(item => item.ebay_offer_id).filter(Boolean) || []);
 
       // Mark items as imported or not
       const listings = items.map(item => ({
         ...item,
-        imported: importedSkus.has(item.sku),
+        imported: importedSkus.has(item.sku) || importedOfferIds.has(item.offerId),
       }));
 
       return res.status(200).json({

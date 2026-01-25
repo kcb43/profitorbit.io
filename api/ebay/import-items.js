@@ -18,14 +18,14 @@ function getEbayToken(req) {
   return req.headers['x-user-token'] || null;
 }
 
-// Fetch detailed item info from eBay Inventory API
-async function getItemDetails(sku, accessToken) {
+// Fetch detailed offer info from eBay Sell API
+async function getOfferDetails(offerId, accessToken) {
   const ebayEnv = process.env.EBAY_ENV || 'production';
   const apiUrl = ebayEnv === 'production' 
     ? 'https://api.ebay.com'
     : 'https://api.sandbox.ebay.com';
 
-  const response = await fetch(`${apiUrl}/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
+  const response = await fetch(`${apiUrl}/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -38,23 +38,24 @@ async function getItemDetails(sku, accessToken) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`Failed to fetch item ${sku}:`, errorText);
-    throw new Error(`Failed to fetch item ${sku}`);
+    console.error(`Failed to fetch offer ${offerId}:`, errorText);
+    throw new Error(`Failed to fetch offer ${offerId}`);
   }
 
-  const item = await response.json();
-  const product = item.product || {};
-  const offer = item.offers?.[0];
+  const offer = await response.json();
+  const listing = offer.listing || {};
+  const pricingSummary = offer.pricingSummary || {};
   
   return {
-    sku: item.sku,
-    title: product.title || 'Untitled',
-    description: product.description || '',
-    price: offer?.pricingSummary?.price?.value || 0,
-    condition: item.condition || 'USED',
-    images: product.imageUrls || [],
-    availability: item.availability,
-    packageWeightAndSize: item.packageWeightAndSize,
+    offerId: offer.offerId,
+    sku: offer.sku,
+    title: listing.title || offer.sku || 'Untitled',
+    description: listing.description || '',
+    price: pricingSummary.price?.value || 0,
+    condition: listing.condition || 'USED',
+    images: listing.pictureUrls || [],
+    quantity: offer.availableQuantity || 0,
+    status: offer.status,
   };
 }
 
@@ -95,12 +96,12 @@ export default async function handler(req, res) {
 
     for (const itemId of itemIds) {
       try {
-        // Fetch detailed item info from eBay (itemId is actually SKU in our case)
-        const itemDetails = await getItemDetails(itemId, accessToken);
+        // Fetch detailed offer info from eBay (itemId is offerId)
+        const offerDetails = await getOfferDetails(itemId, accessToken);
 
-        if (!itemDetails) {
+        if (!offerDetails) {
           failed++;
-          errors.push({ itemId, error: 'Failed to parse item data' });
+          errors.push({ itemId, error: 'Failed to parse offer data' });
           continue;
         }
 
@@ -109,16 +110,17 @@ export default async function handler(req, res) {
           .from('inventory_items')
           .insert({
             user_id: userId,
-            item_name: itemDetails.title,
-            description: itemDetails.description,
-            purchase_price: itemDetails.price,
-            listing_price: itemDetails.price,
+            item_name: offerDetails.title,
+            description: offerDetails.description,
+            purchase_price: offerDetails.price,
+            listing_price: offerDetails.price,
             status: 'listed',
             source: 'eBay',
-            images: itemDetails.images,
-            image_url: itemDetails.images[0] || null,
-            sku: itemDetails.sku,
-            condition: itemDetails.condition,
+            images: offerDetails.images,
+            image_url: offerDetails.images[0] || null,
+            sku: offerDetails.sku,
+            ebay_offer_id: offerDetails.offerId,
+            condition: offerDetails.condition,
             purchase_date: new Date().toISOString(),
           });
 
