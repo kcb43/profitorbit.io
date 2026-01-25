@@ -24,6 +24,7 @@ const ProfitCalendar = React.lazy(() => import("./ProfitCalendar"));
 const Crosslist = React.lazy(() => import("./Crosslist"));
 const CrosslistComposer = React.lazy(() => import("./CrosslistComposer"));
 const Crosslisting = React.lazy(() => import("./Crosslisting"));
+const Import = React.lazy(() => import("./Import"));
 const MarketIntelligence = React.lazy(() => import("./MarketIntelligence"));
 const MarketIntelligenceDetail = React.lazy(() => import("./MarketIntelligenceDetail"));
 const Settings = React.lazy(() => import("./Settings"));
@@ -260,6 +261,19 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="CrosslistComposer">
                         {withSuspense(<CrosslistComposer />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              
+              <Route
+                path="/Import"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Import">
+                        {withSuspense(<Import />)}
                       </Layout>
                     )}
                   </AuthGuard>

@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
@@ -48,6 +48,7 @@ import {
   Check,
   Palette,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
@@ -1519,6 +1520,14 @@ export default function Crosslist() {
             </p>
           </div>
           <div className="hidden md:flex gap-2 flex-shrink-0 flex-wrap">
+            <Button
+              variant="default"
+              className="whitespace-nowrap gap-2"
+              onClick={() => navigate(createPageUrl("Import"))}
+            >
+              <Download className="w-4 h-4" />
+              Import
+            </Button>
             <Button
               variant="outline"
               className="whitespace-nowrap"

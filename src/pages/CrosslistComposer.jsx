@@ -43750,22 +43750,52 @@ export default function CrosslistComposer() {
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted-foreground">Import from:</span>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => navigate(createPageUrl("Import") + "?source=ebay")}
+                  >
                     eBay
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => navigate(createPageUrl("Import") + "?source=mercari")}
+                  >
                     Mercari
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => navigate(createPageUrl("Import") + "?source=facebook")}
+                  >
                     Facebook
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => navigate(createPageUrl("Import") + "?source=etsy")}
+                  >
                     Etsy
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => navigate(createPageUrl("Import") + "?source=poshmark")}
+                  >
                     Poshmark
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => navigate(createPageUrl("Import") + "?source=depop")}
+                  >
                     Depop
                   </Button>
                 </div>
