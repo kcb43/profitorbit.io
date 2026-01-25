@@ -2429,12 +2429,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               // Inject content script and execute token capture in all Mercari tabs
               for (const tab of tabs) {
                 try {
-                  // First, inject the content script if not already injected
+                  // First, navigate to sell page if not already there (this triggers API calls)
+                  if (!tab.url.includes('/sell') && !tab.url.includes('/mypage')) {
+                    console.log('Navigating tab to Mercari sell page to trigger API calls...');
+                    await chrome.tabs.update(tab.id, { url: 'https://www.mercari.com/sell/' });
+                    // Wait for page to load
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                  }
+                  
+                  // Inject content script if not already injected
                   await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     files: ['content.js']
                   }).catch(e => {
-                    // Might already be injected, that's ok
                     console.log('Content script may already be injected in tab', tab.id);
                   });
                   
