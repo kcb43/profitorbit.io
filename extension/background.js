@@ -2240,10 +2240,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Get Facebook authentication
         const auth = await self.__facebookApi.getFacebookAuth();
         
-        // Note: We'll try to proceed even without fb_dtsg
-        // Facebook may accept the request with just cookies
+        // If no dtsg token, try to capture it from any open Facebook tab
         if (auth.needsDtsgRefresh || !auth.dtsg) {
-          console.log('⚠️ fb_dtsg token not available, but proceeding anyway with cookies only...');
+          console.log('⚠️ fb_dtsg token not available, checking for open Facebook tabs...');
+          
+          const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
+          
+          if (tabs && tabs.length > 0) {
+            console.log('📡 Found', tabs.length, 'Facebook tab(s), requesting token capture...');
+            
+            try {
+              // Send message to all Facebook tabs to capture dtsg
+              for (const tab of tabs) {
+                try {
+                  await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_LOGIN' });
+                } catch (e) {
+                  console.log('⚠️ Could not send message to tab', tab.id);
+                }
+              }
+              
+              // Wait a moment for content script to capture and store the token
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Try to get auth again
+              const freshAuth = await self.__facebookApi.getFacebookAuth();
+              if (freshAuth.dtsg) {
+                console.log('✅ Successfully captured fb_dtsg from Facebook tab');
+                auth.dtsg = freshAuth.dtsg;
+                auth.cookies = freshAuth.cookies;
+              } else {
+                console.log('⚠️ Could not capture fb_dtsg, proceeding with cookies only...');
+              }
+            } catch (captureError) {
+              console.log('⚠️ Error capturing fb_dtsg:', captureError.message);
+            }
+          } else {
+            console.log('⚠️ No Facebook tabs open, proceeding with cookies only...');
+          }
         }
         
         console.log('✅ Facebook auth ready, fetching listings via API...');
