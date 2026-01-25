@@ -46,6 +46,7 @@ export default function Import() {
   const [lastSync, setLastSync] = useState(null);
   const [canSync, setCanSync] = useState(true);
   const [nextSyncTime, setNextSyncTime] = useState(null);
+  const [facebookListingsVersion, setFacebookListingsVersion] = useState(0);
 
   // Check last sync time from localStorage
   useEffect(() => {
@@ -278,7 +279,7 @@ export default function Import() {
     });
 
     return filtered;
-  }, [ebayListings, importingStatus, sortBy, selectedSource, userId, queryClient]);
+  }, [ebayListings, importingStatus, sortBy, selectedSource, userId, queryClient, facebookListingsVersion]);
 
   // Pagination
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
@@ -355,8 +356,8 @@ export default function Import() {
       queryClient.setQueryData(['facebook-listings', userId], listings);
       console.log('✅ Updated query cache with', listings.length, 'listings');
       
-      // Force a re-render by invalidating queries
-      queryClient.invalidateQueries(['facebook-listings', userId]);
+      // Force a re-render
+      setFacebookListingsVersion(v => v + 1);
       
       toast({
         title: "Success",
