@@ -95,6 +95,7 @@ export default function Settings() {
   });
   // Track if we've already shown the connection notification to prevent duplicates
   const mercariNotificationShown = useRef(false);
+  const currentlyConnectingMarketplace = useRef(null);
   const { sdkReady, fbInstance} = useFacebookSDK();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -684,6 +685,8 @@ export default function Settings() {
   };
 
   const handleMercariConnect = async () => {
+    currentlyConnectingMarketplace.current = 'mercari';
+    
     try {
       console.log('🟢🟢🟢 Profit Orbit: Starting Mercari connection... 🟢🟢🟢');
       
@@ -794,6 +797,8 @@ export default function Settings() {
         description: error.message || 'Failed to check Mercari connection.',
         variant: 'destructive',
       });
+    } finally {
+      currentlyConnectingMarketplace.current = null;
     }
   };
 
@@ -897,9 +902,15 @@ export default function Settings() {
   };
 
   const showMercariInstructions = () => {
+    // Don't show Mercari instructions if user is currently connecting Facebook
+    if (currentlyConnectingMarketplace.current === 'facebook') {
+      console.log('⚠️ Skipping Mercari instructions - user is connecting Facebook');
+      return;
+    }
+    
     toast({
       title: 'Mercari Not Detected',
-      description: '1) Make sure the Profit Orbit extension is installed and enabled\n2) Open Mercari.com in a new tab and log in\n3) Come back here and click "Connect Mercari" again\n\nThe extension will detect your login automatically.',
+      description: '1) Make sure the Orben extension is installed and enabled\n2) Open Mercari.com in a new tab and log in\n3) Come back here and click "Connect Mercari" again\n\nThe extension will detect your login automatically.',
       variant: 'destructive',
       duration: 10000,
     });
@@ -1005,15 +1016,17 @@ export default function Settings() {
 
   const showFacebookInstructions = () => {
     toast({
-      title: 'Facebook Not Detected',
+      title: 'Facebook Not Connected',
       description:
-        '1) Make sure the Profit Orbit extension is installed and enabled\n2) Open Facebook.com in a new tab and log in\n3) Come back here and click Connect again\n\nThe extension will detect your login automatically.',
+        '1) Make sure the Orben extension is installed and enabled\n2) Select "Login" within settings, or open Facebook.com in a new tab and log in\n3) Click "Connect" again\n\nThe extension will detect your login automatically.',
       variant: 'destructive',
       duration: 10000,
     });
   };
 
   const handleFacebookConnect = async () => {
+    currentlyConnectingMarketplace.current = 'facebook';
+    
     try {
       toast({
         title: 'Connecting to Facebook...',
@@ -1029,6 +1042,7 @@ export default function Settings() {
           duration: 10000,
         });
         runExtensionDiagnostic();
+        currentlyConnectingMarketplace.current = null;
         return;
       }
 
@@ -1054,20 +1068,14 @@ export default function Settings() {
           description: 'Your Facebook session was detected via the extension.',
         });
       } else {
-        toast({
-          title: 'Not Connected',
-          description: 'Please log into Facebook in a new tab first, then try again.',
-          variant: 'destructive',
-        });
+        // Only show one error message
         showFacebookInstructions();
       }
     } catch (error) {
       console.error('🔴 Profit Orbit: Facebook connect error:', error);
-      toast({
-        title: 'Connection Error',
-        description: error?.message || 'Failed to check Facebook connection.',
-        variant: 'destructive',
-      });
+      showFacebookInstructions();
+    } finally {
+      currentlyConnectingMarketplace.current = null;
     }
   };
 
