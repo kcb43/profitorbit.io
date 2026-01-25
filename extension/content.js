@@ -418,6 +418,28 @@ function updateLoginStatus(force = false) {
         marketplace: userInfo.marketplace
       }));
       
+      // Capture fb_dtsg token for Facebook GraphQL API
+      if (MARKETPLACE === 'facebook') {
+        try {
+          // Try to find fb_dtsg in page
+          const dtsgInput = document.querySelector('input[name="fb_dtsg"]');
+          const dtsg = dtsgInput?.value;
+          
+          if (dtsg) {
+            console.log('✅ Captured fb_dtsg token:', dtsg.substring(0, 30) + '...');
+            chrome.runtime.sendMessage({
+              type: 'FACEBOOK_DTSG_CAPTURED',
+              dtsg: dtsg,
+              timestamp: Date.now(),
+            });
+          } else {
+            console.log('⚠️ fb_dtsg input not found on page');
+          }
+        } catch (e) {
+          console.warn('Could not capture fb_dtsg:', e);
+        }
+      }
+      
       // If login state changed from false to true, notify Settings page to close popup
       if (!wasLoggedIn && nowLoggedIn) {
         console.log(`✅ ${MARKETPLACE} login detected! Sending CONNECTION_READY message...`);

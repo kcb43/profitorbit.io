@@ -82,7 +82,8 @@
     {
       "resources": [
         "profit-orbit-page-api.js",
-        "facebook-scraper.js"
+        "facebook-scraper.js",
+        "facebook-api.js"
       ],
       "matches": [
         "https://profitorbit.io/*",

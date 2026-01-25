@@ -2218,194 +2218,136 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const type = message?.type;
   const action = message?.action;
 
-  // Handle Facebook scraping results
   // Handle request to scrape Facebook listings (from Import page)
   if (type === 'SCRAPE_FACEBOOK_LISTINGS') {
     (async () => {
       try {
-        console.log('📡 SCRAPE_FACEBOOK_LISTINGS received from Import page');
+        console.log('📡 SCRAPE_FACEBOOK_LISTINGS received - using GraphQL API');
         
-        // Find existing Facebook tabs first
-        const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
-        let targetTab = tabs.find(t => t.url.includes('/marketplace/you/selling') || t.url.includes('/marketplace/you/listings'));
-        
-        if (!targetTab && tabs.length > 0) {
-          // Use any Facebook tab
-          targetTab = tabs[0];
+        // Import the facebook-api.js module
+        if (!self.__facebookApi) {
+          try {
+            await import(chrome.runtime.getURL('facebook-api.js'));
+          } catch (importError) {
+            console.error('❌ Failed to load facebook-api.js:', importError);
+            sendResponse({
+              success: false,
+              error: 'Failed to load Facebook API module',
+            });
+            return;
+          }
         }
         
-        let createdTab = false;
-        if (!targetTab) {
-          // Create background tab - completely invisible to user
-          console.log('📡 Creating invisible background Facebook tab...');
+        // Get Facebook authentication
+        const auth = await self.__facebookApi.getFacebookAuth();
+        
+        if (auth.needsDtsgRefresh || !auth.dtsg) {
+          // Need to capture fb_dtsg from a Facebook page
+          console.log('📡 Need to capture fb_dtsg, opening Facebook page...');
           
-          try {
+          const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
+          let targetTab = tabs[0];
+          let createdTab = false;
+          
+          if (!targetTab) {
             targetTab = await chrome.tabs.create({
-              url: 'https://www.facebook.com/marketplace/you/selling',
+              url: 'https://www.facebook.com/',
               active: false,
             });
             createdTab = true;
             
-            // Wait for tab to fully load with proper listener
-            await new Promise((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                chrome.tabs.onUpdated.removeListener(listener);
-                reject(new Error('Tab load timeout'));
-              }, 15000);
-              
-              const listener = (tabId, changeInfo, tab) => {
-                if (tabId === targetTab.id) {
-                  if (changeInfo.status === 'complete') {
-                    clearTimeout(timeout);
-                    chrome.tabs.onUpdated.removeListener(listener);
-                    resolve();
-                  }
-                }
-              };
-              
-              chrome.tabs.onUpdated.addListener(listener);
-            });
-            
-            // Extra wait for content script injection and initialization
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            console.log('✅ Background tab loaded and ready');
-            
-          } catch (error) {
-            console.error('❌ Failed to create/load background tab:', error);
-            if (createdTab && targetTab?.id) {
-              chrome.tabs.remove(targetTab.id).catch(() => {});
-            }
-            sendResponse({
-              success: false,
-              error: 'Failed to initialize Facebook scraper. Please try again.',
-            });
-            return;
+            // Wait for page to load
+            await new Promise(resolve => setTimeout(resolve, 4000));
           }
-        }
-        
-        console.log('📡 Sending SCRAPE_FACEBOOK_LISTINGS to tab:', targetTab.id);
-        
-        // First, ping the tab to make sure content script is ready
-        const pingResponse = await new Promise((resolve) => {
-          chrome.tabs.sendMessage(targetTab.id, { type: 'PING' }, (response) => {
-            if (chrome.runtime.lastError) {
-              console.warn('⚠️ Content script not ready:', chrome.runtime.lastError.message);
-              resolve(null);
-            } else {
-              resolve(response);
-            }
-          });
-        });
-        
-        if (!pingResponse) {
-          // Content script not loaded, try injecting it
-          console.log('📡 Content script not ready, injecting...');
-          try {
-            await chrome.scripting.executeScript({
-              target: { tabId: targetTab.id },
-              files: ['content.js']
-            });
-            // Wait a bit for it to initialize
-            await new Promise(resolve => setTimeout(resolve, 500));
-          } catch (injectError) {
-            console.error('❌ Failed to inject content script:', injectError);
+          
+          // Request content script to capture dtsg
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('dtsg capture timeout')), 10000);
             
-            if (createdTab && targetTab?.id) {
-              try {
-                await chrome.tabs.remove(targetTab.id);
-              } catch (e) {}
-            }
-            
-            sendResponse({
-              success: false,
-              error: 'Failed to load scraper. Please try again.',
-            });
-            return;
-          }
-        }
-        
-        // Listen for the scraped results BEFORE sending the message
-        const resultListener = async (msg, snd, respond) => {
-          if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
-            chrome.runtime.onMessage.removeListener(resultListener);
-            clearTimeout(timeout);
-            
-            // Close created tab after successful scraping
-            if (createdTab && targetTab?.id) {
-              try {
-                await chrome.tabs.remove(targetTab.id);
-                console.log('✅ Closed background Facebook tab');
-              } catch (e) {
-                console.warn('Could not close tab:', e);
+            const listener = (msg) => {
+              if (msg.type === 'FACEBOOK_DTSG_CAPTURED') {
+                clearTimeout(timeout);
+                chrome.runtime.onMessage.removeListener(listener);
+                resolve();
               }
-            }
+            };
             
-            // Return the listings to the Import page
-            sendResponse({
-              success: true,
-              listings: msg.data || [],
-              total: msg.total || 0,
+            chrome.runtime.onMessage.addListener(listener);
+            
+            // Trigger capture by sending ping
+            chrome.tabs.sendMessage(targetTab.id, { type: 'CHECK_LOGIN' }, () => {
+              if (chrome.runtime.lastError) {
+                clearTimeout(timeout);
+                chrome.runtime.onMessage.removeListener(listener);
+                reject(new Error('Could not communicate with Facebook page'));
+              }
             });
-          }
-        };
-        
-        chrome.runtime.onMessage.addListener(resultListener);
-        
-        // Set timeout before sending message (45 seconds for initial load + scrape)
-        const timeout = setTimeout(async () => {
-          chrome.runtime.onMessage.removeListener(resultListener);
-          
-          // Close created tab on timeout
-          if (createdTab && targetTab?.id) {
-            try {
-              await chrome.tabs.remove(targetTab.id);
-              console.log('⏱️ Timeout - closed background tab');
-            } catch (e) {}
-          }
-          
-          sendResponse({
-            success: false,
-            error: 'Scraping took too long. Please check your Facebook login and try again.',
           });
-        }, 45000);
-        
-        // Now send the scrape message
-        chrome.tabs.sendMessage(targetTab.id, {
-          action: 'SCRAPE_FACEBOOK_LISTINGS',
-        }, async (response) => {
-          if (chrome.runtime.lastError) {
-            console.error('❌ Error sending scrape message:', chrome.runtime.lastError);
-            clearTimeout(timeout);
-            chrome.runtime.onMessage.removeListener(resultListener);
-            
-            if (createdTab && targetTab?.id) {
-              try {
-                await chrome.tabs.remove(targetTab.id);
-              } catch (e) {}
-            }
-            
-            sendResponse({
-              success: false,
-              error: `Scraping failed. Please make sure you're logged into Facebook and try again.`,
-            });
-            return;
+          
+          if (createdTab) {
+            await chrome.tabs.remove(targetTab.id);
           }
           
-          console.log('✅ Scrape message sent, waiting for results...', response);
-          // Don't call sendResponse here - we're waiting for the resultListener to handle it
+          // Get auth again with fresh dtsg
+          const freshAuth = await self.__facebookApi.getFacebookAuth();
+          if (!freshAuth.dtsg) {
+            throw new Error('Failed to capture fb_dtsg token');
+          }
+          
+          // Use fresh auth
+          auth.dtsg = freshAuth.dtsg;
+          auth.cookies = freshAuth.cookies;
+        }
+        
+        console.log('✅ Facebook auth ready, fetching listings via API...');
+        
+        // Fetch listings via GraphQL API - NO TABS NEEDED!
+        const result = await self.__facebookApi.fetchFacebookListings({
+          dtsg: auth.dtsg,
+          cookies: auth.cookies,
+          count: 50,
         });
+        
+        console.log('✅ Fetched listings via API:', result.listings?.length || 0);
+        
+        // Store in chrome.storage
+        await chrome.storage.local.set({
+          'facebook_listings': result.listings || [],
+          'facebook_listings_total': result.total || 0,
+          'facebook_listings_timestamp': result.timestamp || Date.now(),
+        });
+        
+        // Send response
+        sendResponse(result);
         
       } catch (error) {
         console.error('❌ Error handling SCRAPE_FACEBOOK_LISTINGS:', error);
         sendResponse({
           success: false,
-          error: error.message || 'Failed to initiate Facebook scraping',
+          error: error.message || 'Failed to fetch Facebook listings',
         });
       }
     })();
     
     return true; // Keep channel open for async response
+  }
+  
+  // Handle fb_dtsg capture from content script
+  if (type === 'FACEBOOK_DTSG_CAPTURED') {
+    const dtsg = message.dtsg;
+    const timestamp = message.timestamp || Date.now();
+    
+    if (dtsg) {
+      chrome.storage.local.set({
+        'facebook_dtsg': dtsg,
+        'facebook_dtsg_timestamp': timestamp,
+      }).then(() => {
+        console.log('✅ Stored fb_dtsg token');
+      });
+    }
+    
+    sendResponse({ success: true });
+    return true;
   }
 
   // Handle Facebook listings scraped result (from content script)
