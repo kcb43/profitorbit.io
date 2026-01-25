@@ -15,6 +15,7 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { inventoryApi } from "@/api/inventoryApi";
 import { format } from "date-fns";
 import { getCurrentUserId } from "@/api/supabaseClient";
+import SelectionBanner from "@/components/SelectionBanner";
 
 const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -264,6 +265,24 @@ export default function Import() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Selection Banner - shows when scrolled down with items selected */}
+      <SelectionBanner
+        selectedCount={selectedItems.length}
+        onClear={() => setSelectedItems([])}
+        showAtTop={false}
+        threshold={200}
+      >
+        <Button
+          onClick={handleImport}
+          disabled={importMutation.isPending || selectedItems.length === 0}
+          size="sm"
+          className="bg-white text-emerald-600 hover:bg-white/90 h-8 gap-2"
+        >
+          <Download className="h-4 w-4" />
+          {importMutation.isPending ? 'Importing...' : 'Import'}
+        </Button>
+      </SelectionBanner>
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

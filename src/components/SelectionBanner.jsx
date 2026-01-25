@@ -8,6 +8,7 @@ export default function SelectionBanner({
   onClear,
   showAtTop = true, // Whether to show banner when at top of page
   threshold = 100, // Scroll threshold in pixels
+  children, // Action buttons/content
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isScrolledPastTop, setIsScrolledPastTop] = useState(false);
@@ -54,15 +55,18 @@ export default function SelectionBanner({
             {selectedCount} item{selectedCount === 1 ? "" : "s"} selected
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClear}
-          className="text-white hover:bg-white/20 h-8 px-3 flex-shrink-0"
-        >
-          <X className="w-4 h-4 mr-1" />
-          Clear
-        </Button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {children}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClear}
+            className="text-white hover:bg-white/20 h-8 px-3"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Clear
+          </Button>
+        </div>
       </div>
     </div>
   );
