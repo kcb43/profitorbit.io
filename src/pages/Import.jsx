@@ -543,11 +543,20 @@ export default function Import() {
             ) : (
               <div className="grid grid-cols-1 gap-4">
                 {paginatedListings.map((item) => (
-                  <Card key={item.itemId} className="p-4 hover:shadow-md transition-shadow">
+                  <Card 
+                    key={item.itemId} 
+                    className={`p-4 transition-all cursor-pointer relative ${
+                      selectedItems.includes(item.itemId)
+                        ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md'
+                        : 'hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                    onClick={() => toggleSelectItem(item.itemId)}
+                  >
                     <div className="flex gap-4">
                       <Checkbox
                         checked={selectedItems.includes(item.itemId)}
                         onCheckedChange={() => toggleSelectItem(item.itemId)}
+                        onClick={(e) => e.stopPropagation()} // Prevent double-toggle
                       />
                       <div className="flex-shrink-0">
                         <OptimizedImage
