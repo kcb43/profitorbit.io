@@ -138,7 +138,7 @@ async function getFacebookAuth() {
 // Fetch listings via GraphQL API
 async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null }) {
   try {
-    console.log('📡 Fetching Facebook listings via GraphQL API...', { count, cursor });
+    console.log('📡 Fetching Facebook listings via GraphQL API...', { count, cursor, hasDtsg: !!dtsg });
     
     // Build cookie header
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
@@ -158,7 +158,14 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
     formData.append('variables', JSON.stringify(variables));
     formData.append('doc_id', '6222877017763459'); // This is the doc_id from Vendoo's network log
     formData.append('fb_api_req_friendly_name', 'MarketplaceYouSellingFastActiveSectionPaginationQuery');
-    formData.append('fb_dtsg', dtsg);
+    
+    // Only include fb_dtsg if we have it
+    if (dtsg) {
+      formData.append('fb_dtsg', dtsg);
+      console.log('✅ Including fb_dtsg in request');
+    } else {
+      console.log('⚠️ Proceeding without fb_dtsg token (may fail)');
+    }
     
     const response = await fetch('https://www.facebook.com/api/graphql/', {
       method: 'POST',
@@ -174,10 +181,15 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
       },
+      body: formData.toString(),
       credentials: 'include',
     });
     
+    console.log('📥 GraphQL response status:', response.status);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log('❌ Error response:', errorText.substring(0, 500));
       throw new Error(`Facebook API error: ${response.status} ${response.statusText}`);
     }
     
