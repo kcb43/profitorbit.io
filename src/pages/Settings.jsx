@@ -914,7 +914,23 @@ export default function Settings() {
     
     toast({
       title: 'Mercari Not Detected',
-      description: '1) Make sure the Orben extension is installed and enabled\n2) Open Mercari.com in a new tab and log in\n3) Come back here and click "Connect Mercari" again\n\nThe extension will detect your login automatically.',
+      description: (
+        <div className="text-white">
+          <span>1) Install & enable the </span>
+          <a 
+            href="/extension" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline hover:text-blue-200"
+          >
+            Orben extension
+          </a>
+          <br />
+          <span>2) Open Mercari.com in a new tab and log in</span>
+          <br />
+          <span>3) Click "Connect Mercari" again — Orben will auto-detect your login</span>
+        </div>
+      ),
       variant: 'destructive',
       duration: 10000,
     });
@@ -1021,8 +1037,23 @@ export default function Settings() {
   const showFacebookInstructions = () => {
     toast({
       title: 'Facebook Not Connected',
-      description:
-        '1) Make sure the Orben extension is installed and enabled\n2) Select "Login" within settings, or open Facebook.com in a new tab and log in\n3) Click "Connect" again\n\nThe extension will detect your login automatically.',
+      description: (
+        <div className="text-white">
+          <span>1) Install & enable the </span>
+          <a 
+            href="/extension" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline hover:text-blue-200"
+          >
+            Orben extension
+          </a>
+          <br />
+          <span>2) Log into Facebook (via your Settings → Select 'Login')</span>
+          <br />
+          <span>3) Click Connect again — Orben will auto-detect your login</span>
+        </div>
+      ),
       variant: 'destructive',
       duration: 10000,
     });
