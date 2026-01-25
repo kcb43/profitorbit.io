@@ -238,6 +238,8 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         description: listing.marketplace_listing_title || '',
         imported: false,
         creationTime: listing.creation_time,
+        listingDate: listing.creation_time ? new Date(listing.creation_time * 1000).toISOString() : new Date().toISOString(),
+        startTime: listing.creation_time ? new Date(listing.creation_time * 1000).toISOString() : new Date().toISOString(),
         categoryId: listing.marketplace_listing_category_id,
       };
     }).filter(Boolean);
