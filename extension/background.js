@@ -2429,160 +2429,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               // Inject content script and execute token capture in all Mercari tabs
               for (const tab of tabs) {
                 try {
-                  let needsReload = false;
-                  
-                  // Navigate to active listings page if not already there
+                  // Ensure we're on the listings page
                   if (!tab.url.includes('/mypage/listings')) {
-                    console.log('Navigating tab to Mercari active listings page...');
+                    console.log('Navigating to Mercari active listings page...');
                     await chrome.tabs.update(tab.id, { url: 'https://www.mercari.com/mypage/listings/active/' });
-                    await new Promise(resolve => setTimeout(resolve, 2000));
                   } else {
-                    console.log('Tab already on listings page, will reload after installing interceptor');
-                    needsReload = true;
+                    console.log('Already on listings page, reloading to trigger API call...');
                   }
                   
-                  // Inject content script if not already injected
+                  // Inject content script (which has the fetch interceptor)
                   await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     files: ['content.js']
                   }).catch(e => {
-                    console.log('Content script may already be injected in tab', tab.id);
+                    console.log('Content script may already be injected');
                   });
                   
-                  // Execute comprehensive token extraction directly in the page
-                  const results = await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: async () => {
-                      console.log('🔍 Intercepting Mercari API call to capture tokens...');
-                      
-                      return new Promise((resolve) => {
-                        let bearerToken = null;
-                        let csrfToken = null;
-                        let sellerId = null;
-                        let captured = false;
-                        
-                        // Intercept fetch to capture tokens from actual API calls
-                        const originalFetch = window.fetch;
-                        const timeout = setTimeout(() => {
-                          if (!captured) {
-                            console.log('⏱️ Timeout - no API call intercepted, trying to trigger one...');
-                            
-                            // Try to trigger an API call by making a small request ourselves
-                            // First, search the page for existing tokens in scripts
-                            const scripts = document.getElementsByTagName('script');
-                            for (const script of scripts) {
-                              const content = script.textContent || script.innerHTML;
-                              
-                              // Look for bearer token pattern
-                              const bearerMatch = content.match(/["\']authorization["\']:\s*["\']Bearer\s+([^"\']+)["\']|bearerToken["\']:\s*["\']([^"\']+)["\']/i);
-                              if (bearerMatch && !bearerToken) {
-                                bearerToken = bearerMatch[1] || bearerMatch[2];
-                                console.log('✅ Found bearer token in script tag');
-                              }
-                              
-                              // Look for CSRF token
-                              const csrfMatch = content.match(/["\']csrf["\']:\s*["\']([^"\']+)["\']|csrfToken["\']:\s*["\']([^"\']+)["\']/i);
-                              if (csrfMatch && !csrfToken) {
-                                csrfToken = csrfMatch[1] || csrfMatch[2];
-                                console.log('✅ Found CSRF token in script tag');
-                              }
-                              
-                              // Look for seller ID
-                              const sellerMatch = content.match(/sellerId["\']:\s*["\']?(\d+)["\']?|userId["\']:\s*["\']?(\d+)["\']?/i);
-                              if (sellerMatch && !sellerId) {
-                                sellerId = sellerMatch[1] || sellerMatch[2];
-                                console.log('✅ Found seller ID in script tag');
-                              }
-                            }
-                            
-                            // Send whatever we found
-                            if (bearerToken || csrfToken || sellerId) {
-                              chrome.runtime.sendMessage({
-                                type: 'MERCARI_AUTH_CAPTURED',
-                                bearerToken: bearerToken,
-                                csrfToken: csrfToken,
-                                sellerId: sellerId,
-                                timestamp: Date.now(),
-                              });
-                            }
-                            
-                            resolve({ bearerToken: !!bearerToken, csrfToken: !!csrfToken, sellerId: !!sellerId });
-                          }
-                        }, 3000);
-                        
-                        window.fetch = function(...args) {
-                          const [url, options] = args;
-                          
-                          // Check if this is a Mercari API call
-                          if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
-                            console.log('🎯 Intercepted Mercari API call!');
-                            
-                            // Extract tokens from headers
-                            if (options?.headers) {
-                              const headers = options.headers;
-                              
-                              if (headers.Authorization || headers.authorization) {
-                                const authHeader = headers.Authorization || headers.authorization;
-                                if (authHeader.startsWith('Bearer ')) {
-                                  bearerToken = authHeader.substring(7);
-                                  console.log('✅ Captured bearer token from API call');
-                                }
-                              }
-                              
-                              if (headers['x-csrf-token']) {
-                                csrfToken = headers['x-csrf-token'];
-                                console.log('✅ Captured CSRF token from API call');
-                              }
-                              
-                              // Extract seller ID from request body
-                              if (options.body) {
-                                try {
-                                  const body = JSON.parse(options.body);
-                                  if (body.variables?.userItemsInput?.sellerId) {
-                                    sellerId = body.variables.userItemsInput.sellerId.toString();
-                                    console.log('✅ Captured seller ID from API call');
-                                  }
-                                } catch (e) {}
-                              }
-                              
-                              if (bearerToken && csrfToken && sellerId && !captured) {
-                                captured = true;
-                                clearTimeout(timeout);
-                                
-                                // Restore original fetch
-                                window.fetch = originalFetch;
-                                
-                                // Send to background
-                                chrome.runtime.sendMessage({
-                                  type: 'MERCARI_AUTH_CAPTURED',
-                                  bearerToken: bearerToken,
-                                  csrfToken: csrfToken,
-                                  sellerId: sellerId,
-                                  timestamp: Date.now(),
-                                });
-                                
-                                resolve({ bearerToken: true, csrfToken: true, sellerId: true });
-                              }
-                            }
-                          }
-                          
-                          return originalFetch.apply(this, args);
-                        };
-                        
-                        console.log('✅ API interceptor installed, waiting for Mercari API call...');
-                      });
-                    }
-                  });
+                  // Reload the page to trigger a fresh API call that our content script will intercept
+                  console.log('Reloading page to trigger API call interception...');
+                  await chrome.tabs.reload(tab.id);
                   
-                  console.log('Token extraction result from tab', tab.id, ':', results[0]?.result);
-                  
-                  // If we need to reload to trigger the API call, do it now
-                  if (needsReload) {
-                    console.log('Reloading tab to trigger API call with interceptor installed...');
-                    await chrome.tabs.reload(tab.id);
-                    // Wait longer for page to load and API call to be intercepted
-                    await new Promise(resolve => setTimeout(resolve, 4000));
-                  }
+                  // Wait for page load and API call interception
+                  console.log('Waiting 5 seconds for page load and token capture...');
+                  await new Promise(resolve => setTimeout(resolve, 5000));
                 } catch (e) {
                   console.log('⚠️ Could not inject/execute in tab', tab.id, ':', e);
                 }
