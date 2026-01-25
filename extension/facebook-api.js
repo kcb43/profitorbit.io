@@ -6,17 +6,28 @@
 // Get Facebook cookies and dtsg token
 async function getFacebookAuth() {
   try {
-    // Service workers CAN access cookies, but we need to use URL not domain
-    let cookies = await chrome.cookies.getAll({ url: 'https://www.facebook.com' });
-    console.log('🍪 Cookies from https://www.facebook.com:', cookies.length);
+    // Try to get specific cookies by name
+    const cookieNames = ['c_user', 'xs', 'datr', 'sb', 'fr', 'wd', 'presence'];
+    const cookies = [];
     
-    if (!cookies || cookies.length === 0) {
-      // Try the API endpoint URL
-      cookies = await chrome.cookies.getAll({ url: 'https://www.facebook.com/api/graphql/' });
-      console.log('🍪 Cookies from API URL:', cookies.length);
+    for (const name of cookieNames) {
+      try {
+        const cookie = await chrome.cookies.get({
+          url: 'https://www.facebook.com',
+          name: name
+        });
+        if (cookie) {
+          cookies.push(cookie);
+          console.log(`✅ Found cookie: ${name}`);
+        }
+      } catch (e) {
+        console.log(`⚠️ Could not get cookie ${name}:`, e.message);
+      }
     }
     
-    if (!cookies || cookies.length === 0) {
+    console.log('🍪 Total cookies found:', cookies.length);
+    
+    if (cookies.length === 0) {
       throw new Error('Not logged into Facebook - no cookies found. Please make sure you are logged into Facebook in your browser.');
     }
     
