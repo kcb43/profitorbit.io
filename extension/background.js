@@ -2359,7 +2359,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Now send the scrape message
         chrome.tabs.sendMessage(targetTab.id, {
           action: 'SCRAPE_FACEBOOK_LISTINGS',
-        }, (response) => {
+        }, async (response) => {
           if (chrome.runtime.lastError) {
             console.error('❌ Error sending scrape message:', chrome.runtime.lastError);
             clearTimeout(timeout);
