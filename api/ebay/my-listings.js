@@ -222,13 +222,19 @@ function parseMyeBaySellingXML(xml) {
 
     const itemId = getField('ItemID');
     const title = getField('Title');
-    const currentPrice = getField('CurrentPrice');
+    
+    // Extract price with attribute handling (e.g., <CurrentPrice currencyID="USD">25.99</CurrentPrice>)
+    const currentPriceMatch = itemXml.match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
+    const currentPrice = currentPriceMatch ? currentPriceMatch[1] : null;
+    
     const quantity = getField('Quantity');
     const quantitySold = getField('QuantitySold');
     const listingType = getField('ListingType');
     const viewItemURL = getField('ViewItemURL');
     const startTime = getField('StartTime');
     const endTime = getField('EndTime');
+    
+    console.log(`📊 Item ${itemId} price: ${currentPrice}`);
 
     if (itemId && title) {
       items.push({

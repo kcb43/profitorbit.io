@@ -155,12 +155,23 @@ export default function Import() {
       }
       const result = await response.json();
       console.log('✅ Import result:', result);
+      
+      // Log detailed errors if any
+      if (result.errors && result.errors.length > 0) {
+        console.error('❌ Import errors:', result.errors);
+      }
+      
       return result;
     },
     onSuccess: (data) => {
+      const message = data.failed > 0 
+        ? `Imported ${data.imported} item(s), ${data.failed} failed. Check console for details.`
+        : `Successfully imported ${data.imported} item(s)`;
+        
       toast({
-        title: "Import successful",
-        description: `Imported ${data.imported} item(s)${data.failed > 0 ? `, ${data.failed} failed` : ''}`,
+        title: data.failed > 0 ? "Import completed with errors" : "Import successful",
+        description: message,
+        variant: data.failed > 0 ? "destructive" : "default",
       });
       queryClient.invalidateQueries(["ebay-listings"]);
       queryClient.invalidateQueries(["inventory-items"]);
@@ -168,6 +179,7 @@ export default function Import() {
       refetch(); // Refresh the list
     },
     onError: (error) => {
+      console.error('❌ Import mutation error:', error);
       toast({
         title: "Import failed",
         description: error.message,

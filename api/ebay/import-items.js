@@ -63,23 +63,59 @@ function parseItemXML(xml) {
     return match ? match[1] : null;
   };
 
+  // Extract price with attribute handling
+  const currentPriceMatch = xml.match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
+  const startPriceMatch = xml.match(/<StartPrice[^>]*>([^<]+)<\/StartPrice>/);
+  const price = parseFloat(currentPriceMatch?.[1] || startPriceMatch?.[1]) || 0;
+
   // Extract PictureURL fields
   const pictureURLs = [];
   const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
   let pictureMatch;
   while ((pictureMatch = pictureRegex.exec(xml)) !== null) {
-    pictureURLs.push(pictureMatch[1]);
+    if (pictureMatch[1] && pictureMatch[1].startsWith('http')) {
+      pictureURLs.push(pictureMatch[1]);
+    }
   }
+
+  // Extract description (handle CDATA)
+  let description = '';
+  const descMatch = xml.match(/<Description>(<!\[CDATA\[)?([\s\S]*?)(\]\]>)?<\/Description>/);
+  if (descMatch) {
+    description = descMatch[2] || '';
+  }
+
+  // Extract primary category
+  let categoryName = '';
+  let categoryId = '';
+  const primaryCategoryMatch = xml.match(/<PrimaryCategory>([\s\S]*?)<\/PrimaryCategory>/);
+  if (primaryCategoryMatch) {
+    const categoryXml = primaryCategoryMatch[1];
+    const catNameMatch = categoryXml.match(/<CategoryName>([^<]*)<\/CategoryName>/);
+    const catIdMatch = categoryXml.match(/<CategoryID>([^<]*)<\/CategoryID>/);
+    categoryName = catNameMatch ? catNameMatch[1] : '';
+    categoryId = catIdMatch ? catIdMatch[1] : '';
+  }
+
+  console.log(`📦 Parsed item:`, {
+    itemId: getField('ItemID'),
+    price,
+    category: categoryName,
+    hasDescription: description.length > 0,
+    imageCount: pictureURLs.length,
+  });
 
   return {
     itemId: getField('ItemID'),
     title: getField('Title'),
-    description: getField('Description') || '',
-    price: parseFloat(getField('CurrentPrice') || getField('StartPrice')) || 0,
+    description,
+    price,
     condition: getField('ConditionDisplayName') || 'USED',
     images: pictureURLs,
     quantity: parseInt(getField('Quantity')) || 1,
     sku: getField('SKU'),
+    categoryName,
+    categoryId,
   };
 }
 
@@ -120,14 +156,20 @@ export default async function handler(req, res) {
 
     for (const itemId of itemIds) {
       try {
+        console.log(`🔄 Importing item ${itemId}...`);
+        
         // Fetch detailed item info from eBay Trading API
         const itemDetails = await getItemDetails(itemId, accessToken);
 
         if (!itemDetails || !itemDetails.itemId) {
+          const error = 'Failed to parse item data';
           failed++;
-          errors.push({ itemId, error: 'Failed to parse item data' });
+          errors.push({ itemId, error });
+          console.error(`❌ ${itemId}: ${error}`);
           continue;
         }
+
+        console.log(`💾 Inserting item ${itemId} into database...`);
 
         // Create inventory item
         const { error: insertError } = await supabase
@@ -146,22 +188,30 @@ export default async function handler(req, res) {
             ebay_item_id: itemDetails.itemId,
             condition: itemDetails.condition,
             purchase_date: new Date().toISOString(),
+            // Store eBay category info in metadata for now
+            // Later, AI will map this to our inventory categories
+            notes: itemDetails.categoryName ? `eBay Category: ${itemDetails.categoryName} (ID: ${itemDetails.categoryId})` : null,
           });
 
         if (insertError) {
           failed++;
-          errors.push({ itemId, error: insertError.message });
-          console.error(`Failed to import item ${itemId}:`, insertError);
+          const errorMsg = insertError.message;
+          errors.push({ itemId, error: errorMsg });
+          console.error(`❌ Failed to import item ${itemId}:`, insertError);
         } else {
           imported++;
+          console.log(`✅ Successfully imported item ${itemId}`);
         }
 
       } catch (error) {
         failed++;
-        errors.push({ itemId, error: error.message });
-        console.error(`Error importing item ${itemId}:`, error);
+        const errorMsg = error.message;
+        errors.push({ itemId, error: errorMsg });
+        console.error(`❌ Error importing item ${itemId}:`, error);
       }
     }
+
+    console.log(`📊 Import summary: ${imported} imported, ${failed} failed`);
 
     return res.status(200).json({
       imported,
