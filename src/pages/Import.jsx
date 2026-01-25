@@ -109,8 +109,8 @@ export default function Import() {
       
       const response = await fetch(`/api/ebay/my-listings?status=${listingStatus}`, {
         headers: {
-          'X-User-Id': userId,
-          'X-User-Token': ebayToken?.access_token || '',
+          'x-user-id': userId,  // lowercase to match API
+          'x-user-token': ebayToken?.access_token || '',
         },
       });
       
@@ -119,7 +119,10 @@ export default function Import() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Error fetching listings:', errorData);
-        throw new Error(errorData.error || 'Failed to fetch eBay listings');
+        
+        // Show the full error object to user
+        const errorMsg = errorData.error || errorData.message || 'Failed to fetch eBay listings';
+        throw new Error(`${errorMsg}${errorData.details ? '\n\nDetails: ' + errorData.details : ''}`);
       }
       const data = await response.json();
       console.log('✅ Fetched listings:', data.listings?.length || 0, 'items');
@@ -139,8 +142,8 @@ export default function Import() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          'X-User-Id': userId,
-          'X-User-Token': ebayToken?.access_token || '',
+          'x-user-id': userId,  // lowercase to match API
+          'x-user-token': ebayToken?.access_token || '',
         },
         body: JSON.stringify({ itemIds }),
       });

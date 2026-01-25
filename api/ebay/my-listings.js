@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id, X-User-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-user-id, x-user-token');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -35,12 +35,18 @@ export default async function handler(req, res) {
 
   try {
     const userId = getUserId(req);
+    console.log('🔍 API: getUserId result:', userId);
+    
     if (!userId) {
+      console.error('❌ API: No user ID in headers');
       return res.status(401).json({ error: 'Unauthorized - User ID missing' });
     }
 
     const accessToken = getEbayToken(req);
+    console.log('🔍 API: getEbayToken result:', accessToken ? 'token present' : 'NO TOKEN');
+    
     if (!accessToken) {
+      console.error('❌ API: No eBay token in headers');
       return res.status(401).json({ error: 'eBay not connected. Please connect your eBay account first.' });
     }
 
