@@ -2225,6 +2225,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('📡 SCRAPE_FACEBOOK_LISTINGS received from Import page');
         
+        // Strategy 1: Try offscreen document first (invisible, no tabs)
+        try {
+          console.log('🔍 Attempting offscreen scraping...');
+          
+          // Check if offscreen document already exists
+          const existingContexts = await chrome.runtime.getContexts({
+            contextTypes: ['OFFSCREEN_DOCUMENT'],
+          });
+          
+          if (existingContexts.length === 0) {
+            // Create offscreen document
+            await chrome.offscreen.createDocument({
+              url: 'offscreen-facebook.html',
+              reasons: ['DOM_SCRAPING'],
+              justification: 'Scrape Facebook Marketplace listings without visible tabs',
+            });
+            console.log('✅ Created offscreen document');
+            
+            // Wait for it to load
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            console.log('✅ Offscreen document already exists');
+          }
+          
+          // Send scrape request to offscreen document
+          const result = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Offscreen scraping timeout'));
+            }, 60000); // 60 second timeout
+            
+            chrome.runtime.sendMessage({
+              action: 'SCRAPE_FACEBOOK_IN_OFFSCREEN',
+            }, (response) => {
+              clearTimeout(timeout);
+              
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve(response);
+              }
+            });
+          });
+          
+          if (result.success) {
+            console.log('✅ Offscreen scraping succeeded:', result.listings?.length || 0);
+            sendResponse(result);
+            return;
+          } else {
+            console.warn('⚠️ Offscreen scraping failed, falling back to tab method:', result.error);
+          }
+          
+        } catch (offscreenError) {
+          console.warn('⚠️ Offscreen method failed, falling back to tab method:', offscreenError);
+        }
+        
+        // Strategy 2: Fallback to existing tab or create hidden tab
+        console.log('📡 Using tab-based scraping...');
+        
         // Find or create a Facebook tab
         const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
         let targetTab = tabs.find(t => t.url.includes('/marketplace/you/selling') || t.url.includes('/marketplace/you/listings'));
@@ -2233,13 +2291,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           targetTab = tabs[0]; // Use any Facebook tab
         }
         
+        let createdNewTab = false;
         if (!targetTab) {
-          // No Facebook tab open - create one
-          console.log('📡 No Facebook tab found, creating new tab...');
-          targetTab = await chrome.tabs.create({
+          // No Facebook tab open - create one (hidden)
+          console.log('📡 No Facebook tab found, creating hidden tab...');
+          const window = await chrome.windows.create({
             url: 'https://www.facebook.com/marketplace/you/selling',
-            active: false,
+            type: 'popup',
+            state: 'minimized',
+            focused: false,
+            width: 1,
+            height: 1,
           });
+          targetTab = window.tabs[0];
+          createdNewTab = true;
           
           // Wait for the tab to load
           await new Promise(resolve => setTimeout(resolve, 3000));
@@ -2250,9 +2315,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Send message to content script on the Facebook tab and wait for response
         chrome.tabs.sendMessage(targetTab.id, {
           action: 'SCRAPE_FACEBOOK_LISTINGS',
-        }, (response) => {
+        }, async (response) => {
           if (chrome.runtime.lastError) {
             console.error('❌ Error sending scrape message:', chrome.runtime.lastError);
+            
+            // Clean up created tab
+            if (createdNewTab && targetTab?.windowId) {
+              try {
+                await chrome.windows.remove(targetTab.windowId);
+              } catch (e) {}
+            }
+            
             sendResponse({
               success: false,
               error: chrome.runtime.lastError.message || 'Failed to communicate with Facebook tab. Please make sure you have Facebook open and are logged in.',
@@ -2265,9 +2338,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('✅ Scrape initiated, waiting for results...');
           
           // Listen for the scraped results
-          const resultListener = (msg, snd, respond) => {
+          const resultListener = async (msg, snd, respond) => {
             if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
               chrome.runtime.onMessage.removeListener(resultListener);
+              
+              // Clean up created tab
+              if (createdNewTab && targetTab?.windowId) {
+                try {
+                  await chrome.windows.remove(targetTab.windowId);
+                } catch (e) {}
+              }
               
               // Return the listings to the Import page
               sendResponse({
@@ -2281,8 +2361,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.runtime.onMessage.addListener(resultListener);
           
           // Timeout after 30 seconds
-          setTimeout(() => {
+          setTimeout(async () => {
             chrome.runtime.onMessage.removeListener(resultListener);
+            
+            // Clean up created tab
+            if (createdNewTab && targetTab?.windowId) {
+              try {
+                await chrome.windows.remove(targetTab.windowId);
+              } catch (e) {}
+            }
+            
             sendResponse({
               success: false,
               error: 'Scraping timed out. Please try again.',
