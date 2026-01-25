@@ -2438,20 +2438,131 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     console.log('Content script may already be injected in tab', tab.id);
                   });
                   
-                  // Then execute the token capture logic
-                  await chrome.scripting.executeScript({
+                  // Execute comprehensive token extraction directly in the page
+                  const results = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     func: () => {
-                      // Force update login status which will trigger token capture
-                      if (typeof updateLoginStatus === 'function') {
-                        updateLoginStatus(true);
+                      console.log('🔍 Extracting Mercari tokens from page...');
+                      
+                      let bearerToken = null;
+                      let csrfToken = null;
+                      let sellerId = null;
+                      
+                      // Method 1: Search all localStorage keys
+                      try {
+                        for (let i = 0; i < localStorage.length; i++) {
+                          const key = localStorage.key(i);
+                          const value = localStorage.getItem(key);
+                          
+                          if (value && value.includes('Bearer') || value.includes('token') || value.includes('auth')) {
+                            console.log('📦 Found potential auth in localStorage:', key);
+                            try {
+                              const parsed = JSON.parse(value);
+                              if (parsed.accessToken || parsed.token || parsed.bearerToken) {
+                                bearerToken = parsed.accessToken || parsed.token || parsed.bearerToken;
+                                console.log('✅ Found bearer token in localStorage:', key);
+                              }
+                              if (parsed.csrfToken || parsed.csrf) {
+                                csrfToken = parsed.csrfToken || parsed.csrf;
+                                console.log('✅ Found CSRF token in localStorage:', key);
+                              }
+                              if (parsed.userId || parsed.sellerId || parsed.id) {
+                                sellerId = parsed.userId || parsed.sellerId || parsed.id;
+                                console.log('✅ Found seller ID in localStorage:', key);
+                              }
+                            } catch (e) {
+                              // Not JSON
+                            }
+                          }
+                        }
+                      } catch (e) {
+                        console.log('⚠️ Could not search localStorage:', e);
                       }
+                      
+                      // Method 2: Search cookies
+                      if (!csrfToken || !bearerToken) {
+                        try {
+                          const cookies = document.cookie.split(';');
+                          for (const cookie of cookies) {
+                            const [name, value] = cookie.trim().split('=');
+                            if (name && (name.includes('csrf') || name.includes('CSRF') || name.includes('token'))) {
+                              if (!csrfToken) {
+                                csrfToken = decodeURIComponent(value);
+                                console.log('✅ Found CSRF token in cookie:', name);
+                              }
+                            }
+                            if (name && (name.includes('auth') || name.includes('bearer'))) {
+                              if (!bearerToken) {
+                                bearerToken = decodeURIComponent(value);
+                                console.log('✅ Found bearer token in cookie:', name);
+                              }
+                            }
+                          }
+                        } catch (e) {
+                          console.log('⚠️ Could not search cookies:', e);
+                        }
+                      }
+                      
+                      // Method 3: Meta tag
+                      if (!csrfToken) {
+                        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfMeta && csrfMeta.content) {
+                          csrfToken = csrfMeta.content;
+                          console.log('✅ Found CSRF token in meta tag');
+                        }
+                      }
+                      
+                      // Method 4: Search page HTML for seller ID
+                      if (!sellerId) {
+                        const urlMatch = window.location.pathname.match(/\/mypage\/?|\/u\/(\d+)|sellerId[=:](\d+)/);
+                        if (urlMatch) {
+                          sellerId = urlMatch[1] || urlMatch[2];
+                          console.log('✅ Found seller ID in URL:', sellerId);
+                        }
+                      }
+                      
+                      // Method 5: Try window objects
+                      try {
+                        if (window.__INITIAL_STATE__) {
+                          const state = window.__INITIAL_STATE__;
+                          if (!sellerId && state.user) {
+                            sellerId = state.user.id || state.user.sellerId;
+                          }
+                          if (!bearerToken && state.auth) {
+                            bearerToken = state.auth.token || state.auth.accessToken;
+                          }
+                          if (!csrfToken && state.auth) {
+                            csrfToken = state.auth.csrfToken;
+                          }
+                        }
+                      } catch (e) {
+                        console.log('⚠️ Could not access window.__INITIAL_STATE__');
+                      }
+                      
+                      console.log('📊 Token extraction results:', {
+                        hasBearerToken: !!bearerToken,
+                        hasCsrfToken: !!csrfToken,
+                        hasSellerId: !!sellerId
+                      });
+                      
+                      // Send to background script
+                      if (bearerToken || csrfToken || sellerId) {
+                        chrome.runtime.sendMessage({
+                          type: 'MERCARI_AUTH_CAPTURED',
+                          bearerToken: bearerToken,
+                          csrfToken: csrfToken,
+                          sellerId: sellerId,
+                          timestamp: Date.now(),
+                        });
+                      }
+                      
+                      return { bearerToken: !!bearerToken, csrfToken: !!csrfToken, sellerId: !!sellerId };
                     }
-                  }).catch(e => {
-                    console.log('⚠️ Could not execute token capture in tab', tab.id, ':', e.message);
                   });
+                  
+                  console.log('Token extraction result from tab', tab.id, ':', results[0]?.result);
                 } catch (e) {
-                  console.log('⚠️ Could not inject/execute in tab', tab.id);
+                  console.log('⚠️ Could not inject/execute in tab', tab.id, ':', e);
                 }
               }
               
