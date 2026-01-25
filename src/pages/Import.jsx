@@ -14,6 +14,7 @@ import { ArrowLeft, RefreshCw, Download, ChevronLeft, ChevronRight, AlertCircle,
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { inventoryApi } from "@/api/inventoryApi";
 import { format } from "date-fns";
+import { getCurrentUserId } from "@/api/supabaseClient";
 
 const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -46,6 +47,20 @@ export default function Import() {
   // Check connection status
   const [ebayToken, setEbayToken] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [userId, setUserId] = useState(null);
+
+  // Get user ID on mount
+  useEffect(() => {
+    const loadUserId = async () => {
+      try {
+        const id = await getCurrentUserId();
+        setUserId(id);
+      } catch (e) {
+        console.error('Error getting user ID:', e);
+      }
+    };
+    loadUserId();
+  }, []);
 
   // Check if user is connected to the selected marketplace
   useEffect(() => {
@@ -57,9 +72,11 @@ export default function Import() {
             const parsed = JSON.parse(stored);
             setEbayToken(parsed);
             setIsConnected(true);
+            console.log('✅ eBay connected, token found');
           } else {
             setEbayToken(null);
             setIsConnected(false);
+            console.log('❌ eBay not connected, no token in localStorage');
           }
         } catch (e) {
           console.error('Error parsing eBay token:', e);
@@ -81,42 +98,61 @@ export default function Import() {
   }, [selectedSource, setSearchParams]);
 
   // Fetch eBay listings
-  const { data: ebayListings, isLoading, refetch } = useQuery({
-    queryKey: ["ebay-listings", listingStatus],
+  const { data: ebayListings, isLoading, refetch, error } = useQuery({
+    queryKey: ["ebay-listings", listingStatus, userId],
     queryFn: async () => {
+      console.log('📡 Fetching eBay listings...', { userId, hasToken: !!ebayToken?.access_token });
+      
+      if (!userId) {
+        throw new Error('User ID not available');
+      }
+      
       const response = await fetch(`/api/ebay/my-listings?status=${listingStatus}`, {
         headers: {
+          'X-User-Id': userId,
           'X-User-Token': ebayToken?.access_token || '',
         },
       });
+      
+      console.log('📡 Response status:', response.status);
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Error fetching listings:', errorData);
         throw new Error(errorData.error || 'Failed to fetch eBay listings');
       }
       const data = await response.json();
+      console.log('✅ Fetched listings:', data.listings?.length || 0, 'items');
       setLastSync(new Date());
       return data.listings || [];
     },
-    enabled: selectedSource === "ebay" && isConnected,
+    enabled: selectedSource === "ebay" && isConnected && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Import mutation
   const importMutation = useMutation({
     mutationFn: async (itemIds) => {
+      console.log('📥 Importing items:', itemIds);
+      
       const response = await fetch("/api/ebay/import-items", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
+          'X-User-Id': userId,
           'X-User-Token': ebayToken?.access_token || '',
         },
         body: JSON.stringify({ itemIds }),
       });
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Import error:', errorData);
         throw new Error(errorData.error || 'Failed to import items');
       }
-      return response.json();
+      const result = await response.json();
+      console.log('✅ Import result:', result);
+      return result;
     },
     onSuccess: (data) => {
       toast({
@@ -377,6 +413,25 @@ export default function Import() {
             {/* Show content only if connected */}
             {isConnected && (
               <>
+            {/* Debug/Error Info */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium">Error loading listings</p>
+                  <p className="text-sm mt-1">{error.message}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => refetch()}
+                  >
+                    Try Again
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {/* Toolbar */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
