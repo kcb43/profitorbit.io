@@ -9,49 +9,21 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Helper to get user's eBay access token
-async function getEbayAccessToken(userId) {
-  const { data, error } = await supabase
-    .from('ebay_tokens')
-    .select('access_token, refresh_token, expires_at')
-    .eq('user_id', userId)
-    .single();
-
-  if (error || !data) {
-    throw new Error('eBay not connected. Please connect your eBay account first.');
-  }
-
-  // Check if token expired and refresh if needed
-  const now = Date.now();
-  if (data.expires_at && now >= new Date(data.expires_at).getTime()) {
-    // Token expired, need to refresh
-    const refreshResponse = await fetch('/api/ebay/refresh-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId }),
-    });
-    
-    if (!refreshResponse.ok) {
-      throw new Error('Failed to refresh eBay token');
-    }
-    
-    const refreshData = await refreshResponse.json();
-    return refreshData.access_token;
-  }
-
-  return data.access_token;
-}
-
 // Helper to get user ID from request
 function getUserId(req) {
   return req.headers['x-user-id'] || null;
+}
+
+// Helper to get eBay token from request headers
+function getEbayToken(req) {
+  return req.headers['x-user-token'] || null;
 }
 
 export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id, X-User-Token');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -67,10 +39,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const status = req.query.status || 'Active'; // Active, Ended, All
+    const accessToken = getEbayToken(req);
+    if (!accessToken) {
+      return res.status(401).json({ error: 'eBay not connected. Please connect your eBay account first.' });
+    }
 
-    // Get eBay access token
-    const accessToken = await getEbayAccessToken(userId);
+    const status = req.query.status || 'Active'; // Active, Ended, All
 
     // Determine which eBay API environment to use
     const ebayEnv = process.env.EBAY_ENV || 'production';

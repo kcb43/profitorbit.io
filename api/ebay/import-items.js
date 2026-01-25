@@ -8,24 +8,14 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Helper to get user's eBay access token
-async function getEbayAccessToken(userId) {
-  const { data, error } = await supabase
-    .from('ebay_tokens')
-    .select('access_token')
-    .eq('user_id', userId)
-    .single();
-
-  if (error || !data) {
-    throw new Error('eBay not connected');
-  }
-
-  return data.access_token;
-}
-
 // Helper to get user ID from request
 function getUserId(req) {
   return req.headers['x-user-id'] || null;
+}
+
+// Helper to get eBay token from request headers
+function getEbayToken(req) {
+  return req.headers['x-user-token'] || null;
 }
 
 // Fetch detailed item info from eBay
@@ -103,7 +93,7 @@ export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id, X-User-Token');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -119,14 +109,16 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    const accessToken = getEbayToken(req);
+    if (!accessToken) {
+      return res.status(401).json({ error: 'eBay not connected. Please connect your eBay account first.' });
+    }
+
     const { itemIds } = req.body;
 
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
       return res.status(400).json({ error: 'itemIds array is required' });
     }
-
-    // Get eBay access token
-    const accessToken = await getEbayAccessToken(userId);
 
     let imported = 0;
     let failed = 0;

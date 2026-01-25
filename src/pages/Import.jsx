@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, RefreshCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, RefreshCw, Download, ChevronLeft, ChevronRight, AlertCircle, Settings } from "lucide-react";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { inventoryApi } from "@/api/inventoryApi";
 import { format } from "date-fns";
@@ -42,6 +43,38 @@ export default function Import() {
   const [sortBy, setSortBy] = useState("newest");
   const [lastSync, setLastSync] = useState(null);
 
+  // Check connection status
+  const [ebayToken, setEbayToken] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Check if user is connected to the selected marketplace
+  useEffect(() => {
+    const checkConnection = () => {
+      if (selectedSource === "ebay") {
+        try {
+          const stored = localStorage.getItem('ebay_user_token');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setEbayToken(parsed);
+            setIsConnected(true);
+          } else {
+            setEbayToken(null);
+            setIsConnected(false);
+          }
+        } catch (e) {
+          console.error('Error parsing eBay token:', e);
+          setEbayToken(null);
+          setIsConnected(false);
+        }
+      } else {
+        // For other marketplaces, not implemented yet
+        setIsConnected(false);
+      }
+    };
+
+    checkConnection();
+  }, [selectedSource]);
+
   // Update URL when source changes
   useEffect(() => {
     setSearchParams({ source: selectedSource });
@@ -51,13 +84,20 @@ export default function Import() {
   const { data: ebayListings, isLoading, refetch } = useQuery({
     queryKey: ["ebay-listings", listingStatus],
     queryFn: async () => {
-      const response = await fetch(`/api/ebay/my-listings?status=${listingStatus}`);
-      if (!response.ok) throw new Error("Failed to fetch eBay listings");
+      const response = await fetch(`/api/ebay/my-listings?status=${listingStatus}`, {
+        headers: {
+          'X-User-Token': ebayToken?.access_token || '',
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to fetch eBay listings');
+      }
       const data = await response.json();
       setLastSync(new Date());
       return data.listings || [];
     },
-    enabled: selectedSource === "ebay",
+    enabled: selectedSource === "ebay" && isConnected,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -66,20 +106,27 @@ export default function Import() {
     mutationFn: async (itemIds) => {
       const response = await fetch("/api/ebay/import-items", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'X-User-Token': ebayToken?.access_token || '',
+        },
         body: JSON.stringify({ itemIds }),
       });
-      if (!response.ok) throw new Error("Failed to import items");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to import items');
+      }
       return response.json();
     },
     onSuccess: (data) => {
       toast({
         title: "Import successful",
-        description: `Imported ${data.imported} item(s)`,
+        description: `Imported ${data.imported} item(s)${data.failed > 0 ? `, ${data.failed} failed` : ''}`,
       });
       queryClient.invalidateQueries(["ebay-listings"]);
       queryClient.invalidateQueries(["inventory-items"]);
       setSelectedItems([]);
+      refetch(); // Refresh the list
     },
     onError: (error) => {
       toast({
@@ -301,9 +348,38 @@ export default function Import() {
 
           {/* Right Content - Listings Grid */}
           <div className="space-y-4">
+            {/* Not Connected Alert */}
+            {!isConnected && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      {selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} not connected
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Please connect your {selectedSource === "ebay" ? "eBay" : selectedSource} account in Settings before importing.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => navigate(createPageUrl("Settings"))}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Go to Settings
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Show content only if connected */}
+            {isConnected && (
+              <>
             {/* Toolbar */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   <Checkbox
                     checked={selectedItems.length === paginatedListings.length && paginatedListings.length > 0}
@@ -319,7 +395,7 @@ export default function Import() {
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
-                      Import ({selectedItems.length})
+                      {importMutation.isPending ? 'Importing...' : `Import (${selectedItems.length})`}
                     </Button>
                   )}
                 </div>
@@ -360,6 +436,9 @@ export default function Import() {
             ) : paginatedListings.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
                 <p className="text-muted-foreground">No items found</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try changing the filters or click "Get Latest eBay Items" to refresh
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -383,7 +462,10 @@ export default function Import() {
                           {item.startTime && format(new Date(item.startTime), "MMM dd, yyyy")} · ${item.price} · Item ID: {item.itemId}
                         </p>
                         {item.imported && (
-                          <Badge variant="secondary" className="mt-2">NOT IMPORTED</Badge>
+                          <Badge variant="secondary" className="mt-2">ALREADY IMPORTED</Badge>
+                        )}
+                        {!item.imported && (
+                          <Badge variant="outline" className="mt-2">NOT IMPORTED</Badge>
                         )}
                       </div>
                     </div>
@@ -415,6 +497,8 @@ export default function Import() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+            )}
+              </>
             )}
           </div>
         </div>
