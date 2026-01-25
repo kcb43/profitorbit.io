@@ -80,11 +80,14 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "profit-orbit-page-api.js"
+        "profit-orbit-page-api.js",
+        "facebook-scraper.js"
       ],
       "matches": [
         "https://profitorbit.io/*",
         "https://*.vercel.app/*",
+        "https://www.facebook.com/*",
+        "https://m.facebook.com/*",
         "http://localhost:5173/*",
         "http://localhost:5174/*"
       ]

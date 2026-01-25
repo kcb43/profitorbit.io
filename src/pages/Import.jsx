@@ -242,9 +242,14 @@ export default function Import() {
 
   // Filter and sort listings
   const filteredListings = React.useMemo(() => {
-    if (!ebayListings) return [];
+    // Use appropriate listings based on selected source
+    const sourceListings = selectedSource === "facebook" 
+      ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+      : (ebayListings || []);
     
-    let filtered = ebayListings.filter((item) => {
+    if (!sourceListings || sourceListings.length === 0) return [];
+    
+    let filtered = sourceListings.filter((item) => {
       if (importingStatus === "not_imported") {
         return !item.imported;
       } else if (importingStatus === "imported") {
@@ -268,7 +273,7 @@ export default function Import() {
     });
 
     return filtered;
-  }, [ebayListings, importingStatus, sortBy]);
+  }, [ebayListings, importingStatus, sortBy, selectedSource, userId, queryClient]);
 
   // Pagination
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
@@ -277,8 +282,8 @@ export default function Import() {
     currentPage * itemsPerPage
   );
 
-  const notImportedCount = ebayListings?.filter((item) => !item.imported).length || 0;
-  const importedCount = ebayListings?.filter((item) => item.imported).length || 0;
+  const notImportedCount = filteredListings?.filter((item) => !item.imported).length || 0;
+  const importedCount = filteredListings?.filter((item) => item.imported).length || 0;
 
   const handleRefresh = () => {
     if (!canSync) {
@@ -287,6 +292,12 @@ export default function Import() {
         description: `You can sync again at ${format(nextSyncTime, "h:mm:ss a")}`,
         variant: "destructive",
       });
+      return;
+    }
+    
+    // Handle Facebook differently - use extension scraping
+    if (selectedSource === 'facebook') {
+      handleFacebookSync();
       return;
     }
     
@@ -307,6 +318,62 @@ export default function Import() {
       description: "Fetching latest items from eBay",
     });
   };
+
+  // Handle Facebook sync via extension
+  const handleFacebookSync = async () => {
+    try {
+      console.log('📡 Requesting Facebook scrape from extension...');
+      
+      // Send message to extension
+      window.postMessage({ 
+        action: 'SCRAPE_FACEBOOK_LISTINGS',
+        source: 'profitorbit-import-page',
+      }, '*');
+      
+      toast({
+        title: "Syncing Facebook Marketplace",
+        description: "Extension is scraping your listings...",
+      });
+      
+      setLastSync(new Date());
+      
+    } catch (error) {
+      console.error('❌ Facebook sync error:', error);
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync Facebook listings",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Listen for Facebook listings from extension
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.action === 'FACEBOOK_LISTINGS_READY') {
+        console.log('✅ Facebook listings ready:', event.data);
+        
+        // Fetch from extension storage
+        if (window.chrome?.storage) {
+          chrome.storage.local.get(['facebook_listings'], (result) => {
+            const listings = result.facebook_listings || [];
+            console.log('📦 Retrieved Facebook listings:', listings.length);
+            
+            // Update the query data
+            queryClient.setQueryData(['facebook-listings', userId], listings);
+            
+            toast({
+              title: "Success",
+              description: `Found ${listings.length} Facebook listings`,
+            });
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [userId, queryClient, toast]);
 
   const handleImport = () => {
     if (selectedItems.length === 0) {

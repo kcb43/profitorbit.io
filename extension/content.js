@@ -680,6 +680,66 @@ if (MARKETPLACE) {
       return true;
     }
     
+    // Facebook Marketplace scraping
+    if (message.action === 'SCRAPE_FACEBOOK_LISTINGS' && MARKETPLACE === 'facebook') {
+      console.log('📥 Received Facebook scrape request');
+      
+      // Load scraper module
+      const script = document.createElement('script');
+      script.src = chrome.runtime.getURL('facebook-scraper.js');
+      document.head.appendChild(script);
+      
+      script.onload = async () => {
+        try {
+          // Wait for scraper to be ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (!window.__fbScraper) {
+            throw new Error('Facebook scraper not loaded');
+          }
+          
+          const result = await window.__fbScraper.scrapeFacebookListings();
+          
+          if (result.waitForNavigation) {
+            sendResponse({ 
+              status: 'navigating',
+              message: 'Navigating to marketplace listings...' 
+            });
+            return;
+          }
+          
+          // Send listings to background
+          chrome.runtime.sendMessage({
+            action: 'FACEBOOK_LISTINGS_SCRAPED',
+            data: result.listings,
+            total: result.total,
+            timestamp: result.timestamp,
+          });
+          
+          sendResponse({ 
+            status: 'success',
+            count: result.listings.length,
+            listings: result.listings,
+          });
+        } catch (error) {
+          console.error('❌ Scraping error:', error);
+          sendResponse({ 
+            status: 'error',
+            message: error.message 
+          });
+        }
+      };
+      
+      script.onerror = () => {
+        sendResponse({ 
+          status: 'error',
+          message: 'Failed to load Facebook scraper' 
+        });
+      };
+      
+      return true; // Keep channel open for async response
+    }
+    
     if (message.type === 'CREATE_LISTING') {
       // Run async listing creation
       // Note: Background script already navigated tab to /sell/, so content script shouldn't navigate again

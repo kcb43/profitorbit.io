@@ -2216,6 +2216,37 @@ async function connectPlatform(platform, apiUrl, authToken) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const type = message?.type;
+  const action = message?.action;
+
+  // Handle Facebook scraping results
+  if (action === 'FACEBOOK_LISTINGS_SCRAPED') {
+    console.log('📥 Received scraped Facebook listings:', message.data?.length || 0);
+    
+    // Store in chrome.storage for Import page to fetch
+    chrome.storage.local.set({
+      'facebook_listings': message.data || [],
+      'facebook_listings_total': message.total || 0,
+      'facebook_listings_timestamp': message.timestamp || Date.now(),
+    }).then(() => {
+      console.log('✅ Stored Facebook listings in chrome.storage');
+      
+      // Notify Import page
+      notifyProfitOrbit({
+        action: 'FACEBOOK_LISTINGS_READY',
+        count: message.data?.length || 0,
+        total: message.total || 0,
+      }).catch(err => {
+        console.error('Failed to notify Profit Orbit:', err);
+      });
+      
+      sendResponse({ status: 'stored' });
+    }).catch(err => {
+      console.error('Failed to store Facebook listings:', err);
+      sendResponse({ status: 'error', message: err.message });
+    });
+    
+    return true; // Keep channel open for async response
+  }
 
   if (type && type.endsWith('_LOGIN_STATUS')) {
     const marketplace = message.marketplace;
