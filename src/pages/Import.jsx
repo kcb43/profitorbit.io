@@ -169,14 +169,19 @@ export default function Import() {
   // Check Facebook connection
   useEffect(() => {
     if (selectedSource === "facebook") {
-      // Check if Facebook is connected
+      // Check if Facebook is connected via extension
       try {
-        const fbToken = localStorage.getItem('facebook_access_token');
-        if (fbToken) {
-          const parsed = JSON.parse(fbToken);
+        const isConnected = localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+        const fbUser = localStorage.getItem('profit_orbit_facebook_user');
+        
+        console.log('🔍 Facebook connection check:', { isConnected, fbUser });
+        
+        if (isConnected && fbUser) {
           setIsConnected(true);
+          console.log('✅ Facebook connected');
         } else {
           setIsConnected(false);
+          console.log('❌ Facebook not connected');
         }
       } catch (e) {
         console.error('Error checking Facebook connection:', e);
@@ -449,7 +454,7 @@ export default function Import() {
                   <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                   {!canSync && nextSyncTime 
                     ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
-                    : "Get Latest eBay Items"
+                    : `Get Latest ${selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items`
                   }
                 </Button>
               </div>
@@ -678,7 +683,7 @@ export default function Import() {
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
                 <p className="text-muted-foreground">No items found</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Try changing the filters or click "Get Latest eBay Items" to refresh
+                  Try changing the filters or click "Get Latest {selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items" to refresh
                 </p>
               </div>
             ) : (
