@@ -6,32 +6,23 @@
 // Get Facebook cookies and dtsg token
 async function getFacebookAuth() {
   try {
-    // Try different Facebook domain variations
-    let cookies = await chrome.cookies.getAll({ domain: '.facebook.com' });
-    console.log('🍪 Cookies from .facebook.com:', cookies.length);
+    // Get cookies from storage (captured by content script)
+    const storage = await chrome.storage.local.get([
+      'facebook_cookies',
+      'facebook_cookies_timestamp',
+      'facebook_dtsg',
+      'facebook_dtsg_timestamp'
+    ]);
+    
+    const cookies = storage.facebook_cookies || [];
+    const cookiesTimestamp = storage.facebook_cookies_timestamp || 0;
+    const cookiesAge = Date.now() - cookiesTimestamp;
+    
+    console.log('🍪 Cookies from storage:', cookies.length);
+    console.log('🍪 Cookies age:', Math.round(cookiesAge / 1000), 'seconds');
     
     if (!cookies || cookies.length === 0) {
-      // Try without the leading dot
-      cookies = await chrome.cookies.getAll({ domain: 'facebook.com' });
-      console.log('🍪 Cookies from facebook.com:', cookies.length);
-    }
-    
-    if (!cookies || cookies.length === 0) {
-      // Try www
-      cookies = await chrome.cookies.getAll({ domain: 'www.facebook.com' });
-      console.log('🍪 Cookies from www.facebook.com:', cookies.length);
-    }
-    
-    if (!cookies || cookies.length === 0) {
-      // Try getting all cookies and filter
-      const allCookies = await chrome.cookies.getAll({});
-      cookies = allCookies.filter(c => c.domain.includes('facebook.com'));
-      console.log('🍪 Facebook cookies from all cookies:', cookies.length);
-      console.log('🍪 Sample domains:', cookies.slice(0, 3).map(c => c.domain));
-    }
-    
-    if (!cookies || cookies.length === 0) {
-      throw new Error('Not logged into Facebook - no cookies found');
+      throw new Error('Not logged into Facebook - no cookies in storage. Please visit Facebook.com in a browser tab.');
     }
     
     // Check for essential cookies
@@ -41,7 +32,7 @@ async function getFacebookAuth() {
     console.log('🍪 Cookie names found:', cookies.map(c => c.name).join(', '));
     
     if (!cUser || !xs) {
-      throw new Error('Facebook login incomplete - missing authentication cookies (c_user or xs)');
+      throw new Error('Facebook login incomplete - missing authentication cookies (c_user or xs). Please visit Facebook.com in a browser tab.');
     }
     
     console.log('✅ Facebook cookies found:', {
@@ -51,14 +42,13 @@ async function getFacebookAuth() {
     });
     
     // Get fb_dtsg token from storage (captured from Facebook page)
-    const storage = await chrome.storage.local.get(['facebook_dtsg', 'facebook_dtsg_timestamp']);
     const dtsg = storage.facebook_dtsg;
     const dtsgTimestamp = storage.facebook_dtsg_timestamp || 0;
     const dtsgAge = Date.now() - dtsgTimestamp;
     
-    // Refresh dtsg if older than 1 hour
-    if (!dtsg || dtsgAge > 3600000) {
-      console.log('⚠️ fb_dtsg token missing or stale, will capture from Facebook page...');
+    // Refresh dtsg if older than 1 hour, or if cookies need refresh
+    if (!dtsg || dtsgAge > 3600000 || cookiesAge > 3600000) {
+      console.log('⚠️ fb_dtsg token or cookies missing/stale, will capture from Facebook page...');
       return { cookies, dtsg: null, needsDtsgRefresh: true };
     }
     

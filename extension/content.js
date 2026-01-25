@@ -427,9 +427,20 @@ function updateLoginStatus(force = false) {
           
           if (dtsg) {
             console.log('✅ Captured fb_dtsg token:', dtsg.substring(0, 30) + '...');
+            
+            // Also capture cookies for GraphQL API
+            const cookieString = document.cookie;
+            const cookies = cookieString.split(';').map(c => {
+              const [name, ...valueParts] = c.trim().split('=');
+              return { name, value: valueParts.join('=') };
+            }).filter(c => c.name && c.value);
+            
+            console.log('✅ Captured cookies:', cookies.map(c => c.name).join(', '));
+            
             chrome.runtime.sendMessage({
-              type: 'FACEBOOK_DTSG_CAPTURED',
+              type: 'FACEBOOK_AUTH_CAPTURED',
               dtsg: dtsg,
+              cookies: cookies,
               timestamp: Date.now(),
             });
           } else {

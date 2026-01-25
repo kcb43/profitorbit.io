@@ -2264,7 +2264,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const timeout = setTimeout(() => reject(new Error('dtsg capture timeout')), 10000);
             
             const listener = (msg) => {
-              if (msg.type === 'FACEBOOK_DTSG_CAPTURED') {
+              if (msg.type === 'FACEBOOK_AUTH_CAPTURED' || msg.type === 'FACEBOOK_DTSG_CAPTURED') {
                 clearTimeout(timeout);
                 chrome.runtime.onMessage.removeListener(listener);
                 resolve();
@@ -2331,19 +2331,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
   
-  // Handle fb_dtsg capture from content script
-  if (type === 'FACEBOOK_DTSG_CAPTURED') {
+  // Handle fb_dtsg and cookies capture from content script
+  if (type === 'FACEBOOK_AUTH_CAPTURED' || type === 'FACEBOOK_DTSG_CAPTURED') {
     const dtsg = message.dtsg;
+    const cookies = message.cookies || [];
     const timestamp = message.timestamp || Date.now();
     
+    const dataToStore = {
+      'facebook_dtsg_timestamp': timestamp,
+    };
+    
     if (dtsg) {
-      chrome.storage.local.set({
-        'facebook_dtsg': dtsg,
-        'facebook_dtsg_timestamp': timestamp,
-      }).then(() => {
-        console.log('✅ Stored fb_dtsg token');
-      });
+      dataToStore['facebook_dtsg'] = dtsg;
+      console.log('✅ Storing fb_dtsg token');
     }
+    
+    if (cookies && cookies.length > 0) {
+      dataToStore['facebook_cookies'] = cookies;
+      dataToStore['facebook_cookies_timestamp'] = timestamp;
+      console.log('✅ Storing', cookies.length, 'Facebook cookies');
+    }
+    
+    chrome.storage.local.set(dataToStore).then(() => {
+      console.log('✅ Stored Facebook auth data');
+    });
     
     sendResponse({ success: true });
     return true;
