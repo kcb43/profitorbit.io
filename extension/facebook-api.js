@@ -6,8 +6,29 @@
 // Get Facebook cookies and dtsg token
 async function getFacebookAuth() {
   try {
-    // Get cookies from Facebook domain
-    const cookies = await chrome.cookies.getAll({ domain: '.facebook.com' });
+    // Try different Facebook domain variations
+    let cookies = await chrome.cookies.getAll({ domain: '.facebook.com' });
+    console.log('🍪 Cookies from .facebook.com:', cookies.length);
+    
+    if (!cookies || cookies.length === 0) {
+      // Try without the leading dot
+      cookies = await chrome.cookies.getAll({ domain: 'facebook.com' });
+      console.log('🍪 Cookies from facebook.com:', cookies.length);
+    }
+    
+    if (!cookies || cookies.length === 0) {
+      // Try www
+      cookies = await chrome.cookies.getAll({ domain: 'www.facebook.com' });
+      console.log('🍪 Cookies from www.facebook.com:', cookies.length);
+    }
+    
+    if (!cookies || cookies.length === 0) {
+      // Try getting all cookies and filter
+      const allCookies = await chrome.cookies.getAll({});
+      cookies = allCookies.filter(c => c.domain.includes('facebook.com'));
+      console.log('🍪 Facebook cookies from all cookies:', cookies.length);
+      console.log('🍪 Sample domains:', cookies.slice(0, 3).map(c => c.domain));
+    }
     
     if (!cookies || cookies.length === 0) {
       throw new Error('Not logged into Facebook - no cookies found');
@@ -17,8 +38,10 @@ async function getFacebookAuth() {
     const cUser = cookies.find(c => c.name === 'c_user');
     const xs = cookies.find(c => c.name === 'xs');
     
+    console.log('🍪 Cookie names found:', cookies.map(c => c.name).join(', '));
+    
     if (!cUser || !xs) {
-      throw new Error('Facebook login incomplete - missing authentication cookies');
+      throw new Error('Facebook login incomplete - missing authentication cookies (c_user or xs)');
     }
     
     console.log('✅ Facebook cookies found:', {
