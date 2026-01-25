@@ -72,6 +72,8 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Accept-Language': 'en-US',
+        'Content-Language': 'en-US',
       },
     });
 

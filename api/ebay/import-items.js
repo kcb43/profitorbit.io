@@ -31,6 +31,8 @@ async function getItemDetails(sku, accessToken) {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Accept-Language': 'en-US',
+      'Content-Language': 'en-US',
     },
   });
 
