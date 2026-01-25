@@ -53,10 +53,23 @@ async function getFacebookAuth() {
     const dtsgTimestamp = storage.facebook_dtsg_timestamp || 0;
     const dtsgAge = Date.now() - dtsgTimestamp;
     
-    // Refresh dtsg if older than 1 hour
-    if (!dtsg || dtsgAge > 3600000) {
-      console.log('⚠️ fb_dtsg token missing or stale, will capture from Facebook page...');
+    console.log('🔑 fb_dtsg status:', {
+      hasToken: !!dtsg,
+      tokenAge: Math.round(dtsgAge / 1000 / 60) + ' minutes',
+      tokenPreview: dtsg ? dtsg.substring(0, 30) + '...' : 'none'
+    });
+    
+    // Try to use existing dtsg even if older than 1 hour (Facebook tokens can last longer)
+    // Only refresh if completely missing
+    if (!dtsg) {
+      console.log('⚠️ fb_dtsg token missing, will need to capture from Facebook page...');
       return { cookies, dtsg: null, needsDtsgRefresh: true };
+    }
+    
+    if (dtsgAge > 3600000) {
+      console.log('⚠️ fb_dtsg token is', Math.round(dtsgAge / 1000 / 60), 'minutes old, but will try using it anyway...');
+    } else {
+      console.log('✅ fb_dtsg token is fresh');
     }
     
     console.log('✅ fb_dtsg token found:', dtsg.substring(0, 30) + '...');
