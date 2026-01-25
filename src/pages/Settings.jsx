@@ -787,7 +787,7 @@ export default function Settings() {
           description: 'Please log into Mercari in a new tab first, then try again.',
           variant: 'destructive',
         });
-        showMercariInstructions();
+        showMercariInstructions(true); // true = explicit user action
       }
       
     } catch (error) {
@@ -832,7 +832,7 @@ export default function Settings() {
           window.ProfitOrbitExtension.getAllStatus((response) => {
             if (response.error) {
               console.log('Profit Orbit: Extension not available:', response.error);
-              showMercariInstructions();
+              // Don't show instructions - this is automatic background check, not user action
             } else if (response?.status?.mercari?.loggedIn) {
               console.log('Profit Orbit: Extension reports Mercari logged in:', response.status.mercari);
               const wasConnected = mercariConnected;
@@ -847,12 +847,12 @@ export default function Settings() {
               // which is triggered by events, not user action
             } else {
               console.log('Profit Orbit: Extension reports Mercari not logged in');
-              showMercariInstructions();
+              // Don't show instructions - this is automatic background check, not user action
             }
           });
         } catch (e) {
           console.log('Profit Orbit: Extension communication failed:', e);
-          showMercariInstructions();
+          // Don't show instructions - this is automatic background check, not user action
         }
       } else {
         console.log('Profit Orbit: Extension bridge not available - bridge script may not be loaded');
@@ -874,7 +874,7 @@ export default function Settings() {
           const testScript = document.createElement('script');
           testScript.onerror = () => {
             console.log('Profit Orbit: Extension may not be installed or enabled');
-            showMercariInstructions();
+            // Don't show instructions - this is automatic background check, not user action
           };
           testScript.src = chrome?.runtime?.getURL?.('profit-orbit-bridge.js') || '';
           if (testScript.src) {
@@ -893,7 +893,7 @@ export default function Settings() {
             console.warn('  1. Extension is installed and enabled');
             console.warn('  2. Extension is reloaded after code changes');
             console.warn('  3. Page is refreshed after extension reload');
-            showMercariInstructions();
+            // Don't show instructions - this is automatic background check, not user action
           }
         }, 2000);
       }
@@ -901,10 +901,14 @@ export default function Settings() {
     }
   };
 
-  const showMercariInstructions = () => {
-    // Don't show Mercari instructions if user is currently connecting Facebook
-    if (currentlyConnectingMarketplace.current === 'facebook') {
-      console.log('⚠️ Skipping Mercari instructions - user is connecting Facebook');
+  const showMercariInstructions = (isExplicitUserAction = false) => {
+    // Only show Mercari instructions if:
+    // 1. User explicitly clicked "Connect Mercari" (isExplicitUserAction = true), OR
+    // 2. User is currently trying to connect Mercari (currentlyConnectingMarketplace = 'mercari')
+    const shouldShow = isExplicitUserAction || currentlyConnectingMarketplace.current === 'mercari';
+    
+    if (!shouldShow) {
+      console.log('⚠️ Skipping Mercari instructions - not an explicit user action and not currently connecting Mercari');
       return;
     }
     
