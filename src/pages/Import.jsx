@@ -180,6 +180,19 @@ export default function Import() {
         if (isConnected && fbUser) {
           setIsConnected(true);
           console.log('✅ Facebook connected');
+          
+          // Load cached Facebook listings from localStorage
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          if (cachedListings) {
+            try {
+              const parsedListings = JSON.parse(cachedListings);
+              console.log('📦 Loaded cached Facebook listings:', parsedListings.length, 'items');
+              queryClient.setQueryData(['facebook-listings', userId], parsedListings);
+              setFacebookListingsVersion(v => v + 1);
+            } catch (e) {
+              console.error('Error parsing cached listings:', e);
+            }
+          }
         } else {
           setIsConnected(false);
           console.log('❌ Facebook not connected');
@@ -189,7 +202,7 @@ export default function Import() {
         setIsConnected(false);
       }
     }
-  }, [selectedSource]);
+  }, [selectedSource, userId, queryClient]);
 
   // Import mutation
   const importMutation = useMutation({
@@ -255,22 +268,35 @@ export default function Import() {
         variant: data.failed > 0 ? "destructive" : "default",
       });
       
-      // Invalidate appropriate queries based on source
-      if (selectedSource === 'ebay') {
-        queryClient.invalidateQueries(["ebay-listings"]);
-      } else if (selectedSource === 'facebook') {
-        // Refresh Facebook listings from extension/cache
+      // Mark imported items as imported
+      if (selectedSource === 'facebook') {
+        const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
+        const updatedListings = facebookListings.map(item => {
+          if (selectedItems.includes(item.itemId)) {
+            return { ...item, imported: true };
+          }
+          return item;
+        });
+        
+        // Update cache and persist to localStorage
+        queryClient.setQueryData(['facebook-listings', userId], updatedListings);
+        localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+        console.log('✅ Marked', selectedItems.length, 'items as imported');
+        
+        // Trigger re-render
         setFacebookListingsVersion(v => v + 1);
+      } else if (selectedSource === 'ebay') {
+        queryClient.invalidateQueries(["ebay-listings"]);
+        
+        // Only refetch if it's eBay (refetch is the eBay query refetch function)
+        if (refetch) {
+          refetch();
+        }
       }
       
       // Always refresh inventory
       queryClient.invalidateQueries(["inventory-items"]);
       setSelectedItems([]);
-      
-      // Only refetch if it's eBay (refetch is the eBay query refetch function)
-      if (selectedSource === 'ebay' && refetch) {
-        refetch();
-      }
     },
     onError: (error) => {
       console.error('❌ Import mutation error:', error);
@@ -388,9 +414,34 @@ export default function Import() {
       console.log('✅ Received Facebook listings:', listings.length);
       console.log('📦 Sample listing:', listings[0]);
       
-      // Update the query data
-      queryClient.setQueryData(['facebook-listings', userId], listings);
-      console.log('✅ Updated query cache with', listings.length, 'listings');
+      // Load existing imported status from localStorage
+      const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+      let existingImportedIds = new Set();
+      
+      if (cachedListings) {
+        try {
+          const parsedListings = JSON.parse(cachedListings);
+          existingImportedIds = new Set(
+            parsedListings
+              .filter(item => item.imported)
+              .map(item => item.itemId)
+          );
+          console.log('📦 Found', existingImportedIds.size, 'previously imported items');
+        } catch (e) {
+          console.error('Error parsing cached listings:', e);
+        }
+      }
+      
+      // Merge with existing imported status
+      const mergedListings = listings.map(item => ({
+        ...item,
+        imported: existingImportedIds.has(item.itemId) || false
+      }));
+      
+      // Update the query data and persist to localStorage
+      queryClient.setQueryData(['facebook-listings', userId], mergedListings);
+      localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(mergedListings));
+      console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'listings');
       
       // Force a re-render
       setFacebookListingsVersion(v => v + 1);
@@ -599,6 +650,53 @@ export default function Import() {
                       <SelectItem value="Active">Active</SelectItem>
                       <SelectItem value="Ended">Ended</SelectItem>
                       <SelectItem value="All">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Importing Status</label>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant={importingStatus === "not_imported" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setImportingStatus("not_imported")}
+                      className="w-full justify-start"
+                    >
+                      <Badge variant="secondary" className="mr-2">
+                        {notImportedCount}
+                      </Badge>
+                      Not Imported
+                    </Button>
+                    <Button
+                      variant={importingStatus === "imported" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setImportingStatus("imported")}
+                      className="w-full justify-start"
+                    >
+                      <Badge variant="secondary" className="mr-2">
+                        {importedCount}
+                      </Badge>
+                      Imported
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {selectedSource === "facebook" && (
+              <Card className="p-4 space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Facebook Listing Status</label>
+                  <Select value={listingStatus} onValueChange={setListingStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
