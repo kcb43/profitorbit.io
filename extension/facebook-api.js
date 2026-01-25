@@ -6,23 +6,18 @@
 // Get Facebook cookies and dtsg token
 async function getFacebookAuth() {
   try {
-    // Get cookies from storage (captured by content script)
-    const storage = await chrome.storage.local.get([
-      'facebook_cookies',
-      'facebook_cookies_timestamp',
-      'facebook_dtsg',
-      'facebook_dtsg_timestamp'
-    ]);
-    
-    const cookies = storage.facebook_cookies || [];
-    const cookiesTimestamp = storage.facebook_cookies_timestamp || 0;
-    const cookiesAge = Date.now() - cookiesTimestamp;
-    
-    console.log('🍪 Cookies from storage:', cookies.length);
-    console.log('🍪 Cookies age:', Math.round(cookiesAge / 1000), 'seconds');
+    // Service workers CAN access cookies, but we need to use URL not domain
+    let cookies = await chrome.cookies.getAll({ url: 'https://www.facebook.com' });
+    console.log('🍪 Cookies from https://www.facebook.com:', cookies.length);
     
     if (!cookies || cookies.length === 0) {
-      throw new Error('Not logged into Facebook - no cookies in storage. Please visit Facebook.com in a browser tab.');
+      // Try the API endpoint URL
+      cookies = await chrome.cookies.getAll({ url: 'https://www.facebook.com/api/graphql/' });
+      console.log('🍪 Cookies from API URL:', cookies.length);
+    }
+    
+    if (!cookies || cookies.length === 0) {
+      throw new Error('Not logged into Facebook - no cookies found. Please make sure you are logged into Facebook in your browser.');
     }
     
     // Check for essential cookies
@@ -32,7 +27,7 @@ async function getFacebookAuth() {
     console.log('🍪 Cookie names found:', cookies.map(c => c.name).join(', '));
     
     if (!cUser || !xs) {
-      throw new Error('Facebook login incomplete - missing authentication cookies (c_user or xs). Please visit Facebook.com in a browser tab.');
+      throw new Error('Facebook login incomplete - missing authentication cookies (c_user or xs). Please log into Facebook in your browser.');
     }
     
     console.log('✅ Facebook cookies found:', {
@@ -42,13 +37,14 @@ async function getFacebookAuth() {
     });
     
     // Get fb_dtsg token from storage (captured from Facebook page)
+    const storage = await chrome.storage.local.get(['facebook_dtsg', 'facebook_dtsg_timestamp']);
     const dtsg = storage.facebook_dtsg;
     const dtsgTimestamp = storage.facebook_dtsg_timestamp || 0;
     const dtsgAge = Date.now() - dtsgTimestamp;
     
-    // Refresh dtsg if older than 1 hour, or if cookies need refresh
-    if (!dtsg || dtsgAge > 3600000 || cookiesAge > 3600000) {
-      console.log('⚠️ fb_dtsg token or cookies missing/stale, will capture from Facebook page...');
+    // Refresh dtsg if older than 1 hour
+    if (!dtsg || dtsgAge > 3600000) {
+      console.log('⚠️ fb_dtsg token missing or stale, will capture from Facebook page...');
       return { cookies, dtsg: null, needsDtsgRefresh: true };
     }
     

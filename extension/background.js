@@ -2241,27 +2241,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const auth = await self.__facebookApi.getFacebookAuth();
         
         if (auth.needsDtsgRefresh || !auth.dtsg) {
-          // Need to capture fb_dtsg from a Facebook page
-          console.log('📡 Need to capture fb_dtsg, opening Facebook page...');
+          // Need to capture fb_dtsg from an existing Facebook tab
+          console.log('📡 Need to capture fb_dtsg from existing Facebook tab...');
           
           const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
-          let targetTab = tabs[0];
-          let createdTab = false;
           
-          if (!targetTab) {
-            targetTab = await chrome.tabs.create({
-              url: 'https://www.facebook.com/',
-              active: false,
-            });
-            createdTab = true;
-            
-            // Wait for page to load
-            await new Promise(resolve => setTimeout(resolve, 4000));
+          if (!tabs || tabs.length === 0) {
+            throw new Error('fb_dtsg token required but no Facebook tab is open. Please open Facebook.com in a browser tab and try again.');
           }
+          
+          const targetTab = tabs[0];
+          console.log('📡 Using existing Facebook tab:', targetTab.id);
           
           // Request content script to capture dtsg
           await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('dtsg capture timeout')), 10000);
+            const timeout = setTimeout(() => reject(new Error('dtsg capture timeout - please refresh the Facebook tab and try again')), 10000);
             
             const listener = (msg) => {
               if (msg.type === 'FACEBOOK_AUTH_CAPTURED' || msg.type === 'FACEBOOK_DTSG_CAPTURED') {
@@ -2278,19 +2272,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               if (chrome.runtime.lastError) {
                 clearTimeout(timeout);
                 chrome.runtime.onMessage.removeListener(listener);
-                reject(new Error('Could not communicate with Facebook page'));
+                reject(new Error('Could not communicate with Facebook tab - please refresh the Facebook tab and try again'));
               }
             });
           });
           
-          if (createdTab) {
-            await chrome.tabs.remove(targetTab.id);
-          }
-          
           // Get auth again with fresh dtsg
           const freshAuth = await self.__facebookApi.getFacebookAuth();
           if (!freshAuth.dtsg) {
-            throw new Error('Failed to capture fb_dtsg token');
+            throw new Error('Failed to capture fb_dtsg token from Facebook tab');
           }
           
           // Use fresh auth
