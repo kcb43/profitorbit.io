@@ -1,6 +1,6 @@
 /**
  * Fetch user's eBay listings (for Import page)
- * Uses Trading API GetMyeBaySelling or GetSellerList
+ * Uses eBay Sell API (Inventory + Browse)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized - User ID missing' });
     }
 
     const accessToken = getEbayToken(req);
@@ -45,118 +45,109 @@ export default async function handler(req, res) {
     }
 
     const status = req.query.status || 'Active'; // Active, Ended, All
+    const limit = req.query.limit || '200';
 
     // Determine which eBay API environment to use
     const ebayEnv = process.env.EBAY_ENV || 'production';
-    const apiUrl = ebayEnv === 'production' 
+    const useProduction = ebayEnv === 'production';
+    const apiUrl = useProduction
       ? 'https://api.ebay.com'
       : 'https://api.sandbox.ebay.com';
 
-    // Use Trading API GetSellerList
-    // Note: This is XML-based Trading API, not REST
-    const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetSellerListRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-  <RequesterCredentials>
-    <eBayAuthToken>${accessToken}</eBayAuthToken>
-  </RequesterCredentials>
-  <ErrorLanguage>en_US</ErrorLanguage>
-  <WarningLevel>High</WarningLevel>
-  <DetailLevel>ReturnAll</DetailLevel>
-  <Pagination>
-    <EntriesPerPage>200</EntriesPerPage>
-    <PageNumber>1</PageNumber>
-  </Pagination>
-  <IncludeWatchCount>true</IncludeWatchCount>
-  <OutputSelector>ItemID</OutputSelector>
-  <OutputSelector>Title</OutputSelector>
-  <OutputSelector>PictureDetails</OutputSelector>
-  <OutputSelector>SellingStatus</OutputSelector>
-  <OutputSelector>ListingDetails</OutputSelector>
-  <OutputSelector>StartTime</OutputSelector>
-</GetSellerListRequest>`;
+    console.log('🔍 Fetching eBay listings:', { useProduction, status, userId: userId.substring(0, 8) + '...' });
 
-    const response = await fetch(`${apiUrl}/ws/api.dll`, {
-      method: 'POST',
+    // Use Sell API - Inventory API to get active listings
+    // https://developer.ebay.com/api-docs/sell/inventory/resources/inventory_item/methods/getInventoryItems
+    const inventoryUrl = `${apiUrl}/sell/inventory/v1/inventory_item?limit=${limit}`;
+
+    const response = await fetch(inventoryUrl, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'text/xml',
-        'X-EBAY-API-SITEID': '0',
-        'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-        'X-EBAY-API-CALL-NAME': 'GetSellerList',
-        'X-EBAY-API-APP-NAME': process.env.EBAY_CLIENT_ID || '',
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: xmlRequest,
     });
 
+    console.log('📡 eBay API response status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`eBay API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ eBay API error:', response.status, errorText);
+      
+      let errorMessage = 'Failed to fetch eBay listings';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.errors?.[0]?.message || errorData.error_description || errorMessage;
+      } catch (e) {
+        // If not JSON, use the text directly
+        if (errorText) errorMessage = errorText;
+      }
+      
+      return res.status(response.status).json({ 
+        error: errorMessage,
+        details: errorText,
+      });
     }
 
-    const xmlText = await response.text();
-    
-    // Parse XML response (simple parsing - you may want to use a proper XML parser)
-    const items = parseEbayXML(xmlText);
+    const data = await response.json();
+    console.log('✅ Fetched inventory items:', data.inventoryItems?.length || 0);
+
+    // Transform eBay inventory items to our format
+    const items = (data.inventoryItems || []).map(item => {
+      const offer = item.offers?.[0]; // Get first offer
+      const product = item.product || {};
+      
+      return {
+        itemId: item.sku, // Use SKU as item ID
+        sku: item.sku,
+        title: product.title || 'Untitled',
+        description: product.description || '',
+        price: offer?.pricingSummary?.price?.value || 0,
+        imageUrl: product.imageUrls?.[0] || null,
+        pictureURLs: product.imageUrls || [],
+        condition: item.condition || 'USED',
+        availability: item.availability,
+        listingDate: offer?.listingStartDate || null,
+        startTime: offer?.listingStartDate || null,
+        listingId: offer?.offerId || null,
+      };
+    });
 
     // Check which items are already imported
-    const { data: importedItems } = await supabase
-      .from('inventory_items')
-      .select('ebay_item_id')
-      .eq('user_id', userId)
-      .not('ebay_item_id', 'is', null);
+    const skus = items.map(item => item.sku).filter(Boolean);
+    
+    if (skus.length > 0) {
+      const { data: importedItems } = await supabase
+        .from('inventory_items')
+        .select('sku')
+        .eq('user_id', userId)
+        .in('sku', skus);
 
-    const importedIds = new Set(importedItems?.map(item => item.ebay_item_id) || []);
+      const importedSkus = new Set(importedItems?.map(item => item.sku) || []);
 
-    // Mark items as imported or not
-    const listings = items.map(item => ({
-      ...item,
-      imported: importedIds.has(item.itemId),
-    }));
+      // Mark items as imported or not
+      const listings = items.map(item => ({
+        ...item,
+        imported: importedSkus.has(item.sku),
+      }));
+
+      return res.status(200).json({
+        listings,
+        total: listings.length,
+      });
+    }
 
     return res.status(200).json({
-      listings,
-      total: listings.length,
+      listings: items.map(item => ({ ...item, imported: false })),
+      total: items.length,
     });
 
   } catch (error) {
-    console.error('Error fetching eBay listings:', error);
+    console.error('❌ Error fetching eBay listings:', error);
     return res.status(500).json({ 
-      error: error.message || 'Failed to fetch eBay listings' 
+      error: error.message || 'Failed to fetch eBay listings',
+      details: error.stack,
     });
   }
-}
-
-// Simple XML parser for eBay response
-function parseEbayXML(xmlText) {
-  const items = [];
-  
-  // Extract each Item block
-  const itemMatches = xmlText.matchAll(/<Item>([\s\S]*?)<\/Item>/g);
-  
-  for (const match of itemMatches) {
-    const itemXml = match[1];
-    
-    const itemId = extractValue(itemXml, 'ItemID');
-    const title = extractValue(itemXml, 'Title');
-    const price = extractValue(itemXml, 'CurrentPrice');
-    const startTime = extractValue(itemXml, 'StartTime');
-    
-    // Extract first picture URL
-    const pictureMatch = itemXml.match(/<PictureURL>(.*?)<\/PictureURL>/);
-    const imageUrl = pictureMatch ? pictureMatch[1] : null;
-    
-    items.push({
-      itemId,
-      title,
-      price: price ? parseFloat(price) : 0,
-      startTime,
-      imageUrl,
-      pictureURLs: imageUrl ? [imageUrl] : [],
-    });
-  }
-  
-  return items;
-}
-
-function extractValue(xml, tagName) {
-  const match = xml.match(new RegExp(`<${tagName}[^>]*>([^<]*)<\/${tagName}>`));
-  return match ? match[1] : null;
 }

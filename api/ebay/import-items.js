@@ -18,75 +18,42 @@ function getEbayToken(req) {
   return req.headers['x-user-token'] || null;
 }
 
-// Fetch detailed item info from eBay
-async function getItemDetails(itemId, accessToken) {
+// Fetch detailed item info from eBay Inventory API
+async function getItemDetails(sku, accessToken) {
   const ebayEnv = process.env.EBAY_ENV || 'production';
   const apiUrl = ebayEnv === 'production' 
     ? 'https://api.ebay.com'
     : 'https://api.sandbox.ebay.com';
 
-  const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-  <RequesterCredentials>
-    <eBayAuthToken>${accessToken}</eBayAuthToken>
-  </RequesterCredentials>
-  <ItemID>${itemId}</ItemID>
-  <DetailLevel>ReturnAll</DetailLevel>
-</GetItemRequest>`;
-
-  const response = await fetch(`${apiUrl}/ws/api.dll`, {
-    method: 'POST',
+  const response = await fetch(`${apiUrl}/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
+    method: 'GET',
     headers: {
-      'Content-Type': 'text/xml',
-      'X-EBAY-API-SITEID': '0',
-      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-      'X-EBAY-API-CALL-NAME': 'GetItem',
-      'X-EBAY-API-APP-NAME': process.env.EBAY_CLIENT_ID || '',
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
-    body: xmlRequest,
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch item ${itemId}`);
+    const errorText = await response.text();
+    console.error(`Failed to fetch item ${sku}:`, errorText);
+    throw new Error(`Failed to fetch item ${sku}`);
   }
 
-  const xmlText = await response.text();
-  return parseItemXML(xmlText);
-}
-
-function parseItemXML(xmlText) {
-  const itemMatch = xmlText.match(/<Item>([\s\S]*?)<\/Item>/);
-  if (!itemMatch) return null;
-  
-  const itemXml = itemMatch[1];
-  
-  const itemId = extractValue(itemXml, 'ItemID');
-  const title = extractValue(itemXml, 'Title');
-  const description = extractValue(itemXml, 'Description');
-  const price = extractValue(itemXml, 'CurrentPrice');
-  const condition = extractValue(itemXml, 'ConditionDisplayName');
-  const location = extractValue(itemXml, 'Location');
-  const sku = extractValue(itemXml, 'SKU');
-  
-  // Extract all picture URLs
-  const pictureMatches = [...itemXml.matchAll(/<PictureURL>(.*?)<\/PictureURL>/g)];
-  const pictureURLs = pictureMatches.map(m => m[1]);
+  const item = await response.json();
+  const product = item.product || {};
+  const offer = item.offers?.[0];
   
   return {
-    itemId,
-    title,
-    description,
-    price: price ? parseFloat(price) : 0,
-    condition,
-    location,
-    sku,
-    images: pictureURLs,
+    sku: item.sku,
+    title: product.title || 'Untitled',
+    description: product.description || '',
+    price: offer?.pricingSummary?.price?.value || 0,
+    condition: item.condition || 'USED',
+    images: product.imageUrls || [],
+    availability: item.availability,
+    packageWeightAndSize: item.packageWeightAndSize,
   };
-}
-
-function extractValue(xml, tagName) {
-  const match = xml.match(new RegExp(`<${tagName}[^>]*>([^<]*)<\/${tagName}>`));
-  return match ? match[1] : null;
 }
 
 export default async function handler(req, res) {
@@ -126,7 +93,7 @@ export default async function handler(req, res) {
 
     for (const itemId of itemIds) {
       try {
-        // Fetch detailed item info from eBay
+        // Fetch detailed item info from eBay (itemId is actually SKU in our case)
         const itemDetails = await getItemDetails(itemId, accessToken);
 
         if (!itemDetails) {
@@ -148,10 +115,8 @@ export default async function handler(req, res) {
             source: 'eBay',
             images: itemDetails.images,
             image_url: itemDetails.images[0] || null,
-            ebay_item_id: itemDetails.itemId,
-            condition: itemDetails.condition,
             sku: itemDetails.sku,
-            location: itemDetails.location,
+            condition: itemDetails.condition,
             purchase_date: new Date().toISOString(),
           });
 
