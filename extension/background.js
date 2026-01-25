@@ -9,6 +9,9 @@ const EXT_BUILD = '2026-01-19-facebook-golden-templates-1';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
+// Load Facebook API module for GraphQL calls
+importScripts('facebook-api.js');
+
 // -----------------------------
 // Facebook: DNR header shaping (Vendoo-like tabless requests)
 // -----------------------------
@@ -2224,18 +2227,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('📡 SCRAPE_FACEBOOK_LISTINGS received - using GraphQL API');
         
-        // Import the facebook-api.js module
+        // Check if facebook-api.js is loaded
         if (!self.__facebookApi) {
-          try {
-            await import(chrome.runtime.getURL('facebook-api.js'));
-          } catch (importError) {
-            console.error('❌ Failed to load facebook-api.js:', importError);
-            sendResponse({
-              success: false,
-              error: 'Failed to load Facebook API module',
-            });
-            return;
-          }
+          console.error('❌ facebook-api.js not loaded');
+          sendResponse({
+            success: false,
+            error: 'Facebook API module not available',
+          });
+          return;
         }
         
         // Get Facebook authentication

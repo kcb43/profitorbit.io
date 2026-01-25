@@ -157,8 +157,8 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
   }
 }
 
-// Main export
-window.__facebookApi = {
+// Main export (use self instead of window for service worker compatibility)
+self.__facebookApi = {
   getFacebookAuth,
   fetchFacebookListings,
 };
