@@ -12,6 +12,16 @@ console.log('EXT BUILD:', EXT_BUILD);
 // Load Facebook API module for GraphQL calls
 importScripts('facebook-api.js');
 
+// Debug function to manually set fb_dtsg token
+self.setFacebookDtsg = function(token) {
+  chrome.storage.local.set({
+    'facebook_dtsg': token,
+    'facebook_dtsg_timestamp': Date.now(),
+  }).then(() => {
+    console.log('✅ Manually set fb_dtsg token:', token.substring(0, 30) + '...');
+  });
+};
+
 // -----------------------------
 // Facebook: DNR header shaping (Vendoo-like tabless requests)
 // -----------------------------
