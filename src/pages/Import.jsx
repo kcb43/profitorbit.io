@@ -24,9 +24,9 @@ const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2
 
 const SOURCES = [
   { id: "ebay", label: "eBay", icon: EBAY_ICON_URL, available: true },
+  { id: "facebook", label: "Facebook", icon: FACEBOOK_ICON_URL, available: true },
   { id: "etsy", label: "Etsy", icon: ETSY_ICON_URL, available: false },
   { id: "mercari", label: "Mercari", icon: MERCARI_ICON_URL, available: false },
-  { id: "facebook", label: "Facebook", icon: FACEBOOK_ICON_URL, available: false },
 ];
 
 export default function Import() {
@@ -165,6 +165,40 @@ export default function Import() {
     enabled: selectedSource === "ebay" && isConnected && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Check Facebook connection
+  const [facebookExtensionNotice, setFacebookExtensionNotice] = useState(null);
+  useEffect(() => {
+    if (selectedSource === "facebook") {
+      // Check if Facebook is connected
+      try {
+        const fbToken = localStorage.getItem('facebook_access_token');
+        if (fbToken) {
+          const parsed = JSON.parse(fbToken);
+          setIsConnected(true);
+          // Set extension notice
+          setFacebookExtensionNotice({
+            message: 'Facebook Marketplace Import via Extension',
+            details: 'Facebook does not provide a public API to fetch your existing Marketplace listings. To import from Facebook, you\'ll need to use our Chrome Extension (coming soon).',
+            actions: [
+              'Use Chrome Extension to import listings',
+              'Manually copy listing details',
+              'Re-create listings using our Crosslist feature',
+            ],
+          });
+        } else {
+          setIsConnected(false);
+          setFacebookExtensionNotice(null);
+        }
+      } catch (e) {
+        console.error('Error checking Facebook connection:', e);
+        setIsConnected(false);
+        setFacebookExtensionNotice(null);
+      }
+    } else {
+      setFacebookExtensionNotice(null);
+    }
+  }, [selectedSource]);
 
   // Import mutation
   const importMutation = useMutation({
@@ -506,6 +540,39 @@ export default function Import() {
                     <Settings className="h-4 w-4" />
                     Go to Settings
                   </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Facebook Extension Notice */}
+            {isConnected && facebookExtensionNotice && (
+              <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription>
+                  <div>
+                    <p className="font-medium text-blue-900 dark:text-blue-100">
+                      {facebookExtensionNotice.message}
+                    </p>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mt-2">
+                      {facebookExtensionNotice.details}
+                    </p>
+                    <div className="mt-3 space-y-1">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Available options:</p>
+                      {facebookExtensionNotice.actions.map((action, idx) => (
+                        <p key={idx} className="text-sm text-blue-800 dark:text-blue-200">
+                          {idx + 1}. {action}
+                        </p>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
+                      onClick={() => navigate(createPageUrl("Crosslist"))}
+                    >
+                      Go to Crosslist
+                    </Button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
