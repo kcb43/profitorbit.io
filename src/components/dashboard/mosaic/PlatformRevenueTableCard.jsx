@@ -85,7 +85,7 @@ export default function PlatformRevenueTableCard({
           <CardTitle className="text-base font-semibold text-foreground">{title}</CardTitle>
           {reportsHref ? (
             <Link to={reportsHref}>
-              <Button variant="outline" size="sm" className="h-8">
+              <Button size="sm" className="h-8 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white">
                 View Reports
               </Button>
             </Link>

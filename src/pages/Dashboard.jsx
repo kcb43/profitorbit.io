@@ -475,14 +475,27 @@ export default function Dashboard() {
             <TipOfTheDay variant="banner" />
           </div>
 
-          {/* Your Progress (Mobile only: below Tip of the Day) */}
+          {/* View Rewards Button (Mobile only: below Tip of the Day) */}
           <div className="col-span-12 lg:hidden">
-            <Gamification
-              sales={sales}
-              stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
-              variant="mosaic"
-              progressVariant="gaming"
-            />
+            <Link to={createPageUrl("RewardsPoints")}>
+              <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
+                        <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">View Rewards</h3>
+                        <p className="text-sm text-muted-foreground">Check your progress & tier</p>
+                      </div>
+                    </div>
+                    <ChevronDown className="h-5 w-5 text-muted-foreground -rotate-90" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
 
           {/* KPI Row */}
@@ -534,7 +547,7 @@ export default function Dashboard() {
                     </button>
                   )}
                   <Link to={createPageUrl("Inventory")} className="group">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:opacity-95 transition-opacity">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:opacity-95 transition-opacity">
                       <Box className="h-6 w-6 text-white" />
                     </div>
                   </Link>
@@ -603,17 +616,14 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Your progress + live chat + quick actions (Desktop only) */}
-          <div className="hidden lg:block col-span-12 lg:col-span-8">
+          {/* Your progress (Desktop only) */}
+          <div className="hidden lg:block col-span-12">
             <Gamification
               sales={sales}
               stats={{ totalProfit, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
               variant="mosaic"
               progressVariant="gaming"
             />
-          </div>
-          <div className="col-span-12 lg:col-span-4">
-            <LiveChat variant="compact" />
           </div>
           <div className="col-span-12">
             <QuickActions />
