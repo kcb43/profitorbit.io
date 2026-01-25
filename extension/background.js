@@ -2219,6 +2219,90 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const action = message?.action;
 
   // Handle Facebook scraping results
+  // Handle request to scrape Facebook listings (from Import page)
+  if (type === 'SCRAPE_FACEBOOK_LISTINGS') {
+    (async () => {
+      try {
+        console.log('📡 SCRAPE_FACEBOOK_LISTINGS received from Import page');
+        
+        // Find or create a Facebook tab
+        const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
+        let targetTab = tabs.find(t => t.url.includes('/marketplace/you/selling') || t.url.includes('/marketplace/you/listings'));
+        
+        if (!targetTab) {
+          targetTab = tabs[0]; // Use any Facebook tab
+        }
+        
+        if (!targetTab) {
+          // No Facebook tab open - create one
+          console.log('📡 No Facebook tab found, creating new tab...');
+          targetTab = await chrome.tabs.create({
+            url: 'https://www.facebook.com/marketplace/you/selling',
+            active: false,
+          });
+          
+          // Wait for the tab to load
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+        
+        console.log('📡 Sending SCRAPE_FACEBOOK_LISTINGS to tab:', targetTab.id);
+        
+        // Send message to content script on the Facebook tab and wait for response
+        chrome.tabs.sendMessage(targetTab.id, {
+          action: 'SCRAPE_FACEBOOK_LISTINGS',
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Error sending scrape message:', chrome.runtime.lastError);
+            sendResponse({
+              success: false,
+              error: chrome.runtime.lastError.message || 'Failed to communicate with Facebook tab. Please make sure you have Facebook open and are logged in.',
+            });
+            return;
+          }
+          
+          // The content script will respond immediately, but the actual scraping happens async
+          // and sends FACEBOOK_LISTINGS_SCRAPED when done. We need to wait for that.
+          console.log('✅ Scrape initiated, waiting for results...');
+          
+          // Listen for the scraped results
+          const resultListener = (msg, snd, respond) => {
+            if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
+              chrome.runtime.onMessage.removeListener(resultListener);
+              
+              // Return the listings to the Import page
+              sendResponse({
+                success: true,
+                listings: msg.data || [],
+                total: msg.total || 0,
+              });
+            }
+          };
+          
+          chrome.runtime.onMessage.addListener(resultListener);
+          
+          // Timeout after 30 seconds
+          setTimeout(() => {
+            chrome.runtime.onMessage.removeListener(resultListener);
+            sendResponse({
+              success: false,
+              error: 'Scraping timed out. Please try again.',
+            });
+          }, 30000);
+        });
+        
+      } catch (error) {
+        console.error('❌ Error handling SCRAPE_FACEBOOK_LISTINGS:', error);
+        sendResponse({
+          success: false,
+          error: error.message || 'Failed to initiate Facebook scraping',
+        });
+      }
+    })();
+    
+    return true; // Keep channel open for async response
+  }
+
+  // Handle Facebook listings scraped result (from content script)
   if (action === 'FACEBOOK_LISTINGS_SCRAPED') {
     console.log('📥 Received scraped Facebook listings:', message.data?.length || 0);
     

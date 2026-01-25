@@ -335,6 +335,24 @@
       return resp;
     },
 
+    // Facebook scraper for Import page
+    async scrapeFacebookListings() {
+      console.log('🟣 [FACEBOOK] Page API -> scrapeFacebookListings');
+
+      const resp = await postAndWait(
+        'PO_SCRAPE_FACEBOOK_LISTINGS',
+        'PO_SCRAPE_FACEBOOK_LISTINGS_RESULT',
+        null,
+        120000
+      );
+
+      try {
+        localStorage.setItem('profit_orbit_last_facebook_scrape_result', JSON.stringify({ t: Date.now(), resp }));
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Recorder controls
     startMercariApiRecording() {
       return postAndWait('PO_START_MERCARI_API_RECORDING', 'PO_START_MERCARI_API_RECORDING_RESULT', null, 5000);

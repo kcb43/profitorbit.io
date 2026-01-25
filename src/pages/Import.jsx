@@ -329,15 +329,33 @@ export default function Import() {
     try {
       console.log('📡 Requesting Facebook scrape from extension...');
       
-      // Send message to extension
-      window.postMessage({ 
-        action: 'SCRAPE_FACEBOOK_LISTINGS',
-        source: 'profitorbit-import-page',
-      }, '*');
+      // Check if extension API is available
+      if (!window.ProfitOrbitExtension || typeof window.ProfitOrbitExtension.scrapeFacebookListings !== 'function') {
+        throw new Error('Extension API not available. Please make sure the Profit Orbit extension is installed and enabled.');
+      }
       
       toast({
         title: "Syncing Facebook Marketplace",
-        description: "Extension is scraping your listings...",
+        description: "Opening Facebook to scrape your listings...",
+      });
+      
+      // Use the extension API
+      const result = await window.ProfitOrbitExtension.scrapeFacebookListings();
+      
+      if (!result?.success) {
+        throw new Error(result?.error || 'Failed to scrape Facebook listings');
+      }
+      
+      // The result should contain the listings
+      const listings = result?.listings || [];
+      console.log('✅ Received Facebook listings:', listings.length);
+      
+      // Update the query data
+      queryClient.setQueryData(['facebook-listings', userId], listings);
+      
+      toast({
+        title: "Success",
+        description: `Found ${listings.length} Facebook listings`,
       });
       
       setLastSync(new Date());
