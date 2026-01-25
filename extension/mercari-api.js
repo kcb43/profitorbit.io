@@ -119,20 +119,36 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         if (parts.length === 3) {
           const payload = JSON.parse(atob(parts[1]));
           console.log('📦 JWT payload:', payload);
+          console.log('📦 JWT payload.data:', payload.data);
           
           // Mercari JWT structure: { b: "hash", data: { id, ... }, exp, iat }
           // The seller ID is likely in payload.data
-          if (payload.data && payload.data.id) {
-            actualSellerId = payload.data.id;
-            console.log('✅ Extracted seller ID from JWT.data.id:', actualSellerId);
-          } else if (payload.data && payload.data.sellerId) {
-            actualSellerId = payload.data.sellerId;
-            console.log('✅ Extracted seller ID from JWT.data.sellerId:', actualSellerId);
-          } else if (payload.data && payload.data.userId) {
-            actualSellerId = payload.data.userId;
-            console.log('✅ Extracted seller ID from JWT.data.userId:', actualSellerId);
-          } else {
-            // Fallback: try root level fields
+          if (payload.data) {
+            // Log all data fields to find the numeric seller ID
+            console.log('📦 All data fields:', Object.keys(payload.data));
+            
+            // Try to find numeric ID fields
+            for (const key of Object.keys(payload.data)) {
+              const value = payload.data[key];
+              // Look for numeric values that could be seller ID (973134289)
+              if (typeof value === 'number' && value > 100000000 && value < 10000000000) {
+                actualSellerId = value;
+                console.log('✅ Found numeric seller ID in JWT.data.' + key + ':', actualSellerId);
+                break;
+              }
+            }
+            
+            // If not found, try known field names
+            if (!actualSellerId) {
+              actualSellerId = payload.data.id || payload.data.sellerId || payload.data.userId || payload.data.user_id;
+              if (actualSellerId) {
+                console.log('✅ Extracted seller ID from JWT.data:', actualSellerId);
+              }
+            }
+          }
+          
+          // Fallback: try root level fields
+          if (!actualSellerId) {
             actualSellerId = payload.sub || payload.userId || payload.sellerId || payload.id;
             if (actualSellerId) {
               console.log('✅ Extracted seller ID from JWT root:', actualSellerId);
