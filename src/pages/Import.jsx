@@ -343,19 +343,6 @@ export default function Import() {
       const result = await window.ProfitOrbitExtension.scrapeFacebookListings();
       
       if (!result?.success) {
-        // Check if it needs a Facebook tab
-        if (result?.needsFacebookTab) {
-          // Open Facebook Marketplace in a new tab
-          const fbTab = window.open('https://www.facebook.com/marketplace/you/selling', '_blank');
-          
-          toast({
-            title: "Facebook Tab Opened",
-            description: "Please wait for Facebook to load, then click 'Get Latest Facebook Items' again.",
-            duration: 8000,
-          });
-          return;
-        }
-        
         throw new Error(result?.error || 'Failed to scrape Facebook listings');
       }
       
@@ -379,6 +366,7 @@ export default function Import() {
         title: "Sync failed",
         description: error.message || "Failed to sync Facebook listings",
         variant: "destructive",
+        duration: 6000,
       });
     }
   };
