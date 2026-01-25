@@ -120,11 +120,26 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
           const payload = JSON.parse(atob(parts[1]));
           console.log('📦 JWT payload:', payload);
           
-          // Common JWT fields for user ID: sub, userId, sellerId, id, b (Mercari uses 'b')
-          actualSellerId = payload.sub || payload.userId || payload.sellerId || payload.id || payload.b;
+          // Mercari JWT structure: { b: "hash", data: { id, ... }, exp, iat }
+          // The seller ID is likely in payload.data
+          if (payload.data && payload.data.id) {
+            actualSellerId = payload.data.id;
+            console.log('✅ Extracted seller ID from JWT.data.id:', actualSellerId);
+          } else if (payload.data && payload.data.sellerId) {
+            actualSellerId = payload.data.sellerId;
+            console.log('✅ Extracted seller ID from JWT.data.sellerId:', actualSellerId);
+          } else if (payload.data && payload.data.userId) {
+            actualSellerId = payload.data.userId;
+            console.log('✅ Extracted seller ID from JWT.data.userId:', actualSellerId);
+          } else {
+            // Fallback: try root level fields
+            actualSellerId = payload.sub || payload.userId || payload.sellerId || payload.id;
+            if (actualSellerId) {
+              console.log('✅ Extracted seller ID from JWT root:', actualSellerId);
+            }
+          }
           
           if (actualSellerId) {
-            console.log('✅ Extracted seller ID from JWT:', actualSellerId);
             // Store it for next time
             chrome.storage.local.set({ 'mercari_seller_id': actualSellerId.toString() });
           }
