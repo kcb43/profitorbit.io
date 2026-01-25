@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -1328,6 +1328,19 @@ export default function InventoryPage() {
                 <GalleryHorizontal className="w-4 h-4 mr-2" />
                 {viewMode === "gallery" ? "Exit Gallery" : "Gallery Mode"}
               </Button>
+              <Link
+                to={createPageUrl("Import")}
+                state={returnStateForInventory}
+                className="w-full sm:w-auto min-w-0"
+              >
+                <Button 
+                  variant="outline"
+                  className="w-full sm:w-auto gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Import
+                </Button>
+              </Link>
               <Link
                 to={createPageUrl("AddInventoryItem")}
                 state={returnStateForInventory}
