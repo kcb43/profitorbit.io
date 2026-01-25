@@ -2241,14 +2241,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         let createdNewTab = false;
+        let createdWindowId = null;
         if (!targetTab) {
-          // No Facebook tab open - create one in background
-          console.log('📡 No Facebook tab found, creating background tab...');
-          targetTab = await chrome.tabs.create({
-            url: 'https://www.facebook.com/marketplace/you/selling',
-            active: false, // Open in background
-          });
-          createdNewTab = true;
+          // No Facebook tab open - create one in a minimized hidden window
+          console.log('📡 No Facebook tab found, creating hidden window...');
+          
+          try {
+            // Try to create a minimized popup window (nearly invisible)
+            const window = await chrome.windows.create({
+              url: 'https://www.facebook.com/marketplace/you/selling',
+              type: 'popup',
+              state: 'minimized',
+              focused: false,
+              width: 1,
+              height: 1,
+              left: -10000, // Move off-screen
+              top: -10000,
+            });
+            targetTab = window.tabs[0];
+            createdWindowId = window.id;
+            createdNewTab = true;
+          } catch (windowError) {
+            console.warn('⚠️ Could not create minimized window, falling back to background tab:', windowError);
+            // Fallback to background tab
+            targetTab = await chrome.tabs.create({
+              url: 'https://www.facebook.com/marketplace/you/selling',
+              active: false,
+            });
+            createdNewTab = true;
+          }
           
           // Wait for the tab to load and content script to inject
           await new Promise(resolve => setTimeout(resolve, 4000));
@@ -2282,7 +2303,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.error('❌ Failed to inject content script:', injectError);
             
             if (createdNewTab) {
-              try { await chrome.tabs.remove(targetTab.id); } catch (e) {}
+              try {
+                if (createdWindowId) {
+                  await chrome.windows.remove(createdWindowId);
+                } else {
+                  await chrome.tabs.remove(targetTab.id);
+                }
+              } catch (e) {}
             }
             
             sendResponse({
@@ -2297,13 +2324,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const resultListener = async (msg, snd, respond) => {
           if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
             chrome.runtime.onMessage.removeListener(resultListener);
+            clearTimeout(timeout);
             
-            // Clean up created tab
+            // Clean up created tab/window
             if (createdNewTab) {
               try {
-                await chrome.tabs.remove(targetTab.id);
+                if (createdWindowId) {
+                  await chrome.windows.remove(createdWindowId);
+                } else {
+                  await chrome.tabs.remove(targetTab.id);
+                }
               } catch (e) {
-                console.warn('Could not remove tab:', e);
+                console.warn('Could not remove tab/window:', e);
               }
             }
             
@@ -2322,10 +2354,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const timeout = setTimeout(async () => {
           chrome.runtime.onMessage.removeListener(resultListener);
           
-          // Clean up created tab
+          // Clean up created tab/window
           if (createdNewTab) {
             try {
-              await chrome.tabs.remove(targetTab.id);
+              if (createdWindowId) {
+                await chrome.windows.remove(createdWindowId);
+              } else {
+                await chrome.tabs.remove(targetTab.id);
+              }
             } catch (e) {}
           }
           
@@ -2344,9 +2380,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             clearTimeout(timeout);
             chrome.runtime.onMessage.removeListener(resultListener);
             
-            // Clean up created tab
+            // Clean up created tab/window
             if (createdNewTab) {
-              chrome.tabs.remove(targetTab.id).catch(() => {});
+              if (createdWindowId) {
+                chrome.windows.remove(createdWindowId).catch(() => {});
+              } else {
+                chrome.tabs.remove(targetTab.id).catch(() => {});
+              }
             }
             
             sendResponse({
@@ -2356,7 +2396,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             return;
           }
           
-          console.log('✅ Scrape message sent, waiting for results...', response);
+          console.log('✅ Scrape initiated, waiting for FACEBOOK_LISTINGS_SCRAPED message...', response);
+          // Don't call sendResponse here - we're waiting for the resultListener to handle it
         });
         
       } catch (error) {
