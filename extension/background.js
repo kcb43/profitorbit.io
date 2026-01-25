@@ -2225,157 +2225,138 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         console.log('📡 SCRAPE_FACEBOOK_LISTINGS received from Import page');
         
-        // Strategy 1: Try offscreen document first (invisible, no tabs)
-        try {
-          console.log('🔍 Attempting offscreen scraping...');
-          
-          // Check if offscreen document already exists
-          const existingContexts = await chrome.runtime.getContexts({
-            contextTypes: ['OFFSCREEN_DOCUMENT'],
-          });
-          
-          if (existingContexts.length === 0) {
-            // Create offscreen document
-            await chrome.offscreen.createDocument({
-              url: 'offscreen-facebook.html',
-              reasons: ['DOM_SCRAPING'],
-              justification: 'Scrape Facebook Marketplace listings without visible tabs',
-            });
-            console.log('✅ Created offscreen document');
-            
-            // Wait for it to load
-            await new Promise(resolve => setTimeout(resolve, 500));
-          } else {
-            console.log('✅ Offscreen document already exists');
-          }
-          
-          // Send scrape request to offscreen document
-          const result = await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Offscreen scraping timeout'));
-            }, 60000); // 60 second timeout
-            
-            chrome.runtime.sendMessage({
-              action: 'SCRAPE_FACEBOOK_IN_OFFSCREEN',
-            }, (response) => {
-              clearTimeout(timeout);
-              
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else {
-                resolve(response);
-              }
-            });
-          });
-          
-          if (result.success) {
-            console.log('✅ Offscreen scraping succeeded:', result.listings?.length || 0);
-            sendResponse(result);
-            return;
-          } else {
-            console.warn('⚠️ Offscreen scraping failed, falling back to tab method:', result.error);
-          }
-          
-        } catch (offscreenError) {
-          console.warn('⚠️ Offscreen method failed, falling back to tab method:', offscreenError);
-        }
-        
-        // Strategy 2: Fallback to existing tab or create hidden tab
-        console.log('📡 Using tab-based scraping...');
-        
-        // Find or create a Facebook tab
+        // Find existing Facebook tabs
         const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
         let targetTab = tabs.find(t => t.url.includes('/marketplace/you/selling') || t.url.includes('/marketplace/you/listings'));
         
-        if (!targetTab) {
-          targetTab = tabs[0]; // Use any Facebook tab
+        if (!targetTab && tabs.length > 0) {
+          // Use any Facebook tab and navigate it
+          targetTab = tabs[0];
+          console.log('📡 Navigating existing Facebook tab to selling page...');
+          await chrome.tabs.update(targetTab.id, {
+            url: 'https://www.facebook.com/marketplace/you/selling',
+          });
+          // Wait for navigation and content script to load
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
         
         let createdNewTab = false;
         if (!targetTab) {
-          // No Facebook tab open - create one (hidden)
-          console.log('📡 No Facebook tab found, creating hidden tab...');
-          const window = await chrome.windows.create({
+          // No Facebook tab open - create one in background
+          console.log('📡 No Facebook tab found, creating background tab...');
+          targetTab = await chrome.tabs.create({
             url: 'https://www.facebook.com/marketplace/you/selling',
-            type: 'popup',
-            state: 'minimized',
-            focused: false,
-            width: 1,
-            height: 1,
+            active: false, // Open in background
           });
-          targetTab = window.tabs[0];
           createdNewTab = true;
           
-          // Wait for the tab to load
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Wait for the tab to load and content script to inject
+          await new Promise(resolve => setTimeout(resolve, 4000));
         }
         
         console.log('📡 Sending SCRAPE_FACEBOOK_LISTINGS to tab:', targetTab.id);
         
-        // Send message to content script on the Facebook tab and wait for response
-        chrome.tabs.sendMessage(targetTab.id, {
-          action: 'SCRAPE_FACEBOOK_LISTINGS',
-        }, async (response) => {
-          if (chrome.runtime.lastError) {
-            console.error('❌ Error sending scrape message:', chrome.runtime.lastError);
+        // First, ping the tab to make sure content script is ready
+        const pingResponse = await new Promise((resolve) => {
+          chrome.tabs.sendMessage(targetTab.id, { type: 'PING' }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.warn('⚠️ Content script not ready:', chrome.runtime.lastError.message);
+              resolve(null);
+            } else {
+              resolve(response);
+            }
+          });
+        });
+        
+        if (!pingResponse) {
+          // Content script not loaded, try injecting it
+          console.log('📡 Content script not ready, injecting...');
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: targetTab.id },
+              files: ['content.js']
+            });
+            // Wait a bit for it to initialize
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (injectError) {
+            console.error('❌ Failed to inject content script:', injectError);
             
-            // Clean up created tab
-            if (createdNewTab && targetTab?.windowId) {
-              try {
-                await chrome.windows.remove(targetTab.windowId);
-              } catch (e) {}
+            if (createdNewTab) {
+              try { await chrome.tabs.remove(targetTab.id); } catch (e) {}
             }
             
             sendResponse({
               success: false,
-              error: chrome.runtime.lastError.message || 'Failed to communicate with Facebook tab. Please make sure you have Facebook open and are logged in.',
+              error: 'Failed to load scraper. Please open Facebook Marketplace manually and try again.',
+            });
+            return;
+          }
+        }
+        
+        // Listen for the scraped results BEFORE sending the message
+        const resultListener = async (msg, snd, respond) => {
+          if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
+            chrome.runtime.onMessage.removeListener(resultListener);
+            
+            // Clean up created tab
+            if (createdNewTab) {
+              try {
+                await chrome.tabs.remove(targetTab.id);
+              } catch (e) {
+                console.warn('Could not remove tab:', e);
+              }
+            }
+            
+            // Return the listings to the Import page
+            sendResponse({
+              success: true,
+              listings: msg.data || [],
+              total: msg.total || 0,
+            });
+          }
+        };
+        
+        chrome.runtime.onMessage.addListener(resultListener);
+        
+        // Set timeout before sending message
+        const timeout = setTimeout(async () => {
+          chrome.runtime.onMessage.removeListener(resultListener);
+          
+          // Clean up created tab
+          if (createdNewTab) {
+            try {
+              await chrome.tabs.remove(targetTab.id);
+            } catch (e) {}
+          }
+          
+          sendResponse({
+            success: false,
+            error: 'Scraping timed out after 30 seconds. Please make sure you are logged into Facebook.',
+          });
+        }, 30000);
+        
+        // Now send the scrape message
+        chrome.tabs.sendMessage(targetTab.id, {
+          action: 'SCRAPE_FACEBOOK_LISTINGS',
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Error sending scrape message:', chrome.runtime.lastError);
+            clearTimeout(timeout);
+            chrome.runtime.onMessage.removeListener(resultListener);
+            
+            // Clean up created tab
+            if (createdNewTab) {
+              chrome.tabs.remove(targetTab.id).catch(() => {});
+            }
+            
+            sendResponse({
+              success: false,
+              error: `Failed to start scraping: ${chrome.runtime.lastError.message}. Please open Facebook Marketplace manually and try again.`,
             });
             return;
           }
           
-          // The content script will respond immediately, but the actual scraping happens async
-          // and sends FACEBOOK_LISTINGS_SCRAPED when done. We need to wait for that.
-          console.log('✅ Scrape initiated, waiting for results...');
-          
-          // Listen for the scraped results
-          const resultListener = async (msg, snd, respond) => {
-            if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
-              chrome.runtime.onMessage.removeListener(resultListener);
-              
-              // Clean up created tab
-              if (createdNewTab && targetTab?.windowId) {
-                try {
-                  await chrome.windows.remove(targetTab.windowId);
-                } catch (e) {}
-              }
-              
-              // Return the listings to the Import page
-              sendResponse({
-                success: true,
-                listings: msg.data || [],
-                total: msg.total || 0,
-              });
-            }
-          };
-          
-          chrome.runtime.onMessage.addListener(resultListener);
-          
-          // Timeout after 30 seconds
-          setTimeout(async () => {
-            chrome.runtime.onMessage.removeListener(resultListener);
-            
-            // Clean up created tab
-            if (createdNewTab && targetTab?.windowId) {
-              try {
-                await chrome.windows.remove(targetTab.windowId);
-              } catch (e) {}
-            }
-            
-            sendResponse({
-              success: false,
-              error: 'Scraping timed out. Please try again.',
-            });
-          }, 30000);
+          console.log('✅ Scrape message sent, waiting for results...', response);
         });
         
       } catch (error) {
