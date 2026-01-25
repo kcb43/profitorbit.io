@@ -42,6 +42,7 @@ export default async function handler(req, res) {
     let imported = 0;
     let failed = 0;
     const errors = [];
+    const importedItems = []; // Track imported items with their IDs
 
     for (const item of items) {
       try {
@@ -58,7 +59,7 @@ export default async function handler(req, res) {
         console.log(`💾 Inserting item ${item.itemId} into database...`);
 
         // Create inventory item
-        const { error: insertError } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from('inventory_items')
           .insert({
             user_id: userId,
@@ -74,7 +75,9 @@ export default async function handler(req, res) {
             purchase_date: new Date().toISOString(),
             // Store Facebook metadata
             notes: item.categoryId ? `Facebook Category ID: ${item.categoryId}` : null,
-          });
+          })
+          .select('id')
+          .single();
 
         if (insertError) {
           failed++;
@@ -83,7 +86,11 @@ export default async function handler(req, res) {
           console.error(`❌ Failed to import item ${item.itemId}:`, insertError);
         } else {
           imported++;
-          console.log(`✅ Successfully imported item ${item.itemId}`);
+          importedItems.push({
+            itemId: item.itemId,
+            inventoryId: insertData.id,
+          });
+          console.log(`✅ Successfully imported item ${item.itemId} with inventory ID ${insertData.id}`);
         }
 
       } catch (error) {
@@ -100,6 +107,7 @@ export default async function handler(req, res) {
       imported,
       failed,
       errors: failed > 0 ? errors : undefined,
+      importedItems, // Return the mapping of itemId to inventoryId
     });
 
   } catch (error) {

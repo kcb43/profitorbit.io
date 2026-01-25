@@ -104,7 +104,16 @@ export default function InventoryPage() {
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
-  const [viewMode, setViewMode] = useState("grid"); // "list" | "grid" | "gallery"
+  const [viewMode, setViewMode] = useState(() => {
+    // Load saved view mode from localStorage
+    const saved = localStorage.getItem('inventory_view_mode');
+    return saved || 'grid';
+  });
+  
+  // Persist view mode changes
+  useEffect(() => {
+    localStorage.setItem('inventory_view_mode', viewMode);
+  }, [viewMode]);
   const [pageSize, setPageSize] = useState(50);
   const [pageIndex, setPageIndex] = useState(0);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);

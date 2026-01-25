@@ -134,7 +134,19 @@ export default function SalesHistory() {
     customCategory: "",
     sale_date: "",
   });
-  const [viewMode, setViewMode] = useState("grid"); // "list" or "grid" (grid = inventory-style rows)
+  const [viewMode, setViewMode] = useState(() => {
+    // Load saved view mode from localStorage, default to "list" on desktop
+    const saved = localStorage.getItem('sales_history_view_mode');
+    if (saved) return saved;
+    // Check if desktop (window width > 768px)
+    return window.innerWidth > 768 ? 'list' : 'grid';
+  });
+  
+  // Persist view mode changes
+  useEffect(() => {
+    localStorage.setItem('sales_history_view_mode', viewMode);
+  }, [viewMode]);
+  
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { toast } = useToast();

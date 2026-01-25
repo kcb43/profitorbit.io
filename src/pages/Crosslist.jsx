@@ -294,7 +294,18 @@ export default function Crosslist() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { addTag } = useInventoryTags();
-  const [layout, setLayout] = useState("grid");
+  const [layout, setLayout] = useState(() => {
+    // Load saved layout from localStorage, default to "list" on desktop
+    const saved = localStorage.getItem('crosslist_layout');
+    if (saved) return saved;
+    // Check if desktop (window width > 768px)
+    return window.innerWidth > 768 ? 'list' : 'grid';
+  });
+  
+  // Persist layout changes
+  useEffect(() => {
+    localStorage.setItem('crosslist_layout', layout);
+  }, [layout]);
   const [isMobile, setIsMobile] = useState(false);
   const [q, setQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");

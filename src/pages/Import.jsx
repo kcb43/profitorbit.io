@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, RefreshCw, Download, ChevronLeft, ChevronRight, AlertCircle, Settings } from "lucide-react";
+import { ArrowLeft, RefreshCw, Download, ChevronLeft, ChevronRight, AlertCircle, Settings, Trash2 } from "lucide-react";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { inventoryApi } from "@/api/inventoryApi";
 import { format } from "date-fns";
@@ -277,12 +277,15 @@ export default function Import() {
         variant: data.failed > 0 ? "destructive" : "default",
       });
       
-      // Mark imported items as imported
+      // Mark imported items as imported and store inventory IDs
       if (selectedSource === 'facebook') {
         const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
         const updatedListings = facebookListings.map(item => {
-          if (selectedItems.includes(item.itemId)) {
-            return { ...item, imported: true };
+          // Check if this item was successfully imported
+          const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
+          
+          if (importedItem) {
+            return { ...item, imported: true, inventoryId: importedItem.inventoryId };
           }
           return item;
         });
@@ -290,7 +293,7 @@ export default function Import() {
         // Update cache and persist to localStorage
         queryClient.setQueryData(['facebook-listings', userId], updatedListings);
         localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
-        console.log('✅ Marked', selectedItems.length, 'items as imported');
+        console.log('✅ Marked', data.importedItems?.length || 0, 'items as imported with inventory IDs');
         
         // Trigger re-render
         setFacebookListingsVersion(v => v + 1);
@@ -316,6 +319,68 @@ export default function Import() {
       });
     },
   });
+
+  // Delete mutation for imported items
+  const deleteMutation = useMutation({
+    mutationFn: async (itemId) => {
+      // Find the item in the cached listings to get its inventory ID
+      const sourceListings = selectedSource === "facebook" 
+        ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+        : (ebayListings || []);
+      
+      const item = sourceListings.find(i => i.itemId === itemId);
+      
+      if (!item?.inventoryId) {
+        throw new Error('Item not found or not imported');
+      }
+      
+      // Soft delete from inventory
+      return await inventoryApi.deleteItem(item.inventoryId);
+    },
+    onSuccess: (data, itemId) => {
+      toast({
+        title: "Item deleted",
+        description: "Item has been removed from your inventory",
+      });
+      
+      // Update the listing to mark as not imported and remove inventory ID
+      if (selectedSource === 'facebook') {
+        const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
+        const updatedListings = facebookListings.map(item => {
+          if (item.itemId === itemId) {
+            return { ...item, imported: false, inventoryId: null };
+          }
+          return item;
+        });
+        
+        queryClient.setQueryData(['facebook-listings', userId], updatedListings);
+        localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+        setFacebookListingsVersion(v => v + 1);
+      } else if (selectedSource === 'ebay') {
+        queryClient.invalidateQueries(["ebay-listings"]);
+        if (refetch) {
+          refetch();
+        }
+      }
+      
+      // Refresh inventory
+      queryClient.invalidateQueries(["inventory-items"]);
+    },
+    onError: (error) => {
+      console.error('❌ Delete error:', error);
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (itemId) => {
+    if (confirm('Are you sure you want to delete this item from your inventory?')) {
+      deleteMutation.mutate(itemId);
+    }
+  };
 
   // Filter and sort listings
   const filteredListings = React.useMemo(() => {
@@ -522,17 +587,23 @@ export default function Import() {
     importMutation.mutate(selectedItems);
   };
 
-  const toggleSelectItem = (itemId) => {
+  const toggleSelectItem = (itemId, item) => {
+    // Don't allow selecting imported items
+    if (item?.imported) return;
+    
     setSelectedItems((prev) =>
       prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
     );
   };
 
   const toggleSelectAll = () => {
-    if (selectedItems.length === paginatedListings.length) {
+    // Only toggle non-imported items
+    const selectableItems = paginatedListings.filter(item => !item.imported);
+    
+    if (selectedItems.length === selectableItems.length && selectableItems.length > 0) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(paginatedListings.map((item) => item.itemId));
+      setSelectedItems(selectableItems.map((item) => item.itemId));
     }
   };
 
@@ -805,11 +876,11 @@ export default function Import() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   <Checkbox
-                    checked={selectedItems.length === paginatedListings.length && paginatedListings.length > 0}
+                    checked={selectedItems.length === paginatedListings.filter(item => !item.imported).length && paginatedListings.filter(item => !item.imported).length > 0}
                     onCheckedChange={toggleSelectAll}
                   />
                   <span className="text-sm font-medium">
-                    {selectedItems.length} of {filteredListings.length} selected
+                    {selectedItems.length} of {filteredListings.filter(item => !item.imported).length} selected
                   </span>
                   {selectedItems.length > 0 && (
                     <Button
@@ -868,19 +939,26 @@ export default function Import() {
                 {paginatedListings.map((item) => (
                   <Card 
                     key={item.itemId} 
-                    className={`p-4 transition-all cursor-pointer relative ${
-                      selectedItems.includes(item.itemId)
-                        ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md'
-                        : 'hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800'
+                    className={`p-4 transition-all ${
+                      item.imported 
+                        ? 'opacity-75 bg-gray-100 dark:bg-gray-800' 
+                        : selectedItems.includes(item.itemId)
+                          ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-pointer'
+                          : 'hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
                     }`}
-                    onClick={() => toggleSelectItem(item.itemId)}
+                    onClick={() => !item.imported && toggleSelectItem(item.itemId, item)}
                   >
                     <div className="flex gap-4">
-                      <Checkbox
-                        checked={selectedItems.includes(item.itemId)}
-                        onCheckedChange={() => toggleSelectItem(item.itemId)}
-                        onClick={(e) => e.stopPropagation()} // Prevent double-toggle
-                      />
+                      {!item.imported && (
+                        <Checkbox
+                          checked={selectedItems.includes(item.itemId)}
+                          onCheckedChange={() => toggleSelectItem(item.itemId, item)}
+                          onClick={(e) => e.stopPropagation()} // Prevent double-toggle
+                        />
+                      )}
+                      {item.imported && (
+                        <div className="w-5" /> // Spacer for alignment
+                      )}
                       <div className="flex-shrink-0">
                         <OptimizedImage
                           src={item.imageUrl || item.pictureURLs?.[0]}
@@ -893,12 +971,28 @@ export default function Import() {
                         <p className="text-sm text-muted-foreground mt-1">
                           {item.startTime && format(new Date(item.startTime), "MMM dd, yyyy")} · ${item.price} · Item ID: {item.itemId}
                         </p>
-                        {item.imported && (
-                          <Badge variant="secondary" className="mt-2">ALREADY IMPORTED</Badge>
-                        )}
-                        {!item.imported && (
-                          <Badge variant="outline" className="mt-2">NOT IMPORTED</Badge>
-                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {item.imported ? (
+                            <>
+                              <Badge variant="secondary">ALREADY IMPORTED</Badge>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="gap-2 ml-auto"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(item.itemId);
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete from Inventory
+                              </Button>
+                            </>
+                          ) : (
+                            <Badge variant="outline">NOT IMPORTED</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </Card>
