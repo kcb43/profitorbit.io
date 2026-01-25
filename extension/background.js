@@ -2413,23 +2413,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
         
-        // Check for existing Mercari tabs and try to capture tokens
-        const mercariTabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
+        // Get Mercari authentication
+        const auth = await self.__mercariApi.getMercariAuth();
         
-        if (mercariTabs && mercariTabs.length > 0) {
-          console.log('📡 Found', mercariTabs.length, 'Mercari tab(s), requesting token capture...');
+        // If no tokens, try to capture them from any open Mercari tab
+        if (auth.needsRefresh || !auth.bearerToken || !auth.csrfToken || !auth.sellerId) {
+          console.log('⚠️ Mercari tokens not available, checking for open Mercari tabs...');
           
-          // Send message to all Mercari tabs to trigger token capture
-          for (const tab of mercariTabs) {
+          const tabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
+          
+          if (tabs && tabs.length > 0) {
+            console.log('📡 Found', tabs.length, 'Mercari tab(s), injecting content script and capturing tokens...');
+            
             try {
-              await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_LOGIN' });
-            } catch (e) {
-              console.log('⚠️ Could not send message to tab', tab.id);
+              // Inject content script and execute token capture in all Mercari tabs
+              for (const tab of tabs) {
+                try {
+                  // First, inject the content script if not already injected
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content.js']
+                  }).catch(e => {
+                    // Might already be injected, that's ok
+                    console.log('Content script may already be injected in tab', tab.id);
+                  });
+                  
+                  // Then execute the token capture logic
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => {
+                      // Force update login status which will trigger token capture
+                      if (typeof updateLoginStatus === 'function') {
+                        updateLoginStatus(true);
+                      }
+                    }
+                  }).catch(e => {
+                    console.log('⚠️ Could not execute token capture in tab', tab.id, ':', e.message);
+                  });
+                } catch (e) {
+                  console.log('⚠️ Could not inject/execute in tab', tab.id);
+                }
+              }
+              
+              // Wait for content script to capture and store tokens
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Try to get auth again
+              const freshAuth = await self.__mercariApi.getMercariAuth();
+              if (freshAuth.bearerToken && freshAuth.csrfToken && freshAuth.sellerId) {
+                console.log('✅ Successfully captured Mercari tokens from tab');
+              } else {
+                throw new Error('Could not capture Mercari tokens. Please make sure you are logged in to Mercari.');
+              }
+            } catch (captureError) {
+              console.error('❌ Error capturing Mercari tokens:', captureError);
+              throw new Error('Failed to capture Mercari authentication tokens. Please refresh the Mercari tab and try again.');
             }
+          } else {
+            throw new Error('No Mercari tabs open. Please open Mercari.com and log in, then try again.');
           }
-          
-          // Wait a bit for tokens to be captured
-          await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
         console.log('✅ Mercari auth ready, fetching listings via API...');
