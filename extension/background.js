@@ -2241,38 +2241,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         let createdNewTab = false;
-        let createdWindowId = null;
         if (!targetTab) {
-          // No Facebook tab open - create one in a minimized hidden window
-          console.log('📡 No Facebook tab found, creating hidden window...');
+          // No Facebook tab open - don't create one, ask user to open Facebook
+          console.log('⚠️ No Facebook tab found');
           
-          try {
-            // Try to create a minimized popup window (nearly invisible)
-            const window = await chrome.windows.create({
-              url: 'https://www.facebook.com/marketplace/you/selling',
-              type: 'popup',
-              state: 'minimized',
-              focused: false,
-              width: 1,
-              height: 1,
-              left: -10000, // Move off-screen
-              top: -10000,
-            });
-            targetTab = window.tabs[0];
-            createdWindowId = window.id;
-            createdNewTab = true;
-          } catch (windowError) {
-            console.warn('⚠️ Could not create minimized window, falling back to background tab:', windowError);
-            // Fallback to background tab
-            targetTab = await chrome.tabs.create({
-              url: 'https://www.facebook.com/marketplace/you/selling',
-              active: false,
-            });
-            createdNewTab = true;
-          }
-          
-          // Wait for the tab to load and content script to inject
-          await new Promise(resolve => setTimeout(resolve, 4000));
+          sendResponse({
+            success: false,
+            error: 'Please open Facebook Marketplace in a tab first, then try importing again.',
+            needsFacebookTab: true,
+          });
+          return;
         }
         
         console.log('📡 Sending SCRAPE_FACEBOOK_LISTINGS to tab:', targetTab.id);
@@ -2302,19 +2280,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           } catch (injectError) {
             console.error('❌ Failed to inject content script:', injectError);
             
-            if (createdNewTab) {
-              try {
-                if (createdWindowId) {
-                  await chrome.windows.remove(createdWindowId);
-                } else {
-                  await chrome.tabs.remove(targetTab.id);
-                }
-              } catch (e) {}
-            }
-            
             sendResponse({
               success: false,
-              error: 'Failed to load scraper. Please open Facebook Marketplace manually and try again.',
+              error: 'Failed to load scraper. Please refresh the Facebook page and try again.',
             });
             return;
           }
@@ -2325,19 +2293,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (msg.action === 'FACEBOOK_LISTINGS_SCRAPED') {
             chrome.runtime.onMessage.removeListener(resultListener);
             clearTimeout(timeout);
-            
-            // Clean up created tab/window
-            if (createdNewTab) {
-              try {
-                if (createdWindowId) {
-                  await chrome.windows.remove(createdWindowId);
-                } else {
-                  await chrome.tabs.remove(targetTab.id);
-                }
-              } catch (e) {
-                console.warn('Could not remove tab/window:', e);
-              }
-            }
             
             // Return the listings to the Import page
             sendResponse({
@@ -2354,17 +2309,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const timeout = setTimeout(async () => {
           chrome.runtime.onMessage.removeListener(resultListener);
           
-          // Clean up created tab/window
-          if (createdNewTab) {
-            try {
-              if (createdWindowId) {
-                await chrome.windows.remove(createdWindowId);
-              } else {
-                await chrome.tabs.remove(targetTab.id);
-              }
-            } catch (e) {}
-          }
-          
           sendResponse({
             success: false,
             error: 'Scraping timed out after 30 seconds. Please make sure you are logged into Facebook.',
@@ -2380,18 +2324,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             clearTimeout(timeout);
             chrome.runtime.onMessage.removeListener(resultListener);
             
-            // Clean up created tab/window
-            if (createdNewTab) {
-              if (createdWindowId) {
-                chrome.windows.remove(createdWindowId).catch(() => {});
-              } else {
-                chrome.tabs.remove(targetTab.id).catch(() => {});
-              }
-            }
-            
             sendResponse({
               success: false,
-              error: `Failed to start scraping: ${chrome.runtime.lastError.message}. Please open Facebook Marketplace manually and try again.`,
+              error: `Failed to start scraping: ${chrome.runtime.lastError.message}. Please make sure you are logged into Facebook.`,
             });
             return;
           }

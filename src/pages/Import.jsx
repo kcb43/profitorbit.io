@@ -336,13 +336,26 @@ export default function Import() {
       
       toast({
         title: "Syncing Facebook Marketplace",
-        description: "Opening Facebook to scrape your listings...",
+        description: "Checking for Facebook tab...",
       });
       
       // Use the extension API
       const result = await window.ProfitOrbitExtension.scrapeFacebookListings();
       
       if (!result?.success) {
+        // Check if it needs a Facebook tab
+        if (result?.needsFacebookTab) {
+          // Open Facebook Marketplace in a new tab
+          const fbTab = window.open('https://www.facebook.com/marketplace/you/selling', '_blank');
+          
+          toast({
+            title: "Facebook Tab Opened",
+            description: "Please wait for Facebook to load, then click 'Get Latest Facebook Items' again.",
+            duration: 8000,
+          });
+          return;
+        }
+        
         throw new Error(result?.error || 'Failed to scrape Facebook listings');
       }
       
