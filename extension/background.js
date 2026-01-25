@@ -22,6 +22,32 @@ self.setFacebookDtsg = function(token) {
   });
 };
 
+// Auto-capture fb_dtsg from any open Facebook tabs on extension load
+async function autoCaptureFacebookToken() {
+  try {
+    const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/*' });
+    if (tabs && tabs.length > 0) {
+      console.log('📡 Found', tabs.length, 'Facebook tab(s) on startup, injecting content script...');
+      for (const tab of tabs) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          console.log('✅ Injected content script into tab', tab.id);
+        } catch (e) {
+          console.log('⚠️ Could not inject into tab', tab.id, ':', e.message);
+        }
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ Auto-capture error:', e.message);
+  }
+}
+
+// Run auto-capture on extension load
+autoCaptureFacebookToken();
+
 // -----------------------------
 // Facebook: DNR header shaping (Vendoo-like tabless requests)
 // -----------------------------
