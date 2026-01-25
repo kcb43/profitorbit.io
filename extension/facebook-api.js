@@ -48,8 +48,8 @@ async function getFacebookAuth() {
     });
     
     // Get fb_dtsg token from storage (captured from Facebook page)
-    const storage = await chrome.storage.local.get(['facebook_dtsg', 'facebook_dtsg_timestamp']);
-    const dtsg = storage.facebook_dtsg;
+    let storage = await chrome.storage.local.get(['facebook_dtsg', 'facebook_dtsg_timestamp']);
+    let dtsg = storage.facebook_dtsg;
     const dtsgTimestamp = storage.facebook_dtsg_timestamp || 0;
     const dtsgAge = Date.now() - dtsgTimestamp;
     
@@ -59,10 +59,40 @@ async function getFacebookAuth() {
       tokenPreview: dtsg ? dtsg.substring(0, 30) + '...' : 'none'
     });
     
-    // Try to use existing dtsg even if older than 1 hour (Facebook tokens can last longer)
-    // Only refresh if completely missing
+    // If no token, try to fetch it directly from Facebook
     if (!dtsg) {
-      console.log('⚠️ fb_dtsg token missing, will need to capture from Facebook page...');
+      console.log('⚠️ fb_dtsg token missing, attempting to fetch from Facebook...');
+      try {
+        const response = await fetch('https://www.facebook.com/', {
+          credentials: 'include'
+        });
+        const html = await response.text();
+        
+        // Extract fb_dtsg from HTML (it's in a script tag or hidden input)
+        const dtsgMatch = html.match(/"dtsg":\{"token":"([^"]+)"/);
+        const dtsgInputMatch = html.match(/name="fb_dtsg" value="([^"]+)"/);
+        
+        dtsg = dtsgMatch?.[1] || dtsgInputMatch?.[1];
+        
+        if (dtsg) {
+          console.log('✅ Successfully extracted fb_dtsg from Facebook page');
+          // Store it for future use
+          await chrome.storage.local.set({
+            'facebook_dtsg': dtsg,
+            'facebook_dtsg_timestamp': Date.now(),
+          });
+        } else {
+          console.log('⚠️ Could not find fb_dtsg in page HTML');
+          return { cookies, dtsg: null, needsDtsgRefresh: true };
+        }
+      } catch (fetchError) {
+        console.error('❌ Failed to fetch fb_dtsg:', fetchError);
+        return { cookies, dtsg: null, needsDtsgRefresh: true };
+      }
+    }
+    
+    if (!dtsg) {
+      console.log('⚠️ fb_dtsg token still missing after fetch attempt');
       return { cookies, dtsg: null, needsDtsgRefresh: true };
     }
     
