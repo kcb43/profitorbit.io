@@ -67,17 +67,24 @@ function parseItemXML(xml) {
   const decodeHtmlEntities = (text) => {
     if (!text) return '';
     
-    // First decode common HTML entities
+    // IMPORTANT: Decode &amp; FIRST, then other entities
+    // Because other entities might contain &amp; (e.g., &amp;lt; -> &lt; -> <)
+    let decoded = text;
+    
+    // First pass: decode &amp; to &
+    decoded = decoded.replace(/&amp;/g, '&');
+    
+    // Second pass: decode remaining entities
     const entities = {
       '&lt;': '<',
       '&gt;': '>',
-      '&amp;': '&',
       '&quot;': '"',
       '&#39;': "'",
+      '&apos;': "'",
       '&nbsp;': ' ',
+      '&#160;': ' ',
     };
     
-    let decoded = text;
     for (const [entity, char] of Object.entries(entities)) {
       decoded = decoded.replace(new RegExp(entity, 'g'), char);
     }
