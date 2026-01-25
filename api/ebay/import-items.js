@@ -18,44 +18,68 @@ function getEbayToken(req) {
   return req.headers['x-user-token'] || null;
 }
 
-// Fetch detailed offer info from eBay Sell API
-async function getOfferDetails(offerId, accessToken) {
+// Fetch detailed item info from eBay Trading API
+async function getItemDetails(itemId, accessToken) {
   const ebayEnv = process.env.EBAY_ENV || 'production';
-  const apiUrl = ebayEnv === 'production' 
-    ? 'https://api.ebay.com'
-    : 'https://api.sandbox.ebay.com';
+  const tradingUrl = ebayEnv === 'production'
+    ? 'https://api.ebay.com/ws/api.dll'
+    : 'https://api.sandbox.ebay.com/ws/api.dll';
 
-  const response = await fetch(`${apiUrl}/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
-    method: 'GET',
+  // Build XML request for GetItem
+  const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <ItemID>${itemId}</ItemID>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetItemRequest>`;
+
+  const response = await fetch(tradingUrl, {
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Accept-Language': 'en-US',
-      'Content-Language': 'en-US',
+      'Content-Type': 'text/xml',
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+      'X-EBAY-API-CALL-NAME': 'GetItem',
     },
+    body: xmlRequest,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`Failed to fetch offer ${offerId}:`, errorText);
-    throw new Error(`Failed to fetch offer ${offerId}`);
+    console.error(`Failed to fetch item ${itemId}:`, errorText);
+    throw new Error(`Failed to fetch item ${itemId}`);
   }
 
-  const offer = await response.json();
-  const listing = offer.listing || {};
-  const pricingSummary = offer.pricingSummary || {};
-  
+  const xmlText = await response.text();
+  return parseItemXML(xmlText);
+}
+
+// Parse GetItem XML response
+function parseItemXML(xml) {
+  const getField = (field) => {
+    const match = xml.match(new RegExp(`<${field}>([^<]*)<\/${field}>`));
+    return match ? match[1] : null;
+  };
+
+  // Extract PictureURL fields
+  const pictureURLs = [];
+  const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+  let pictureMatch;
+  while ((pictureMatch = pictureRegex.exec(xml)) !== null) {
+    pictureURLs.push(pictureMatch[1]);
+  }
+
   return {
-    offerId: offer.offerId,
-    sku: offer.sku,
-    title: listing.title || offer.sku || 'Untitled',
-    description: listing.description || '',
-    price: pricingSummary.price?.value || 0,
-    condition: listing.condition || 'USED',
-    images: listing.pictureUrls || [],
-    quantity: offer.availableQuantity || 0,
-    status: offer.status,
+    itemId: getField('ItemID'),
+    title: getField('Title'),
+    description: getField('Description') || '',
+    price: parseFloat(getField('CurrentPrice') || getField('StartPrice')) || 0,
+    condition: getField('ConditionDisplayName') || 'USED',
+    images: pictureURLs,
+    quantity: parseInt(getField('Quantity')) || 1,
+    sku: getField('SKU'),
   };
 }
 
@@ -96,12 +120,12 @@ export default async function handler(req, res) {
 
     for (const itemId of itemIds) {
       try {
-        // Fetch detailed offer info from eBay (itemId is offerId)
-        const offerDetails = await getOfferDetails(itemId, accessToken);
+        // Fetch detailed item info from eBay Trading API
+        const itemDetails = await getItemDetails(itemId, accessToken);
 
-        if (!offerDetails) {
+        if (!itemDetails || !itemDetails.itemId) {
           failed++;
-          errors.push({ itemId, error: 'Failed to parse offer data' });
+          errors.push({ itemId, error: 'Failed to parse item data' });
           continue;
         }
 
@@ -110,17 +134,17 @@ export default async function handler(req, res) {
           .from('inventory_items')
           .insert({
             user_id: userId,
-            item_name: offerDetails.title,
-            description: offerDetails.description,
-            purchase_price: offerDetails.price,
-            listing_price: offerDetails.price,
+            item_name: itemDetails.title,
+            description: itemDetails.description,
+            purchase_price: itemDetails.price,
+            listing_price: itemDetails.price,
             status: 'listed',
             source: 'eBay',
-            images: offerDetails.images,
-            image_url: offerDetails.images[0] || null,
-            sku: offerDetails.sku,
-            ebay_offer_id: offerDetails.offerId,
-            condition: offerDetails.condition,
+            images: itemDetails.images,
+            image_url: itemDetails.images[0] || null,
+            sku: itemDetails.sku,
+            ebay_item_id: itemDetails.itemId,
+            condition: itemDetails.condition,
             purchase_date: new Date().toISOString(),
           });
 

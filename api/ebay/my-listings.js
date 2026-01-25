@@ -62,86 +62,73 @@ export default async function handler(req, res) {
 
     console.log('🔍 Fetching eBay listings:', { useProduction, status, userId: userId.substring(0, 8) + '...' });
 
-    // Use Sell API - Offer API to get active listings (offers)
-    // https://developer.ebay.com/api-docs/sell/inventory/resources/offer/methods/getOffers
-    // This returns actual listings, not just inventory items
-    const offerUrl = `${apiUrl}/sell/inventory/v1/offer?limit=${limit}`;
+    // Use Trading API's GetMyeBaySelling to get actual "My eBay" listings
+    // This works regardless of SKU/inventory management and returns all active listings
+    const tradingUrl = useProduction
+      ? 'https://api.ebay.com/ws/api.dll'
+      : 'https://api.sandbox.ebay.com/ws/api.dll';
 
-    const response = await fetch(offerUrl, {
-      method: 'GET',
+    // Build XML request for GetMyeBaySelling
+    const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <ActiveList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </ActiveList>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetMyeBaySellingRequest>`;
+
+    const response = await fetch(tradingUrl, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US',
-        'Content-Language': 'en-US',
+        'Content-Type': 'text/xml',
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+        'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
       },
+      body: xmlRequest,
     });
 
-    console.log('📡 eBay API response status:', response.status);
+    console.log('📡 eBay Trading API response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ eBay API error:', response.status, errorText);
-      
-      let errorMessage = 'Failed to fetch eBay listings';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.errors?.[0]?.message || errorData.error_description || errorMessage;
-      } catch (e) {
-        // If not JSON, use the text directly
-        if (errorText) errorMessage = errorText;
-      }
-      
       return res.status(response.status).json({ 
-        error: errorMessage,
+        error: 'Failed to fetch eBay listings',
         details: errorText,
       });
     }
 
-    const data = await response.json();
-    console.log('✅ Fetched offers (listings):', data.offers?.length || 0);
+    const xmlText = await response.text();
+    console.log('📡 Raw XML response length:', xmlText.length);
 
-    // Transform eBay offers to our format
-    const items = (data.offers || []).map(offer => {
-      const listing = offer.listing || {};
-      const pricingSummary = offer.pricingSummary || {};
-      
-      return {
-        itemId: offer.offerId, // Use offerId as item ID
-        offerId: offer.offerId,
-        sku: offer.sku,
-        title: listing.title || offer.sku || 'Untitled',
-        description: listing.description || '',
-        price: pricingSummary.price?.value || 0,
-        imageUrl: listing.pictureUrls?.[0] || null,
-        pictureURLs: listing.pictureUrls || [],
-        condition: listing.condition || 'USED',
-        quantity: offer.availableQuantity || 0,
-        listingDate: offer.listingStartDate || null,
-        startTime: offer.listingStartDate || null,
-        status: offer.status,
-        marketplaceId: offer.marketplaceId,
-      };
-    });
+    // Parse XML response
+    const items = parseMyeBaySellingXML(xmlText);
+    console.log('✅ Parsed listings:', items.length);
 
     // Check which items are already imported
-    const offerIds = items.map(item => item.offerId).filter(Boolean);
+    const itemIds = items.map(item => item.itemId).filter(Boolean);
     
-    if (offerIds.length > 0) {
+    if (itemIds.length > 0) {
       const { data: importedItems } = await supabase
         .from('inventory_items')
-        .select('sku, ebay_offer_id')
+        .select('ebay_item_id')
         .eq('user_id', userId)
-        .or(`sku.in.(${items.map(i => `"${i.sku}"`).join(',')}),ebay_offer_id.in.(${offerIds.map(id => `"${id}"`).join(',')})`);
+        .in('ebay_item_id', itemIds);
 
-      const importedSkus = new Set(importedItems?.map(item => item.sku).filter(Boolean) || []);
-      const importedOfferIds = new Set(importedItems?.map(item => item.ebay_offer_id).filter(Boolean) || []);
+      const importedItemIds = new Set(importedItems?.map(item => item.ebay_item_id) || []);
 
       // Mark items as imported or not
       const listings = items.map(item => ({
         ...item,
-        imported: importedSkus.has(item.sku) || importedOfferIds.has(item.offerId),
+        imported: importedItemIds.has(item.itemId),
       }));
 
       return res.status(200).json({
@@ -162,4 +149,68 @@ export default async function handler(req, res) {
       details: error.stack,
     });
   }
+}
+
+// Helper function to parse GetMyeBaySelling XML response
+function parseMyeBaySellingXML(xml) {
+  const items = [];
+  
+  // Extract ItemArray section
+  const itemArrayMatch = xml.match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
+  if (!itemArrayMatch) {
+    console.log('⚠️ No ItemArray found in response');
+    return items;
+  }
+
+  // Match all Item elements
+  const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
+  let itemMatch;
+
+  while ((itemMatch = itemRegex.exec(itemArrayMatch[1])) !== null) {
+    const itemXml = itemMatch[1];
+    
+    // Extract fields with regex
+    const getField = (field) => {
+      const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\/${field}>`));
+      return match ? match[1] : null;
+    };
+
+    // Extract PictureURL fields
+    const pictureURLs = [];
+    const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+    let pictureMatch;
+    while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
+      pictureURLs.push(pictureMatch[1]);
+    }
+
+    const itemId = getField('ItemID');
+    const title = getField('Title');
+    const currentPrice = getField('CurrentPrice');
+    const quantity = getField('Quantity');
+    const quantitySold = getField('QuantitySold');
+    const listingType = getField('ListingType');
+    const viewItemURL = getField('ViewItemURL');
+    const startTime = getField('StartTime');
+    const endTime = getField('EndTime');
+
+    if (itemId && title) {
+      items.push({
+        itemId,
+        title,
+        price: parseFloat(currentPrice) || 0,
+        quantity: parseInt(quantity) || 0,
+        quantitySold: parseInt(quantitySold) || 0,
+        imageUrl: pictureURLs[0] || null,
+        pictureURLs,
+        listingType,
+        viewItemURL,
+        startTime,
+        endTime,
+        description: '', // GetMyeBaySelling doesn't include full description
+        condition: 'USED', // Default, would need GetItem for actual condition
+      });
+    }
+  }
+
+  return items;
 }
