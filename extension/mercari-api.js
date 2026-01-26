@@ -183,6 +183,8 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         }
       }
     };
+    
+    console.log('🔑 Using seller ID:', actualSellerId, '-> parseInt:', parseInt(actualSellerId, 10));
 
     // Make the GraphQL request
     const timestamp = Date.now();
