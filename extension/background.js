@@ -1993,32 +1993,26 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
           !!captured.authorization || !!captured['x-csrf-token'] || !!captured['x-de-device-token'];
 
         if (hasAnyAuthBits) {
-          // Also try to extract seller ID from the pending request body
+          // Try to extract seller ID from the request URL (Mercari uses GET with query params)
           let sellerId = null;
           try {
-            const pendingReq = mercariApiRecorder.pending.get(details.requestId);
-            console.log('🔍 Checking pending request for seller ID...', {
-              hasPending: !!pendingReq,
-              url: details.url,
-              requestId: details.requestId
-            });
+            const url = new URL(details.url);
+            const variables = url.searchParams.get('variables');
             
-            if (pendingReq?.requestBody) {
-              const body = pendingReq.requestBody;
-              console.log('📦 Request body type:', typeof body, body);
-              
-              // Check if it's the userItemsQuery
-              if (body && typeof body === 'object' && body.variables?.userItemsInput?.sellerId) {
-                sellerId = body.variables.userItemsInput.sellerId;
-                console.log('✅ Extracted seller ID from Mercari API request:', sellerId);
-              } else {
-                console.log('⚠️ Request body does not contain sellerId in expected location');
+            if (variables) {
+              console.log('🔍 Found variables in URL query string');
+              try {
+                const varsObj = JSON.parse(variables);
+                if (varsObj.userItemsInput?.sellerId) {
+                  sellerId = varsObj.userItemsInput.sellerId;
+                  console.log('✅ Extracted seller ID from URL query string:', sellerId);
+                }
+              } catch (e) {
+                console.log('⚠️ Could not parse variables from URL:', e);
               }
-            } else {
-              console.log('⚠️ No request body in pending request');
             }
           } catch (e) {
-            console.log('⚠️ Could not extract seller ID from request body:', e);
+            console.log('⚠️ Could not extract seller ID from URL:', e);
           }
 
           // Merge with any previously captured values so partial captures don't wipe good ones.
