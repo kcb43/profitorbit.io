@@ -29,6 +29,18 @@ const SOURCES = [
   { id: "etsy", label: "Etsy", icon: ETSY_ICON_URL, available: false },
 ];
 
+// Helper function to proxy Mercari images through our API to avoid CORS issues
+const getImageUrl = (imageUrl, source) => {
+  if (!imageUrl) return '';
+  
+  // Mercari images need to be proxied due to CORS restrictions
+  if (source === 'mercari' && imageUrl.includes('mercdn.net')) {
+    return `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  return imageUrl;
+};
+
 export default function Import() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1125,7 +1137,7 @@ export default function Import() {
                       )}
                       <div className="flex-shrink-0">
                         <OptimizedImage
-                          src={item.imageUrl || item.pictureURLs?.[0]}
+                          src={getImageUrl(item.imageUrl || item.pictureURLs?.[0], selectedSource)}
                           alt={item.title}
                           className="w-24 h-24 object-cover rounded"
                         />
