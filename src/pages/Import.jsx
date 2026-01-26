@@ -1244,19 +1244,36 @@ export default function Import() {
                           {item.imported ? (
                             <>
                               <Badge variant="secondary">ALREADY IMPORTED</Badge>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="gap-2 ml-auto"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(item.itemId);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete from Inventory
-                              </Button>
+                              <div className="flex gap-2 ml-auto">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate('/Inventory');
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                                  </svg>
+                                  View Inventory
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(item.itemId);
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete from Inventory
+                                </Button>
+                              </div>
                             </>
                           ) : (
                             <Badge variant="outline">NOT IMPORTED</Badge>
