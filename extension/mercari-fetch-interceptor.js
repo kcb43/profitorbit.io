@@ -6,7 +6,7 @@
 (function() {
   'use strict';
   
-  console.log('🎯 Installing Mercari fetch interceptor in MAIN world...');
+  console.log('🎯 Installing Mercari fetch/XHR interceptor in MAIN world...');
   
   // Store original fetch
   const originalFetch = window.fetch;
@@ -17,7 +17,7 @@
     
     // Check if this is a Mercari API call
     if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
-      console.log('🔍 Intercepted Mercari API call:', url);
+      console.log('🔍 Intercepted Mercari API call (fetch):', url);
       
       // Extract tokens from request
       if (options?.headers) {
@@ -88,5 +88,67 @@
     return originalFetch.apply(this, args);
   };
   
-  console.log('✅ Mercari fetch interceptor installed!');
+  // Also intercept XMLHttpRequest (Mercari might use XHR instead of fetch)
+  const originalXHROpen = XMLHttpRequest.prototype.open;
+  const originalXHRSend = XMLHttpRequest.prototype.send;
+  
+  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+    this._url = url;
+    this._method = method;
+    return originalXHROpen.apply(this, [method, url, ...rest]);
+  };
+  
+  XMLHttpRequest.prototype.send = function(body) {
+    const url = this._url;
+    
+    // Check if this is a Mercari API call
+    if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
+      console.log('🔍 Intercepted Mercari API call (XHR):', url);
+      
+      // Extract seller ID from request body
+      if (body && typeof body === 'string') {
+        try {
+          let sellerId = null;
+          
+          // Handle URL-encoded body
+          if (body.includes('variables=')) {
+            const params = new URLSearchParams(body);
+            const variablesStr = params.get('variables');
+            if (variablesStr) {
+              const variables = JSON.parse(variablesStr);
+              if (variables.userItemsInput?.sellerId) {
+                sellerId = variables.userItemsInput.sellerId;
+                console.log('✅ Captured seller ID from XHR URL-encoded body:', sellerId);
+              }
+            }
+          } else {
+            // Handle JSON body
+            const bodyObj = JSON.parse(body);
+            if (bodyObj.variables?.userItemsInput?.sellerId) {
+              sellerId = bodyObj.variables.userItemsInput.sellerId;
+              console.log('✅ Captured seller ID from XHR JSON body:', sellerId);
+            }
+          }
+          
+          // Dispatch custom event if we found seller ID
+          if (sellerId) {
+            window.dispatchEvent(new CustomEvent('MERCARI_AUTH_INTERCEPTED', {
+              detail: {
+                bearerToken: null,
+                csrfToken: null,
+                sellerId: sellerId.toString(),
+                timestamp: Date.now(),
+              }
+            }));
+          }
+        } catch (e) {
+          console.log('⚠️ Could not parse XHR request body:', e);
+        }
+      }
+    }
+    
+    return originalXHRSend.apply(this, [body]);
+  };
+  
+  console.log('✅ Mercari fetch/XHR interceptor installed!');
 })();
