@@ -599,84 +599,26 @@ function updateLoginStatus(force = false) {
 // Store captured Mercari API headers (from webRequest API in background script)
 let capturedMercariHeaders = null;
 
-// Intercept Mercari API calls to capture auth tokens
+// Listen for Mercari auth intercepted from MAIN world script
 if (MARKETPLACE === 'mercari') {
-  // Intercept fetch requests
-  const originalFetch = window.fetch;
-  window.fetch = function(...args) {
-    const [url, options] = args;
+  window.addEventListener('MERCARI_AUTH_INTERCEPTED', (event) => {
+    console.log('📨 Received auth data from MAIN world interceptor:', event.detail);
     
-    // Check if this is a Mercari API call
-    if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
-      console.log('🔍 Intercepted Mercari API call:', url);
-      
-      // Extract tokens from request
-      if (options?.headers) {
-        const headers = options.headers;
-        let bearerToken = null;
-        let csrfToken = null;
-        let sellerId = null;
-        
-        // Check for Authorization header
-        if (headers.Authorization || headers.authorization) {
-          const authHeader = headers.Authorization || headers.authorization;
-          if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-            bearerToken = authHeader.substring(7);
-            console.log('✅ Captured bearer token from fetch');
-          }
-        }
-        
-        // Check for CSRF token
-        if (headers['x-csrf-token']) {
-          csrfToken = headers['x-csrf-token'];
-          console.log('✅ Captured CSRF token from fetch');
-        }
-        
-        // Extract seller ID from request body
-        if (options.body) {
-          try {
-            let bodyData = options.body;
-            
-            // Handle URL-encoded body
-            if (typeof bodyData === 'string' && bodyData.includes('variables=')) {
-              const params = new URLSearchParams(bodyData);
-              const variablesStr = params.get('variables');
-              if (variablesStr) {
-                const variables = JSON.parse(variablesStr);
-                if (variables.userItemsInput?.sellerId) {
-                  sellerId = variables.userItemsInput.sellerId;
-                  console.log('✅ Captured seller ID from URL-encoded body:', sellerId);
-                }
-              }
-            } else if (typeof bodyData === 'string') {
-              // Handle JSON body
-              const body = JSON.parse(bodyData);
-              if (body.variables?.userItemsInput?.sellerId) {
-                sellerId = body.variables.userItemsInput.sellerId;
-                console.log('✅ Captured seller ID from JSON body:', sellerId);
-              }
-            }
-          } catch (e) {
-            console.log('⚠️ Could not parse request body:', e);
-          }
-        }
-        
-        // Send to background script
-        if (bearerToken || csrfToken || sellerId) {
-          chrome.runtime.sendMessage({
-            type: 'MERCARI_AUTH_CAPTURED',
-            bearerToken: bearerToken,
-            csrfToken: csrfToken,
-            sellerId: sellerId ? sellerId.toString() : null,
-            timestamp: Date.now(),
-          });
-        }
-      }
-    }
-    
-    return originalFetch.apply(this, args);
-  };
+    // Forward to background script
+    chrome.runtime.sendMessage({
+      type: 'MERCARI_AUTH_CAPTURED',
+      bearerToken: event.detail.bearerToken,
+      csrfToken: event.detail.csrfToken,
+      sellerId: event.detail.sellerId,
+      timestamp: event.detail.timestamp,
+    });
+  });
+  
+  console.log('📡 Listening for MERCARI_AUTH_INTERCEPTED events from MAIN world');
 }
+
+// Remove old fetch interceptor code since it doesn't work in isolated world
+// The interceptor is now in mercari-fetch-interceptor.js which runs in MAIN world
 
 // Helper to check if extension context is still valid
 const checkExtensionContext = () => {

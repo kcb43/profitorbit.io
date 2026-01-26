@@ -479,29 +479,6 @@ export default function Dashboard() {
             <TipOfTheDay variant="banner" />
           </div>
 
-          {/* View Rewards Button (Mobile only: below Tip of the Day) */}
-          <div className="col-span-12 lg:hidden">
-            <Link to={createPageUrl("RewardsPoints")}>
-              <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
-                        <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold">View Rewards</h3>
-                        <p className="text-sm text-muted-foreground">Check your progress & tier</p>
-                      </div>
-                    </div>
-                    <ChevronDown className="h-5 w-5 text-muted-foreground -rotate-90" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-
           {/* KPI Row */}
           <div className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             <KpiSparkCard

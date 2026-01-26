@@ -41,6 +41,16 @@
   "content_scripts": [
     {
       "matches": [
+        "https://www.mercari.com/*"
+      ],
+      "js": [
+        "mercari-fetch-interceptor.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
         "https://www.mercari.com/*",
         "https://www.facebook.com/*",
         "https://www.poshmark.com/*",
