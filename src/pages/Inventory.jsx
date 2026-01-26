@@ -412,6 +412,50 @@ export default function InventoryPage() {
               );
             });
           }
+          
+          // Un-mark item in import cache if it was imported from a marketplace
+          if (updatedItem.source) {
+            const source = updatedItem.source.toLowerCase();
+            
+            if (source === 'facebook' || source === 'facebook marketplace') {
+              const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+              if (cachedListings) {
+                try {
+                  const listings = JSON.parse(cachedListings);
+                  const updatedListings = listings.map(item => {
+                    if (item.inventoryId === itemId) {
+                      return { ...item, imported: false, inventoryId: null };
+                    }
+                    return item;
+                  });
+                  localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+                  queryClient.setQueryData(['facebook-listings', updatedItem.user_id], updatedListings);
+                  console.log('✅ Un-marked Facebook item in import cache');
+                } catch (e) {
+                  console.error('Failed to update Facebook cache:', e);
+                }
+              }
+            } else if (source === 'mercari') {
+              const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+              if (cachedListings) {
+                try {
+                  const listings = JSON.parse(cachedListings);
+                  const updatedListings = listings.map(item => {
+                    if (item.inventoryId === itemId) {
+                      return { ...item, imported: false, inventoryId: null };
+                    }
+                    return item;
+                  });
+                  localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+                  queryClient.setQueryData(['mercari-listings', updatedItem.user_id], updatedListings);
+                  console.log('✅ Un-marked Mercari item in import cache');
+                } catch (e) {
+                  console.error('Failed to update Mercari cache:', e);
+                }
+              }
+            }
+            // Note: eBay doesn't use localStorage cache, so no need to handle it here
+          }
         } catch (error) {
           console.error("Error verifying deletion on server:", error);
         }
@@ -561,6 +605,10 @@ export default function InventoryPage() {
           await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
           // Verify all successfully deleted items have deleted_at set on server
           const successfulIds = results.filter(r => r.success).map(r => r.id);
+          
+          // Track sources for cache updates
+          const sourcesToUpdate = { facebook: [], mercari: [] };
+          
           for (const id of successfulIds) {
             try {
               const updatedItem = await inventoryApi.get(id);
@@ -572,9 +620,59 @@ export default function InventoryPage() {
                     item.id === id ? { ...item, deleted_at: updatedItem.deleted_at } : item
                   );
                 });
+                
+                // Track which sources need cache updates
+                if (updatedItem.source) {
+                  const source = updatedItem.source.toLowerCase();
+                  if (source === 'facebook' || source === 'facebook marketplace') {
+                    sourcesToUpdate.facebook.push(id);
+                  } else if (source === 'mercari') {
+                    sourcesToUpdate.mercari.push(id);
+                  }
+                }
               }
             } catch (error) {
               console.error(`Error verifying deletion for item ${id}:`, error);
+            }
+          }
+          
+          // Update Facebook cache if needed
+          if (sourcesToUpdate.facebook.length > 0) {
+            const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (sourcesToUpdate.facebook.includes(item.inventoryId)) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+                console.log(`✅ Un-marked ${sourcesToUpdate.facebook.length} Facebook items in import cache`);
+              } catch (e) {
+                console.error('Failed to update Facebook cache:', e);
+              }
+            }
+          }
+          
+          // Update Mercari cache if needed
+          if (sourcesToUpdate.mercari.length > 0) {
+            const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (sourcesToUpdate.mercari.includes(item.inventoryId)) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+                console.log(`✅ Un-marked ${sourcesToUpdate.mercari.length} Mercari items in import cache`);
+              } catch (e) {
+                console.error('Failed to update Mercari cache:', e);
+              }
             }
           }
         } catch (error) {
