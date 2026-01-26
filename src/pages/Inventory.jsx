@@ -536,6 +536,55 @@ export default function InventoryPage() {
     },
     onSuccess: (deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Un-mark item in import cache if it was imported from a marketplace
+      try {
+        const itemToDelete = itemToPermanentlyDelete;
+        if (itemToDelete?.source) {
+          const source = itemToDelete.source.toLowerCase();
+          
+          if (source === 'facebook' || source === 'facebook marketplace') {
+            const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (item.inventoryId === deletedId) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+                queryClient.setQueryData(['facebook-listings', itemToDelete.user_id], updatedListings);
+                console.log('✅ Un-marked Facebook item in import cache (permanent delete)');
+              } catch (e) {
+                console.error('Failed to update Facebook cache:', e);
+              }
+            }
+          } else if (source === 'mercari') {
+            const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (item.inventoryId === deletedId) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+                queryClient.setQueryData(['mercari-listings', itemToDelete.user_id], updatedListings);
+                console.log('✅ Un-marked Mercari item in import cache (permanent delete)');
+              } catch (e) {
+                console.error('Failed to update Mercari cache:', e);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error un-marking item in import cache:', error);
+      }
+      
       toast({
         title: "Item Permanently Deleted",
         description: "The item has been permanently removed and cannot be recovered.",

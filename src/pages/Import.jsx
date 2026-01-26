@@ -259,6 +259,51 @@ export default function Import() {
     }
   }, [selectedSource, userId, queryClient]);
 
+  // Reload cache when user returns to the page (e.g., after deleting items from inventory)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userId) {
+        console.log('👀 Page became visible, reloading import cache...');
+        
+        if (selectedSource === "facebook") {
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          if (cachedListings) {
+            try {
+              const parsedListings = JSON.parse(cachedListings);
+              console.log('🔄 Reloaded Facebook cache:', parsedListings.length, 'items');
+              queryClient.setQueryData(['facebook-listings', userId], parsedListings);
+              setFacebookListingsVersion(v => v + 1);
+            } catch (e) {
+              console.error('Error reloading Facebook cache:', e);
+            }
+          }
+        } else if (selectedSource === "mercari") {
+          const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+          if (cachedListings) {
+            try {
+              const parsedListings = JSON.parse(cachedListings);
+              console.log('🔄 Reloaded Mercari cache:', parsedListings.length, 'items');
+              queryClient.setQueryData(['mercari-listings', userId], parsedListings);
+              setFacebookListingsVersion(v => v + 1);
+            } catch (e) {
+              console.error('Error reloading Mercari cache:', e);
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also reload when window gains focus (for better UX)
+    window.addEventListener('focus', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [selectedSource, userId, queryClient]);
+
   // Import mutation
   const importMutation = useMutation({
     mutationFn: async (itemIds) => {
