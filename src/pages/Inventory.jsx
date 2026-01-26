@@ -332,64 +332,26 @@ export default function InventoryPage() {
     cleanupOldDeletedItems();
   }, [cleanupOldDeletedItems]);
 
-  // NEW DELETE FUNCTIONALITY - Simple and direct
+  // NEW DELETE FUNCTIONALITY - Permanent delete with confirmation
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId) => {
-      const deletedAt = new Date().toISOString();
-      console.log("Attempting to soft delete item:", itemId, "with deleted_at:", deletedAt);
+      console.log("Permanently deleting item:", itemId);
       
-      // First, check if the item exists and what fields it has
-      try {
-        const beforeItem = await inventoryApi.get(itemId);
-        console.log("Item before update:", beforeItem);
-        console.log("Item fields:", Object.keys(beforeItem));
-      } catch (e) {
-        console.warn("Could not fetch item before update:", e);
-      }
+      // Hard delete (permanent)
+      await inventoryApi.delete(itemId, true);
       
-      // Perform the update
-      const updateResponse = await inventoryApi.update(itemId, {
-        deleted_at: deletedAt
-      });
-      console.log("Update response:", updateResponse);
-      
-      // Wait a brief moment for the server to process
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Verify the update was successful by fetching the item
-      try {
-        const updatedItem = await inventoryApi.get(itemId);
-        console.log("Item after update:", updatedItem);
-        console.log("Item fields after update:", Object.keys(updatedItem));
-        console.log("deleted_at value:", updatedItem.deleted_at);
-        console.log("deletedAt value (camelCase):", updatedItem.deletedAt);
-        
-        // Check both snake_case and camelCase
-        if (!updatedItem.deleted_at && !updatedItem.deletedAt) {
-          console.error("Server update failed: deleted_at/deletedAt not set on server", updatedItem);
-          throw new Error("Failed to persist deletion - server did not save deleted_at field. The field may not exist in the entity schema. Please check your Base44 entity configuration.");
-        }
-        
-        // Use whichever format was saved
-        const actualDeletedAt = updatedItem.deleted_at || updatedItem.deletedAt;
-        return { itemId, deletedAt: actualDeletedAt };
-      } catch (verifyError) {
-        console.error("Failed to verify deletion on server:", verifyError);
-        throw new Error("Failed to verify deletion was saved to server: " + verifyError.message);
-      }
+      return itemId;
     },
     onMutate: async (itemId) => {
       // IMMEDIATELY update the cache before server responds
       await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
       
       const previousData = queryClient.getQueryData(['inventoryItems']);
-      const deletedAt = new Date().toISOString();
       
-      // Update cache immediately - item disappears right away
+      // Immediately remove from cache (permanent delete)
       queryClient.setQueryData(['inventoryItems'], (old = []) => {
-        return old.map(item => 
-          item.id === itemId ? { ...item, deleted_at: deletedAt } : item
-        );
+        if (!Array.isArray(old)) return old;
+        return old.filter(item => item.id !== itemId);
       });
       
       // Remove from selected items
@@ -397,74 +359,60 @@ export default function InventoryPage() {
       
       return { previousData };
     },
-    onSuccess: async (data, itemId) => {
-      // Wait a moment, then refetch to verify server state matches our optimistic update
-      setTimeout(async () => {
-        try {
-          await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-          // Update the cache with the verified server data
-          const updatedItem = await inventoryApi.get(itemId);
-          if (updatedItem.deleted_at) {
-            // Ensure cache has the correct deleted_at value
-            queryClient.setQueryData(['inventoryItems'], (old = []) => {
-              if (!Array.isArray(old)) return old;
-              return old.map(item => 
-                item.id === itemId ? { ...item, deleted_at: updatedItem.deleted_at } : item
-              );
-            });
-          }
+    onSuccess: async (itemId) => {
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Un-mark item in import cache if it was imported from a marketplace
+      try {
+        const itemToDelete = itemToDelete;
+        if (itemToDelete?.source) {
+          const source = itemToDelete.source.toLowerCase();
           
-          // Un-mark item in import cache if it was imported from a marketplace
-          if (updatedItem.source) {
-            const source = updatedItem.source.toLowerCase();
-            
-            if (source === 'facebook' || source === 'facebook marketplace') {
-              const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
-              if (cachedListings) {
-                try {
-                  const listings = JSON.parse(cachedListings);
-                  const updatedListings = listings.map(item => {
-                    if (item.inventoryId === itemId) {
-                      return { ...item, imported: false, inventoryId: null };
-                    }
-                    return item;
-                  });
-                  localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
-                  queryClient.setQueryData(['facebook-listings', updatedItem.user_id], updatedListings);
-                  console.log('✅ Un-marked Facebook item in import cache');
-                } catch (e) {
-                  console.error('Failed to update Facebook cache:', e);
-                }
-              }
-            } else if (source === 'mercari') {
-              const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
-              if (cachedListings) {
-                try {
-                  const listings = JSON.parse(cachedListings);
-                  const updatedListings = listings.map(item => {
-                    if (item.inventoryId === itemId) {
-                      return { ...item, imported: false, inventoryId: null };
-                    }
-                    return item;
-                  });
-                  localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
-                  queryClient.setQueryData(['mercari-listings', updatedItem.user_id], updatedListings);
-                  console.log('✅ Un-marked Mercari item in import cache');
-                } catch (e) {
-                  console.error('Failed to update Mercari cache:', e);
-                }
+          if (source === 'facebook' || source === 'facebook marketplace') {
+            const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (item.inventoryId === itemId) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+                queryClient.setQueryData(['facebook-listings', itemToDelete.user_id], updatedListings);
+                console.log('✅ Un-marked Facebook item in import cache');
+              } catch (e) {
+                console.error('Failed to update Facebook cache:', e);
               }
             }
-            // Note: eBay doesn't use localStorage cache, so no need to handle it here
+          } else if (source === 'mercari') {
+            const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (item.inventoryId === itemId) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+                queryClient.setQueryData(['mercari-listings', itemToDelete.user_id], updatedListings);
+                console.log('✅ Un-marked Mercari item in import cache');
+              } catch (e) {
+                console.error('Failed to update Mercari cache:', e);
+              }
+            }
           }
-        } catch (error) {
-          console.error("Error verifying deletion on server:", error);
         }
-      }, 500);
+      } catch (error) {
+        console.error('Error un-marking item in import cache:', error);
+      }
       
       toast({
-        title: "✅ Item Deleted Successfully",
-        description: `"${itemToDelete?.item_name || 'Item'}" has been moved to deleted items. You can recover it within 30 days.`,
+        title: "✅ Item Deleted",
+        description: `"${itemToDelete?.item_name || 'Item'}" has been permanently deleted.`,
       });
       setDeleteDialogOpen(false);
       setItemToDelete(null);
@@ -1457,10 +1405,22 @@ export default function InventoryPage() {
 
   const handleDeleteClick = (item) => {
     setItemToDelete(item);
-    setDeleteDialogOpen(true);
+    const skipConfirmation = localStorage.getItem('skip_delete_confirmation') === 'true';
+    
+    if (skipConfirmation) {
+      // Skip dialog, delete immediately with toast warning
+      toast({
+        title: "⚠️ Deleting Item...",
+        description: `Permanently removing "${item.item_name}" from your inventory...`,
+      });
+      deleteItemMutation.mutate(item.id);
+    } else {
+      // Show confirmation dialog
+      setDeleteDialogOpen(true);
+    }
   };
 
-  // NEW DELETE CONFIRMATION - Clear and immediate
+  // NEW DELETE CONFIRMATION - Permanent delete
   const confirmDelete = () => {
     if (!itemToDelete) return;
     
@@ -1469,16 +1429,16 @@ export default function InventoryPage() {
     
     // Close dialog immediately
     setDeleteDialogOpen(false);
-    setItemToDelete(null);
     
     // Show immediate feedback
     toast({
-      title: "🗑️ Deleting Item...",
-      description: `Removing "${itemName}" from your inventory...`,
+      title: "⚠️ Deleting Item...",
+      description: `Permanently removing "${itemName}" from your inventory...`,
     });
     
     // Trigger delete - optimistic update happens in onMutate
     deleteItemMutation.mutate(itemId);
+    setItemToDelete(null);
   };
 
   const confirmBulkDelete = () => {
@@ -3143,7 +3103,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* NEW DELETE DIALOG - Clear confirmation */}
+      {/* DELETE DIALOG - Permanent delete warning */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
         setDeleteDialogOpen(open);
         if (!open) setItemToDelete(null);
@@ -3151,12 +3111,12 @@ export default function InventoryPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-red-600 dark:text-red-400">
-              🗑️ Delete Inventory Item?
+              ⚠️ Permanently Delete Item?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-base">
-              Are you sure you want to delete <strong>"{itemToDelete?.item_name || 'this item'}"</strong>?
+              Are you sure you want to <strong className="text-red-600 dark:text-red-400">permanently delete</strong> <strong>"{itemToDelete?.item_name || 'this item'}"</strong>?
               <br /><br />
-              This item will be moved to deleted items and can be recovered within 30 days.
+              <strong className="text-red-600 dark:text-red-400">This action cannot be undone.</strong> The item will be completely removed from your inventory.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
