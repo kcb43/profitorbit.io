@@ -615,6 +615,7 @@ if (MARKETPLACE === 'mercari') {
         const headers = options.headers;
         let bearerToken = null;
         let csrfToken = null;
+        let sellerId = null;
         
         // Check for Authorization header
         if (headers.Authorization || headers.authorization) {
@@ -631,17 +632,32 @@ if (MARKETPLACE === 'mercari') {
           console.log('✅ Captured CSRF token from fetch');
         }
         
-        // Try to extract seller ID from request body
-        let sellerId = null;
+        // Extract seller ID from request body
         if (options.body) {
           try {
-            const body = JSON.parse(options.body);
-            if (body.variables?.userItemsInput?.sellerId) {
-              sellerId = body.variables.userItemsInput.sellerId;
-              console.log('✅ Captured seller ID from request:', sellerId);
+            let bodyData = options.body;
+            
+            // Handle URL-encoded body
+            if (typeof bodyData === 'string' && bodyData.includes('variables=')) {
+              const params = new URLSearchParams(bodyData);
+              const variablesStr = params.get('variables');
+              if (variablesStr) {
+                const variables = JSON.parse(variablesStr);
+                if (variables.userItemsInput?.sellerId) {
+                  sellerId = variables.userItemsInput.sellerId;
+                  console.log('✅ Captured seller ID from URL-encoded body:', sellerId);
+                }
+              }
+            } else if (typeof bodyData === 'string') {
+              // Handle JSON body
+              const body = JSON.parse(bodyData);
+              if (body.variables?.userItemsInput?.sellerId) {
+                sellerId = body.variables.userItemsInput.sellerId;
+                console.log('✅ Captured seller ID from JSON body:', sellerId);
+              }
             }
           } catch (e) {
-            // Not JSON or couldn't parse
+            console.log('⚠️ Could not parse request body:', e);
           }
         }
         
@@ -651,7 +667,7 @@ if (MARKETPLACE === 'mercari') {
             type: 'MERCARI_AUTH_CAPTURED',
             bearerToken: bearerToken,
             csrfToken: csrfToken,
-            sellerId: sellerId,
+            sellerId: sellerId ? sellerId.toString() : null,
             timestamp: Date.now(),
           });
         }

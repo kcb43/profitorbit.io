@@ -107,67 +107,10 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       throw new Error('Mercari authentication tokens are missing. Please open Mercari.com in a tab first.');
     }
     
-    // If we don't have seller ID, try to extract it from the bearer token (JWT)
-    let actualSellerId = sellerId;
-    if (!actualSellerId) {
-      console.log('⚠️ No seller ID stored, extracting from JWT token...');
-      
-      try {
-        // JWT format: header.payload.signature
-        // Decode the payload (middle part)
-        const parts = bearerToken.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          console.log('📦 JWT payload:', payload);
-          console.log('📦 JWT payload.data:', payload.data);
-          
-          // Mercari JWT structure: { b: "hash", data: { id, ... }, exp, iat }
-          // The seller ID is likely in payload.data
-          if (payload.data) {
-            // Log all data fields to find the numeric seller ID
-            console.log('📦 All data fields:', Object.keys(payload.data));
-            
-            // Try to find numeric ID fields
-            for (const key of Object.keys(payload.data)) {
-              const value = payload.data[key];
-              // Look for numeric values that could be seller ID (973134289)
-              if (typeof value === 'number' && value > 100000000 && value < 10000000000) {
-                actualSellerId = value;
-                console.log('✅ Found numeric seller ID in JWT.data.' + key + ':', actualSellerId);
-                break;
-              }
-            }
-            
-            // If not found, try known field names
-            if (!actualSellerId) {
-              actualSellerId = payload.data.id || payload.data.sellerId || payload.data.userId || payload.data.user_id;
-              if (actualSellerId) {
-                console.log('✅ Extracted seller ID from JWT.data:', actualSellerId);
-              }
-            }
-          }
-          
-          // Fallback: try root level fields
-          if (!actualSellerId) {
-            actualSellerId = payload.sub || payload.userId || payload.sellerId || payload.id;
-            if (actualSellerId) {
-              console.log('✅ Extracted seller ID from JWT root:', actualSellerId);
-            }
-          }
-          
-          if (actualSellerId) {
-            // Store it for next time
-            chrome.storage.local.set({ 'mercari_seller_id': actualSellerId.toString() });
-          }
-        }
-      } catch (e) {
-        console.log('Could not decode JWT:', e);
-      }
-      
-      // If still no seller ID, error out
-      if (!actualSellerId) {
-        throw new Error('Seller ID not found in JWT token. The authentication may have changed.');
-      }
+    // If we don't have seller ID from storage, we can't proceed
+    // The seller ID must be captured from an intercepted API call
+    if (!sellerId || isNaN(parseInt(sellerId, 10))) {
+      throw new Error('Seller ID not available. Please navigate to your Mercari listings page to capture your seller ID.');
     }
 
     // Prepare query with seller ID
@@ -177,14 +120,14 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         ...USER_ITEMS_QUERY.variables,
         userItemsInput: {
           ...USER_ITEMS_QUERY.variables.userItemsInput,
-          sellerId: parseInt(actualSellerId, 10),
+          sellerId: parseInt(sellerId, 10),
           status,
           page
         }
       }
     };
     
-    console.log('🔑 Using seller ID:', actualSellerId, '-> parseInt:', parseInt(actualSellerId, 10));
+    console.log('🔑 Using seller ID:', sellerId, '-> parseInt:', parseInt(sellerId, 10));
 
     // Make the GraphQL request
     const timestamp = Date.now();

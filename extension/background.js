@@ -2416,45 +2416,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Get Mercari authentication
         const auth = await self.__mercariApi.getMercariAuth();
         
-        // If no bearer/CSRF tokens, try to capture them from any open Mercari tab
-        // Note: seller ID will be extracted from JWT, so we don't require it here
-        if (auth.needsRefresh || !auth.bearerToken || !auth.csrfToken) {
-          console.log('⚠️ Mercari bearer/CSRF tokens not available, checking for open Mercari tabs...');
+        // Validate seller ID - if it's a long hash (not a numeric ID), clear it
+        if (auth.sellerId && (auth.sellerId.length > 20 || isNaN(parseInt(auth.sellerId, 10)))) {
+          console.log('⚠️ Detected invalid seller ID (hash instead of numeric ID), clearing it:', auth.sellerId.substring(0, 20) + '...');
+          await chrome.storage.local.remove('mercari_seller_id');
+          auth.sellerId = null;
+        }
+        
+        // If no bearer/CSRF tokens OR no valid seller ID, capture them from an open Mercari tab
+        const needsCapture = auth.needsRefresh || !auth.bearerToken || !auth.csrfToken || !auth.sellerId;
+        
+        if (needsCapture) {
+          const missingItems = [];
+          if (!auth.bearerToken) missingItems.push('bearer token');
+          if (!auth.csrfToken) missingItems.push('CSRF token');
+          if (!auth.sellerId) missingItems.push('seller ID');
+          
+          console.log('⚠️ Missing:', missingItems.join(', ') + ', checking for open Mercari tabs...');
           
           const tabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
           
           if (tabs && tabs.length > 0) {
-            console.log('📡 Found', tabs.length, 'Mercari tab(s), injecting content script and capturing tokens...');
+            console.log('📡 Found', tabs.length, 'Mercari tab(s), navigating to listings page...');
             
             try {
-              // Inject content script and execute token capture in all Mercari tabs
+              // Navigate to listings page and reload
               for (const tab of tabs) {
                 try {
                   // Ensure we're on the listings page
                   if (!tab.url.includes('/mypage/listings')) {
                     console.log('Navigating to Mercari active listings page...');
                     await chrome.tabs.update(tab.id, { url: 'https://www.mercari.com/mypage/listings/active/' });
+                    // Wait for navigation
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                   } else {
-                    console.log('Already on listings page, reloading to trigger API call...');
+                    console.log('Already on listings page');
                   }
                   
-                  // Inject content script (which has the fetch interceptor)
-                  await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: ['content.js']
-                  }).catch(e => {
-                    console.log('Content script may already be injected');
-                  });
-                  
-                  // Reload the page to trigger a fresh API call that our content script will intercept
+                  // Reload the page to trigger fresh API calls that content.js will intercept
                   console.log('Reloading page to trigger API call interception...');
                   await chrome.tabs.reload(tab.id);
                   
-                  // Wait for page load and API call interception
-                  console.log('Waiting 5 seconds for page load and token capture...');
-                  await new Promise(resolve => setTimeout(resolve, 5000));
+                  // Wait for page load and API call interception (content.js is auto-injected by manifest)
+                  console.log('Waiting 6 seconds for page load and token capture...');
+                  await new Promise(resolve => setTimeout(resolve, 6000));
                 } catch (e) {
-                  console.log('⚠️ Could not inject/execute in tab', tab.id, ':', e);
+                  console.log('⚠️ Error with tab', tab.id, ':', e);
                 }
               }
               
@@ -2463,8 +2470,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               
               // Try to get auth again
               const freshAuth = await self.__mercariApi.getMercariAuth();
-              if (freshAuth.bearerToken && freshAuth.csrfToken) {
-                console.log('✅ Successfully captured Mercari bearer and CSRF tokens from tab');
+              if (freshAuth.bearerToken && freshAuth.csrfToken && freshAuth.sellerId) {
+                console.log('✅ Successfully captured all Mercari tokens (bearer, CSRF, seller ID)');
+              } else if (freshAuth.bearerToken && freshAuth.csrfToken) {
+                console.log('✅ Successfully captured bearer and CSRF tokens');
+                if (!freshAuth.sellerId) {
+                  console.log('⚠️ Seller ID still missing - it should be captured when page loads');
+                }
               } else {
                 console.log('⚠️ Tokens still not available after capture attempt, will try to proceed anyway...');
               }
