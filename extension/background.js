@@ -1997,13 +1997,25 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
           let sellerId = null;
           try {
             const pendingReq = mercariApiRecorder.pending.get(details.requestId);
+            console.log('🔍 Checking pending request for seller ID...', {
+              hasPending: !!pendingReq,
+              url: details.url,
+              requestId: details.requestId
+            });
+            
             if (pendingReq?.requestBody) {
               const body = pendingReq.requestBody;
+              console.log('📦 Request body type:', typeof body, body);
+              
               // Check if it's the userItemsQuery
-              if (body.variables?.userItemsInput?.sellerId) {
+              if (body && typeof body === 'object' && body.variables?.userItemsInput?.sellerId) {
                 sellerId = body.variables.userItemsInput.sellerId;
                 console.log('✅ Extracted seller ID from Mercari API request:', sellerId);
+              } else {
+                console.log('⚠️ Request body does not contain sellerId in expected location');
               }
+            } else {
+              console.log('⚠️ No request body in pending request');
             }
           } catch (e) {
             console.log('⚠️ Could not extract seller ID from request body:', e);
@@ -2028,6 +2040,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
               if (sellerId) {
                 dataToStore.mercari_seller_id = sellerId.toString();
                 dataToStore.mercari_tokens_timestamp = Date.now();
+                console.log('💾 Storing seller ID:', sellerId);
               }
               
               chrome.storage.local.set(dataToStore, () => {});
