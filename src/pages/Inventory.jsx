@@ -84,6 +84,7 @@ export default function InventoryPage() {
   const [itemToPermanentlyDelete, setItemToPermanentlyDelete] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkPermanentDeleteDialogOpen, setBulkPermanentDeleteDialogOpen] = useState(false);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [itemToSell, setItemToSell] = useState(null);
@@ -602,6 +603,135 @@ export default function InventoryPage() {
         description: error.message || "Failed to permanently delete item. Please try again.",
         variant: "destructive",
       });
+    },
+  });
+
+  // Bulk permanent delete mutation
+  const bulkPermanentDeleteMutation = useMutation({
+    mutationFn: async (itemIds) => {
+      const results = [];
+      
+      for (const id of itemIds) {
+        try {
+          await inventoryApi.delete(id, true);
+          results.push({ id, success: true });
+        } catch (error) {
+          results.push({ id, success: false, error: error.message });
+        }
+      }
+      
+      return results;
+    },
+    onMutate: async (itemIds) => {
+      await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
+      
+      const previousData = queryClient.getQueryData(['inventoryItems']);
+      
+      // Immediately remove from cache
+      queryClient.setQueryData(['inventoryItems'], (old = []) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((item) => !itemIds.includes(item.id));
+      });
+      
+      setSelectedItems([]);
+      
+      return { previousData };
+    },
+    onSuccess: async (results) => {
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+      const successfulIds = results.filter(r => r.success).map(r => r.id);
+      
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Un-mark items in import cache
+      if (successfulIds.length > 0) {
+        try {
+          // Get all inventory items to check their sources
+          const allItems = queryClient.getQueryData(['inventoryItems']) || [];
+          const sourcesToUpdate = { facebook: [], mercari: [] };
+          
+          for (const id of successfulIds) {
+            const item = allItems.find(i => i.id === id);
+            if (item?.source) {
+              const source = item.source.toLowerCase();
+              if (source === 'facebook' || source === 'facebook marketplace') {
+                sourcesToUpdate.facebook.push(id);
+              } else if (source === 'mercari') {
+                sourcesToUpdate.mercari.push(id);
+              }
+            }
+          }
+          
+          // Update Facebook cache
+          if (sourcesToUpdate.facebook.length > 0) {
+            const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (sourcesToUpdate.facebook.includes(item.inventoryId)) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+                console.log(`✅ Un-marked ${sourcesToUpdate.facebook.length} Facebook items (bulk perm delete)`);
+              } catch (e) {
+                console.error('Failed to update Facebook cache:', e);
+              }
+            }
+          }
+          
+          // Update Mercari cache
+          if (sourcesToUpdate.mercari.length > 0) {
+            const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+            if (cachedListings) {
+              try {
+                const listings = JSON.parse(cachedListings);
+                const updatedListings = listings.map(item => {
+                  if (sourcesToUpdate.mercari.includes(item.inventoryId)) {
+                    return { ...item, imported: false, inventoryId: null };
+                  }
+                  return item;
+                });
+                localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+                console.log(`✅ Un-marked ${sourcesToUpdate.mercari.length} Mercari items (bulk perm delete)`);
+              } catch (e) {
+                console.error('Failed to update Mercari cache:', e);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error un-marking items in import cache:', error);
+        }
+      }
+      
+      setBulkPermanentDeleteDialogOpen(false);
+      
+      if (failCount === 0) {
+        toast({
+          title: `✅ ${successCount} Item${successCount > 1 ? 's' : ''} Permanently Deleted`,
+          description: "Selected items have been permanently removed and cannot be recovered.",
+        });
+      } else {
+        toast({
+          title: `⚠️ Partial Permanent Delete Complete`,
+          description: `${successCount} item${successCount > 1 ? 's' : ''} deleted. ${failCount} failed.`,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error, itemIds, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['inventoryItems'], context.previousData);
+      }
+      toast({
+        title: "❌ Bulk Permanent Delete Failed",
+        description: `Failed to permanently delete items: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
+      });
+      setBulkPermanentDeleteDialogOpen(false);
     },
   });
 
@@ -1927,12 +2057,17 @@ export default function InventoryPage() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => setBulkDeleteDialogOpen(true)}
-                  disabled={bulkDeleteMutation.isPending}
+                  onClick={() => showDeletedOnly ? setBulkPermanentDeleteDialogOpen(true) : setBulkDeleteDialogOpen(true)}
+                  disabled={showDeletedOnly ? bulkPermanentDeleteMutation.isPending : bulkDeleteMutation.isPending}
                   className="min-w-0 max-w-full"
                 >
                   <Trash2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">{bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}</span>
+                  <span className="truncate">
+                    {showDeletedOnly 
+                      ? (bulkPermanentDeleteMutation.isPending ? "Deleting Forever..." : "Delete Forever")
+                      : (bulkDeleteMutation.isPending ? "Deleting..." : "Delete")
+                    }
+                  </span>
                 </Button>
               </div>
             </div>
@@ -3180,6 +3315,31 @@ export default function InventoryPage() {
               disabled={bulkDeleteMutation.isPending}
             >
               {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkPermanentDeleteDialogOpen} onOpenChange={setBulkPermanentDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">
+              ⚠️ Permanently Delete {selectedItems.length} Items?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you absolutely sure you want to <strong>permanently delete</strong> the {selectedItems.length} selected items?
+              <br /><br />
+              <strong className="text-red-600 dark:text-red-400">This action cannot be undone.</strong> These items will be completely removed from your inventory and cannot be recovered.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkPermanentDeleteMutation.mutate(selectedItems)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={bulkPermanentDeleteMutation.isPending}
+            >
+              {bulkPermanentDeleteMutation.isPending ? "Deleting Forever..." : "Yes, Permanently Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

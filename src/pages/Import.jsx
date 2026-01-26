@@ -448,6 +448,8 @@ export default function Import() {
       // Find the item in the cached listings to get its inventory ID
       const sourceListings = selectedSource === "facebook" 
         ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+        : selectedSource === "mercari"
+        ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
         : (ebayListings || []);
       
       const item = sourceListings.find(i => i.itemId === itemId);
