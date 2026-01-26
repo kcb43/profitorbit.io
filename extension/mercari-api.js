@@ -186,6 +186,12 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       updated: item.updated ? new Date(item.updated * 1000).toISOString() : null,
       listingDate: item.updated ? new Date(item.updated * 1000).toISOString() : null,
       startTime: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+      // Additional fields
+      condition: item.condition || null,
+      brand: item.brand || null,
+      category: item.category?.name || item.category || null,
+      size: item.size || null,
+      description: item.description || null,
       imported: false // Will be updated by frontend
     }));
 

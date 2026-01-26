@@ -59,19 +59,22 @@ export default async function handler(req, res) {
         console.log(`💾 Inserting item ${item.itemId} into database...`);
 
         // Create inventory item
-        const { data: insertData, error: insertError } = await supabase
+        const { data: insertData, error: insertError} = await supabase
           .from('inventory_items')
           .insert({
             user_id: userId,
             item_name: item.title,
-            description: item.title, // Mercari doesn't provide full description in listings
+            description: item.description || item.title,
             purchase_price: item.price,
             listing_price: item.price,
             status: 'listed',
             source: 'Mercari',
             images: item.pictureURLs || [item.imageUrl].filter(Boolean),
             image_url: item.imageUrl || null,
-            condition: 'USED', // Mercari doesn't provide condition in API response
+            condition: item.condition || 'USED',
+            brand: item.brand || null,
+            category: item.category || null,
+            size: item.size || null,
             purchase_date: new Date().toISOString(),
             // Store Mercari metadata
             notes: `Mercari Item ID: ${item.itemId}` + 
