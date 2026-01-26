@@ -94,6 +94,9 @@ export default function Settings() {
     // Initialize from localStorage
     return localStorage.getItem('profit_orbit_mercari_connected') === 'true';
   });
+  const [skipDeleteConfirmation, setSkipDeleteConfirmation] = useState(() => {
+    return localStorage.getItem('skip_delete_confirmation') === 'true';
+  });
   // Track if we've already shown the connection notification to prevent duplicates
   const mercariNotificationShown = useRef(false);
   const currentlyConnectingMarketplace = useRef(null);
@@ -1240,6 +1243,51 @@ export default function Settings() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* General Preferences */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6"></path>
+                  <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
+                  <path d="M1 12h6m6 0h6"></path>
+                  <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
+                </svg>
+              </div>
+              <div>
+                <CardTitle>General Preferences</CardTitle>
+                <CardDescription>Customize your experience</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="skip-delete-confirmation">Skip Delete Confirmation</Label>
+                <p className="text-xs text-muted-foreground">
+                  Skip the second "Are you sure?" dialog when deleting items
+                </p>
+              </div>
+              <Switch
+                id="skip-delete-confirmation"
+                checked={skipDeleteConfirmation}
+                onCheckedChange={(checked) => {
+                  setSkipDeleteConfirmation(checked);
+                  localStorage.setItem('skip_delete_confirmation', checked.toString());
+                  toast({
+                    title: checked ? "Delete Confirmation Disabled" : "Delete Confirmation Enabled",
+                    description: checked 
+                      ? "You will only see one delete warning." 
+                      : "You will see two delete warnings for safety.",
+                  });
+                }}
+              />
             </div>
           </CardContent>
         </Card>

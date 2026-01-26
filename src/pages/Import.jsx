@@ -1042,6 +1042,52 @@ export default function Import() {
                 </div>
               </Card>
             )}
+
+            {selectedSource === "mercari" && (
+              <Card className="p-4 space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Mercari Listing Status</label>
+                  <Select value={listingStatus} onValueChange={setListingStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on_sale">On Sale</SelectItem>
+                      <SelectItem value="sold_out">Sold Out</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Importing Status</label>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant={importingStatus === "not_imported" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setImportingStatus("not_imported")}
+                      className="w-full justify-start"
+                    >
+                      <Badge variant="secondary" className="mr-2">
+                        {notImportedCount}
+                      </Badge>
+                      Not Imported
+                    </Button>
+                    <Button
+                      variant={importingStatus === "imported" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setImportingStatus("imported")}
+                      className="w-full justify-start"
+                    >
+                      <Badge variant="secondary" className="mr-2">
+                        {importedCount}
+                      </Badge>
+                      Imported
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* Right Content - Listings Grid */}
