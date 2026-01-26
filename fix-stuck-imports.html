@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Stuck Import Items</title>
+</head>
+<body>
+    <h1>Fix Stuck Import Items</h1>
+    <p>This will un-mark the stuck items in your import cache.</p>
+    <button onclick="fixStuckItems()">Fix Stuck Items</button>
+    <pre id="output"></pre>
+
+    <script>
+        function fixStuckItems() {
+            const output = document.getElementById('output');
+            let log = '';
+
+            // Fix Mercari item m85747468355
+            const mercariCache = localStorage.getItem('profit_orbit_mercari_listings');
+            if (mercariCache) {
+                try {
+                    const listings = JSON.parse(mercariCache);
+                    const updatedListings = listings.map(item => {
+                        if (item.itemId === 'm85747468355') {
+                            log += `✅ Found Mercari item ${item.itemId}, un-marking...\n`;
+                            return { ...item, imported: false, inventoryId: null };
+                        }
+                        return item;
+                    });
+                    localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+                    log += '✅ Mercari cache updated\n';
+                } catch (e) {
+                    log += '❌ Error updating Mercari cache: ' + e.message + '\n';
+                }
+            } else {
+                log += '⚠️ No Mercari cache found\n';
+            }
+
+            // Fix Facebook item 2353353251780296
+            const facebookCache = localStorage.getItem('profit_orbit_facebook_listings');
+            if (facebookCache) {
+                try {
+                    const listings = JSON.parse(facebookCache);
+                    const updatedListings = listings.map(item => {
+                        if (item.itemId === '2353353251780296') {
+                            log += `✅ Found Facebook item ${item.itemId}, un-marking...\n`;
+                            return { ...item, imported: false, inventoryId: null };
+                        }
+                        return item;
+                    });
+                    localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+                    log += '✅ Facebook cache updated\n';
+                } catch (e) {
+                    log += '❌ Error updating Facebook cache: ' + e.message + '\n';
+                }
+            } else {
+                log += '⚠️ No Facebook cache found\n';
+            }
+
+            log += '\n✅ Done! Refresh the import page to see the changes.';
+            output.textContent = log;
+        }
+    </script>
+</body>
+</html>
