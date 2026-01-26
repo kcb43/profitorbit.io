@@ -1993,6 +1993,22 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
           !!captured.authorization || !!captured['x-csrf-token'] || !!captured['x-de-device-token'];
 
         if (hasAnyAuthBits) {
+          // Also try to extract seller ID from the pending request body
+          let sellerId = null;
+          try {
+            const pendingReq = mercariApiRecorder.pending.get(details.requestId);
+            if (pendingReq?.requestBody) {
+              const body = pendingReq.requestBody;
+              // Check if it's the userItemsQuery
+              if (body.variables?.userItemsInput?.sellerId) {
+                sellerId = body.variables.userItemsInput.sellerId;
+                console.log('✅ Extracted seller ID from Mercari API request:', sellerId);
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ Could not extract seller ID from request body:', e);
+          }
+
           // Merge with any previously captured values so partial captures don't wipe good ones.
           chrome.storage.local.get(['mercariApiHeaders'], (res) => {
             try {
@@ -2000,16 +2016,21 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
                 ? res.mercariApiHeaders
                 : {};
               const next = { ...prev, ...captured };
-              chrome.storage.local.set(
-                {
-                  mercariApiHeaders: next,
-                  mercariApiHeadersTimestamp: Date.now(),
-                  mercariApiHeadersSourceUrl: details.url || null,
-                  mercariApiHeadersTabId: typeof details.tabId === 'number' ? details.tabId : null,
-                  mercariApiHeadersType: details.type || null,
-                },
-                () => {}
-              );
+              const dataToStore = {
+                mercariApiHeaders: next,
+                mercariApiHeadersTimestamp: Date.now(),
+                mercariApiHeadersSourceUrl: details.url || null,
+                mercariApiHeadersTabId: typeof details.tabId === 'number' ? details.tabId : null,
+                mercariApiHeadersType: details.type || null,
+              };
+              
+              // Store seller ID if we found one
+              if (sellerId) {
+                dataToStore.mercari_seller_id = sellerId.toString();
+                dataToStore.mercari_tokens_timestamp = Date.now();
+              }
+              
+              chrome.storage.local.set(dataToStore, () => {});
             } catch (_) {}
           });
         }
