@@ -84,7 +84,6 @@ export default function InventoryPage() {
   const [itemToPermanentlyDelete, setItemToPermanentlyDelete] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
-  const [bulkPermanentDeleteDialogOpen, setBulkPermanentDeleteDialogOpen] = useState(false);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [itemToSell, setItemToSell] = useState(null);
@@ -101,7 +100,6 @@ export default function InventoryPage() {
   const [tagEditorFor, setTagEditorFor] = useState(null);
   const [tagDrafts, setTagDrafts] = useState({});
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [showDeletedOnly, setShowDeletedOnly] = useState(false);
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
@@ -224,10 +222,10 @@ export default function InventoryPage() {
   // Reset paging when key filters change
   useEffect(() => {
     setPageIndex(0);
-  }, [filters.search, filters.status, showDeletedOnly, showFavoritesOnly, sort, pageSize]);
+  }, [filters.search, filters.status, showFavoritesOnly, sort, pageSize]);
 
   const { data: inventoryPage, isLoading } = useQuery({
-    queryKey: ['inventoryItems', 'inventory', pageIndex, pageSize, filters.search, filters.status, showDeletedOnly, showFavoritesOnly, sort, favoriteIdsCsv],
+    queryKey: ['inventoryItems', 'inventory', pageIndex, pageSize, filters.search, filters.status, showFavoritesOnly, sort, favoriteIdsCsv],
     queryFn: async () => {
       const qs = new URLSearchParams();
       qs.set('paged', 'true');
@@ -237,11 +235,8 @@ export default function InventoryPage() {
       qs.set('fields', inventoryFields);
       qs.set('sort', sort === 'oldest' ? 'purchase_date' : '-purchase_date');
 
-      if (showDeletedOnly) {
-        qs.set('deleted_only', 'true');
-      } else {
-        qs.set('include_deleted', 'true');
-      }
+      // Never include deleted items
+      qs.set('exclude_deleted', 'true');
 
       const search = (filters.search || '').trim();
       if (search) qs.set('search', search);
@@ -683,17 +678,15 @@ export default function InventoryPage() {
     },
   });
 
-  // NEW BULK DELETE - Simple and direct
+  // BULK DELETE - Permanent delete with confirmation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (itemIds) => {
-      const deletedAt = new Date().toISOString();
       const results = [];
       
       for (const id of itemIds) {
         try {
-          await inventoryApi.update(id, {
-            deleted_at: deletedAt
-          });
+          // Hard delete (permanent)
+          await inventoryApi.delete(id, true);
           results.push({ id, success: true });
         } catch (error) {
           results.push({ id, success: false, error: error.message });
@@ -703,19 +696,16 @@ export default function InventoryPage() {
       return results;
     },
     onMutate: async (itemIds) => {
-      // IMMEDIATELY update cache - items disappear right away
       await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
       
       const previousData = queryClient.getQueryData(['inventoryItems']);
-      const deletedAt = new Date().toISOString();
       
+      // Immediately remove from cache (permanent delete)
       queryClient.setQueryData(['inventoryItems'], (old = []) => {
-        return old.map(item => 
-          itemIds.includes(item.id) ? { ...item, deleted_at: deletedAt } : item
-        );
+        if (!Array.isArray(old)) return old;
+        return old.filter(item => !itemIds.includes(item.id));
       });
       
-      // Clear selected items
       setSelectedItems([]);
       
       return { previousData };
@@ -726,91 +716,72 @@ export default function InventoryPage() {
       
       setBulkDeleteDialogOpen(false);
       
-      // Wait a moment, then refetch to verify server state matches our optimistic update
-      setTimeout(async () => {
-        try {
-          await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-          // Verify all successfully deleted items have deleted_at set on server
-          const successfulIds = results.filter(r => r.success).map(r => r.id);
-          
-          // Track sources for cache updates
-          const sourcesToUpdate = { facebook: [], mercari: [] };
-          
-          for (const id of successfulIds) {
-            try {
-              const updatedItem = await inventoryApi.get(id);
-              if (updatedItem.deleted_at) {
-                // Ensure cache has the correct deleted_at value
-                queryClient.setQueryData(['inventoryItems'], (old = []) => {
-                  if (!Array.isArray(old)) return old;
-                  return old.map(item => 
-                    item.id === id ? { ...item, deleted_at: updatedItem.deleted_at } : item
-                  );
-                });
-                
-                // Track which sources need cache updates
-                if (updatedItem.source) {
-                  const source = updatedItem.source.toLowerCase();
-                  if (source === 'facebook' || source === 'facebook marketplace') {
-                    sourcesToUpdate.facebook.push(id);
-                  } else if (source === 'mercari') {
-                    sourcesToUpdate.mercari.push(id);
-                  }
-                }
-              }
-            } catch (error) {
-              console.error(`Error verifying deletion for item ${id}:`, error);
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Un-mark items in import cache
+      const successfulIds = results.filter(r => r.success).map(r => r.id);
+      if (successfulIds.length > 0) {
+        // Get all items to check their sources
+        const allItems = queryClient.getQueryData(['inventoryItems']) || [];
+        const sourcesToUpdate = { facebook: [], mercari: [] };
+        
+        for (const id of successfulIds) {
+          const item = allItems.find(i => i.id === id);
+          if (item?.source) {
+            const source = item.source.toLowerCase();
+            if (source === 'facebook' || source === 'facebook marketplace') {
+              sourcesToUpdate.facebook.push(id);
+            } else if (source === 'mercari') {
+              sourcesToUpdate.mercari.push(id);
             }
           }
-          
-          // Update Facebook cache if needed
-          if (sourcesToUpdate.facebook.length > 0) {
-            const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
-            if (cachedListings) {
-              try {
-                const listings = JSON.parse(cachedListings);
-                const updatedListings = listings.map(item => {
-                  if (sourcesToUpdate.facebook.includes(item.inventoryId)) {
-                    return { ...item, imported: false, inventoryId: null };
-                  }
-                  return item;
-                });
-                localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
-                console.log(`✅ Un-marked ${sourcesToUpdate.facebook.length} Facebook items in import cache`);
-              } catch (e) {
-                console.error('Failed to update Facebook cache:', e);
-              }
-            }
-          }
-          
-          // Update Mercari cache if needed
-          if (sourcesToUpdate.mercari.length > 0) {
-            const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
-            if (cachedListings) {
-              try {
-                const listings = JSON.parse(cachedListings);
-                const updatedListings = listings.map(item => {
-                  if (sourcesToUpdate.mercari.includes(item.inventoryId)) {
-                    return { ...item, imported: false, inventoryId: null };
-                  }
-                  return item;
-                });
-                localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
-                console.log(`✅ Un-marked ${sourcesToUpdate.mercari.length} Mercari items in import cache`);
-              } catch (e) {
-                console.error('Failed to update Mercari cache:', e);
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error verifying bulk deletion on server:", error);
         }
-      }, 500);
+        
+        // Update Facebook cache
+        if (sourcesToUpdate.facebook.length > 0) {
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          if (cachedListings) {
+            try {
+              const listings = JSON.parse(cachedListings);
+              const updatedListings = listings.map(item => {
+                if (sourcesToUpdate.facebook.includes(item.inventoryId)) {
+                  return { ...item, imported: false, inventoryId: null };
+                }
+                return item;
+              });
+              localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+              console.log(`✅ Un-marked ${sourcesToUpdate.facebook.length} Facebook items (bulk delete)`);
+            } catch (e) {
+              console.error('Failed to update Facebook cache:', e);
+            }
+          }
+        }
+        
+        // Update Mercari cache
+        if (sourcesToUpdate.mercari.length > 0) {
+          const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+          if (cachedListings) {
+            try {
+              const listings = JSON.parse(cachedListings);
+              const updatedListings = listings.map(item => {
+                if (sourcesToUpdate.mercari.includes(item.inventoryId)) {
+                  return { ...item, imported: false, inventoryId: null };
+                }
+                return item;
+              });
+              localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+              console.log(`✅ Un-marked ${sourcesToUpdate.mercari.length} Mercari items (bulk delete)`);
+            } catch (e) {
+              console.error('Failed to update Mercari cache:', e);
+            }
+          }
+        }
+      }
       
       if (failCount === 0) {
         toast({
           title: `✅ ${successCount} Item${successCount > 1 ? 's' : ''} Deleted`,
-          description: `All selected items have been moved to deleted items. You can recover them within 30 days.`,
+          description: "Selected items have been permanently deleted.",
         });
       } else {
         toast({
@@ -821,7 +792,6 @@ export default function InventoryPage() {
       }
     },
     onError: (error, itemIds, context) => {
-      // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(['inventoryItems'], context.previousData);
       }
@@ -1179,42 +1149,31 @@ export default function InventoryPage() {
     return inventoryItems.filter(item => {
       const today = new Date();
 
-      // Filter deleted items based on showDeletedOnly state
-      // Check for truthy deleted_at (null, undefined, or empty string means not deleted)
+      // Never show deleted items (they're permanently deleted)
       const isDeleted = item.deleted_at !== null && item.deleted_at !== undefined && item.deleted_at !== '';
-      const deletedMatch = showDeletedOnly ? isDeleted : !isDeleted;
+      if (isDeleted) return false;
 
-    // If showing deleted items, skip other filters
-    if (showDeletedOnly) {
-      const searchMatch = item.item_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      // Apply all filters
+      const statusMatch = filters.status === "all" ||
+        (filters.status === "not_sold" && item.status !== "sold") ||
+        item.status === filters.status;
+      const searchMatch = item.item_name.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.category?.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.source?.toLowerCase().includes(filters.search.toLowerCase());
-      return deletedMatch && searchMatch;
-    }
-
-    // For non-deleted items, apply all filters
-    if (!deletedMatch) return false;
-
-    const statusMatch = filters.status === "all" ||
-      (filters.status === "not_sold" && item.status !== "sold") ||
-      item.status === filters.status;
-    const searchMatch = item.item_name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.category?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.source?.toLowerCase().includes(filters.search.toLowerCase());
-    const favoriteMatch = !showFavoritesOnly || isFavorite(item.id);
-    
-    let daysInStockMatch = true;
-    if (filters.daysInStock !== "all" && item.status !== "sold") {
-      if (filters.daysInStock === "stale") {
-        if (item.purchase_date) {
-          const daysSincePurchase = differenceInDays(today, parseISO(item.purchase_date));
-          daysInStockMatch = daysSincePurchase >= 14;
-        } else {
-          daysInStockMatch = false;
-        }
-      } else if (filters.daysInStock === "returnDeadline") {
-        if (item.return_deadline) {
-          const deadline = parseISO(item.return_deadline);
+      const favoriteMatch = !showFavoritesOnly || isFavorite(item.id);
+      
+      let daysInStockMatch = true;
+      if (filters.daysInStock !== "all" && item.status !== "sold") {
+        if (filters.daysInStock === "stale") {
+          if (item.purchase_date) {
+            const daysSincePurchase = differenceInDays(today, parseISO(item.purchase_date));
+            daysInStockMatch = daysSincePurchase >= 14;
+          } else {
+            daysInStockMatch = false;
+          }
+        } else if (filters.daysInStock === "returnDeadline") {
+          if (item.return_deadline) {
+            const deadline = parseISO(item.return_deadline);
           const daysUntilDeadline = differenceInDays(deadline, today);
           const isWithinDeadline = daysUntilDeadline >= 0 && daysUntilDeadline <= 10;
           const isDismissed = item.return_deadline_dismissed === true;
@@ -1230,7 +1189,7 @@ export default function InventoryPage() {
     
       return statusMatch && searchMatch && daysInStockMatch && favoriteMatch;
     });
-  }, [inventoryItems, showDeletedOnly, showFavoritesOnly, showDismissedReturns, filters, isFavorite]);
+  }, [inventoryItems, showFavoritesOnly, showDismissedReturns, filters, isFavorite]);
 
   const deletedCount = React.useMemo(() => {
     if (!Array.isArray(inventoryItems)) return 0;
@@ -1340,20 +1299,7 @@ export default function InventoryPage() {
   };
 
   const sortedItems = React.useMemo(() => {
-    // If showing deleted items, sort by deletion date (newest deleted first)
-    if (showDeletedOnly) {
-      const sorted = [...filteredItems].sort((a, b) => {
-        if (!a.deleted_at && !b.deleted_at) return 0;
-        if (!a.deleted_at) return 1;
-        if (!b.deleted_at) return -1;
-        const dateA = parseISO(a.deleted_at);
-        const dateB = parseISO(b.deleted_at);
-        return dateB - dateA; // Newest first
-      });
-      return sorted;
-    }
-    
-    // Regular sorting for non-deleted items
+    // Sort items based on selected sort option
     return [...filteredItems].sort((a, b) => {
       switch (sort) {
         case "newest":
@@ -1513,14 +1459,12 @@ export default function InventoryPage() {
   // Determine active mode for banner
   const activeMode = React.useMemo(() => {
     if (viewMode === "gallery") return "gallery";
-    if (showDeletedOnly) return "deleted";
     if (showFavoritesOnly) return "favorites";
     return null;
-  }, [viewMode, showDeletedOnly, showFavoritesOnly]);
+  }, [viewMode, showFavoritesOnly]);
 
   const handleCloseMode = () => {
     if (viewMode === "gallery") setViewMode("grid");
-    if (showDeletedOnly) setShowDeletedOnly(false);
     if (showFavoritesOnly) setShowFavoritesOnly(false);
   };
 
@@ -1871,22 +1815,7 @@ export default function InventoryPage() {
                   >
                     Export CSV
                   </Button>
-                  <Button
-                    variant={showDeletedOnly ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setShowDeletedOnly((prev) => !prev);
-                      setShowFavoritesOnly(false); // Disable favorites when showing deleted
-                    }}
-                    className="flex items-center gap-2 min-w-0 max-w-full"
-                  >
-                    <Archive className={`w-4 h-4 flex-shrink-0 ${showDeletedOnly ? "" : ""}`} />
-                    <span className="truncate">{showDeletedOnly ? "Showing Deleted" : "Show Deleted"}</span>
-                    {deletedCount > 0 && (
-                      <span className="text-xs font-normal opacity-80 flex-shrink-0">({deletedCount})</span>
-                    )}
-                  </Button>
-                  {!showDeletedOnly && filters.daysInStock === "returnDeadline" && (
+                  {filters.daysInStock === "returnDeadline" && (
                     <Button
                       variant={showDismissedReturns ? "default" : "outline"}
                       size="sm"
@@ -1900,7 +1829,7 @@ export default function InventoryPage() {
                       )}
                     </Button>
                   )}
-                  {!showDeletedOnly && (
+                  {!showFavoritesOnly && (
                     <Button
                       variant={showFavoritesOnly ? "default" : "outline"}
                       size="sm"
@@ -1958,34 +1887,19 @@ export default function InventoryPage() {
             </Alert>
           )}
 
-          {(showDeletedOnly || showDismissedReturns) && (
+          {showDismissedReturns && (
             <div className="sticky top-0 z-40 mb-4 p-4 bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 text-white rounded-lg shadow-lg border border-blue-400 dark:border-blue-500">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  {showDeletedOnly && (
-                    <>
-                      <Archive className="w-5 h-5 flex-shrink-0" />
-                      <span className="font-semibold text-sm sm:text-base">
-                        Viewing Deleted Items ({deletedCount})
-                      </span>
-                    </>
-                  )}
-                  {showDismissedReturns && !showDeletedOnly && (
-                    <>
-                      <AlarmClock className="w-5 h-5 flex-shrink-0" />
-                      <span className="font-semibold text-sm sm:text-base">
-                        Viewing Dismissed Return Reminders ({dismissedReturnsCount})
-                      </span>
-                    </>
-                  )}
+                  <AlarmClock className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-semibold text-sm sm:text-base">
+                    Viewing Dismissed Return Reminders ({dismissedReturnsCount})
+                  </span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    if (showDeletedOnly) setShowDeletedOnly(false);
-                    if (showDismissedReturns) setShowDismissedReturns(false);
-                  }}
+                  onClick={() => setShowDismissedReturns(false)}
                   className="text-white hover:bg-white/20 flex-shrink-0"
                 >
                   <X className="w-4 h-4 mr-1" />
@@ -3262,9 +3176,13 @@ export default function InventoryPage() {
       <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Multiple Items?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the {selectedItems.length} selected items? This action cannot be undone.
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">
+              ⚠️ Permanently Delete {selectedItems.length} Items?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you sure you want to <strong className="text-red-600 dark:text-red-400">permanently delete</strong> the {selectedItems.length} selected items?
+              <br /><br />
+              <strong className="text-red-600 dark:text-red-400">This action cannot be undone.</strong> All selected items will be completely removed from your inventory.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -3274,7 +3192,7 @@ export default function InventoryPage() {
               className="bg-red-600 hover:bg-red-700"
               disabled={bulkDeleteMutation.isPending}
             >
-              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Yes, Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
