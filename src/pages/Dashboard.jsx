@@ -503,7 +503,7 @@ export default function Dashboard() {
               deltaPositive={true}
               right={
                 <Link to={createPageUrl("SalesHistory")} className="group">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:opacity-95 transition-opacity">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:opacity-95 transition-opacity">
                     <ShoppingBag className="h-6 w-6 text-white" />
                   </div>
                 </Link>
