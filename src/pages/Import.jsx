@@ -84,9 +84,13 @@ export default function Import() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
+  // Save the location state on mount so we don't lose it
+  const [savedLocationState] = useState(() => location.state);
+
   // Debug: Log location state on mount
   useEffect(() => {
     console.log('🔍 Import Page Mounted - location.state:', location.state);
+    console.log('🔍 Saved location state:', savedLocationState);
     console.log('🔍 location.pathname:', location.pathname);
     console.log('🔍 location.search:', location.search);
   }, []);
@@ -878,18 +882,19 @@ export default function Import() {
                 variant="ghost"
                 onClick={() => {
                   console.log('🔍 Import Back Button - location.state:', location.state);
-                  console.log('🔍 location.state?.from?.pathname:', location.state?.from?.pathname);
+                  console.log('🔍 Import Back Button - savedLocationState:', savedLocationState);
+                  console.log('🔍 savedLocationState?.from?.pathname:', savedLocationState?.from?.pathname);
                   
-                  // Check if we came from a specific page
-                  if (location.state?.from?.pathname) {
-                    const backPath = location.state.from.pathname + (location.state.from.search || '');
+                  // Use saved state (captured on mount) instead of location.state
+                  if (savedLocationState?.from?.pathname) {
+                    const backPath = savedLocationState.from.pathname + (savedLocationState.from.search || '');
                     console.log('✅ Navigating back to:', backPath);
                     // Navigate back to the page we came from with preserved state
                     navigate(backPath, {
-                      state: location.state.from
+                      state: savedLocationState.from
                     });
                   } else {
-                    console.log('⚠️ No location state, defaulting to Crosslist');
+                    console.log('⚠️ No saved location state, defaulting to Crosslist');
                     // Default to Crosslist if no referrer
                     navigate(createPageUrl("Crosslist"));
                   }
