@@ -343,6 +343,11 @@ export default function InventoryPage() {
       
       const previousData = queryClient.getQueryData(['inventoryItems']);
       
+      // Find the item we're deleting to get its source info
+      const itemBeingDeleted = Array.isArray(previousData) 
+        ? previousData.find(item => item.id === itemId)
+        : null;
+      
       // Immediately remove from cache (permanent delete)
       queryClient.setQueryData(['inventoryItems'], (old = []) => {
         if (!Array.isArray(old)) return old;
@@ -352,16 +357,17 @@ export default function InventoryPage() {
       // Remove from selected items
       setSelectedItems(prev => prev.filter(id => id !== itemId));
       
-      return { previousData };
+      return { previousData, itemBeingDeleted };
     },
-    onSuccess: async (itemId) => {
+    onSuccess: async (itemId, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
       
       // Un-mark item in import cache if it was imported from a marketplace
+      const itemBeingDeleted = context?.itemBeingDeleted;
+      
       try {
-        const itemToDelete = itemToDelete;
-        if (itemToDelete?.source) {
-          const source = itemToDelete.source.toLowerCase();
+        if (itemBeingDeleted?.source) {
+          const source = itemBeingDeleted.source.toLowerCase();
           
           if (source === 'facebook' || source === 'facebook marketplace') {
             const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
@@ -375,7 +381,7 @@ export default function InventoryPage() {
                   return item;
                 });
                 localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
-                queryClient.setQueryData(['facebook-listings', itemToDelete.user_id], updatedListings);
+                queryClient.setQueryData(['facebook-listings', itemBeingDeleted.user_id], updatedListings);
                 console.log('✅ Un-marked Facebook item in import cache');
               } catch (e) {
                 console.error('Failed to update Facebook cache:', e);
@@ -393,12 +399,16 @@ export default function InventoryPage() {
                   return item;
                 });
                 localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
-                queryClient.setQueryData(['mercari-listings', itemToDelete.user_id], updatedListings);
+                queryClient.setQueryData(['mercari-listings', itemBeingDeleted.user_id], updatedListings);
                 console.log('✅ Un-marked Mercari item in import cache');
               } catch (e) {
                 console.error('Failed to update Mercari cache:', e);
               }
             }
+          } else if (source === 'ebay') {
+            // eBay doesn't use localStorage cache, just invalidate the query
+            queryClient.invalidateQueries(['ebay-listings', itemBeingDeleted.user_id]);
+            console.log('✅ Invalidated eBay listings cache');
           }
         }
       } catch (error) {
@@ -407,7 +417,7 @@ export default function InventoryPage() {
       
       toast({
         title: "✅ Item Deleted",
-        description: `"${itemToDelete?.item_name || 'Item'}" has been permanently deleted.`,
+        description: `"${itemBeingDeleted?.item_name || 'Item'}" has been permanently deleted.`,
       });
       setDeleteDialogOpen(false);
       setItemToDelete(null);
@@ -571,6 +581,11 @@ export default function InventoryPage() {
       
       const previousData = queryClient.getQueryData(['inventoryItems']);
       
+      // Get the items being deleted BEFORE removing them from cache
+      const itemsBeingDeleted = Array.isArray(previousData) 
+        ? previousData.filter(item => itemIds.includes(item.id))
+        : [];
+      
       // Immediately remove from cache (permanent delete)
       queryClient.setQueryData(['inventoryItems'], (old = []) => {
         if (!Array.isArray(old)) return old;
@@ -579,9 +594,9 @@ export default function InventoryPage() {
       
       setSelectedItems([]);
       
-      return { previousData };
+      return { previousData, itemsBeingDeleted };
     },
-    onSuccess: async (results) => {
+    onSuccess: async (results, variables, context) => {
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;
       
@@ -591,19 +606,22 @@ export default function InventoryPage() {
       
       // Un-mark items in import cache
       const successfulIds = results.filter(r => r.success).map(r => r.id);
-      if (successfulIds.length > 0) {
-        // Get all items to check their sources
-        const allItems = queryClient.getQueryData(['inventoryItems']) || [];
-        const sourcesToUpdate = { facebook: [], mercari: [] };
+      const itemsBeingDeleted = context?.itemsBeingDeleted || [];
+      
+      if (successfulIds.length > 0 && itemsBeingDeleted.length > 0) {
+        const sourcesToUpdate = { facebook: [], mercari: [], ebay: [] };
         
+        // Use the itemsBeingDeleted from context to get source info
         for (const id of successfulIds) {
-          const item = allItems.find(i => i.id === id);
+          const item = itemsBeingDeleted.find(i => i.id === id);
           if (item?.source) {
             const source = item.source.toLowerCase();
             if (source === 'facebook' || source === 'facebook marketplace') {
               sourcesToUpdate.facebook.push(id);
             } else if (source === 'mercari') {
               sourcesToUpdate.mercari.push(id);
+            } else if (source === 'ebay') {
+              sourcesToUpdate.ebay.push(id);
             }
           }
         }
@@ -621,6 +639,13 @@ export default function InventoryPage() {
                 return item;
               });
               localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+              
+              // Also update query cache if available
+              const firstDeletedItem = itemsBeingDeleted.find(i => i.source?.toLowerCase().includes('facebook'));
+              if (firstDeletedItem?.user_id) {
+                queryClient.setQueryData(['facebook-listings', firstDeletedItem.user_id], updatedListings);
+              }
+              
               console.log(`✅ Un-marked ${sourcesToUpdate.facebook.length} Facebook items (bulk delete)`);
             } catch (e) {
               console.error('Failed to update Facebook cache:', e);
@@ -641,10 +666,26 @@ export default function InventoryPage() {
                 return item;
               });
               localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+              
+              // Also update query cache if available
+              const firstDeletedItem = itemsBeingDeleted.find(i => i.source?.toLowerCase() === 'mercari');
+              if (firstDeletedItem?.user_id) {
+                queryClient.setQueryData(['mercari-listings', firstDeletedItem.user_id], updatedListings);
+              }
+              
               console.log(`✅ Un-marked ${sourcesToUpdate.mercari.length} Mercari items (bulk delete)`);
             } catch (e) {
               console.error('Failed to update Mercari cache:', e);
             }
+          }
+        }
+        
+        // Invalidate eBay cache (doesn't use localStorage)
+        if (sourcesToUpdate.ebay.length > 0) {
+          const firstDeletedItem = itemsBeingDeleted.find(i => i.source?.toLowerCase() === 'ebay');
+          if (firstDeletedItem?.user_id) {
+            queryClient.invalidateQueries(['ebay-listings', firstDeletedItem.user_id]);
+            console.log(`✅ Invalidated eBay listings cache (${sourcesToUpdate.ebay.length} items)`);
           }
         }
       }
