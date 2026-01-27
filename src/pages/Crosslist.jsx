@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -302,6 +302,7 @@ const renderMarketplaceIcon = (marketplace, sizeClass = "w-4 h-4") => {
 
 export default function Crosslist() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { addTag } = useInventoryTags();
@@ -1695,7 +1696,14 @@ export default function Crosslist() {
             <Button
               variant="default"
               className="whitespace-nowrap gap-2"
-              onClick={() => navigate(createPageUrl("Import"))}
+              onClick={() => navigate(createPageUrl("Import"), {
+                state: {
+                  from: {
+                    pathname: location.pathname,
+                    search: location.search || "",
+                  }
+                }
+              })}
             >
               <Download className="w-4 h-4" />
               Import

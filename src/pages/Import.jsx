@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ const getImageUrl = (imageUrl, source) => {
 
 export default function Import() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -868,7 +869,18 @@ export default function Import() {
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => navigate(createPageUrl("Crosslist"))}
+                onClick={() => {
+                  // Check if we came from a specific page
+                  if (location.state?.from?.pathname) {
+                    // Navigate back to the page we came from with preserved state
+                    navigate(location.state.from.pathname + (location.state.from.search || ''), {
+                      state: location.state.from
+                    });
+                  } else {
+                    // Default to Crosslist if no referrer
+                    navigate(createPageUrl("Crosslist"));
+                  }
+                }}
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
