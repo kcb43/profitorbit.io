@@ -58,8 +58,21 @@ export default function Import() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // State
-  const [selectedSource, setSelectedSource] = useState(searchParams.get("source") || "ebay");
+  // State - remember last selected source in localStorage
+  const [selectedSource, setSelectedSource] = useState(() => {
+    // Priority: URL param > localStorage > default "ebay"
+    const urlSource = searchParams.get("source");
+    const savedSource = localStorage.getItem('import_last_source');
+    return urlSource || savedSource || "ebay";
+  });
+  
+  // Save selected source to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('import_last_source', selectedSource);
+    // Also update URL to match
+    setSearchParams({ source: selectedSource }, { replace: true });
+  }, [selectedSource, setSearchParams]);
+  
   const [listingStatus, setListingStatus] = useState("Active");
   const [importingStatus, setImportingStatus] = useState("not_imported");
 
@@ -1014,7 +1027,7 @@ export default function Import() {
                       variant={importingStatus === "not_imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("not_imported")}
-                      className="w-full justify-start"
+                      className={`w-full justify-start ${importingStatus === "not_imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     >
                       <Badge variant="secondary" className="mr-2">
                         {notImportedCount}
@@ -1025,7 +1038,7 @@ export default function Import() {
                       variant={importingStatus === "imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("imported")}
-                      className="w-full justify-start"
+                      className={`w-full justify-start ${importingStatus === "imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     >
                       <Badge variant="secondary" className="mr-2">
                         {importedCount}
@@ -1061,7 +1074,7 @@ export default function Import() {
                       variant={importingStatus === "not_imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("not_imported")}
-                      className="w-full justify-start"
+                      className={`w-full justify-start ${importingStatus === "not_imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     >
                       <Badge variant="secondary" className="mr-2">
                         {notImportedCount}
@@ -1072,7 +1085,7 @@ export default function Import() {
                       variant={importingStatus === "imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("imported")}
-                      className="w-full justify-start"
+                      className={`w-full justify-start ${importingStatus === "imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     >
                       <Badge variant="secondary" className="mr-2">
                         {importedCount}
@@ -1107,7 +1120,7 @@ export default function Import() {
                       variant={importingStatus === "not_imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("not_imported")}
-                      className="w-full justify-start"
+                      className={`w-full justify-start ${importingStatus === "not_imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     >
                       <Badge variant="secondary" className="mr-2">
                         {notImportedCount}
@@ -1118,7 +1131,7 @@ export default function Import() {
                       variant={importingStatus === "imported" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setImportingStatus("imported")}
-                      className="w-full justify-start"
+                      className={`w-full justify-start ${importingStatus === "imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     >
                       <Badge variant="secondary" className="mr-2">
                         {importedCount}

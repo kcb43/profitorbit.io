@@ -1695,7 +1695,7 @@ export default function Crosslist() {
           <div className="hidden md:flex gap-2 flex-shrink-0 flex-wrap">
             <Button
               variant="default"
-              className="whitespace-nowrap gap-2"
+              className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700"
               onClick={() => navigate(createPageUrl("Import"), {
                 state: {
                   from: {
@@ -1850,6 +1850,21 @@ export default function Crosslist() {
               Pro Tools
             </Button>
             <div className="flex gap-2 justify-end min-w-0 w-full max-w-full overflow-hidden">
+              <Button
+                variant="default"
+                className="whitespace-nowrap flex-shrink-0 bg-blue-600 hover:bg-blue-700"
+                onClick={() => navigate(createPageUrl("Import"), {
+                  state: {
+                    from: {
+                      pathname: location.pathname,
+                      search: location.search || "",
+                    }
+                  }
+                })}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Import
+              </Button>
               <BulkActionsMenu 
                 selectedItems={selected}
                 onActionComplete={() => setSelected([])}
