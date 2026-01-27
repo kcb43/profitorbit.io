@@ -16,6 +16,16 @@ import { inventoryApi } from "@/api/inventoryApi";
 import { format } from "date-fns";
 import { getCurrentUserId } from "@/api/supabaseClient";
 import SelectionBanner from "@/components/SelectionBanner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -70,6 +80,8 @@ export default function Import() {
   const [canSync, setCanSync] = useState(true);
   const [nextSyncTime, setNextSyncTime] = useState(null);
   const [facebookListingsVersion, setFacebookListingsVersion] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Check last sync time from localStorage
   useEffect(() => {
@@ -458,8 +470,8 @@ export default function Import() {
         throw new Error('Item not found or not imported');
       }
       
-      // Soft delete from inventory
-      return await inventoryApi.deleteItem(item.inventoryId);
+      // Soft delete from inventory (permanent delete)
+      return await inventoryApi.delete(item.inventoryId, true);
     },
     onSuccess: (data, itemId) => {
       toast({
@@ -513,9 +525,8 @@ export default function Import() {
   });
 
   const handleDelete = (itemId) => {
-    if (confirm('Are you sure you want to delete this item from your inventory?')) {
-      deleteMutation.mutate(itemId);
-    }
+    setItemToDelete(itemId);
+    setDeleteDialogOpen(true);
   };
 
   // Filter and sort listings
@@ -1315,6 +1326,31 @@ export default function Import() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Item from Inventory?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this item from your inventory. The item will reappear on the import page as "Not Imported" so you can re-import it later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                deleteMutation.mutate(itemToDelete);
+                setDeleteDialogOpen(false);
+                setItemToDelete(null);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Yes, Remove from Inventory
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

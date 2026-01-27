@@ -58,6 +58,18 @@ export default async function handler(req, res) {
 
         console.log(`💾 Inserting item ${item.itemId} into database...`);
 
+        // Proxy Mercari images to avoid CORS issues
+        const proxyImageUrl = (url) => {
+          if (!url) return null;
+          if (url.includes('mercdn.net')) {
+            return `/api/proxy/image?url=${encodeURIComponent(url)}`;
+          }
+          return url;
+        };
+
+        const proxiedImageUrl = proxyImageUrl(item.imageUrl);
+        const proxiedPictureURLs = (item.pictureURLs || []).map(proxyImageUrl);
+
         // Create inventory item
         const { data: insertData, error: insertError} = await supabase
           .from('inventory_items')
@@ -69,8 +81,8 @@ export default async function handler(req, res) {
             listing_price: item.price,
             status: 'listed',
             source: 'Mercari',
-            images: item.pictureURLs || [item.imageUrl].filter(Boolean),
-            image_url: item.imageUrl || null,
+            images: proxiedPictureURLs.filter(Boolean),
+            image_url: proxiedImageUrl,
             condition: item.condition || 'USED',
             brand: item.brand || null,
             category: item.category || null,
