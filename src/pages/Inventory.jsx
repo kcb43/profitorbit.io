@@ -341,12 +341,10 @@ export default function InventoryPage() {
       // IMMEDIATELY update the cache before server responds
       await queryClient.cancelQueries({ queryKey: ['inventoryItems'] });
       
-      const previousData = queryClient.getQueryData(['inventoryItems']);
+      // Get the item we're deleting from the current inventoryItems array in scope
+      const itemBeingDeleted = inventoryItems.find(item => item.id === itemId);
       
-      // Find the item we're deleting to get its source info
-      const itemBeingDeleted = Array.isArray(previousData) 
-        ? previousData.find(item => item.id === itemId)
-        : null;
+      const previousData = queryClient.getQueryData(['inventoryItems']);
       
       // Immediately remove from cache (permanent delete)
       queryClient.setQueryData(['inventoryItems'], (old = []) => {
@@ -606,9 +604,8 @@ export default function InventoryPage() {
       const previousData = queryClient.getQueryData(['inventoryItems']);
       
       // Get the items being deleted BEFORE removing them from cache
-      const itemsBeingDeleted = Array.isArray(previousData) 
-        ? previousData.filter(item => itemIds.includes(item.id))
-        : [];
+      // Use the current inventoryItems array in scope which has all the data
+      const itemsBeingDeleted = inventoryItems.filter(item => itemIds.includes(item.id));
       
       // Immediately remove from cache (permanent delete)
       queryClient.setQueryData(['inventoryItems'], (old = []) => {
