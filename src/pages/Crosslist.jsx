@@ -33,6 +33,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Filter,
   Grid2X2,
   Rows,
@@ -49,6 +59,7 @@ import {
   Palette,
   Sparkles,
   Download,
+  Trash2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
@@ -294,6 +305,154 @@ export default function Crosslist() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { addTag } = useInventoryTags();
+  
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (itemIds) => {
+      const results = [];
+      
+      for (const id of itemIds) {
+        try {
+          // Hard delete (permanent)
+          await inventoryApi.delete(id, true);
+          results.push({ id, success: true });
+        } catch (error) {
+          results.push({ id, success: false, error: error.message });
+        }
+      }
+      
+      return results;
+    },
+    onSuccess: async (results) => {
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+      
+      // Get items being deleted from the current inventory array
+      const itemsBeingDeleted = inventory.filter(item => itemsToDelete.includes(item.id));
+      
+      // Un-mark items in import cache
+      const successfulIds = results.filter(r => r.success).map(r => r.id);
+      
+      if (successfulIds.length > 0 && itemsBeingDeleted.length > 0) {
+        const sourcesToUpdate = { facebook: [], mercari: [], ebay: [] };
+        
+        for (const id of successfulIds) {
+          const item = itemsBeingDeleted.find(i => i.id === id);
+          if (item?.source) {
+            const source = item.source.toLowerCase();
+            if (source === 'facebook' || source === 'facebook marketplace') {
+              sourcesToUpdate.facebook.push(id);
+            } else if (source === 'mercari') {
+              sourcesToUpdate.mercari.push(id);
+            } else if (source === 'ebay') {
+              sourcesToUpdate.ebay.push(id);
+            }
+          }
+        }
+        
+        // Update Facebook cache
+        if (sourcesToUpdate.facebook.length > 0) {
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          if (cachedListings) {
+            try {
+              const listings = JSON.parse(cachedListings);
+              const updatedListings = listings.map(item => {
+                if (sourcesToUpdate.facebook.includes(item.inventoryId)) {
+                  return { ...item, imported: false, inventoryId: null };
+                }
+                return item;
+              });
+              localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+              
+              const firstDeletedItem = itemsBeingDeleted.find(i => i.source?.toLowerCase().includes('facebook'));
+              if (firstDeletedItem?.user_id) {
+                queryClient.setQueryData(['facebook-listings', firstDeletedItem.user_id], updatedListings);
+              }
+              
+              console.log(`✅ Un-marked ${sourcesToUpdate.facebook.length} Facebook items (crosslist delete)`);
+            } catch (e) {
+              console.error('Failed to update Facebook cache:', e);
+            }
+          }
+        }
+        
+        // Update Mercari cache
+        if (sourcesToUpdate.mercari.length > 0) {
+          const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+          if (cachedListings) {
+            try {
+              const listings = JSON.parse(cachedListings);
+              const updatedListings = listings.map(item => {
+                if (sourcesToUpdate.mercari.includes(item.inventoryId)) {
+                  return { ...item, imported: false, inventoryId: null };
+                }
+                return item;
+              });
+              localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+              
+              const firstDeletedItem = itemsBeingDeleted.find(i => i.source?.toLowerCase() === 'mercari');
+              if (firstDeletedItem?.user_id) {
+                queryClient.setQueryData(['mercari-listings', firstDeletedItem.user_id], updatedListings);
+              }
+              
+              console.log(`✅ Un-marked ${sourcesToUpdate.mercari.length} Mercari items (crosslist delete)`);
+            } catch (e) {
+              console.error('Failed to update Mercari cache:', e);
+            }
+          }
+        }
+        
+        // Invalidate eBay cache
+        if (sourcesToUpdate.ebay.length > 0) {
+          const firstDeletedItem = itemsBeingDeleted.find(i => i.source?.toLowerCase() === 'ebay');
+          if (firstDeletedItem?.user_id) {
+            queryClient.invalidateQueries(['ebay-listings', firstDeletedItem.user_id]);
+            console.log(`✅ Invalidated eBay listings cache (${sourcesToUpdate.ebay.length} items)`);
+          }
+        }
+      }
+      
+      // Clear selection and close dialog
+      setSelected(prev => prev.filter(id => !successfulIds.includes(id)));
+      setDeleteDialogOpen(false);
+      setItemsToDelete([]);
+      
+      // Refresh inventory
+      queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      toast({
+        title: failCount === 0 ? "✅ Items Deleted" : "⚠️ Partial Delete Complete",
+        description: failCount === 0 
+          ? `${successCount} item${successCount > 1 ? 's' : ''} permanently deleted.`
+          : `${successCount} item${successCount > 1 ? 's' : ''} deleted. ${failCount} failed.`,
+        variant: failCount === 0 ? "default" : "destructive",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "❌ Delete Failed",
+        description: `Failed to delete items: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
+      });
+      setDeleteDialogOpen(false);
+      setItemsToDelete([]);
+    },
+  });
+  
+  const handleDeleteClick = () => {
+    if (selected.length === 0) {
+      toast({
+        title: "No Items Selected",
+        description: "Please select items to delete.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setItemsToDelete(selected);
+    setDeleteDialogOpen(true);
+  };
+  
   const [layout, setLayout] = useState(() => {
     // Load saved layout from localStorage, default to "list" on desktop
     const saved = localStorage.getItem('crosslist_layout');
@@ -319,6 +478,8 @@ export default function Crosslist() {
   const [bulkSelectedItems, setBulkSelectedItems] = useState([]); // Items selected for bulk crosslisting
   const [currentEditingItemId, setCurrentEditingItemId] = useState(null); // Currently editing item ID in bulk mode
   const [packageDetailsDialogOpen, setPackageDetailsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemsToDelete, setItemsToDelete] = useState([]);
   const [brandIsCustom, setBrandIsCustom] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [editingColorField, setEditingColorField] = useState(null); // "color1", "color2", or "ebay.color"
@@ -1685,6 +1846,17 @@ export default function Crosslist() {
                 selectedItems={selected}
                 onActionComplete={() => setSelected([])}
               />
+              {selected.length > 0 && (
+                <Button
+                  onClick={handleDeleteClick}
+                  variant="destructive"
+                  className="whitespace-nowrap flex-shrink-0"
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                </Button>
+              )}
               <Button
                 onClick={() => {
                   if (selected.length > 0) {
@@ -2292,6 +2464,34 @@ export default function Crosslist() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">
+              ⚠️ Permanently Delete {itemsToDelete.length} Item{itemsToDelete.length > 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you absolutely sure you want to <strong className="text-red-600 dark:text-red-400">permanently delete</strong> {itemsToDelete.length} selected item{itemsToDelete.length > 1 ? 's' : ''}?
+              <br /><br />
+              <strong className="text-red-600 dark:text-red-400">This action cannot be undone.</strong> These items will be completely removed from your inventory and cannot be recovered.
+              <br /><br />
+              If the item was imported from a marketplace, it will reappear on the Import page as "Not Imported" so you can re-import it later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate(itemsToDelete)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Yes, Permanently Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
