@@ -1333,7 +1333,7 @@ export default function Import() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Item from Inventory?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this item from your inventory. The item will reappear on the import page as "Not Imported" so you can re-import it later if needed.
+              This will remove the item from your inventory. You can re-import it later from the Import page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
