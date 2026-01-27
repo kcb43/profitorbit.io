@@ -369,13 +369,25 @@ export default function InventoryPage() {
         if (itemBeingDeleted?.source) {
           const source = itemBeingDeleted.source.toLowerCase();
           
+          console.log(`🔍 Attempting to un-mark deleted item from ${source} import cache:`, {
+            inventoryId: itemId,
+            source: itemBeingDeleted.source,
+            notes: itemBeingDeleted.notes
+          });
+          
           if (source === 'facebook' || source === 'facebook marketplace') {
             const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
             if (cachedListings) {
               try {
                 const listings = JSON.parse(cachedListings);
+                console.log(`📦 Facebook cache has ${listings.length} items. Looking for inventoryId: ${itemId}`);
+                
+                const matchingItem = listings.find(item => item.inventoryId === itemId);
+                console.log('🔍 Matching Facebook item:', matchingItem);
+                
                 const updatedListings = listings.map(item => {
                   if (item.inventoryId === itemId) {
+                    console.log(`✅ Found and un-marking Facebook item:`, item.itemId);
                     return { ...item, imported: false, inventoryId: null };
                   }
                   return item;
@@ -386,14 +398,22 @@ export default function InventoryPage() {
               } catch (e) {
                 console.error('Failed to update Facebook cache:', e);
               }
+            } else {
+              console.log('⚠️ No Facebook cache found in localStorage');
             }
           } else if (source === 'mercari') {
             const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
             if (cachedListings) {
               try {
                 const listings = JSON.parse(cachedListings);
+                console.log(`📦 Mercari cache has ${listings.length} items. Looking for inventoryId: ${itemId}`);
+                
+                const matchingItem = listings.find(item => item.inventoryId === itemId);
+                console.log('🔍 Matching Mercari item:', matchingItem);
+                
                 const updatedListings = listings.map(item => {
                   if (item.inventoryId === itemId) {
+                    console.log(`✅ Found and un-marking Mercari item:`, item.itemId);
                     return { ...item, imported: false, inventoryId: null };
                   }
                   return item;
@@ -404,12 +424,16 @@ export default function InventoryPage() {
               } catch (e) {
                 console.error('Failed to update Mercari cache:', e);
               }
+            } else {
+              console.log('⚠️ No Mercari cache found in localStorage');
             }
           } else if (source === 'ebay') {
             // eBay doesn't use localStorage cache, just invalidate the query
             queryClient.invalidateQueries(['ebay-listings', itemBeingDeleted.user_id]);
             console.log('✅ Invalidated eBay listings cache');
           }
+        } else {
+          console.log('⚠️ Item has no source, cannot un-mark in import cache');
         }
       } catch (error) {
         console.error('Error un-marking item in import cache:', error);
