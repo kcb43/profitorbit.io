@@ -84,6 +84,13 @@ export default function Import() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
+  // Debug: Log location state on mount
+  useEffect(() => {
+    console.log('🔍 Import Page Mounted - location.state:', location.state);
+    console.log('🔍 location.pathname:', location.pathname);
+    console.log('🔍 location.search:', location.search);
+  }, []);
+
   // Check last sync time from localStorage
   useEffect(() => {
     const checkLastSync = () => {
@@ -870,13 +877,19 @@ export default function Import() {
               <Button
                 variant="ghost"
                 onClick={() => {
+                  console.log('🔍 Import Back Button - location.state:', location.state);
+                  console.log('🔍 location.state?.from?.pathname:', location.state?.from?.pathname);
+                  
                   // Check if we came from a specific page
                   if (location.state?.from?.pathname) {
+                    const backPath = location.state.from.pathname + (location.state.from.search || '');
+                    console.log('✅ Navigating back to:', backPath);
                     // Navigate back to the page we came from with preserved state
-                    navigate(location.state.from.pathname + (location.state.from.search || ''), {
+                    navigate(backPath, {
                       state: location.state.from
                     });
                   } else {
+                    console.log('⚠️ No location state, defaulting to Crosslist');
                     // Default to Crosslist if no referrer
                     navigate(createPageUrl("Crosslist"));
                   }
