@@ -554,6 +554,22 @@ export default function Import() {
     setDeleteDialogOpen(true);
   };
 
+  // Generate marketplace listing URL
+  const getMarketplaceUrl = (item, source) => {
+    if (!item) return null;
+    
+    switch (source) {
+      case 'ebay':
+        return `https://www.ebay.com/itm/${item.itemId}`;
+      case 'mercari':
+        return `https://www.mercari.com/us/item/${item.itemId}/`;
+      case 'facebook':
+        return item.listingUrl || `https://www.facebook.com/marketplace/item/${item.itemId}/`;
+      default:
+        return null;
+    }
+  };
+
   // Filter and sort listings
   const filteredListings = React.useMemo(() => {
     // Use appropriate listings based on selected source
@@ -1292,7 +1308,16 @@ export default function Import() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium truncate">{item.title}</h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {item.startTime && format(new Date(item.startTime), "MMM dd, yyyy")} · ${item.price} · Item ID: {item.itemId}
+                          {item.startTime && format(new Date(item.startTime), "MMM dd, yyyy")} · ${item.price} · Item ID:{" "}
+                          <a
+                            href={getMarketplaceUrl(item, selectedSource)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {item.itemId}
+                          </a>
                         </p>
                         <div className="flex items-center gap-2 mt-2">
                           {item.imported ? (

@@ -156,6 +156,8 @@ async function fetchListingDetails({ dtsg, cookies, listingId }) {
       formData.append('fb_dtsg', dtsg);
     }
     
+    console.log(`📤 Request body:`, formData.toString().substring(0, 200) + '...');
+    
     const response = await fetch('https://www.facebook.com/api/graphql/', {
       method: 'POST',
       headers: {
@@ -168,33 +170,55 @@ async function fetchListingDetails({ dtsg, cookies, listingId }) {
       credentials: 'include',
     });
     
+    console.log(`📥 Response status for ${listingId}:`, response.status);
+    
     if (!response.ok) {
+      console.error(`❌ Bad response for ${listingId}:`, response.status, response.statusText);
       throw new Error(`Facebook API error: ${response.status}`);
     }
     
     const text = await response.text();
+    console.log(`📥 Response length for ${listingId}:`, text.length, 'bytes');
+    console.log(`📥 Response preview for ${listingId}:`, text.substring(0, 300));
+    
     const lines = text.trim().split('\n').filter(l => l.trim());
+    console.log(`📋 Found ${lines.length} JSON lines for ${listingId}`);
     
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
+        console.log(`🔍 Parsed line keys for ${listingId}:`, Object.keys(parsed));
+        
         const listing = parsed.data?.marketplace_listing;
         
         if (listing) {
+          console.log(`✅ Found listing data for ${listingId}:`, {
+            hasStoryDescription: !!listing.story_description,
+            hasRedactedDescription: !!listing.redacted_description,
+            hasTitle: !!listing.marketplace_listing_title,
+            hasCategory: !!listing.marketplace_listing_category,
+            hasConditionBrand: !!listing.custom_title_with_condition_and_brand,
+          });
+          
           // Extract all possible fields
-          return {
+          const result = {
             description: listing.story_description || listing.redacted_description?.text || listing.marketplace_listing_title || null,
             category: listing.marketplace_listing_category?.name || null,
             condition: listing.custom_title_with_condition_and_brand?.condition || null,
             brand: listing.custom_title_with_condition_and_brand?.brand || null,
             size: listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || null,
           };
+          
+          console.log(`📦 Extracted data for ${listingId}:`, result);
+          return result;
         }
       } catch (e) {
+        console.log(`⚠️ Failed to parse line for ${listingId}:`, e.message);
         // Skip invalid JSON lines
       }
     }
     
+    console.warn(`⚠️ No marketplace_listing found in response for ${listingId}`);
     return null;
   } catch (error) {
     console.error(`❌ Error fetching details for listing ${listingId}:`, error);
@@ -321,21 +345,28 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
     for (let i = 0; i < listings.length; i += batchSize) {
       const batch = listings.slice(i, i + batchSize);
       
+      console.log(`🔄 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(listings.length / batchSize)}`, batch.map(l => l.itemId));
+      
       const detailsPromises = batch.map(listing => 
         fetchListingDetails({ dtsg, cookies, listingId: listing.itemId })
       );
       
       const detailsResults = await Promise.all(detailsPromises);
       
+      console.log(`📦 Batch results:`, detailsResults);
+      
       // Merge details into listings
       batch.forEach((listing, idx) => {
         const details = detailsResults[idx];
         if (details) {
+          console.log(`✅ Merging details for ${listing.itemId}:`, details);
           listing.description = details.description || listing.description;
           listing.category = details.category || listing.category;
           listing.condition = details.condition || null;
           listing.brand = details.brand || null;
           listing.size = details.size || null;
+        } else {
+          console.warn(`⚠️ No details returned for ${listing.itemId}`);
         }
         delete listing.needsDetails;
       });
@@ -349,6 +380,7 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
     }
     
     console.log(`✅ All listing details fetched!`);
+    console.log(`📦 Final listings sample:`, listings[0]);
     
     return {
       success: true,
