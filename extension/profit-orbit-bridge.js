@@ -163,6 +163,12 @@ window.addEventListener("message", (event) => {
     return;
   }
 
+  // Enhance Facebook listings with descriptions from detail pages
+  if (msg.type === "PO_ENHANCE_FACEBOOK_LISTINGS") {
+    poTrySendMessage({ type: "ENHANCE_FACEBOOK_LISTINGS", listings: msg.payload }, "PO_ENHANCE_FACEBOOK_LISTINGS_RESULT");
+    return;
+  }
+
   // Mercari API recorder controls (for API-mode reverse engineering)
   if (msg.type === "PO_START_MERCARI_API_RECORDING") {
     poTrySendMessage({ type: "START_MERCARI_API_RECORDING" }, "PO_START_MERCARI_API_RECORDING_RESULT");

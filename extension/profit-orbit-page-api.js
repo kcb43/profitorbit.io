@@ -371,6 +371,24 @@
       return resp;
     },
 
+    // Enhanced Facebook listing details scraper
+    async enhanceFacebookListings(listings) {
+      console.log('🟣 [FACEBOOK] Page API -> enhanceFacebookListings', { count: listings?.length || 0 });
+
+      const resp = await postAndWait(
+        'PO_ENHANCE_FACEBOOK_LISTINGS',
+        'PO_ENHANCE_FACEBOOK_LISTINGS_RESULT',
+        listings,
+        300000 // 5 minutes timeout for batch processing
+      );
+
+      try {
+        localStorage.setItem('profit_orbit_last_facebook_enhance_result', JSON.stringify({ t: Date.now(), resp }));
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Recorder controls
     startMercariApiRecording() {
       return postAndWait('PO_START_MERCARI_API_RECORDING', 'PO_START_MERCARI_API_RECORDING_RESULT', null, 5000);

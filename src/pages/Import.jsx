@@ -96,6 +96,8 @@ export default function Import() {
   const [facebookListingsVersion, setFacebookListingsVersion] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceProgress, setEnhanceProgress] = useState({ current: 0, total: 0 });
 
   // Save the location state on mount so we don't lose it
   const [savedLocationState] = useState(() => location.state);
@@ -554,6 +556,86 @@ export default function Import() {
     setDeleteDialogOpen(true);
   };
 
+  // Handle enhancing Facebook listings with full details
+  const handleEnhanceFacebookListings = async () => {
+    if (selectedSource !== 'facebook') return;
+    
+    try {
+      setEnhancing(true);
+      
+      // Get Facebook listings that need enhancement (not imported only)
+      const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
+      const toEnhance = facebookListings.filter(item => !item.imported && item.listingUrl);
+      
+      if (toEnhance.length === 0) {
+        toast({
+          title: 'No listings to enhance',
+          description: 'All listings are either imported or missing URLs',
+        });
+        return;
+      }
+      
+      console.log(`📋 Enhancing ${toEnhance.length} Facebook listings...`);
+      setEnhanceProgress({ current: 0, total: toEnhance.length });
+      
+      toast({
+        title: 'Enhancing Listings',
+        description: `Fetching full details for ${toEnhance.length} listings...`,
+      });
+      
+      // Call extension to enhance listings
+      const result = await window.ProfitOrbitExtension.enhanceFacebookListings(toEnhance);
+      
+      if (!result?.success) {
+        throw new Error(result?.error || 'Failed to enhance listings');
+      }
+      
+      console.log('✅ Enhancement results:', result.results);
+      
+      // Update cached listings with enhanced details
+      const enhanced = facebookListings.map(item => {
+        const details = result.results?.find(r => r.itemId === item.itemId);
+        if (details && !details.error) {
+          return {
+            ...item,
+            description: details.description || item.description,
+            category: details.category || item.category,
+            condition: details.condition || item.condition,
+            brand: details.brand || item.brand,
+            size: details.size || item.size,
+          };
+        }
+        return item;
+      });
+      
+      // Update cache and persist to localStorage
+      queryClient.setQueryData(['facebook-listings', userId], enhanced);
+      localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(enhanced));
+      setFacebookListingsVersion(v => v + 1);
+      
+      const successCount = result.results?.filter(r => !r.error).length || 0;
+      const failedCount = result.results?.length - successCount || 0;
+      
+      toast({
+        title: 'Enhancement Complete',
+        description: failedCount > 0
+          ? `Enhanced ${successCount} listings, ${failedCount} failed`
+          : `Successfully enhanced ${successCount} listings with full descriptions and details`,
+      });
+      
+    } catch (error) {
+      console.error('❌ Enhancement error:', error);
+      toast({
+        title: 'Enhancement Failed',
+        description: error.message || 'Failed to enhance Facebook listings',
+        variant: 'destructive',
+      });
+    } finally {
+      setEnhancing(false);
+      setEnhanceProgress({ current: 0, total: 0 });
+    }
+  };
+
   // Filter and sort listings
   const filteredListings = React.useMemo(() => {
     // Use appropriate listings based on selected source
@@ -935,6 +1017,31 @@ export default function Import() {
                     : `Get Latest ${selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items`
                   }
                 </Button>
+                {selectedSource === "facebook" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleEnhanceFacebookListings}
+                    disabled={enhancing || filteredListings.length === 0}
+                    className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {enhancing ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Enhancing {enhanceProgress.current}/{enhanceProgress.total}...
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                          <path d="M2 17l10 5 10-5"></path>
+                          <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        Enhance Descriptions
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             )}
           </div>

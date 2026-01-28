@@ -5643,6 +5643,169 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // Enhanced Facebook scraping: Fetch descriptions from individual listing pages
+  if (type === 'ENHANCE_FACEBOOK_LISTINGS') {
+    (async () => {
+      try {
+        console.log('📋 Starting Facebook listing enhancement...');
+        const { listings } = message || {};
+        
+        if (!Array.isArray(listings) || listings.length === 0) {
+          throw new Error('listings array is required');
+        }
+        
+        console.log(`📦 Enhancing ${listings.length} Facebook listings...`);
+        
+        // Process in parallel batches of 5 for speed
+        const BATCH_SIZE = 5;
+        const results = [];
+        
+        for (let i = 0; i < listings.length; i += BATCH_SIZE) {
+          const batch = listings.slice(i, i + BATCH_SIZE);
+          console.log(`🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(listings.length / BATCH_SIZE)}`);
+          
+          const batchPromises = batch.map(async (listing) => {
+            try {
+              const { itemId, listingUrl } = listing;
+              
+              if (!listingUrl) {
+                console.warn(`⚠️ No URL for item ${itemId}`);
+                return { itemId, error: 'No URL available' };
+              }
+              
+              console.log(`📄 Opening: ${listingUrl}`);
+              
+              // Create tab in background
+              const tab = await chrome.tabs.create({
+                url: listingUrl,
+                active: false, // Open in background
+              });
+              
+              // Wait for page to load
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Inject script to extract data
+              const [result] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  // Extract description
+                  const descriptionSelectors = [
+                    'div[class*="html-div"] > span',
+                    'span[dir="auto"][style*="text-align"]',
+                    'div[data-ad-preview="message"] span',
+                    'span[class*="x1lliihq"]', // Common FB class
+                  ];
+                  
+                  let description = '';
+                  for (const selector of descriptionSelectors) {
+                    const el = document.querySelector(selector);
+                    const text = el?.textContent?.trim();
+                    if (text && text.length > 20) {
+                      description = text;
+                      break;
+                    }
+                  }
+                  
+                  // Extract category
+                  const categoryEl = document.querySelector('a[href*="/marketplace/category/"]');
+                  const category = categoryEl?.textContent?.trim() || null;
+                  
+                  // Extract condition
+                  const conditionSelectors = [
+                    'span:contains("Condition")',
+                    'div[class*="condition"]',
+                  ];
+                  let condition = null;
+                  for (const selector of conditionSelectors) {
+                    const els = Array.from(document.querySelectorAll('span'));
+                    const conditionLabel = els.find(el => el.textContent.includes('Condition'));
+                    if (conditionLabel) {
+                      const parent = conditionLabel.closest('div');
+                      const spans = parent?.querySelectorAll('span');
+                      if (spans && spans.length > 1) {
+                        condition = Array.from(spans).find(s => 
+                          s.textContent !== 'Condition' && 
+                          (s.textContent.includes('New') || 
+                           s.textContent.includes('Used') || 
+                           s.textContent.includes('Like New'))
+                        )?.textContent;
+                      }
+                      break;
+                    }
+                  }
+                  
+                  // Extract brand (if available)
+                  const brandEls = Array.from(document.querySelectorAll('span'));
+                  const brandLabel = brandEls.find(el => el.textContent.includes('Brand'));
+                  let brand = null;
+                  if (brandLabel) {
+                    const parent = brandLabel.closest('div');
+                    const spans = parent?.querySelectorAll('span');
+                    if (spans && spans.length > 1) {
+                      brand = Array.from(spans).find(s => s.textContent !== 'Brand')?.textContent;
+                    }
+                  }
+                  
+                  // Extract size (if available)
+                  const sizeEls = Array.from(document.querySelectorAll('span'));
+                  const sizeLabel = sizeEls.find(el => el.textContent.includes('Size'));
+                  let size = null;
+                  if (sizeLabel) {
+                    const parent = sizeLabel.closest('div');
+                    const spans = parent?.querySelectorAll('span');
+                    if (spans && spans.length > 1) {
+                      size = Array.from(spans).find(s => s.textContent !== 'Size')?.textContent;
+                    }
+                  }
+                  
+                  return {
+                    description: description || null,
+                    category: category || null,
+                    condition: condition || null,
+                    brand: brand || null,
+                    size: size || null,
+                  };
+                }
+              });
+              
+              // Close the tab
+              await chrome.tabs.remove(tab.id);
+              
+              console.log(`✅ Enhanced: ${itemId}`, result.result);
+              
+              return {
+                itemId,
+                ...result.result
+              };
+            } catch (error) {
+              console.error(`❌ Error enhancing listing:`, error);
+              return {
+                itemId: listing.itemId,
+                error: error.message
+              };
+            }
+          });
+          
+          // Wait for batch to complete
+          const batchResults = await Promise.all(batchPromises);
+          results.push(...batchResults);
+          
+          // Small delay between batches to avoid rate limiting
+          if (i + BATCH_SIZE < listings.length) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        
+        console.log(`✅ Enhanced ${results.length} listings`);
+        sendResponse({ success: true, results });
+      } catch (e) {
+        console.error('❌ Facebook enhancement error:', e);
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   sendResponse({ ok: false, ignored: true });
   return true;
 });
