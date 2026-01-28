@@ -135,116 +135,6 @@ async function getFacebookAuth() {
   }
 }
 
-// Fetch individual listing details with full description
-async function fetchListingDetails({ dtsg, cookies, listingId }) {
-  try {
-    console.log(`📡 Fetching details for listing ${listingId}...`);
-    
-    const variables = {
-      category_id: "0",
-      composer_mode: "EDIT_LISTING",
-      delivery_types: ["in_person", "shipping_onsite"],
-      has_prefetched_category: false,
-      is_edit: true,
-      listingId: listingId,
-      scale: 1,
-      should_prefill_b2c_jobs_address: false,
-      should_prefill_c2c_jobs_address: true
-    };
-    
-    const formData = new URLSearchParams();
-    formData.append('variables', JSON.stringify(variables));
-    formData.append('doc_id', '33414079394905543'); // CometMarketplaceComposerRootComponentQuery (EDIT query)
-    formData.append('fb_api_req_friendly_name', 'CometMarketplaceComposerRootComponentQuery');
-    
-    if (dtsg) {
-      formData.append('fb_dtsg', dtsg);
-    }
-    
-    console.log(`📤 Request body:`, formData.toString().substring(0, 200) + '...');
-    
-    const response = await fetch('https://www.facebook.com/api/graphql/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      body: formData.toString(),
-      credentials: 'include',
-    });
-    
-    console.log(`📥 Response status for ${listingId}:`, response.status);
-    
-    if (!response.ok) {
-      console.error(`❌ Bad response for ${listingId}:`, response.status, response.statusText);
-      throw new Error(`Facebook API error: ${response.status}`);
-    }
-    
-    const text = await response.text();
-    console.log(`📥 Response length for ${listingId}:`, text.length, 'bytes');
-    console.log(`📥 Response preview for ${listingId}:`, text.substring(0, 300));
-    
-    const lines = text.trim().split('\n').filter(l => l.trim());
-    console.log(`📋 Found ${lines.length} JSON lines for ${listingId}`);
-    
-    for (const line of lines) {
-      try {
-        const parsed = JSON.parse(line);
-        console.log(`🔍 Parsed line keys for ${listingId}:`, Object.keys(parsed));
-        
-        // The edit query returns data in a different structure
-        // Look for: data.node.listing OR data.marketplace_listing_for_editing
-        const listing = parsed.data?.node?.listing || 
-                       parsed.data?.marketplace_listing_for_editing ||
-                       parsed.data?.marketplace_listing;
-        
-        if (listing) {
-          console.log(`✅ Found listing data for ${listingId}:`, {
-            hasDescription: !!listing.marketplace_listing_description,
-            hasRedactedDescription: !!listing.redacted_description,
-            hasStoryDescription: !!listing.story_description,
-            hasTitle: !!listing.marketplace_listing_title,
-            hasCategory: !!listing.marketplace_listing_category,
-            hasCustomTitle: !!listing.custom_title_with_condition_and_brand,
-            allKeys: Object.keys(listing).slice(0, 20)
-          });
-          
-          // Extract all possible fields
-          const result = {
-            description: listing.marketplace_listing_description || 
-                        listing.story_description || 
-                        listing.redacted_description?.text || 
-                        listing.marketplace_listing_title || null,
-            category: listing.marketplace_listing_category?.name || 
-                     listing.listing_category?.name || null,
-            condition: listing.custom_title_with_condition_and_brand?.condition || 
-                      listing.condition || null,
-            brand: listing.custom_title_with_condition_and_brand?.brand || 
-                  listing.brand || null,
-            size: listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || 
-                 listing.size || null,
-          };
-          
-          console.log(`📦 Extracted data for ${listingId}:`, result);
-          return result;
-        }
-      } catch (e) {
-        console.log(`⚠️ Failed to parse line for ${listingId}:`, e.message);
-        // Skip invalid JSON lines
-      }
-    }
-    
-    console.warn(`⚠️ No listing data found in response for ${listingId}`);
-    console.warn(`⚠️ Response preview:`, text.substring(0, 500));
-    return null;
-  } catch (error) {
-    console.error(`❌ Error fetching details for listing ${listingId}:`, error);
-    return null;
-  }
-}
-
 // Fetch listings via GraphQL API
 async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null }) {
   try {
@@ -357,43 +247,132 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
     
     console.log(`✅ Extracted ${listings.length} Facebook listings from API`);
     
-    // Now fetch full details for each listing (in batches to avoid rate limiting)
-    console.log(`📋 Fetching full details for ${listings.length} listings...`);
+    // Now fetch full details by navigating to each listing page
+    // This is more reliable than trying to use GraphQL queries we don't have access to
+    console.log(`📋 Fetching full details via content script injection for ${listings.length} listings...`);
     
-    const batchSize = 5;
-    for (let i = 0; i < listings.length; i += batchSize) {
-      const batch = listings.slice(i, i + batchSize);
-      
-      console.log(`🔄 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(listings.length / batchSize)}`, batch.map(l => l.itemId));
-      
-      const detailsPromises = batch.map(listing => 
-        fetchListingDetails({ dtsg, cookies, listingId: listing.itemId })
-      );
-      
-      const detailsResults = await Promise.all(detailsPromises);
-      
-      console.log(`📦 Batch results:`, detailsResults);
-      
-      // Merge details into listings
-      batch.forEach((listing, idx) => {
-        const details = detailsResults[idx];
-        if (details) {
-          console.log(`✅ Merging details for ${listing.itemId}:`, details);
-          listing.description = details.description || listing.description;
-          listing.category = details.category || listing.category;
-          listing.condition = details.condition || null;
-          listing.brand = details.brand || null;
-          listing.size = details.size || null;
-        } else {
-          console.warn(`⚠️ No details returned for ${listing.itemId}`);
-        }
-        delete listing.needsDetails;
+    // Find or create a Facebook Marketplace tab
+    const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/marketplace/*' });
+    let tab;
+    
+    if (tabs && tabs.length > 0) {
+      tab = tabs[0];
+      console.log(`✅ Using existing Facebook Marketplace tab ${tab.id}`);
+    } else {
+      // Create a new tab for scraping
+      tab = await chrome.tabs.create({
+        url: 'https://www.facebook.com/marketplace/you/selling',
+        active: false // Keep it in background
       });
+      console.log(`✅ Created new Facebook Marketplace tab ${tab.id}`);
       
-      console.log(`✅ Fetched details for batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(listings.length / batchSize)}`);
+      // Wait for tab to load
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    // Process listings one by one
+    for (let i = 0; i < listings.length; i++) {
+      const listing = listings[i];
+      console.log(`📄 [${i + 1}/${listings.length}] Fetching details for ${listing.itemId}...`);
       
-      // Small delay between batches to avoid rate limiting
-      if (i + batchSize < listings.length) {
+      try {
+        // Navigate to the listing URL
+        await chrome.tabs.update(tab.id, { url: listing.listingUrl });
+        
+        // Wait for page to load and stabilize
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Inject script to extract data
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // Extract description
+            const descriptionSelectors = [
+              'div[class*="html-div"] > span',
+              'span[dir="auto"][style*="text-align"]',
+              'div[data-ad-preview="message"] span',
+              'span[class*="x1lliihq"]',
+            ];
+            
+            let description = '';
+            for (const selector of descriptionSelectors) {
+              const el = document.querySelector(selector);
+              const text = el?.textContent?.trim();
+              if (text && text.length > 20 && !text.includes('See translation')) {
+                description = text;
+                break;
+              }
+            }
+            
+            // Extract category
+            const categoryEl = document.querySelector('a[href*="/marketplace/category/"]');
+            const category = categoryEl?.textContent?.trim() || null;
+            
+            // Extract condition
+            const spans = Array.from(document.querySelectorAll('span'));
+            const conditionLabel = spans.find(el => el.textContent?.includes('Condition'));
+            let condition = null;
+            if (conditionLabel) {
+              const parent = conditionLabel.closest('div');
+              const nextSpan = Array.from(parent?.querySelectorAll('span') || []).find(s => 
+                s.textContent !== 'Condition' && 
+                (s.textContent?.includes('New') || 
+                 s.textContent?.includes('Used') || 
+                 s.textContent?.includes('Like New'))
+              );
+              condition = nextSpan?.textContent || null;
+            }
+            
+            // Extract brand
+            const brandLabel = spans.find(el => el.textContent?.includes('Brand'));
+            let brand = null;
+            if (brandLabel) {
+              const parent = brandLabel.closest('div');
+              const nextSpan = Array.from(parent?.querySelectorAll('span') || []).find(s => 
+                s.textContent !== 'Brand' && s.textContent?.length > 0
+              );
+              brand = nextSpan?.textContent || null;
+            }
+            
+            // Extract size
+            const sizeLabel = spans.find(el => el.textContent?.includes('Size'));
+            let size = null;
+            if (sizeLabel) {
+              const parent = sizeLabel.closest('div');
+              const nextSpan = Array.from(parent?.querySelectorAll('span') || []).find(s => 
+                s.textContent !== 'Size' && s.textContent?.length > 0
+              );
+              size = nextSpan?.textContent || null;
+            }
+            
+            return {
+              description: description || null,
+              category: category || null,
+              condition: condition || null,
+              brand: brand || null,
+              size: size || null,
+            };
+          }
+        });
+        
+        // Merge the extracted data into the listing
+        if (result?.result) {
+          const data = result.result;
+          console.log(`✅ Extracted data for ${listing.itemId}:`, data);
+          
+          listing.description = data.description || listing.description;
+          listing.category = data.category || listing.category;
+          listing.condition = data.condition || null;
+          listing.brand = data.brand || null;
+          listing.size = data.size || null;
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error fetching details for ${listing.itemId}:`, error);
+      }
+      
+      // Small delay between requests
+      if (i < listings.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
@@ -418,7 +397,6 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
 self.__facebookApi = {
   getFacebookAuth,
   fetchFacebookListings,
-  fetchListingDetails,
 };
 
 console.log('✅ Facebook API client loaded');
