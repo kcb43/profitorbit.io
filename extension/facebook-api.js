@@ -135,6 +135,73 @@ async function getFacebookAuth() {
   }
 }
 
+// Fetch individual listing details with full description
+async function fetchListingDetails({ dtsg, cookies, listingId }) {
+  try {
+    console.log(`📡 Fetching details for listing ${listingId}...`);
+    
+    const variables = {
+      listingId,
+      scale: 1,
+      shouldShowAllMessagesOnYouFeedCard: true,
+      __relay_internal__pv__ShouldUpdateMarketplaceBoostListingBoostedStatusrelayprovider: false
+    };
+    
+    const formData = new URLSearchParams();
+    formData.append('variables', JSON.stringify(variables));
+    formData.append('doc_id', '33900906512887906'); // MarketplaceYourListingDialogQuery
+    formData.append('fb_api_req_friendly_name', 'MarketplaceYourListingDialogQuery');
+    
+    if (dtsg) {
+      formData.append('fb_dtsg', dtsg);
+    }
+    
+    const response = await fetch('https://www.facebook.com/api/graphql/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      body: formData.toString(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Facebook API error: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line);
+        const listing = parsed.data?.marketplace_listing;
+        
+        if (listing) {
+          // Extract all possible fields
+          return {
+            description: listing.story_description || listing.redacted_description?.text || listing.marketplace_listing_title || null,
+            category: listing.marketplace_listing_category?.name || null,
+            condition: listing.custom_title_with_condition_and_brand?.condition || null,
+            brand: listing.custom_title_with_condition_and_brand?.brand || null,
+            size: listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || null,
+          };
+        }
+      } catch (e) {
+        // Skip invalid JSON lines
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`❌ Error fetching details for listing ${listingId}:`, error);
+    return null;
+  }
+}
+
 // Fetch listings via GraphQL API
 async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null }) {
   try {
@@ -241,10 +308,47 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         listingDate: listing.creation_time ? new Date(listing.creation_time * 1000).toISOString() : new Date().toISOString(),
         startTime: listing.creation_time ? new Date(listing.creation_time * 1000).toISOString() : new Date().toISOString(),
         categoryId: listing.marketplace_listing_category_id,
+        needsDetails: true, // Flag that we need to fetch full details
       };
     }).filter(Boolean);
     
     console.log(`✅ Extracted ${listings.length} Facebook listings from API`);
+    
+    // Now fetch full details for each listing (in batches to avoid rate limiting)
+    console.log(`📋 Fetching full details for ${listings.length} listings...`);
+    
+    const batchSize = 5;
+    for (let i = 0; i < listings.length; i += batchSize) {
+      const batch = listings.slice(i, i + batchSize);
+      
+      const detailsPromises = batch.map(listing => 
+        fetchListingDetails({ dtsg, cookies, listingId: listing.itemId })
+      );
+      
+      const detailsResults = await Promise.all(detailsPromises);
+      
+      // Merge details into listings
+      batch.forEach((listing, idx) => {
+        const details = detailsResults[idx];
+        if (details) {
+          listing.description = details.description || listing.description;
+          listing.category = details.category || listing.category;
+          listing.condition = details.condition || null;
+          listing.brand = details.brand || null;
+          listing.size = details.size || null;
+        }
+        delete listing.needsDetails;
+      });
+      
+      console.log(`✅ Fetched details for batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(listings.length / batchSize)}`);
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < listings.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    console.log(`✅ All listing details fetched!`);
     
     return {
       success: true,
@@ -263,6 +367,7 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
 self.__facebookApi = {
   getFacebookAuth,
   fetchFacebookListings,
+  fetchListingDetails,
 };
 
 console.log('✅ Facebook API client loaded');
