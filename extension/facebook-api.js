@@ -279,70 +279,80 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         // Navigate to the listing URL
         await chrome.tabs.update(tab.id, { url: listing.listingUrl });
         
-        // Wait for page to load and stabilize
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Wait for page to load - reduced from 3s to 2s
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Inject script to extract data
         const [result] = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            // Extract description
+            // Extract description - Look for the main listing description
             const descriptionSelectors = [
+              // Primary description container
+              'div[class*="xz9dl7a"] span[dir="auto"]',
+              'div[style*="overflow-wrap"] span[dir="auto"]',
+              // Fallback selectors
               'div[class*="html-div"] > span',
-              'span[dir="auto"][style*="text-align"]',
-              'div[data-ad-preview="message"] span',
-              'span[class*="x1lliihq"]',
+              'span[dir="auto"][style*="text-align: start"]',
             ];
             
             let description = '';
             for (const selector of descriptionSelectors) {
-              const el = document.querySelector(selector);
-              const text = el?.textContent?.trim();
-              if (text && text.length > 20 && !text.includes('See translation')) {
-                description = text;
-                break;
+              const elements = document.querySelectorAll(selector);
+              for (const el of elements) {
+                const text = el?.textContent?.trim();
+                // Must be substantial text, not a label or menu item
+                if (text && text.length > 50 && 
+                    !text.includes('See translation') && 
+                    !text.includes('Today\'s picks') &&
+                    !text.includes('mi$') &&
+                    !text.includes('Related products')) {
+                  description = text;
+                  break;
+                }
+              }
+              if (description) break;
+            }
+            
+            // Extract category - Look for category link
+            let category = null;
+            const categoryLink = document.querySelector('a[href*="/marketplace/category/"]');
+            if (categoryLink) {
+              const catText = categoryLink.textContent?.trim();
+              // Avoid picking up other links
+              if (catText && catText.length < 50 && !catText.includes('$') && !catText.includes('mi')) {
+                category = catText;
               }
             }
             
-            // Extract category
-            const categoryEl = document.querySelector('a[href*="/marketplace/category/"]');
-            const category = categoryEl?.textContent?.trim() || null;
-            
-            // Extract condition
-            const spans = Array.from(document.querySelectorAll('span'));
-            const conditionLabel = spans.find(el => el.textContent?.includes('Condition'));
+            // Extract condition - Look for specific "Condition" label
             let condition = null;
-            if (conditionLabel) {
-              const parent = conditionLabel.closest('div');
-              const nextSpan = Array.from(parent?.querySelectorAll('span') || []).find(s => 
-                s.textContent !== 'Condition' && 
-                (s.textContent?.includes('New') || 
-                 s.textContent?.includes('Used') || 
-                 s.textContent?.includes('Like New'))
-              );
-              condition = nextSpan?.textContent || null;
+            const allText = document.body.textContent;
+            const conditionMatch = allText.match(/Condition[:\s]*(New|Used|Used - like new|Used - good|Used - fair)/i);
+            if (conditionMatch) {
+              condition = conditionMatch[1];
             }
             
-            // Extract brand
-            const brandLabel = spans.find(el => el.textContent?.includes('Brand'));
+            // Extract brand - Look for "Brand" label followed by value
             let brand = null;
-            if (brandLabel) {
-              const parent = brandLabel.closest('div');
-              const nextSpan = Array.from(parent?.querySelectorAll('span') || []).find(s => 
-                s.textContent !== 'Brand' && s.textContent?.length > 0
-              );
-              brand = nextSpan?.textContent || null;
+            const brandMatch = allText.match(/Brand[:\s]*([A-Za-z0-9\s\-&]+?)(?:\n|$|Size|Condition|Category)/);
+            if (brandMatch && brandMatch[1]) {
+              const brandText = brandMatch[1].trim();
+              // Avoid picking up long descriptions or unrelated text
+              if (brandText.length < 100 && !brandText.includes('$') && !brandText.includes('mi')) {
+                brand = brandText;
+              }
             }
             
-            // Extract size
-            const sizeLabel = spans.find(el => el.textContent?.includes('Size'));
+            // Extract size - Look for "Size" label followed by value
             let size = null;
-            if (sizeLabel) {
-              const parent = sizeLabel.closest('div');
-              const nextSpan = Array.from(parent?.querySelectorAll('span') || []).find(s => 
-                s.textContent !== 'Size' && s.textContent?.length > 0
-              );
-              size = nextSpan?.textContent || null;
+            const sizeMatch = allText.match(/Size[:\s]*([A-Za-z0-9\s\-\.,/]+?)(?:\n|$|Brand|Condition|Category)/);
+            if (sizeMatch && sizeMatch[1]) {
+              const sizeText = sizeMatch[1].trim();
+              // Avoid picking up long text
+              if (sizeText.length < 100 && !sizeText.includes('$') && !sizeText.includes('Today')) {
+                size = sizeText;
+              }
             }
             
             return {
@@ -371,9 +381,9 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         console.error(`❌ Error fetching details for ${listing.itemId}:`, error);
       }
       
-      // Small delay between requests
+      // Small delay between requests - reduced from 500ms to 200ms
       if (i < listings.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
     
