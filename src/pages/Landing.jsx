@@ -115,12 +115,37 @@ export default function Landing() {
   };
 
   const handleSignIn = async () => {
+    // Diagnostic logging
+    console.log('🔐 Starting OAuth...');
+    console.log('🌍 Public Site Origin:', getPublicSiteOrigin());
+    console.log('📍 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+    console.log('🔑 Anon Key (first 20 chars):', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20));
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${getPublicSiteOrigin()}/dashboard`,
       },
     });
+    
+    console.log('📦 OAuth Response:', data);
+    console.log('❌ OAuth Error:', error);
+    
+    if (data?.url) {
+      console.log('🔗 Full OAuth URL:', data.url);
+      // Extract the redirect_uri from the OAuth URL
+      try {
+        const url = new URL(data.url);
+        const redirectUri = url.searchParams.get('redirect_uri');
+        console.log('🎯 Redirect URI being sent to Google:', redirectUri);
+        console.log('');
+        console.log('⚠️ IMPORTANT: Copy the redirect URI above and verify it matches EXACTLY in:');
+        console.log('   Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs');
+      } catch (e) {
+        console.error('Failed to parse OAuth URL:', e);
+      }
+    }
+    
     if (error) {
       console.error('Sign in error:', error);
     }
