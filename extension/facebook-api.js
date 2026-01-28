@@ -286,27 +286,35 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         const [result] = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            // Extract description - Look for the main listing description
+            // Extract description - Find the main content area first to avoid sidebars
+            let description = '';
+            
+            // Try to find the main marketplace listing container first
+            const mainContent = document.querySelector('div[role="main"]') || document.body;
+            
+            // Look for description in the main content only
             const descriptionSelectors = [
-              // Primary description container
-              'div[class*="xz9dl7a"] span[dir="auto"]',
-              'div[style*="overflow-wrap"] span[dir="auto"]',
-              // Fallback selectors
-              'div[class*="html-div"] > span',
+              // Most reliable: Look for the description section specifically
+              'div[style*="overflow-wrap: break-word"] > span',
+              'div[class*="xdj266r"] span[dir="auto"]', 
+              'div[class*="x1iorvi4"] span[dir="auto"]',
+              // Fallback
               'span[dir="auto"][style*="text-align: start"]',
             ];
             
-            let description = '';
             for (const selector of descriptionSelectors) {
-              const elements = document.querySelectorAll(selector);
+              const elements = mainContent.querySelectorAll(selector);
               for (const el of elements) {
                 const text = el?.textContent?.trim();
-                // Must be substantial text, not a label or menu item
+                // Must be substantial, not a notification, not a recommendation
                 if (text && text.length > 50 && 
                     !text.includes('See translation') && 
                     !text.includes('Today\'s picks') &&
+                    !text.includes('Unread') &&
+                    !text.includes('Spotted a coolant') &&
                     !text.includes('mi$') &&
-                    !text.includes('Related products')) {
+                    !text.includes('Related products') &&
+                    !text.match(/^\d+\s*(mi|km)/)) { // Avoid distance indicators
                   description = text;
                   break;
                 }

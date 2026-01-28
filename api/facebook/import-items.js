@@ -74,7 +74,7 @@ export default async function handler(req, res) {
             condition: 'USED', // Facebook doesn't provide condition in listings
             purchase_date: new Date().toISOString(),
             // Store Facebook metadata
-            notes: item.categoryId ? `Facebook Category ID: ${item.categoryId}` : null,
+            notes: null, // User can add their own notes
           })
           .select('id')
           .single();

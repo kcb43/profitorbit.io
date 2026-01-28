@@ -240,9 +240,7 @@ export default async function handler(req, res) {
             ebay_item_id: itemDetails.itemId,
             condition: itemDetails.condition,
             purchase_date: new Date().toISOString(),
-            // Store eBay category info in metadata for now
-            // Later, AI will map this to our inventory categories
-            notes: itemDetails.categoryName ? `eBay Category: ${itemDetails.categoryName} (ID: ${itemDetails.categoryId})` : null,
+            notes: null, // User can add their own notes
           })
           .select('id')
           .single();

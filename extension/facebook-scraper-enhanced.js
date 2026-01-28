@@ -1,67 +1,74 @@
 /**
- * Facebook Marketplace Scraper
- * Scrapes user's listings from Facebook Marketplace
+ * Facebook Marketplace Scraper - Enhanced Version
+ * Scrapes descriptions from individual listing pages
  */
 
 (function() {
   'use strict';
 
-  console.log('🔍 Facebook Marketplace Scraper loaded');
+  console.log('🔍 Facebook Marketplace Scraper (Enhanced) loaded');
 
   /**
-   * Scrape description from an individual listing page
+   * Extract description from current page (when on a listing detail page)
    */
-  async function scrapeListingDescription(listingUrl) {
-    try {
-      console.log('📄 Fetching description from:', listingUrl);
-      
-      // Open the listing in a new tab (or use current tab)
-      const response = await fetch(listingUrl);
-      const html = await response.text();
-      
-      // Parse HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      
-      // Try multiple selectors for description
-      const descriptionSelectors = [
-        '[data-testid="listing_description"]',
-        'div[dir="auto"] span',
-        'span[style*="text-align: start"]',
-        'meta[property="og:description"]',
-      ];
-      
-      let description = '';
-      for (const selector of descriptionSelectors) {
-        const el = doc.querySelector(selector);
-        if (el) {
-          description = selector.includes('meta') 
-            ? el.getAttribute('content') 
-            : el.textContent;
-          if (description && description.trim().length > 10) {
-            console.log('✅ Found description:', description.substring(0, 100) + '...');
-            break;
-          }
+  function extractDescriptionFromPage() {
+    console.log('📄 Extracting description from current page...');
+    
+    // Try multiple selectors
+    const descriptionSelectors = [
+      // Common Facebook selectors
+      'div[class*="html-div"] > span',
+      'span[dir="auto"][style*="text-align"]',
+      'div[data-ad-preview="message"] span',
+      // Meta tags as fallback
+      'meta[property="og:description"]',
+      'meta[name="description"]',
+    ];
+    
+    let description = '';
+    for (const selector of descriptionSelectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        description = selector.includes('meta') 
+          ? el.getAttribute('content') 
+          : el.textContent;
+        if (description && description.trim().length > 20) {
+          console.log('✅ Found description via:', selector);
+          break;
         }
       }
-      
-      // Also try to get category
-      const categoryEl = doc.querySelector('[data-testid="marketplace_listing_category"]');
-      const category = categoryEl?.textContent?.trim() || null;
-      
-      return { description: description.trim(), category };
-    } catch (error) {
-      console.error('❌ Error fetching description:', error);
-      return { description: null, category: null };
     }
+    
+    // Try to get category
+    const categorySelectors = [
+      'a[href*="/marketplace/category/"]',
+      'span[class*="category"]',
+    ];
+    
+    let category = null;
+    for (const selector of categorySelectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        category = el.textContent.trim();
+        if (category && category.length > 2) {
+          console.log('✅ Found category:', category);
+          break;
+        }
+      }
+    }
+    
+    return {
+      description: description.trim() || null,
+      category: category || null,
+    };
   }
 
   /**
-   * Scrape Facebook Marketplace listings from current page
+   * Scrape Facebook Marketplace listings from list view
    */
   async function scrapeFacebookListings(options = {}) {
     console.log('🔍 Starting Facebook Marketplace scrape...');
-    const { includeDescriptions = true, maxItems = 50 } = options;
+    const { includeDescriptions = false, maxItems = 50 } = options;
     
     // Check if we're on the right page
     const isSellingPage = window.location.pathname.includes('/marketplace/you/selling') ||
@@ -79,7 +86,7 @@
     
     const listings = [];
     
-    // Try multiple selector strategies (Facebook changes their DOM frequently)
+    // Try multiple selector strategies
     const listingSelectors = [
       '[data-testid="marketplace_you_listing_item"]',
       '.marketplace_listing_card',
@@ -107,8 +114,6 @@
     
     for (const card of listingCards) {
       try {
-        // Try multiple strategies to extract data
-        
         // Title extraction
         const titleSelectors = [
           'span[role="heading"]',
@@ -157,7 +162,7 @@
                          listingUrl.match(/\/(\d+)\//)?.[1] ||
                          `fb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
-        // Status extraction (try to determine if active, pending, sold)
+        // Status extraction
         const statusText = card.textContent.toLowerCase();
         let status = 'active';
         if (statusText.includes('sold') || statusText.includes('marked as sold')) {
@@ -166,7 +171,7 @@
           status = 'pending';
         }
         
-        // Description (if available - usually not in list view)
+        // Description (from list view - usually very limited)
         const descriptionEl = card.querySelector('[data-testid="listing_description"]') ||
                              card.querySelector('div[dir="auto"]');
         const description = descriptionEl?.textContent?.trim() || '';
@@ -181,9 +186,10 @@
             listingUrl,
             source: 'facebook',
             status,
-            description: description || title, // Will be enhanced later if includeDescriptions is true
-            category: null, // Will be enhanced later
+            description: description || title,
+            category: null,
             imported: false,
+            needsDetailScrape: includeDescriptions && !!listingUrl, // Flag for detail scraping
           });
           
           console.log(`✅ Scraped: ${title} - $${price}`);
@@ -201,53 +207,49 @@
     
     console.log(`✅ Successfully scraped ${listings.length} Facebook listings from list view`);
     
-    // Phase 2: Fetch descriptions from individual listing pages (if enabled)
-    if (includeDescriptions && listings.length > 0) {
-      console.log('📋 Phase 2: Fetching descriptions from individual pages...');
-      
-      for (let i = 0; i < listings.length; i++) {
-        const listing = listings[i];
-        
-        if (!listing.listingUrl) {
-          console.log(`⚠️ No URL for listing ${i + 1}, skipping...`);
-          continue;
-        }
-        
-        console.log(`📄 [${i + 1}/${listings.length}] Fetching: ${listing.title}`);
-        
-        try {
-          const { description, category } = await scrapeListingDescription(listing.listingUrl);
-          
-          if (description) {
-            listing.description = description;
-          }
-          if (category) {
-            listing.category = category;
-          }
-          
-          // Add a small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          console.error(`❌ Error fetching details for listing ${i + 1}:`, error);
-          // Continue with next listing
-        }
-      }
-      
-      console.log('✅ Finished fetching descriptions');
-    }
-    
     return { 
       listings,
       total: listings.length,
       timestamp: new Date().toISOString(),
+      message: includeDescriptions 
+        ? `Scraped ${listings.length} listings. Use "Enhance Descriptions" to fetch full details.`
+        : `Scraped ${listings.length} listings.`
+    };
+  }
+
+  /**
+   * Enhance a single listing with description from detail page
+   * This should be called when the user is on the listing detail page
+   */
+  async function enhanceListingDetails(itemId) {
+    console.log('📄 Enhancing listing details for:', itemId);
+    
+    // Check if we're on a listing detail page
+    const isDetailPage = window.location.pathname.includes('/marketplace/item/');
+    if (!isDetailPage) {
+      return {
+        success: false,
+        error: 'Not on a listing detail page'
+      };
+    }
+    
+    // Extract the details
+    const details = extractDescriptionFromPage();
+    
+    return {
+      success: true,
+      itemId,
+      ...details
     };
   }
 
   // Expose to content script
   window.__fbScraper = {
     scrapeFacebookListings,
-    version: '1.0.0',
+    enhanceListingDetails,
+    extractDescriptionFromPage,
+    version: '2.0.0',
   };
   
-  console.log('✅ Facebook Marketplace Scraper ready');
+  console.log('✅ Facebook Marketplace Scraper (Enhanced) ready');
 })();

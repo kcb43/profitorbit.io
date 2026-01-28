@@ -88,10 +88,7 @@ export default async function handler(req, res) {
             category: item.category || null,
             size: item.size || null,
             purchase_date: new Date().toISOString(),
-            // Store Mercari metadata
-            notes: `Mercari Item ID: ${item.itemId}` + 
-                   (item.numLikes ? `\nLikes: ${item.numLikes}` : '') + 
-                   (item.numViews ? `\nViews: ${item.numViews}` : ''),
+            notes: null, // User can add their own notes
           })
           .select('id')
           .single();
