@@ -40,7 +40,6 @@ const FAQ = React.lazy(() => import("./FAQ"));
 const MigrateData = React.lazy(() => import("./MigrateData"));
 
 const EbayOauthLanding = React.lazy(() => import("./EbayOauthLanding"));
-const OAuthDiagnostic = React.lazy(() => import("./OAuthDiagnostic"));
 import DevErrorBoundary from "../components/DevErrorBoundary";
 import ScrollToTop from "../components/ScrollToTop";
 import { AuthGuard } from "../components/AuthGuard";
@@ -440,7 +439,6 @@ function PagesContent() {
               
               {/* Public Routes */}
               <Route path="/oauth/ebay" element={withSuspense(<EbayOauthLanding />)} />
-              <Route path="/oauth-diagnostic" element={withSuspense(<OAuthDiagnostic />)} />
               <Route path="/PrivacyPolicy" element={withSuspense(<PrivacyPolicy />)} />
               <Route path="/FAQ" element={withSuspense(<FAQ />)} />
               <Route
