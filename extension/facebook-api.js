@@ -141,16 +141,21 @@ async function fetchListingDetails({ dtsg, cookies, listingId }) {
     console.log(`📡 Fetching details for listing ${listingId}...`);
     
     const variables = {
-      listingId,
+      category_id: "0",
+      composer_mode: "EDIT_LISTING",
+      delivery_types: ["in_person", "shipping_onsite"],
+      has_prefetched_category: false,
+      is_edit: true,
+      listingId: listingId,
       scale: 1,
-      shouldShowAllMessagesOnYouFeedCard: true,
-      __relay_internal__pv__ShouldUpdateMarketplaceBoostListingBoostedStatusrelayprovider: false
+      should_prefill_b2c_jobs_address: false,
+      should_prefill_c2c_jobs_address: true
     };
     
     const formData = new URLSearchParams();
     formData.append('variables', JSON.stringify(variables));
-    formData.append('doc_id', '33900906512887906'); // MarketplaceYourListingDialogQuery
-    formData.append('fb_api_req_friendly_name', 'MarketplaceYourListingDialogQuery');
+    formData.append('doc_id', '33414079394905543'); // CometMarketplaceComposerRootComponentQuery (EDIT query)
+    formData.append('fb_api_req_friendly_name', 'CometMarketplaceComposerRootComponentQuery');
     
     if (dtsg) {
       formData.append('fb_dtsg', dtsg);
@@ -189,24 +194,37 @@ async function fetchListingDetails({ dtsg, cookies, listingId }) {
         const parsed = JSON.parse(line);
         console.log(`🔍 Parsed line keys for ${listingId}:`, Object.keys(parsed));
         
-        const listing = parsed.data?.marketplace_listing;
+        // The edit query returns data in a different structure
+        // Look for: data.node.listing OR data.marketplace_listing_for_editing
+        const listing = parsed.data?.node?.listing || 
+                       parsed.data?.marketplace_listing_for_editing ||
+                       parsed.data?.marketplace_listing;
         
         if (listing) {
           console.log(`✅ Found listing data for ${listingId}:`, {
-            hasStoryDescription: !!listing.story_description,
+            hasDescription: !!listing.marketplace_listing_description,
             hasRedactedDescription: !!listing.redacted_description,
+            hasStoryDescription: !!listing.story_description,
             hasTitle: !!listing.marketplace_listing_title,
             hasCategory: !!listing.marketplace_listing_category,
-            hasConditionBrand: !!listing.custom_title_with_condition_and_brand,
+            hasCustomTitle: !!listing.custom_title_with_condition_and_brand,
+            allKeys: Object.keys(listing).slice(0, 20)
           });
           
           // Extract all possible fields
           const result = {
-            description: listing.story_description || listing.redacted_description?.text || listing.marketplace_listing_title || null,
-            category: listing.marketplace_listing_category?.name || null,
-            condition: listing.custom_title_with_condition_and_brand?.condition || null,
-            brand: listing.custom_title_with_condition_and_brand?.brand || null,
-            size: listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || null,
+            description: listing.marketplace_listing_description || 
+                        listing.story_description || 
+                        listing.redacted_description?.text || 
+                        listing.marketplace_listing_title || null,
+            category: listing.marketplace_listing_category?.name || 
+                     listing.listing_category?.name || null,
+            condition: listing.custom_title_with_condition_and_brand?.condition || 
+                      listing.condition || null,
+            brand: listing.custom_title_with_condition_and_brand?.brand || 
+                  listing.brand || null,
+            size: listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || 
+                 listing.size || null,
           };
           
           console.log(`📦 Extracted data for ${listingId}:`, result);
@@ -218,7 +236,8 @@ async function fetchListingDetails({ dtsg, cookies, listingId }) {
       }
     }
     
-    console.warn(`⚠️ No marketplace_listing found in response for ${listingId}`);
+    console.warn(`⚠️ No listing data found in response for ${listingId}`);
+    console.warn(`⚠️ Response preview:`, text.substring(0, 500));
     return null;
   } catch (error) {
     console.error(`❌ Error fetching details for listing ${listingId}:`, error);
