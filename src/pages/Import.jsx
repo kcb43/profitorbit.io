@@ -156,6 +156,22 @@ export default function Import() {
     loadUserId();
   }, []);
 
+  // Listen for Facebook scraping progress messages from extension
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type === 'FACEBOOK_SCRAPE_PROGRESS') {
+        const { current, total } = event.data;
+        toast({
+          title: "Fetching descriptions...",
+          description: `Processing item ${current} of ${total}`,
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Check if user is connected to the selected marketplace
   useEffect(() => {
     const checkConnection = () => {

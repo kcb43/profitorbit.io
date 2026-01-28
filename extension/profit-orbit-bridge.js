@@ -533,6 +533,16 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         sendResponse({ received: true });
       }
       
+      // Forward Facebook scraping progress to the page
+      if (message.type === 'FACEBOOK_SCRAPE_PROGRESS') {
+        window.postMessage({
+          type: 'FACEBOOK_SCRAPE_PROGRESS',
+          current: message.current,
+          total: message.total
+        }, '*');
+        sendResponse({ received: true });
+      }
+      
       return true;
     });
     console.log('🔵 Bridge: Message listener registered');

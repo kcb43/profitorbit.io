@@ -2366,11 +2366,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('✅ Facebook auth ready, fetching listings via API...');
         console.log('📤 Calling fetchFacebookListings with:', { hasDtsg: !!auth.dtsg, cookieCount: auth.cookies?.length || 0 });
         
-        // Fetch listings via GraphQL API - NO TABS NEEDED!
+        // Fetch listings via GraphQL API with progress callback
         const result = await self.__facebookApi.fetchFacebookListings({
           dtsg: auth.dtsg,
           cookies: auth.cookies,
           count: 50,
+          // Pass progress callback to send updates to the webpage
+          onProgress: (current, total) => {
+            if (sender.tab?.id) {
+              chrome.tabs.sendMessage(sender.tab.id, {
+                type: 'FACEBOOK_SCRAPE_PROGRESS',
+                current,
+                total,
+              }).catch(() => {}); // Ignore errors if tab is closed
+            }
+          }
         });
         
         console.log('✅ Fetched listings via API:', result.listings?.length || 0);

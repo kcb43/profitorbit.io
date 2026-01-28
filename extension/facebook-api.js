@@ -136,7 +136,7 @@ async function getFacebookAuth() {
 }
 
 // Fetch listings via GraphQL API
-async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null }) {
+async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null, onProgress = null }) {
   try {
     console.log('📡 Fetching Facebook listings via GraphQL API...', { count, cursor, hasDtsg: !!dtsg });
     
@@ -275,50 +275,101 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
       const listing = listings[i];
       console.log(`📄 [${i + 1}/${listings.length}] Fetching details for ${listing.itemId}...`);
       
+      // Send progress update
+      if (onProgress) {
+        onProgress(i + 1, listings.length);
+      }
+      
       try {
         // Navigate to the listing URL
         await chrome.tabs.update(tab.id, { url: listing.listingUrl });
         
-        // Wait for page to load - reduced from 3s to 2s
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait for page to load - increased to 3s to ensure full render
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Inject script to extract data
         const [result] = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            // Extract description - Find the main content area first to avoid sidebars
+            // Helper to check if element is in a sidebar/notification area
+            const isInSidebar = (element) => {
+              if (!element) return false;
+              let parent = element;
+              while (parent) {
+                const ariaLabel = parent.getAttribute?.('aria-label');
+                const role = parent.getAttribute?.('role');
+                // Check for sidebar/notification indicators
+                if (ariaLabel?.includes('notification') || 
+                    ariaLabel?.includes('Notifications') ||
+                    role === 'complementary' ||
+                    parent.id?.includes('rightCol') ||
+                    parent.className?.includes('rightCol')) {
+                  return true;
+                }
+                parent = parent.parentElement;
+              }
+              return false;
+            };
+            
+            // Extract description - Be very selective
             let description = '';
             
-            // Try to find the main marketplace listing container first
-            const mainContent = document.querySelector('div[role="main"]') || document.body;
-            
-            // Look for description in the main content only
-            const descriptionSelectors = [
-              // Most reliable: Look for the description section specifically
-              'div[style*="overflow-wrap: break-word"] > span',
-              'div[class*="xdj266r"] span[dir="auto"]', 
-              'div[class*="x1iorvi4"] span[dir="auto"]',
-              // Fallback
-              'span[dir="auto"][style*="text-align: start"]',
+            // Strategy 1: Look for the listing details section specifically
+            // Facebook often wraps the description in specific containers
+            const possibleContainers = [
+              // Main content area (not sidebar)
+              document.querySelector('div[role="main"]'),
+              // Fallback to body if main not found
+              document.body
             ];
             
-            for (const selector of descriptionSelectors) {
-              const elements = mainContent.querySelectorAll(selector);
-              for (const el of elements) {
-                const text = el?.textContent?.trim();
-                // Must be substantial, not a notification, not a recommendation
-                if (text && text.length > 50 && 
-                    !text.includes('See translation') && 
-                    !text.includes('Today\'s picks') &&
+            for (const container of possibleContainers) {
+              if (!container) continue;
+              
+              // Look for spans with substantial text content
+              const spans = Array.from(container.querySelectorAll('span[dir="auto"]'));
+              
+              for (const span of spans) {
+                // Skip if in sidebar
+                if (isInSidebar(span)) continue;
+                
+                const text = span.textContent?.trim();
+                
+                // Strict criteria for description
+                if (text && 
+                    text.length > 50 && 
+                    text.length < 5000 && // Reasonable max
                     !text.includes('Unread') &&
-                    !text.includes('Spotted a coolant') &&
-                    !text.includes('mi$') &&
-                    !text.includes('Related products') &&
-                    !text.match(/^\d+\s*(mi|km)/)) { // Avoid distance indicators
-                  description = text;
-                  break;
+                    !text.includes('notification') &&
+                    !text.includes('Today\'s picks') &&
+                    !text.includes('See translation') &&
+                    !text.includes('Related') &&
+                    !text.includes('Marketplace') &&
+                    !text.includes('Facebook') &&
+                    !text.includes('· ') && // Distance indicators like "23 mi ·"
+                    !text.match(/^\d+\s*(mi|km|minutes?|hours?)/i) &&
+                    !text.match(/\$\d+.*?\$\d+/)) { // Multiple prices (suggestions)
+                  
+                  // Extra check: make sure it looks like a product description
+                  // (contains common product description words or patterns)
+                  const looksLikeDescription = 
+                    text.includes('brand') ||
+                    text.includes('Brand') ||
+                    text.includes('condition') ||
+                    text.includes('new') ||
+                    text.includes('New') ||
+                    text.includes('size') ||
+                    text.includes('Size') ||
+                    text.split('\n').length > 1 || // Multi-line
+                    text.split('.').length > 2; // Multiple sentences
+                  
+                  if (looksLikeDescription) {
+                    description = text;
+                    break;
+                  }
                 }
               }
+              
               if (description) break;
             }
             
