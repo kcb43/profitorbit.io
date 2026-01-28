@@ -2364,6 +2364,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         console.log('✅ Facebook auth ready, fetching listings via API...');
+        console.log('📤 Calling fetchFacebookListings with:', { hasDtsg: !!auth.dtsg, cookieCount: auth.cookies?.length || 0 });
         
         // Fetch listings via GraphQL API - NO TABS NEEDED!
         const result = await self.__facebookApi.fetchFacebookListings({
@@ -2373,6 +2374,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         
         console.log('✅ Fetched listings via API:', result.listings?.length || 0);
+        console.log('📦 First listing sample:', JSON.stringify(result.listings?.[0], null, 2));
         
         // Store in chrome.storage
         await chrome.storage.local.set({
