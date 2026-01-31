@@ -136,7 +136,7 @@ async function getFacebookAuth() {
 }
 
 // Fetch listings via GraphQL API
-async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null, onProgress = null }) {
+async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null }) {
   try {
     console.log('📡 Fetching Facebook listings via GraphQL API...', { count, cursor, hasDtsg: !!dtsg });
     
@@ -246,11 +246,6 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       if (!listing) return null;
       
       console.log(`📦 [${index + 1}] Processing listing ${listing.id}...`);
-      
-      // Send progress update (no message during fetch - keep it silent like Vendoo)
-      if (onProgress) {
-        onProgress(index + 1, edges.length);
-      }
       
       // Extract description from multiple possible fields (in priority order)
       const description = listing.story_description || 
