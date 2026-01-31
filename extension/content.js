@@ -1061,6 +1061,26 @@ if (MARKETPLACE) {
         }, '*');
       }
     }
+    
+    // Forward all PO_* messages to background script (for Facebook scraping, etc.)
+    if (event.data && event.data.type && event.data.type.startsWith('PO_')) {
+      console.log('🔀 [CONTENT] Forwarding message to background:', event.data.type);
+      
+      // Forward to background script
+      chrome.runtime.sendMessage({
+        type: event.data.type,
+        ...event.data.payload
+      }, (response) => {
+        // Send response back to page
+        const responseType = event.data.type + '_RESULT';
+        console.log('🔙 [CONTENT] Sending response back to page:', responseType, response);
+        window.postMessage({
+          type: responseType,
+          resp: response,
+          timestamp: Date.now()
+        }, '*');
+      });
+    }
   });
 
   // Initial check
