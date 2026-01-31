@@ -159,7 +159,11 @@ window.addEventListener("message", (event) => {
 
   // Scrape detailed information for multiple Facebook listings
   if (msg.type === "PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS") {
-    poTrySendMessage({ type: "SCRAPE_MULTIPLE_FACEBOOK_LISTINGS", listings: msg.payload?.listings }, "PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS_RESULT");
+    poTrySendMessage({ 
+      type: "SCRAPE_MULTIPLE_FACEBOOK_LISTINGS", 
+      listings: msg.payload?.listings,
+      userId: msg.payload?.userId 
+    }, "PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS_RESULT");
     return;
   }
 
