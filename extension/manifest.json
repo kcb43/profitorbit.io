@@ -64,15 +64,6 @@
     },
     {
       "matches": [
-        "https://www.facebook.com/marketplace/item/*"
-      ],
-      "js": [
-        "facebook-listing-scraper.js"
-      ],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": [
         "https://profitorbit.io/*",
         "https://*.vercel.app/*",
         "http://localhost:5173/*",

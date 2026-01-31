@@ -325,11 +325,15 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
 }
 
 /**
- * Scrape detailed information for each listing by visiting its page
+ * Scrape detailed information for each listing using offscreen document
  * This mimics Vendoo's approach: "Getting req body through scrapping"
+ * COMPLETELY INVISIBLE TO USER - no tabs opened!
  */
 async function scrapeDetailedListings(basicListings, onProgress) {
-  console.log(`🔍 Scraping detailed info for ${basicListings.length} listings...`);
+  console.log(`🔍 Scraping detailed info for ${basicListings.length} listings (invisible mode)...`);
+  
+  // Ensure offscreen document is created
+  await ensureOffscreenDocument();
   
   const detailedListings = [];
   
@@ -344,27 +348,13 @@ async function scrapeDetailedListings(basicListings, onProgress) {
         onProgress(i + 1, basicListings.length, `Fetching details for listing ${i + 1}...`);
       }
       
-      // Open the listing page in a new tab
-      const tab = await chrome.tabs.create({
-        url: listing.listingUrl,
-        active: false, // Don't switch to the tab
+      // Send message to offscreen document to scrape the listing
+      console.log(`📄 Scraping (invisible) ${listing.listingUrl}`);
+      
+      const response = await chrome.runtime.sendMessage({
+        action: 'SCRAPE_LISTING_URL',
+        url: listing.listingUrl
       });
-      
-      console.log(`📄 Opened tab ${tab.id} for ${listing.listingUrl}`);
-      
-      // Wait for the page to load
-      await waitForTabLoad(tab.id);
-      
-      // Small delay to ensure content script is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Send message to content script to scrape the page
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        action: 'SCRAPE_FACEBOOK_LISTING'
-      });
-      
-      // Close the tab
-      await chrome.tabs.remove(tab.id);
       
       if (response && response.success && response.data) {
         const scrapedData = response.data;
@@ -403,30 +393,42 @@ async function scrapeDetailedListings(basicListings, onProgress) {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   
-  console.log(`✅ Completed detailed scraping for ${detailedListings.length} listings`);
+  console.log(`✅ Completed invisible scraping for ${detailedListings.length} listings`);
   return detailedListings;
 }
 
 /**
- * Wait for a tab to finish loading
+ * Ensure the offscreen document exists for scraping
  */
-async function waitForTabLoad(tabId) {
-  return new Promise((resolve) => {
-    const checkTab = async () => {
-      try {
-        const tab = await chrome.tabs.get(tabId);
-        if (tab.status === 'complete') {
-          resolve();
-        } else {
-          setTimeout(checkTab, 500);
-        }
-      } catch (error) {
-        // Tab might have been closed
-        resolve();
-      }
-    };
-    checkTab();
-  });
+async function ensureOffscreenDocument() {
+  try {
+    // Check if offscreen document already exists
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT']
+    });
+    
+    if (existingContexts.length > 0) {
+      console.log('✅ Offscreen document already exists');
+      return;
+    }
+    
+    // Create offscreen document
+    console.log('🔧 Creating offscreen document for invisible scraping...');
+    await chrome.offscreen.createDocument({
+      url: 'offscreen-scraper.html',
+      reasons: ['DOM_SCRAPING'],
+      justification: 'Scrape Facebook listing pages to extract descriptions and details'
+    });
+    
+    console.log('✅ Offscreen document created');
+    
+    // Give it a moment to initialize
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+  } catch (error) {
+    console.error('❌ Error creating offscreen document:', error);
+    throw error;
+  }
 }
 
 // Main export (use self instead of window for service worker compatibility)
