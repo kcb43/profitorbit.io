@@ -373,13 +373,15 @@ async function scrapeMultipleListings(listings, userId = null) {
           
           // Parse newline-delimited JSON response
           const lines = text.trim().split('\n').filter(l => l.trim());
-          let data = null;
+          let target = null;
           
           for (const line of lines) {
             try {
               const parsed = JSON.parse(line);
-              if (parsed.data?.node) {
-                data = parsed.data.node;
+              // MarketplacePDPContainerQuery has structure: data.viewer.marketplace_product_details_page.target
+              if (parsed.data?.viewer?.marketplace_product_details_page?.target) {
+                target = parsed.data.viewer.marketplace_product_details_page.target;
+                console.log(`🔍 [DEBUG] Full target object keys:`, Object.keys(target));
                 break;
               }
             } catch (e) {
@@ -387,22 +389,29 @@ async function scrapeMultipleListings(listings, userId = null) {
             }
           }
           
-          if (!data) {
-            console.warn(`⚠️ No data found for ${listing.itemId}`);
+          if (!target) {
+            console.warn(`⚠️ No target data found for ${listing.itemId}`);
+            console.log(`⚠️ Response preview:`, text.substring(0, 500));
             return listing;
           }
           
           // Extract detailed information from GraphQL response
-          const description = data.redacted_description?.text || listing.description || '';
+          const description = target.redacted_description?.text || listing.description || '';
+          
+          console.log(`🔍 [DEBUG] Description extraction for ${listing.itemId}:`, {
+            hasRedactedDescription: !!target.redacted_description,
+            redactedText: target.redacted_description?.text?.substring(0, 100),
+            descriptionLength: description?.length,
+          });
           
           // Log the attribute_data structure for debugging
-          if (data.attribute_data && data.attribute_data.length > 0) {
-            console.log(`🔍 attribute_data for ${listing.itemId}:`, JSON.stringify(data.attribute_data, null, 2));
+          if (target.attribute_data && target.attribute_data.length > 0) {
+            console.log(`🔍 attribute_data for ${listing.itemId}:`, JSON.stringify(target.attribute_data, null, 2));
           }
           
           // Extract condition from attribute_data
           let condition = listing.condition;
-          const conditionAttr = data.attribute_data?.find(attr => 
+          const conditionAttr = target.attribute_data?.find(attr => 
             attr.label === 'Condition' || attr.label?.toLowerCase().includes('condition')
           );
           if (conditionAttr) {
@@ -413,7 +422,7 @@ async function scrapeMultipleListings(listings, userId = null) {
           
           // Extract brand from attribute_data
           let brand = listing.brand;
-          const brandAttr = data.attribute_data?.find(attr => 
+          const brandAttr = target.attribute_data?.find(attr => 
             attr.label === 'Brand' || attr.label?.toLowerCase().includes('brand')
           );
           if (brandAttr) {
@@ -423,7 +432,7 @@ async function scrapeMultipleListings(listings, userId = null) {
           }
           
           // Category ID is in the response
-          const categoryId = data.marketplace_listing_category_id || listing.categoryId;
+          const categoryId = target.marketplace_listing_category_id || listing.categoryId;
           
           console.log(`✅ Fetched details for ${listing.itemId}:`, {
             hasDescription: !!description && description !== listing.title,
