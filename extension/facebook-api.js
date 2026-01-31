@@ -1,6 +1,10 @@
 /**
  * Facebook GraphQL API Client
- * Makes direct API calls to Facebook GraphQL endpoint - NO DOM scraping needed!
+ * Makes direct API calls to Facebook GraphQL endpoint
+ * 
+ * Two-step process (just like Vendoo):
+ * 1. MarketplaceYouSellingFastActiveSectionPaginationQuery - Initial sync (basic data)
+ * 2. MarketplacePDPContainerQuery - Detailed data (description, condition, brand) on import
  */
 
 // Get Facebook cookies and dtsg token
@@ -314,135 +318,141 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
 }
 
 /**
- * Scrape detailed information for each listing using offscreen document
- * This mimics Vendoo's approach: "Getting req body through scrapping"
- * COMPLETELY INVISIBLE TO USER - no tabs opened!
- */
-/**
- * NEW: Server-side scraping via Fly.io worker
- * Scrape detailed information for multiple listings using backend worker
+ * NEW: Fetch detailed item data via GraphQL (just like Vendoo does!)
+ * Uses MarketplacePDPContainerQuery to get full description, condition, brand, etc.
  * Called during import when user selects items - this is when we get full descriptions
  */
 async function scrapeMultipleListings(listings, userId = null) {
-  console.log(`🔍 [SERVER-SIDE] Scraping details for ${listings.length} selected items via worker... (userId: ${userId})`);
+  console.log(`🔍 [GRAPHQL] Fetching detailed data for ${listings.length} selected items via GraphQL API...`);
   
   try {
-    // If userId not provided as parameter, try to get from storage (fallback)
-    if (!userId) {
-      const stored = await chrome.storage.local.get(['userId']);
-      userId = stored.userId || null;
-    }
+    // Get Facebook auth (cookies + dtsg)
+    const { cookies, dtsg } = await getFacebookAuth();
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     
-    if (!userId) {
-      console.error('❌ No user ID found - cannot scrape');
-      return listings; // Return original listings
-    }
-    
-    console.log(`📡 Creating scraping jobs for user ${userId}...`);
-    
-    // Step 1: Create scraping jobs via API
-    const createResponse = await fetch('https://profitorbit.io/api/facebook/scrape-details', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: userId,
-        listings: listings.map(l => ({
-          itemId: l.itemId,
-          listingUrl: l.listingUrl,
-        }))
-      })
-    });
-    
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      console.error(`❌ Failed to create scraping jobs:`, errorText);
-      return listings;
-    }
-    
-    const createData = await createResponse.json();
-    console.log(`✅ Created ${createData.jobs?.length || 0} scraping jobs`);
-    
-    if (!createData.jobs || createData.jobs.length === 0) {
-      console.warn('⚠️ No jobs created');
-      return listings;
-    }
-    
-    const jobIds = createData.jobs.map(j => j.id);
-    
-    // Step 2: Poll for results (with timeout)
-    const maxAttempts = 30; // 30 attempts = ~60 seconds max wait
-    const pollInterval = 2000; // Poll every 2 seconds
-    
-    console.log(`⏳ Waiting for worker to scrape ${listings.length} items...`);
-    
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-      
-      const statusResponse = await fetch(`https://profitorbit.io/api/facebook/scrape-status?userId=${userId}&jobIds=${jobIds.join(',')}`, {
-        method: 'GET',
-      });
-      
-      if (!statusResponse.ok) {
-        console.error(`❌ Failed to check job status (attempt ${attempt})`);
-        continue;
-      }
-      
-      const statusData = await statusResponse.json();
-      const { completed, pending, processing, failed, total } = statusData.summary || {};
-      
-      console.log(`📊 [${attempt}/${maxAttempts}] Status: ${completed}/${total} completed, ${processing} processing, ${pending} pending, ${failed} failed`);
-      
-      // If all jobs are done (completed or failed), merge results
-      if (completed + failed >= total) {
-        console.log(`✅ All jobs finished! Merging scraped data...`);
-        
-        // Create a map of itemId -> scraped data
-        const scrapedDataMap = {};
-        statusData.jobs.forEach(job => {
-          if (job.scraped_data) {
-            scrapedDataMap[job.item_id] = job.scraped_data;
-          }
-        });
-        
-        // Merge scraped data with original listings
-        const detailedListings = listings.map(listing => {
-          const scraped = scrapedDataMap[listing.itemId];
+    // Fetch detailed data for each item using MarketplacePDPContainerQuery
+    const detailedListings = await Promise.all(
+      listings.map(async (listing) => {
+        try {
+          console.log(`📡 Fetching details for item ${listing.itemId}...`);
           
-          if (scraped) {
-            console.log(`✅ [${listing.itemId}] Merged scraped data:`, scraped);
-            return {
-              ...listing,
-              description: scraped.description || listing.description,
-              category: scraped.category || listing.category,
-              condition: scraped.condition || listing.condition,
-              brand: scraped.brand || listing.brand,
-              size: scraped.size || listing.size,
-              title: scraped.title || listing.title,
-            };
-          } else {
-            console.warn(`⚠️ [${listing.itemId}] No scraped data found`);
+          // GraphQL query for individual item details (from Vendoo HAR logs)
+          const variables = {
+            targetId: listing.itemId,
+            shouldShowBoostedFields: false,
+            scale: 1,
+          };
+          
+          const formData = new URLSearchParams();
+          formData.append('variables', JSON.stringify(variables));
+          formData.append('doc_id', '6097985476929977'); // MarketplacePDPContainerQuery from HAR logs
+          formData.append('fb_api_req_friendly_name', 'MarketplacePDPContainerQuery');
+          
+          if (dtsg) {
+            formData.append('fb_dtsg', dtsg);
+          }
+          
+          const response = await fetch('https://www.facebook.com/api/graphql/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+            body: formData.toString(),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            console.error(`❌ Failed to fetch details for ${listing.itemId}: ${response.status}`);
+            return listing; // Return original if fetch fails
+          }
+          
+          const text = await response.text();
+          
+          // Parse newline-delimited JSON response
+          const lines = text.trim().split('\n').filter(l => l.trim());
+          let data = null;
+          
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.data?.node) {
+                data = parsed.data.node;
+                break;
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+          
+          if (!data) {
+            console.warn(`⚠️ No data found for ${listing.itemId}`);
             return listing;
           }
-        });
-        
-        console.log(`✅ Successfully merged data for ${detailedListings.length} items`);
-        return detailedListings;
-      }
-      
-      // If not done yet, continue polling
-      if (attempt < maxAttempts) {
-        console.log(`⏳ Still processing... checking again in ${pollInterval/1000}s`);
-      }
-    }
+          
+          // Extract detailed information from GraphQL response
+          const description = data.redacted_description?.text || listing.description || '';
+          
+          // Log the attribute_data structure for debugging
+          if (data.attribute_data && data.attribute_data.length > 0) {
+            console.log(`🔍 attribute_data for ${listing.itemId}:`, JSON.stringify(data.attribute_data, null, 2));
+          }
+          
+          // Extract condition from attribute_data
+          let condition = listing.condition;
+          const conditionAttr = data.attribute_data?.find(attr => 
+            attr.label === 'Condition' || attr.label?.toLowerCase().includes('condition')
+          );
+          if (conditionAttr) {
+            // Try multiple possible field names for the value
+            condition = conditionAttr.value_label || conditionAttr.label || conditionAttr.value || condition;
+            console.log(`🔍 Condition found:`, conditionAttr);
+          }
+          
+          // Extract brand from attribute_data
+          let brand = listing.brand;
+          const brandAttr = data.attribute_data?.find(attr => 
+            attr.label === 'Brand' || attr.label?.toLowerCase().includes('brand')
+          );
+          if (brandAttr) {
+            // Try multiple possible field names for the value
+            brand = brandAttr.value_label || brandAttr.label || brandAttr.value || brand;
+            console.log(`🔍 Brand found:`, brandAttr);
+          }
+          
+          // Category ID is in the response
+          const categoryId = data.marketplace_listing_category_id || listing.categoryId;
+          
+          console.log(`✅ Fetched details for ${listing.itemId}:`, {
+            hasDescription: !!description && description !== listing.title,
+            descriptionLength: description?.length,
+            hasCondition: !!condition,
+            hasBrand: !!brand,
+            categoryId,
+          });
+          
+          return {
+            ...listing,
+            description,
+            condition,
+            brand,
+            categoryId,
+          };
+          
+        } catch (error) {
+          console.error(`❌ Error fetching details for ${listing.itemId}:`, error);
+          return listing; // Return original on error
+        }
+      })
+    );
     
-    // Timeout reached
-    console.warn(`⏱️ Timeout reached after ${maxAttempts * pollInterval / 1000}s - returning partial results`);
-    return listings;
+    console.log(`✅ Successfully fetched detailed data for ${detailedListings.length} items via GraphQL`);
+    return detailedListings;
     
   } catch (error) {
-    console.error(`❌ Error in server-side scraping:`, error);
+    console.error(`❌ Error in GraphQL detail fetching:`, error);
     return listings; // Return original listings on error
   }
 }
@@ -451,7 +461,7 @@ async function scrapeMultipleListings(listings, userId = null) {
 self.__facebookApi = {
   getFacebookAuth,
   fetchFacebookListings,
-  scrapeMultipleListings, // Now uses server-side worker
+  scrapeMultipleListings, // Now uses GraphQL MarketplacePDPContainerQuery for detailed data
 };
 
-console.log('✅ Facebook API client loaded (with server-side scraping)');
+console.log('✅ Facebook API client loaded (with GraphQL detail fetching)');
