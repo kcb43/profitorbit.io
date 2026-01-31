@@ -369,12 +369,43 @@ export default function Import() {
         const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
         const itemsToImport = facebookListings.filter(item => itemIds.includes(item.itemId));
         
-        endpoint = "/api/facebook/import-items";
-        headers = {
-          "Content-Type": "application/json",
-          'x-user-id': userId,
-        };
-        body = JSON.stringify({ items: itemsToImport });
+        console.log(`🔍 Scraping detailed info for ${itemsToImport.length} selected items...`);
+        
+        // Scrape detailed information for selected items
+        // This is when Vendoo does their "scrapping"
+        if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.scrapeMultipleFacebookListings) {
+          try {
+            const result = await window.ProfitOrbitExtension.scrapeMultipleFacebookListings(itemsToImport);
+            
+            if (result && result.success && result.listings) {
+              endpoint = "/api/facebook/import-items";
+              headers = {
+                "Content-Type": "application/json",
+                'x-user-id': userId,
+              };
+              body = JSON.stringify({ items: result.listings });
+            } else {
+              throw new Error('Scraping failed or returned no data');
+            }
+          } catch (error) {
+            console.error('❌ Error scraping Facebook listings:', error);
+            // Fall back to basic data if scraping fails
+            endpoint = "/api/facebook/import-items";
+            headers = {
+              "Content-Type": "application/json",
+              'x-user-id': userId,
+            };
+            body = JSON.stringify({ items: itemsToImport });
+          }
+        } else {
+          // No extension or scraping function, use basic data
+          endpoint = "/api/facebook/import-items";
+          headers = {
+            "Content-Type": "application/json",
+            'x-user-id': userId,
+          };
+          body = JSON.stringify({ items: itemsToImport });
+        }
         
       } else if (selectedSource === 'mercari') {
         // For Mercari, we need to get the full item data from cache

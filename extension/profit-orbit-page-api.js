@@ -353,6 +353,24 @@
       return resp;
     },
 
+    // Scrape detailed information for selected Facebook listings during import
+    async scrapeMultipleFacebookListings(listings) {
+      console.log('🟣 [FACEBOOK] Page API -> scrapeMultipleFacebookListings', { count: listings?.length });
+
+      const resp = await postAndWait(
+        'PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS',
+        'PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS_RESULT',
+        { listings },
+        300000 // 5 minutes timeout for scraping multiple items
+      );
+
+      try {
+        localStorage.setItem('profit_orbit_last_facebook_detailed_scrape_result', JSON.stringify({ t: Date.now(), count: listings?.length, resp }));
+      } catch (_) {}
+
+      return resp;
+    },
+
     // Mercari scraper for Import page
     async scrapeMercariListings() {
       console.log('🟣 [MERCARI] Page API -> scrapeMercariListings');

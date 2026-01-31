@@ -2408,6 +2408,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
   
+  // Handle scraping detailed information for multiple Facebook listings (during import)
+  if (type === 'SCRAPE_MULTIPLE_FACEBOOK_LISTINGS') {
+    (async () => {
+      try {
+        console.log('📡 SCRAPE_MULTIPLE_FACEBOOK_LISTINGS received');
+        
+        const listings = message.listings || [];
+        console.log(`🔍 Scraping detailed info for ${listings.length} items...`);
+        
+        // Check if facebook-api.js is loaded
+        if (!self.__facebookApi || !self.__facebookApi.scrapeMultipleListings) {
+          console.error('❌ facebook-api.js or scrapeMultipleListings function not available');
+          sendResponse({
+            success: false,
+            error: 'Facebook API module or scraping function not available',
+          });
+          return;
+        }
+        
+        // Scrape detailed information for all selected listings
+        const detailedListings = await self.__facebookApi.scrapeMultipleListings(listings);
+        
+        console.log(`✅ Scraped detailed info for ${detailedListings.length} items`);
+        console.log('📦 First detailed listing sample:', detailedListings[0]);
+        
+        sendResponse({
+          success: true,
+          listings: detailedListings,
+          total: detailedListings.length,
+        });
+        
+      } catch (error) {
+        console.error('❌ Error handling SCRAPE_MULTIPLE_FACEBOOK_LISTINGS:', error);
+        sendResponse({
+          success: false,
+          error: error.message || 'Failed to scrape detailed Facebook listings',
+        });
+      }
+    })();
+    
+    return true; // Keep channel open for async response
+  }
+  
   // Handle fb_dtsg and cookies capture from content script
   if (type === 'FACEBOOK_AUTH_CAPTURED' || type === 'FACEBOOK_DTSG_CAPTURED') {
     const dtsg = message.dtsg;

@@ -157,6 +157,12 @@ window.addEventListener("message", (event) => {
     return;
   }
 
+  // Scrape detailed information for multiple Facebook listings
+  if (msg.type === "PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS") {
+    poTrySendMessage({ type: "SCRAPE_MULTIPLE_FACEBOOK_LISTINGS", listings: msg.payload?.listings }, "PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS_RESULT");
+    return;
+  }
+
   // Scrape Mercari listings for Import page
   if (msg.type === "PO_SCRAPE_MERCARI_LISTINGS") {
     poTrySendMessage({ type: "SCRAPE_MERCARI_LISTINGS" }, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
