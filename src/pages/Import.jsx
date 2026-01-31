@@ -361,7 +361,7 @@ export default function Import() {
         // This is when Vendoo does their "scrapping"
         if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.scrapeMultipleFacebookListings) {
           try {
-            const result = await window.ProfitOrbitExtension.scrapeMultipleFacebookListings(itemsToImport);
+            const result = await window.ProfitOrbitExtension.scrapeMultipleFacebookListings(itemsToImport, userId);
             
             if (result && result.success && result.listings) {
               endpoint = "/api/facebook/import-items";

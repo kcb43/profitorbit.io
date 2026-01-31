@@ -354,13 +354,13 @@
     },
 
     // Scrape detailed information for selected Facebook listings during import
-    async scrapeMultipleFacebookListings(listings) {
-      console.log('🟣 [FACEBOOK] Page API -> scrapeMultipleFacebookListings', { count: listings?.length });
+    async scrapeMultipleFacebookListings(listings, userId = null) {
+      console.log('🟣 [FACEBOOK] Page API -> scrapeMultipleFacebookListings', { count: listings?.length, userId });
 
       const resp = await postAndWait(
         'PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS',
         'PO_SCRAPE_MULTIPLE_FACEBOOK_LISTINGS_RESULT',
-        { listings },
+        { listings, userId },
         300000 // 5 minutes timeout for scraping multiple items
       );
 

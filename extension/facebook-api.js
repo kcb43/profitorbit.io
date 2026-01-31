@@ -323,12 +323,16 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
  * Scrape detailed information for multiple listings using backend worker
  * Called during import when user selects items - this is when we get full descriptions
  */
-async function scrapeMultipleListings(listings) {
-  console.log(`🔍 [SERVER-SIDE] Scraping details for ${listings.length} selected items via worker...`);
+async function scrapeMultipleListings(listings, userId = null) {
+  console.log(`🔍 [SERVER-SIDE] Scraping details for ${listings.length} selected items via worker... (userId: ${userId})`);
   
   try {
-    // Get user ID from storage
-    const { userId } = await chrome.storage.local.get(['userId']);
+    // If userId not provided as parameter, try to get from storage (fallback)
+    if (!userId) {
+      const stored = await chrome.storage.local.get(['userId']);
+      userId = stored.userId || null;
+    }
+    
     if (!userId) {
       console.error('❌ No user ID found - cannot scrape');
       return listings; // Return original listings

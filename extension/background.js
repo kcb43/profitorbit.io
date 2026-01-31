@@ -2405,7 +2405,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('📡 SCRAPE_MULTIPLE_FACEBOOK_LISTINGS received');
         
         const listings = message.listings || [];
-        console.log(`🔍 Scraping detailed info for ${listings.length} items...`);
+        const userId = message.userId || null;
+        console.log(`🔍 Scraping detailed info for ${listings.length} items... (userId: ${userId})`);
         
         // Check if facebook-api.js is loaded
         if (!self.__facebookApi || !self.__facebookApi.scrapeMultipleListings) {
@@ -2418,7 +2419,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         // Scrape detailed information for all selected listings
-        const detailedListings = await self.__facebookApi.scrapeMultipleListings(listings);
+        const detailedListings = await self.__facebookApi.scrapeMultipleListings(listings, userId);
         
         console.log(`✅ Scraped detailed info for ${detailedListings.length} items`);
         console.log('📦 First detailed listing sample:', detailedListings[0]);
