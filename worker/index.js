@@ -55,7 +55,7 @@ async function scrapeFacebookListing(url, browser) {
     });
 
     // Wait a bit for dynamic content
-    await page.waitForTimeout(2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Extract data using page.evaluate
     const scrapedData = await page.evaluate(() => {
@@ -99,32 +99,45 @@ async function scrapeFacebookListing(url, browser) {
       // Enhanced description extraction from page text
       const bodyText = document.body.textContent || '';
       
-      // Pattern 1: Look for "Details" section
-      const detailsMatch = bodyText.match(/Details[\s\S]{0,500}?(Brand New|Selling|Brand:|Condition:)([\s\S]{50,2000}?)(?:Pickup|Delivery|Shipping|Listed|Posted|Message|See more)/i);
-      if (detailsMatch && detailsMatch[0]) {
-        const extracted = detailsMatch[0]
-          .replace(/^Details\s*/i, '')
-          .replace(/(?:Pickup|Delivery|Shipping|Listed|Posted|Message).*$/i, '')
+      // Pattern 1: Look for "Details" section - more precise
+      const detailsMatch = bodyText.match(/Details\s*Condition\s*[A-Za-z\s-]+\s*(?:Men's|Women's|Kid's|Boys|Girls)?\s*(?:Shoe|Clothing|Show)?\s*Size\s*[\d.]+\s*(.+?)(?:Pickup|Delivery|Shipping|Listed|Posted|Message seller|Local pickup)/is);
+      if (detailsMatch && detailsMatch[1]) {
+        const extracted = detailsMatch[1]
+          .replace(/^[^\w]+/, '') // Remove leading non-word chars
           .trim();
         if (extracted.length > 50 && extracted.length > (data.description?.length || 0)) {
           data.description = extracted;
         }
       }
 
-      // Extract condition
-      const conditionMatch = bodyText.match(/Condition\s*[:·]?\s*(New|Used|Brand New|Like New|Good|Fair|Poor|New with tags|New without tags)/i);
+      // Extract condition - multiple patterns
+      let conditionMatch = bodyText.match(/Condition\s+(New|Used|Brand New|Like New|Good|Fair|Poor|New with tags|New without tags|Used - Like New)/i);
+      if (!conditionMatch) {
+        // Try alternate pattern - look in Details section
+        conditionMatch = bodyText.match(/Details.*?(New|Used|Brand New|Like New)/i);
+      }
       if (conditionMatch) {
         data.condition = conditionMatch[1];
       }
 
-      // Extract brand
-      const brandMatch = bodyText.match(/Brand\s*[:·]?\s*([A-Za-z0-9\s&'-]{2,30})(?:\s|$|,|\.|;)/i);
-      if (brandMatch) {
+      // Extract brand - look for common patterns
+      const brandMatch = bodyText.match(/Brand\s+([A-Z][A-Za-z0-9\s&'-]{2,30})(?=\s*–|\s*-|\s*\n|$)/i);
+      if (brandMatch && !brandMatch[1].toLowerCase().includes('new')) {
         data.brand = brandMatch[1].trim();
+      } else {
+        // Try to extract from title if present (e.g., "adidas", "Nike")
+        const titleBrands = ['Adidas', 'Nike', 'Puma', 'Reebok', 'Under Armour', 'New Balance', 'Jordan', 'Converse'];
+        const titleUpper = (data.title || '').toUpperCase();
+        for (const brand of titleBrands) {
+          if (titleUpper.includes(brand.toUpperCase())) {
+            data.brand = brand;
+            break;
+          }
+        }
       }
 
-      // Extract size
-      const sizeMatch = bodyText.match(/Size\s*[:·]?\s*([A-Z0-9\s/.-]{1,20})(?:\s|$|,|\.|;)/i);
+      // Extract size - more precise pattern
+      const sizeMatch = bodyText.match(/(?:Men's|Women's|Kid's|Boys|Girls)?\s*(?:Shoe|Clothing|Show)?\s*Size\s+([\d.]+(?:\s*[A-Z])?)/i);
       if (sizeMatch) {
         data.size = sizeMatch[1].trim();
       }
