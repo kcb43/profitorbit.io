@@ -148,9 +148,10 @@ export default function Import() {
     const loadUserId = async () => {
       try {
         const id = await getCurrentUserId();
+        console.log('🆔 User ID loaded:', id);
         setUserId(id);
       } catch (e) {
-        console.error('Error getting user ID:', e);
+        console.error('❌ Error getting user ID:', e);
       }
     };
     loadUserId();
@@ -356,11 +357,13 @@ export default function Import() {
         const itemsToImport = facebookListings.filter(item => itemIds.includes(item.itemId));
         
         console.log(`🔍 Scraping detailed info for ${itemsToImport.length} selected items...`);
+        console.log(`📍 DEBUG: userId for scraping:`, userId);
         
         // Scrape detailed information for selected items
         // This is when Vendoo does their "scrapping"
         if (window.ProfitOrbitExtension && window.ProfitOrbitExtension.scrapeMultipleFacebookListings) {
           try {
+            console.log(`🔥 Calling scrapeMultipleFacebookListings with userId:`, userId);
             const result = await window.ProfitOrbitExtension.scrapeMultipleFacebookListings(itemsToImport, userId);
             
             if (result && result.success && result.listings) {
