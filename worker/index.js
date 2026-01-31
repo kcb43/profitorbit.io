@@ -209,12 +209,16 @@ async function work() {
     console.log('🌐 Launching browser...');
     
     if (IS_PRODUCTION) {
-      // Production: Use chromium from @sparticuz/chromium
+      // Production: Use system chromium from Alpine
       browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
+        executablePath: '/usr/bin/chromium-browser',
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
       });
     } else {
       // Local development: Use regular puppeteer with bundled Chromium
