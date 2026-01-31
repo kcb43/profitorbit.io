@@ -83,10 +83,11 @@ const ToastAction = React.forwardRef(({ className, ...props }, ref) => (
 ));
 ToastAction.displayName = "ToastAction";
 
-const ToastClose = React.forwardRef(({ className, ...props }, ref) => (
-  <a
+const ToastClose = React.forwardRef(({ className, onClick, ...props }, ref) => (
+  <button
     ref={ref}
-    tabIndex={0}
+    type="button"
+    onClick={onClick}
     className={cn(
       "absolute right-6 top-4 cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus:outline-none",
       className
@@ -98,13 +99,17 @@ const ToastClose = React.forwardRef(({ className, ...props }, ref) => (
       width: '16px',
       height: '16px',
       display: 'block',
+      background: 'none',
+      border: 'none',
+      padding: 0,
     }}
+    aria-label="Close"
     {...props}
   >
     <span className="inline-flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
       <X className="h-4 w-4" />
     </span>
-  </a>
+  </button>
 ));
 ToastClose.displayName = "ToastClose";
 

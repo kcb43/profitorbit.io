@@ -11,9 +11,9 @@ import puppeteerFull from 'puppeteer';
 import chromium from '@sparticuz/chromium';
 
 // Configuration
-const POLL_INTERVAL_MS = 3000; // Check for jobs every 3 seconds
+const POLL_INTERVAL_MS = 2000; // Check for jobs every 2 seconds (faster polling)
 const MAX_RETRIES = 3;
-const CONCURRENT_JOBS = 2; // Process 2 jobs at a time
+const CONCURRENT_JOBS = 8; // Process 8 jobs at a time (sweet spot for speed/stability)
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // Initialize Supabase
@@ -51,11 +51,11 @@ async function scrapeFacebookListing(url, browser) {
     // Navigate to listing
     await page.goto(url, {
       waitUntil: 'networkidle2',
-      timeout: 30000
+      timeout: 15000 // Faster timeout (15s instead of 30s)
     });
 
-    // Wait a bit for dynamic content
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait briefly for dynamic content
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 2000ms
 
     // Extract data using page.evaluate
     const scrapedData = await page.evaluate(() => {
@@ -230,14 +230,25 @@ async function work() {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-images',              // Don't load images (faster!)
+          '--disable-extensions',
+          '--disable-plugins',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--disable-background-networking'
         ]
       });
     } else {
       // Local development: Use regular puppeteer with bundled Chromium
       browser = await puppeteerFull.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-images',              // Don't load images (faster!)
+          '--disable-extensions'
+        ]
       });
     }
     
@@ -271,8 +282,8 @@ async function work() {
         // Process jobs concurrently
         await Promise.all(jobs.map(job => processJob(job, browser)));
 
-        // Small delay before next batch
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Small delay before next batch (reduced for speed)
+        await new Promise(resolve => setTimeout(resolve, 500));
 
       } catch (error) {
         console.error('❌ Worker loop error:', error);
