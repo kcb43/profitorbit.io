@@ -528,7 +528,9 @@ export default function Import() {
       const item = sourceListings.find(i => i.itemId === itemId);
       
       if (!item?.inventoryId) {
-        throw new Error('Item not found or not imported');
+        // If item has no inventory ID, just mark it as not imported locally
+        console.warn(`⚠️ Item ${itemId} has no inventory ID, marking as not imported locally`);
+        return { id: null, success: true }; // Return success to allow cache update
       }
       
       // Soft delete from inventory (permanent delete)

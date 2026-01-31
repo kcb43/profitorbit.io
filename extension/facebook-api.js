@@ -380,15 +380,8 @@ async function scrapeMultipleListings(listings, userId = null) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, pollInterval));
       
-      const statusResponse = await fetch('https://profitorbit.io/api/facebook/scrape-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: userId,
-          jobIds: jobIds
-        })
+      const statusResponse = await fetch(`https://profitorbit.io/api/facebook/scrape-status?userId=${userId}&jobIds=${jobIds.join(',')}`, {
+        method: 'GET',
       });
       
       if (!statusResponse.ok) {
