@@ -249,7 +249,7 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       
       // Send progress update
       if (onProgress) {
-        onProgress(index + 1, edges.length);
+        onProgress(index + 1, edges.length, `Processing listing ${index + 1} of ${edges.length}...`);
       }
       
       // Extract description from multiple possible fields (in priority order)
@@ -302,13 +302,19 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       return result;
     }).filter(Boolean);
     
-    console.log(`✅ Extracted ${listings.length} Facebook listings with full details from GraphQL API`);
-    console.log(`📦 Sample listing:`, listings[0]);
+    console.log(`✅ Extracted ${listings.length} Facebook listings (basic data) from GraphQL API`);
+    console.log(`📦 Sample listing (basic):`, listings[0]);
+    
+    // Now scrape detailed information for each listing
+    console.log('🔍 Starting detailed scraping for each listing...');
+    const detailedListings = await scrapeDetailedListings(listings, onProgress);
+    
+    console.log('📦 Final listings with detailed data sample:', detailedListings[0]);
     
     return {
       success: true,
-      listings,
-      total: listings.length,
+      listings: detailedListings,
+      total: detailedListings.length,
       timestamp: new Date().toISOString(),
     };
     
@@ -316,6 +322,111 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     console.error('❌ Error fetching Facebook listings:', error);
     throw error;
   }
+}
+
+/**
+ * Scrape detailed information for each listing by visiting its page
+ * This mimics Vendoo's approach: "Getting req body through scrapping"
+ */
+async function scrapeDetailedListings(basicListings, onProgress) {
+  console.log(`🔍 Scraping detailed info for ${basicListings.length} listings...`);
+  
+  const detailedListings = [];
+  
+  for (let i = 0; i < basicListings.length; i++) {
+    const listing = basicListings[i];
+    
+    try {
+      console.log(`🔍 [${i + 1}/${basicListings.length}] Scraping details for listing ${listing.itemId}...`);
+      
+      // Update progress
+      if (onProgress) {
+        onProgress(i + 1, basicListings.length, `Fetching details for listing ${i + 1}...`);
+      }
+      
+      // Open the listing page in a new tab
+      const tab = await chrome.tabs.create({
+        url: listing.listingUrl,
+        active: false, // Don't switch to the tab
+      });
+      
+      console.log(`📄 Opened tab ${tab.id} for ${listing.listingUrl}`);
+      
+      // Wait for the page to load
+      await waitForTabLoad(tab.id);
+      
+      // Small delay to ensure content script is ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Send message to content script to scrape the page
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'SCRAPE_FACEBOOK_LISTING'
+      });
+      
+      // Close the tab
+      await chrome.tabs.remove(tab.id);
+      
+      if (response && response.success && response.data) {
+        const scrapedData = response.data;
+        console.log(`✅ Scraped data for ${listing.itemId}:`, scrapedData);
+        
+        // Merge scraped data with basic listing data
+        const detailedListing = {
+          ...listing,
+          description: scrapedData.description || listing.description,
+          category: scrapedData.category || listing.category,
+          categoryPath: scrapedData.categoryPath || [],
+          condition: scrapedData.condition || listing.condition,
+          brand: scrapedData.brand || listing.brand,
+          size: scrapedData.size || listing.size,
+          location: scrapedData.location || null,
+          // If we got a better title from scraping, use it
+          title: scrapedData.title || listing.title,
+          // If we got a better price from scraping, use it
+          price: scrapedData.price ? parseFloat(scrapedData.price) : listing.price,
+        };
+        
+        detailedListings.push(detailedListing);
+        console.log(`✅ Enhanced listing ${listing.itemId} with scraped data`);
+      } else {
+        console.warn(`⚠️ Could not scrape details for ${listing.itemId}, using basic data`);
+        detailedListings.push(listing);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error scraping listing ${listing.itemId}:`, error);
+      // If scraping fails, use the basic listing data
+      detailedListings.push(listing);
+    }
+    
+    // Small delay between requests to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  console.log(`✅ Completed detailed scraping for ${detailedListings.length} listings`);
+  return detailedListings;
+}
+
+/**
+ * Wait for a tab to finish loading
+ */
+async function waitForTabLoad(tabId) {
+  return new Promise((resolve) => {
+    const checkTab = async () => {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        if (tab.status === 'complete') {
+          resolve();
+        } else {
+          setTimeout(checkTab, 500);
+        }
+      } catch (error) {
+        // Tab might have been closed
+        resolve();
+      }
+    };
+    checkTab();
+  });
 }
 
 // Main export (use self instead of window for service worker compatibility)
