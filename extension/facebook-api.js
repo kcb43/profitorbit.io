@@ -220,6 +220,9 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     
     console.log('✅ GraphQL response parsed successfully');
     
+    // Extract listings from GraphQL response - all data is already here!
+    const edges = data.viewer?.marketplace_listing_sets?.edges || [];
+    
     // DEBUG: Log the full response structure for the first item
     if (edges.length > 0) {
       const firstListing = edges[0]?.node?.first_listing;
@@ -238,19 +241,11 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       }
     }
     
-    // Extract listings from GraphQL response - all data is already here!
-    const edges = data.viewer?.marketplace_listing_sets?.edges || [];
     const listings = edges.map((edge, index) => {
       const listing = edge.node?.first_listing;
       if (!listing) return null;
       
       console.log(`📦 [${index + 1}] Processing listing ${listing.id}...`);
-      
-      // DEBUG: Log all available fields in the listing object
-      if (index === 0) {
-        console.log(`🔍 Available fields in listing object:`, Object.keys(listing));
-        console.log(`🔍 Full listing object (first item):`, listing);
-      }
       
       // Send progress update
       if (onProgress) {
