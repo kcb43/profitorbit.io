@@ -71,7 +71,8 @@ export default async function handler(req, res) {
             source: 'Facebook Marketplace',
             images: item.pictureURLs || [item.imageUrl].filter(Boolean),
             image_url: item.imageUrl || null,
-            condition: 'USED', // Facebook doesn't provide condition in listings
+            condition: item.condition || 'USED', // Use actual condition if available, fallback to USED
+            category: item.category || null, // Store Facebook category if available
             purchase_date: new Date().toISOString(),
             // Store Facebook metadata
             notes: null, // User can add their own notes

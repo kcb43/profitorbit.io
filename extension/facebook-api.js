@@ -220,6 +220,24 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     
     console.log('✅ GraphQL response parsed successfully');
     
+    // DEBUG: Log the full response structure for the first item
+    if (edges.length > 0) {
+      const firstListing = edges[0]?.node?.first_listing;
+      if (firstListing) {
+        console.log('🔍 DEBUG: All available fields in first listing:', Object.keys(firstListing));
+        console.log('🔍 DEBUG: First listing full object (JSON):', JSON.stringify(firstListing, null, 2));
+        
+        // Check specific fields we're looking for
+        console.log('🔍 DEBUG: Field check:', {
+          has_story_description: 'story_description' in firstListing,
+          has_redacted_description: 'redacted_description' in firstListing,
+          has_marketplace_listing_category: 'marketplace_listing_category' in firstListing,
+          has_custom_title_with_condition_and_brand: 'custom_title_with_condition_and_brand' in firstListing,
+          has_custom_sub_titles_with_rendering_flags: 'custom_sub_titles_with_rendering_flags' in firstListing,
+        });
+      }
+    }
+    
     // Extract listings from GraphQL response - all data is already here!
     const edges = data.viewer?.marketplace_listing_sets?.edges || [];
     const listings = edges.map((edge, index) => {
@@ -227,6 +245,12 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       if (!listing) return null;
       
       console.log(`📦 [${index + 1}] Processing listing ${listing.id}...`);
+      
+      // DEBUG: Log all available fields in the listing object
+      if (index === 0) {
+        console.log(`🔍 Available fields in listing object:`, Object.keys(listing));
+        console.log(`🔍 Full listing object (first item):`, listing);
+      }
       
       // Send progress update
       if (onProgress) {

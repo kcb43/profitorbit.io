@@ -4091,6 +4091,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const title = sanitizeFacebookText(titleRaw, { singleLine: true, maxLen: 120 });
         const description = sanitizeFacebookText(descriptionRaw, { singleLine: false, maxLen: 5000 });
         const price = payload.price ?? payload.listing_price ?? payload.amount ?? null;
+        
+        // Extract Facebook-specific fields
+        const categoryId = payload.categoryId || payload.category_id || payload.facebookCategoryId || null;
+        const category = payload.category || null;
+        const condition = payload.condition || null;
+        
+        console.log('🟦 [FACEBOOK] Extracted payload fields:', {
+          hasTitle: !!title,
+          hasDescription: !!description,
+          hasPrice: !!price,
+          hasCategoryId: !!categoryId,
+          categoryId: categoryId,
+          category: category,
+          condition: condition,
+        });
 
         const toUrl = (v) => {
           if (!v) return null;
@@ -5297,6 +5312,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const coercedPhotoId = Number.isFinite(photoIdNum) ? photoIdNum : String(photoId);
           setDeep(vars, ['input', 'data', 'common', 'photo_ids'], [coercedPhotoId]);
           setDeepPreserveType(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller'], true);
+          
+          // Set category if provided
+          if (categoryId) {
+            // Facebook category IDs are typically numeric strings
+            setDeepPreserveType(vars, ['input', 'data', 'common', 'marketplace_listing_category_id'], String(categoryId));
+            console.log('🟦 [FACEBOOK] Set category ID in variables:', categoryId);
+          }
+          
+          // Set condition if provided
+          if (condition) {
+            const conditionUpper = String(condition).toUpperCase();
+            setDeepPreserveType(vars, ['input', 'data', 'common', 'condition'], conditionUpper);
+            console.log('🟦 [FACEBOOK] Set condition in variables:', conditionUpper);
+          }
         }
 
         // Best-effort variable overrides
@@ -5358,6 +5387,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!form.__a) form.__a = '1';
         if (!form.__comet_req) form.__comet_req = '1';
         form.variables = JSON.stringify(vars);
+        
+        // DEBUG: Log the final variables being sent
+        console.log('🟦 [FACEBOOK] Final GraphQL variables:', JSON.stringify(vars, null, 2).substring(0, 3000));
+        console.log('🟦 [FACEBOOK] Photo IDs in variables:', vars?.input?.data?.common?.photo_ids);
+        console.log('🟦 [FACEBOOK] Category ID in variables:', vars?.input?.data?.common?.marketplace_listing_category_id);
 
         const gqlHeaders = { ...(graphqlTemplate.requestHeaders || {}) };
         delete gqlHeaders['content-length'];

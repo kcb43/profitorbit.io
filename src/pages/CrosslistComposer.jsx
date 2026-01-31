@@ -36805,7 +36805,16 @@ export default function CrosslistComposer() {
 
         const result = await ext.createFacebookListing({
           inventory_item_id: currentEditingItemId || null,
-          payload: { title, description, price, images: photosToUse },
+          payload: { 
+            title, 
+            description, 
+            price, 
+            images: photosToUse,
+            // Include Facebook-specific fields
+            categoryId: facebookForm.categoryId || generalForm.categoryId,
+            category: facebookForm.category || generalForm.category,
+            condition: facebookForm.condition || generalForm.condition,
+          },
         });
 
         if (result?.success) {
@@ -37375,7 +37384,16 @@ export default function CrosslistComposer() {
 
             const result = await ext.createFacebookListing({
               inventory_item_id: currentEditingItemId || null,
-              payload: { title, description, price, images: photosToUse },
+              payload: { 
+                title, 
+                description, 
+                price, 
+                images: photosToUse,
+                // Include Facebook-specific fields
+                categoryId: facebookForm.categoryId || generalForm.categoryId,
+                category: facebookForm.category || generalForm.category,
+                condition: facebookForm.condition || generalForm.condition,
+              },
             });
 
             if (result?.success) {
