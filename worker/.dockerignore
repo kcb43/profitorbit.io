@@ -1,14 +1,18 @@
-# Build artifacts
-node_modules
+# Dependencies (installed via npm ci in Dockerfile)
+node_modules/
+
+# Development and local files
 .env
 .env.local
 *.log
 
-# Development files
+# Git files
 .git
 .gitignore
-README.md
+
+# Documentation (keep in repo but not in image)
 *.md
+README.md
 
 # Test files
 test/

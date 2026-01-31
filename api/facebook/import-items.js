@@ -71,10 +71,13 @@ export default async function handler(req, res) {
             source: 'Facebook Marketplace',
             images: item.pictureURLs || [item.imageUrl].filter(Boolean),
             image_url: item.imageUrl || null,
-            condition: item.condition || 'USED', // Use actual condition if available, fallback to USED
-            category: item.category || null, // Store Facebook category if available
+            condition: item.condition || null, // From GraphQL attribute_data (e.g., "Used - Good")
+            brand: item.brand || null, // From GraphQL attribute_data (e.g., "Nike", "Unbranded")
+            size: item.size || null, // From GraphQL attribute_data if available
+            category: item.category || null, // Store Facebook category name if resolved
+            facebook_category_id: item.categoryId || null, // Store Facebook category ID (e.g., "1670493229902393")
+            facebook_category_name: item.category || null, // Store Facebook category name if resolved
             purchase_date: new Date().toISOString(),
-            // Store Facebook metadata
             notes: null, // User can add their own notes
           })
           .select('id')
