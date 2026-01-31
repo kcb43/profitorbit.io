@@ -319,128 +319,142 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
  * COMPLETELY INVISIBLE TO USER - no tabs opened!
  */
 /**
- * Ensure the offscreen document exists for scraping
- */
-async function ensureOffscreenDocument() {
-  try {
-    // Check if offscreen document already exists
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT']
-    });
-    
-    if (existingContexts.length > 0) {
-      console.log('✅ Offscreen document already exists');
-      return;
-    }
-    
-    // Create offscreen document
-    console.log('🔧 Creating offscreen document for invisible scraping...');
-    await chrome.offscreen.createDocument({
-      url: 'offscreen-scraper.html',
-      reasons: ['DOM_SCRAPING'],
-      justification: 'Scrape Facebook listing pages to extract descriptions and details'
-    });
-    
-    console.log('✅ Offscreen document created');
-    
-    // Give it a moment to initialize
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-  } catch (error) {
-    console.error('❌ Error creating offscreen document:', error);
-    throw error;
-  }
-}
-
-/**
- * Scrape detailed information for a single listing
- * Called during import when user selects items
- * This is when Vendoo does their "scrapping"
- */
-async function scrapeListingDetails(listingUrl) {
-  try {
-    console.log(`🔍 Scraping details for: ${listingUrl}`);
-    
-    // Ensure offscreen document exists
-    await ensureOffscreenDocument();
-    
-    // Send message to offscreen document to scrape the listing
-    const response = await chrome.runtime.sendMessage({
-      action: 'SCRAPE_LISTING_URL',
-      url: listingUrl
-    });
-    
-    if (response && response.success && response.data) {
-      console.log(`✅ Scraped details:`, response.data);
-      return response.data;
-    } else {
-      console.warn(`⚠️ Could not scrape details for ${listingUrl}`);
-      return null;
-    }
-    
-  } catch (error) {
-    console.error(`❌ Error scraping listing:`, error);
-    return null;
-  }
-}
-
-/**
- * Scrape detailed information for multiple listings
- * Called during import when user selects multiple items
+ * NEW: Server-side scraping via Fly.io worker
+ * Scrape detailed information for multiple listings using backend worker
+ * Called during import when user selects items - this is when we get full descriptions
  */
 async function scrapeMultipleListings(listings) {
-  console.log(`🔍 Scraping details for ${listings.length} selected items...`);
+  console.log(`🔍 [SERVER-SIDE] Scraping details for ${listings.length} selected items via worker...`);
   
-  const detailedListings = [];
-  
-  for (let i = 0; i < listings.length; i++) {
-    const listing = listings[i];
-    
-    try {
-      console.log(`🔍 [${i + 1}/${listings.length}] Scraping ${listing.itemId}...`);
-      
-      const scrapedData = await scrapeListingDetails(listing.listingUrl);
-      
-      if (scrapedData) {
-        // Merge scraped data with basic listing data
-        const detailedListing = {
-          ...listing,
-          description: scrapedData.description || listing.description,
-          category: scrapedData.category || listing.category,
-          categoryPath: scrapedData.categoryPath || [],
-          condition: scrapedData.condition || listing.condition,
-          brand: scrapedData.brand || listing.brand,
-          size: scrapedData.size || listing.size,
-          location: scrapedData.location || null,
-          title: scrapedData.title || listing.title,
-          price: scrapedData.price ? parseFloat(scrapedData.price) : listing.price,
-        };
-        
-        detailedListings.push(detailedListing);
-      } else {
-        // If scraping fails, use basic data
-        detailedListings.push(listing);
-      }
-      
-    } catch (error) {
-      console.error(`❌ Error scraping listing ${listing.itemId}:`, error);
-      detailedListings.push(listing);
+  try {
+    // Get user ID from storage
+    const { userId } = await chrome.storage.local.get(['userId']);
+    if (!userId) {
+      console.error('❌ No user ID found - cannot scrape');
+      return listings; // Return original listings
     }
     
-    // Small delay between requests
-    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log(`📡 Creating scraping jobs for user ${userId}...`);
+    
+    // Step 1: Create scraping jobs via API
+    const createResponse = await fetch('https://profitorbit.io/api/facebook/scrape-details', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        listings: listings.map(l => ({
+          itemId: l.itemId,
+          listingUrl: l.listingUrl,
+        }))
+      })
+    });
+    
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error(`❌ Failed to create scraping jobs:`, errorText);
+      return listings;
+    }
+    
+    const createData = await createResponse.json();
+    console.log(`✅ Created ${createData.jobs?.length || 0} scraping jobs`);
+    
+    if (!createData.jobs || createData.jobs.length === 0) {
+      console.warn('⚠️ No jobs created');
+      return listings;
+    }
+    
+    const jobIds = createData.jobs.map(j => j.id);
+    
+    // Step 2: Poll for results (with timeout)
+    const maxAttempts = 30; // 30 attempts = ~60 seconds max wait
+    const pollInterval = 2000; // Poll every 2 seconds
+    
+    console.log(`⏳ Waiting for worker to scrape ${listings.length} items...`);
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      
+      const statusResponse = await fetch('https://profitorbit.io/api/facebook/scrape-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          jobIds: jobIds
+        })
+      });
+      
+      if (!statusResponse.ok) {
+        console.error(`❌ Failed to check job status (attempt ${attempt})`);
+        continue;
+      }
+      
+      const statusData = await statusResponse.json();
+      const { completed, pending, processing, failed, total } = statusData.summary || {};
+      
+      console.log(`📊 [${attempt}/${maxAttempts}] Status: ${completed}/${total} completed, ${processing} processing, ${pending} pending, ${failed} failed`);
+      
+      // If all jobs are done (completed or failed), merge results
+      if (completed + failed >= total) {
+        console.log(`✅ All jobs finished! Merging scraped data...`);
+        
+        // Create a map of itemId -> scraped data
+        const scrapedDataMap = {};
+        statusData.jobs.forEach(job => {
+          if (job.scraped_data) {
+            scrapedDataMap[job.item_id] = job.scraped_data;
+          }
+        });
+        
+        // Merge scraped data with original listings
+        const detailedListings = listings.map(listing => {
+          const scraped = scrapedDataMap[listing.itemId];
+          
+          if (scraped) {
+            console.log(`✅ [${listing.itemId}] Merged scraped data:`, scraped);
+            return {
+              ...listing,
+              description: scraped.description || listing.description,
+              category: scraped.category || listing.category,
+              condition: scraped.condition || listing.condition,
+              brand: scraped.brand || listing.brand,
+              size: scraped.size || listing.size,
+              title: scraped.title || listing.title,
+            };
+          } else {
+            console.warn(`⚠️ [${listing.itemId}] No scraped data found`);
+            return listing;
+          }
+        });
+        
+        console.log(`✅ Successfully merged data for ${detailedListings.length} items`);
+        return detailedListings;
+      }
+      
+      // If not done yet, continue polling
+      if (attempt < maxAttempts) {
+        console.log(`⏳ Still processing... checking again in ${pollInterval/1000}s`);
+      }
+    }
+    
+    // Timeout reached
+    console.warn(`⏱️ Timeout reached after ${maxAttempts * pollInterval / 1000}s - returning partial results`);
+    return listings;
+    
+  } catch (error) {
+    console.error(`❌ Error in server-side scraping:`, error);
+    return listings; // Return original listings on error
   }
-  
-  console.log(`✅ Completed scraping for ${detailedListings.length} items`);
-  return detailedListings;
 }
 
 // Main export (use self instead of window for service worker compatibility)
 self.__facebookApi = {
   getFacebookAuth,
   fetchFacebookListings,
-  scrapeListingDetails,
-  scrapeMultipleListings,
+  scrapeMultipleListings, // Now uses server-side worker
 };
 
-console.log('✅ Facebook API client loaded');
+console.log('✅ Facebook API client loaded (with server-side scraping)');
