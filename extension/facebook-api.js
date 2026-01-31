@@ -410,25 +410,26 @@ async function scrapeMultipleListings(listings, userId = null) {
           }
           
           // Extract condition from attribute_data
+          // Structure: { attribute_name: "Condition", value: "used_good", label: "Used - Good" }
           let condition = listing.condition;
           const conditionAttr = target.attribute_data?.find(attr => 
-            attr.label === 'Condition' || attr.label?.toLowerCase().includes('condition')
+            attr.attribute_name === 'Condition'
           );
           if (conditionAttr) {
-            // Try multiple possible field names for the value
-            condition = conditionAttr.value_label || conditionAttr.label || conditionAttr.value || condition;
-            console.log(`🔍 Condition found:`, conditionAttr);
+            // Use the 'label' field which has the human-readable value
+            condition = conditionAttr.label || condition;
+            console.log(`🔍 Condition found:`, conditionAttr, '→', condition);
           }
           
           // Extract brand from attribute_data
           let brand = listing.brand;
           const brandAttr = target.attribute_data?.find(attr => 
-            attr.label === 'Brand' || attr.label?.toLowerCase().includes('brand')
+            attr.attribute_name === 'Brand'
           );
           if (brandAttr) {
-            // Try multiple possible field names for the value
-            brand = brandAttr.value_label || brandAttr.label || brandAttr.value || brand;
-            console.log(`🔍 Brand found:`, brandAttr);
+            // Use the 'label' field which has the brand name
+            brand = brandAttr.label || brand;
+            console.log(`🔍 Brand found:`, brandAttr, '→', brand);
           }
           
           // Category ID is in the response
