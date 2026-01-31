@@ -171,7 +171,7 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
         'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.9',
         // Don't set Origin, Referer, or Sec-Fetch-* here - they're set by DNR rules
@@ -220,13 +220,38 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     
     console.log('✅ GraphQL response parsed successfully');
     
-    // Extract listings from GraphQL response
+    // Extract listings from GraphQL response - all data is already here!
     const edges = data.viewer?.marketplace_listing_sets?.edges || [];
-    const listings = edges.map(edge => {
+    const listings = edges.map((edge, index) => {
       const listing = edge.node?.first_listing;
       if (!listing) return null;
       
-      return {
+      console.log(`📦 [${index + 1}] Processing listing ${listing.id}...`);
+      
+      // Send progress update
+      if (onProgress) {
+        onProgress(index + 1, edges.length);
+      }
+      
+      // Extract description from multiple possible fields (in priority order)
+      const description = listing.story_description || 
+                         listing.redacted_description?.text || 
+                         listing.marketplace_listing_title || 
+                         '';
+      
+      // Extract category
+      const category = listing.marketplace_listing_category?.name || null;
+      
+      // Extract condition from custom_title_with_condition_and_brand
+      const condition = listing.custom_title_with_condition_and_brand?.condition || null;
+      
+      // Extract brand from custom_title_with_condition_and_brand
+      const brand = listing.custom_title_with_condition_and_brand?.brand || null;
+      
+      // Extract size from custom_sub_titles_with_rendering_flags
+      const size = listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || null;
+      
+      const result = {
         itemId: listing.id,
         title: listing.marketplace_listing_title || listing.base_marketplace_listing_title || '',
         price: parseFloat(listing.formatted_price?.text?.replace(/[^0-9.]/g, '') || '0'),
@@ -235,219 +260,31 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
         listingUrl: listing.story?.url || `https://www.facebook.com/marketplace/item/${listing.id}/`,
         source: 'facebook',
         status: listing.is_sold ? 'sold' : listing.is_pending ? 'pending' : 'available',
-        description: listing.marketplace_listing_title || '',
+        description: description,
+        category: category,
+        condition: condition,
+        brand: brand,
+        size: size,
         imported: false,
         creationTime: listing.creation_time,
         listingDate: listing.creation_time ? new Date(listing.creation_time * 1000).toISOString() : new Date().toISOString(),
         startTime: listing.creation_time ? new Date(listing.creation_time * 1000).toISOString() : new Date().toISOString(),
         categoryId: listing.marketplace_listing_category_id,
-        needsDetails: true, // Flag that we need to fetch full details
       };
+      
+      console.log(`✅ Extracted full data for ${listing.id}:`, {
+        hasDescription: !!description,
+        hasCategory: !!category,
+        hasCondition: !!condition,
+        hasBrand: !!brand,
+        hasSize: !!size,
+      });
+      
+      return result;
     }).filter(Boolean);
     
-    console.log(`✅ Extracted ${listings.length} Facebook listings from API`);
-    
-    // Now fetch full details by navigating to each listing page
-    // This is more reliable than trying to use GraphQL queries we don't have access to
-    console.log(`📋 Fetching full details via content script injection for ${listings.length} listings...`);
-    
-    // Find or create a Facebook Marketplace tab
-    const tabs = await chrome.tabs.query({ url: '*://www.facebook.com/marketplace/*' });
-    let tab;
-    
-    if (tabs && tabs.length > 0) {
-      tab = tabs[0];
-      console.log(`✅ Using existing Facebook Marketplace tab ${tab.id}`);
-    } else {
-      // Create a new tab for scraping
-      tab = await chrome.tabs.create({
-        url: 'https://www.facebook.com/marketplace/you/selling',
-        active: false // Keep it in background
-      });
-      console.log(`✅ Created new Facebook Marketplace tab ${tab.id}`);
-      
-      // Wait for tab to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    
-    // Process listings one by one
-    for (let i = 0; i < listings.length; i++) {
-      const listing = listings[i];
-      console.log(`📄 [${i + 1}/${listings.length}] Fetching details for ${listing.itemId}...`);
-      
-      // Send progress update
-      if (onProgress) {
-        onProgress(i + 1, listings.length);
-      }
-      
-      try {
-        // Navigate to the listing URL
-        await chrome.tabs.update(tab.id, { url: listing.listingUrl });
-        
-        // Wait for page to load - increased to 3s to ensure full render
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Inject script to extract data
-        const [result] = await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            // Helper to check if element is in a sidebar/notification area
-            const isInSidebar = (element) => {
-              if (!element) return false;
-              let parent = element;
-              while (parent) {
-                const ariaLabel = parent.getAttribute?.('aria-label');
-                const role = parent.getAttribute?.('role');
-                // Check for sidebar/notification indicators
-                if (ariaLabel?.includes('notification') || 
-                    ariaLabel?.includes('Notifications') ||
-                    role === 'complementary' ||
-                    parent.id?.includes('rightCol') ||
-                    parent.className?.includes('rightCol')) {
-                  return true;
-                }
-                parent = parent.parentElement;
-              }
-              return false;
-            };
-            
-            // Extract description - Be very selective
-            let description = '';
-            
-            // Strategy 1: Look for the listing details section specifically
-            // Facebook often wraps the description in specific containers
-            const possibleContainers = [
-              // Main content area (not sidebar)
-              document.querySelector('div[role="main"]'),
-              // Fallback to body if main not found
-              document.body
-            ];
-            
-            for (const container of possibleContainers) {
-              if (!container) continue;
-              
-              // Look for spans with substantial text content
-              const spans = Array.from(container.querySelectorAll('span[dir="auto"]'));
-              
-              for (const span of spans) {
-                // Skip if in sidebar
-                if (isInSidebar(span)) continue;
-                
-                const text = span.textContent?.trim();
-                
-                // Strict criteria for description
-                if (text && 
-                    text.length > 50 && 
-                    text.length < 5000 && // Reasonable max
-                    !text.includes('Unread') &&
-                    !text.includes('notification') &&
-                    !text.includes('Today\'s picks') &&
-                    !text.includes('See translation') &&
-                    !text.includes('Related') &&
-                    !text.includes('Marketplace') &&
-                    !text.includes('Facebook') &&
-                    !text.includes('· ') && // Distance indicators like "23 mi ·"
-                    !text.match(/^\d+\s*(mi|km|minutes?|hours?)/i) &&
-                    !text.match(/\$\d+.*?\$\d+/)) { // Multiple prices (suggestions)
-                  
-                  // Extra check: make sure it looks like a product description
-                  // (contains common product description words or patterns)
-                  const looksLikeDescription = 
-                    text.includes('brand') ||
-                    text.includes('Brand') ||
-                    text.includes('condition') ||
-                    text.includes('new') ||
-                    text.includes('New') ||
-                    text.includes('size') ||
-                    text.includes('Size') ||
-                    text.split('\n').length > 1 || // Multi-line
-                    text.split('.').length > 2; // Multiple sentences
-                  
-                  if (looksLikeDescription) {
-                    description = text;
-                    break;
-                  }
-                }
-              }
-              
-              if (description) break;
-            }
-            
-            // Extract category - Look for category link
-            let category = null;
-            const categoryLink = document.querySelector('a[href*="/marketplace/category/"]');
-            if (categoryLink) {
-              const catText = categoryLink.textContent?.trim();
-              // Avoid picking up other links
-              if (catText && catText.length < 50 && !catText.includes('$') && !catText.includes('mi')) {
-                category = catText;
-              }
-            }
-            
-            // Extract condition - Look for specific "Condition" label
-            let condition = null;
-            const allText = document.body.textContent;
-            const conditionMatch = allText.match(/Condition[:\s]*(New|Used|Used - like new|Used - good|Used - fair)/i);
-            if (conditionMatch) {
-              condition = conditionMatch[1];
-            }
-            
-            // Extract brand - Look for "Brand" label followed by value
-            let brand = null;
-            const brandMatch = allText.match(/Brand[:\s]*([A-Za-z0-9\s\-&]+?)(?:\n|$|Size|Condition|Category)/);
-            if (brandMatch && brandMatch[1]) {
-              const brandText = brandMatch[1].trim();
-              // Avoid picking up long descriptions or unrelated text
-              if (brandText.length < 100 && !brandText.includes('$') && !brandText.includes('mi')) {
-                brand = brandText;
-              }
-            }
-            
-            // Extract size - Look for "Size" label followed by value
-            let size = null;
-            const sizeMatch = allText.match(/Size[:\s]*([A-Za-z0-9\s\-\.,/]+?)(?:\n|$|Brand|Condition|Category)/);
-            if (sizeMatch && sizeMatch[1]) {
-              const sizeText = sizeMatch[1].trim();
-              // Avoid picking up long text
-              if (sizeText.length < 100 && !sizeText.includes('$') && !sizeText.includes('Today')) {
-                size = sizeText;
-              }
-            }
-            
-            return {
-              description: description || null,
-              category: category || null,
-              condition: condition || null,
-              brand: brand || null,
-              size: size || null,
-            };
-          }
-        });
-        
-        // Merge the extracted data into the listing
-        if (result?.result) {
-          const data = result.result;
-          console.log(`✅ Extracted data for ${listing.itemId}:`, data);
-          
-          listing.description = data.description || listing.description;
-          listing.category = data.category || listing.category;
-          listing.condition = data.condition || null;
-          listing.brand = data.brand || null;
-          listing.size = data.size || null;
-        }
-        
-      } catch (error) {
-        console.error(`❌ Error fetching details for ${listing.itemId}:`, error);
-      }
-      
-      // Small delay between requests - reduced from 500ms to 200ms
-      if (i < listings.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
-    
-    console.log(`✅ All listing details fetched!`);
-    console.log(`📦 Final listings sample:`, listings[0]);
+    console.log(`✅ Extracted ${listings.length} Facebook listings with full details from GraphQL API`);
+    console.log(`📦 Sample listing:`, listings[0]);
     
     return {
       success: true,
