@@ -247,9 +247,9 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       
       console.log(`📦 [${index + 1}] Processing listing ${listing.id}...`);
       
-      // Send progress update
+      // Send progress update (no message during fetch - keep it silent like Vendoo)
       if (onProgress) {
-        onProgress(index + 1, edges.length, `Processing listing ${index + 1} of ${edges.length}...`);
+        onProgress(index + 1, edges.length);
       }
       
       // Extract description from multiple possible fields (in priority order)

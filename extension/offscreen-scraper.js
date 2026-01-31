@@ -1,7 +1,7 @@
 /**
  * Offscreen Document Scraper
- * Invisible to the user - loads Facebook pages in a hidden iframe
- * This matches Vendoo's behavior: no visible tabs
+ * Fetches Facebook pages via fetch API and parses HTML
+ * This bypasses X-Frame-Options blocking
  */
 
 console.log('🔍 Offscreen scraper loaded');
@@ -24,69 +24,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function scrapeListing(url) {
-  return new Promise((resolve, reject) => {
-    const iframe = document.getElementById('scraper-frame');
+  try {
+    console.log('🌐 Fetching page:', url);
     
-    // Set up message listener for iframe content
-    const messageHandler = (event) => {
-      // Verify origin
-      if (!event.origin.includes('facebook.com')) return;
-      
-      if (event.data && event.data.type === 'SCRAPE_RESULT') {
-        window.removeEventListener('message', messageHandler);
-        clearTimeout(timeout);
-        resolve(event.data.details);
+    // Fetch the page HTML
+    const response = await fetch(url, {
+      credentials: 'include',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
-    };
+    });
     
-    window.addEventListener('message', messageHandler);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
     
-    // Timeout after 10 seconds
-    const timeout = setTimeout(() => {
-      window.removeEventListener('message', messageHandler);
-      reject(new Error('Scraping timeout'));
-    }, 10000);
+    const html = await response.text();
+    console.log('✅ Fetched HTML:', html.length, 'bytes');
     
-    // Inject scraper script into iframe
-    iframe.onload = () => {
-      console.log('📄 Page loaded in iframe');
-      
-      // Wait a moment for page to fully render
-      setTimeout(() => {
-        try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-          
-          // Execute scraping logic
-          const details = scrapeFromDocument(iframeDoc);
-          
-          // Send result
-          window.removeEventListener('message', messageHandler);
-          clearTimeout(timeout);
-          resolve(details);
-        } catch (error) {
-          console.error('❌ Error accessing iframe:', error);
-          window.removeEventListener('message', messageHandler);
-          clearTimeout(timeout);
-          reject(error);
-        }
-      }, 2000);
-    };
+    // Parse HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
     
-    iframe.onerror = (error) => {
-      window.removeEventListener('message', messageHandler);
-      clearTimeout(timeout);
-      reject(new Error('Failed to load page'));
-    };
+    // Extract details from the parsed HTML
+    const details = scrapeFromDocument(doc);
     
-    // Load the listing page
-    console.log('🌐 Loading page in iframe:', url);
-    iframe.src = url;
-  });
+    return details;
+    
+  } catch (error) {
+    console.error('❌ Error fetching/parsing page:', error);
+    throw error;
+  }
 }
 
 function scrapeFromDocument(doc) {
   try {
-    console.log('🔍 Starting to scrape document...');
+    console.log('🔍 Starting to scrape parsed document...');
     
     const details = {
       description: null,
@@ -100,156 +73,104 @@ function scrapeFromDocument(doc) {
       location: null,
     };
     
-    // Extract description
-    const descriptionSelectors = [
-      '[data-testid="product_details"] > div > div > div:nth-child(2) > span',
-      '[data-testid="product_details"] span[dir="auto"]',
-      'div[style*="word-break"] span',
-      '.x1iorvi4 span[dir="auto"]',
-      'span.x193iq5w.xeuugli.x13faqbe.x1vvkbs',
-    ];
+    // Get all text content for pattern matching
+    const allText = doc.body ? doc.body.textContent : doc.documentElement.textContent;
     
-    for (const selector of descriptionSelectors) {
-      const descElement = doc.querySelector(selector);
-      if (descElement && descElement.textContent.trim()) {
-        details.description = descElement.textContent.trim();
-        console.log('✅ Found description using selector:', selector);
-        break;
+    // Strategy: Look for the Details section which contains the full description
+    // The description is usually after "Details" and before other fields
+    
+    // Try to find description in various ways
+    // 1. Look for meta description tag
+    const metaDesc = doc.querySelector('meta[name="description"]');
+    if (metaDesc && metaDesc.content) {
+      const content = metaDesc.content.trim();
+      if (content && content.length > 50) {
+        details.description = content;
+        console.log('✅ Found description from meta tag:', content.substring(0, 100));
       }
     }
     
-    // If description not found, scan for long text blocks
+    // 2. Look for structured data (JSON-LD)
     if (!details.description) {
-      const textBlocks = Array.from(doc.querySelectorAll('span[dir="auto"]'))
-        .filter(el => {
-          const text = el.textContent.trim();
-          return text.length > 20 && 
-                 !text.includes('Messenger') && 
-                 !text.includes('See all') &&
-                 !text.includes('Message');
-        })
-        .sort((a, b) => b.textContent.length - a.textContent.length);
-      
-      if (textBlocks.length > 0) {
-        details.description = textBlocks[0].textContent.trim();
-        console.log('✅ Found description by text scan');
-      }
-    }
-    
-    // Extract title
-    const titleSelectors = [
-      'h1 span',
-      '[role="heading"] span',
-      'span.x1lliihq.x6ikm8r.x10wlt62.x1n2onr6',
-    ];
-    
-    for (const selector of titleSelectors) {
-      const titleElement = doc.querySelector(selector);
-      if (titleElement && titleElement.textContent.trim()) {
-        details.title = titleElement.textContent.trim();
-        console.log('✅ Found title:', details.title);
-        break;
-      }
-    }
-    
-    // Extract price
-    const priceElements = doc.querySelectorAll('span[dir="auto"]');
-    for (const el of priceElements) {
-      const text = el.textContent.trim();
-      if (text.includes('$') && /\$[\d,]+/.test(text)) {
-        details.price = text.replace(/[^0-9.]/g, '');
-        console.log('✅ Found price:', details.price);
-        break;
-      }
-    }
-    
-    // Extract category from breadcrumbs
-    const breadcrumbLinks = Array.from(doc.querySelectorAll('a[href*="/marketplace/category/"]'));
-    if (breadcrumbLinks.length > 0) {
-      details.categoryPath = breadcrumbLinks.map(link => link.textContent.trim());
-      details.category = details.categoryPath[details.categoryPath.length - 1];
-      console.log('✅ Found category path:', details.categoryPath);
-    }
-    
-    // Try alternative category extraction
-    if (!details.category) {
-      const categoryLabels = Array.from(doc.querySelectorAll('span'))
-        .filter(el => el.textContent.trim() === 'Category');
-      
-      if (categoryLabels.length > 0) {
-        const categoryLabel = categoryLabels[0];
-        const parent = categoryLabel.closest('div');
-        if (parent) {
-          const valueSpans = parent.querySelectorAll('span[dir="auto"]');
-          for (const span of valueSpans) {
-            if (span.textContent !== 'Category') {
-              details.category = span.textContent.trim();
-              console.log('✅ Found category from details:', details.category);
-              break;
-            }
-          }
-        }
-      }
-    }
-    
-    // Extract condition
-    const conditionLabels = Array.from(doc.querySelectorAll('span'))
-      .filter(el => el.textContent.trim() === 'Condition');
-    
-    if (conditionLabels.length > 0) {
-      const conditionLabel = conditionLabels[0];
-      const parent = conditionLabel.closest('div');
-      if (parent) {
-        const valueSpans = parent.querySelectorAll('span[dir="auto"]');
-        for (const span of valueSpans) {
-          if (span.textContent !== 'Condition') {
-            details.condition = span.textContent.trim();
-            console.log('✅ Found condition:', details.condition);
+      const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+      for (const script of scripts) {
+        try {
+          const data = JSON.parse(script.textContent);
+          if (data.description && data.description.length > 20) {
+            details.description = data.description;
+            console.log('✅ Found description from JSON-LD');
             break;
           }
+        } catch (e) {
+          // Skip invalid JSON
         }
       }
+    }
+    
+    // 3. Look for Open Graph description
+    if (!details.description) {
+      const ogDesc = doc.querySelector('meta[property="og:description"]');
+      if (ogDesc && ogDesc.content) {
+        const content = ogDesc.content.trim();
+        if (content && content.length > 50) {
+          details.description = content;
+          console.log('✅ Found description from og:description');
+        }
+      }
+    }
+    
+    // 4. Scan all text content for description patterns
+    if (!details.description) {
+      // Look for "Details" section followed by text
+      const detailsMatch = allText.match(/Details[\s\S]{0,500}?(Brand New|Selling|Brand:|Condition:)([\s\S]{50,2000}?)(?:Pickup|Delivery|Shipping|Listed|Posted|Message)/i);
+      if (detailsMatch && detailsMatch[2]) {
+        details.description = detailsMatch[2].trim();
+        console.log('✅ Found description via pattern matching');
+      }
+    }
+    
+    // Extract title from og:title or title tag
+    const ogTitle = doc.querySelector('meta[property="og:title"]');
+    if (ogTitle && ogTitle.content) {
+      details.title = ogTitle.content.trim();
+      console.log('✅ Found title:', details.title);
+    } else {
+      const titleTag = doc.querySelector('title');
+      if (titleTag) {
+        details.title = titleTag.textContent.replace('| Facebook Marketplace', '').trim();
+        console.log('✅ Found title from title tag');
+      }
+    }
+    
+    // Extract price from og:price
+    const ogPrice = doc.querySelector('meta[property="product:price:amount"]') || 
+                    doc.querySelector('meta[property="og:price:amount"]');
+    if (ogPrice && ogPrice.content) {
+      details.price = ogPrice.content;
+      console.log('✅ Found price:', details.price);
+    }
+    
+    // Extract condition - search in all text
+    const conditionMatch = allText.match(/Condition[\s\n]+(Used|New|Like New|Good|Fair|Brand New)/i);
+    if (conditionMatch && conditionMatch[1]) {
+      details.condition = conditionMatch[1].trim();
+      console.log('✅ Found condition:', details.condition);
     }
     
     // Extract brand
-    const brandLabels = Array.from(doc.querySelectorAll('span'))
-      .filter(el => el.textContent.trim() === 'Brand');
-    
-    if (brandLabels.length > 0) {
-      const brandLabel = brandLabels[0];
-      const parent = brandLabel.closest('div');
-      if (parent) {
-        const valueSpans = parent.querySelectorAll('span[dir="auto"]');
-        for (const span of valueSpans) {
-          if (span.textContent !== 'Brand') {
-            details.brand = span.textContent.trim();
-            console.log('✅ Found brand:', details.brand);
-            break;
-          }
-        }
-      }
+    const brandMatch = allText.match(/Brand[\s\n]+([A-Za-z0-9\s&]+?)(?:\n|Details|Condition|Size)/i);
+    if (brandMatch && brandMatch[1]) {
+      details.brand = brandMatch[1].trim();
+      console.log('✅ Found brand:', details.brand);
     }
     
-    // Extract size
-    const sizeLabels = Array.from(doc.querySelectorAll('span'))
-      .filter(el => {
-        const text = el.textContent.trim().toLowerCase();
-        return text === 'size' || text === 'shoe size' || text === 'clothing size';
-      });
-    
-    if (sizeLabels.length > 0) {
-      const sizeLabel = sizeLabels[0];
-      const parent = sizeLabel.closest('div');
-      if (parent) {
-        const valueSpans = parent.querySelectorAll('span[dir="auto"]');
-        for (const span of valueSpans) {
-          const text = span.textContent.toLowerCase();
-          if (!text.includes('size')) {
-            details.size = span.textContent.trim();
-            console.log('✅ Found size:', details.size);
-            break;
-          }
-        }
+    // Extract category from meta or URL
+    const category = doc.querySelector('meta[name="keywords"]');
+    if (category && category.content) {
+      const keywords = category.content.split(',')[0];
+      if (keywords && keywords.length < 50) {
+        details.category = keywords.trim();
+        console.log('✅ Found category:', details.category);
       }
     }
     
