@@ -103,30 +103,25 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
     } else if (status === 'Ended' || status === 'Sold') {
-      // Use GetMyeBaySelling SoldList (has full item details including pictures)
-      // GetOrders doesn't include picture data
+      // Use GetSellerList for sold items (includes full item details with pictures)
+      // This API is specifically designed for retrieving completed/sold listings
+      const endTimeFrom = getDateDaysAgo(90);
+      const endTimeTo = new Date().toISOString();
+      
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+<GetSellerListRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
-  <SoldList>
-    <Include>true</Include>
-    <DaysBeforeToday>90</DaysBeforeToday>
-    <Pagination>
-      <EntriesPerPage>${limit}</EntriesPerPage>
-      <PageNumber>1</PageNumber>
-    </Pagination>
-    <IncludeNotes>false</IncludeNotes>
-  </SoldList>
+  <EndTimeFrom>${endTimeFrom}</EndTimeFrom>
+  <EndTimeTo>${endTimeTo}</EndTimeTo>
+  <IncludeWatchCount>false</IncludeWatchCount>
+  <Pagination>
+    <EntriesPerPage>${limit}</EntriesPerPage>
+    <PageNumber>1</PageNumber>
+  </Pagination>
   <DetailLevel>ReturnAll</DetailLevel>
-  <OutputSelector>Title</OutputSelector>
-  <OutputSelector>ItemID</OutputSelector>
-  <OutputSelector>PictureDetails</OutputSelector>
-  <OutputSelector>GalleryURL</OutputSelector>
-  <OutputSelector>SellingStatus</OutputSelector>
-  <OutputSelector>ListingDetails</OutputSelector>
-</GetMyeBaySellingRequest>`;
+</GetSellerListRequest>`;
     } else {
       // Default: Fetch only Active listings
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
@@ -151,7 +146,7 @@ export default async function handler(req, res) {
         'Content-Type': 'text/xml',
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-        'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
+        'X-EBAY-API-CALL-NAME': status === 'Sold' || status === 'Ended' ? 'GetSellerList' : 'GetMyeBaySelling',
       },
       body: xmlRequest,
     });
@@ -212,9 +207,15 @@ export default async function handler(req, res) {
     console.log('  - Has ActiveList:', xmlText.includes('<ActiveList>'));
     console.log('  - Has SoldList:', xmlText.includes('<SoldList>'));
     console.log('  - Has UnsoldList:', xmlText.includes('<UnsoldList>'));
+    console.log('  - Has ItemArray (GetSellerList):', xmlText.includes('<ItemArray>'));
 
-    // Parse XML response
-    const items = parseMyeBaySellingXML(xmlText, status);
+    // Parse XML response - use different parser based on API call
+    let items;
+    if (status === 'Sold' || status === 'Ended') {
+      items = parseGetSellerListXML(xmlText);
+    } else {
+      items = parseMyeBaySellingXML(xmlText, status);
+    }
     console.log('✅ Parsed listings:', items.length);
     console.log('📊 Status breakdown:', {
       active: items.filter(i => i.status === 'Active').length,
@@ -266,6 +267,142 @@ export default async function handler(req, res) {
       details: error.stack,
     });
   }
+}
+
+// Helper function to parse GetSellerList XML response (for sold items with pictures)
+function parseGetSellerListXML(xml) {
+  const items = [];
+  
+  console.log('🔍 Parser: Parsing GetSellerList response for sold items...');
+  
+  // Extract ItemArray section
+  const itemArrayMatch = xml.match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
+  if (!itemArrayMatch) {
+    console.log('⚠️ No ItemArray found in GetSellerList response');
+    return items;
+  }
+  
+  // Match all Item elements
+  const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
+  let itemMatch;
+  let itemCount = 0;
+
+  while ((itemMatch = itemRegex.exec(itemArrayMatch[1])) !== null) {
+    itemCount++;
+    const itemXml = itemMatch[1];
+    
+    // Extract fields with regex
+    const getField = (field) => {
+      const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+      return match ? match[1] : null;
+    };
+    
+    // Get SellingStatus to determine if item was sold
+    const sellingStatusMatch = itemXml.match(/<SellingStatus>([\s\S]*?)<\/SellingStatus>/);
+    if (!sellingStatusMatch) continue;
+    
+    const quantitySoldMatch = sellingStatusMatch[1].match(/<QuantitySold>([^<]*)<\/QuantitySold>/);
+    const quantitySold = quantitySoldMatch ? parseInt(quantitySoldMatch[1]) : 0;
+    
+    // Only include items that were actually sold (not just ended/expired)
+    if (quantitySold === 0) {
+      console.log(`  ⏭️ Skipping item ${getField('ItemID')} (not sold, just ended)`);
+      continue;
+    }
+    
+    // Extract PictureURL fields
+    const pictureURLs = [];
+    
+    // Check for PictureDetails section first
+    const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
+    if (pictureDetailsMatch) {
+      const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+      let pictureMatch;
+      while ((pictureMatch = pictureRegex.exec(pictureDetailsMatch[1])) !== null) {
+        const url = pictureMatch[1];
+        if (url && url.startsWith('http')) {
+          pictureURLs.push(url);
+        }
+      }
+      if (pictureURLs.length > 0) {
+        console.log(`  ✅ Found ${pictureURLs.length} images in PictureDetails`);
+      }
+    }
+    
+    // Fallback: check for GalleryURL
+    if (pictureURLs.length === 0) {
+      const galleryURL = getField('GalleryURL');
+      if (galleryURL && galleryURL.startsWith('http')) {
+        pictureURLs.push(galleryURL);
+        console.log(`  ✅ Found 1 image in GalleryURL`);
+      }
+    }
+    
+    // Another fallback: ListingDetails > GalleryURL
+    if (pictureURLs.length === 0) {
+      const listingDetailsMatch = itemXml.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/);
+      if (listingDetailsMatch) {
+        const galleryMatch = listingDetailsMatch[1].match(/<GalleryURL>([^<]*)<\/GalleryURL>/);
+        if (galleryMatch && galleryMatch[1].startsWith('http')) {
+          pictureURLs.push(galleryMatch[1]);
+          console.log(`  ✅ Found 1 image in ListingDetails > GalleryURL`);
+        }
+      }
+    }
+    
+    if (pictureURLs.length === 0) {
+      console.log(`  ⚠️ No images found for item ${getField('ItemID')}`);
+    }
+
+    const itemId = getField('ItemID');
+    const title = getField('Title');
+    
+    // Get price from SellingStatus > CurrentPrice
+    const currentPriceMatch = sellingStatusMatch[1].match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
+    const currentPrice = currentPriceMatch ? currentPriceMatch[1] : null;
+    
+    const quantity = getField('Quantity');
+    const listingType = getField('ListingType');
+    const viewItemURL = getField('ViewItemURL');
+    
+    // Get dates from ListingDetails
+    const listingDetailsMatch = itemXml.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/);
+    let startTime = null;
+    let endTime = null;
+    if (listingDetailsMatch) {
+      const startMatch = listingDetailsMatch[1].match(/<StartTime>([^<]*)<\/StartTime>/);
+      const endMatch = listingDetailsMatch[1].match(/<EndTime>([^<]*)<\/EndTime>/);
+      startTime = startMatch ? startMatch[1] : null;
+      endTime = endMatch ? endMatch[1] : null;
+    }
+    
+    // Use endTime as startTime for display (shows "Date sold: [date]")
+    const displayTime = endTime || startTime;
+    
+    console.log(`📊 Sold Item ${itemId} price: ${currentPrice}, qty sold: ${quantitySold}, ended: ${endTime}, images: ${pictureURLs.length}`);
+
+    if (itemId && title) {
+      items.push({
+        itemId,
+        title,
+        price: parseFloat(currentPrice) || 0,
+        quantity: parseInt(quantity) || 0,
+        quantitySold,
+        imageUrl: pictureURLs[0] || null,
+        pictureURLs,
+        listingType,
+        viewItemURL,
+        startTime: displayTime, // Use endTime for "Date sold" display
+        endTime,
+        status: 'Sold',
+        description: '',
+        condition: 'USED',
+      });
+    }
+  }
+  
+  console.log(`✅ Parsed ${items.length} sold items from GetSellerList (${itemCount} items processed)`);
+  return items;
 }
 
 // Helper function to parse GetOrders XML response (for sold items)
