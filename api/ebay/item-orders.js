@@ -88,10 +88,24 @@ export default async function handler(req, res) {
     
     console.log('📡 Raw XML response length:', xmlText.length);
     
+    // Log the actual XML to see what eBay is returning
+    if (xmlText.length < 2000) {
+      console.log('📄 Full XML response:', xmlText);
+    } else {
+      console.log('📄 XML response preview (first 1500 chars):', xmlText.substring(0, 1500));
+    }
+    
     // Check for eBay API errors
-    if (xmlText.includes('<Ack>Failure</Ack>')) {
+    if (xmlText.includes('<Ack>Failure</Ack>') || xmlText.includes('<Ack>Warning</Ack>')) {
       const errorCodeMatch = xmlText.match(/<ErrorCode>([^<]+)<\/ErrorCode>/);
+      const shortMsgMatch = xmlText.match(/<ShortMessage>([^<]+)<\/ShortMessage>/);
+      const longMsgMatch = xmlText.match(/<LongMessage>([^<]+)<\/LongMessage>/);
+      
       const errorCode = errorCodeMatch ? errorCodeMatch[1] : 'unknown';
+      const shortMessage = shortMsgMatch ? shortMsgMatch[1] : 'Unknown error';
+      const longMessage = longMsgMatch ? longMsgMatch[1] : shortMessage;
+      
+      console.error('⚠️ eBay API returned error/warning:', { errorCode, shortMessage, longMessage });
       
       if (errorCode === '932') {
         return res.status(401).json({
@@ -100,6 +114,14 @@ export default async function handler(req, res) {
           message: 'Your eBay connection has expired. Please reconnect your eBay account.',
         });
       }
+      
+      // Return the error to frontend so user sees what eBay said
+      return res.status(400).json({
+        error: `eBay API error: ${shortMessage}`,
+        errorCode,
+        message: longMessage,
+        details: 'eBay could not return transaction data for this item',
+      });
     }
 
     // Parse XML to get transactions for this item
