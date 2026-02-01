@@ -987,7 +987,7 @@ export default function AddInventoryItem() {
                     </div>
                      <div className="space-y-2 min-w-0">
                         <Label htmlFor="purchase_price" className="dark:text-gray-200 break-words">
-                          Purchase Price <span className="text-red-500">*</span>
+                          Purchase Price / Cost {formData.source !== 'Facebook' && formData.source !== 'Mercari' && <span className="text-red-500">*</span>}
                         </Label>
                         <Input 
                           id="purchase_price" 
@@ -996,10 +996,15 @@ export default function AddInventoryItem() {
                           min="0" 
                           value={formData.purchase_price} 
                           onChange={(e) => handleChange('purchase_price', e.target.value)} 
-                          placeholder="0.00"
-                          required
+                          placeholder={formData.source === 'Facebook' || formData.source === 'Mercari' ? "Optional - add your actual cost" : "0.00"}
+                          required={formData.source !== 'Facebook' && formData.source !== 'Mercari'}
                           className="w-full"
                         />
+                        {(formData.source === 'Facebook' || formData.source === 'Mercari') && (
+                          <p className="text-xs text-muted-foreground">
+                            Leave blank if you don't know your cost yet. The listing price is already set from {formData.source}.
+                          </p>
+                        )}
                     </div>
                     
                     <ClearableDateInput
