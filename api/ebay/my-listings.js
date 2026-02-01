@@ -342,25 +342,82 @@ export default async function handler(req, res) {
       }
       
       // Parse account response to get fee information
+      let feesByItemId = {};
       if (accountResponse.ok) {
         const accountXml = await accountResponse.text();
         console.log('📊 GetAccount response length:', accountXml.length);
         
-        // Log a snippet to see what's in there
         const accountArrayMatch = accountXml.match(/<AccountEntries>([\s\S]*?)<\/AccountEntries>/);
         if (accountArrayMatch) {
           console.log('✅ Found AccountEntries in response');
-          // Extract first entry as sample
-          const firstEntryMatch = accountArrayMatch[1].match(/<AccountEntry>([\s\S]*?)<\/AccountEntry>/);
-          if (firstEntryMatch) {
-            const entrySnippet = firstEntryMatch[0].substring(0, 500);
-            console.log('📋 Sample account entry:', entrySnippet);
+          
+          // Parse all account entries to build fee map by ItemID
+          const entryRegex = /<AccountEntry>([\s\S]*?)<\/AccountEntry>/g;
+          let entryMatch;
+          let totalEntries = 0;
+          
+          while ((entryMatch = entryRegex.exec(accountArrayMatch[1])) !== null) {
+            totalEntries++;
+            const entryXml = entryMatch[1];
+            
+            const getField = (field) => {
+              const match = entryXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+              return match ? match[1] : null;
+            };
+            
+            const entryType = getField('AccountDetailsEntryType');
+            const itemId = getField('ItemID');
+            const refNumber = getField('RefNumber'); // This might be OrderID
+            
+            // Extract amounts (can have currencyID attribute)
+            const grossMatch = entryXml.match(/<GrossDetailAmount[^>]*>([^<]+)<\/GrossDetailAmount>/);
+            const netMatch = entryXml.match(/<NetDetailAmount[^>]*>([^<]+)<\/NetDetailAmount>/);
+            const grossAmount = grossMatch ? parseFloat(grossMatch[1]) : 0;
+            const netAmount = netMatch ? parseFloat(netMatch[1]) : 0;
+            
+            // Fee types we care about
+            const feeTypes = ['FeeFinalValue', 'FeeShipping', 'FeeTax'];
+            
+            if (itemId && feeTypes.some(type => entryType?.includes(type))) {
+              if (!feesByItemId[itemId]) {
+                feesByItemId[itemId] = {
+                  finalValueFee: 0,
+                  shippingCost: 0,
+                  salesTax: 0,
+                };
+              }
+              
+              if (entryType.includes('FeeFinalValue')) {
+                feesByItemId[itemId].finalValueFee += Math.abs(grossAmount);
+              } else if (entryType.includes('FeeShipping')) {
+                feesByItemId[itemId].shippingCost += Math.abs(grossAmount);
+              } else if (entryType.includes('FeeTax') || entryType.includes('Tax')) {
+                feesByItemId[itemId].salesTax += Math.abs(grossAmount);
+              }
+            }
           }
+          
+          console.log(`📊 Processed ${totalEntries} account entries, found fees for ${Object.keys(feesByItemId).length} items`);
+          console.log('💰 Sample fees:', Object.entries(feesByItemId).slice(0, 3).map(([id, fees]) => ({ itemId: id, ...fees })));
         } else {
           console.log('⚠️ No AccountEntries found in GetAccount response');
         }
       } else {
         console.log('⚠️ GetAccount API call failed:', accountResponse.status);
+      }
+      
+      // Merge fee data into transactions
+      for (const itemId in transactionsByItemId) {
+        if (feesByItemId[itemId]) {
+          const fees = feesByItemId[itemId];
+          transactionsByItemId[itemId].forEach(txn => {
+            txn.finalValueFee = fees.finalValueFee;
+            txn.shippingCost = fees.shippingCost;
+            txn.salesTax = fees.salesTax;
+            txn.totalSale = txn.price + fees.shippingCost;
+            txn.netPayout = txn.price + fees.shippingCost - fees.finalValueFee;
+          });
+        }
       }
       
       // Check seller list response
