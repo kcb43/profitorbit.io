@@ -607,6 +607,8 @@ function parseOrdersToTransactions(xml) {
       const totalSale = transactionPrice + shippingCost;
       const netPayout = totalSale - finalValueFee;
       
+      console.log(`  💰 Financial: Shipping=$${shippingCost}, Tax=$${salesTax}, Fee=$${finalValueFee}, Net=$${netPayout}, Paid=${paidTime ? 'Yes' : 'No'}`);
+      
       // Get buyer info - try transaction level first, then fall back to order level
       const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
       let buyerUsername = null;
