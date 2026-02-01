@@ -1701,12 +1701,26 @@ export default function Import() {
                                 ${item.netPayout.toFixed(2)}
                               </div>
                               
-                              {item.paidTime && (
+                              {(item.paidTime || item.fundsStatus) && (
                                 <>
                                   <div className="text-muted-foreground col-span-2 mt-1">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                      ✓ Funds Available
-                                    </span>
+                                    {item.fundsStatus === 'PaidOut' || item.fundsStatus === 'Available' || item.fundsStatus === 'Paid' ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        ✓ Funds Available
+                                      </span>
+                                    ) : item.fundsStatus === 'FundsOnHold' || item.fundsStatus === 'Processing' ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                        ⏳ Funds On Hold
+                                      </span>
+                                    ) : item.paidTime ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        ✓ Funds Available
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                        • {item.fundsStatus || 'Status Unknown'}
+                                      </span>
+                                    )}
                                   </div>
                                 </>
                               )}

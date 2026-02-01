@@ -773,11 +773,30 @@ function parseOrdersToTransactions(xml) {
       const paidTimeMatch = transactionXml.match(/<PaidTime>([^<]*)<\/PaidTime>/);
       const paidTime = paidTimeMatch ? paidTimeMatch[1] : null;
       
+      // Get funds/payout status - check multiple possible fields
+      let fundsStatus = 'Unknown';
+      const payoutStatusMatch = orderXml.match(/<SellerPaymentStatus>([^<]*)<\/SellerPaymentStatus>/);
+      const monetaryDetailsMatch = orderXml.match(/<MonetaryDetails>([\s\S]*?)<\/MonetaryDetails>/);
+      
+      if (payoutStatusMatch) {
+        // SellerPaymentStatus can be: 'PaidOut', 'FundsOnHold', 'Processing', etc.
+        fundsStatus = payoutStatusMatch[1];
+      } else if (monetaryDetailsMatch) {
+        // Check if PaymentsReceived exists
+        const paymentsReceivedMatch = monetaryDetailsMatch[1].match(/<TotalAmountPaid[^>]*>([^<]+)<\/TotalAmountPaid>/);
+        if (paymentsReceivedMatch && parseFloat(paymentsReceivedMatch[1]) > 0) {
+          fundsStatus = 'Paid';
+        }
+      } else if (paidTime) {
+        // If we have a paid time but no explicit status, assume funds are available
+        fundsStatus = 'Available';
+      }
+      
       // Calculate net payout (price + shipping - fees)
       const totalSale = transactionPrice + shippingCost;
       const netPayout = totalSale - finalValueFee;
       
-      console.log(`  💰 Financial: Shipping=$${shippingCost}, Tax=$${salesTax}, Fee=$${finalValueFee}, Net=$${netPayout}, Paid=${paidTime ? 'Yes' : 'No'}`);
+      console.log(`  💰 Financial: Shipping=$${shippingCost}, Tax=$${salesTax}, Fee=$${finalValueFee}, Net=$${netPayout}, Paid=${paidTime ? 'Yes' : 'No'}, Funds=${fundsStatus}`);
       
       // Get buyer info - try transaction level first, then fall back to order level
       const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
@@ -814,6 +833,7 @@ function parseOrdersToTransactions(xml) {
         totalSale,
         netPayout,
         paidTime,
+        fundsStatus,
       });
     }
   }
