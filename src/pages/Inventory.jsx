@@ -1930,7 +1930,7 @@ export default function InventoryPage() {
                 })}
               </div>
             ) : viewMode === "list" ? (
-              <div className="space-y-6 sm:space-y-6 overflow-x-hidden max-w-full">
+              <div className="space-y-6 sm:space-y-6 overflow-x-hidden max-w-full mt-6">
                 {sortedItems.map(item => {
                   const today = new Date();
                   const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
@@ -2266,18 +2266,20 @@ export default function InventoryPage() {
 
                       {/* Desktop list layout (new) */}
                       <div
-                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
+                        onClick={(e) => {
+                          // Only toggle if clicking on the card itself, not interactive elements
+                          if (e.target === e.currentTarget || e.target.closest('.card-clickable-area')) {
+                            handleSelect(item.id);
+                          }
+                        }}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
                       >
                         <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
                           {/* Image */}
                           <div className="p-4">
                             <div
                               onClick={() => handleSelect(item.id)}
-                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
-                                selectedItems.includes(item.id)
-                                  ? "border-green-500 dark:border-green-500"
-                                  : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
-                              }`}
+                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600`}
                               style={{ height: 140 }}
                               title="Click image to select"
                             >
@@ -2310,9 +2312,9 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Details */}
-                          <div className={`min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
+                          <div className={`card-clickable-area min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
                             <div className="flex items-start justify-between gap-3 mb-3">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                 <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1 rounded-xl`}>
                                   {statusLabels[item.status] || statusLabels.available}
                                 </Badge>
@@ -2384,6 +2386,7 @@ export default function InventoryPage() {
                             <Link
                               to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
                               state={returnStateForInventory}
+                              onClick={(e) => e.stopPropagation()}
                               className="block mb-2"
                             >
                               <h3 className="text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
@@ -2452,7 +2455,7 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Actions */}
-                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
                               onClick={() => {
                                 setItemToView(item);
