@@ -282,25 +282,10 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetSellerListRequest>`;
 
-      // Also try GetAccount to get fee information
-      const getAccountRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetAccountRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-  <RequesterCredentials>
-    <eBayAuthToken>${accessToken}</eBayAuthToken>
-  </RequesterCredentials>
-  <AccountEntrySortType>AccountEntryCreatedTimeDescending</AccountEntrySortType>
-  <BeginDate>${createTimeFrom}</BeginDate>
-  <EndDate>${endTimeTo}</EndDate>
-  <Pagination>
-    <EntriesPerPage>200</EntriesPerPage>
-    <PageNumber>1</PageNumber>
-  </Pagination>
-</GetAccountRequest>`;
-
-      console.log('🚀 Fetching orders, seller list, and account entries for financial details...');
+      console.log('🚀 Fetching orders and seller list for sold items...');
       
-      // Make all 3 API calls in parallel using Promise.all
-      const [ordersResponse, sellerListResponse, accountResponse] = await Promise.all([
+      // Make 2 API calls in parallel using Promise.all (removing GetAccount)
+      const [ordersResponse, sellerListResponse] = await Promise.all([
         fetch(tradingUrl, {
           method: 'POST',
           headers: {
@@ -320,16 +305,6 @@ export default async function handler(req, res) {
             'X-EBAY-API-CALL-NAME': 'GetSellerList',
           },
           body: getSellerListRequest,
-        }),
-        fetch(tradingUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/xml',
-            'X-EBAY-API-SITEID': '0',
-            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-            'X-EBAY-API-CALL-NAME': 'GetAccount',
-          },
-          body: getAccountRequest,
         })
       ]);
       
@@ -341,89 +316,161 @@ export default async function handler(req, res) {
         console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
       }
       
-      // Parse account response to get fee information
-      let feesByItemId = {};
-      if (accountResponse.ok) {
-        const accountXml = await accountResponse.text();
-        console.log('📊 GetAccount response length:', accountXml.length);
+      // Get list of all sold item IDs so we can fetch detailed transaction data
+      const soldItemIds = Object.keys(transactionsByItemId);
+      console.log(`💰 Fetching detailed transaction data for ${soldItemIds.length} sold items...`);
+      
+      // Fetch GetItemTransactions for each sold item to get financial details
+      // We'll do this in batches to avoid overwhelming the API
+      const batchSize = 10;
+      const feesByItemId = {};
+      
+      for (let i = 0; i < soldItemIds.length; i += batchSize) {
+        const batch = soldItemIds.slice(i, i + batchSize);
+        console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(soldItemIds.length / batchSize)} (${batch.length} items)...`);
         
-        const accountArrayMatch = accountXml.match(/<AccountEntries>([\s\S]*?)<\/AccountEntries>/);
-        if (accountArrayMatch) {
-          console.log('✅ Found AccountEntries in response');
+        const batchPromises = batch.map(async (itemId) => {
+          const getItemTransactionsRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetItemTransactionsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <ItemID>${itemId}</ItemID>
+  <IncludeFinalValueFee>true</IncludeFinalValueFee>
+  <ModTimeFrom>${createTimeFrom}</ModTimeFrom>
+  <ModTimeTo>${endTimeTo}</ModTimeTo>
+</GetItemTransactionsRequest>`;
+
+          try {
+            const response = await fetch(tradingUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'text/xml',
+                'X-EBAY-API-SITEID': '0',
+                'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+                'X-EBAY-API-CALL-NAME': 'GetItemTransactions',
+              },
+              body: getItemTransactionsRequest,
+            });
+            
+            if (response.ok) {
+              const xml = await response.text();
+              return { itemId, xml };
+            } else {
+              console.log(`⚠️ GetItemTransactions failed for item ${itemId}: ${response.status}`);
+              return { itemId, xml: null };
+            }
+          } catch (error) {
+            console.log(`⚠️ Error fetching transactions for item ${itemId}:`, error.message);
+            return { itemId, xml: null };
+          }
+        });
+        
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Parse each result
+        for (const { itemId, xml } of batchResults) {
+          if (!xml) continue;
           
-          // Parse all account entries to build fee map by ItemID
-          const entryRegex = /<AccountEntry>([\s\S]*?)<\/AccountEntry>/g;
-          let entryMatch;
-          let totalEntries = 0;
+          // Parse transactions for this item
+          const transactionsMatch = xml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
+          if (!transactionsMatch) continue;
           
-          while ((entryMatch = entryRegex.exec(accountArrayMatch[1])) !== null) {
-            totalEntries++;
-            const entryXml = entryMatch[1];
+          const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
+          let txnMatch;
+          
+          while ((txnMatch = transactionRegex.exec(transactionsMatch[1])) !== null) {
+            const txnXml = txnMatch[1];
             
             const getField = (field) => {
-              const match = entryXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+              const match = txnXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
               return match ? match[1] : null;
             };
             
-            const entryType = getField('AccountDetailsEntryType');
-            const itemId = getField('ItemID');
-            const refNumber = getField('RefNumber'); // This might be OrderID
+            const transactionId = getField('TransactionID');
+            const orderId = getField('OrderID'); // This might be in OrderLineItemID
             
-            // Log first 10 entry types to see what's available
-            if (totalEntries <= 10) {
-              console.log(`  📋 Entry ${totalEntries}: Type=${entryType}, ItemID=${itemId}, RefNumber=${refNumber}`);
+            // Skip if no transaction ID (can't match)
+            if (!transactionId) {
+              console.log(`⚠️ No TransactionID found for item ${itemId}, skipping`);
+              continue;
             }
             
-            // Extract amounts (can have currencyID attribute)
-            const grossMatch = entryXml.match(/<GrossDetailAmount[^>]*>([^<]+)<\/GrossDetailAmount>/);
-            const netMatch = entryXml.match(/<NetDetailAmount[^>]*>([^<]+)<\/NetDetailAmount>/);
-            const grossAmount = grossMatch ? parseFloat(grossMatch[1]) : 0;
-            const netAmount = netMatch ? parseFloat(netMatch[1]) : 0;
+            // Extract FinalValueFee
+            const fvfMatch = txnXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
+            const finalValueFee = fvfMatch ? parseFloat(fvfMatch[1]) : 0;
             
-            // Fee types we care about
-            const feeTypes = ['FeeFinalValue', 'FeeShipping', 'FeeTax'];
+            // Extract Taxes (SalesTax)
+            const taxMatch = txnXml.match(/<SalesTax>[\s\S]*?<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
+            const salesTax = taxMatch ? parseFloat(taxMatch[1]) : 0;
             
-            if (itemId && feeTypes.some(type => entryType?.includes(type))) {
-              if (!feesByItemId[itemId]) {
-                feesByItemId[itemId] = {
-                  finalValueFee: 0,
-                  shippingCost: 0,
-                  salesTax: 0,
-                };
-              }
-              
-              if (entryType.includes('FeeFinalValue')) {
-                feesByItemId[itemId].finalValueFee += Math.abs(grossAmount);
-              } else if (entryType.includes('FeeShipping')) {
-                feesByItemId[itemId].shippingCost += Math.abs(grossAmount);
-              } else if (entryType.includes('FeeTax') || entryType.includes('Tax')) {
-                feesByItemId[itemId].salesTax += Math.abs(grossAmount);
-              }
+            // Extract Shipping cost
+            const shippingMatch = txnXml.match(/<ShippingServiceCost[^>]*>([^<]+)<\/ShippingServiceCost>/);
+            const shippingCost = shippingMatch ? parseFloat(shippingMatch[1]) : 0;
+            
+            // Extract ActualShippingCost (what buyer actually paid)
+            const actualShippingMatch = txnXml.match(/<ActualShippingCost[^>]*>([^<]+)<\/ActualShippingCost>/);
+            const actualShippingCost = actualShippingMatch ? parseFloat(actualShippingMatch[1]) : shippingCost;
+            
+            // Log first few for debugging
+            if (i === 0 && Object.keys(feesByItemId).length < 3) {
+              console.log(`  💵 Item ${itemId}, Txn ${transactionId}:`);
+              console.log(`     FinalValueFee: $${finalValueFee}`);
+              console.log(`     SalesTax: $${salesTax}`);
+              console.log(`     Shipping: $${actualShippingCost}`);
             }
+            
+            // Store fees by transaction ID (need to match with transactions from GetOrders)
+            if (!feesByItemId[itemId]) {
+              feesByItemId[itemId] = {};
+            }
+            feesByItemId[itemId][transactionId] = {
+              finalValueFee,
+              salesTax,
+              shippingCost: actualShippingCost,
+            };
           }
-          
-          console.log(`📊 Processed ${totalEntries} account entries, found fees for ${Object.keys(feesByItemId).length} items`);
-          console.log('💰 Sample fees:', Object.entries(feesByItemId).slice(0, 3).map(([id, fees]) => ({ itemId: id, ...fees })));
-        } else {
-          console.log('⚠️ No AccountEntries found in GetAccount response');
         }
-      } else {
-        console.log('⚠️ GetAccount API call failed:', accountResponse.status);
+        
+        // Add small delay between batches to avoid rate limiting (except for last batch)
+        if (i + batchSize < soldItemIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay between batches
+        }
       }
       
-      // Merge fee data into transactions
+      console.log(`💰 Fetched financial details for ${Object.keys(feesByItemId).length} items with fees`);
+      
+      // Merge fee data into transactions by matching TransactionID
+      let matchedCount = 0;
+      let unmatchedCount = 0;
+      
       for (const itemId in transactionsByItemId) {
         if (feesByItemId[itemId]) {
-          const fees = feesByItemId[itemId];
           transactionsByItemId[itemId].forEach(txn => {
-            txn.finalValueFee = fees.finalValueFee;
-            txn.shippingCost = fees.shippingCost;
-            txn.salesTax = fees.salesTax;
-            txn.totalSale = txn.price + fees.shippingCost;
-            txn.netPayout = txn.price + fees.shippingCost - fees.finalValueFee;
+            const fees = feesByItemId[itemId][txn.transactionId];
+            if (fees) {
+              txn.finalValueFee = fees.finalValueFee;
+              txn.salesTax = fees.salesTax;
+              txn.shippingCost = fees.shippingCost;
+              txn.totalSale = txn.price + fees.shippingCost + fees.salesTax;
+              txn.netPayout = txn.price + fees.shippingCost - fees.finalValueFee;
+              matchedCount++;
+              if (matchedCount <= 5) {
+                console.log(`  ✅ Merged fees for item ${itemId}, txn ${txn.transactionId}: FVF=$${fees.finalValueFee}, Tax=$${fees.salesTax}, Ship=$${fees.shippingCost}`);
+              }
+            } else {
+              unmatchedCount++;
+              if (unmatchedCount <= 3) {
+                console.log(`  ⚠️ No fees found for item ${itemId}, txn ${txn.transactionId}`);
+              }
+            }
           });
+        } else {
+          unmatchedCount += transactionsByItemId[itemId].length;
         }
       }
+      
+      console.log(`✅ Matched ${matchedCount} transactions with fees, ${unmatchedCount} unmatched`);
       
       // Check seller list response
       if (!sellerListResponse.ok) {
