@@ -9,6 +9,34 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Helper to decode HTML entities in strings
+function decodeHtmlEntities(text) {
+  if (!text) return text;
+  
+  const entities = {
+    '&quot;': '"',
+    '&apos;': "'",
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&#39;': "'",
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&#x60;': '`',
+    '&#x3D;': '=',
+  };
+  
+  let decoded = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.replaceAll(entity, char);
+  }
+  
+  // Also handle numeric entities like &#34; for quotes
+  decoded = decoded.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+  
+  return decoded;
+}
+
 // Helper to get date N days ago in ISO format
 function getDateDaysAgo(days) {
   const date = new Date();
@@ -521,7 +549,7 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
     }
 
     const itemId = getField('ItemID');
-    const title = getField('Title');
+    const title = decodeHtmlEntities(getField('Title'));
     
     // Get price from SellingStatus > CurrentPrice
     const currentPriceMatch = sellingStatusMatch[1].match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
@@ -713,7 +741,7 @@ function parseGetOrdersXML(xml, requestedStatus) {
       }
 
       const itemId = getItemField('ItemID');
-      const title = getItemField('Title');
+      const title = decodeHtmlEntities(getItemField('Title'));
       
       // Get price from TransactionPrice
       const transPriceMatch = transactionXml.match(/<TransactionPrice[^>]*>([^<]+)<\/TransactionPrice>/);
