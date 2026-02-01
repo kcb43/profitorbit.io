@@ -52,21 +52,17 @@ export default async function handler(req, res) {
       ? 'https://api.ebay.com/ws/api.dll'
       : 'https://api.sandbox.ebay.com/ws/api.dll';
 
-    // Use GetOrders API filtered by item ID to get individual transactions
-    const createTimeFrom = getDateDaysAgo(90);
+    // Use GetItemTransactions API to get individual sales for this specific item
+    // This is more reliable than GetOrders for item-level transaction data
     const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+<GetItemTransactionsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
-  <CreateTimeFrom>${createTimeFrom}</CreateTimeFrom>
-  <OrderRole>Seller</OrderRole>
-  <Pagination>
-    <EntriesPerPage>100</EntriesPerPage>
-    <PageNumber>1</PageNumber>
-  </Pagination>
+  <ItemID>${itemId}</ItemID>
+  <NumberOfDays>90</NumberOfDays>
   <DetailLevel>ReturnAll</DetailLevel>
-</GetOrdersRequest>`;
+</GetItemTransactionsRequest>`;
 
     const response = await fetch(tradingUrl, {
       method: 'POST',
@@ -74,7 +70,7 @@ export default async function handler(req, res) {
         'Content-Type': 'text/xml',
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-        'X-EBAY-API-CALL-NAME': 'GetOrders',
+        'X-EBAY-API-CALL-NAME': 'GetItemTransactions',
       },
       body: xmlRequest,
     });
@@ -106,13 +102,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // Parse XML and filter for this specific item ID
-    const orders = parseOrdersForItem(xmlText, itemId);
+    // Parse XML to get transactions for this item
+    const transactions = parseItemTransactions(xmlText, itemId);
     
-    console.log(`✅ Found ${orders.length} orders for item ${itemId}`);
+    console.log(`✅ Found ${transactions.length} transactions for item ${itemId}`);
 
     return res.status(200).json({
-      orders,
+      orders: transactions,
       itemId,
     });
 
@@ -125,126 +121,97 @@ export default async function handler(req, res) {
   }
 }
 
-// Parse GetOrders XML response and filter for specific item ID
-function parseOrdersForItem(xml, targetItemId) {
-  const orders = [];
+// Parse GetItemTransactions XML response
+function parseItemTransactions(xml, targetItemId) {
+  const transactions = [];
   
-  console.log(`🔍 Parsing orders for target item: ${targetItemId}`);
+  console.log(`🔍 Parsing transactions for item: ${targetItemId}`);
   
-  // Extract OrderArray section
-  const orderArrayMatch = xml.match(/<OrderArray>([\s\S]*?)<\/OrderArray>/);
-  if (!orderArrayMatch) {
-    console.log('⚠️ No OrderArray found in response');
-    return orders;
+  // Extract TransactionArray section
+  const transactionArrayMatch = xml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
+  if (!transactionArrayMatch) {
+    console.log('⚠️ No TransactionArray found in response');
+    // Check for pagination info to see if there are just no transactions
+    const paginationMatch = xml.match(/<PaginationResult>([\s\S]*?)<\/PaginationResult>/);
+    if (paginationMatch) {
+      console.log('📊 Pagination info:', paginationMatch[1].substring(0, 200));
+    }
+    return transactions;
   }
   
-  // Match all Order elements
-  const orderRegex = /<Order>([\s\S]*?)<\/Order>/g;
-  let orderMatch;
-  let totalOrdersProcessed = 0;
-  let matchingItems = 0;
+  console.log('✅ TransactionArray found, parsing transactions...');
+  
+  // Match all Transaction elements
+  const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
+  let transactionMatch;
+  let transactionCount = 0;
 
-  while ((orderMatch = orderRegex.exec(orderArrayMatch[1])) !== null) {
-    totalOrdersProcessed++;
-    const orderXml = orderMatch[1];
+  while ((transactionMatch = transactionRegex.exec(transactionArrayMatch[1])) !== null) {
+    transactionCount++;
+    const transactionXml = transactionMatch[1];
     
-    // Extract order-level fields
+    // Extract fields with regex
     const getField = (field) => {
-      const match = orderXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+      const match = transactionXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
       return match ? match[1] : null;
     };
     
-    const orderStatus = getField('OrderStatus');
-    const orderId = getField('OrderID');
-    const createdTime = getField('CreatedTime');
-    const total = getField('Total');
+    // Get transaction-level fields
+    const transactionId = getField('TransactionID');
+    const createdDate = getField('CreatedDate');
+    const quantityPurchased = getField('QuantityPurchased');
     
-    // Skip cancelled orders
-    if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') {
-      console.log(`  ⏭️ Skipping cancelled order ${orderId}`);
-      continue;
+    // Get price from TransactionPrice
+    const transPriceMatch = transactionXml.match(/<TransactionPrice[^>]*>([^<]+)<\/TransactionPrice>/);
+    const transactionPrice = transPriceMatch ? parseFloat(transPriceMatch[1]) : 0;
+    
+    // Get buyer info
+    const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
+    let buyerUsername = null;
+    if (buyerMatch) {
+      const userIdMatch = buyerMatch[1].match(/<UserID>([^<]*)<\/UserID>/);
+      buyerUsername = userIdMatch ? userIdMatch[1] : null;
     }
     
-    // Extract TransactionArray
-    const transactionArrayMatch = orderXml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
-    if (!transactionArrayMatch) {
-      console.log(`  ⚠️ No TransactionArray in order ${orderId}`);
-      continue;
+    // Get order ID if available (transactions may be part of an order)
+    const containingOrderMatch = transactionXml.match(/<ContainingOrder>([\s\S]*?)<\/ContainingOrder>/);
+    let orderId = null;
+    if (containingOrderMatch) {
+      const orderIdMatch = containingOrderMatch[1].match(/<OrderID>([^<]*)<\/OrderID>/);
+      orderId = orderIdMatch ? orderIdMatch[1] : null;
     }
     
-    // Match all Transaction elements
-    const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
-    let transactionMatch;
-    
-    while ((transactionMatch = transactionRegex.exec(transactionArrayMatch[1])) !== null) {
-      const transactionXml = transactionMatch[1];
-      
-      // Extract Item from transaction
-      const itemMatch = transactionXml.match(/<Item>([\s\S]*?)<\/Item>/);
-      if (!itemMatch) continue;
-      
-      const itemXml = itemMatch[1];
-      
-      const getItemField = (field) => {
-        const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
-        return match ? match[1] : null;
-      };
-      
-      const itemId = getItemField('ItemID');
-      
-      // Log every item ID we encounter
-      if (totalOrdersProcessed <= 3) { // Only log first few to avoid spam
-        console.log(`  📦 Found item ${itemId} in order ${orderId}, status: ${orderStatus}`);
-      }
-      
-      // Only include transactions for the target item
-      if (itemId !== targetItemId) continue;
-      
-      matchingItems++;
-      console.log(`  ✅ MATCH! Item ${itemId} in order ${orderId}`);
-      
-      const title = getItemField('Title');
-      
-      // Get quantity from transaction level
-      const quantityMatch = transactionXml.match(/<QuantityPurchased>([^<]*)<\/QuantityPurchased>/);
-      const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
-      
-      // Get price from transaction level
-      const transPriceMatch = transactionXml.match(/<TransactionPrice[^>]*>([^<]+)<\/TransactionPrice>/);
-      const transactionPrice = transPriceMatch ? parseFloat(transPriceMatch[1]) : 0;
-      
-      // Get transaction ID
-      const transactionIdMatch = transactionXml.match(/<TransactionID>([^<]*)<\/TransactionID>/);
-      const transactionId = transactionIdMatch ? transactionIdMatch[1] : null;
-      
-      // Get buyer info
-      const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
-      let buyerUsername = null;
-      if (buyerMatch) {
-        const userIdMatch = buyerMatch[1].match(/<UserID>([^<]*)<\/UserID>/);
-        buyerUsername = userIdMatch ? userIdMatch[1] : null;
-      }
-      
-      orders.push({
-        orderId,
-        transactionId,
-        itemId,
-        title,
-        quantity,
-        price: transactionPrice,
-        dateSold: createdTime,
-        buyerUsername,
-        orderStatus,
-        // Link to eBay order details page
-        orderUrl: `https://www.ebay.com/sh/ord/?orderid=${orderId}`,
-      });
+    // Get status
+    const statusMatch = transactionXml.match(/<Status>([\s\S]*?)<\/Status>/);
+    let status = 'Complete';
+    if (statusMatch) {
+      const completeMatch = statusMatch[1].match(/<eBayPaymentStatus>([^<]*)<\/eBayPaymentStatus>/);
+      status = completeMatch ? completeMatch[1] : 'Complete';
     }
+    
+    console.log(`  📦 Transaction ${transactionCount}: ID=${transactionId}, Date=${createdDate}, Qty=${quantityPurchased}, Price=$${transactionPrice}, Buyer=${buyerUsername}`);
+    
+    transactions.push({
+      orderId: orderId || `TXN-${transactionId}`,
+      transactionId,
+      itemId: targetItemId,
+      title: '', // We don't need title since it's the same item
+      quantity: parseInt(quantityPurchased) || 1,
+      price: transactionPrice,
+      dateSold: createdDate,
+      buyerUsername,
+      orderStatus: status,
+      // Link to eBay order details page (if we have an order ID)
+      orderUrl: orderId 
+        ? `https://www.ebay.com/sh/ord/?orderid=${orderId}`
+        : `https://www.ebay.com/sh/fin/transactions`, // Fallback to transactions page
+    });
   }
   
-  console.log(`📊 Processed ${totalOrdersProcessed} total orders, found ${matchingItems} matching transactions`);
+  console.log(`📊 Parsed ${transactionCount} transactions`);
   
   // Sort by date sold (newest first)
-  orders.sort((a, b) => new Date(b.dateSold) - new Date(a.dateSold));
+  transactions.sort((a, b) => new Date(b.dateSold) - new Date(a.dateSold));
   
-  return orders;
+  return transactions;
 }
