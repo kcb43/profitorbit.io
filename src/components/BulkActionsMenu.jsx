@@ -45,20 +45,12 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
   const handleBulkDelete = async () => {
     setIsProcessing(true);
     try {
-      const deletedAt = new Date().toISOString();
       const results = [];
       
-      // Soft delete all selected items with verification
+      // Hard delete all selected items (permanent removal)
       for (const itemId of selectedItems) {
         try {
-          await inventoryApi.update(itemId, {
-            deleted_at: deletedAt
-          });
-          // Verify the update was successful
-          const updatedItem = await inventoryApi.get(itemId);
-          if (!updatedItem.deleted_at) {
-            throw new Error("Server did not save deleted_at field");
-          }
+          await inventoryApi.delete(itemId, true); // true = hard delete
           results.push({ id: itemId, success: true });
         } catch (error) {
           console.error(`Failed to delete item ${itemId}:`, error);
@@ -69,37 +61,13 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;
 
-      // Wait a moment, then refetch to verify server state
-      setTimeout(async () => {
-        try {
-          await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-          // Verify all successfully deleted items have deleted_at set on server
-          const successfulIds = results.filter(r => r.success).map(r => r.id);
-          for (const id of successfulIds) {
-            try {
-              const updatedItem = await inventoryApi.get(id);
-              if (updatedItem.deleted_at) {
-                // Ensure cache has the correct deleted_at value
-                queryClient.setQueryData(['inventoryItems'], (old = []) => {
-                  if (!Array.isArray(old)) return old;
-                  return old.map(item => 
-                    item.id === id ? { ...item, deleted_at: updatedItem.deleted_at } : item
-                  );
-                });
-              }
-            } catch (error) {
-              console.error(`Error verifying deletion for item ${id}:`, error);
-            }
-          }
-        } catch (error) {
-          console.error("Error verifying bulk deletion on server:", error);
-        }
-      }, 500);
+      // Invalidate queries to refresh the UI
+      await queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
 
       if (failCount === 0) {
         toast({
-          title: `✅ ${successCount} Item${successCount > 1 ? 's' : ''} Deleted`,
-          description: `All selected items have been moved to deleted items. You can recover them within 30 days.`,
+          title: `✅ ${successCount} Item${successCount > 1 ? 's' : ''} Permanently Deleted`,
+          description: `All selected items have been permanently removed from your inventory.`,
         });
       } else {
         toast({
@@ -248,9 +216,15 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedItems.length} item{selectedItems.length === 1 ? '' : 's'}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {selectedItems.length} selected item{selectedItems.length === 1 ? '' : 's'}? This action cannot be undone.
+            <AlertDialogTitle className="text-red-600 dark:text-red-400">
+              ⚠️ Permanently Delete {selectedItems.length} Item{selectedItems.length > 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you absolutely sure you want to <strong className="text-red-600 dark:text-red-400">permanently delete</strong> {selectedItems.length} selected item{selectedItems.length > 1 ? 's' : ''}?
+              <br /><br />
+              <strong className="text-red-600 dark:text-red-400">This action cannot be undone.</strong> These items will be completely removed from your inventory and cannot be recovered.
+              <br /><br />
+              If the item was imported from a marketplace, it will reappear on the Import page as "Not Imported" so you can re-import it later if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -260,7 +234,7 @@ export default function BulkActionsMenu({ selectedItems = [], onActionComplete }
               disabled={isProcessing}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isProcessing ? "Deleting..." : "Delete"}
+              {isProcessing ? "Deleting..." : "Yes, Permanently Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
