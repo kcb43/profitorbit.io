@@ -4801,7 +4801,7 @@ const createInitialTemplateState = (item) => {
     ...GENERAL_TEMPLATE_DEFAULT,
     photos: photos,
     title: item?.item_name || "",
-    description: item?.notes || "",
+    description: item?.description || item?.notes || "", // Use description first, fallback to notes
     brand: item?.brand || "",
     condition: item?.condition || "",
     color1: item?.color1 || "",
