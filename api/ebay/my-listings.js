@@ -577,6 +577,36 @@ function parseOrdersToTransactions(xml) {
       const transactionIdMatch = transactionXml.match(/<TransactionID>([^<]*)<\/TransactionID>/);
       const transactionId = transactionIdMatch ? transactionIdMatch[1] : null;
       
+      // Extract additional order/transaction details
+      const getTransactionField = (field) => {
+        const match = transactionXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+        return match ? match[1] : null;
+      };
+      
+      // Get shipping cost
+      const shippingServiceMatch = transactionXml.match(/<ShippingServiceCost[^>]*>([^<]+)<\/ShippingServiceCost>/);
+      const shippingCost = shippingServiceMatch ? parseFloat(shippingServiceMatch[1]) : 0;
+      
+      // Get sales tax
+      const salesTaxMatch = transactionXml.match(/<SalesTax>([\s\S]*?)<\/SalesTax>/);
+      let salesTax = 0;
+      if (salesTaxMatch) {
+        const taxAmountMatch = salesTaxMatch[1].match(/<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
+        salesTax = taxAmountMatch ? parseFloat(taxAmountMatch[1]) : 0;
+      }
+      
+      // Get fees from FinalValueFee
+      const feeMatch = transactionXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
+      const finalValueFee = feeMatch ? parseFloat(feeMatch[1]) : 0;
+      
+      // Get payment status
+      const paidTimeMatch = transactionXml.match(/<PaidTime>([^<]*)<\/PaidTime>/);
+      const paidTime = paidTimeMatch ? paidTimeMatch[1] : null;
+      
+      // Calculate net payout (price + shipping - fees)
+      const totalSale = transactionPrice + shippingCost;
+      const netPayout = totalSale - finalValueFee;
+      
       // Get buyer info - try transaction level first, then fall back to order level
       const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
       let buyerUsername = null;
@@ -605,6 +635,13 @@ function parseOrdersToTransactions(xml) {
         dateSold: createdTime,
         buyerUsername,
         orderStatus,
+        // Additional financial details
+        shippingCost,
+        salesTax,
+        finalValueFee,
+        totalSale,
+        netPayout,
+        paidTime,
       });
     }
   }
@@ -776,6 +813,13 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
             buyerUsername: txn.buyerUsername,
             saleNumber: idx + 1, // For display: "Sale 1 of 3"
             totalSales: transactions.length,
+            // Financial details
+            shippingCost: txn.shippingCost || 0,
+            salesTax: txn.salesTax || 0,
+            finalValueFee: txn.finalValueFee || 0,
+            totalSale: txn.totalSale || txn.price,
+            netPayout: txn.netPayout || txn.price,
+            paidTime: txn.paidTime,
           });
         });
       } else {
