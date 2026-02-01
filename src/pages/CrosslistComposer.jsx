@@ -35312,21 +35312,21 @@ export default function CrosslistComposer() {
     const initial = createInitialTemplateState(item);
     
     console.log('🔧 Initial template state from item:', {
-      title: initial.general.title,
-      description: initial.general.description?.substring(0, 50),
-      brand: initial.general.brand,
-      condition: initial.general.condition,
-      size: initial.general.size,
-      price: initial.general.price
+      title: initial.forms.general.title,
+      description: initial.forms.general.description?.substring(0, 50),
+      brand: initial.forms.general.brand,
+      condition: initial.forms.general.condition,
+      size: initial.forms.general.size,
+      price: initial.forms.general.price
     });
     
     // Merge with saved form data (saved data takes precedence over initial state)
     const merged = {
-      general: savedGeneral ? { ...initial.general, ...savedGeneral } : initial.general,
-      ebay: savedEbay ? { ...initial.ebay, ...savedEbay } : { ...initial.ebay, ...(ebayDefaults || {}) },
-      etsy: savedEtsy ? { ...initial.etsy, ...savedEtsy } : initial.etsy,
-      mercari: savedMercari ? { ...initial.mercari, ...savedMercari } : { ...initial.mercari, ...(mercariDefaults || {}) },
-      facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : { ...initial.facebook, ...(facebookDefaults || {}) },
+      general: savedGeneral ? { ...initial.forms.general, ...savedGeneral } : initial.forms.general,
+      ebay: savedEbay ? { ...initial.forms.ebay, ...savedEbay } : { ...initial.forms.ebay, ...(ebayDefaults || {}) },
+      etsy: savedEtsy ? { ...initial.forms.etsy, ...savedEtsy } : initial.forms.etsy,
+      mercari: savedMercari ? { ...initial.forms.mercari, ...savedMercari } : { ...initial.forms.mercari, ...(mercariDefaults || {}) },
+      facebook: savedFacebook ? { ...initial.forms.facebook, ...savedFacebook } : { ...initial.forms.facebook, ...(facebookDefaults || {}) },
     };
     
     console.log('🔧 Merged template state (after localStorage):', {
