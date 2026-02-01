@@ -4779,6 +4779,36 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
 const createInitialTemplateState = (item) => {
   console.log('🔧 createInitialTemplateState called with item:', item);
   
+  // Map Facebook/Mercari conditions to General form conditions
+  const mapConditionToGeneral = (condition) => {
+    if (!condition) return "";
+    
+    const conditionLower = condition.toLowerCase();
+    
+    // Facebook "New" → General "New With Tags/Box"
+    if (conditionLower === "new") {
+      return "New With Tags/Box";
+    }
+    
+    // Facebook "Used - Like New" → General "Pre - Owned - Excellent"
+    if (conditionLower === "used - like new" || conditionLower === "like new") {
+      return "Pre - Owned - Excellent";
+    }
+    
+    // Facebook "Used - Good" → General "Pre - Owned - Good"
+    if (conditionLower === "used - good" || conditionLower === "good") {
+      return "Pre - Owned - Good";
+    }
+    
+    // Facebook "Used - Fair" → General "Pre - Owned - Fair"
+    if (conditionLower === "used - fair" || conditionLower === "fair") {
+      return "Pre - Owned - Fair";
+    }
+    
+    // Return original if no mapping found
+    return condition;
+  };
+  
   // If item has a predefined category, clear it so user can select from eBay category picklist
   const itemCategory = item?.category || "";
   const shouldClearCategory = itemCategory && PREDEFINED_CATEGORIES.includes(itemCategory);
@@ -4805,7 +4835,7 @@ const createInitialTemplateState = (item) => {
     title: item?.item_name || "",
     description: item?.description || item?.notes || "", // Use description first, fallback to notes
     brand: item?.brand || "",
-    condition: item?.condition || "",
+    condition: mapConditionToGeneral(item?.condition) || "", // Map condition
     color1: item?.color1 || "",
     color2: item?.color2 || "",
     color3: item?.color3 || "",
@@ -38975,6 +39005,18 @@ export default function CrosslistComposer() {
                     </SelectContent>
                   </Select>
                 </div>
+                {generalForm.size && (
+                  <div>
+                    <Label htmlFor="general-size" className="text-xs mb-1.5 block">Size</Label>
+                    <Input
+                      id="general-size"
+                      name="general-size"
+                      placeholder="e.g. Men's M, 10, XL"
+                      value={generalForm.size || ""}
+                      onChange={(e) => handleGeneralChange("size", e.target.value)}
+                    />
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="general-sku" className="text-xs mb-1.5 block">SKU</Label>
                   <Input
@@ -43748,6 +43790,17 @@ export default function CrosslistComposer() {
                     </SelectContent>
                   </Select>
                 </div>
+                {generalForm.size && (
+                  <div>
+                    <Label htmlFor="poshmark-size-mobile" className="text-xs mb-1.5 block">Size</Label>
+                    <Input
+                      id="poshmark-size-mobile"
+                      placeholder="e.g. Men's M, 10, XL"
+                      value={generalForm.size || ""}
+                      onChange={(e) => handleGeneralChange("size", e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
@@ -44754,6 +44807,18 @@ export default function CrosslistComposer() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {generalForm.size && (
+                          <div>
+                            <Label htmlFor="general-size-bulk" className="text-xs mb-1.5 block">Size</Label>
+                            <Input
+                              id="general-size-bulk"
+                              name="general-size-bulk"
+                              placeholder="e.g. Men's M, 10, XL"
+                              value={generalForm.size || ""}
+                              onChange={(e) => handleGeneralChange("size", e.target.value)}
+                            />
+                          </div>
+                        )}
                         <div>
                           <Label htmlFor="general-sku" className="text-xs mb-1.5 block">SKU</Label>
                           <Input
