@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     let xmlRequest;
     
     if (status === 'All') {
-      // Fetch both Active and Ended listings
+      // Fetch both Active and Sold listings (skip unsold)
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
@@ -93,18 +93,10 @@ export default async function handler(req, res) {
       <PageNumber>1</PageNumber>
     </Pagination>
   </SoldList>
-  <UnsoldList>
-    <Include>true</Include>
-    <DaysBeforeToday>60</DaysBeforeToday>
-    <Pagination>
-      <EntriesPerPage>${limit}</EntriesPerPage>
-      <PageNumber>1</PageNumber>
-    </Pagination>
-  </UnsoldList>
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
-    } else if (status === 'Ended') {
-      // Fetch only Ended listings (Sold + Unsold)
+    } else if (status === 'Ended' || status === 'Sold') {
+      // Fetch only Sold listings (not unsold/expired)
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
@@ -118,14 +110,6 @@ export default async function handler(req, res) {
       <PageNumber>1</PageNumber>
     </Pagination>
   </SoldList>
-  <UnsoldList>
-    <Include>true</Include>
-    <DaysBeforeToday>60</DaysBeforeToday>
-    <Pagination>
-      <EntriesPerPage>${limit}</EntriesPerPage>
-      <PageNumber>1</PageNumber>
-    </Pagination>
-  </UnsoldList>
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
     } else {
@@ -241,10 +225,12 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
   let listTypesToParse = [];
   if (requestedStatus === 'Active') {
     listTypesToParse = ['ActiveList'];
-  } else if (requestedStatus === 'Ended') {
-    listTypesToParse = ['SoldList', 'UnsoldList'];
+  } else if (requestedStatus === 'Sold' || requestedStatus === 'Ended') {
+    // Only show sold items (not unsold/expired)
+    listTypesToParse = ['SoldList'];
   } else if (requestedStatus === 'All') {
-    listTypesToParse = ['ActiveList', 'SoldList', 'UnsoldList'];
+    // Show everything: active + sold (skip unsold)
+    listTypesToParse = ['ActiveList', 'SoldList'];
   } else {
     // Default to Active
     listTypesToParse = ['ActiveList'];
@@ -268,7 +254,7 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
     }
     
     // Mark status based on list type
-    const itemStatus = listType === 'ActiveList' ? 'Active' : 'Ended';
+    const itemStatus = listType === 'ActiveList' ? 'Active' : 'Sold';
     console.log(`  📦 Processing items from ${listType} as status: ${itemStatus}`);
     
     // Match all Item elements
