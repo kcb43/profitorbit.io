@@ -61,7 +61,6 @@ export default async function handler(req, res) {
   </RequesterCredentials>
   <CreateTimeFrom>${createTimeFrom}</CreateTimeFrom>
   <OrderRole>Seller</OrderRole>
-  <OrderStatus>Completed</OrderStatus>
   <Pagination>
     <EntriesPerPage>100</EntriesPerPage>
     <PageNumber>1</PageNumber>
@@ -90,6 +89,8 @@ export default async function handler(req, res) {
     }
 
     const xmlText = await response.text();
+    
+    console.log('📡 Raw XML response length:', xmlText.length);
     
     // Check for eBay API errors
     if (xmlText.includes('<Ack>Failure</Ack>')) {
@@ -128,17 +129,23 @@ export default async function handler(req, res) {
 function parseOrdersForItem(xml, targetItemId) {
   const orders = [];
   
+  console.log(`🔍 Parsing orders for target item: ${targetItemId}`);
+  
   // Extract OrderArray section
   const orderArrayMatch = xml.match(/<OrderArray>([\s\S]*?)<\/OrderArray>/);
   if (!orderArrayMatch) {
+    console.log('⚠️ No OrderArray found in response');
     return orders;
   }
   
   // Match all Order elements
   const orderRegex = /<Order>([\s\S]*?)<\/Order>/g;
   let orderMatch;
+  let totalOrdersProcessed = 0;
+  let matchingItems = 0;
 
   while ((orderMatch = orderRegex.exec(orderArrayMatch[1])) !== null) {
+    totalOrdersProcessed++;
     const orderXml = orderMatch[1];
     
     // Extract order-level fields
@@ -154,12 +161,16 @@ function parseOrdersForItem(xml, targetItemId) {
     
     // Skip cancelled orders
     if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') {
+      console.log(`  ⏭️ Skipping cancelled order ${orderId}`);
       continue;
     }
     
     // Extract TransactionArray
     const transactionArrayMatch = orderXml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
-    if (!transactionArrayMatch) continue;
+    if (!transactionArrayMatch) {
+      console.log(`  ⚠️ No TransactionArray in order ${orderId}`);
+      continue;
+    }
     
     // Match all Transaction elements
     const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
@@ -181,8 +192,16 @@ function parseOrdersForItem(xml, targetItemId) {
       
       const itemId = getItemField('ItemID');
       
+      // Log every item ID we encounter
+      if (totalOrdersProcessed <= 3) { // Only log first few to avoid spam
+        console.log(`  📦 Found item ${itemId} in order ${orderId}, status: ${orderStatus}`);
+      }
+      
       // Only include transactions for the target item
       if (itemId !== targetItemId) continue;
+      
+      matchingItems++;
+      console.log(`  ✅ MATCH! Item ${itemId} in order ${orderId}`);
       
       const title = getItemField('Title');
       
@@ -221,6 +240,8 @@ function parseOrdersForItem(xml, targetItemId) {
       });
     }
   }
+  
+  console.log(`📊 Processed ${totalOrdersProcessed} total orders, found ${matchingItems} matching transactions`);
   
   // Sort by date sold (newest first)
   orders.sort((a, b) => new Date(b.dateSold) - new Date(a.dateSold));
