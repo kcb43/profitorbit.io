@@ -387,11 +387,6 @@ export default async function handler(req, res) {
           while ((txnMatch = transactionRegex.exec(transactionsMatch[1])) !== null) {
             const txnXml = txnMatch[1];
             
-            // Log first transaction XML for debugging
-            if (i === 0 && Object.keys(feesByItemId).length === 0) {
-              console.log(`\n  📄 First Transaction XML (first 1000 chars):\n${txnXml.substring(0, 1000)}\n`);
-            }
-            
             const getField = (field) => {
               const match = txnXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
               return match ? match[1] : null;
@@ -410,9 +405,15 @@ export default async function handler(req, res) {
             const fvfMatch = txnXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
             const finalValueFee = fvfMatch ? parseFloat(fvfMatch[1]) : 0;
             
-            // Extract Taxes (SalesTax)
-            const taxMatch = txnXml.match(/<SalesTax>[\s\S]*?<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
-            const salesTax = taxMatch ? parseFloat(taxMatch[1]) : 0;
+            // Extract Taxes (SalesTax) - try multiple patterns
+            let salesTax = 0;
+            const taxMatch1 = txnXml.match(/<SalesTax>[\s\S]*?<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
+            const taxMatch2 = txnXml.match(/<Taxes>[\s\S]*?<TotalTaxAmount[^>]*>([^<]+)<\/TotalTaxAmount>/);
+            const taxMatch3 = txnXml.match(/<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
+            
+            if (taxMatch1) salesTax = parseFloat(taxMatch1[1]);
+            else if (taxMatch2) salesTax = parseFloat(taxMatch2[1]);
+            else if (taxMatch3) salesTax = parseFloat(taxMatch3[1]);
             
             // Extract Shipping cost
             const shippingMatch = txnXml.match(/<ShippingServiceCost[^>]*>([^<]+)<\/ShippingServiceCost>/);
@@ -422,12 +423,15 @@ export default async function handler(req, res) {
             const actualShippingMatch = txnXml.match(/<ActualShippingCost[^>]*>([^<]+)<\/ActualShippingCost>/);
             const actualShippingCost = actualShippingMatch ? parseFloat(actualShippingMatch[1]) : shippingCost;
             
-            // Log first few for debugging
-            if (i === 0 && Object.keys(feesByItemId).length < 3) {
-              console.log(`  💵 Item ${itemId}, Txn ${transactionId}:`);
-              console.log(`     FinalValueFee: $${finalValueFee}`);
-              console.log(`     SalesTax: $${salesTax}`);
-              console.log(`     Shipping: $${actualShippingCost}`);
+            // Log FULL XML of first transaction with fees for debugging
+            if (finalValueFee > 0 && Object.keys(feesByItemId).length === 0) {
+              console.log(`\n📄 FULL TRANSACTION XML (Item ${itemId}, Txn ${transactionId}):`);
+              console.log(txnXml);
+              console.log(`\n💵 Extracted values:`);
+              console.log(`   FinalValueFee: $${finalValueFee}`);
+              console.log(`   SalesTax: $${salesTax}`);
+              console.log(`   Shipping: $${actualShippingCost}`);
+              console.log(`\n`);
             }
             
             // Store fees by transaction ID (need to match with transactions from GetOrders)
