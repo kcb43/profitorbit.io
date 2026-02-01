@@ -162,6 +162,38 @@ export default async function handler(req, res) {
     const xmlText = await response.text();
     console.log('📡 Raw XML response length:', xmlText.length);
     
+    // Check for eBay API errors
+    if (xmlText.includes('<Ack>Failure</Ack>')) {
+      // Extract error details
+      const shortMsgMatch = xmlText.match(/<ShortMessage>([^<]+)<\/ShortMessage>/);
+      const longMsgMatch = xmlText.match(/<LongMessage>([^<]+)<\/LongMessage>/);
+      const errorCodeMatch = xmlText.match(/<ErrorCode>([^<]+)<\/ErrorCode>/);
+      
+      const shortMessage = shortMsgMatch ? shortMsgMatch[1] : 'Unknown error';
+      const longMessage = longMsgMatch ? longMsgMatch[1] : shortMessage;
+      const errorCode = errorCodeMatch ? errorCodeMatch[1] : 'unknown';
+      
+      console.error('❌ eBay API returned error:', { errorCode, shortMessage, longMessage });
+      
+      // Special handling for expired token (ErrorCode 932)
+      if (errorCode === '932' || shortMessage.includes('token is hard expired')) {
+        return res.status(401).json({
+          error: 'eBay token expired',
+          errorCode: 'TOKEN_EXPIRED',
+          message: 'Your eBay connection has expired. Please reconnect your eBay account.',
+          details: longMessage,
+        });
+      }
+      
+      // Generic error handling
+      return res.status(400).json({
+        error: 'eBay API error',
+        errorCode,
+        message: shortMessage,
+        details: longMessage,
+      });
+    }
+    
     // Log first 1000 chars if response is suspiciously short (likely an error)
     if (xmlText.length < 5000) {
       console.log('⚠️ Short XML response (likely error):');

@@ -254,6 +254,11 @@ export default function Import() {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Error fetching listings:', errorData);
         
+        // Check for expired token error
+        if (errorData.errorCode === 'TOKEN_EXPIRED') {
+          throw new Error('TOKEN_EXPIRED');
+        }
+        
         // Show the full error object to user
         const errorMsg = errorData.error || errorData.message || 'Failed to fetch eBay listings';
         throw new Error(`${errorMsg}${errorData.details ? '\n\nDetails: ' + errorData.details : ''}`);
@@ -1341,16 +1346,52 @@ export default function Import() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <p className="font-medium">Error loading listings</p>
-                  <p className="text-sm mt-1">{error.message}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => refetch()}
-                  >
-                    Try Again
-                  </Button>
+                  {error.message === 'TOKEN_EXPIRED' ? (
+                    <>
+                      <p className="font-medium">eBay Connection Expired</p>
+                      <p className="text-sm mt-1">Your eBay connection has expired. Please reconnect your eBay account to continue syncing items.</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => {
+                            sessionStorage.setItem('ebay_oauth_return', '/import?source=ebay');
+                            window.location.href = '/api/ebay/auth';
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <line x1="19" y1="8" x2="19" y2="14"></line>
+                            <line x1="22" y1="11" x2="16" y2="11"></line>
+                          </svg>
+                          Reconnect eBay
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(createPageUrl("Settings"))}
+                        >
+                          <Settings className="h-4 w-4" />
+                          Go to Settings
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">Error loading listings</p>
+                      <p className="text-sm mt-1">{error.message}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => refetch()}
+                      >
+                        Try Again
+                      </Button>
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
