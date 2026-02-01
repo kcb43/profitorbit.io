@@ -3,23 +3,19 @@
  * Handles fetching user's Mercari listings via GraphQL API
  */
 
-// GraphQL query for fetching user items
-const USER_ITEMS_QUERY = {
-  operationName: "userItemsQuery",
+// GraphQL query for searching user items (provides detailed information)
+const SEARCH_QUERY = {
+  operationName: "searchQuery",
   variables: {
-    userItemsInput: {
-      sellerId: null, // Will be populated dynamically
-      status: "on_sale",
-      keyword: "",
-      sortBy: "updated",
-      sortType: "desc",
-      page: 1,
-      includeTotalCount: true
+    criteria: {
+      length: 20, // Items per page
+      itemStatuses: [1], // 1 = on_sale
+      sellerIds: [] // Will be populated dynamically
     }
   },
   extensions: {
     persistedQuery: {
-      sha256Hash: "de32fb1b4a2727c67de3f242224d5647a5db015cd5f075fc4aee10d9c43ecce7",
+      sha256Hash: "d1c9e56a762346c60f7d4350caa950132454eacfe03f103588c7822fc3bb57f5",
       version: 1
     }
   }
@@ -94,95 +90,6 @@ async function getMercariAuth() {
 }
 
 /**
- * Fetch detailed information for a single Mercari item
- */
-async function fetchMercariItemDetails(itemId, bearerToken, csrfToken) {
-  try {
-    console.log(`🔍 Fetching details for Mercari item ${itemId}...`);
-    
-    const query = {
-      operationName: "itemQuery",
-      variables: {
-        id: itemId
-      },
-      extensions: {
-        persistedQuery: {
-          sha256Hash: "c772b09cd5c8b16d9a75fac4c93cf89a3cf1a8edb31ab86f9df62ef1cc9fff0e",
-          version: 1
-        }
-      }
-    };
-
-    const timestamp = Date.now();
-    const url = `https://www.mercari.com/v1/api?timestamp=${timestamp}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${bearerToken}`,
-        'x-csrf-token': csrfToken,
-        'content-type': 'application/json',
-        'apollo-require-preflight': 'true',
-        'x-app-version': '1',
-        'x-double-web': '1',
-        'x-gql-migration': '1',
-        'x-platform': 'web',
-      },
-      body: JSON.stringify(query),
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      console.error(`❌ Failed to fetch item ${itemId}: HTTP ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-    
-    // Log the full response for debugging
-    console.log(`📥 Detail response for ${itemId}:`, data);
-    
-    if (!data.data?.item) {
-      console.error(`❌ No item data for ${itemId}`);
-      if (data.errors) {
-        console.error(`GraphQL errors:`, data.errors);
-      }
-      return null;
-    }
-
-    const item = data.data.item;
-    
-    // Extract detailed information
-    const details = {
-      description: item.description || null,
-      condition: item.condition || null,
-      brand: item.brand?.name || null,
-      category: item.itemCategory?.name || null,
-      size: item.size || null,
-      // Additional metadata
-      shippingFromState: item.shippingFromState || null,
-      shippingPayer: item.shippingPayer || null,
-      weight: item.weight || null,
-      color: item.color || null,
-    };
-
-    console.log(`✅ Fetched details for item ${itemId}:`, {
-      hasDescription: !!details.description,
-      descriptionLength: details.description?.length,
-      condition: details.condition,
-      brand: details.brand,
-      category: details.category,
-      size: details.size
-    });
-
-    return details;
-  } catch (error) {
-    console.error(`❌ Error fetching details for item ${itemId}:`, error);
-    return null;
-  }
-}
-
-/**
  * Fetch Mercari listings via GraphQL API
  */
 async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
@@ -204,14 +111,12 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
 
     // Prepare query with seller ID
     const query = {
-      ...USER_ITEMS_QUERY,
+      ...SEARCH_QUERY,
       variables: {
-        ...USER_ITEMS_QUERY.variables,
-        userItemsInput: {
-          ...USER_ITEMS_QUERY.variables.userItemsInput,
-          sellerId: parseInt(sellerId, 10),
-          status,
-          page
+        criteria: {
+          length: 20, // Items per page
+          itemStatuses: [1], // 1 = on_sale, 2 = sold
+          sellerIds: [parseInt(sellerId, 10)]
         }
       }
     };
@@ -250,23 +155,18 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
     const data = await response.json();
     console.log('📥 Raw GraphQL response:', data);
 
-    if (!data.data?.userItems?.items) {
+    if (!data.data?.search?.itemsList) {
       console.error('❌ Unexpected response structure:', data);
       throw new Error('Invalid response structure from Mercari API');
     }
 
-    const items = data.data.userItems.items;
-    const pagination = data.data.userItems.pagination;
+    const items = data.data.search.itemsList;
+    const count = data.data.search.count;
 
-    console.log('✅ Fetched', items.length, 'Mercari listings');
-    console.log('📄 Pagination:', pagination);
-    console.log('📦 Sample item from userItemsQuery:', items[0]); // Log full item structure
+    console.log('✅ Fetched', items.length, 'Mercari listings (total:', count, ')');
+    console.log('📦 Sample item from searchQuery:', items[0]); // Log full item structure
 
-    // TODO: Detailed item fetching disabled - need to find correct persisted query hash
-    // For now, use title as description since Mercari titles often contain condition/brand/size
-    console.log('ℹ️ Using basic item data only (detailed fetch requires correct persisted query hash)');
-
-    // Transform to our format with basic information
+    // Transform to our format with detailed information
     const listings = items.map((item, index) => {
       const listing = {
         itemId: item.id,
@@ -276,19 +176,14 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         status: item.status,
         imageUrl: item.photos?.[0]?.imageUrl || item.photos?.[0]?.thumbnail || null,
         pictureURLs: (item.photos || []).map(p => p.imageUrl || p.thumbnail).filter(Boolean),
-        numLikes: item.engagement?.numLikes || 0,
-        numViews: item.engagement?.itemPv || 0,
-        updated: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-        listingDate: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-        startTime: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-        // Use title as description for now (Mercari titles often have details)
-        description: item.name || null,
-        // These fields would need detailed query (disabled for now)
-        condition: null,
-        brand: null,
-        category: null,
-        size: null,
-        color: null,
+        // Detailed information now available from searchQuery
+        description: item.description || null,
+        condition: item.itemCondition?.name || null,
+        brand: item.brand?.name || null,
+        category: item.itemCategory?.name || null,
+        categoryPath: (item.itemCategoryHierarchy || []).map(c => c.name).join(' > ') || null,
+        size: item.itemSize?.name || null,
+        color: item.color || null,
         imported: false // Will be updated by frontend
       };
       
@@ -298,8 +193,11 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
           itemId: listing.itemId,
           title: listing.title?.substring(0, 50),
           price: listing.price,
-          hasDescription: !!listing.description,
-          descriptionLength: listing.description?.length
+          description: listing.description?.substring(0, 100),
+          condition: listing.condition,
+          brand: listing.brand,
+          category: listing.category,
+          size: listing.size
         });
       }
       
@@ -310,10 +208,10 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       success: true,
       listings,
       pagination: {
-        currentPage: pagination.currentPage,
-        pageSize: pagination.pageSize,
-        totalCount: pagination.totalCount,
-        hasNext: pagination.hasNext
+        currentPage: 1,
+        pageSize: 20,
+        totalCount: count,
+        hasNext: count > listings.length
       }
     };
   } catch (error) {
@@ -330,7 +228,6 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
 if (typeof self !== 'undefined') {
   self.__mercariApi = {
     getMercariAuth,
-    fetchMercariListings,
-    fetchMercariItemDetails
+    fetchMercariListings
   };
 }
