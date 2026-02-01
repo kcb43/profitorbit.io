@@ -109,7 +109,7 @@ export default async function handler(req, res) {
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
-  <CreateTimeFrom>${getDateDaysAgo(120)}</CreateTimeFrom>
+  <CreateTimeFrom>${getDateDaysAgo(90)}</CreateTimeFrom>
   <CreateTimeTo>${new Date().toISOString()}</CreateTimeTo>
   <OrderRole>Seller</OrderRole>
   <OrderStatus>Completed</OrderStatus>
