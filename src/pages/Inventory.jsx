@@ -1593,21 +1593,6 @@ export default function InventoryPage() {
               <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Filters & Sort</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
-                <div className="text-xs text-muted-foreground">
-                  Showing <span className="font-semibold text-foreground">{inventoryItems.length}</span>
-                  {totalItems ? (
-                    <>
-                      {" "}
-                      of <span className="font-semibold text-foreground">{totalItems}</span>
-                    </>
-                  ) : null}
-                  {" "}items
-                  {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
-                  {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <Label htmlFor="search" className="text-xs mb-1.5 block">Search</Label>
@@ -1655,6 +1640,20 @@ export default function InventoryPage() {
                       <SelectItem value="return-soon">Return Soon</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="flex items-end">
+                  <div className="text-xs text-muted-foreground">
+                    Showing <span className="font-semibold text-foreground">{inventoryItems.length}</span>
+                    {totalItems ? (
+                      <>
+                        {" "}
+                        of <span className="font-semibold text-foreground">{totalItems}</span>
+                      </>
+                    ) : null}
+                    {" "}items
+                    {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
+                    {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
+                  </div>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 min-w-0 overflow-x-hidden">

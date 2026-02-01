@@ -180,8 +180,32 @@ export default function Import() {
           setEbayToken(null);
           setIsConnected(false);
         }
+      } else if (selectedSource === "facebook") {
+        // Check Facebook connection
+        const isConnected = localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+        const fbUser = localStorage.getItem('profit_orbit_facebook_user');
+        
+        if (isConnected && fbUser) {
+          setIsConnected(true);
+          console.log('✅ Facebook connected');
+        } else {
+          setIsConnected(false);
+          console.log('❌ Facebook not connected');
+        }
+      } else if (selectedSource === "mercari") {
+        // Check Mercari connection
+        const mercariUser = localStorage.getItem('profit_orbit_mercari_user');
+        const isConnected = mercariUser && JSON.parse(mercariUser)?.loggedIn === true;
+        
+        if (isConnected) {
+          setIsConnected(true);
+          console.log('✅ Mercari connected');
+        } else {
+          setIsConnected(false);
+          console.log('❌ Mercari not connected');
+        }
       } else {
-        // For other marketplaces, not implemented yet
+        // For other marketplaces not yet implemented
         setIsConnected(false);
       }
     };
@@ -1318,7 +1342,7 @@ export default function Import() {
                     key={item.itemId} 
                     className={`p-4 transition-all ${
                       item.imported 
-                        ? 'opacity-75 bg-gray-100 dark:bg-gray-800' 
+                        ? 'bg-gray-100 dark:bg-gray-800' 
                         : selectedItems.includes(item.itemId)
                           ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-pointer'
                           : 'hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'

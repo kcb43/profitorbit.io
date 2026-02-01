@@ -43980,7 +43980,7 @@ export default function CrosslistComposer() {
                     }
                   }}
                 >
-                  <span className="font-medium">General Name</span>
+                  <span className="font-medium">General</span>
                 </button>
                 {MARKETPLACES.map((m) => {
                   const active = activeForm === m.id;
