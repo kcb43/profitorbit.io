@@ -714,13 +714,21 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
         // Create separate entries for each transaction with accurate sale dates
         console.log(`  🔄 Expanding item ${itemId} into ${transactions.length} individual sales`);
         transactions.forEach((txn, idx) => {
-          console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}, OrderID = ${txn.orderId}`);
+          console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}, OrderID = ${txn.orderId}, TransactionID = ${txn.transactionId}`);
           
-          // Generate unique order URL for this specific transaction
-          // eBay's order details page URL format
-          const orderURL = txn.orderId 
-            ? `https://www.ebay.com/sh/ord/details?orderid=${txn.orderId}`
-            : viewItemURL; // Fallback to item URL if no order ID
+          // Generate unique transaction URL for this specific sale
+          // Use the item URL with transaction parameter to make it unique
+          // Format: https://www.ebay.com/itm/{itemId}?ViewItem&item={itemId}&transid={transactionId}
+          let saleURL = viewItemURL; // Default to item URL
+          
+          if (txn.transactionId) {
+            // Add transaction ID to make URL unique and link to specific sale
+            const separator = viewItemURL.includes('?') ? '&' : '?';
+            saleURL = `${viewItemURL}${separator}transid=${txn.transactionId}`;
+          } else if (txn.orderId) {
+            // Fallback to order details page
+            saleURL = `https://www.ebay.com/sh/ord/details?orderid=${txn.orderId}`;
+          }
           
           items.push({
             itemId,
@@ -731,7 +739,7 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
             imageUrl: pictureURLs[0] || null,
             pictureURLs,
             listingType,
-            viewItemURL: orderURL, // Use order-specific URL instead of item URL
+            viewItemURL: saleURL, // Use transaction-specific URL
             startTime: txn.dateSold, // Actual sale date from order
             endTime: txn.dateSold,
             status: 'Sold',
