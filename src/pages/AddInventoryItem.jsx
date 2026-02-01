@@ -215,6 +215,9 @@ export default function AddInventoryItem() {
         source: initialSource,
         status: isCopying ? "available" : (dataToLoad.status || "available"),
         category: initialCategory,
+        brand: dataToLoad.brand || "", // Load brand
+        condition: dataToLoad.condition || "", // Load condition
+        size: dataToLoad.size || "", // Load size
         description: isCopying ? "" : (dataToLoad.description || ""),
         notes: isCopying ? "" : cleanNotes,
         image_url: dataToLoad.image_url || "",

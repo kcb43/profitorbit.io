@@ -432,6 +432,17 @@ async function scrapeMultipleListings(listings, userId = null) {
             console.log(`🔍 Brand found:`, brandAttr, '→', brand);
           }
           
+          // Extract size from attribute_data (can be "Size", "Men's Shoe Size", "Women's Size", etc.)
+          let size = listing.size;
+          const sizeAttr = target.attribute_data?.find(attr => 
+            attr.attribute_name && attr.attribute_name.toLowerCase().includes('size')
+          );
+          if (sizeAttr) {
+            // Use the 'label' field which has the size value
+            size = sizeAttr.label || size;
+            console.log(`🔍 Size found:`, sizeAttr, '→', size);
+          }
+          
           // Category ID is in the response
           const categoryId = target.marketplace_listing_category_id || listing.categoryId;
           
@@ -440,6 +451,7 @@ async function scrapeMultipleListings(listings, userId = null) {
             descriptionLength: description?.length,
             hasCondition: !!condition,
             hasBrand: !!brand,
+            hasSize: !!size,
             categoryId,
           });
           
@@ -448,6 +460,7 @@ async function scrapeMultipleListings(listings, userId = null) {
             description,
             condition,
             brand,
+            size,
             categoryId,
           };
           
