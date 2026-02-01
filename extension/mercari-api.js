@@ -261,13 +261,18 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       fetchMercariItemDetails(item.id, bearerToken, csrfToken)
     );
     const itemDetails = await Promise.all(detailsPromises);
-    console.log('✅ Fetched details for', itemDetails.filter(Boolean).length, 'items');
+    const successfulDetails = itemDetails.filter(Boolean).length;
+    console.log(`✅ Fetched details for ${successfulDetails} of ${items.length} items`);
+    
+    if (successfulDetails === 0) {
+      console.warn('⚠️ No detailed information retrieved - items will have basic data only');
+    }
 
     // Transform to our format with detailed information
     const listings = items.map((item, index) => {
       const details = itemDetails[index] || {};
       
-      return {
+      const listing = {
         itemId: item.id,
         title: item.name,
         price: item.price ? (item.price / 100) : 0, // Convert cents to dollars
@@ -289,6 +294,21 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         color: details.color || null,
         imported: false // Will be updated by frontend
       };
+      
+      // Log first item details for debugging
+      if (index === 0) {
+        console.log('📦 First listing sample:', {
+          itemId: listing.itemId,
+          title: listing.title?.substring(0, 50),
+          hasDescription: !!listing.description,
+          descriptionLength: listing.description?.length,
+          condition: listing.condition,
+          brand: listing.brand,
+          size: listing.size
+        });
+      }
+      
+      return listing;
     });
 
     return {
