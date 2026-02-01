@@ -109,7 +109,7 @@ export default async function handler(req, res) {
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
-  <CreateTimeFrom>${getDateDaysAgo(60)}</CreateTimeFrom>
+  <CreateTimeFrom>${getDateDaysAgo(120)}</CreateTimeFrom>
   <CreateTimeTo>${new Date().toISOString()}</CreateTimeTo>
   <OrderRole>Seller</OrderRole>
   <OrderStatus>Completed</OrderStatus>
@@ -286,21 +286,38 @@ function parseGetOrdersXML(xml, requestedStatus) {
       const quantityMatch = transactionXml.match(/<QuantityPurchased>([^<]*)<\/QuantityPurchased>/);
       const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
       
-      // Extract PictureURL fields
+      // Extract PictureURL fields from Item > PictureDetails
       const pictureURLs = [];
-      const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
-      let pictureMatch;
-      while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
-        const url = pictureMatch[1];
-        if (url && url.startsWith('http')) {
-          pictureURLs.push(url);
+      
+      // Check for PictureDetails section first
+      const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
+      if (pictureDetailsMatch) {
+        const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+        let pictureMatch;
+        while ((pictureMatch = pictureRegex.exec(pictureDetailsMatch[1])) !== null) {
+          const url = pictureMatch[1];
+          if (url && url.startsWith('http')) {
+            pictureURLs.push(url);
+          }
         }
       }
       
+      // Fallback: check for GalleryURL
       if (pictureURLs.length === 0) {
         const galleryURL = getItemField('GalleryURL');
         if (galleryURL && galleryURL.startsWith('http')) {
           pictureURLs.push(galleryURL);
+        }
+      }
+      
+      // Another fallback: ListingDetails > GalleryURL
+      if (pictureURLs.length === 0) {
+        const listingDetailsMatch = itemXml.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/);
+        if (listingDetailsMatch) {
+          const galleryMatch = listingDetailsMatch[1].match(/<GalleryURL>([^<]*)<\/GalleryURL>/);
+          if (galleryMatch && galleryMatch[1].startsWith('http')) {
+            pictureURLs.push(galleryMatch[1]);
+          }
         }
       }
 
@@ -315,7 +332,7 @@ function parseGetOrdersXML(xml, requestedStatus) {
       const viewItemURL = getItemField('ViewItemURL');
       const startTime = getItemField('StartTime');
       
-      console.log(`📊 Sold Item ${itemId} price: ${transactionPrice}, qty: ${quantity}, sold: ${createdTime}`);
+      console.log(`📊 Sold Item ${itemId} price: ${transactionPrice}, qty: ${quantity}, sold: ${createdTime}, images: ${pictureURLs.length}`);
 
       if (itemId && title) {
         items.push({
