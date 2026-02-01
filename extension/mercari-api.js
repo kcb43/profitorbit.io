@@ -139,8 +139,14 @@ async function fetchMercariItemDetails(itemId, bearerToken, csrfToken) {
 
     const data = await response.json();
     
+    // Log the full response for debugging
+    console.log(`📥 Detail response for ${itemId}:`, data);
+    
     if (!data.data?.item) {
       console.error(`❌ No item data for ${itemId}`);
+      if (data.errors) {
+        console.error(`GraphQL errors:`, data.errors);
+      }
       return null;
     }
 
