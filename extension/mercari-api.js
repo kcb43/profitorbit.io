@@ -260,6 +260,7 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
 
     console.log('✅ Fetched', items.length, 'Mercari listings');
     console.log('📄 Pagination:', pagination);
+    console.log('📦 Sample item from userItemsQuery:', items[0]); // Log full item structure
 
     // Fetch detailed information for each item
     console.log('🔍 Fetching detailed information for all items...');
