@@ -48,6 +48,15 @@ export default async function handler(req, res) {
     for (const item of items) {
       try {
         console.log(`🔄 Importing Facebook item ${item.itemId}...`);
+        console.log(`📊 Item data received:`, {
+          itemId: item.itemId,
+          title: item.title?.substring(0, 50),
+          price: item.price,
+          condition: item.condition,
+          brand: item.brand,
+          size: item.size,
+          description_length: item.description?.length
+        });
 
         if (!item || !item.itemId) {
           const error = 'Invalid item data';
