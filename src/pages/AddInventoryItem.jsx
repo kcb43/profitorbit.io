@@ -225,6 +225,14 @@ export default function AddInventoryItem() {
         return_deadline: isCopying ? "" : (dataToLoad.return_deadline || ""),
         photos: photos
       });
+      
+      // Debug log to verify data is loaded
+      console.log('📋 Loaded inventory item data:', {
+        brand: dataToLoad.brand,
+        condition: dataToLoad.condition,
+        size: dataToLoad.size,
+        category: initialCategory
+      });
     } else if (!itemId && !copyId) {
       const itemName = searchParams.get('itemName');
       if (itemName) {
