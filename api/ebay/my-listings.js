@@ -223,6 +223,16 @@ export default async function handler(req, res) {
       const soldItems = parseGetSellerListXML(sellerListXml, transactionsByItemId);
       console.log(`✅ Fetched ${soldItems.length} sold items`);
       
+      // Debug: Log sample sold items to verify unique IDs
+      if (soldItems.length > 0) {
+        console.log('🔍 Sample sold item IDs:', soldItems.slice(0, 5).map(i => ({
+          itemId: i.itemId,
+          originalItemId: i.originalItemId,
+          buyer: i.buyerUsername,
+          saleNumber: i.saleNumber
+        })));
+      }
+      
       // Combine active and sold items
       const allItems = [...activeItems, ...soldItems];
       console.log(`✅ Combined total: ${allItems.length} items (${activeItems.length} active + ${soldItems.length} sold)`);
@@ -316,6 +326,16 @@ export default async function handler(req, res) {
       const items = parseGetSellerListXML(sellerListXml, transactionsByItemId);
       
       console.log('✅ Parsed listings:', items.length);
+      
+      // Debug: Log sample items to verify unique IDs
+      if (items.length > 0) {
+        console.log('🔍 Sample item IDs:', items.slice(0, 5).map(i => ({
+          itemId: i.itemId,
+          originalItemId: i.originalItemId,
+          buyer: i.buyerUsername,
+          saleNumber: i.saleNumber
+        })));
+      }
       
       return res.status(200).json({ 
         listings: items,
