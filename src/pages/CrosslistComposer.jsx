@@ -39600,7 +39600,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between">
                     <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
                     {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
                       handleGeneralChange("zip", v)
@@ -45401,7 +45401,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between">
                             <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
                             {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
                               handleGeneralChange("zip", v)
