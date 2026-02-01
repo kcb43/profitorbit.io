@@ -1445,15 +1445,14 @@ export default function SalesHistory() {
               ) : (
                 <>
                   <CardTitle className="text-white break-words">
-                    {showDeletedOnly ? `Deleted Sales (${filteredSales.length})` : `All Sales (${filteredSales.length})`}
+                    {showDeletedOnly ? "Deleted Sales" : "All Sales"}
                   </CardTitle>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full sm:w-auto">
-                    {showDeletedOnly && (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 min-w-0 w-full sm:w-auto">
+                    {/* Sort dropdown */}
+                    <div className="flex items-center gap-2">
                       <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">
-                        Sort by:
+                        Sort By:
                       </Label>
-                    )}
-                    {showDeletedOnly && (
                       <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
                         <SelectTrigger id="sort-by" className="w-full sm:w-[180px]">
                           <SelectValue placeholder="Sort by" />
@@ -1465,25 +1464,11 @@ export default function SalesHistory() {
                           <SelectItem value="sale_speed">Fastest Sale</SelectItem>
                         </SelectContent>
                       </Select>
-                    )}
-                    {!showDeletedOnly && (
-                      <>
-                        <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">
-                          Sort by:
-                        </Label>
-                        <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
-                          <SelectTrigger id="sort-by" className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Sort by" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="sale_date">Most Recent</SelectItem>
-                            <SelectItem value="profit">Highest Profit</SelectItem>
-                            <SelectItem value="roi">Highest ROI</SelectItem>
-                            <SelectItem value="sale_speed">Fastest Sale</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </>
-                    )}
+                      {/* Show count to the right of Sort By (desktop only) */}
+                      <span className="hidden lg:block text-sm text-white/80 whitespace-nowrap">
+                        Showing {filteredSales.length} {filteredSales.length === 1 ? 'sale' : 'sales'}
+                      </span>
+                    </div>
                   </div>
                 </>
               )}
