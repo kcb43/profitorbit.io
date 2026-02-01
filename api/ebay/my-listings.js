@@ -107,8 +107,21 @@ export default async function handler(req, res) {
     let xmlRequest;
     
     if (status === 'All') {
-      // Fetch both Active and Sold listings (skip unsold)
-      xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+      // For "All" status, we need to fetch both Active and Sold items
+      // We'll make API calls in parallel for best performance:
+      // 1. GetMyeBaySelling for Active items (fast, includes images)
+      // 2. GetOrders for sold transaction details (buyer info, accurate dates)
+      // 3. GetSellerList for sold item details and images
+      // Then merge them together
+      
+      console.log('📋 Fetching Active and Sold items in parallel...');
+      
+      const createTimeFrom = getDateDaysAgo(90);
+      const endTimeFrom = getDateDaysAgo(90);
+      const endTimeTo = new Date().toISOString();
+      
+      // Build all 3 requests
+      const activeRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
@@ -120,23 +133,9 @@ export default async function handler(req, res) {
       <PageNumber>1</PageNumber>
     </Pagination>
   </ActiveList>
-  <SoldList>
-    <Include>true</Include>
-    <DaysBeforeToday>60</DaysBeforeToday>
-    <Pagination>
-      <EntriesPerPage>${limit}</EntriesPerPage>
-      <PageNumber>1</PageNumber>
-    </Pagination>
-  </SoldList>
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
-    } else if (status === 'Ended' || status === 'Sold') {
-      // For sold items, fetch both GetSellerList (for items with images) 
-      // AND GetOrders (for individual transaction details)
-      // Then merge them to show each sale separately with accurate dates
-      
-      // First get GetOrders for transaction-level data
-      const createTimeFrom = getDateDaysAgo(90);
+
       const getOrdersRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
@@ -151,30 +150,7 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetOrdersRequest>`;
 
-      console.log('🔍 Fetching orders for transaction-level data...');
-      const ordersResponse = await fetch(tradingUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml',
-          'X-EBAY-API-SITEID': '0',
-          'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-          'X-EBAY-API-CALL-NAME': 'GetOrders',
-        },
-        body: getOrdersRequest,
-      });
-      
-      let transactionsByItemId = {};
-      if (ordersResponse.ok) {
-        const ordersXml = await ordersResponse.text();
-        transactionsByItemId = parseOrdersToTransactions(ordersXml);
-        console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
-      }
-      
-      // Then get GetSellerList for item details and images
-      const endTimeFrom = getDateDaysAgo(90);
-      const endTimeTo = new Date().toISOString();
-      
-      xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+      const getSellerListRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetSellerListRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
@@ -189,8 +165,163 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetSellerListRequest>`;
 
-      // Store transactions for later merging
-      req.transactionsByItemId = transactionsByItemId;
+      // Make all 3 API calls in parallel using Promise.all
+      const [activeResponse, ordersResponse, sellerListResponse] = await Promise.all([
+        fetch(tradingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+            'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
+          },
+          body: activeRequest,
+        }),
+        fetch(tradingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+            'X-EBAY-API-CALL-NAME': 'GetOrders',
+          },
+          body: getOrdersRequest,
+        }),
+        fetch(tradingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+            'X-EBAY-API-CALL-NAME': 'GetSellerList',
+          },
+          body: getSellerListRequest,
+        })
+      ]);
+      
+      // Parse active items
+      if (!activeResponse.ok) {
+        throw new Error(`eBay API error: ${activeResponse.status}`);
+      }
+      const activeXml = await activeResponse.text();
+      const activeItems = parseMyeBaySellingXML(activeXml, 'Active');
+      console.log(`✅ Fetched ${activeItems.length} active items`);
+      
+      // Parse orders for transaction data
+      let transactionsByItemId = {};
+      if (ordersResponse.ok) {
+        const ordersXml = await ordersResponse.text();
+        transactionsByItemId = parseOrdersToTransactions(ordersXml);
+        console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
+      }
+      
+      // Parse sold items with transaction data
+      if (!sellerListResponse.ok) {
+        throw new Error(`eBay API error: ${sellerListResponse.status}`);
+      }
+      const sellerListXml = await sellerListResponse.text();
+      const soldItems = parseGetSellerListXML(sellerListXml, transactionsByItemId);
+      console.log(`✅ Fetched ${soldItems.length} sold items`);
+      
+      // Combine active and sold items
+      const allItems = [...activeItems, ...soldItems];
+      console.log(`✅ Combined total: ${allItems.length} items (${activeItems.length} active + ${soldItems.length} sold)`);
+      
+      return res.status(200).json({ 
+        listings: allItems,
+        total: allItems.length,
+        active: activeItems.length,
+        sold: soldItems.length,
+      });
+      
+    } else if (status === 'Ended' || status === 'Sold') {
+      // For sold items, fetch both GetSellerList (for items with images) 
+      // AND GetOrders (for individual transaction details)
+      // Make these calls in PARALLEL for better performance
+      
+      const createTimeFrom = getDateDaysAgo(90);
+      const endTimeFrom = getDateDaysAgo(90);
+      const endTimeTo = new Date().toISOString();
+      
+      const getOrdersRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <CreateTimeFrom>${createTimeFrom}</CreateTimeFrom>
+  <OrderRole>Seller</OrderRole>
+  <Pagination>
+    <EntriesPerPage>200</EntriesPerPage>
+    <PageNumber>1</PageNumber>
+  </Pagination>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetOrdersRequest>`;
+
+      const getSellerListRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetSellerListRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <EndTimeFrom>${endTimeFrom}</EndTimeFrom>
+  <EndTimeTo>${endTimeTo}</EndTimeTo>
+  <IncludeWatchCount>false</IncludeWatchCount>
+  <Pagination>
+    <EntriesPerPage>${limit}</EntriesPerPage>
+    <PageNumber>1</PageNumber>
+  </Pagination>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetSellerListRequest>`;
+
+      console.log('🚀 Fetching orders and seller list in parallel for faster performance...');
+      
+      // Make both API calls in parallel using Promise.all
+      const [ordersResponse, sellerListResponse] = await Promise.all([
+        fetch(tradingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+            'X-EBAY-API-CALL-NAME': 'GetOrders',
+          },
+          body: getOrdersRequest,
+        }),
+        fetch(tradingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+            'X-EBAY-API-CALL-NAME': 'GetSellerList',
+          },
+          body: getSellerListRequest,
+        })
+      ]);
+      
+      // Parse orders response
+      let transactionsByItemId = {};
+      if (ordersResponse.ok) {
+        const ordersXml = await ordersResponse.text();
+        transactionsByItemId = parseOrdersToTransactions(ordersXml);
+        console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
+      }
+      
+      // Check seller list response
+      if (!sellerListResponse.ok) {
+        throw new Error(`eBay API error: ${sellerListResponse.status}`);
+      }
+      
+      // Parse seller list response with transaction data
+      const sellerListXml = await sellerListResponse.text();
+      const items = parseGetSellerListXML(sellerListXml, transactionsByItemId);
+      
+      console.log('✅ Parsed listings:', items.length);
+      
+      return res.status(200).json({ 
+        listings: items,
+        total: items.length,
+      });
+      
     } else {
       // Default: Fetch only Active listings
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
