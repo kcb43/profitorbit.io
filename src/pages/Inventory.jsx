@@ -2267,8 +2267,10 @@ export default function InventoryPage() {
                       {/* Desktop list layout (new) */}
                       <div
                         onClick={(e) => {
-                          // Only toggle if clicking on the card itself, not interactive elements
-                          if (e.target === e.currentTarget || e.target.closest('.card-clickable-area')) {
+                          // Only toggle if NOT clicking on an interactive element
+                          const target = e.target;
+                          const isInteractive = target.closest('button, a, input, textarea, select, [role="button"]');
+                          if (!isInteractive) {
                             handleSelect(item.id);
                           }
                         }}
@@ -2312,9 +2314,9 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Details */}
-                          <div className={`card-clickable-area min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
+                          <div className={`min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
                             <div className="flex items-start justify-between gap-3 mb-3">
-                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1 rounded-xl`}>
                                   {statusLabels[item.status] || statusLabels.available}
                                 </Badge>
@@ -2386,7 +2388,6 @@ export default function InventoryPage() {
                             <Link
                               to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
                               state={returnStateForInventory}
-                              onClick={(e) => e.stopPropagation()}
                               className="block mb-2"
                             >
                               <h3 className="text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
@@ -2455,7 +2456,7 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Actions */}
-                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
                             <Button
                               onClick={() => {
                                 setItemToView(item);

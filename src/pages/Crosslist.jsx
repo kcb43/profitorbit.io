@@ -2075,8 +2075,10 @@ export default function Crosslist() {
                 <div
                   key={it.id}
                   onClick={(e) => {
-                    // Only toggle if clicking on the card itself, not interactive elements
-                    if (e.target === e.currentTarget || e.target.closest('.card-clickable-area')) {
+                    // Only toggle if NOT clicking on an interactive element
+                    const target = e.target;
+                    const isInteractive = target.closest('button, a, input, textarea, select, [role="button"]');
+                    if (!isInteractive) {
                       toggleSelect(it.id);
                     }
                   }}
@@ -2110,7 +2112,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Details Section */}
-                    <div className={`card-clickable-area min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
+                    <div className={`min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
                     {/* Status Badge */}
                       <div className="flex items-center justify-between gap-3 mb-3">
                         <Badge className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} px-3 py-1.5 rounded-xl text-xs font-semibold`}>
@@ -2135,7 +2137,7 @@ export default function Crosslist() {
                     </p>
 
                     {/* Marketplace Icons & List Buttons */}
-                    <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center gap-2">
                       {MARKETPLACES.map((m) => {
                         const state = map[m.id];
                         const isListed = state === 'active';
@@ -2220,7 +2222,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
                     {/* Crosslist Button */}
                     <Button
                       onClick={() => openComposer([it.id], false)}
