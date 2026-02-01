@@ -35053,9 +35053,9 @@ export default function CrosslistComposer() {
           </span>
         </span>
         {isUsingDefault ? (
-          <Check className="h-4 w-4 text-black" />
+          <Check className="h-4 w-4 text-foreground" />
         ) : (
-          <Save className="h-4 w-4 text-black" />
+          <Save className="h-4 w-4 text-foreground" />
         )}
       </button>
     );
@@ -35156,9 +35156,9 @@ export default function CrosslistComposer() {
           </span>
         </span>
         {isUsingDefault ? (
-          <Check className="h-4 w-4 text-black" />
+          <Check className="h-4 w-4 text-foreground" />
         ) : (
-          <Save className="h-4 w-4 text-black" />
+          <Save className="h-4 w-4 text-foreground" />
         )}
       </button>
     );
@@ -35255,9 +35255,9 @@ export default function CrosslistComposer() {
           </span>
         </span>
         {isUsingDefault ? (
-          <Check className="h-4 w-4 text-black" />
+          <Check className="h-4 w-4 text-foreground" />
         ) : (
-          <Save className="h-4 w-4 text-black" />
+          <Save className="h-4 w-4 text-foreground" />
         )}
       </button>
     );
@@ -35353,9 +35353,9 @@ export default function CrosslistComposer() {
           </span>
         </span>
         {isUsingDefault ? (
-          <Check className="h-4 w-4 text-black" />
+          <Check className="h-4 w-4 text-foreground" />
         ) : (
-          <Save className="h-4 w-4 text-black" />
+          <Save className="h-4 w-4 text-foreground" />
         )}
       </button>
     );
