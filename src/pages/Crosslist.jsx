@@ -586,6 +586,7 @@ export default function Crosslist() {
     'item_name',
     'status',
     'purchase_price',
+    'listing_price',
     'purchase_date',
     'category',
     'source',
@@ -593,6 +594,10 @@ export default function Crosslist() {
     'images',
     'photos',
     'notes',
+    'description',
+    'brand',
+    'condition',
+    'size',
     'deleted_at',
   ].join(',')), []);
 
