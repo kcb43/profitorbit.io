@@ -9,6 +9,13 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Helper to get date N days ago in ISO format
+function getDateDaysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString();
+}
+
 // Helper to get user ID from request
 function getUserId(req) {
   return req.headers['x-user-id'] || null;
@@ -96,22 +103,22 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
     } else if (status === 'Ended' || status === 'Sold') {
-      // Fetch only Sold listings (not unsold/expired)
+      // Fetch sold items from Orders API (more comprehensive than SoldList)
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
-  <SoldList>
-    <Include>true</Include>
-    <DaysBeforeToday>60</DaysBeforeToday>
-    <Pagination>
-      <EntriesPerPage>${limit}</EntriesPerPage>
-      <PageNumber>1</PageNumber>
-    </Pagination>
-  </SoldList>
+  <CreateTimeFrom>${getDateDaysAgo(60)}</CreateTimeFrom>
+  <CreateTimeTo>${new Date().toISOString()}</CreateTimeTo>
+  <OrderRole>Seller</OrderRole>
+  <OrderStatus>Completed</OrderStatus>
+  <Pagination>
+    <EntriesPerPage>${limit}</EntriesPerPage>
+    <PageNumber>1</PageNumber>
+  </Pagination>
   <DetailLevel>ReturnAll</DetailLevel>
-</GetMyeBaySellingRequest>`;
+</GetOrdersRequest>`;
     } else {
       // Default: Fetch only Active listings
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
@@ -136,7 +143,7 @@ export default async function handler(req, res) {
         'Content-Type': 'text/xml',
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-        'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
+        'X-EBAY-API-CALL-NAME': status === 'Sold' || status === 'Ended' ? 'GetOrders' : 'GetMyeBaySelling',
       },
       body: xmlRequest,
     });
@@ -160,7 +167,9 @@ export default async function handler(req, res) {
     console.log('  - Has UnsoldList:', xmlText.includes('<UnsoldList>'));
 
     // Parse XML response
-    const items = parseMyeBaySellingXML(xmlText, status);
+    const items = status === 'Sold' || status === 'Ended' 
+      ? parseGetOrdersXML(xmlText, status)
+      : parseMyeBaySellingXML(xmlText, status);
     console.log('✅ Parsed listings:', items.length);
     console.log('📊 Status breakdown:', {
       active: items.filter(i => i.status === 'Active').length,
@@ -212,6 +221,125 @@ export default async function handler(req, res) {
       details: error.stack,
     });
   }
+}
+
+// Helper function to parse GetOrders XML response (for sold items)
+function parseGetOrdersXML(xml, requestedStatus) {
+  const items = [];
+  
+  console.log('🔍 Parser: Parsing GetOrders response for sold items...');
+  
+  // Extract OrderArray section
+  const orderArrayMatch = xml.match(/<OrderArray>([\s\S]*?)<\/OrderArray>/);
+  if (!orderArrayMatch) {
+    console.log('⚠️ No OrderArray found in GetOrders response');
+    return items;
+  }
+  
+  // Match all Order elements
+  const orderRegex = /<Order>([\s\S]*?)<\/Order>/g;
+  let orderMatch;
+  let orderCount = 0;
+
+  while ((orderMatch = orderRegex.exec(orderArrayMatch[1])) !== null) {
+    orderCount++;
+    const orderXml = orderMatch[1];
+    
+    // Extract order-level fields
+    const getField = (field) => {
+      const match = orderXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+      return match ? match[1] : null;
+    };
+    
+    const orderStatus = getField('OrderStatus');
+    const createdTime = getField('CreatedTime'); // Date Sold
+    
+    // Skip cancelled orders
+    if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') {
+      console.log(`  ⏭️ Skipping cancelled order`);
+      continue;
+    }
+    
+    // Extract TransactionArray
+    const transactionArrayMatch = orderXml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
+    if (!transactionArrayMatch) continue;
+    
+    // Match all Transaction elements
+    const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
+    let transactionMatch;
+    
+    while ((transactionMatch = transactionRegex.exec(transactionArrayMatch[1])) !== null) {
+      const transactionXml = transactionMatch[1];
+      
+      // Extract Item from transaction
+      const itemMatch = transactionXml.match(/<Item>([\s\S]*?)<\/Item>/);
+      if (!itemMatch) continue;
+      
+      const itemXml = itemMatch[1];
+      
+      const getItemField = (field) => {
+        const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+        return match ? match[1] : null;
+      };
+      
+      // Get quantity from transaction level
+      const quantityMatch = transactionXml.match(/<QuantityPurchased>([^<]*)<\/QuantityPurchased>/);
+      const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
+      
+      // Extract PictureURL fields
+      const pictureURLs = [];
+      const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+      let pictureMatch;
+      while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
+        const url = pictureMatch[1];
+        if (url && url.startsWith('http')) {
+          pictureURLs.push(url);
+        }
+      }
+      
+      if (pictureURLs.length === 0) {
+        const galleryURL = getItemField('GalleryURL');
+        if (galleryURL && galleryURL.startsWith('http')) {
+          pictureURLs.push(galleryURL);
+        }
+      }
+
+      const itemId = getItemField('ItemID');
+      const title = getItemField('Title');
+      
+      // Get price from TransactionPrice
+      const transPriceMatch = transactionXml.match(/<TransactionPrice[^>]*>([^<]+)<\/TransactionPrice>/);
+      const transactionPrice = transPriceMatch ? transPriceMatch[1] : null;
+      
+      const listingType = getItemField('ListingType');
+      const viewItemURL = getItemField('ViewItemURL');
+      const startTime = getItemField('StartTime');
+      
+      console.log(`📊 Sold Item ${itemId} price: ${transactionPrice}, qty: ${quantity}, sold: ${createdTime}`);
+
+      if (itemId && title) {
+        items.push({
+          itemId,
+          title,
+          price: parseFloat(transactionPrice) || 0,
+          quantity: quantity,
+          quantitySold: quantity,
+          imageUrl: pictureURLs[0] || null,
+          pictureURLs,
+          listingType,
+          viewItemURL,
+          startTime,
+          endTime: createdTime, // Date sold
+          status: 'Sold',
+          description: '',
+          condition: 'USED',
+        });
+      }
+    }
+  }
+  
+  console.log(`✅ Parsed ${items.length} sold items from GetOrders (${orderCount} orders processed)`);
+  return items;
 }
 
 // Helper function to parse GetMyeBaySelling XML response
