@@ -1142,14 +1142,13 @@ export default function AddInventoryItem() {
                     <div className="space-y-2 min-w-0">
                         <Label htmlFor="condition" className="dark:text-gray-200 break-words">Condition</Label>
                         <Select
-                            value={formData.condition || ""}
+                            value={formData.condition || undefined}
                             onValueChange={(value) => handleChange('condition', value)}
                         >
                             <SelectTrigger id="condition" className="w-full">
                                 <SelectValue placeholder="Select condition" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">None</SelectItem>
                                 {CONDITION_OPTIONS.map(cond => (
                                     <SelectItem key={cond} value={cond}>{cond}</SelectItem>
                                 ))}
