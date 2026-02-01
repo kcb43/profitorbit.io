@@ -459,6 +459,17 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         imported: false // Will be updated by frontend
       };
       
+      // Debug log for date fields on first item
+      if (index === 0) {
+        console.log('🕐 Date field debug:', {
+          itemId: item.id,
+          raw_created: item.created,
+          raw_updated: item.updated,
+          startTime: listing.startTime,
+          listingDate: listing.listingDate
+        });
+      }
+      
       // If description is empty, try to scrape it from the page
       if (!listing.description || listing.description.length === 0) {
         console.log(`📝 Description empty for ${item.id}, attempting to scrape from page...`);
@@ -474,6 +485,8 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
           itemId: listing.itemId,
           title: listing.title?.substring(0, 50),
           price: listing.price,
+          startTime: listing.startTime,
+          listingDate: listing.listingDate,
           description: listing.description?.substring(0, 100),
           condition: listing.condition,
           brand: listing.brand,
