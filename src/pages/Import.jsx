@@ -99,14 +99,62 @@ export default function Import() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [itemsToClear, setItemsToClear] = useState([]);
+  const [expandedItems, setExpandedItems] = useState([]); // Track which items have orders expanded
+  const [itemOrders, setItemOrders] = useState({}); // Store fetched orders by itemId
 
   // Toggle item ID visibility
   const toggleItemIdVisibility = (itemId) => {
     setVisibleItemIds(prev => 
-      prev.includes(itemId) 
+      prev.includes(itemId)
         ? prev.filter(id => id !== itemId)
         : [...prev, itemId]
     );
+  };
+
+  // Toggle order details expansion for items with multiple sales
+  const toggleOrdersExpansion = async (itemId) => {
+    const isExpanded = expandedItems.includes(itemId);
+    
+    if (isExpanded) {
+      // Collapse
+      setExpandedItems(prev => prev.filter(id => id !== itemId));
+    } else {
+      // Expand and fetch order details if not already fetched
+      setExpandedItems(prev => [...prev, itemId]);
+      
+      if (!itemOrders[itemId]) {
+        try {
+          const response = await fetch(`/api/ebay/item-orders?itemId=${itemId}`, {
+            headers: {
+              'x-user-id': userId,
+              'x-user-token': ebayToken,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setItemOrders(prev => ({
+              ...prev,
+              [itemId]: data.orders || [],
+            }));
+          } else {
+            console.error('Failed to fetch item orders:', await response.text());
+            toast({
+              title: "Error",
+              description: "Failed to load order details. Please try again.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching item orders:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load order details. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
   };
 
   // Save the location state on mount so we don't lose it
@@ -1598,7 +1646,28 @@ export default function Import() {
                           ${item.price}
                           {/* Show quantity sold for eBay sold items */}
                           {selectedSource === "ebay" && item.status === "Sold" && item.quantitySold > 1 && (
-                            <> · Qty Sold: {item.quantitySold}</>
+                            <>
+                              {" · "}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleOrdersExpansion(item.itemId);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300 font-medium inline-flex items-center gap-1"
+                              >
+                                Qty Sold: {item.quantitySold}
+                                <svg 
+                                  xmlns="http://www.w3.org/2000/svg" 
+                                  className={`h-3 w-3 transition-transform ${expandedItems.includes(item.itemId) ? 'rotate-180' : ''}`}
+                                  viewBox="0 0 24 24" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  strokeWidth="2"
+                                >
+                                  <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                              </button>
+                            </>
                           )}
                            · 
                           {visibleItemIds.includes(item.itemId) ? (
@@ -1695,6 +1764,60 @@ export default function Import() {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Expanded Order Details for items with multiple sales */}
+                    {selectedSource === "ebay" && 
+                     item.status === "Sold" && 
+                     item.quantitySold > 1 && 
+                     expandedItems.includes(item.itemId) && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className="text-sm font-medium mb-3">Individual Sales ({item.quantitySold} total)</h4>
+                        {!itemOrders[item.itemId] ? (
+                          <div className="flex items-center justify-center py-4">
+                            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+                            <span className="text-sm text-muted-foreground">Loading order details...</span>
+                          </div>
+                        ) : itemOrders[item.itemId].length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-2">No order details found (may be outside 90-day window)</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {itemOrders[item.itemId].map((order, idx) => (
+                              <div 
+                                key={order.transactionId || idx}
+                                className="bg-gray-50 dark:bg-gray-900 rounded p-3 text-sm"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      Sale {idx + 1} - {order.quantity > 1 ? `${order.quantity} units` : '1 unit'}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                      Sold: {format(new Date(order.dateSold), "MMM dd, yyyy 'at' h:mm a")}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                      Price: ${order.price.toFixed(2)}
+                                      {order.quantity > 1 && ` (${order.quantity} × $${(order.price / order.quantity).toFixed(2)})`}
+                                    </p>
+                                    {order.buyerUsername && (
+                                      <p className="text-muted-foreground">Buyer: {order.buyerUsername}</p>
+                                    )}
+                                  </div>
+                                  <a
+                                    href={order.orderUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium whitespace-nowrap ml-2"
+                                  >
+                                    View Order →
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>
