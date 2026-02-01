@@ -716,9 +716,13 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
         transactions.forEach((txn, idx) => {
           console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}, OrderID = ${txn.orderId}, TransactionID = ${txn.transactionId}`);
           
+          // Create a unique itemId for each transaction to prevent duplicates
+          // Format: {itemId}-txn-{transactionId} or {itemId}-order-{orderId}-{idx}
+          const uniqueItemId = txn.transactionId 
+            ? `${itemId}-txn-${txn.transactionId}`
+            : `${itemId}-order-${txn.orderId}-${idx}`;
+          
           // Generate unique transaction URL for this specific sale
-          // Use the item URL with transaction parameter to make it unique
-          // Format: https://www.ebay.com/itm/{itemId}?ViewItem&item={itemId}&transid={transactionId}
           let saleURL = viewItemURL; // Default to item URL
           
           if (txn.transactionId) {
@@ -731,7 +735,8 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
           }
           
           items.push({
-            itemId,
+            itemId: uniqueItemId, // Use unique ID for each transaction
+            originalItemId: itemId, // Keep original item ID for reference
             title,
             price: txn.price,
             quantity: parseInt(quantity) || 0,
