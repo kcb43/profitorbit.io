@@ -161,6 +161,13 @@ export default async function handler(req, res) {
 
     const xmlText = await response.text();
     console.log('📡 Raw XML response length:', xmlText.length);
+    
+    // Log first 1000 chars if response is suspiciously short (likely an error)
+    if (xmlText.length < 5000) {
+      console.log('⚠️ Short XML response (likely error):');
+      console.log(xmlText.substring(0, 1000));
+    }
+    
     console.log('🔍 Checking for list types in response...');
     console.log('  - Has ActiveList:', xmlText.includes('<ActiveList>'));
     console.log('  - Has SoldList:', xmlText.includes('<SoldList>'));
