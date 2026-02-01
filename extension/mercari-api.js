@@ -262,23 +262,12 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
     console.log('📄 Pagination:', pagination);
     console.log('📦 Sample item from userItemsQuery:', items[0]); // Log full item structure
 
-    // Fetch detailed information for each item
-    console.log('🔍 Fetching detailed information for all items...');
-    const detailsPromises = items.map(item => 
-      fetchMercariItemDetails(item.id, bearerToken, csrfToken)
-    );
-    const itemDetails = await Promise.all(detailsPromises);
-    const successfulDetails = itemDetails.filter(Boolean).length;
-    console.log(`✅ Fetched details for ${successfulDetails} of ${items.length} items`);
-    
-    if (successfulDetails === 0) {
-      console.warn('⚠️ No detailed information retrieved - items will have basic data only');
-    }
+    // TODO: Detailed item fetching disabled - need to find correct persisted query hash
+    // For now, use title as description since Mercari titles often contain condition/brand/size
+    console.log('ℹ️ Using basic item data only (detailed fetch requires correct persisted query hash)');
 
-    // Transform to our format with detailed information
+    // Transform to our format with basic information
     const listings = items.map((item, index) => {
-      const details = itemDetails[index] || {};
-      
       const listing = {
         itemId: item.id,
         title: item.name,
@@ -292,13 +281,14 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         updated: item.updated ? new Date(item.updated * 1000).toISOString() : null,
         listingDate: item.updated ? new Date(item.updated * 1000).toISOString() : null,
         startTime: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-        // Detailed fields from item details query
-        description: details.description || null,
-        condition: details.condition || null,
-        brand: details.brand || null,
-        category: details.category || null,
-        size: details.size || null,
-        color: details.color || null,
+        // Use title as description for now (Mercari titles often have details)
+        description: item.name || null,
+        // These fields would need detailed query (disabled for now)
+        condition: null,
+        brand: null,
+        category: null,
+        size: null,
+        color: null,
         imported: false // Will be updated by frontend
       };
       
@@ -307,11 +297,9 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         console.log('📦 First listing sample:', {
           itemId: listing.itemId,
           title: listing.title?.substring(0, 50),
+          price: listing.price,
           hasDescription: !!listing.description,
-          descriptionLength: listing.description?.length,
-          condition: listing.condition,
-          brand: listing.brand,
-          size: listing.size
+          descriptionLength: listing.description?.length
         });
       }
       
