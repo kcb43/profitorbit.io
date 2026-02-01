@@ -352,6 +352,10 @@ function parseOrdersToTransactions(xml) {
     const orderId = getField('OrderID');
     const createdTime = getField('CreatedTime');
     
+    // Get buyer info at order level (applies to all transactions in this order)
+    const orderBuyerMatch = orderXml.match(/<BuyerUserID>([^<]*)<\/BuyerUserID>/);
+    const orderBuyerUsername = orderBuyerMatch ? orderBuyerMatch[1] : null;
+    
     // Skip cancelled orders
     if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') {
       continue;
@@ -394,13 +398,20 @@ function parseOrdersToTransactions(xml) {
       const transactionIdMatch = transactionXml.match(/<TransactionID>([^<]*)<\/TransactionID>/);
       const transactionId = transactionIdMatch ? transactionIdMatch[1] : null;
       
-      // Get buyer info
+      // Get buyer info - try transaction level first, then fall back to order level
       const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
       let buyerUsername = null;
       if (buyerMatch) {
         const userIdMatch = buyerMatch[1].match(/<UserID>([^<]*)<\/UserID>/);
         buyerUsername = userIdMatch ? userIdMatch[1] : null;
       }
+      
+      // Fallback to order-level buyer if transaction-level not found
+      if (!buyerUsername) {
+        buyerUsername = orderBuyerUsername;
+      }
+      
+      console.log(`  👤 Item ${itemId}: Buyer = ${buyerUsername || 'NOT FOUND'}`);
       
       // Store transaction for this item
       if (!transactionsByItemId[itemId]) {
@@ -544,6 +555,7 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
         // Create separate entries for each transaction with accurate sale dates
         console.log(`  🔄 Expanding item ${itemId} into ${transactions.length} individual sales`);
         transactions.forEach((txn, idx) => {
+          console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}`);
           items.push({
             itemId,
             title,
