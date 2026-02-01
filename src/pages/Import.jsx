@@ -248,6 +248,7 @@ export default function Import() {
       });
       
       console.log('📡 Response status:', response.status);
+      console.log('📊 Request params:', { listingStatus, userId: userId.substring(0, 8) + '...' });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -259,6 +260,24 @@ export default function Import() {
       }
       const data = await response.json();
       console.log('✅ Fetched listings:', data.listings?.length || 0, 'items');
+      
+      // Log status breakdown
+      const statusCounts = data.listings?.reduce((acc, item) => {
+        acc[item.status || 'unknown'] = (acc[item.status || 'unknown'] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📊 Status breakdown:', statusCounts);
+      
+      // Log first few items for debugging
+      if (data.listings?.length > 0) {
+        console.log('📦 Sample items:', data.listings.slice(0, 3).map(item => ({
+          id: item.itemId,
+          title: item.title?.substring(0, 30) + '...',
+          status: item.status,
+          price: item.price
+        })));
+      }
+      
       setLastSync(new Date());
       return data.listings || [];
     },
