@@ -337,8 +337,6 @@ export default async function handler(req, res) {
   </RequesterCredentials>
   <ItemID>${itemId}</ItemID>
   <IncludeFinalValueFee>true</IncludeFinalValueFee>
-  <ModTimeFrom>${createTimeFrom}</ModTimeFrom>
-  <ModTimeTo>${endTimeTo}</ModTimeTo>
 </GetItemTransactionsRequest>`;
 
           try {
