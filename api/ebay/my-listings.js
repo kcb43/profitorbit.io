@@ -261,7 +261,17 @@ export default async function handler(req, res) {
     console.log('📊 Status breakdown:', {
       active: items.filter(i => i.status === 'Active').length,
       ended: items.filter(i => i.status === 'Ended').length,
+      sold: items.filter(i => i.status === 'Sold').length,
     });
+    
+    // Safeguard: Filter items by requested status to prevent mixing
+    if (status === 'Active') {
+      items = items.filter(item => item.status === 'Active');
+      console.log(`🔒 Filtered to Active only: ${items.length} items`);
+    } else if (status === 'Sold' || status === 'Ended') {
+      items = items.filter(item => item.status === 'Sold' || item.status === 'Ended');
+      console.log(`🔒 Filtered to Sold/Ended only: ${items.length} items`);
+    }
     
     // Debug: Log first item's image data
     if (items.length > 0) {
