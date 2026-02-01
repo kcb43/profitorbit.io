@@ -32,21 +32,17 @@ This $45 then propagates to all marketplace forms (eBay, Mercari, Facebook, Etsy
 
 ## User Workflow
 
-### Scenario 1: Reselling Your Own Items
+### Typical Use Case: Reference Pricing
 ```
 1. Import item from Facebook ($45)
-2. Add your actual cost in inventory ($20)
+   ↓ This is what someone else is asking for a similar item
+2. Leave purchase price blank in inventory
 3. Crosslist → Price auto-fills to $45
-4. Profit margin shown: $25
+4. Adjust price as needed based on your item's condition/features
+5. List across marketplaces
 ```
 
-### Scenario 2: Importing for Reference
-```
-1. Import item from Facebook ($45)
-2. Leave purchase price blank (don't know cost)
-3. Crosslist → Price auto-fills to $45
-4. List across marketplaces with suggested price
-```
+**Note**: The $45 is just a **reference price** from Facebook - what someone else is listing their item for. It's not a recommendation or profit calculation. You should adjust based on your item's actual condition, market demand, and your costs.
 
 ## Technical Implementation
 
@@ -77,11 +73,13 @@ const general = {
 
 ## Benefits
 
-1. **Accurate Profit Tracking** - Separates listing price from purchase cost
+1. **Reference Pricing** - Use Facebook prices as market reference, not recommendations
 2. **Flexible Workflow** - Can add purchase cost later when known
-3. **Smart Defaults** - Facebook price auto-fills in crosslist form
+3. **Quick Import** - Facebook price auto-fills in crosslist form for convenience
 4. **Clear UX** - Helper text explains the difference
 5. **Consistent Logic** - Same behavior for Facebook and Mercari imports
+
+**Important**: Facebook prices are reference data only. Future AI features may provide smart pricing suggestions based on real-time market data.
 
 ## Other Marketplaces
 
@@ -102,7 +100,8 @@ Traditional logic:
 
 ## Future Enhancements
 
-- [ ] Auto-calculate suggested markup based on category
-- [ ] Profit margin calculator in crosslist form
+- [ ] **AI-powered pricing assistant** - Analyze current market prices and suggest optimal listing prices
+- [ ] Profit margin calculator (when purchase cost is known)
 - [ ] Historical pricing data for similar items
-- [ ] Auto-suggest listing price based on market data
+- [ ] Real-time market analysis for pricing recommendations
+- [ ] Competitive pricing alerts
