@@ -1950,7 +1950,7 @@ export default function InventoryPage() {
                   const today = new Date();
                   const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
                   const daysRemaining = deadline && isAfter(deadline, today) ? differenceInDays(deadline, today) + 1 : null;
-                  const perItemPrice = item.purchase_price / (item.quantity > 0 ? item.quantity : 1);
+                  const perItemPrice = (item.purchase_price || 0) / (item.quantity > 0 ? item.quantity : 1);
                   const quantitySold = item.quantity_sold || 0;
                   const isSoldOut = quantitySold >= item.quantity;
                   const availableToSell = item.quantity - quantitySold;
@@ -2135,8 +2135,8 @@ export default function InventoryPage() {
                           <div>
                             <span>Price: </span>
                             <span className="font-medium text-gray-900 dark:text-white">
-                              ${item.purchase_price.toFixed(2)}
-                              {item.quantity > 1 && <span className="text-gray-600 dark:text-gray-400 ml-1">(${perItemPrice.toFixed(2)} ea)</span>}
+                              ${(item.purchase_price || 0).toFixed(2)}
+                              {item.quantity > 1 && <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
@@ -2565,7 +2565,7 @@ export default function InventoryPage() {
                 const today = new Date();
                 const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
                 const daysRemaining = deadline && isAfter(deadline, today) ? differenceInDays(deadline, today) + 1 : null;
-                const perItemPrice = item.purchase_price / (item.quantity > 0 ? item.quantity : 1);
+                const perItemPrice = (item.purchase_price || 0) / (item.quantity > 0 ? item.quantity : 1);
                 const quantitySold = item.quantity_sold || 0;
                 const isSoldOut = quantitySold >= item.quantity;
                 const availableToSell = item.quantity - quantitySold;
