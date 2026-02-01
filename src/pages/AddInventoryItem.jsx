@@ -62,6 +62,18 @@ const PREDEFINED_CATEGORIES = [
   "Yoga"
 ];
 
+const CONDITION_OPTIONS = [
+  "New",
+  "New with tags",
+  "New without tags",
+  "New with defects",
+  "Used - Like new",
+  "Used - Excellent",
+  "Used - Good",
+  "Used - Fair",
+  "For parts or not working"
+];
+
 const RETURN_WINDOWS = {
   "Amazon": 30,
   "Walmart": 90,
@@ -116,6 +128,9 @@ export default function AddInventoryItem() {
     source: "",
     status: "available",
     category: "",
+    brand: "", // NEW: Brand field
+    condition: "", // NEW: Condition field
+    size: "", // NEW: Size field
     description: "",
     notes: "",
     image_url: "",
@@ -1110,6 +1125,50 @@ export default function AddInventoryItem() {
                             />
                         </div>
                     ) : null}
+
+                    {/* Brand Field */}
+                    <div className="space-y-2 min-w-0">
+                        <Label htmlFor="brand" className="dark:text-gray-200 break-words">Brand</Label>
+                        <Input
+                            id="brand"
+                            placeholder="e.g., Nike, Adidas, Unbranded"
+                            value={formData.brand || ""}
+                            onChange={(e) => handleChange('brand', e.target.value)}
+                            className="w-full"
+                        />
+                    </div>
+
+                    {/* Condition Field */}
+                    <div className="space-y-2 min-w-0">
+                        <Label htmlFor="condition" className="dark:text-gray-200 break-words">Condition</Label>
+                        <Select
+                            value={formData.condition || ""}
+                            onValueChange={(value) => handleChange('condition', value)}
+                        >
+                            <SelectTrigger id="condition" className="w-full">
+                                <SelectValue placeholder="Select condition" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">None</SelectItem>
+                                {CONDITION_OPTIONS.map(cond => (
+                                    <SelectItem key={cond} value={cond}>{cond}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Size Field (for clothing/shoes) */}
+                    <div className="space-y-2 min-w-0">
+                        <Label htmlFor="size" className="dark:text-gray-200 break-words">Size (if applicable)</Label>
+                        <Input
+                            id="size"
+                            placeholder="e.g., M, 10, XL, 32x34"
+                            value={formData.size || ""}
+                            onChange={(e) => handleChange('size', e.target.value)}
+                            className="w-full"
+                        />
+                    </div>
+
 
                     <div className="space-y-2 md:col-span-2 min-w-0">
                         <Label htmlFor="description" className="dark:text-gray-200 break-words">Description</Label>
