@@ -78,8 +78,8 @@ export default async function handler(req, res) {
             user_id: userId,
             item_name: item.title,
             description: item.description || item.title,
-            purchase_price: item.price,
-            listing_price: item.price,
+            purchase_price: null, // Don't set purchase price - user will add their actual cost later
+            listing_price: item.price, // Facebook price = suggested listing price for crosslisting
             status: 'listed',
             source: 'Facebook', // Changed from "Facebook Marketplace" to "Facebook"
             images: item.pictureURLs || [item.imageUrl].filter(Boolean),
