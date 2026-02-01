@@ -382,31 +382,26 @@ function parseGetSellerListXML(xml) {
     console.log(`📊 Sold Item ${itemId} price: ${currentPrice}, qty sold: ${quantitySold}, ended: ${endTime}, images: ${pictureURLs.length}`);
 
     if (itemId && title) {
-      // Create separate entries for each sold quantity (to match eBay Orders page behavior)
-      // If an item sold 3 times, create 3 separate entries so users see 3 orders
-      for (let i = 0; i < quantitySold; i++) {
-        items.push({
-          itemId: `${itemId}${quantitySold > 1 ? `-${i + 1}` : ''}`, // Add suffix for multi-quantity items
-          originalItemId: itemId, // Keep original for reference
-          title: quantitySold > 1 ? `${title} (Sale ${i + 1} of ${quantitySold})` : title,
-          price: parseFloat(currentPrice) || 0,
-          quantity: parseInt(quantity) || 0,
-          quantitySold: 1, // Each entry represents 1 sale
-          imageUrl: pictureURLs[0] || null,
-          pictureURLs,
-          listingType,
-          viewItemURL,
-          startTime: displayTime, // Use endTime for "Date sold" display
-          endTime,
-          status: 'Sold',
-          description: '',
-          condition: 'USED',
-        });
-      }
+      items.push({
+        itemId,
+        title,
+        price: parseFloat(currentPrice) || 0,
+        quantity: parseInt(quantity) || 0,
+        quantitySold,
+        imageUrl: pictureURLs[0] || null,
+        pictureURLs,
+        listingType,
+        viewItemURL,
+        startTime: displayTime, // Use endTime for "Date sold" display
+        endTime,
+        status: 'Sold',
+        description: '',
+        condition: 'USED',
+      });
     }
   }
   
-  console.log(`✅ Parsed ${items.length} total orders from GetSellerList (${itemCount} unique items processed, expanded by quantity sold)`);
+  console.log(`✅ Parsed ${items.length} sold items from GetSellerList (${itemCount} items processed)`);
   return items;
 }
 

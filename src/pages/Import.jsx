@@ -1595,7 +1595,12 @@ export default function Import() {
                               {format(new Date(item.startTime), "MMM dd, yyyy")} · 
                             </>
                           )}
-                          ${item.price} · 
+                          ${item.price}
+                          {/* Show quantity sold for eBay sold items */}
+                          {selectedSource === "ebay" && item.status === "Sold" && item.quantitySold > 1 && (
+                            <> · Qty Sold: {item.quantitySold}</>
+                          )}
+                           · 
                           {visibleItemIds.includes(item.itemId) ? (
                             <>
                               Item ID:{" "}
