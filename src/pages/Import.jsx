@@ -87,6 +87,7 @@ export default function Import() {
     }
   }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [visibleItemIds, setVisibleItemIds] = useState([]); // Track which item IDs are currently visible
   const [itemsPerPage, setItemsPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("newest");
@@ -96,6 +97,15 @@ export default function Import() {
   const [facebookListingsVersion, setFacebookListingsVersion] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+
+  // Toggle item ID visibility
+  const toggleItemIdVisibility = (itemId) => {
+    setVisibleItemIds(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
 
   // Save the location state on mount so we don't lose it
   const [savedLocationState] = useState(() => location.state);
@@ -1277,21 +1287,58 @@ export default function Import() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   <Checkbox
-                    checked={selectedItems.length === paginatedListings.filter(item => !item.imported).length && paginatedListings.filter(item => !item.imported).length > 0}
+                    checked={selectedItems.length === paginatedListings.length && paginatedListings.length > 0}
                     onCheckedChange={toggleSelectAll}
                   />
                   <span className="text-sm font-medium">
-                    {selectedItems.length} of {filteredListings.filter(item => !item.imported).length} selected
+                    {selectedItems.length} of {filteredListings.length} selected
                   </span>
                   {selectedItems.length > 0 && (
-                    <Button
-                      onClick={handleImport}
-                      disabled={importMutation.isPending}
-                      className="gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      {importMutation.isPending ? 'Importing...' : `Import (${selectedItems.length})`}
-                    </Button>
+                    <>
+                      {/* Show Import button only if non-imported items are selected */}
+                      {selectedItems.some(id => {
+                        const item = filteredListings.find(i => i.itemId === id);
+                        return item && !item.imported;
+                      }) && (
+                        <Button
+                          onClick={handleImport}
+                          disabled={importMutation.isPending}
+                          className="gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          {importMutation.isPending ? 'Importing...' : `Import (${selectedItems.filter(id => {
+                            const item = filteredListings.find(i => i.itemId === id);
+                            return item && !item.imported;
+                          }).length})`}
+                        </Button>
+                      )}
+                      
+                      {/* Show Delete button only if imported items are selected */}
+                      {selectedItems.some(id => {
+                        const item = filteredListings.find(i => i.itemId === id);
+                        return item && item.imported;
+                      }) && (
+                        <Button
+                          variant="destructive"
+                          className="gap-2"
+                          onClick={() => {
+                            const importedIds = selectedItems.filter(id => {
+                              const item = filteredListings.find(i => i.itemId === id);
+                              return item && item.imported;
+                            });
+                            // Delete all selected imported items
+                            importedIds.forEach(itemId => handleDelete(itemId));
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {deleteMutation.isPending ? 'Deleting...' : `Delete (${selectedItems.filter(id => {
+                            const item = filteredListings.find(i => i.itemId === id);
+                            return item && item.imported;
+                          }).length})`}
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -1347,19 +1394,14 @@ export default function Import() {
                           ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-pointer'
                           : 'hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
                     }`}
-                    onClick={() => !item.imported && toggleSelectItem(item.itemId, item)}
+                    onClick={() => toggleSelectItem(item.itemId, item)}
                   >
                     <div className="flex gap-4">
-                      {!item.imported && (
-                        <Checkbox
-                          checked={selectedItems.includes(item.itemId)}
-                          onCheckedChange={() => toggleSelectItem(item.itemId, item)}
-                          onClick={(e) => e.stopPropagation()} // Prevent double-toggle
-                        />
-                      )}
-                      {item.imported && (
-                        <div className="w-5" /> // Spacer for alignment
-                      )}
+                      <Checkbox
+                        checked={selectedItems.includes(item.itemId)}
+                        onCheckedChange={() => toggleSelectItem(item.itemId, item)}
+                        onClick={(e) => e.stopPropagation()} // Prevent double-toggle
+                      />
                       <div className="flex-shrink-0">
                         <OptimizedImage
                           src={getImageUrl(item.imageUrl || item.pictureURLs?.[0], selectedSource)}
@@ -1370,16 +1412,37 @@ export default function Import() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium truncate">{item.title}</h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {item.startTime && format(new Date(item.startTime), "MMM dd, yyyy")} · ${item.price} · Item ID:{" "}
-                          <a
-                            href={getMarketplaceUrl(item, selectedSource)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {item.itemId}
-                          </a>
+                          {item.startTime && (
+                            <>
+                              {selectedSource === "mercari" ? "Posted: " : selectedSource === "facebook" ? "Listed: " : ""}
+                              {format(new Date(item.startTime), "MMM dd, yyyy")} · 
+                            </>
+                          )}
+                          ${item.price} · 
+                          {visibleItemIds.includes(item.itemId) ? (
+                            <>
+                              Item ID:{" "}
+                              <a
+                                href={getMarketplaceUrl(item, selectedSource)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {item.itemId}
+                              </a>
+                            </>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleItemIdVisibility(item.itemId);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                            >
+                              View Item ID
+                            </button>
+                          )}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
                           {item.imported ? (
@@ -1392,27 +1455,36 @@ export default function Import() {
                                   className="gap-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigate('/Inventory');
+                                    if (item.inventoryId) {
+                                      navigate(`/AddInventoryItem?id=${item.inventoryId}`);
+                                    } else {
+                                      navigate('/Inventory');
+                                    }
                                   }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                                     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                                   </svg>
-                                  View Inventory
+                                  View in Inventory
                                 </Button>
                                 <Button
-                                  variant="destructive"
+                                  variant="default"
                                   size="sm"
-                                  className="gap-2"
+                                  className="gap-2 bg-blue-600 hover:bg-blue-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDelete(item.itemId);
+                                    if (item.inventoryId) {
+                                      navigate(`/Crosslist?itemIds=${item.inventoryId}`);
+                                    }
                                   }}
-                                  disabled={deleteMutation.isPending}
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                  Delete from Inventory
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                  </svg>
+                                  Crosslist
                                 </Button>
                               </div>
                             </>

@@ -1457,8 +1457,7 @@ export default function InventoryPage() {
                 className="w-full sm:w-auto min-w-0"
               >
                 <Button 
-                  variant="outline"
-                  className="w-full sm:w-auto gap-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                  className="w-full sm:w-auto gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Download className="w-4 h-4" />
                   Import

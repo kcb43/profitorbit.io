@@ -34960,6 +34960,110 @@ export default function CrosslistComposer() {
   }, []);
 
   // eBay shipping defaults storage
+  // ========================================
+  // General Form Defaults Storage System
+  // ========================================
+  const GENERAL_DEFAULTS_KEY = 'general-defaults';
+  
+  const loadGeneralDefaults = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem(GENERAL_DEFAULTS_KEY);
+      if (!stored) return null;
+      return JSON.parse(stored);
+    } catch (error) {
+      console.warn('Failed to load General defaults:', error);
+      return null;
+    }
+  };
+
+  const saveGeneralDefaults = (defaults, opts = {}) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(GENERAL_DEFAULTS_KEY, JSON.stringify(defaults));
+      if (!opts?.silent) {
+        toast({
+          title: opts?.toastTitle || "Defaults saved",
+          description: opts?.toastDescription || "Your general form defaults have been saved.",
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to save General defaults:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save defaults. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const [generalDefaults, setGeneralDefaults] = useState(() => loadGeneralDefaults() || {});
+
+  const updateGeneralDefault = (field, value, opts = {}) => {
+    const next = { ...(generalDefaults || {}), [field]: value };
+    setGeneralDefaults(next);
+    saveGeneralDefaults(next, opts);
+  };
+
+  const clearGeneralDefault = (field, opts = {}) => {
+    const next = { ...(generalDefaults || {}) };
+    delete next[field];
+    setGeneralDefaults(next);
+    saveGeneralDefaults(next, opts);
+  };
+
+  const renderGeneralDefaultToggle = (field, currentValue, setValue) => {
+    const hasDefault = Object.prototype.hasOwnProperty.call(generalDefaults || {}, field);
+    const savedValue = hasDefault ? generalDefaults[field] : undefined;
+    const isUsingDefault = hasDefault && String(savedValue ?? '') === String(currentValue ?? '');
+    const labelText = isUsingDefault ? 'Using Default (click to reset)' : hasDefault ? 'Update Default' : 'Save As Default';
+
+    const onClick = async () => {
+      if (isUsingDefault) {
+        clearGeneralDefault(field, { silent: true });
+        const appDefault = GENERAL_TEMPLATE_DEFAULT?.[field];
+        setValue(appDefault ?? '');
+        return;
+      }
+
+      const isBoolean = typeof currentValue === 'boolean';
+      const valueToSave = isBoolean ? currentValue : String(currentValue ?? '').trim();
+      if (!isBoolean && !valueToSave) {
+        toast({
+          title: 'Set a value first',
+          description: 'Enter/select a value before saving it as default.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      updateGeneralDefault(field, isBoolean ? currentValue : valueToSave, { silent: true });
+    };
+
+    return (
+      <button
+        type="button"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        onClick={onClick}
+        aria-label={labelText}
+      >
+        <span className="absolute right-full mr-2 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none">
+          <span className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
+            {labelText}
+          </span>
+        </span>
+        {isUsingDefault ? (
+          <Check className="h-4 w-4 text-black" />
+        ) : (
+          <Save className="h-4 w-4 text-black" />
+        )}
+      </button>
+    );
+  };
+
+  // ========================================
+  // eBay Defaults Storage System
+  // ========================================
   const EBAY_DEFAULTS_KEY = 'ebay-shipping-defaults';
   const loadEbayDefaults = () => {
     if (typeof window === 'undefined') return null;
@@ -35259,6 +35363,18 @@ export default function CrosslistComposer() {
 
   // Load defaults on mount
   useEffect(() => {
+    const general = loadGeneralDefaults();
+    if (general) {
+      setGeneralDefaults(general);
+      setTemplateForms((prev) => ({
+        ...prev,
+        general: {
+          ...prev.general,
+          ...general,
+        },
+      }));
+    }
+
     const defaults = loadEbayDefaults();
     if (defaults) {
       setEbayDefaults(defaults);
@@ -39484,7 +39600,12 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
+                    {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
+                      handleGeneralChange("zip", v)
+                    )}
+                  </div>
                   <Input
                     id="general-zip"
                     name="general-zip"
@@ -45280,7 +45401,12 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
+                            {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
+                              handleGeneralChange("zip", v)
+                            )}
+                          </div>
                           <Input
                             id="general-zip"
                             name="general-zip"

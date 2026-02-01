@@ -451,6 +451,11 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         categoryPath: (item.itemCategoryHierarchy || []).map(c => c.name).join(' > ') || null,
         size: item.itemSize?.name || null,
         color: item.color || null,
+        // Posted/listed date (use created or updated timestamp)
+        startTime: item.created ? new Date(item.created * 1000).toISOString() : 
+                   item.updated ? new Date(item.updated * 1000).toISOString() : null,
+        listingDate: item.created ? new Date(item.created * 1000).toISOString() :
+                     item.updated ? new Date(item.updated * 1000).toISOString() : null,
         imported: false // Will be updated by frontend
       };
       
