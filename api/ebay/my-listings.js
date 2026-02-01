@@ -247,9 +247,20 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
     }
     
     console.log(`  ✅ ${listType} found, looking for ItemArray...`);
+    
+    // Log a snippet of the list content for debugging
+    const listSnippet = listMatch[0].substring(0, 500);
+    console.log(`  🔍 ${listType} content preview:`, listSnippet);
+    
     const itemArrayMatch = listMatch[0].match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
     if (!itemArrayMatch) {
       console.log(`  ⚠️ No ItemArray in ${listType}`);
+      
+      // Check if there's a PaginationResult that might tell us why
+      const paginationMatch = listMatch[0].match(/<PaginationResult>([\s\S]*?)<\/PaginationResult>/);
+      if (paginationMatch) {
+        console.log(`  📊 PaginationResult found:`, paginationMatch[1].substring(0, 200));
+      }
       continue;
     }
     
