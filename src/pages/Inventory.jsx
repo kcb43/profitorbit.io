@@ -2122,10 +2122,10 @@ export default function InventoryPage() {
                           </p>
                           
                           <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] pt-1">
-                            <span className="font-semibold">Price:</span> ${item.purchase_price.toFixed(2)}
+                            <span className="font-semibold">Price:</span> ${(item.purchase_price || 0).toFixed(2)}
                             {item.quantity > 1 && (
                               <span className="text-gray-600 dark:text-gray-400 text-[10px] ml-1">
-                                (${perItemPrice.toFixed(2)} ea)
+                                (${(perItemPrice || 0).toFixed(2)} ea)
                               </span>
                             )}
                           </p>
