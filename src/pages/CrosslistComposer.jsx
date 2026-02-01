@@ -35300,12 +35300,10 @@ export default function CrosslistComposer() {
         setCurrentEditingItemId(primaryItem.id);
         populateTemplates(primaryItem);
       } else {
-        // Don't auto-select, just set current editing item and populate with inventory data
+        // Don't auto-select, but still populate with inventory data
         setCurrentEditingItemId(primaryItem.id);
-        setTemplateForms(createInitialTemplateState(primaryItem)); // FIX: Use primaryItem instead of null
-        setBrandIsCustom(false);
-        setSelectedCategoryPath([]);
-        setGeneralCategoryPath([]);
+        populateTemplates(primaryItem); // FIX: Use populateTemplates instead of createInitialTemplateState
+        // Note: populateTemplates already handles: setActiveForm, setSelectedCategoryPath, etc.
       }
     } else {
       // New item mode - no items selected
