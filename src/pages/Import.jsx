@@ -1664,6 +1664,56 @@ export default function Import() {
                             </button>
                           )}
                         </p>
+                        
+                        {/* Show financial details for eBay sold items */}
+                        {selectedSource === "ebay" && item.status === "Sold" && item.netPayout && (
+                          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                              <div className="text-muted-foreground">Order Total:</div>
+                              <div className="text-right font-medium">${((item.price || 0) + (item.shippingCost || 0) + (item.salesTax || 0)).toFixed(2)}</div>
+                              
+                              {item.shippingCost > 0 && (
+                                <>
+                                  <div className="text-muted-foreground ml-3">• Shipping:</div>
+                                  <div className="text-right">${item.shippingCost.toFixed(2)}</div>
+                                </>
+                              )}
+                              
+                              {item.salesTax > 0 && (
+                                <>
+                                  <div className="text-muted-foreground ml-3">• Sales tax:</div>
+                                  <div className="text-right">${item.salesTax.toFixed(2)}</div>
+                                </>
+                              )}
+                              
+                              <div className="text-muted-foreground font-medium mt-1">Your Earnings:</div>
+                              <div className="text-right"></div>
+                              
+                              {item.finalValueFee > 0 && (
+                                <>
+                                  <div className="text-muted-foreground ml-3">• Transaction fees:</div>
+                                  <div className="text-right text-red-600 dark:text-red-400">-${item.finalValueFee.toFixed(2)}</div>
+                                </>
+                              )}
+                              
+                              <div className="text-muted-foreground font-semibold pt-1 border-t border-gray-200 dark:border-gray-600">Net Payout:</div>
+                              <div className="text-right font-bold text-green-600 dark:text-green-400 pt-1 border-t border-gray-200 dark:border-gray-600">
+                                ${item.netPayout.toFixed(2)}
+                              </div>
+                              
+                              {item.paidTime && (
+                                <>
+                                  <div className="text-muted-foreground col-span-2 mt-1">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                      ✓ Funds Available
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="flex items-center gap-2 mt-2">
                           {item.imported ? (
                             <>
