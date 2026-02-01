@@ -1623,16 +1623,34 @@ export default function Import() {
                            · 
                           {visibleItemIds.includes(item.itemId) ? (
                             <>
-                              Item ID:{" "}
-                              <a
-                                href={getMarketplaceUrl(item, selectedSource)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {item.originalItemId || item.itemId}
-                              </a>
+                              {/* Show Order ID for eBay sold items, Item ID for others */}
+                              {selectedSource === "ebay" && item.status === "Sold" && item.orderId ? (
+                                <>
+                                  Order:{" "}
+                                  <a
+                                    href={`https://www.ebay.com/sh/ord/details?orderid=${item.orderId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {item.orderId}
+                                  </a>
+                                </>
+                              ) : (
+                                <>
+                                  Item ID:{" "}
+                                  <a
+                                    href={getMarketplaceUrl(item, selectedSource)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {item.originalItemId || item.itemId}
+                                  </a>
+                                </>
+                              )}
                             </>
                           ) : (
                             <button
@@ -1642,7 +1660,7 @@ export default function Import() {
                               }}
                               className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                             >
-                              View Item ID
+                              {selectedSource === "ebay" && item.status === "Sold" && item.orderId ? "View Order ID" : "View Item ID"}
                             </button>
                           )}
                         </p>
