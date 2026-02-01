@@ -1230,7 +1230,7 @@ export default function SalesHistory() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Label className="text-xs text-muted-foreground">Per page</Label>
+                <Label className="text-xs text-muted-foreground">Per Page:</Label>
                 <Select
                   value={String(pageSize)}
                   onValueChange={(v) => {
@@ -1238,7 +1238,7 @@ export default function SalesHistory() {
                     if (n === 50 || n === 100 || n === 200) setPageSize(n);
                   }}
                 >
-                  <SelectTrigger className="h-9 w-[110px]">
+                  <SelectTrigger className="h-8 w-[85px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1250,24 +1250,24 @@ export default function SalesHistory() {
 
                 <Button
                   variant="outline"
+                  size="sm"
                   disabled={!canPrev}
                   onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                  className="h-9"
                 >
                   Prev
                 </Button>
                 <Button
                   variant="outline"
+                  size="sm"
                   disabled={!canNext}
                   onClick={() => setPageIndex((p) => p + 1)}
-                  className="h-9"
                 >
                   Next
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="h-9"
+                  size="sm"
                   onClick={() => {
                     const qs = new URLSearchParams();
                     // Match current filters; export up to 5000 rows.
@@ -1284,6 +1284,7 @@ export default function SalesHistory() {
                     qs.set('limit', '5000');
                     window.open(`/api/sales/export?${qs.toString()}`, '_blank');
                   }}
+                  className="flex items-center gap-2 min-w-0 max-w-full"
                 >
                   Export CSV
                 </Button>
