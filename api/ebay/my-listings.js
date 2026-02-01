@@ -170,10 +170,18 @@ export default async function handler(req, res) {
 
     const xmlText = await response.text();
     console.log('📡 Raw XML response length:', xmlText.length);
+    console.log('🔍 Checking for list types in response...');
+    console.log('  - Has ActiveList:', xmlText.includes('<ActiveList>'));
+    console.log('  - Has SoldList:', xmlText.includes('<SoldList>'));
+    console.log('  - Has UnsoldList:', xmlText.includes('<UnsoldList>'));
 
     // Parse XML response
-    const items = parseMyeBaySellingXML(xmlText);
+    const items = parseMyeBaySellingXML(xmlText, status);
     console.log('✅ Parsed listings:', items.length);
+    console.log('📊 Status breakdown:', {
+      active: items.filter(i => i.status === 'Active').length,
+      ended: items.filter(i => i.status === 'Ended').length,
+    });
     
     // Debug: Log first item's image data
     if (items.length > 0) {
@@ -223,27 +231,40 @@ export default async function handler(req, res) {
 }
 
 // Helper function to parse GetMyeBaySelling XML response
-function parseMyeBaySellingXML(xml) {
+function parseMyeBaySellingXML(xml, requestedStatus) {
   const items = [];
+  
+  console.log('🔍 Parser: Looking for list types...');
   
   // Extract ItemArray from ActiveList, SoldList, and UnsoldList
   const listTypes = ['ActiveList', 'SoldList', 'UnsoldList'];
   
   for (const listType of listTypes) {
+    console.log(`🔍 Parser: Checking ${listType}...`);
     const listMatch = xml.match(new RegExp(`<${listType}>[\\s\\S]*?</${listType}>`));
-    if (!listMatch) continue;
+    if (!listMatch) {
+      console.log(`  ⚠️ ${listType} not found in response`);
+      continue;
+    }
     
+    console.log(`  ✅ ${listType} found, looking for ItemArray...`);
     const itemArrayMatch = listMatch[0].match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
-    if (!itemArrayMatch) continue;
+    if (!itemArrayMatch) {
+      console.log(`  ⚠️ No ItemArray in ${listType}`);
+      continue;
+    }
     
     // Mark status based on list type
     const itemStatus = listType === 'ActiveList' ? 'Active' : 'Ended';
+    console.log(`  📦 Processing items from ${listType} as status: ${itemStatus}`);
     
     // Match all Item elements
     const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
     let itemMatch;
+    let itemCount = 0;
 
     while ((itemMatch = itemRegex.exec(itemArrayMatch[1])) !== null) {
+      itemCount++;
       const itemXml = itemMatch[1];
       
       // Extract fields with regex
@@ -323,7 +344,10 @@ function parseMyeBaySellingXML(xml) {
         });
       }
     }
+    
+    console.log(`  ✅ Parsed ${itemCount} items from ${listType}`);
   }
 
+  console.log(`🎯 Parser: Total items parsed: ${items.length}`);
   return items;
 }
