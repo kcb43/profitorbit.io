@@ -94,6 +94,89 @@ async function getMercariAuth() {
 }
 
 /**
+ * Fetch detailed information for a single Mercari item
+ */
+async function fetchMercariItemDetails(itemId, bearerToken, csrfToken) {
+  try {
+    console.log(`🔍 Fetching details for Mercari item ${itemId}...`);
+    
+    const query = {
+      operationName: "itemQuery",
+      variables: {
+        id: itemId
+      },
+      extensions: {
+        persistedQuery: {
+          sha256Hash: "c772b09cd5c8b16d9a75fac4c93cf89a3cf1a8edb31ab86f9df62ef1cc9fff0e",
+          version: 1
+        }
+      }
+    };
+
+    const timestamp = Date.now();
+    const url = `https://www.mercari.com/v1/api?timestamp=${timestamp}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${bearerToken}`,
+        'x-csrf-token': csrfToken,
+        'content-type': 'application/json',
+        'apollo-require-preflight': 'true',
+        'x-app-version': '1',
+        'x-double-web': '1',
+        'x-gql-migration': '1',
+        'x-platform': 'web',
+      },
+      body: JSON.stringify(query),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Failed to fetch item ${itemId}: HTTP ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (!data.data?.item) {
+      console.error(`❌ No item data for ${itemId}`);
+      return null;
+    }
+
+    const item = data.data.item;
+    
+    // Extract detailed information
+    const details = {
+      description: item.description || null,
+      condition: item.condition || null,
+      brand: item.brand?.name || null,
+      category: item.itemCategory?.name || null,
+      size: item.size || null,
+      // Additional metadata
+      shippingFromState: item.shippingFromState || null,
+      shippingPayer: item.shippingPayer || null,
+      weight: item.weight || null,
+      color: item.color || null,
+    };
+
+    console.log(`✅ Fetched details for item ${itemId}:`, {
+      hasDescription: !!details.description,
+      descriptionLength: details.description?.length,
+      condition: details.condition,
+      brand: details.brand,
+      category: details.category,
+      size: details.size
+    });
+
+    return details;
+  } catch (error) {
+    console.error(`❌ Error fetching details for item ${itemId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Fetch Mercari listings via GraphQL API
  */
 async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
@@ -172,28 +255,41 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
     console.log('✅ Fetched', items.length, 'Mercari listings');
     console.log('📄 Pagination:', pagination);
 
-    // Transform to our format
-    const listings = items.map(item => ({
-      itemId: item.id,
-      title: item.name,
-      price: item.price ? (item.price / 100) : 0, // Convert cents to dollars
-      originalPrice: item.originalPrice ? (item.originalPrice / 100) : null,
-      status: item.status,
-      imageUrl: item.photos?.[0]?.imageUrl || item.photos?.[0]?.thumbnail || null,
-      pictureURLs: (item.photos || []).map(p => p.imageUrl || p.thumbnail).filter(Boolean),
-      numLikes: item.engagement?.numLikes || 0,
-      numViews: item.engagement?.itemPv || 0,
-      updated: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-      listingDate: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-      startTime: item.updated ? new Date(item.updated * 1000).toISOString() : null,
-      // Additional fields
-      condition: item.condition || null,
-      brand: item.brand || null,
-      category: item.category?.name || item.category || null,
-      size: item.size || null,
-      description: item.description || null,
-      imported: false // Will be updated by frontend
-    }));
+    // Fetch detailed information for each item
+    console.log('🔍 Fetching detailed information for all items...');
+    const detailsPromises = items.map(item => 
+      fetchMercariItemDetails(item.id, bearerToken, csrfToken)
+    );
+    const itemDetails = await Promise.all(detailsPromises);
+    console.log('✅ Fetched details for', itemDetails.filter(Boolean).length, 'items');
+
+    // Transform to our format with detailed information
+    const listings = items.map((item, index) => {
+      const details = itemDetails[index] || {};
+      
+      return {
+        itemId: item.id,
+        title: item.name,
+        price: item.price ? (item.price / 100) : 0, // Convert cents to dollars
+        originalPrice: item.originalPrice ? (item.originalPrice / 100) : null,
+        status: item.status,
+        imageUrl: item.photos?.[0]?.imageUrl || item.photos?.[0]?.thumbnail || null,
+        pictureURLs: (item.photos || []).map(p => p.imageUrl || p.thumbnail).filter(Boolean),
+        numLikes: item.engagement?.numLikes || 0,
+        numViews: item.engagement?.itemPv || 0,
+        updated: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+        listingDate: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+        startTime: item.updated ? new Date(item.updated * 1000).toISOString() : null,
+        // Detailed fields from item details query
+        description: details.description || null,
+        condition: details.condition || null,
+        brand: details.brand || null,
+        category: details.category || null,
+        size: details.size || null,
+        color: details.color || null,
+        imported: false // Will be updated by frontend
+      };
+    });
 
     return {
       success: true,
@@ -219,6 +315,7 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
 if (typeof self !== 'undefined') {
   self.__mercariApi = {
     getMercariAuth,
-    fetchMercariListings
+    fetchMercariListings,
+    fetchMercariItemDetails
   };
 }
