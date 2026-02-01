@@ -1,10 +1,10 @@
 /**
  * Mercari API Module for Profit Orbit Extension
  * Handles fetching user's Mercari listings via GraphQL API
- * Version: 3.0.4-date-scraping
+ * Version: 3.0.5-listed-on-pattern
  */
 
-console.log('🟣 Mercari API module loading (v3.0.4-date-scraping)...');
+console.log('🟣 Mercari API module loading (v3.0.5-listed-on-pattern)...');
 
 // GraphQL query for searching user items (provides detailed information)
 const SEARCH_QUERY = {
@@ -254,13 +254,37 @@ async function scrapeMercariItemDate(itemId) {
       }
     }
     
-    // Fallback: Look for "Posted X days ago" or similar text in HTML
+    // Fallback: Look for "Posted X days ago" or "Listed on [date]" text in HTML
     const relativeTimePatterns = [
       /Posted\s+(\d+)\s+(second|minute|hour|day|week|month)s?\s+ago/i,
       /Listed\s+(\d+)\s+(second|minute|hour|day|week|month)s?\s+ago/i,
       /"posted":"([^"]+)"/i,
       /"listed":"([^"]+)"/i
     ];
+    
+    // Also look for "Listed on [date]" patterns (like Facebook)
+    const listedOnPatterns = [
+      /Listed\s+on\s+(\d{1,2}\/\d{1,2}\/\d{4})/i,
+      /Listed\s+on\s+(\d{4}-\d{2}-\d{2})/i,
+      /Listed\s+on\s+((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i,
+      /Posted\s+on\s+(\d{1,2}\/\d{1,2}\/\d{4})/i,
+      /Posted\s+on\s+(\d{4}-\d{2}-\d{2})/i,
+      /Posted\s+on\s+((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i
+    ];
+    
+    // Check for "Listed on [date]" first (absolute dates)
+    for (const pattern of listedOnPatterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        try {
+          const date = new Date(match[1]).toISOString();
+          console.log(`✅ Found "Listed on" date via regex: ${match[1]} = ${date}`);
+          return date;
+        } catch (e) {
+          console.log(`⚠️ Failed to parse date: ${match[1]}`);
+        }
+      }
+    }
     
     for (const pattern of relativeTimePatterns) {
       const match = html.match(pattern);
