@@ -1,7 +1,10 @@
 /**
  * Mercari API Module for Profit Orbit Extension
  * Handles fetching user's Mercari listings via GraphQL API
+ * Version: 3.0.4-date-scraping
  */
+
+console.log('🟣 Mercari API module loading (v3.0.4-date-scraping)...');
 
 // GraphQL query for searching user items (provides detailed information)
 const SEARCH_QUERY = {
