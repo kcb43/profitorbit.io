@@ -1285,6 +1285,8 @@ export default function Import() {
                         size="sm"
                         className="gap-2"
                         onClick={() => {
+                          // Save that we came from Import page
+                          sessionStorage.setItem('ebay_oauth_return', '/import?source=ebay');
                           // Redirect to eBay OAuth
                           window.location.href = '/api/ebay/auth';
                         }}
@@ -1523,7 +1525,7 @@ export default function Import() {
                         <p className="text-sm text-muted-foreground mt-1">
                           {item.startTime && (
                             <>
-                              {selectedSource === "mercari" ? "Posted: " : selectedSource === "facebook" ? "Posted: " : ""}
+                              {selectedSource === "mercari" ? "Posted: " : selectedSource === "facebook" ? "Posted: " : selectedSource === "ebay" ? "Posted: " : ""}
                               {format(new Date(item.startTime), "MMM dd, yyyy")} · 
                             </>
                           )}

@@ -59,9 +59,17 @@ export default function EbayOauthLanding() {
     }
 
     // Redirect back into the app.
-    // Prefer CrosslistComposer because it already knows how to restore `ebay_oauth_state` if present.
-    const qs = params.toString();
-    navigate(`/CrosslistComposer${qs ? `?${qs}` : ""}`, { replace: true });
+    // Check if there's a saved return path (e.g., from Import page)
+    const returnPath = sessionStorage.getItem('ebay_oauth_return');
+    if (returnPath) {
+      sessionStorage.removeItem('ebay_oauth_return');
+      const qs = params.toString();
+      navigate(`${returnPath}${qs ? `${returnPath.includes('?') ? '&' : '?'}${qs}` : ""}`, { replace: true });
+    } else {
+      // Default: Prefer CrosslistComposer because it already knows how to restore `ebay_oauth_state` if present.
+      const qs = params.toString();
+      navigate(`/CrosslistComposer${qs ? `?${qs}` : ""}`, { replace: true });
+    }
   }, [location.search, navigate]);
 
   return (

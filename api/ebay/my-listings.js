@@ -87,6 +87,7 @@ export default async function handler(req, res) {
   </ActiveList>
   <SoldList>
     <Include>true</Include>
+    <DaysBeforeToday>60</DaysBeforeToday>
     <Pagination>
       <EntriesPerPage>${limit}</EntriesPerPage>
       <PageNumber>1</PageNumber>
@@ -94,6 +95,7 @@ export default async function handler(req, res) {
   </SoldList>
   <UnsoldList>
     <Include>true</Include>
+    <DaysBeforeToday>60</DaysBeforeToday>
     <Pagination>
       <EntriesPerPage>${limit}</EntriesPerPage>
       <PageNumber>1</PageNumber>
@@ -110,6 +112,7 @@ export default async function handler(req, res) {
   </RequesterCredentials>
   <SoldList>
     <Include>true</Include>
+    <DaysBeforeToday>60</DaysBeforeToday>
     <Pagination>
       <EntriesPerPage>${limit}</EntriesPerPage>
       <PageNumber>1</PageNumber>
@@ -117,6 +120,7 @@ export default async function handler(req, res) {
   </SoldList>
   <UnsoldList>
     <Include>true</Include>
+    <DaysBeforeToday>60</DaysBeforeToday>
     <Pagination>
       <EntriesPerPage>${limit}</EntriesPerPage>
       <PageNumber>1</PageNumber>
