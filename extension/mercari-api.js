@@ -175,6 +175,142 @@ async function scrapeMercariItemDescription(itemId) {
 }
 
 /**
+ * Scrape posted date from Mercari item page
+ * Mercari's search API doesn't return timestamps, so we scrape from the HTML
+ */
+async function scrapeMercariItemDate(itemId) {
+  try {
+    console.log(`📅 Scraping posted date for Mercari item ${itemId}...`);
+    
+    const url = `https://www.mercari.com/us/item/${itemId}/`;
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      console.error(`❌ Failed to fetch item page ${itemId}: HTTP ${response.status}`);
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    // Try to find date in __NEXT_DATA__
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/);
+    
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const item = nextData?.props?.pageProps?.item;
+        
+        // Look for created, updated, or any timestamp field
+        if (item?.created) {
+          const timestamp = typeof item.created === 'number' ? item.created : parseInt(item.created);
+          const date = new Date(timestamp * 1000).toISOString();
+          console.log(`✅ Found created date in __NEXT_DATA__: ${date}`);
+          return date;
+        }
+        
+        if (item?.updated) {
+          const timestamp = typeof item.updated === 'number' ? item.updated : parseInt(item.updated);
+          const date = new Date(timestamp * 1000).toISOString();
+          console.log(`✅ Found updated date in __NEXT_DATA__: ${date}`);
+          return date;
+        }
+        
+        // Check for other possible date fields
+        const dateFields = ['createdAt', 'updatedAt', 'listedAt', 'postedAt', 'timestamp'];
+        for (const field of dateFields) {
+          if (item?.[field]) {
+            const timestamp = typeof item[field] === 'number' ? item[field] : parseInt(item[field]);
+            if (!isNaN(timestamp)) {
+              const date = new Date(timestamp * 1000).toISOString();
+              console.log(`✅ Found ${field} in __NEXT_DATA__: ${date}`);
+              return date;
+            }
+          }
+        }
+        
+        // Log available fields for debugging
+        if (item) {
+          const allFields = Object.keys(item);
+          const possibleDateFields = allFields.filter(key => 
+            key.toLowerCase().includes('date') ||
+            key.toLowerCase().includes('time') ||
+            key.toLowerCase().includes('created') ||
+            key.toLowerCase().includes('updated')
+          );
+          if (possibleDateFields.length > 0) {
+            console.log(`🔍 Found possible date fields:`, possibleDateFields);
+            possibleDateFields.forEach(field => {
+              console.log(`  ${field}:`, item[field]);
+            });
+          }
+        }
+      } catch (e) {
+        console.error(`❌ Failed to parse __NEXT_DATA__ for date:`, e);
+      }
+    }
+    
+    // Fallback: Look for "Posted X days ago" or similar text in HTML
+    const relativeTimePatterns = [
+      /Posted\s+(\d+)\s+(second|minute|hour|day|week|month)s?\s+ago/i,
+      /Listed\s+(\d+)\s+(second|minute|hour|day|week|month)s?\s+ago/i,
+      /"posted":"([^"]+)"/i,
+      /"listed":"([^"]+)"/i
+    ];
+    
+    for (const pattern of relativeTimePatterns) {
+      const match = html.match(pattern);
+      if (match) {
+        if (match.length === 3) {
+          // Relative time like "5 days ago"
+          const amount = parseInt(match[1]);
+          const unit = match[2].toLowerCase();
+          const now = new Date();
+          
+          switch(unit) {
+            case 'second':
+              now.setSeconds(now.getSeconds() - amount);
+              break;
+            case 'minute':
+              now.setMinutes(now.getMinutes() - amount);
+              break;
+            case 'hour':
+              now.setHours(now.getHours() - amount);
+              break;
+            case 'day':
+              now.setDate(now.getDate() - amount);
+              break;
+            case 'week':
+              now.setDate(now.getDate() - (amount * 7));
+              break;
+            case 'month':
+              now.setMonth(now.getMonth() - amount);
+              break;
+          }
+          
+          const date = now.toISOString();
+          console.log(`✅ Found relative date via regex: ${amount} ${unit}s ago = ${date}`);
+          return date;
+        } else if (match[1]) {
+          // Absolute date string
+          const date = new Date(match[1]).toISOString();
+          console.log(`✅ Found date string via regex: ${date}`);
+          return date;
+        }
+      }
+    }
+    
+    console.log(`⚠️ Could not find posted date for item ${itemId}`);
+    return null;
+    
+  } catch (error) {
+    console.error(`❌ Error scraping date for item ${itemId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Fetch detailed information for a single Mercari item
  * This is needed because searchQuery doesn't return full descriptions
  */
@@ -479,6 +615,17 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         }
       }
       
+      // If date is missing (API doesn't provide it), scrape from the page
+      if (!listing.startTime) {
+        console.log(`📅 Date missing for ${item.id}, attempting to scrape from page...`);
+        const scrapedDate = await scrapeMercariItemDate(item.id);
+        if (scrapedDate) {
+          listing.startTime = scrapedDate;
+          listing.listingDate = scrapedDate;
+          console.log(`✅ Set scraped date for ${item.id}: ${scrapedDate}`);
+        }
+      }
+      
       // Log first item details for debugging
       if (index === 0) {
         console.log('📦 First listing sample:', {
@@ -524,6 +671,7 @@ if (typeof self !== 'undefined') {
     getMercariAuth,
     fetchMercariListings,
     fetchMercariItemDetails, // Export for debugging/detailed fetching
-    scrapeMercariItemDescription // Export for manual testing
+    scrapeMercariItemDescription, // Export for manual testing
+    scrapeMercariItemDate // Export for manual testing
   };
 }
