@@ -325,6 +325,30 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
 async function scrapeMultipleListings(listings, userId = null) {
   console.log(`🔍 [GRAPHQL] Fetching detailed data for ${listings.length} selected items via GraphQL API...`);
   
+  // Common brand keywords to detect in titles/descriptions
+  const BRAND_KEYWORDS = [
+    'Nike', 'Adidas', 'Puma', 'Reebok', 'Under Armour', 'New Balance', 'Converse', 'Vans',
+    'Gucci', 'Prada', 'Louis Vuitton', 'Chanel', 'Versace', 'Balenciaga', 'Fendi',
+    'Apple', 'Samsung', 'Sony', 'Microsoft', 'Dell', 'HP', 'Lenovo', 'Asus',
+    'Lego', 'Mattel', 'Hasbro', 'Fisher-Price', 'Hot Wheels',
+    'Zara', 'H&M', 'Forever 21', 'Gap', 'Old Navy', 'Lululemon', 'Athleta',
+    'Coach', 'Michael Kors', 'Kate Spade', 'Tory Burch', 'Fossil',
+    'Dyson', 'KitchenAid', 'Ninja', 'Instant Pot', 'Cuisinart',
+    'Unbranded', 'Generic', 'No Brand'
+  ];
+  
+  // Helper function to extract brand from text
+  const extractBrandFromText = (text) => {
+    if (!text) return null;
+    const lowerText = text.toLowerCase();
+    for (const brand of BRAND_KEYWORDS) {
+      if (lowerText.includes(brand.toLowerCase())) {
+        return brand;
+      }
+    }
+    return null;
+  };
+  
   try {
     // Get Facebook auth (cookies + dtsg)
     const { cookies, dtsg } = await getFacebookAuth();
@@ -429,7 +453,22 @@ async function scrapeMultipleListings(listings, userId = null) {
           if (brandAttr) {
             // Use the 'label' field which has the brand name
             brand = brandAttr.label || brand;
-            console.log(`🔍 Brand found:`, brandAttr, '→', brand);
+            console.log(`🔍 Brand found in attributes:`, brandAttr, '→', brand);
+          } else {
+            // If no brand in attributes, try to extract from title
+            const titleBrand = extractBrandFromText(listing.title);
+            if (titleBrand) {
+              brand = titleBrand;
+              console.log(`🔍 Brand extracted from title:`, listing.title, '→', brand);
+            }
+            // Also try from description
+            if (!brand && description) {
+              const descBrand = extractBrandFromText(description);
+              if (descBrand) {
+                brand = descBrand;
+                console.log(`🔍 Brand extracted from description → ${brand}`);
+              }
+            }
           }
           
           // Extract size from attribute_data (can be "Size", "Men's Shoe Size", "Women's Size", etc.)
