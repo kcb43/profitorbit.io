@@ -1991,6 +1991,17 @@ export default function Crosslist() {
                   selectedItems={selected}
                   onActionComplete={() => setSelected([])}
                 />
+                {selected.length > 0 && (
+                  <Button
+                    onClick={handleDeleteClick}
+                    variant="destructive"
+                    className="whitespace-nowrap w-auto flex-shrink-0"
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                  </Button>
+                )}
                 <Button
                   onClick={() => {
                     if (selected.length > 0) {
