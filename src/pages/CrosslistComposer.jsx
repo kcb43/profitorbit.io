@@ -4777,11 +4777,20 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
 };
 
 const createInitialTemplateState = (item) => {
-  console.log('🔧 createInitialTemplateState called with item:', item);
+  console.log('🔧 createInitialTemplateState called with item:', {
+    id: item?.id,
+    brand: item?.brand,
+    condition: item?.condition,
+    size: item?.size,
+    listing_price: item?.listing_price,
+    description_length: item?.description?.length
+  });
   
   // Map Facebook/Mercari conditions to General form conditions
   const mapConditionToGeneral = (condition) => {
     if (!condition) return "";
+    
+    console.log('🔧 mapConditionToGeneral input:', condition);
     
     const conditionLower = condition.toLowerCase();
     
@@ -4806,6 +4815,7 @@ const createInitialTemplateState = (item) => {
     }
     
     // Return original if no mapping found
+    console.log('🔧 No mapping found, returning original:', condition);
     return condition;
   };
   
