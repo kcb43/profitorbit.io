@@ -145,6 +145,24 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                     <span>Category: {item.category}</span>
                   </div>
                 )}
+                {item.condition && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Package className="w-4 h-4 text-gray-500" />
+                    <span>Condition: {item.condition}</span>
+                  </div>
+                )}
+                {item.brand && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Package className="w-4 h-4 text-gray-500" />
+                    <span>Brand: {item.brand}</span>
+                  </div>
+                )}
+                {item.size && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <Package className="w-4 h-4 text-gray-500" />
+                    <span>Size: {item.size}</span>
+                  </div>
+                )}
                 {item.return_deadline && (
                   <div className="flex items-center gap-2 text-xs">
                     <Calendar className="w-4 h-4 text-orange-500" />

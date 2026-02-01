@@ -33215,7 +33215,7 @@ export default function CrosslistComposer() {
     return inventory.filter(item => itemIds.includes(item.id));
   }, [inventory, itemIds]);
   
-  const [templateForms, setTemplateForms] = useState(() => createInitialTemplateState(null));
+  const [templateForms, setTemplateForms] = useState(() => createInitialTemplateState(null).forms);
   const [autoPopulatedFields, setAutoPopulatedFields] = useState({});
   const [activeForm, setActiveForm] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
@@ -35413,7 +35413,7 @@ export default function CrosslistComposer() {
     } else {
       // New item mode - no items selected
       setCurrentEditingItemId(null);
-      setTemplateForms(createInitialTemplateState(null));
+      setTemplateForms(createInitialTemplateState(null).forms);
       setBrandIsCustom(false);
       setSelectedCategoryPath([]);
       setGeneralCategoryPath([]);

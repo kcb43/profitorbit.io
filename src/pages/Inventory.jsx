@@ -2138,6 +2138,36 @@ export default function InventoryPage() {
                               {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
                             </span>
                           </div>
+                          {item.condition && (
+                            <div>
+                              <span>Condition: </span>
+                              <span className="font-medium text-gray-900 dark:text-white">{item.condition}</span>
+                            </div>
+                          )}
+                          {item.brand && (
+                            <div>
+                              <span>Brand: </span>
+                              <span className="font-medium text-gray-900 dark:text-white">{item.brand}</span>
+                            </div>
+                          )}
+                          {item.size && (
+                            <div>
+                              <span>Size: </span>
+                              <span className="font-medium text-gray-900 dark:text-white">{item.size}</span>
+                            </div>
+                          )}
+                          {item.category && (
+                            <div>
+                              <span>Category: </span>
+                              <span className="font-medium text-gray-900 dark:text-white">{item.category}</span>
+                            </div>
+                          )}
+                          {item.source && (
+                            <div>
+                              <span>Source: </span>
+                              <span className="font-medium text-gray-900 dark:text-white">{item.source}</span>
+                            </div>
+                          )}
                           
                           {/* Action icons below Purchase Date - Desktop only */}
                           <div className="flex items-center gap-2 mt-3">
@@ -2425,6 +2455,50 @@ export default function InventoryPage() {
                                   {Math.max((item.quantity || 0) - (quantitySold || 0), 0)}
                                 </span>
                               </div>
+                              {(item.condition || item.brand || item.size || item.category || item.source) && (
+                                <>
+                                  {item.condition && (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-muted-foreground text-xs font-semibold">Condition</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                        {item.condition}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {item.brand && (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-muted-foreground text-xs font-semibold">Brand</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                        {item.brand}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {item.size && (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-muted-foreground text-xs font-semibold">Size</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                        {item.size}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {item.category && (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-muted-foreground text-xs font-semibold">Category</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                        {item.category}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {item.source && (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-muted-foreground text-xs font-semibold">Source</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                        {item.source}
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
 
                             {itemTags.length > 0 && (
