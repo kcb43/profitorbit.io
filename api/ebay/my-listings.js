@@ -235,11 +235,24 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
   const items = [];
   
   console.log('🔍 Parser: Looking for list types...');
+  console.log('📋 Parser: Requested status:', requestedStatus);
   
-  // Extract ItemArray from ActiveList, SoldList, and UnsoldList
-  const listTypes = ['ActiveList', 'SoldList', 'UnsoldList'];
+  // Determine which list types to parse based on requested status
+  let listTypesToParse = [];
+  if (requestedStatus === 'Active') {
+    listTypesToParse = ['ActiveList'];
+  } else if (requestedStatus === 'Ended') {
+    listTypesToParse = ['SoldList', 'UnsoldList'];
+  } else if (requestedStatus === 'All') {
+    listTypesToParse = ['ActiveList', 'SoldList', 'UnsoldList'];
+  } else {
+    // Default to Active
+    listTypesToParse = ['ActiveList'];
+  }
   
-  for (const listType of listTypes) {
+  console.log('📋 Parser: Will parse these lists:', listTypesToParse);
+  
+  for (const listType of listTypesToParse) {
     console.log(`🔍 Parser: Checking ${listType}...`);
     const listMatch = xml.match(new RegExp(`<${listType}>[\\s\\S]*?</${listType}>`));
     if (!listMatch) {
