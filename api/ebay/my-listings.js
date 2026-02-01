@@ -714,7 +714,14 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
         // Create separate entries for each transaction with accurate sale dates
         console.log(`  🔄 Expanding item ${itemId} into ${transactions.length} individual sales`);
         transactions.forEach((txn, idx) => {
-          console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}`);
+          console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}, OrderID = ${txn.orderId}`);
+          
+          // Generate unique order URL for this specific transaction
+          // eBay's order details page URL format
+          const orderURL = txn.orderId 
+            ? `https://www.ebay.com/sh/ord/details?orderid=${txn.orderId}`
+            : viewItemURL; // Fallback to item URL if no order ID
+          
           items.push({
             itemId,
             title,
@@ -724,7 +731,7 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
             imageUrl: pictureURLs[0] || null,
             pictureURLs,
             listingType,
-            viewItemURL,
+            viewItemURL: orderURL, // Use order-specific URL instead of item URL
             startTime: txn.dateSold, // Actual sale date from order
             endTime: txn.dateSold,
             status: 'Sold',
