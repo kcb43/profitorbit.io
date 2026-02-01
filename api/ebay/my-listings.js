@@ -369,6 +369,11 @@ export default async function handler(req, res) {
             const itemId = getField('ItemID');
             const refNumber = getField('RefNumber'); // This might be OrderID
             
+            // Log first 10 entry types to see what's available
+            if (totalEntries <= 10) {
+              console.log(`  📋 Entry ${totalEntries}: Type=${entryType}, ItemID=${itemId}, RefNumber=${refNumber}`);
+            }
+            
             // Extract amounts (can have currencyID attribute)
             const grossMatch = entryXml.match(/<GrossDetailAmount[^>]*>([^<]+)<\/GrossDetailAmount>/);
             const netMatch = entryXml.match(/<NetDetailAmount[^>]*>([^<]+)<\/NetDetailAmount>/);
