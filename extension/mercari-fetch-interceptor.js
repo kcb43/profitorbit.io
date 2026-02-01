@@ -19,6 +19,20 @@
     if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
       console.log('🔍 Intercepted Mercari API call (fetch):', url);
       
+      // Log the request body to see what queries are being made
+      if (options?.body) {
+        try {
+          const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+          if (body.operationName && body.extensions?.persistedQuery) {
+            console.log('📋 GraphQL Operation:', body.operationName);
+            console.log('🔑 Persisted Query Hash:', body.extensions.persistedQuery.sha256Hash);
+            console.log('📦 Variables:', body.variables);
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
       // Extract tokens from request
       if (options?.headers) {
         const headers = options.headers;
