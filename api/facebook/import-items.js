@@ -3,6 +3,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { mapFacebookToOrbenCategory, resolveFacebookCategoryName } from '../utils/categoryMapper.js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -58,6 +59,18 @@ export default async function handler(req, res) {
 
         console.log(`💾 Inserting item ${item.itemId} into database...`);
 
+        // Resolve Facebook category ID to human-readable name
+        const facebookCategoryName = item.category || resolveFacebookCategoryName(item.categoryId);
+        
+        // Map Facebook category to Orben category
+        const orbenCategory = mapFacebookToOrbenCategory(
+          facebookCategoryName,
+          item.categoryId,
+          item.title
+        );
+        
+        console.log(`📂 Category mapping: FB "${facebookCategoryName}" (ID: ${item.categoryId}) → Orben "${orbenCategory}"`);
+
         // Create inventory item
         const { data: insertData, error: insertError } = await supabase
           .from('inventory_items')
@@ -68,15 +81,15 @@ export default async function handler(req, res) {
             purchase_price: item.price,
             listing_price: item.price,
             status: 'listed',
-            source: 'Facebook Marketplace',
+            source: 'Facebook', // Changed from "Facebook Marketplace" to "Facebook"
             images: item.pictureURLs || [item.imageUrl].filter(Boolean),
             image_url: item.imageUrl || null,
             condition: item.condition || null, // From GraphQL attribute_data (e.g., "Used - Good")
-            brand: item.brand || null, // From GraphQL attribute_data (e.g., "Nike", "Unbranded")
+            brand: item.brand || null, // From GraphQL attribute_data or extracted from title
             size: item.size || null, // From GraphQL attribute_data if available
-            category: item.category || null, // Store Facebook category name if resolved
+            category: orbenCategory || facebookCategoryName || null, // Use mapped Orben category or fallback to FB category
             facebook_category_id: item.categoryId || null, // Store Facebook category ID (e.g., "1670493229902393")
-            facebook_category_name: item.category || null, // Store Facebook category name if resolved
+            facebook_category_name: facebookCategoryName || null, // Store Facebook category name if resolved
             purchase_date: new Date().toISOString(),
             notes: null, // User can add their own notes
           })

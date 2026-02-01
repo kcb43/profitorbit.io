@@ -28,14 +28,16 @@ import { ReactSortable } from "react-sortablejs";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
 const MAX_PHOTOS = 12;
-const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy"];
+const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy", "Facebook", "Mercari"];
 
 const sourceIcons = {
   "Amazon": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
   "Walmart": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Walmart_logo.svg",
   "Best Buy": "https://upload.wikimedia.org/wikipedia/commons/9/9e/Best_Buy_Logo.svg",
   "eBay": "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  "eBay - SalvationArmy": "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg"
+  "eBay - SalvationArmy": "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
+  "Facebook": "https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg",
+  "Mercari": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Mercari_logo.svg"
 };
 const PREDEFINED_CATEGORIES = [
   "Antiques",
