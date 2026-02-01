@@ -1631,24 +1631,6 @@ export default function InventoryPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="outline"
-                      className="h-9"
-                      onClick={() => {
-                        const qs = new URLSearchParams();
-                        // Match current filters; export up to 5000 rows.
-                        if (showDeletedOnly) qs.set('deleted_only', 'true');
-                        else qs.set('include_deleted', 'true');
-                        if (filters.search?.trim()) qs.set('search', filters.search.trim());
-                        if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
-                        else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
-                        if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
-                        qs.set('limit', '5000');
-                        window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
-                      }}
-                    >
-                      Export CSV
-                    </Button>
-                    <Button
-                      variant="outline"
                       disabled={!canPrev}
                       onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
                       className="h-9"
@@ -1716,11 +1698,51 @@ export default function InventoryPage() {
                   </Select>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 min-w-0 overflow-x-hidden">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 min-w-0 overflow-x-hidden">
                 <div className="text-xs text-muted-foreground min-w-0 break-words">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
-                <div className="flex gap-2 flex-wrap min-w-0">
+                <div className="flex gap-2 flex-wrap items-center min-w-0">
+                  {/* Per Page Selector */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(v) => {
+                        const n = Number(v);
+                        if (n === 50 || n === 100 || n === 200) setPageSize(n);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[85px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="200">200</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Pagination Buttons */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canPrev}
+                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canNext}
+                    onClick={() => setPageIndex((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                  
+                  {/* Export CSV */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -1738,6 +1760,8 @@ export default function InventoryPage() {
                   >
                     Export CSV
                   </Button>
+                  
+                  {/* Show Dismissed Returns */}
                   {filters.daysInStock === "returnDeadline" && (
                     <Button
                       variant={showDismissedReturns ? "default" : "outline"}
@@ -1752,6 +1776,8 @@ export default function InventoryPage() {
                       )}
                     </Button>
                   )}
+                  
+                  {/* Show Favorites */}
                   {!showFavoritesOnly && (
                     <Button
                       variant={showFavoritesOnly ? "default" : "outline"}
