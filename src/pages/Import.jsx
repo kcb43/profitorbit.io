@@ -689,7 +689,13 @@ export default function Import() {
     
     switch (source) {
       case 'ebay':
-        return `https://www.ebay.com/itm/${item.itemId}`;
+        // Use viewItemURL if available (for sold items with transaction-specific URLs)
+        // Otherwise construct URL from originalItemId or itemId
+        if (item.viewItemURL) {
+          return item.viewItemURL;
+        }
+        const ebayItemId = item.originalItemId || item.itemId;
+        return `https://www.ebay.com/itm/${ebayItemId}`;
       case 'mercari':
         return `https://www.mercari.com/us/item/${item.itemId}/`;
       case 'facebook':
@@ -1625,7 +1631,7 @@ export default function Import() {
                                 className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                {item.itemId}
+                                {item.originalItemId || item.itemId}
                               </a>
                             </>
                           ) : (
