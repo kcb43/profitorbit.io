@@ -35343,8 +35343,14 @@ export default function CrosslistComposer() {
     setActiveForm("general");
     setSelectedCategoryPath([]);
     setGeneralCategoryPath([]);
+    
+    // Don't force custom brand mode for imported items
+    // The brand field will work with any brand value from Mercari/Facebook
     const brand = item?.brand || "";
-    if (brand && !POPULAR_BRANDS.includes(brand)) {
+    const isImportedItem = item?.source && ['Facebook', 'Mercari'].includes(item.source);
+    
+    if (brand && !POPULAR_BRANDS.includes(brand) && !customBrands.includes(brand) && !isImportedItem) {
+      // Only set custom mode if brand is not in lists AND not from import
       setBrandIsCustom(true);
     } else {
       setBrandIsCustom(false);
