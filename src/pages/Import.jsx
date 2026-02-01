@@ -97,6 +97,8 @@ export default function Import() {
   const [facebookListingsVersion, setFacebookListingsVersion] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [itemsToClear, setItemsToClear] = useState([]);
 
   // Toggle item ID visibility
   const toggleItemIdVisibility = (itemId) => {
@@ -624,6 +626,37 @@ export default function Import() {
   const handleDelete = (itemId) => {
     setItemToDelete(itemId);
     setDeleteDialogOpen(true);
+  };
+
+  const handleClear = (itemIds) => {
+    setItemsToClear(itemIds);
+    setClearDialogOpen(true);
+  };
+
+  const confirmClear = () => {
+    // Remove the items from the cache
+    const sourceListings = selectedSource === "facebook" 
+      ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+      : selectedSource === "mercari"
+      ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
+      : (ebayListings || []);
+    
+    // Filter out the cleared items
+    const updatedListings = sourceListings.filter(item => !itemsToClear.includes(item.itemId));
+    
+    // Update the cache
+    if (selectedSource === "facebook") {
+      queryClient.setQueryData(['facebook-listings', userId], updatedListings);
+    } else if (selectedSource === "mercari") {
+      queryClient.setQueryData(['mercari-listings', userId], updatedListings);
+    }
+    
+    // Clear selection
+    setSelectedItems([]);
+    setClearDialogOpen(false);
+    setItemsToClear([]);
+    
+    toast.success(`Cleared ${itemsToClear.length} item(s) from list`);
   };
 
   // Generate marketplace listing URL
@@ -1298,17 +1331,40 @@ export default function Import() {
                         const item = filteredListings.find(i => i.itemId === id);
                         return item && !item.imported;
                       }) && (
-                        <Button
-                          onClick={handleImport}
-                          disabled={importMutation.isPending}
-                          className="gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          {importMutation.isPending ? 'Importing...' : `Import (${selectedItems.filter(id => {
-                            const item = filteredListings.find(i => i.itemId === id);
-                            return item && !item.imported;
-                          }).length})`}
-                        </Button>
+                        <>
+                          <Button
+                            onClick={handleImport}
+                            disabled={importMutation.isPending}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            {importMutation.isPending ? 'Importing...' : `Import (${selectedItems.filter(id => {
+                              const item = filteredListings.find(i => i.itemId === id);
+                              return item && !item.imported;
+                            }).length})`}
+                          </Button>
+                          
+                          <Button
+                            onClick={() => {
+                              const notImportedItems = selectedItems.filter(id => {
+                                const item = filteredListings.find(i => i.itemId === id);
+                                return item && !item.imported;
+                              });
+                              handleClear(notImportedItems);
+                            }}
+                            variant="outline"
+                            className="gap-2"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18"></path>
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                            Clear
+                          </Button>
+                        </>
                       )}
                       
                       {/* Show Crosslist button only if imported items are selected */}
@@ -1600,6 +1656,27 @@ export default function Import() {
               className="bg-red-600 hover:bg-red-700"
             >
               Yes, Remove from Inventory
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear Dialog */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Items from List?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {itemsToClear.length} item(s) from this import list. You can always re-sync from {selectedSource === "facebook" ? "Facebook" : selectedSource === "mercari" ? "Mercari" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} to get them back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmClear}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Yes, Clear from List
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
