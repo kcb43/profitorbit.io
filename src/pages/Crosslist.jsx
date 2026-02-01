@@ -2070,11 +2070,7 @@ export default function Crosslist() {
                     <div className="p-4">
                       <div
                         onClick={() => toggleSelect(it.id)}
-                        className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
-                          selected.includes(it.id)
-                            ? "border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/50"
-                            : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
-                        }`}
+                        className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600`}
                         style={{ height: 140 }}
                         title="Click image to select"
                       >

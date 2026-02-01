@@ -52,6 +52,7 @@ import {
   Home,
   Maximize2,
   Minimize2,
+  Download,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import SoldLookupDialog from "../components/SoldLookupDialog";
@@ -4786,6 +4787,9 @@ const createInitialTemplateState = (item) => {
     description_length: item?.description?.length
   });
   
+  // Track which fields were auto-populated from import
+  const autoPopulated = {};
+  
   // Map Facebook/Mercari conditions to General form conditions
   const mapConditionToGeneral = (condition) => {
     if (!condition) return "";
@@ -4819,6 +4823,9 @@ const createInitialTemplateState = (item) => {
     return condition;
   };
   
+  // Check if item is from an import (Facebook or Mercari)
+  const isFromImport = item?.source && ['Facebook', 'Mercari'].includes(item.source);
+  
   // If item has a predefined category, clear it so user can select from eBay category picklist
   const itemCategory = item?.category || "";
   const shouldClearCategory = itemCategory && PREDEFINED_CATEGORIES.includes(itemCategory);
@@ -4837,6 +4844,16 @@ const createInitialTemplateState = (item) => {
   } else if (item?.image_url) {
     // Fallback to single image_url if images array not available
     photos = [{ id: "inventory-photo", preview: item.image_url, fileName: "Inventory photo", fromInventory: true }];
+  }
+  
+  // Track auto-populated fields
+  if (isFromImport) {
+    if (item?.item_name) autoPopulated.title = true;
+    if (item?.description) autoPopulated.description = true;
+    if (item?.brand) autoPopulated.brand = true;
+    if (item?.condition) autoPopulated.condition = true;
+    if (item?.size) autoPopulated.size = true;
+    if (item?.listing_price) autoPopulated.price = true;
   }
   
   const general = {
@@ -4871,41 +4888,45 @@ const createInitialTemplateState = (item) => {
     brand: general.brand,
     condition: general.condition,
     size: general.size,
-    price: general.price
+    price: general.price,
+    autoPopulated
   });
 
   return {
-    general,
-    ebay: {
-      ...MARKETPLACE_TEMPLATE_DEFAULTS.ebay,
-      photos: general.photos || [],
-      title: general.title || "",
-      description: general.description || "",
-      buyItNowPrice: general.price,
-      shippingLocation: general.zip,
-    },
-    etsy: {
-      ...MARKETPLACE_TEMPLATE_DEFAULTS.etsy,
-      photos: general.photos || [],
-      title: general.title || "",
-      description: general.description || "",
-      tags: general.tags,
-    },
-    mercari: {
-      ...MARKETPLACE_TEMPLATE_DEFAULTS.mercari,
-      photos: general.photos || [],
-      title: general.title || "",
-      description: general.description || "",
-      shippingPrice: general.price ? (Number(general.price) >= 100 ? "Free" : "Buyer pays") : "",
-    },
-    facebook: {
-      ...MARKETPLACE_TEMPLATE_DEFAULTS.facebook,
+    forms: {
+      general,
+      ebay: {
+        ...MARKETPLACE_TEMPLATE_DEFAULTS.ebay,
+        photos: general.photos || [],
+        title: general.title || "",
+        description: general.description || "",
+        buyItNowPrice: general.price,
+        shippingLocation: general.zip,
+      },
+      etsy: {
+        ...MARKETPLACE_TEMPLATE_DEFAULTS.etsy,
+        photos: general.photos || [],
+        title: general.title || "",
+        description: general.description || "",
+        tags: general.tags,
+      },
+      mercari: {
+        ...MARKETPLACE_TEMPLATE_DEFAULTS.mercari,
+        photos: general.photos || [],
+        title: general.title || "",
+        description: general.description || "",
+        shippingPrice: general.price ? (Number(general.price) >= 100 ? "Free" : "Buyer pays") : "",
+      },
+      facebook: {
+        ...MARKETPLACE_TEMPLATE_DEFAULTS.facebook,
       photos: general.photos || [],
       title: general.title || "",
       description: general.description || "",
       meetUpLocation: general.zip ? `Meet near ${general.zip}` : "",
       shippingPrice: general.price ? (Number(general.price) >= 75 ? "Free shipping" : "") : "",
     },
+    },
+    autoPopulated,
   };
 };
 
@@ -33128,6 +33149,17 @@ const COUNTRIES = [
   "Ukraine", "Other"
 ];
 
+// Helper component to indicate auto-populated fields
+const AutoPopulatedBadge = () => (
+  <span 
+    className="inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800"
+    title="Auto-populated from import"
+  >
+    <Download className="w-2.5 h-2.5" />
+    Auto
+  </span>
+);
+
 export default function CrosslistComposer() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -33184,6 +33216,7 @@ export default function CrosslistComposer() {
   }, [inventory, itemIds]);
   
   const [templateForms, setTemplateForms] = useState(() => createInitialTemplateState(null));
+  const [autoPopulatedFields, setAutoPopulatedFields] = useState({});
   const [activeForm, setActiveForm] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
   const [isMercariListing, setIsMercariListing] = useState(false);
@@ -38666,7 +38699,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title</Label>
+                  <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       id="general-title"
@@ -38692,7 +38725,7 @@ export default function CrosslistComposer() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price</Label>
+                  <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
                   <Input
                     id="general-price"
                     name="general-price"
@@ -38706,7 +38739,7 @@ export default function CrosslistComposer() {
                   <p className="mt-1 text-xs text-muted-foreground">Price you'll list this item for</p>
                 </div>
                 <div>
-                  <Label htmlFor="general-cost" className="text-xs mb-1.5 block">Purchase Price</Label>
+                  <Label htmlFor="general-cost" className="text-xs mb-1.5 block">Purchase Price <span className="text-red-500">*</span></Label>
                   <Input
                     id="general-cost"
                     name="general-cost"
@@ -38720,7 +38753,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div className="md:col-span-2">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1.5">
-                    <Label htmlFor="general-description" className="text-xs">Description</Label>
+                    <Label htmlFor="general-description" className="text-xs">Description <span className="text-red-500">*</span></Label>
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -38777,7 +38810,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand</Label>
+                  <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
@@ -38989,7 +39022,7 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition</Label>
+                  <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
                   <Select
                     value={generalForm.condition ? String(generalForm.condition) : undefined}
                     onValueChange={(value) => {
@@ -39455,7 +39488,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Quantity</Label>
+                  <Label className="text-xs mb-1.5 block">Quantity <span className="text-red-500">*</span></Label>
                   <Input
                     type="number"
                     min="1"

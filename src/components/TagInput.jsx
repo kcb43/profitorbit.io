@@ -1,7 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,7 +21,9 @@ export function TagInput({
   ...props 
 }) {
   const [inputValue, setInputValue] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Convert string value to array of tags
   const tags = value 
@@ -31,7 +33,24 @@ export function TagInput({
   const handleInputChange = (e) => {
     const newValue = e.target.value;
     setInputValue(newValue);
+    // Show dropdown if there's text and it's not already a tag
+    const trimmed = newValue.trim();
+    const existingTags = new Set(tags.map(t => t.toLowerCase()));
+    setShowDropdown(trimmed && !existingTags.has(trimmed.toLowerCase()));
   };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          inputRef.current && !inputRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleInputKeyDown = (e) => {
     // Commit only on Enter or comma (multi-word tags stay intact until committed).
@@ -68,6 +87,7 @@ export function TagInput({
     // Update parent with comma-separated string
     onChange(newTags.join(', '));
     setInputValue("");
+    setShowDropdown(false);
   };
 
   const removeTag = (tagToRemove) => {
@@ -77,7 +97,7 @@ export function TagInput({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full relative", className)}>
       <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-input rounded-md bg-transparent shadow-sm ring-offset-background focus-within:ring-1 focus-within:ring-ring">
         {/* Display existing tags */}
         {tags.map((tag, index) => (
@@ -107,12 +127,37 @@ export function TagInput({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
+          onFocus={() => {
+            const trimmed = inputValue.trim();
+            const existingTags = new Set(tags.map(t => t.toLowerCase()));
+            if (trimmed && !existingTags.has(trimmed.toLowerCase())) {
+              setShowDropdown(true);
+            }
+          }}
           placeholder={tags.length === 0 ? placeholder : ""}
           disabled={disabled}
           className="flex-1 min-w-[120px] border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
           {...props}
         />
       </div>
+      
+      {/* Dropdown for "Create tag" option */}
+      {showDropdown && inputValue.trim() && !disabled && (
+        <div 
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-input rounded-md shadow-lg"
+        >
+          <button
+            type="button"
+            onClick={() => addTagFromInput()}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 transition-colors"
+          >
+            <Plus className="w-4 h-4 text-muted-foreground" />
+            <span>Create <span className="font-semibold">"{inputValue.trim()}"</span></span>
+          </button>
+        </div>
+      )}
+      
       {tags.length > 0 && (
         <p className="text-xs text-muted-foreground mt-1">
           {tags.length} {tags.length === 1 ? 'tag' : 'tags'}. Press Enter or comma to add more. Click × to remove.

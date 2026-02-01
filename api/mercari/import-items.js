@@ -70,28 +70,38 @@ export default async function handler(req, res) {
         const proxiedImageUrl = proxyImageUrl(item.imageUrl);
         const proxiedPictureURLs = (item.pictureURLs || []).map(proxyImageUrl);
 
-        // Create inventory item
+        // Create inventory item with all available metadata
         const { data: insertData, error: insertError} = await supabase
           .from('inventory_items')
           .insert({
             user_id: userId,
             item_name: item.title,
             description: item.description || item.title,
-            purchase_price: item.price,
-            listing_price: item.price,
+            purchase_price: null, // Don't set purchase price for imports
+            listing_price: item.price, // Price from marketplace becomes listing price
             status: 'listed',
             source: 'Mercari',
             images: proxiedPictureURLs.filter(Boolean),
             image_url: proxiedImageUrl,
-            condition: item.condition || 'USED',
+            condition: item.condition || null,
             brand: item.brand || null,
             category: item.category || null,
             size: item.size || null,
-            purchase_date: new Date().toISOString(),
+            purchase_date: new Date().toISOString().split('T')[0], // Date only
             notes: null, // User can add their own notes
           })
           .select('id')
           .single();
+        
+        console.log(`📊 Item data received:`, {
+          itemId: item.itemId,
+          title: item.title?.substring(0, 50),
+          price: item.price,
+          condition: item.condition,
+          brand: item.brand,
+          size: item.size,
+          description_length: item.description?.length
+        });
 
         if (insertError) {
           failed++;
