@@ -1275,18 +1275,39 @@ export default function Import() {
                       {selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} not connected
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Please connect your {selectedSource === "ebay" ? "eBay" : selectedSource} account in Settings before importing.
+                      Please connect your {selectedSource === "ebay" ? "eBay" : selectedSource} account to start importing.
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => navigate(createPageUrl("Settings"))}
-                  >
-                    <Settings className="h-4 w-4" />
-                    Go to Settings
-                  </Button>
+                  <div className="flex gap-2">
+                    {selectedSource === "ebay" && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          // Redirect to eBay OAuth
+                          window.location.href = '/api/ebay/auth';
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                          <line x1="19" y1="8" x2="19" y2="14"></line>
+                          <line x1="22" y1="11" x2="16" y2="11"></line>
+                        </svg>
+                        Connect eBay
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => navigate(createPageUrl("Settings"))}
+                    >
+                      <Settings className="h-4 w-4" />
+                      Go to Settings
+                    </Button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}

@@ -68,8 +68,65 @@ export default async function handler(req, res) {
       ? 'https://api.ebay.com/ws/api.dll'
       : 'https://api.sandbox.ebay.com/ws/api.dll';
 
-    // Build XML request for GetMyeBaySelling
-    const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+    // Build XML request for GetMyeBaySelling based on status filter
+    let xmlRequest;
+    
+    if (status === 'All') {
+      // Fetch both Active and Ended listings
+      xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <ActiveList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </ActiveList>
+  <SoldList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </SoldList>
+  <UnsoldList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </UnsoldList>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetMyeBaySellingRequest>`;
+    } else if (status === 'Ended') {
+      // Fetch only Ended listings (Sold + Unsold)
+      xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <SoldList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </SoldList>
+  <UnsoldList>
+    <Include>true</Include>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </UnsoldList>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetMyeBaySellingRequest>`;
+    } else {
+      // Default: Fetch only Active listings
+      xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
@@ -83,6 +140,7 @@ export default async function handler(req, res) {
   </ActiveList>
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
+    }
 
     const response = await fetch(tradingUrl, {
       method: 'POST',
@@ -164,94 +222,102 @@ export default async function handler(req, res) {
 function parseMyeBaySellingXML(xml) {
   const items = [];
   
-  // Extract ItemArray section
-  const itemArrayMatch = xml.match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
-  if (!itemArrayMatch) {
-    console.log('⚠️ No ItemArray found in response');
-    return items;
-  }
-
-  // Match all Item elements
-  const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
-  let itemMatch;
-
-  while ((itemMatch = itemRegex.exec(itemArrayMatch[1])) !== null) {
-    const itemXml = itemMatch[1];
+  // Extract ItemArray from ActiveList, SoldList, and UnsoldList
+  const listTypes = ['ActiveList', 'SoldList', 'UnsoldList'];
+  
+  for (const listType of listTypes) {
+    const listMatch = xml.match(new RegExp(`<${listType}>[\\s\\S]*?</${listType}>`));
+    if (!listMatch) continue;
     
-    // Extract fields with regex
-    const getField = (field) => {
-      const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\/${field}>`));
-      return match ? match[1] : null;
-    };
-
-    // Extract PictureURL fields (can be in Item or PictureDetails)
-    const pictureURLs = [];
+    const itemArrayMatch = listMatch[0].match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
+    if (!itemArrayMatch) continue;
     
-    // Try direct PictureURL under Item
-    const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
-    let pictureMatch;
-    while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
-      const url = pictureMatch[1];
-      if (url && url.startsWith('http')) {
-        pictureURLs.push(url);
+    // Mark status based on list type
+    const itemStatus = listType === 'ActiveList' ? 'Active' : 'Ended';
+    
+    // Match all Item elements
+    const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
+    let itemMatch;
+
+    while ((itemMatch = itemRegex.exec(itemArrayMatch[1])) !== null) {
+      const itemXml = itemMatch[1];
+      
+      // Extract fields with regex
+      const getField = (field) => {
+        const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+        return match ? match[1] : null;
+      };
+
+      // Extract PictureURL fields (can be in Item or PictureDetails)
+      const pictureURLs = [];
+      
+      // Try direct PictureURL under Item
+      const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+      let pictureMatch;
+      while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
+        const url = pictureMatch[1];
+        if (url && url.startsWith('http')) {
+          pictureURLs.push(url);
+        }
       }
-    }
-    
-    // If no pictures found, try PictureDetails > PictureURL
-    if (pictureURLs.length === 0) {
-      const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
-      if (pictureDetailsMatch) {
-        const pictureDetailsRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
-        let detailsPictureMatch;
-        while ((detailsPictureMatch = pictureDetailsRegex.exec(pictureDetailsMatch[1])) !== null) {
-          const url = detailsPictureMatch[1];
-          if (url && url.startsWith('http')) {
-            pictureURLs.push(url);
+      
+      // If no pictures found, try PictureDetails > PictureURL
+      if (pictureURLs.length === 0) {
+        const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
+        if (pictureDetailsMatch) {
+          const pictureDetailsRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+          let detailsPictureMatch;
+          while ((detailsPictureMatch = pictureDetailsRegex.exec(pictureDetailsMatch[1])) !== null) {
+            const url = detailsPictureMatch[1];
+            if (url && url.startsWith('http')) {
+              pictureURLs.push(url);
+            }
           }
         }
       }
-    }
-    
-    // If still no pictures, try GalleryURL as fallback
-    if (pictureURLs.length === 0) {
-      const galleryURL = getField('GalleryURL');
-      if (galleryURL && galleryURL.startsWith('http')) {
-        pictureURLs.push(galleryURL);
+      
+      // If still no pictures, try GalleryURL as fallback
+      if (pictureURLs.length === 0) {
+        const galleryURL = getField('GalleryURL');
+        if (galleryURL && galleryURL.startsWith('http')) {
+          pictureURLs.push(galleryURL);
+        }
       }
-    }
 
-    const itemId = getField('ItemID');
-    const title = getField('Title');
-    
-    // Extract price with attribute handling (e.g., <CurrentPrice currencyID="USD">25.99</CurrentPrice>)
-    const currentPriceMatch = itemXml.match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
-    const currentPrice = currentPriceMatch ? currentPriceMatch[1] : null;
-    
-    const quantity = getField('Quantity');
-    const quantitySold = getField('QuantitySold');
-    const listingType = getField('ListingType');
-    const viewItemURL = getField('ViewItemURL');
-    const startTime = getField('StartTime');
-    const endTime = getField('EndTime');
-    
-    console.log(`📊 Item ${itemId} price: ${currentPrice}`);
+      const itemId = getField('ItemID');
+      const title = getField('Title');
+      
+      // Extract price with attribute handling (e.g., <CurrentPrice currencyID="USD">25.99</CurrentPrice>)
+      const currentPriceMatch = itemXml.match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
+      const currentPrice = currentPriceMatch ? currentPriceMatch[1] : null;
+      
+      const quantity = getField('Quantity');
+      const quantitySold = getField('QuantitySold');
+      const listingType = getField('ListingType');
+      const viewItemURL = getField('ViewItemURL');
+      const startTime = getField('StartTime');
+      const endTime = getField('EndTime');
+      
+      console.log(`📊 Item ${itemId} price: ${currentPrice}, status: ${itemStatus}`);
 
-    if (itemId && title) {
-      items.push({
-        itemId,
-        title,
-        price: parseFloat(currentPrice) || 0,
-        quantity: parseInt(quantity) || 0,
-        quantitySold: parseInt(quantitySold) || 0,
-        imageUrl: pictureURLs[0] || null,
-        pictureURLs,
-        listingType,
-        viewItemURL,
-        startTime,
-        endTime,
-        description: '', // GetMyeBaySelling doesn't include full description
-        condition: 'USED', // Default, would need GetItem for actual condition
-      });
+      if (itemId && title) {
+        items.push({
+          itemId,
+          title,
+          price: parseFloat(currentPrice) || 0,
+          quantity: parseInt(quantity) || 0,
+          quantitySold: parseInt(quantitySold) || 0,
+          imageUrl: pictureURLs[0] || null,
+          pictureURLs,
+          listingType,
+          viewItemURL,
+          startTime,
+          endTime,
+          status: itemStatus,
+          description: '', // GetMyeBaySelling doesn't include full description
+          condition: 'USED', // Default, would need GetItem for actual condition
+        });
+      }
     }
   }
 
