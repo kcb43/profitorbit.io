@@ -212,7 +212,7 @@ export default function AddInventoryItem() {
 
       setFormData({
         item_name: dataToLoad.item_name || "",
-        purchase_price: String(dataToLoad.purchase_price) || "",
+        purchase_price: (dataToLoad.purchase_price != null && dataToLoad.purchase_price !== 0) ? String(dataToLoad.purchase_price) : "",
         purchase_date: dataToLoad.purchase_date || new Date().toISOString().split('T')[0],
         source: initialSource,
         status: isCopying ? "available" : (dataToLoad.status || "available"),
