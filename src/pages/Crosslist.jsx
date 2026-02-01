@@ -2074,7 +2074,13 @@ export default function Crosslist() {
               return (
                 <div
                   key={it.id}
-                  className={`product-list-item group relative overflow-hidden rounded-2xl border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60`}
+                  onClick={(e) => {
+                    // Only toggle if clicking on the card itself, not interactive elements
+                    if (e.target === e.currentTarget || e.target.closest('.card-clickable-area')) {
+                      toggleSelect(it.id);
+                    }
+                  }}
+                  className={`product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60`}
                 >
                   <div className="grid grid-cols-[168px_1fr_220px] gap-0 min-w-0">
                     {/* Product Image Section */}
@@ -2104,7 +2110,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Details Section */}
-                    <div className={`min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
+                    <div className={`card-clickable-area min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
                     {/* Status Badge */}
                       <div className="flex items-center justify-between gap-3 mb-3">
                         <Badge className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} px-3 py-1.5 rounded-xl text-xs font-semibold`}>
@@ -2129,7 +2135,7 @@ export default function Crosslist() {
                     </p>
 
                     {/* Marketplace Icons & List Buttons */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       {MARKETPLACES.map((m) => {
                         const state = map[m.id];
                         const isListed = state === 'active';
@@ -2214,7 +2220,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                    <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                     {/* Crosslist Button */}
                     <Button
                       onClick={() => openComposer([it.id], false)}
@@ -2247,8 +2253,14 @@ export default function Crosslist() {
               const listedCount = Object.values(map).filter((v) => v === 'active').length;
               return (
                 <Card 
-                  key={it.id} 
-                  className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg max-w-full`}
+                  key={it.id}
+                  onClick={(e) => {
+                    // Only toggle if clicking on the card itself, not interactive elements
+                    if (e.target === e.currentTarget || e.target.closest('.card-clickable-area')) {
+                      toggleSelect(it.id);
+                    }
+                  }}
+                  className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg max-w-full`}
                   style={{
                     borderRadius: '16px',
                   }}
@@ -2280,12 +2292,12 @@ export default function Crosslist() {
                       </Badge>
                     </div>
                   </div>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 card-clickable-area">
                     <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-2 line-clamp-2">
                       {it.item_name}
                     </h3>
                     <div className="text-xs text-gray-700 dark:text-gray-300 mb-3">{it.category || "—"}</div>
-                    <div className="flex flex-wrap gap-1.5 mb-3">
+                    <div className="flex flex-wrap gap-1.5 mb-3" onClick={(e) => e.stopPropagation()}>
                       {MARKETPLACES.map((m) => {
                         const state = map[m.id];
                         const isListed = state === 'active';
@@ -2367,7 +2379,7 @@ export default function Crosslist() {
                         );
                       })}
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button 
                         size="sm" 
                         className="w-full bg-gradient-to-r from-green-600 to-green-600 hover:from-green-500 hover:to-green-500 text-white font-semibold text-xs" 

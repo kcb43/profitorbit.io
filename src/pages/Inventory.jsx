@@ -1606,47 +1606,6 @@ export default function InventoryPage() {
                   {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
                   {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
                 </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Per page</Label>
-                    <Select
-                      value={String(pageSize)}
-                      onValueChange={(v) => {
-                        const n = Number(v);
-                        if (n === 50 || n === 100 || n === 200) setPageSize(n);
-                      }}
-                    >
-                      <SelectTrigger className="h-9 w-[110px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                        <SelectItem value="200">200</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="outline"
-                      disabled={!canPrev}
-                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                      className="h-9"
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!canNext}
-                      onClick={() => setPageIndex((p) => p + 1)}
-                      className="h-9"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
