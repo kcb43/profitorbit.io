@@ -4777,6 +4777,8 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
 };
 
 const createInitialTemplateState = (item) => {
+  console.log('🔧 createInitialTemplateState called with item:', item);
+  
   // If item has a predefined category, clear it so user can select from eBay category picklist
   const itemCategory = item?.category || "";
   const shouldClearCategory = itemCategory && PREDEFINED_CATEGORIES.includes(itemCategory);
@@ -4822,6 +4824,15 @@ const createInitialTemplateState = (item) => {
     cost: item?.purchase_price != null ? String(item.purchase_price) : "",
     customLabels: item?.custom_labels || "",
   };
+  
+  console.log('🔧 createInitialTemplateState returning general form:', {
+    title: general.title,
+    description: general.description?.substring(0, 50),
+    brand: general.brand,
+    condition: general.condition,
+    size: general.size,
+    price: general.price
+  });
 
   return {
     general,
@@ -35213,6 +35224,8 @@ export default function CrosslistComposer() {
   }, []);
   
   const populateTemplates = React.useCallback((item) => {
+    console.log('🔧 populateTemplates called with item:', item);
+    
     const itemId = item?.id;
     
     // First, load any saved form data for this item
@@ -35225,6 +35238,15 @@ export default function CrosslistComposer() {
     // Start with initial template state from item
     const initial = createInitialTemplateState(item);
     
+    console.log('🔧 Initial template state from item:', {
+      title: initial.general.title,
+      description: initial.general.description?.substring(0, 50),
+      brand: initial.general.brand,
+      condition: initial.general.condition,
+      size: initial.general.size,
+      price: initial.general.price
+    });
+    
     // Merge with saved form data (saved data takes precedence over initial state)
     const merged = {
       general: savedGeneral ? { ...initial.general, ...savedGeneral } : initial.general,
@@ -35234,7 +35256,17 @@ export default function CrosslistComposer() {
       facebook: savedFacebook ? { ...initial.facebook, ...savedFacebook } : { ...initial.facebook, ...(facebookDefaults || {}) },
     };
     
+    console.log('🔧 Merged template state (after localStorage):', {
+      title: merged.general.title,
+      description: merged.general.description?.substring(0, 50),
+      brand: merged.general.brand,
+      condition: merged.general.condition,
+      size: merged.general.size,
+      price: merged.general.price
+    });
+    
     setTemplateForms(merged);
+    console.log('🔧 Called setTemplateForms with merged data');
     setActiveForm("general");
     setSelectedCategoryPath([]);
     setGeneralCategoryPath([]);
