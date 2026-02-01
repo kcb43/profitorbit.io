@@ -246,12 +246,102 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
       continue;
     }
     
-    console.log(`  ✅ ${listType} found, looking for ItemArray...`);
+    console.log(`  ✅ ${listType} found, looking for items...`);
     
     // Log a snippet of the list content for debugging
     const listSnippet = listMatch[0].substring(0, 500);
     console.log(`  🔍 ${listType} content preview:`, listSnippet);
     
+    // SoldList has a different structure: OrderTransactionArray instead of ItemArray
+    if (listType === 'SoldList') {
+      const orderTransactionMatch = listMatch[0].match(/<OrderTransactionArray>([\s\S]*?)<\/OrderTransactionArray>/);
+      if (!orderTransactionMatch) {
+        console.log(`  ⚠️ No OrderTransactionArray in SoldList`);
+        continue;
+      }
+      
+      console.log(`  📦 Processing sold items from OrderTransactionArray`);
+      
+      // Match all OrderTransaction elements
+      const orderRegex = /<OrderTransaction>([\s\S]*?)<\/OrderTransaction>/g;
+      let orderMatch;
+      let itemCount = 0;
+
+      while ((orderMatch = orderRegex.exec(orderTransactionMatch[1])) !== null) {
+        const orderXml = orderMatch[1];
+        
+        // Extract the Item element from within Transaction
+        const itemMatch = orderXml.match(/<Item>([\s\S]*?)<\/Item>/);
+        if (!itemMatch) continue;
+        
+        itemCount++;
+        const itemXml = itemMatch[1];
+        
+        // Parse the item (same logic as below but within Transaction)
+        const getField = (field) => {
+          const match = itemXml.match(new RegExp(`<${field}>([^<]*)`, 'i'));
+          return match ? match[1] : null;
+        };
+
+        // Extract PictureURL fields
+        const pictureURLs = [];
+        const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+        let pictureMatch;
+        while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
+          const url = pictureMatch[1];
+          if (url && url.startsWith('http')) {
+            pictureURLs.push(url);
+          }
+        }
+        
+        if (pictureURLs.length === 0) {
+          const galleryURL = getField('GalleryURL');
+          if (galleryURL && galleryURL.startsWith('http')) {
+            pictureURLs.push(galleryURL);
+          }
+        }
+
+        const itemId = getField('ItemID');
+        const title = getField('Title');
+        const currentPriceMatch = itemXml.match(/<CurrentPrice[^>]*>([^<]+)<\/CurrentPrice>/);
+        const currentPrice = currentPriceMatch ? currentPriceMatch[1] : null;
+        const quantity = getField('Quantity');
+        const quantitySold = getField('QuantitySold');
+        const listingType = getField('ListingType');
+        const viewItemURL = getField('ViewItemURL');
+        const startTime = getField('StartTime');
+        
+        // For sold items, get EndTime from ListingDetails or Transaction
+        const endTimeMatch = orderXml.match(/<EndTime>([^<]*)<\/EndTime>/);
+        const endTime = endTimeMatch ? endTimeMatch[1] : null;
+        
+        console.log(`📊 Item ${itemId} price: ${currentPrice}, status: Sold`);
+
+        if (itemId && title) {
+          items.push({
+            itemId,
+            title,
+            price: parseFloat(currentPrice) || 0,
+            quantity: parseInt(quantity) || 0,
+            quantitySold: parseInt(quantitySold) || 0,
+            imageUrl: pictureURLs[0] || null,
+            pictureURLs,
+            listingType,
+            viewItemURL,
+            startTime,
+            endTime,
+            status: 'Sold',
+            description: '',
+            condition: 'USED',
+          });
+        }
+      }
+      
+      console.log(`  ✅ Parsed ${itemCount} sold items from SoldList`);
+      continue; // Skip the regular ItemArray parsing below
+    }
+    
+    // Regular ItemArray parsing for ActiveList and UnsoldList
     const itemArrayMatch = listMatch[0].match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
     if (!itemArrayMatch) {
       console.log(`  ⚠️ No ItemArray in ${listType}`);
