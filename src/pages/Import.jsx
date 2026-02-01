@@ -1448,7 +1448,7 @@ export default function Import() {
                         <p className="text-sm text-muted-foreground mt-1">
                           {item.startTime && (
                             <>
-                              {selectedSource === "mercari" ? "Posted: " : selectedSource === "facebook" ? "Listed: " : ""}
+                              {selectedSource === "mercari" ? "Posted: " : selectedSource === "facebook" ? "Posted: " : ""}
                               {format(new Date(item.startTime), "MMM dd, yyyy")} · 
                             </>
                           )}
