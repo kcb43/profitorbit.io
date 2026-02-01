@@ -117,8 +117,15 @@ export default async function handler(req, res) {
       <EntriesPerPage>${limit}</EntriesPerPage>
       <PageNumber>1</PageNumber>
     </Pagination>
+    <IncludeNotes>false</IncludeNotes>
   </SoldList>
   <DetailLevel>ReturnAll</DetailLevel>
+  <OutputSelector>Title</OutputSelector>
+  <OutputSelector>ItemID</OutputSelector>
+  <OutputSelector>PictureDetails</OutputSelector>
+  <OutputSelector>GalleryURL</OutputSelector>
+  <OutputSelector>SellingStatus</OutputSelector>
+  <OutputSelector>ListingDetails</OutputSelector>
 </GetMyeBaySellingRequest>`;
     } else {
       // Default: Fetch only Active listings
@@ -472,18 +479,25 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
         itemCount++;
         const itemXml = itemMatch[1];
         
+        // Debug: Log first 1000 chars of the full orderXml to see the structure
+        if (itemCount === 1) {
+          console.log(`  🔍 DEBUG: First OrderTransaction XML (first 2000 chars):`);
+          console.log(orderXml.substring(0, 2000));
+        }
+        
         // Parse the item (same logic as below but within Transaction)
         const getField = (field) => {
           const match = itemXml.match(new RegExp(`<${field}>([^<]*)`, 'i'));
           return match ? match[1] : null;
         };
 
-        // Extract PictureURL fields from Item > PictureDetails
+        // Extract PictureURL fields - try multiple locations
         const pictureURLs = [];
         
-        // Check for PictureDetails section first
+        // Strategy 1: Check for PictureDetails in Item
         const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
         if (pictureDetailsMatch) {
+          console.log(`  🔍 Found PictureDetails in Item (length: ${pictureDetailsMatch[1].length})`);
           const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
           let pictureMatch;
           while ((pictureMatch = pictureRegex.exec(pictureDetailsMatch[1])) !== null) {
@@ -492,23 +506,47 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
               pictureURLs.push(url);
             }
           }
+          console.log(`  📸 Extracted ${pictureURLs.length} images from PictureDetails`);
+        } else {
+          console.log(`  ⚠️ No PictureDetails found in Item XML`);
         }
         
-        // Fallback: check for GalleryURL at item level
+        // Strategy 2: Fallback to GalleryURL at item level
         if (pictureURLs.length === 0) {
           const galleryURL = getField('GalleryURL');
-          if (galleryURL && galleryURL.startsWith('http')) {
-            pictureURLs.push(galleryURL);
+          if (galleryURL) {
+            console.log(`  🔍 Found GalleryURL: ${galleryURL}`);
+            if (galleryURL.startsWith('http')) {
+              pictureURLs.push(galleryURL);
+            }
           }
         }
         
-        // Another fallback: ListingDetails > GalleryURL
+        // Strategy 3: ListingDetails > GalleryURL
         if (pictureURLs.length === 0) {
           const listingDetailsMatch = itemXml.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/);
           if (listingDetailsMatch) {
+            console.log(`  🔍 Found ListingDetails (length: ${listingDetailsMatch[1].length})`);
             const galleryMatch = listingDetailsMatch[1].match(/<GalleryURL>([^<]*)<\/GalleryURL>/);
-            if (galleryMatch && galleryMatch[1].startsWith('http')) {
-              pictureURLs.push(galleryMatch[1]);
+            if (galleryMatch) {
+              console.log(`  🔍 Found GalleryURL in ListingDetails: ${galleryMatch[1]}`);
+              if (galleryMatch[1].startsWith('http')) {
+                pictureURLs.push(galleryMatch[1]);
+              }
+            }
+          }
+        }
+        
+        // Strategy 4: Check the entire orderXml (Transaction level) for picture URLs
+        if (pictureURLs.length === 0) {
+          console.log(`  🔍 Searching entire orderXml for picture URLs...`);
+          const orderPictureRegex = /<(?:PictureURL|GalleryURL)>([^<]*)<\/(?:PictureURL|GalleryURL)>/g;
+          let orderPictureMatch;
+          while ((orderPictureMatch = orderPictureRegex.exec(orderXml)) !== null) {
+            const url = orderPictureMatch[1];
+            if (url && url.startsWith('http')) {
+              pictureURLs.push(url);
+              console.log(`  ✅ Found picture URL in orderXml: ${url}`);
             }
           }
         }
