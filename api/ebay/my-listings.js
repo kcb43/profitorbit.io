@@ -339,6 +339,9 @@ function parseGetOrdersXML(xml, requestedStatus) {
             pictureURLs.push(url);
           }
         }
+        if (pictureURLs.length > 0) {
+          console.log(`  ✅ Found ${pictureURLs.length} images in PictureDetails`);
+        }
       }
       
       // Fallback: check for GalleryURL
@@ -346,6 +349,7 @@ function parseGetOrdersXML(xml, requestedStatus) {
         const galleryURL = getItemField('GalleryURL');
         if (galleryURL && galleryURL.startsWith('http')) {
           pictureURLs.push(galleryURL);
+          console.log(`  ✅ Found 1 image in GalleryURL`);
         }
       }
       
@@ -356,8 +360,13 @@ function parseGetOrdersXML(xml, requestedStatus) {
           const galleryMatch = listingDetailsMatch[1].match(/<GalleryURL>([^<]*)<\/GalleryURL>/);
           if (galleryMatch && galleryMatch[1].startsWith('http')) {
             pictureURLs.push(galleryMatch[1]);
+            console.log(`  ✅ Found 1 image in ListingDetails > GalleryURL`);
           }
         }
+      }
+      
+      if (pictureURLs.length === 0) {
+        console.log(`  ⚠️ No images found for item ${getItemField('ItemID')}`);
       }
 
       const itemId = getItemField('ItemID');
@@ -369,9 +378,12 @@ function parseGetOrdersXML(xml, requestedStatus) {
       
       const listingType = getItemField('ListingType');
       const viewItemURL = getItemField('ViewItemURL');
-      const startTime = getItemField('StartTime');
       
-      console.log(`📊 Sold Item ${itemId} price: ${transactionPrice}, qty: ${quantity}, sold: ${createdTime}, images: ${pictureURLs.length}`);
+      // For sold items, use the CreatedTime (date sold) as both startTime and endTime
+      // Active listings show "Posted: startTime", sold items can show "Sold: createdTime"
+      const startTime = createdTime; // Use order created time as the listing time
+      
+      console.log(`📊 Sold Item ${itemId} price: ${transactionPrice}, qty: ${quantity}, sold: ${createdTime}, images: ${pictureURLs.length}, title: ${title?.substring(0, 30)}`);
 
       if (itemId && title) {
         items.push({
