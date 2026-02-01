@@ -361,10 +361,25 @@ async function scrapeMultipleListings(listings, userId = null) {
           console.log(`📡 Fetching details for item ${listing.itemId}...`);
           
           // GraphQL query for individual item details (from Vendoo HAR logs)
+          // Using the exact variables that Vendoo sends
           const variables = {
-            targetId: listing.itemId,
-            shouldShowBoostedFields: false,
+            UFI2CommentsProvider_commentsKey: "MarketplacePDP",
+            canViewCustomizedProfile: true,
+            disableDoublePDPFieldFetchFix: false,
+            feedbackSource: 56,
+            feedLocation: "MARKETPLACE_MEGAMALL",
+            location_latitude: 0,
+            location_longitude: 0,
+            location_radius: 0,
+            location_vanity_page_id: "",
+            pdpContext_isHoisted: false,
+            pdpContext_trackingData: null,
+            referralCode: null,
+            relay_flight_marketplace_enabled: false,
             scale: 1,
+            targetId: listing.itemId,
+            useDefaultActor: false,
+            __relay_internal__pv__GKMarketplacePdpUfiPerfH12022relayprovider: false,
           };
           
           const formData = new URLSearchParams();
