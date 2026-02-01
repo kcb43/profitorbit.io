@@ -282,10 +282,25 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetSellerListRequest>`;
 
-      console.log('🚀 Fetching orders and seller list in parallel for faster performance...');
+      // Also try GetAccount to get fee information
+      const getAccountRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetAccountRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <AccountEntrySortType>AccountEntryCreatedTimeDescending</AccountEntrySortType>
+  <BeginDate>${createTimeFrom}</BeginDate>
+  <EndDate>${endTimeTo}</EndDate>
+  <Pagination>
+    <EntriesPerPage>200</EntriesPerPage>
+    <PageNumber>1</PageNumber>
+  </Pagination>
+</GetAccountRequest>`;
+
+      console.log('🚀 Fetching orders, seller list, and account entries for financial details...');
       
-      // Make both API calls in parallel using Promise.all
-      const [ordersResponse, sellerListResponse] = await Promise.all([
+      // Make all 3 API calls in parallel using Promise.all
+      const [ordersResponse, sellerListResponse, accountResponse] = await Promise.all([
         fetch(tradingUrl, {
           method: 'POST',
           headers: {
@@ -305,6 +320,16 @@ export default async function handler(req, res) {
             'X-EBAY-API-CALL-NAME': 'GetSellerList',
           },
           body: getSellerListRequest,
+        }),
+        fetch(tradingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+            'X-EBAY-API-CALL-NAME': 'GetAccount',
+          },
+          body: getAccountRequest,
         })
       ]);
       
@@ -314,6 +339,28 @@ export default async function handler(req, res) {
         const ordersXml = await ordersResponse.text();
         transactionsByItemId = parseOrdersToTransactions(ordersXml);
         console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
+      }
+      
+      // Parse account response to get fee information
+      if (accountResponse.ok) {
+        const accountXml = await accountResponse.text();
+        console.log('📊 GetAccount response length:', accountXml.length);
+        
+        // Log a snippet to see what's in there
+        const accountArrayMatch = accountXml.match(/<AccountEntries>([\s\S]*?)<\/AccountEntries>/);
+        if (accountArrayMatch) {
+          console.log('✅ Found AccountEntries in response');
+          // Extract first entry as sample
+          const firstEntryMatch = accountArrayMatch[1].match(/<AccountEntry>([\s\S]*?)<\/AccountEntry>/);
+          if (firstEntryMatch) {
+            const entrySnippet = firstEntryMatch[0].substring(0, 500);
+            console.log('📋 Sample account entry:', entrySnippet);
+          }
+        } else {
+          console.log('⚠️ No AccountEntries found in GetAccount response');
+        }
+      } else {
+        console.log('⚠️ GetAccount API call failed:', accountResponse.status);
       }
       
       // Check seller list response
