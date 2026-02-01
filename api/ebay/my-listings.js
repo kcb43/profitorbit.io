@@ -103,8 +103,46 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
     } else if (status === 'Ended' || status === 'Sold') {
-      // Use GetSellerList for sold items (includes full item details with pictures)
-      // This API is specifically designed for retrieving completed/sold listings
+      // For sold items, fetch both GetSellerList (for items with images) 
+      // AND GetOrders (for individual transaction details)
+      // Then merge them to show each sale separately with accurate dates
+      
+      // First get GetOrders for transaction-level data
+      const createTimeFrom = getDateDaysAgo(90);
+      const getOrdersRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <CreateTimeFrom>${createTimeFrom}</CreateTimeFrom>
+  <OrderRole>Seller</OrderRole>
+  <Pagination>
+    <EntriesPerPage>200</EntriesPerPage>
+    <PageNumber>1</PageNumber>
+  </Pagination>
+  <DetailLevel>ReturnAll</DetailLevel>
+</GetOrdersRequest>`;
+
+      console.log('🔍 Fetching orders for transaction-level data...');
+      const ordersResponse = await fetch(tradingUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml',
+          'X-EBAY-API-SITEID': '0',
+          'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+          'X-EBAY-API-CALL-NAME': 'GetOrders',
+        },
+        body: getOrdersRequest,
+      });
+      
+      let transactionsByItemId = {};
+      if (ordersResponse.ok) {
+        const ordersXml = await ordersResponse.text();
+        transactionsByItemId = parseOrdersToTransactions(ordersXml);
+        console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
+      }
+      
+      // Then get GetSellerList for item details and images
       const endTimeFrom = getDateDaysAgo(90);
       const endTimeTo = new Date().toISOString();
       
@@ -122,6 +160,9 @@ export default async function handler(req, res) {
   </Pagination>
   <DetailLevel>ReturnAll</DetailLevel>
 </GetSellerListRequest>`;
+
+      // Store transactions for later merging
+      req.transactionsByItemId = transactionsByItemId;
     } else {
       // Default: Fetch only Active listings
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
@@ -212,7 +253,7 @@ export default async function handler(req, res) {
     // Parse XML response - use different parser based on API call
     let items;
     if (status === 'Sold' || status === 'Ended') {
-      items = parseGetSellerListXML(xmlText);
+      items = parseGetSellerListXML(xmlText, req.transactionsByItemId || {});
     } else {
       items = parseMyeBaySellingXML(xmlText, status);
     }
@@ -269,8 +310,112 @@ export default async function handler(req, res) {
   }
 }
 
+// Helper function to parse GetOrders and group transactions by item ID
+function parseOrdersToTransactions(xml) {
+  const transactionsByItemId = {};
+  
+  console.log('🔍 Parsing GetOrders for transaction details...');
+  
+  // Extract OrderArray section
+  const orderArrayMatch = xml.match(/<OrderArray>([\s\S]*?)<\/OrderArray>/);
+  if (!orderArrayMatch) {
+    console.log('⚠️ No OrderArray found in GetOrders response');
+    return transactionsByItemId;
+  }
+  
+  // Match all Order elements
+  const orderRegex = /<Order>([\s\S]*?)<\/Order>/g;
+  let orderMatch;
+  let totalOrders = 0;
+
+  while ((orderMatch = orderRegex.exec(orderArrayMatch[1])) !== null) {
+    totalOrders++;
+    const orderXml = orderMatch[1];
+    
+    // Extract order-level fields
+    const getField = (field) => {
+      const match = orderXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+      return match ? match[1] : null;
+    };
+    
+    const orderStatus = getField('OrderStatus');
+    const orderId = getField('OrderID');
+    const createdTime = getField('CreatedTime');
+    
+    // Skip cancelled orders
+    if (orderStatus === 'Cancelled' || orderStatus === 'Canceled') {
+      continue;
+    }
+    
+    // Extract TransactionArray
+    const transactionArrayMatch = orderXml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
+    if (!transactionArrayMatch) continue;
+    
+    // Match all Transaction elements
+    const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
+    let transactionMatch;
+    
+    while ((transactionMatch = transactionRegex.exec(transactionArrayMatch[1])) !== null) {
+      const transactionXml = transactionMatch[1];
+      
+      // Extract Item from transaction
+      const itemMatch = transactionXml.match(/<Item>([\s\S]*?)<\/Item>/);
+      if (!itemMatch) continue;
+      
+      const itemXml = itemMatch[1];
+      
+      const getItemField = (field) => {
+        const match = itemXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+        return match ? match[1] : null;
+      };
+      
+      const itemId = getItemField('ItemID');
+      if (!itemId) continue;
+      
+      // Get quantity from transaction level
+      const quantityMatch = transactionXml.match(/<QuantityPurchased>([^<]*)<\/QuantityPurchased>/);
+      const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
+      
+      // Get price from transaction level
+      const transPriceMatch = transactionXml.match(/<TransactionPrice[^>]*>([^<]+)<\/TransactionPrice>/);
+      const transactionPrice = transPriceMatch ? parseFloat(transPriceMatch[1]) : 0;
+      
+      // Get transaction ID
+      const transactionIdMatch = transactionXml.match(/<TransactionID>([^<]*)<\/TransactionID>/);
+      const transactionId = transactionIdMatch ? transactionIdMatch[1] : null;
+      
+      // Get buyer info
+      const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
+      let buyerUsername = null;
+      if (buyerMatch) {
+        const userIdMatch = buyerMatch[1].match(/<UserID>([^<]*)<\/UserID>/);
+        buyerUsername = userIdMatch ? userIdMatch[1] : null;
+      }
+      
+      // Store transaction for this item
+      if (!transactionsByItemId[itemId]) {
+        transactionsByItemId[itemId] = [];
+      }
+      
+      transactionsByItemId[itemId].push({
+        orderId,
+        transactionId,
+        quantity,
+        price: transactionPrice,
+        dateSold: createdTime,
+        buyerUsername,
+        orderStatus,
+      });
+    }
+  }
+  
+  console.log(`📊 Processed ${totalOrders} orders, found transactions for ${Object.keys(transactionsByItemId).length} items`);
+  
+  return transactionsByItemId;
+}
+
 // Helper function to parse GetSellerList XML response (for sold items with pictures)
-function parseGetSellerListXML(xml) {
+function parseGetSellerListXML(xml, transactionsByItemId = {}) {
   const items = [];
   
   console.log('🔍 Parser: Parsing GetSellerList response for sold items...');
@@ -382,22 +527,55 @@ function parseGetSellerListXML(xml) {
     console.log(`📊 Sold Item ${itemId} price: ${currentPrice}, qty sold: ${quantitySold}, ended: ${endTime}, images: ${pictureURLs.length}`);
 
     if (itemId && title) {
-      items.push({
-        itemId,
-        title,
-        price: parseFloat(currentPrice) || 0,
-        quantity: parseInt(quantity) || 0,
-        quantitySold,
-        imageUrl: pictureURLs[0] || null,
-        pictureURLs,
-        listingType,
-        viewItemURL,
-        startTime: displayTime, // Use endTime for "Date sold" display
-        endTime,
-        status: 'Sold',
-        description: '',
-        condition: 'USED',
-      });
+      // Check if we have transaction-level data for this item
+      const transactions = transactionsByItemId[itemId] || [];
+      
+      if (transactions.length > 0) {
+        // Create separate entries for each transaction with accurate sale dates
+        console.log(`  🔄 Expanding item ${itemId} into ${transactions.length} individual sales`);
+        transactions.forEach((txn, idx) => {
+          items.push({
+            itemId,
+            title,
+            price: txn.price,
+            quantity: parseInt(quantity) || 0,
+            quantitySold: txn.quantity,
+            imageUrl: pictureURLs[0] || null,
+            pictureURLs,
+            listingType,
+            viewItemURL,
+            startTime: txn.dateSold, // Actual sale date from order
+            endTime: txn.dateSold,
+            status: 'Sold',
+            description: '',
+            condition: 'USED',
+            // Transaction-specific fields
+            orderId: txn.orderId,
+            transactionId: txn.transactionId,
+            buyerUsername: txn.buyerUsername,
+            saleNumber: idx + 1, // For display: "Sale 1 of 3"
+            totalSales: transactions.length,
+          });
+        });
+      } else {
+        // Fallback: No transaction data, use item-level data
+        items.push({
+          itemId,
+          title,
+          price: parseFloat(currentPrice) || 0,
+          quantity: parseInt(quantity) || 0,
+          quantitySold,
+          imageUrl: pictureURLs[0] || null,
+          pictureURLs,
+          listingType,
+          viewItemURL,
+          startTime: displayTime,
+          endTime,
+          status: 'Sold',
+          description: '',
+          condition: 'USED',
+        });
+      }
     }
   }
   
