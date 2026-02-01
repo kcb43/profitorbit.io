@@ -2714,9 +2714,9 @@ export default function InventoryPage() {
                         <div className="flex justify-between text-gray-700 dark:text-gray-300">
                           <span>Price:</span>
                           <span className="font-semibold text-gray-900 dark:text-white">
-                            ${item.purchase_price.toFixed(2)}
+                            ${(item.purchase_price || 0).toFixed(2)}
                             {item.quantity > 1 && (
-                              <span className="text-gray-600 dark:text-gray-400 ml-1">(${perItemPrice.toFixed(2)} ea)</span>
+                              <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>
                             )}
                           </span>
                         </div>
