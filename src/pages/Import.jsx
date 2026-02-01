@@ -1263,8 +1263,8 @@ export default function Import() {
             {/* Show content only if connected */}
             {isConnected && (
               <>
-            {/* Debug/Error Info */}
-            {error && (
+            {/* Debug/Error Info - Only show for the currently selected source */}
+            {error && selectedSource === "ebay" && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -1310,6 +1310,40 @@ export default function Import() {
                             const item = filteredListings.find(i => i.itemId === id);
                             return item && !item.imported;
                           }).length})`}
+                        </Button>
+                      )}
+                      
+                      {/* Show Crosslist button only if imported items are selected */}
+                      {selectedItems.some(id => {
+                        const item = filteredListings.find(i => i.itemId === id);
+                        return item && item.imported;
+                      }) && (
+                        <Button
+                          variant="default"
+                          className="gap-2 bg-blue-600 hover:bg-blue-700"
+                          onClick={() => {
+                            const importedItems = selectedItems.filter(id => {
+                              const item = filteredListings.find(i => i.itemId === id);
+                              return item && item.imported;
+                            }).map(id => {
+                              const item = filteredListings.find(i => i.itemId === id);
+                              return item.inventoryId;
+                            }).filter(Boolean);
+                            
+                            if (importedItems.length > 0) {
+                              navigate(`/CrosslistComposer?itemIds=${importedItems.join(',')}`);
+                            }
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                          </svg>
+                          Crosslist ({selectedItems.filter(id => {
+                            const item = filteredListings.find(i => i.itemId === id);
+                            return item && item.imported;
+                          }).length})
                         </Button>
                       )}
                       
@@ -1449,43 +1483,62 @@ export default function Import() {
                             <>
                               <Badge variant="secondary">ALREADY IMPORTED</Badge>
                               <div className="flex gap-2 ml-auto">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (item.inventoryId) {
-                                      navigate(`/AddInventoryItem?id=${item.inventoryId}`);
-                                    } else {
-                                      navigate('/Inventory');
-                                    }
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                                  </svg>
-                                  View in Inventory
-                                </Button>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="gap-2 bg-blue-600 hover:bg-blue-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (item.inventoryId) {
-                                      navigate(`/Crosslist?itemIds=${item.inventoryId}`);
-                                    }
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                  </svg>
-                                  Crosslist
-                                </Button>
+                                {/* Only show individual action buttons when no items are selected */}
+                                {selectedItems.length === 0 && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (item.inventoryId) {
+                                          navigate(`/AddInventoryItem?id=${item.inventoryId}`);
+                                        } else {
+                                          navigate('/Inventory');
+                                        }
+                                      }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                      </svg>
+                                      View Inventory
+                                    </Button>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="gap-2 bg-blue-600 hover:bg-blue-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (item.inventoryId) {
+                                          navigate(`/CrosslistComposer?itemIds=${item.inventoryId}`);
+                                        }
+                                      }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                      </svg>
+                                      Crosslist
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="gap-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setItemToDelete(item.itemId);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Delete
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </>
                           ) : (
