@@ -374,13 +374,25 @@ export default async function handler(req, res) {
           
           // Parse transactions for this item
           const transactionsMatch = xml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
-          if (!transactionsMatch) continue;
+          if (!transactionsMatch) {
+            console.log(`⚠️ No TransactionArray found for item ${itemId}`);
+            // Log first 500 chars of XML to debug
+            if (i === 0 && Object.keys(feesByItemId).length === 0) {
+              console.log(`  📄 Sample XML (first 500 chars): ${xml.substring(0, 500)}`);
+            }
+            continue;
+          }
           
           const transactionRegex = /<Transaction>([\s\S]*?)<\/Transaction>/g;
           let txnMatch;
           
           while ((txnMatch = transactionRegex.exec(transactionsMatch[1])) !== null) {
             const txnXml = txnMatch[1];
+            
+            // Log first transaction XML for debugging
+            if (i === 0 && Object.keys(feesByItemId).length === 0) {
+              console.log(`\n  📄 First Transaction XML (first 1000 chars):\n${txnXml.substring(0, 1000)}\n`);
+            }
             
             const getField = (field) => {
               const match = txnXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
