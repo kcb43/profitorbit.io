@@ -935,17 +935,15 @@ export default function Import() {
   };
 
   const toggleSelectItem = (itemId, item) => {
-    // Don't allow selecting imported items
-    if (item?.imported) return;
-    
+    // Allow selecting both imported and non-imported items for bulk operations
     setSelectedItems((prev) =>
       prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
     );
   };
 
   const toggleSelectAll = () => {
-    // Only toggle non-imported items
-    const selectableItems = paginatedListings.filter(item => !item.imported);
+    // Allow selecting all items (both imported and non-imported)
+    const selectableItems = paginatedListings;
     
     if (selectedItems.length === selectableItems.length && selectableItems.length > 0) {
       setSelectedItems([]);
@@ -1331,7 +1329,7 @@ export default function Import() {
                             }).filter(Boolean);
                             
                             if (importedItems.length > 0) {
-                              navigate(`/CrosslistComposer?itemIds=${importedItems.join(',')}`);
+                              navigate(`/CrosslistComposer?ids=${importedItems.join(',')}`);
                             }
                           }}
                         >
@@ -1422,10 +1420,10 @@ export default function Import() {
                   <Card 
                     key={item.itemId} 
                     className={`p-4 transition-all ${
-                      item.imported 
-                        ? 'bg-gray-100 dark:bg-gray-800' 
-                        : selectedItems.includes(item.itemId)
-                          ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-pointer'
+                      selectedItems.includes(item.itemId)
+                        ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-pointer'
+                        : item.imported 
+                          ? 'bg-gray-100 dark:bg-gray-800 hover:shadow-md cursor-pointer' 
                           : 'hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
                     }`}
                     onClick={() => toggleSelectItem(item.itemId, item)}
@@ -1513,7 +1511,7 @@ export default function Import() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (item.inventoryId) {
-                                          navigate(`/CrosslistComposer?itemIds=${item.inventoryId}`);
+                                          navigate(`/CrosslistComposer?ids=${item.inventoryId}`);
                                         }
                                       }}
                                     >
