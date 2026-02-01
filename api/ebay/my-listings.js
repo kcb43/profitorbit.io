@@ -103,22 +103,23 @@ export default async function handler(req, res) {
   <DetailLevel>ReturnAll</DetailLevel>
 </GetMyeBaySellingRequest>`;
     } else if (status === 'Ended' || status === 'Sold') {
-      // Fetch sold items from Orders API (more comprehensive than SoldList)
+      // Use GetMyeBaySelling SoldList (has full item details including pictures)
+      // GetOrders doesn't include picture data
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
-  <CreateTimeFrom>${getDateDaysAgo(90)}</CreateTimeFrom>
-  <CreateTimeTo>${new Date().toISOString()}</CreateTimeTo>
-  <OrderRole>Seller</OrderRole>
-  <OrderStatus>Completed</OrderStatus>
-  <Pagination>
-    <EntriesPerPage>${limit}</EntriesPerPage>
-    <PageNumber>1</PageNumber>
-  </Pagination>
+  <SoldList>
+    <Include>true</Include>
+    <DaysBeforeToday>90</DaysBeforeToday>
+    <Pagination>
+      <EntriesPerPage>${limit}</EntriesPerPage>
+      <PageNumber>1</PageNumber>
+    </Pagination>
+  </SoldList>
   <DetailLevel>ReturnAll</DetailLevel>
-</GetOrdersRequest>`;
+</GetMyeBaySellingRequest>`;
     } else {
       // Default: Fetch only Active listings
       xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
@@ -143,7 +144,7 @@ export default async function handler(req, res) {
         'Content-Type': 'text/xml',
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-        'X-EBAY-API-CALL-NAME': status === 'Sold' || status === 'Ended' ? 'GetOrders' : 'GetMyeBaySelling',
+        'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
       },
       body: xmlRequest,
     });
@@ -206,9 +207,7 @@ export default async function handler(req, res) {
     console.log('  - Has UnsoldList:', xmlText.includes('<UnsoldList>'));
 
     // Parse XML response
-    const items = status === 'Sold' || status === 'Ended' 
-      ? parseGetOrdersXML(xmlText, status)
-      : parseMyeBaySellingXML(xmlText, status);
+    const items = parseMyeBaySellingXML(xmlText, status);
     console.log('✅ Parsed listings:', items.length);
     console.log('📊 Status breakdown:', {
       active: items.filter(i => i.status === 'Active').length,
@@ -479,21 +478,38 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
           return match ? match[1] : null;
         };
 
-        // Extract PictureURL fields
+        // Extract PictureURL fields from Item > PictureDetails
         const pictureURLs = [];
-        const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
-        let pictureMatch;
-        while ((pictureMatch = pictureRegex.exec(itemXml)) !== null) {
-          const url = pictureMatch[1];
-          if (url && url.startsWith('http')) {
-            pictureURLs.push(url);
+        
+        // Check for PictureDetails section first
+        const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
+        if (pictureDetailsMatch) {
+          const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+          let pictureMatch;
+          while ((pictureMatch = pictureRegex.exec(pictureDetailsMatch[1])) !== null) {
+            const url = pictureMatch[1];
+            if (url && url.startsWith('http')) {
+              pictureURLs.push(url);
+            }
           }
         }
         
+        // Fallback: check for GalleryURL at item level
         if (pictureURLs.length === 0) {
           const galleryURL = getField('GalleryURL');
           if (galleryURL && galleryURL.startsWith('http')) {
             pictureURLs.push(galleryURL);
+          }
+        }
+        
+        // Another fallback: ListingDetails > GalleryURL
+        if (pictureURLs.length === 0) {
+          const listingDetailsMatch = itemXml.match(/<ListingDetails>([\s\S]*?)<\/ListingDetails>/);
+          if (listingDetailsMatch) {
+            const galleryMatch = listingDetailsMatch[1].match(/<GalleryURL>([^<]*)<\/GalleryURL>/);
+            if (galleryMatch && galleryMatch[1].startsWith('http')) {
+              pictureURLs.push(galleryMatch[1]);
+            }
           }
         }
 
@@ -505,13 +521,15 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
         const quantitySold = getField('QuantitySold');
         const listingType = getField('ListingType');
         const viewItemURL = getField('ViewItemURL');
-        const startTime = getField('StartTime');
         
-        // For sold items, get EndTime from ListingDetails or Transaction
+        // For sold items, get EndTime from Transaction level (date sold)
         const endTimeMatch = orderXml.match(/<EndTime>([^<]*)<\/EndTime>/);
         const endTime = endTimeMatch ? endTimeMatch[1] : null;
         
-        console.log(`📊 Item ${itemId} price: ${currentPrice}, status: Sold`);
+        // Use endTime as startTime for display (shows "Date sold: [date]")
+        const startTime = endTime;
+        
+        console.log(`📊 Sold Item ${itemId} price: ${currentPrice}, sold: ${endTime}, images: ${pictureURLs.length}`);
 
         if (itemId && title) {
           items.push({
