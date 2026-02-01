@@ -1,10 +1,10 @@
 /**
  * Mercari API Module for Profit Orbit Extension
  * Handles fetching user's Mercari listings via GraphQL API
- * Version: 3.0.5-listed-on-pattern
+ * Version: 3.0.6-script-tag-timestamps
  */
 
-console.log('🟣 Mercari API module loading (v3.0.5-listed-on-pattern)...');
+console.log('🟣 Mercari API module loading (v3.0.6-script-tag-timestamps)...');
 
 // GraphQL query for searching user items (provides detailed information)
 const SEARCH_QUERY = {
@@ -253,6 +253,41 @@ async function scrapeMercariItemDate(itemId) {
         console.error(`❌ Failed to parse __NEXT_DATA__ for date:`, e);
       }
     }
+    
+    // NEW: Search ALL script tags for date timestamps (not just __NEXT_DATA__)
+    // Mercari embeds date data in other script tags as JSON
+    console.log(`🔍 Searching all script tags for date timestamps...`);
+    const scriptMatches = html.matchAll(/<script[^>]*>(.*?)<\/script>/gs);
+    
+    for (const scriptMatch of scriptMatches) {
+      const scriptContent = scriptMatch[1];
+      
+      // Look for "created":timestamp or "updated":timestamp patterns
+      const createdMatch = scriptContent.match(/"(?:created|createdAt|created_at)":\s*(\d{10,13})/);
+      const updatedMatch = scriptContent.match(/"(?:updated|updatedAt|updated_at)":\s*(\d{10,13})/);
+      
+      // Prefer 'updated' over 'created' (updated is more recent = posted date)
+      if (updatedMatch) {
+        const timestamp = parseInt(updatedMatch[1]);
+        // Check if it's in milliseconds or seconds
+        const date = timestamp > 10000000000 
+          ? new Date(timestamp).toISOString() 
+          : new Date(timestamp * 1000).toISOString();
+        console.log(`✅ Found 'updated' timestamp in script tag: ${timestamp} = ${date}`);
+        return date;
+      }
+      
+      if (createdMatch) {
+        const timestamp = parseInt(createdMatch[1]);
+        const date = timestamp > 10000000000 
+          ? new Date(timestamp).toISOString() 
+          : new Date(timestamp * 1000).toISOString();
+        console.log(`✅ Found 'created' timestamp in script tag: ${timestamp} = ${date}`);
+        return date;
+      }
+    }
+    
+    console.log(`⚠️ No date timestamps found in script tags`);
     
     // Fallback: Look for "Posted X days ago" or "Listed on [date]" text in HTML
     const relativeTimePatterns = [
