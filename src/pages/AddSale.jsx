@@ -615,6 +615,17 @@ export default function AddSale() {
 
   const isEbay = formData.platform === 'ebay';
   const isImportedEbaySale = isEbay && (formData.ebay_transaction_id || formData.ebay_order_id); // Only show eBay fields for imported items
+  
+  // Debug logging for eBay fields visibility
+  console.log('🔍 AddSale Debug:', {
+    isEbay,
+    ebay_transaction_id: formData.ebay_transaction_id,
+    ebay_order_id: formData.ebay_order_id,
+    isImportedEbaySale,
+    tracking_number: formData.tracking_number,
+    shipping_carrier: formData.shipping_carrier,
+    platform: formData.platform
+  });
   const facebookSaleType = formData.facebook_sale_type || 'online';
   const isFacebookPlatform = formData.platform === 'facebook_marketplace';
   const isFacebookLocal = isFacebookPlatform && facebookSaleType === 'local';
