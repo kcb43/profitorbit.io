@@ -224,7 +224,7 @@ export default async function handler(req, res) {
         console.log(`🔄 Importing item ${itemId}...`);
         
         // Check if we have full item data from my-listings (for sold items)
-        const fullItemData = itemsDataMap[itemId];
+        let fullItemData = itemsDataMap[itemId];
         console.log(`🔍 Looking for itemId "${itemId}" in map:`, {
           found: !!fullItemData,
           mapKeys: Object.keys(itemsDataMap).slice(0, 5),
@@ -237,6 +237,34 @@ export default async function handler(req, res) {
           status: fullItemData?.status,
           isSoldItem
         });
+        
+        // For sold items, fetch fresh data from my-listings API to get transaction details
+        if (isSoldItem && fullItemData) {
+          console.log(`🔄 Fetching fresh transaction data from my-listings API...`);
+          try {
+            const myListingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://profitorbit.io'}/api/ebay/my-listings?status=Sold`, {
+              headers: {
+                'X-User-Id': userId,
+                'X-eBay-Token': accessToken,
+              }
+            });
+            
+            if (myListingsResponse.ok) {
+              const myListingsData = await myListingsResponse.json();
+              // Find this specific item in the fresh data
+              const freshItemData = myListingsData.listings?.find(item => item.itemId === itemId);
+              if (freshItemData) {
+                console.log(`✅ Found fresh data with transaction details`);
+                fullItemData = freshItemData; // Use fresh data with all fields
+              } else {
+                console.warn(`⚠️ Item ${itemId} not found in fresh my-listings data`);
+              }
+            }
+          } catch (fetchError) {
+            console.error(`⚠️ Failed to fetch fresh data from my-listings:`, fetchError);
+            // Continue with cached data
+          }
+        }
         
         let itemDetails;
         
