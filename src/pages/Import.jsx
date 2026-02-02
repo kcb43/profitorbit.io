@@ -1937,14 +1937,24 @@ export default function Import() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {(() => {
-                const item = sourceListings?.find(i => i.itemId === itemToDelete);
+                const sourceListings = selectedSource === "facebook" 
+                  ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+                  : selectedSource === "mercari"
+                  ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
+                  : (ebayListings || []);
+                const item = sourceListings.find(i => i.itemId === itemToDelete);
                 const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
                 return isEbaySold ? 'Remove Sale from History?' : 'Remove Item from Inventory?';
               })()}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {(() => {
-                const item = sourceListings?.find(i => i.itemId === itemToDelete);
+                const sourceListings = selectedSource === "facebook" 
+                  ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+                  : selectedSource === "mercari"
+                  ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
+                  : (ebayListings || []);
+                const item = sourceListings.find(i => i.itemId === itemToDelete);
                 const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
                 return isEbaySold 
                   ? 'This will remove the sale from your sales history. You can re-import it later from the Import page.'
@@ -1963,7 +1973,12 @@ export default function Import() {
               className="bg-red-600 hover:bg-red-700"
             >
               {(() => {
-                const item = sourceListings?.find(i => i.itemId === itemToDelete);
+                const sourceListings = selectedSource === "facebook" 
+                  ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+                  : selectedSource === "mercari"
+                  ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
+                  : (ebayListings || []);
+                const item = sourceListings.find(i => i.itemId === itemToDelete);
                 const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
                 return isEbaySold ? 'Yes, Remove from Sales History' : 'Yes, Remove from Inventory';
               })()}
