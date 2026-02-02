@@ -423,8 +423,111 @@ export default async function handler(req, res) {
             } else {
               console.warn(`⚠️ GetItemTransactions API returned ${response.status}`);
             }
+            
+            // ALSO fetch order-level details (delivery date, funds status, payment method)
+            if (fullItemData.orderId) {
+              console.log(`🔄 Fetching order details for order ${fullItemData.orderId}...`);
+              
+              const getOrdersRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <OrderIDArray>
+    <OrderID>${fullItemData.orderId}</OrderID>
+  </OrderIDArray>
+  <IncludeFinalValueFee>true</IncludeFinalValueFee>
+</GetOrdersRequest>`;
+
+              const orderResponse = await fetch(tradingUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'text/xml',
+                  'X-EBAY-API-SITEID': '0',
+                  'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+                  'X-EBAY-API-CALL-NAME': 'GetOrders',
+                },
+                body: getOrdersRequest,
+              });
+              
+              if (orderResponse.ok) {
+                const orderXml = await orderResponse.text();
+                console.log(`📄 GetOrders XML response (first 2000 chars):`, orderXml.substring(0, 2000));
+                
+                // Parse order-level data
+                const orderMatch = orderXml.match(/<Order>([\s\S]*?)<\/Order>/);
+                if (orderMatch) {
+                  const orderBlock = orderMatch[1];
+                  
+                  // Delivery Date - multiple possible locations
+                  let deliveryMatch = orderBlock.match(/<DeliveredDate>([^<]*)<\/DeliveredDate>/);
+                  if (!deliveryMatch) {
+                    deliveryMatch = orderBlock.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
+                  }
+                  if (!deliveryMatch) {
+                    const shipmentMatch = orderBlock.match(/<ShippingDetails>([\s\S]*?)<\/ShippingDetails>/);
+                    if (shipmentMatch) {
+                      const shipmentXml = shipmentMatch[1];
+                      deliveryMatch = shipmentXml.match(/<DeliveryDate>([^<]*)<\/DeliveryDate>/);
+                      if (!deliveryMatch) {
+                        const trackingMatch = shipmentXml.match(/<ShipmentTrackingDetails>([\s\S]*?)<\/ShipmentTrackingDetails>/);
+                        if (trackingMatch) {
+                          deliveryMatch = trackingMatch[1].match(/<ShipmentDeliveryDate>([^<]*)<\/ShipmentDeliveryDate>/);
+                        }
+                      }
+                    }
+                  }
+                  if (deliveryMatch) {
+                    fullItemData.deliveryDate = deliveryMatch[1];
+                    console.log(`📅 Order Delivery Date: ${fullItemData.deliveryDate}`);
+                  }
+                  
+                  // Funds Status
+                  const payoutStatusMatch = orderBlock.match(/<SellerPaymentStatus>([^<]*)<\/SellerPaymentStatus>/);
+                  if (payoutStatusMatch) {
+                    fullItemData.fundsStatus = payoutStatusMatch[1];
+                    console.log(`💰 Funds Status: ${fullItemData.fundsStatus}`);
+                  }
+                  
+                  // Payment Method
+                  const paymentMethodMatch = orderBlock.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
+                  if (paymentMethodMatch) {
+                    fullItemData.paymentMethod = paymentMethodMatch[1];
+                    console.log(`💳 Payment Method: ${fullItemData.paymentMethod}`);
+                  } else {
+                    // Try CheckoutStatus
+                    const checkoutMatch = orderBlock.match(/<CheckoutStatus>([\s\S]*?)<\/CheckoutStatus>/);
+                    if (checkoutMatch) {
+                      const checkoutXml = checkoutMatch[1];
+                      const methodMatch = checkoutXml.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
+                      if (methodMatch) {
+                        fullItemData.paymentMethod = methodMatch[1];
+                        console.log(`💳 Payment Method (from CheckoutStatus): ${fullItemData.paymentMethod}`);
+                      }
+                    }
+                  }
+                  
+                  // Payment Status (eBayPaymentStatus)
+                  const statusMatch = orderBlock.match(/<Status>([\s\S]*?)<\/Status>/);
+                  if (statusMatch) {
+                    const statusXml = statusMatch[1];
+                    const paymentStatusMatch = statusXml.match(/<eBayPaymentStatus>([^<]*)<\/eBayPaymentStatus>/);
+                    if (paymentStatusMatch) {
+                      fullItemData.paymentStatus = paymentStatusMatch[1];
+                      console.log(`💳 Payment Status: ${fullItemData.paymentStatus}`);
+                    }
+                  }
+                  
+                  console.log(`✅ Fetched order-level details for ${fullItemData.orderId}`);
+                } else {
+                  console.log(`⚠️ NO Order block found in GetOrders response`);
+                }
+              } else {
+                console.warn(`⚠️ GetOrders API returned ${orderResponse.status}`);
+              }
+            }
           } catch (fetchError) {
-            console.error(`⚠️ Failed to fetch transaction details:`, fetchError);
+            console.error(`⚠️ Failed to fetch transaction/order details:`, fetchError);
           }
         }
         
