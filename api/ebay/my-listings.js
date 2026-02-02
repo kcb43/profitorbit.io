@@ -316,26 +316,36 @@ export default async function handler(req, res) {
         console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
       }
       
-      // Get list of all sold item IDs so we can fetch detailed transaction data
-      const soldItemIds = Object.keys(transactionsByItemId);
-      console.log(`💰 Fetching detailed transaction data for ${soldItemIds.length} sold items...`);
+      // Build a flat list of all transactions we need to fetch
+      const allTransactions = [];
+      for (const itemId in transactionsByItemId) {
+        transactionsByItemId[itemId].forEach(txn => {
+          allTransactions.push({
+            itemId,
+            transactionId: txn.transactionId
+          });
+        });
+      }
       
-      // Fetch GetItemTransactions for each sold item to get financial details
+      console.log(`💰 Fetching detailed financial data for ${allTransactions.length} individual transactions...`);
+      
+      // Fetch GetItemTransactions for each specific transaction
       // We'll do this in batches to avoid overwhelming the API
-      const batchSize = 10;
+      const batchSize = 20;
       const feesByItemId = {};
       
-      for (let i = 0; i < soldItemIds.length; i += batchSize) {
-        const batch = soldItemIds.slice(i, i + batchSize);
-        console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(soldItemIds.length / batchSize)} (${batch.length} items)...`);
+      for (let i = 0; i < allTransactions.length; i += batchSize) {
+        const batch = allTransactions.slice(i, i + batchSize);
+        console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allTransactions.length / batchSize)} (${batch.length} transactions)...`);
         
-        const batchPromises = batch.map(async (itemId) => {
+        const batchPromises = batch.map(async ({ itemId, transactionId }) => {
           const getItemTransactionsRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetItemTransactionsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
     <eBayAuthToken>${accessToken}</eBayAuthToken>
   </RequesterCredentials>
   <ItemID>${itemId}</ItemID>
+  <TransactionID>${transactionId}</TransactionID>
   <IncludeFinalValueFee>true</IncludeFinalValueFee>
 </GetItemTransactionsRequest>`;
 
@@ -353,21 +363,19 @@ export default async function handler(req, res) {
             
             if (response.ok) {
               const xml = await response.text();
-              return { itemId, xml };
+              return { itemId, transactionId, xml };
             } else {
-              console.log(`⚠️ GetItemTransactions failed for item ${itemId}: ${response.status}`);
-              return { itemId, xml: null };
+              return { itemId, transactionId, xml: null };
             }
           } catch (error) {
-            console.log(`⚠️ Error fetching transactions for item ${itemId}:`, error.message);
-            return { itemId, xml: null };
+            return { itemId, transactionId, xml: null };
           }
         });
         
         const batchResults = await Promise.all(batchPromises);
         
         // Parse each result
-        for (const { itemId, xml } of batchResults) {
+        for (const { itemId, transactionId, xml } of batchResults) {
           if (!xml) continue;
           
           // Parse transactions for this item
@@ -381,17 +389,6 @@ export default async function handler(req, res) {
           
           while ((txnMatch = transactionRegex.exec(transactionsMatch[1])) !== null) {
             const txnXml = txnMatch[1];
-            
-            const getField = (field) => {
-              const match = txnXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
-              return match ? match[1] : null;
-            };
-            
-            const transactionId = getField('TransactionID');
-            
-            if (!transactionId) {
-              continue;
-            }
             
             // Extract FinalValueFee
             const fvfMatch = txnXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
@@ -428,7 +425,7 @@ export default async function handler(req, res) {
         }
         
         // Add small delay between batches to avoid rate limiting
-        if (i + batchSize < soldItemIds.length) {
+        if (i + batchSize < allTransactions.length) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
