@@ -238,46 +238,129 @@ export default async function handler(req, res) {
           isSoldItem
         });
         
-        // For sold items, fetch fresh data from my-listings API to get transaction details
+        // For sold items, fetch fresh transaction details directly from eBay API
         if (isSoldItem && fullItemData) {
-          console.log(`🔄 Fetching fresh transaction data from my-listings API...`);
+          const originalItemId = fullItemData.originalItemId || fullItemData.itemId.split('-txn-')[0];
+          const transactionId = fullItemData.transactionId;
+          
+          console.log(`🔄 Fetching transaction details for ${originalItemId}, txn ${transactionId}...`);
+          
           try {
-            const apiUrl = process.env.VERCEL_URL 
-              ? `https://${process.env.VERCEL_URL}/api/ebay/my-listings?status=Sold`
-              : `${process.env.NEXT_PUBLIC_API_URL || 'https://profitorbit.io'}/api/ebay/my-listings?status=Sold`;
+            const tradingUrl = useProduction
+              ? 'https://api.ebay.com/ws/api.dll'
+              : 'https://api.sandbox.ebay.com/ws/api.dll';
               
-            const myListingsResponse = await fetch(apiUrl, {
+            const getItemTransactionsRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetItemTransactionsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <ItemID>${originalItemId}</ItemID>
+  <TransactionID>${transactionId}</TransactionID>
+  <IncludeFinalValueFee>true</IncludeFinalValueFee>
+</GetItemTransactionsRequest>`;
+
+            const response = await fetch(tradingUrl, {
+              method: 'POST',
               headers: {
-                'X-User-Id': userId,
-                'X-eBay-Token': accessToken,
-                'Content-Type': 'application/json',
-              }
+                'Content-Type': 'text/xml',
+                'X-EBAY-API-SITEID': '0',
+                'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+                'X-EBAY-API-CALL-NAME': 'GetItemTransactions',
+              },
+              body: getItemTransactionsRequest,
             });
             
-            if (myListingsResponse.ok) {
-              const myListingsData = await myListingsResponse.json();
-              console.log(`📡 Received ${myListingsData.listings?.length || 0} listings from my-listings API`);
+            if (response.ok) {
+              const xml = await response.text();
               
-              // Find this specific item in the fresh data
-              const freshItemData = myListingsData.listings?.find(item => item.itemId === itemId);
-              if (freshItemData) {
-                console.log(`✅ Found fresh data with transaction details for ${itemId}`);
-                console.log(`🔍 Fresh item has fields:`, {
-                  trackingNumber: freshItemData.trackingNumber,
-                  shippingCarrier: freshItemData.shippingCarrier,
-                  buyerAddress: !!freshItemData.buyerAddress,
-                  itemCondition: freshItemData.itemCondition,
-                });
-                fullItemData = freshItemData; // Use fresh data with all fields
-              } else {
-                console.warn(`⚠️ Item ${itemId} not found in fresh my-listings data`);
+              // Parse the XML to extract all fields
+              const txnMatch = xml.match(/<Transaction>([\s\S]*?)<\/Transaction>/);
+              if (txnMatch) {
+                const txnXml = txnMatch[1];
+                
+                // Shipping/Tracking Info
+                const shippingDetailsMatch = txnXml.match(/<ShippingDetails>([\s\S]*?)<\/ShippingDetails>/);
+                if (shippingDetailsMatch) {
+                  const shippingXml = shippingDetailsMatch[1];
+                  const trackingMatch = shippingXml.match(/<ShipmentTrackingNumber>([^<]*)<\/ShipmentTrackingNumber>/);
+                  fullItemData.trackingNumber = trackingMatch ? trackingMatch[1] : null;
+                  
+                  const carrierMatch = shippingXml.match(/<ShippingCarrierUsed>([^<]*)<\/ShippingCarrierUsed>/);
+                  fullItemData.shippingCarrier = carrierMatch ? carrierMatch[1] : null;
+                  
+                  const deliveryMatch = shippingXml.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
+                  fullItemData.deliveryDate = deliveryMatch ? deliveryMatch[1] : null;
+                }
+                
+                const shippedTimeMatch = txnXml.match(/<ShippedTime>([^<]*)<\/ShippedTime>/);
+                fullItemData.shippedDate = shippedTimeMatch ? shippedTimeMatch[1] : null;
+                
+                // Item Condition
+                const itemMatch = txnXml.match(/<Item>([\s\S]*?)<\/Item>/);
+                if (itemMatch) {
+                  const itemXml = itemMatch[1];
+                  const conditionMatch = itemXml.match(/<ConditionDisplayName>([^<]*)<\/ConditionDisplayName>/);
+                  fullItemData.itemCondition = conditionMatch ? conditionMatch[1] : null;
+                  
+                  const locationMatch = itemXml.match(/<Location>([^<]*)<\/Location>/);
+                  fullItemData.itemLocation = locationMatch ? locationMatch[1] : null;
+                }
+                
+                // Buyer Address
+                const buyerMatch = txnXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
+                if (buyerMatch) {
+                  const buyerXml = buyerMatch[1];
+                  const addressMatch = buyerXml.match(/<ShippingAddress>([\s\S]*?)<\/ShippingAddress>/);
+                  if (addressMatch) {
+                    const addrXml = addressMatch[1];
+                    const getName = (field) => {
+                      const m = addrXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+                      return m ? m[1] : '';
+                    };
+                    
+                    fullItemData.buyerAddress = {
+                      name: getName('Name'),
+                      street1: getName('Street1'),
+                      street2: getName('Street2'),
+                      city: getName('CityName'),
+                      state: getName('StateOrProvince'),
+                      zip: getName('PostalCode'),
+                      country: getName('CountryName'),
+                      phone: getName('Phone'),
+                    };
+                  }
+                }
+                
+                // Payment Info
+                const monetaryDetailsMatch = txnXml.match(/<MonetaryDetails>([\s\S]*?)<\/MonetaryDetails>/);
+                if (monetaryDetailsMatch) {
+                  const monetaryXml = monetaryDetailsMatch[1];
+                  const paymentMatch = monetaryXml.match(/<Payment>([\s\S]*?)<\/Payment>/);
+                  if (paymentMatch) {
+                    const paymentXml = paymentMatch[1];
+                    const statusMatch = paymentXml.match(/<PaymentStatus>([^<]*)<\/PaymentStatus>/);
+                    fullItemData.paymentStatus = statusMatch ? statusMatch[1] : null;
+                    
+                    const timeMatch = paymentXml.match(/<PaymentTime>([^<]*)<\/PaymentTime>/);
+                    fullItemData.paymentDate = timeMatch ? timeMatch[1] : null;
+                  }
+                }
+                
+                const paymentMethodMatch = txnXml.match(/<PaymentMethodUsed>([^<]*)<\/PaymentMethodUsed>/);
+                fullItemData.paymentMethod = paymentMethodMatch ? paymentMethodMatch[1] : null;
+                
+                // Buyer Notes
+                const buyerMessageMatch = txnXml.match(/<BuyerCheckoutMessage>([^<]*)<\/BuyerCheckoutMessage>/);
+                fullItemData.buyerNotes = buyerMessageMatch ? buyerMessageMatch[1] : null;
+                
+                console.log(`✅ Fetched transaction details for ${originalItemId}`);
               }
             } else {
-              console.error(`⚠️ my-listings API returned ${myListingsResponse.status}: ${await myListingsResponse.text()}`);
+              console.warn(`⚠️ GetItemTransactions API returned ${response.status}`);
             }
           } catch (fetchError) {
-            console.error(`⚠️ Failed to fetch fresh data from my-listings:`, fetchError);
-            // Continue with cached data
+            console.error(`⚠️ Failed to fetch transaction details:`, fetchError);
           }
         }
         
