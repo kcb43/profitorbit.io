@@ -287,7 +287,7 @@ export default async function handler(req, res) {
         const importedItemIds = new Set(importedItems?.map(item => item.ebay_item_id) || []);
 
         // For sold items, also check if there's a sale record for this specific transaction
-        let soldItemsMap = new Map();
+        let soldItemsMap = new Map(); // Map of transactionId -> { imported: true, saleId: 'xxx', inventoryId: 'yyy' }
         const transactionIds = allItems
           .filter(item => item.transactionId)
           .map(item => item.transactionId);
@@ -295,14 +295,19 @@ export default async function handler(req, res) {
         if (transactionIds.length > 0) {
           const { data: salesRecords } = await supabase
             .from('sales')
-            .select('ebay_transaction_id')
+            .select('id, ebay_transaction_id, inventory_id')
             .eq('user_id', userId)
-            .in('ebay_transaction_id', transactionIds);
+            .in('ebay_transaction_id', transactionIds)
+            .is('deleted_at', null); // Only get non-deleted sales
 
-          // Map transaction IDs to sold status
+          // Map transaction IDs to sale data
           salesRecords?.forEach(sale => {
             if (sale.ebay_transaction_id) {
-              soldItemsMap.set(sale.ebay_transaction_id, true);
+              soldItemsMap.set(sale.ebay_transaction_id, {
+                imported: true,
+                saleId: sale.id,
+                inventoryId: sale.inventory_id,
+              });
             }
           });
         }
@@ -316,15 +321,26 @@ export default async function handler(req, res) {
 
           // Check if imported: either inventory exists OR (for sold items) sale record exists
           let isImported = importedItemIds.has(originalItemId);
+          let saleId = null;
+          let inventoryId = null;
           
           // For sold items, also check if the specific transaction was imported
           if (item.status === 'Sold' && item.transactionId) {
-            isImported = isImported && soldItemsMap.has(item.transactionId);
+            const saleData = soldItemsMap.get(item.transactionId);
+            if (saleData) {
+              isImported = isImported && saleData.imported;
+              saleId = saleData.saleId;
+              inventoryId = saleData.inventoryId;
+            } else {
+              isImported = false; // Transaction not imported
+            }
           }
 
           return {
             ...item,
             imported: isImported,
+            saleId: saleId,
+            inventoryId: inventoryId,
           };
         });
 
@@ -740,7 +756,7 @@ export default async function handler(req, res) {
         const importedItemIds = new Set(importedItems?.map(item => item.ebay_item_id) || []);
 
         // For sold items, also check if there's a sale record for this specific transaction
-        let soldItemsMap = new Map();
+        let soldItemsMap = new Map(); // Map of transactionId -> { imported: true, saleId: 'xxx', inventoryId: 'yyy' }
         const transactionIds = items
           .filter(item => item.transactionId)
           .map(item => item.transactionId);
@@ -748,14 +764,19 @@ export default async function handler(req, res) {
         if (transactionIds.length > 0) {
           const { data: salesRecords } = await supabase
             .from('sales')
-            .select('ebay_transaction_id')
+            .select('id, ebay_transaction_id, inventory_id')
             .eq('user_id', userId)
-            .in('ebay_transaction_id', transactionIds);
+            .in('ebay_transaction_id', transactionIds)
+            .is('deleted_at', null); // Only get non-deleted sales
 
-          // Map transaction IDs to sold status
+          // Map transaction IDs to sale data
           salesRecords?.forEach(sale => {
             if (sale.ebay_transaction_id) {
-              soldItemsMap.set(sale.ebay_transaction_id, true);
+              soldItemsMap.set(sale.ebay_transaction_id, {
+                imported: true,
+                saleId: sale.id,
+                inventoryId: sale.inventory_id,
+              });
             }
           });
         }
@@ -769,15 +790,26 @@ export default async function handler(req, res) {
 
           // Check if imported: either inventory exists OR (for sold items) sale record exists
           let isImported = importedItemIds.has(originalItemId);
+          let saleId = null;
+          let inventoryId = null;
           
           // For sold items, also check if the specific transaction was imported
           if (item.transactionId) {
-            isImported = isImported && soldItemsMap.has(item.transactionId);
+            const saleData = soldItemsMap.get(item.transactionId);
+            if (saleData) {
+              isImported = isImported && saleData.imported;
+              saleId = saleData.saleId;
+              inventoryId = saleData.inventoryId;
+            } else {
+              isImported = false; // Transaction not imported
+            }
           }
 
           return {
             ...item,
             imported: isImported,
+            saleId: saleId,
+            inventoryId: inventoryId,
           };
         });
 
