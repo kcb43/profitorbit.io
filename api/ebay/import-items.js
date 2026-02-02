@@ -195,10 +195,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'eBay not connected. Please connect your eBay account first.' });
     }
 
-    const { itemIds } = req.body;
+    const { itemIds, itemsData } = req.body;
 
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
       return res.status(400).json({ error: 'itemIds array is required' });
+    }
+
+    // itemsData is optional - contains full item details from my-listings endpoint (for sold items)
+    const itemsDataMap = {};
+    if (itemsData && Array.isArray(itemsData)) {
+      itemsData.forEach(item => {
+        itemsDataMap[item.itemId] = item;
+      });
     }
 
     let imported = 0;
@@ -210,8 +218,12 @@ export default async function handler(req, res) {
       try {
         console.log(`🔄 Importing item ${itemId}...`);
         
-        // Fetch detailed item info from eBay Trading API
-        const itemDetails = await getItemDetails(itemId, accessToken);
+        // Check if we have full item data from my-listings (for sold items)
+        const fullItemData = itemsDataMap[itemId];
+        const isSoldItem = fullItemData && fullItemData.status === 'Sold';
+        
+        // Fetch detailed item info from eBay Trading API (if not sold, or to get full details)
+        const itemDetails = fullItemData || await getItemDetails(itemId, accessToken);
 
         if (!itemDetails || !itemDetails.itemId) {
           const error = 'Failed to parse item data';
@@ -232,13 +244,13 @@ export default async function handler(req, res) {
             description: itemDetails.description,
             purchase_price: itemDetails.price,
             listing_price: itemDetails.price,
-            status: 'listed',
+            status: isSoldItem ? 'sold' : 'listed',
             source: 'eBay',
             images: itemDetails.images,
             image_url: itemDetails.images[0] || null,
             sku: itemDetails.sku,
-            ebay_item_id: itemDetails.itemId,
-            condition: itemDetails.condition,
+            ebay_item_id: itemDetails.itemId || itemDetails.originalItemId,
+            condition: itemDetails.condition || itemDetails.itemCondition,
             purchase_date: new Date().toISOString(),
             notes: null, // User can add their own notes
           })
@@ -257,6 +269,54 @@ export default async function handler(req, res) {
             inventoryId: insertData.id,
           });
           console.log(`✅ Successfully imported item ${itemId} with inventory ID ${insertData.id}`);
+          
+          // If this is a sold item, also create a sale record
+          if (isSoldItem && fullItemData) {
+            try {
+              console.log(`📊 Creating sale record for sold item ${itemId}...`);
+              
+              const { error: saleError } = await supabase
+                .from('sales')
+                .insert({
+                  user_id: userId,
+                  inventory_id: insertData.id,
+                  item_name: itemDetails.title,
+                  sale_price: fullItemData.price,
+                  sale_date: fullItemData.dateSold || new Date().toISOString(),
+                  platform: 'eBay',
+                  shipping_cost: fullItemData.shippingCost || 0,
+                  platform_fees: fullItemData.finalValueFee || 0,
+                  vat_fees: fullItemData.salesTax || 0,
+                  profit: fullItemData.netPayout || (fullItemData.price - (fullItemData.finalValueFee || 0)),
+                  image_url: itemDetails.images?.[0] || null,
+                  // Fully displayed fields
+                  tracking_number: fullItemData.trackingNumber,
+                  shipping_carrier: fullItemData.shippingCarrier,
+                  delivery_date: fullItemData.deliveryDate,
+                  shipped_date: fullItemData.shippedDate,
+                  item_condition: fullItemData.itemCondition || itemDetails.condition,
+                  // Hidden fields
+                  buyer_address: fullItemData.buyerAddress,
+                  payment_method: fullItemData.paymentMethod,
+                  payment_status: fullItemData.paymentStatus,
+                  payment_date: fullItemData.paymentDate,
+                  item_location: fullItemData.itemLocation,
+                  buyer_notes: fullItemData.buyerNotes,
+                  // eBay identifiers
+                  ebay_order_id: fullItemData.orderId,
+                  ebay_transaction_id: fullItemData.transactionId,
+                  ebay_buyer_username: fullItemData.buyerUsername,
+                });
+              
+              if (saleError) {
+                console.error(`⚠️ Failed to create sale record for ${itemId}:`, saleError);
+              } else {
+                console.log(`✅ Created sale record for ${itemId}`);
+              }
+            } catch (saleErr) {
+              console.error(`⚠️ Error creating sale record for ${itemId}:`, saleErr);
+            }
+          }
         }
 
       } catch (error) {

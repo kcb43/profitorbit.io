@@ -469,13 +469,20 @@ export default function Import() {
         body = JSON.stringify({ items: itemsToImport });
         
       } else if (selectedSource === 'ebay') {
+        // For eBay, get full item data from cache (especially important for sold items)
+        const ebayListings = queryClient.getQueryData(['ebay-listings', userId, selectedStatus]) || [];
+        const itemsToImport = ebayListings.filter(item => itemIds.includes(item.itemId));
+        
         endpoint = "/api/ebay/import-items";
         headers = {
           "Content-Type": "application/json",
           'x-user-id': userId,
           'x-user-token': ebayToken?.access_token || '',
         };
-        body = JSON.stringify({ itemIds });
+        body = JSON.stringify({ 
+          itemIds,
+          itemsData: itemsToImport // Pass full item data (includes transaction details for sold items)
+        });
         
       } else {
         throw new Error(`Import not yet supported for ${selectedSource}`);

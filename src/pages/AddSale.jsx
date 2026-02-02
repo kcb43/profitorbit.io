@@ -132,11 +132,28 @@ export default function AddSale() {
     quantity_sold: 1, // Default for new sales
     return_deadline: "",
     facebook_sale_type: "local",
+    // eBay-specific fields (fully displayed)
+    tracking_number: "",
+    shipping_carrier: "",
+    delivery_date: "",
+    shipped_date: "",
+    item_condition: "",
+    // eBay-specific fields (hidden behind button)
+    buyer_address: null,
+    payment_method: "",
+    payment_status: "",
+    payment_date: "",
+    item_location: "",
+    buyer_notes: "",
+    ebay_order_id: "",
+    ebay_transaction_id: "",
+    ebay_buyer_username: "",
   });
 
   const [customFees, setCustomFees] = useState([]);
   const [customFeeFormOpen, setCustomFeeFormOpen] = useState(false);
   const [customFeeDraft, setCustomFeeDraft] = useState({ name: "", amount: "" });
+  const [showAdditionalDetails, setShowAdditionalDetails] = useState(false); // For eBay additional details button
   // NEW: Store per-item purchase price for multi-quantity inventory items
   const [perItemPurchasePrice, setPerItemPurchasePrice] = useState(null);
 
@@ -207,6 +224,21 @@ export default function AddSale() {
         vat_fees: String(dataToLoad.vat_fees ?? ''),
         notes: copyId ? '' : cleanNoTags,
         quantity_sold: String(dataToLoad.quantity_sold ?? 1),
+        // eBay-specific fields (ensure they're loaded)
+        tracking_number: dataToLoad.tracking_number || "",
+        shipping_carrier: dataToLoad.shipping_carrier || "",
+        delivery_date: dataToLoad.delivery_date || "",
+        shipped_date: dataToLoad.shipped_date || "",
+        item_condition: dataToLoad.item_condition || "",
+        buyer_address: dataToLoad.buyer_address || null,
+        payment_method: dataToLoad.payment_method || "",
+        payment_status: dataToLoad.payment_status || "",
+        payment_date: dataToLoad.payment_date || "",
+        item_location: dataToLoad.item_location || "",
+        buyer_notes: dataToLoad.buyer_notes || "",
+        ebay_order_id: dataToLoad.ebay_order_id || "",
+        ebay_transaction_id: dataToLoad.ebay_transaction_id || "",
+        ebay_buyer_username: dataToLoad.ebay_buyer_username || "",
       }));
 
       const currentSource = dataToLoad.source;
@@ -1133,6 +1165,213 @@ export default function AddSale() {
                     />
                   </div>
                 ) : <div />}
+
+
+                {/* eBay-specific fields section */}
+                {isEbay && (
+                  <>
+                    {/* Fully displayed fields */}
+                    <div className="space-y-2 min-w-0">
+                      <Label htmlFor="tracking_number" className="dark:text-gray-200">Tracking Number</Label>
+                      <Input
+                        id="tracking_number"
+                        value={formData.tracking_number}
+                        onChange={(e) => handleChange('tracking_number', e.target.value)}
+                        placeholder="e.g., 1Z999AA10123456784"
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-2 min-w-0">
+                      <Label htmlFor="shipping_carrier" className="dark:text-gray-200">Shipping Carrier</Label>
+                      <Select
+                        value={formData.shipping_carrier}
+                        onValueChange={(value) => handleChange('shipping_carrier', value)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select carrier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USPS">USPS</SelectItem>
+                          <SelectItem value="FedEx">FedEx</SelectItem>
+                          <SelectItem value="UPS">UPS</SelectItem>
+                          <SelectItem value="DHL">DHL</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <ClearableDateInput
+                      id="shipped_date"
+                      label="Shipped Date"
+                      value={formData.shipped_date}
+                      onChange={(val) => handleChange('shipped_date', val)}
+                    />
+
+                    <ClearableDateInput
+                      id="delivery_date"
+                      label="Delivery Date"
+                      value={formData.delivery_date}
+                      onChange={(val) => handleChange('delivery_date', val)}
+                    />
+
+                    <div className="space-y-2 min-w-0">
+                      <Label htmlFor="item_condition" className="dark:text-gray-200">Item Condition</Label>
+                      <Input
+                        id="item_condition"
+                        value={formData.item_condition}
+                        onChange={(e) => handleChange('item_condition', e.target.value)}
+                        placeholder="e.g., New, Used, Refurbished"
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Additional Details Button */}
+                    <div className="md:col-span-2 space-y-3 rounded-lg border border-dashed border-blue-400/40 bg-blue-50/30 dark:bg-blue-900/10 p-4 min-w-0">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Additional eBay Details</p>
+                          <p className="text-xs text-muted-foreground">Buyer information, payment details, and more.</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowAdditionalDetails((prev) => !prev)}
+                          className="gap-2"
+                        >
+                          {showAdditionalDetails ? "Hide Details" : "Show Details"}
+                        </Button>
+                      </div>
+
+                      {showAdditionalDetails && (
+                        <div className="grid md:grid-cols-2 gap-4 pt-2">
+                          {/* Buyer Address */}
+                          <div className="space-y-2 md:col-span-2">
+                            <Label className="dark:text-gray-200">Buyer Address</Label>
+                            <div className="grid gap-2">
+                              <Input
+                                placeholder="Name"
+                                value={formData.buyer_address?.name || ""}
+                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, name: e.target.value })}
+                              />
+                              <Input
+                                placeholder="Street Address"
+                                value={formData.buyer_address?.street1 || ""}
+                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, street1: e.target.value })}
+                              />
+                              <Input
+                                placeholder="Apt/Suite (optional)"
+                                value={formData.buyer_address?.street2 || ""}
+                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, street2: e.target.value })}
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  placeholder="City"
+                                  value={formData.buyer_address?.city || ""}
+                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, city: e.target.value })}
+                                />
+                                <Input
+                                  placeholder="State"
+                                  value={formData.buyer_address?.state || ""}
+                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, state: e.target.value })}
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  placeholder="ZIP Code"
+                                  value={formData.buyer_address?.zip || ""}
+                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, zip: e.target.value })}
+                                />
+                                <Input
+                                  placeholder="Country"
+                                  value={formData.buyer_address?.country || ""}
+                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, country: e.target.value })}
+                                />
+                              </div>
+                              <Input
+                                placeholder="Phone (optional)"
+                                value={formData.buyer_address?.phone || ""}
+                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, phone: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Payment Info */}
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_method" className="dark:text-gray-200">Payment Method</Label>
+                            <Input
+                              id="payment_method"
+                              value={formData.payment_method}
+                              onChange={(e) => handleChange('payment_method', e.target.value)}
+                              placeholder="e.g., PayPal, Credit Card"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_status" className="dark:text-gray-200">Payment Status</Label>
+                            <Input
+                              id="payment_status"
+                              value={formData.payment_status}
+                              onChange={(e) => handleChange('payment_status', e.target.value)}
+                              placeholder="e.g., Paid, Pending"
+                            />
+                          </div>
+
+                          <ClearableDateInput
+                            id="payment_date"
+                            label="Payment Date"
+                            value={formData.payment_date}
+                            onChange={(val) => handleChange('payment_date', val)}
+                          />
+
+                          <div className="space-y-2">
+                            <Label htmlFor="item_location" className="dark:text-gray-200">Item Location</Label>
+                            <Input
+                              id="item_location"
+                              value={formData.item_location}
+                              onChange={(e) => handleChange('item_location', e.target.value)}
+                              placeholder="e.g., Los Angeles, CA"
+                            />
+                          </div>
+
+                          {/* eBay Identifiers */}
+                          <div className="space-y-2">
+                            <Label htmlFor="ebay_order_id" className="dark:text-gray-200">eBay Order ID</Label>
+                            <Input
+                              id="ebay_order_id"
+                              value={formData.ebay_order_id}
+                              onChange={(e) => handleChange('ebay_order_id', e.target.value)}
+                              placeholder="e.g., 14-13962-19566"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="ebay_buyer_username" className="dark:text-gray-200">Buyer Username</Label>
+                            <Input
+                              id="ebay_buyer_username"
+                              value={formData.ebay_buyer_username}
+                              onChange={(e) => handleChange('ebay_buyer_username', e.target.value)}
+                              placeholder="eBay username"
+                            />
+                          </div>
+
+                          {/* Buyer Notes */}
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="buyer_notes" className="dark:text-gray-200">Buyer Notes/Messages</Label>
+                            <Textarea
+                              id="buyer_notes"
+                              value={formData.buyer_notes}
+                              onChange={(e) => handleChange('buyer_notes', e.target.value)}
+                              placeholder="Any messages or notes from the buyer..."
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
 
                 <div className="space-y-2 md:col-span-2 min-w-0">

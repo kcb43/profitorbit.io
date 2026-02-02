@@ -412,7 +412,100 @@ export default async function handler(req, res) {
             const actualShippingMatch = txnXml.match(/<ActualShippingCost[^>]*>([^<]+)<\/ActualShippingCost>/);
             const actualShippingCost = actualShippingMatch ? parseFloat(actualShippingMatch[1]) : shippingCost;
             
-            // Store fees by transaction ID
+            // === NEW: Extract additional fields for Sales History ===
+            
+            // Shipping/Tracking Info (fully displayed)
+            const shippingDetailsMatch = txnXml.match(/<ShippingDetails>([\s\S]*?)<\/ShippingDetails>/);
+            let trackingNumber = null;
+            let shippingCarrier = null;
+            let deliveryDate = null;
+            let shippedDate = null;
+            
+            if (shippingDetailsMatch) {
+              const shippingXml = shippingDetailsMatch[1];
+              const trackingMatch = shippingXml.match(/<ShipmentTrackingNumber>([^<]*)<\/ShipmentTrackingNumber>/);
+              trackingNumber = trackingMatch ? trackingMatch[1] : null;
+              
+              const carrierMatch = shippingXml.match(/<ShippingCarrierUsed>([^<]*)<\/ShippingCarrierUsed>/);
+              shippingCarrier = carrierMatch ? carrierMatch[1] : null;
+              
+              const deliveryMatch = shippingXml.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
+              deliveryDate = deliveryMatch ? deliveryMatch[1] : null;
+            }
+            
+            const shippedTimeMatch = txnXml.match(/<ShippedTime>([^<]*)<\/ShippedTime>/);
+            shippedDate = shippedTimeMatch ? shippedTimeMatch[1] : null;
+            
+            // Item Condition (fully displayed)
+            const itemMatch = txnXml.match(/<Item>([\s\S]*?)<\/Item>/);
+            let itemCondition = null;
+            if (itemMatch) {
+              const itemXml = itemMatch[1];
+              const conditionMatch = itemXml.match(/<ConditionDisplayName>([^<]*)<\/ConditionDisplayName>/);
+              itemCondition = conditionMatch ? conditionMatch[1] : null;
+            }
+            
+            // Buyer Address (hidden behind button)
+            const buyerMatch = txnXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
+            let buyerAddress = null;
+            if (buyerMatch) {
+              const buyerXml = buyerMatch[1];
+              const addressMatch = buyerXml.match(/<ShippingAddress>([\s\S]*?)<\/ShippingAddress>/);
+              if (addressMatch) {
+                const addrXml = addressMatch[1];
+                const getName = (field) => {
+                  const m = addrXml.match(new RegExp(`<${field}>([^<]*)<\\/${field}>`));
+                  return m ? m[1] : '';
+                };
+                
+                buyerAddress = {
+                  name: getName('Name'),
+                  street1: getName('Street1'),
+                  street2: getName('Street2'),
+                  city: getName('CityName'),
+                  state: getName('StateOrProvince'),
+                  zip: getName('PostalCode'),
+                  country: getName('CountryName'),
+                  phone: getName('Phone'),
+                };
+              }
+            }
+            
+            // Payment Info (hidden behind button)
+            const monetaryDetailsMatch = txnXml.match(/<MonetaryDetails>([\s\S]*?)<\/MonetaryDetails>/);
+            let paymentMethod = null;
+            let paymentStatus = null;
+            let paymentDate = null;
+            
+            if (monetaryDetailsMatch) {
+              const monetaryXml = monetaryDetailsMatch[1];
+              const paymentMatch = monetaryXml.match(/<Payment>([\s\S]*?)<\/Payment>/);
+              if (paymentMatch) {
+                const paymentXml = paymentMatch[1];
+                const statusMatch = paymentXml.match(/<PaymentStatus>([^<]*)<\/PaymentStatus>/);
+                paymentStatus = statusMatch ? statusMatch[1] : null;
+                
+                const timeMatch = paymentXml.match(/<PaymentTime>([^<]*)<\/PaymentTime>/);
+                paymentDate = timeMatch ? timeMatch[1] : null;
+              }
+            }
+            
+            const paymentMethodMatch = txnXml.match(/<PaymentMethodUsed>([^<]*)<\/PaymentMethodUsed>/);
+            paymentMethod = paymentMethodMatch ? paymentMethodMatch[1] : null;
+            
+            // Item Location (hidden behind button)
+            let itemLocation = null;
+            if (itemMatch) {
+              const itemXml = itemMatch[1];
+              const locationMatch = itemXml.match(/<Location>([^<]*)<\/Location>/);
+              itemLocation = locationMatch ? locationMatch[1] : null;
+            }
+            
+            // Buyer Notes/Messages (hidden behind button)
+            const buyerMessageMatch = txnXml.match(/<BuyerCheckoutMessage>([^<]*)<\/BuyerCheckoutMessage>/);
+            const buyerNotes = buyerMessageMatch ? buyerMessageMatch[1] : null;
+            
+            // Store all data by transaction ID
             if (!feesByItemId[itemId]) {
               feesByItemId[itemId] = {};
             }
@@ -420,6 +513,19 @@ export default async function handler(req, res) {
               finalValueFee,
               salesTax,
               shippingCost: actualShippingCost,
+              // Fully displayed fields
+              trackingNumber,
+              shippingCarrier,
+              deliveryDate,
+              shippedDate,
+              itemCondition,
+              // Hidden fields
+              buyerAddress,
+              paymentMethod,
+              paymentStatus,
+              paymentDate,
+              itemLocation,
+              buyerNotes,
             };
           }
         }
@@ -441,11 +547,28 @@ export default async function handler(req, res) {
           transactionsByItemId[itemId].forEach(txn => {
             const fees = feesByItemId[itemId][txn.transactionId];
             if (fees) {
+              // Financial data
               txn.finalValueFee = fees.finalValueFee;
               txn.salesTax = fees.salesTax;
               txn.shippingCost = fees.shippingCost;
               txn.totalSale = txn.price + fees.shippingCost + fees.salesTax;
               txn.netPayout = txn.price + fees.shippingCost - fees.finalValueFee;
+              
+              // Fully displayed fields
+              txn.trackingNumber = fees.trackingNumber;
+              txn.shippingCarrier = fees.shippingCarrier;
+              txn.deliveryDate = fees.deliveryDate;
+              txn.shippedDate = fees.shippedDate;
+              txn.itemCondition = fees.itemCondition;
+              
+              // Hidden fields (for button details)
+              txn.buyerAddress = fees.buyerAddress;
+              txn.paymentMethod = fees.paymentMethod;
+              txn.paymentStatus = fees.paymentStatus;
+              txn.paymentDate = fees.paymentDate;
+              txn.itemLocation = fees.itemLocation;
+              txn.buyerNotes = fees.buyerNotes;
+              
               matchedCount++;
               if (matchedCount <= 5) {
                 console.log(`  ✅ Merged fees for item ${itemId}, txn ${txn.transactionId}: FVF=$${fees.finalValueFee}, Tax=$${fees.salesTax}, Ship=$${fees.shippingCost}`);
