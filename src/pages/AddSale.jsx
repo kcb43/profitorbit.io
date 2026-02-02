@@ -1201,57 +1201,82 @@ export default function AddSale() {
                     {/* Fully displayed fields */}
                     <div className="space-y-2 min-w-0">
                       <Label htmlFor="tracking_number" className="dark:text-gray-200">Tracking Number</Label>
-                      <Input
-                        id="tracking_number"
-                        value={formData.tracking_number}
-                        onChange={(e) => handleChange('tracking_number', e.target.value)}
-                        placeholder="e.g., 1Z999AA10123456784"
-                        className="w-full"
-                      />
+                      {formData.tracking_number ? (
+                        <a 
+                          href={`https://www.google.com/search?q=${encodeURIComponent(formData.tracking_number + ' ' + (formData.shipping_carrier || 'tracking'))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          {formData.tracking_number}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No tracking number available</p>
+                      )}
                     </div>
 
                     <div className="space-y-2 min-w-0">
                       <Label htmlFor="shipping_carrier" className="dark:text-gray-200">Shipping Carrier</Label>
-                      <Select
-                        value={formData.shipping_carrier}
-                        onValueChange={(value) => handleChange('shipping_carrier', value)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select carrier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USPS">USPS</SelectItem>
-                          <SelectItem value="FedEx">FedEx</SelectItem>
-                          <SelectItem value="UPS">UPS</SelectItem>
-                          <SelectItem value="DHL">DHL</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                        {formData.shipping_carrier || 'N/A'}
+                      </div>
                     </div>
 
-                    <ClearableDateInput
-                      id="shipped_date"
-                      label="Shipped Date"
-                      value={formData.shipped_date}
-                      onChange={(val) => handleChange('shipped_date', val)}
-                    />
-
-                    <ClearableDateInput
-                      id="delivery_date"
-                      label="Delivery Date"
-                      value={formData.delivery_date}
-                      onChange={(val) => handleChange('delivery_date', val)}
-                    />
+                    <div className="space-y-2 min-w-0">
+                      <Label className="dark:text-gray-200">Shipped Date</Label>
+                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                        {formData.shipped_date ? new Date(formData.shipped_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                      </div>
+                    </div>
 
                     <div className="space-y-2 min-w-0">
-                      <Label htmlFor="item_condition" className="dark:text-gray-200">Item Condition</Label>
-                      <Input
-                        id="item_condition"
-                        value={formData.item_condition}
-                        onChange={(e) => handleChange('item_condition', e.target.value)}
-                        placeholder="e.g., New, Used, Refurbished"
-                        className="w-full"
-                      />
+                      <Label className="dark:text-gray-200">Delivery Date</Label>
+                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                        {formData.delivery_date ? new Date(formData.delivery_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not yet delivered'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 min-w-0">
+                      <Label className="dark:text-gray-200">Item Condition</Label>
+                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                        {formData.item_condition || 'N/A'}
+                      </div>
+                    </div>
+
+                    {/* eBay Order Link */}
+                    <div className="space-y-2 min-w-0">
+                      <Label className="dark:text-gray-200">eBay Order</Label>
+                      {formData.ebay_order_id ? (
+                        <a 
+                          href={`https://www.ebay.com/sh/ord/details?orderid=${formData.ebay_order_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          View Order #{formData.ebay_order_id}
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No order ID available</p>
+                      )}
+                    </div>
+
+                    {/* Buyer Username as label */}
+                    <div className="space-y-2 min-w-0">
+                      <Label className="dark:text-gray-200">Buyer</Label>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20">
+                        <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span className="font-medium text-blue-700 dark:text-blue-300">
+                          {formData.ebay_buyer_username || 'Unknown'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Additional Details Button */}
@@ -1259,7 +1284,7 @@ export default function AddSale() {
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold text-foreground">Additional eBay Details</p>
-                          <p className="text-xs text-muted-foreground">Buyer information, payment details, and more.</p>
+                          <p className="text-xs text-muted-foreground">Payment details, item location, and buyer notes.</p>
                         </div>
                         <Button
                           type="button"
@@ -1274,127 +1299,44 @@ export default function AddSale() {
 
                       {showAdditionalDetails && (
                         <div className="grid md:grid-cols-2 gap-4 pt-2">
-                          {/* Buyer Address */}
-                          <div className="space-y-2 md:col-span-2">
-                            <Label className="dark:text-gray-200">Buyer Address</Label>
-                            <div className="grid gap-2">
-                              <Input
-                                placeholder="Name"
-                                value={formData.buyer_address?.name || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), name: e.target.value })}
-                              />
-                              <Input
-                                placeholder="Street Address"
-                                value={formData.buyer_address?.street1 || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), street1: e.target.value })}
-                              />
-                              <Input
-                                placeholder="Apt/Suite (optional)"
-                                value={formData.buyer_address?.street2 || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), street2: e.target.value })}
-                              />
-                              <div className="grid grid-cols-2 gap-2">
-                                <Input
-                                  placeholder="City"
-                                  value={formData.buyer_address?.city || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), city: e.target.value })}
-                                />
-                                <Input
-                                  placeholder="State"
-                                  value={formData.buyer_address?.state || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), state: e.target.value })}
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <Input
-                                  placeholder="ZIP Code"
-                                  value={formData.buyer_address?.zip || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), zip: e.target.value })}
-                                />
-                                <Input
-                                  placeholder="Country"
-                                  value={formData.buyer_address?.country || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), country: e.target.value })}
-                                />
-                              </div>
-                              <Input
-                                placeholder="Phone (optional)"
-                                value={formData.buyer_address?.phone || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), phone: e.target.value })}
-                              />
+                          {/* Payment Info */}
+                          <div className="space-y-2">
+                            <Label className="dark:text-gray-200">Payment Method</Label>
+                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                              {formData.payment_method || 'N/A'}
                             </div>
                           </div>
 
-                          {/* Payment Info */}
                           <div className="space-y-2">
-                            <Label htmlFor="payment_method" className="dark:text-gray-200">Payment Method</Label>
-                            <Input
-                              id="payment_method"
-                              value={formData.payment_method}
-                              onChange={(e) => handleChange('payment_method', e.target.value)}
-                              placeholder="e.g., PayPal, Credit Card"
-                            />
+                            <Label className="dark:text-gray-200">Payment Status</Label>
+                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                              {formData.payment_status || 'N/A'}
+                            </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="payment_status" className="dark:text-gray-200">Payment Status</Label>
-                            <Input
-                              id="payment_status"
-                              value={formData.payment_status}
-                              onChange={(e) => handleChange('payment_status', e.target.value)}
-                              placeholder="e.g., Paid, Pending"
-                            />
-                          </div>
-
-                          <ClearableDateInput
-                            id="payment_date"
-                            label="Payment Date"
-                            value={formData.payment_date}
-                            onChange={(val) => handleChange('payment_date', val)}
-                          />
-
-                          <div className="space-y-2">
-                            <Label htmlFor="item_location" className="dark:text-gray-200">Item Location</Label>
-                            <Input
-                              id="item_location"
-                              value={formData.item_location}
-                              onChange={(e) => handleChange('item_location', e.target.value)}
-                              placeholder="e.g., Los Angeles, CA"
-                            />
-                          </div>
-
-                          {/* eBay Identifiers */}
-                          <div className="space-y-2">
-                            <Label htmlFor="ebay_order_id" className="dark:text-gray-200">eBay Order ID</Label>
-                            <Input
-                              id="ebay_order_id"
-                              value={formData.ebay_order_id}
-                              onChange={(e) => handleChange('ebay_order_id', e.target.value)}
-                              placeholder="e.g., 14-13962-19566"
-                            />
+                            <Label className="dark:text-gray-200">Payment Date</Label>
+                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                              {formData.payment_date ? new Date(formData.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                            </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="ebay_buyer_username" className="dark:text-gray-200">Buyer Username</Label>
-                            <Input
-                              id="ebay_buyer_username"
-                              value={formData.ebay_buyer_username}
-                              onChange={(e) => handleChange('ebay_buyer_username', e.target.value)}
-                              placeholder="eBay username"
-                            />
+                            <Label className="dark:text-gray-200">Item Location</Label>
+                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                              {formData.item_location || 'N/A'}
+                            </div>
                           </div>
 
-                          {/* Buyer Notes */}
-                          <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="buyer_notes" className="dark:text-gray-200">Buyer Notes/Messages</Label>
-                            <Textarea
-                              id="buyer_notes"
-                              value={formData.buyer_notes}
-                              onChange={(e) => handleChange('buyer_notes', e.target.value)}
-                              placeholder="Any messages or notes from the buyer..."
-                              rows={3}
-                            />
-                          </div>
+                          {/* Buyer Notes - only show if there are notes */}
+                          {formData.buyer_notes && (
+                            <div className="space-y-2 md:col-span-2">
+                              <Label className="dark:text-gray-200">Buyer Notes/Messages</Label>
+                              <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                {formData.buyer_notes}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

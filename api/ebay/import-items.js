@@ -353,6 +353,30 @@ export default async function handler(req, res) {
                   console.log(`⚠️ NO Buyer block found in transaction XML`);
                 }
                 
+                // Payment Info
+                const statusMatch = txnXml.match(/<Status>([\s\S]*?)<\/Status>/);
+                if (statusMatch) {
+                  const statusXml = statusMatch[1];
+                  const paymentStatusMatch = statusXml.match(/<eBayPaymentStatus>([^<]*)<\/eBayPaymentStatus>/);
+                  fullItemData.paymentStatus = paymentStatusMatch ? paymentStatusMatch[1] : null;
+                  console.log(`💳 Payment Status: ${fullItemData.paymentStatus || 'NOT FOUND'}`);
+                } else {
+                  console.log(`⚠️ NO Status block found in transaction XML`);
+                }
+                
+                const paymentMethodMatch = txnXml.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
+                fullItemData.paymentMethod = paymentMethodMatch ? paymentMethodMatch[1] : null;
+                console.log(`💳 Payment Method: ${fullItemData.paymentMethod || 'NOT FOUND'}`);
+                
+                const paidTimeMatch = txnXml.match(/<PaidTime>([^<]*)<\/PaidTime>/);
+                fullItemData.paymentDate = paidTimeMatch ? paidTimeMatch[1] : null;
+                console.log(`💳 Payment Date: ${fullItemData.paymentDate || 'NOT FOUND'}`);
+                
+                // Buyer Notes
+                const buyerNotesMatch = txnXml.match(/<BuyerCheckoutMessage>([^<]*)<\/BuyerCheckoutMessage>/);
+                fullItemData.buyerNotes = buyerNotesMatch ? buyerNotesMatch[1] : null;
+                console.log(`📝 Buyer Notes: ${fullItemData.buyerNotes || 'NONE'}`);
+                
                 console.log(`✅ Fetched transaction details for ${originalItemId}`);
                 console.log(`🔍 Final fullItemData fields:`, {
                   trackingNumber: fullItemData.trackingNumber,
@@ -362,6 +386,10 @@ export default async function handler(req, res) {
                   itemCondition: fullItemData.itemCondition,
                   buyerAddress: !!fullItemData.buyerAddress,
                   itemLocation: fullItemData.itemLocation,
+                  paymentMethod: fullItemData.paymentMethod,
+                  paymentStatus: fullItemData.paymentStatus,
+                  paymentDate: fullItemData.paymentDate,
+                  buyerNotes: fullItemData.buyerNotes,
                 });
               } else {
                 console.log(`⚠️ NO Transaction block found in XML response`);
