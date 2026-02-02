@@ -274,28 +274,39 @@ export default async function handler(req, res) {
             
             if (response.ok) {
               const xml = await response.text();
+              console.log(`📄 GetItemTransactions XML response (first 2000 chars):`, xml.substring(0, 2000));
               
               // Parse the XML to extract all fields
               const txnMatch = xml.match(/<Transaction>([\s\S]*?)<\/Transaction>/);
               if (txnMatch) {
                 const txnXml = txnMatch[1];
+                console.log(`🔍 Found Transaction block, length: ${txnXml.length} chars`);
                 
                 // Shipping/Tracking Info
                 const shippingDetailsMatch = txnXml.match(/<ShippingDetails>([\s\S]*?)<\/ShippingDetails>/);
                 if (shippingDetailsMatch) {
                   const shippingXml = shippingDetailsMatch[1];
+                  console.log(`🚚 Found ShippingDetails block, length: ${shippingXml.length} chars`);
+                  
                   const trackingMatch = shippingXml.match(/<ShipmentTrackingNumber>([^<]*)<\/ShipmentTrackingNumber>/);
                   fullItemData.trackingNumber = trackingMatch ? trackingMatch[1] : null;
+                  console.log(`📦 Tracking: ${fullItemData.trackingNumber || 'NOT FOUND'}`);
                   
                   const carrierMatch = shippingXml.match(/<ShippingCarrierUsed>([^<]*)<\/ShippingCarrierUsed>/);
                   fullItemData.shippingCarrier = carrierMatch ? carrierMatch[1] : null;
+                  console.log(`🚢 Carrier: ${fullItemData.shippingCarrier || 'NOT FOUND'}`);
                   
                   const deliveryMatch = shippingXml.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
                   fullItemData.deliveryDate = deliveryMatch ? deliveryMatch[1] : null;
+                  console.log(`📅 Delivery: ${fullItemData.deliveryDate || 'NOT FOUND'}`);
+                } else {
+                  console.log(`⚠️ NO ShippingDetails block found in transaction XML`);
                 }
                 
                 const shippedTimeMatch = txnXml.match(/<ShippedTime>([^<]*)<\/ShippedTime>/);
                 fullItemData.shippedDate = shippedTimeMatch ? shippedTimeMatch[1] : null;
+                console.log(`📅 Shipped: ${fullItemData.shippedDate || 'NOT FOUND'}`);
+                
                 
                 // Item Condition
                 const itemMatch = txnXml.match(/<Item>([\s\S]*?)<\/Item>/);
@@ -303,9 +314,13 @@ export default async function handler(req, res) {
                   const itemXml = itemMatch[1];
                   const conditionMatch = itemXml.match(/<ConditionDisplayName>([^<]*)<\/ConditionDisplayName>/);
                   fullItemData.itemCondition = conditionMatch ? conditionMatch[1] : null;
+                  console.log(`🏷️ Condition: ${fullItemData.itemCondition || 'NOT FOUND'}`);
                   
                   const locationMatch = itemXml.match(/<Location>([^<]*)<\/Location>/);
                   fullItemData.itemLocation = locationMatch ? locationMatch[1] : null;
+                  console.log(`📍 Location: ${fullItemData.itemLocation || 'NOT FOUND'}`);
+                } else {
+                  console.log(`⚠️ NO Item block found in transaction XML`);
                 }
                 
                 // Buyer Address
@@ -330,32 +345,27 @@ export default async function handler(req, res) {
                       country: getName('CountryName'),
                       phone: getName('Phone'),
                     };
+                    console.log(`👤 Buyer Address: ${fullItemData.buyerAddress.name}, ${fullItemData.buyerAddress.city}`);
+                  } else {
+                    console.log(`⚠️ NO ShippingAddress found in Buyer block`);
                   }
+                } else {
+                  console.log(`⚠️ NO Buyer block found in transaction XML`);
                 }
-                
-                // Payment Info
-                const monetaryDetailsMatch = txnXml.match(/<MonetaryDetails>([\s\S]*?)<\/MonetaryDetails>/);
-                if (monetaryDetailsMatch) {
-                  const monetaryXml = monetaryDetailsMatch[1];
-                  const paymentMatch = monetaryXml.match(/<Payment>([\s\S]*?)<\/Payment>/);
-                  if (paymentMatch) {
-                    const paymentXml = paymentMatch[1];
-                    const statusMatch = paymentXml.match(/<PaymentStatus>([^<]*)<\/PaymentStatus>/);
-                    fullItemData.paymentStatus = statusMatch ? statusMatch[1] : null;
-                    
-                    const timeMatch = paymentXml.match(/<PaymentTime>([^<]*)<\/PaymentTime>/);
-                    fullItemData.paymentDate = timeMatch ? timeMatch[1] : null;
-                  }
-                }
-                
-                const paymentMethodMatch = txnXml.match(/<PaymentMethodUsed>([^<]*)<\/PaymentMethodUsed>/);
-                fullItemData.paymentMethod = paymentMethodMatch ? paymentMethodMatch[1] : null;
-                
-                // Buyer Notes
-                const buyerMessageMatch = txnXml.match(/<BuyerCheckoutMessage>([^<]*)<\/BuyerCheckoutMessage>/);
-                fullItemData.buyerNotes = buyerMessageMatch ? buyerMessageMatch[1] : null;
                 
                 console.log(`✅ Fetched transaction details for ${originalItemId}`);
+                console.log(`🔍 Final fullItemData fields:`, {
+                  trackingNumber: fullItemData.trackingNumber,
+                  shippingCarrier: fullItemData.shippingCarrier,
+                  deliveryDate: fullItemData.deliveryDate,
+                  shippedDate: fullItemData.shippedDate,
+                  itemCondition: fullItemData.itemCondition,
+                  buyerAddress: !!fullItemData.buyerAddress,
+                  itemLocation: fullItemData.itemLocation,
+                });
+              } else {
+                console.log(`⚠️ NO Transaction block found in XML response`);
+              }
               }
             } else {
               console.warn(`⚠️ GetItemTransactions API returned ${response.status}`);
