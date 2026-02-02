@@ -66,9 +66,9 @@ export default async function handler(req, res) {
           continue;
         }
 
-        console.log(`💾 Inserting item ${item.itemId} into database...`);
-
-        // Resolve Facebook category ID to human-readable name
+        console.log(`💾 Checking for existing inventory item...`);
+        
+        // Resolve Facebook category ID to human-readable name (needed before insert)
         const facebookCategoryName = item.category || resolveFacebookCategoryName(item.categoryId);
         
         // Map Facebook category to Orben category
@@ -79,46 +79,79 @@ export default async function handler(req, res) {
         );
         
         console.log(`📂 Category mapping: FB "${facebookCategoryName}" (ID: ${item.categoryId}) → Orben "${orbenCategory}"`);
-
-        // Create inventory item
-        const { data: insertData, error: insertError } = await supabase
+        
+        // Check if inventory item already exists (by title and approximate price for Facebook)
+        // Facebook doesn't have unique IDs like eBay, so we match by title similarity
+        let inventoryId = null;
+        let isExistingItem = false;
+        
+        const { data: existingItem, error: searchError } = await supabase
           .from('inventory_items')
-          .insert({
-            user_id: userId,
-            item_name: item.title,
-            description: item.description || item.title,
-            purchase_price: null, // Don't set purchase price - user will add their actual cost later
-            listing_price: item.price, // Facebook price = suggested listing price for crosslisting
-            status: 'listed',
-            source: 'Facebook', // Changed from "Facebook Marketplace" to "Facebook"
-            images: item.pictureURLs || [item.imageUrl].filter(Boolean),
-            image_url: item.imageUrl || null,
-            condition: item.condition || null, // From GraphQL attribute_data (e.g., "Used - Good")
-            brand: item.brand || null, // From GraphQL attribute_data or extracted from title
-            size: item.size || null, // From GraphQL attribute_data if available
-            category: orbenCategory || facebookCategoryName || null, // Use mapped Orben category or fallback to FB category
-            facebook_category_id: item.categoryId || null, // Store Facebook category ID (e.g., "1670493229902393")
-            facebook_category_name: facebookCategoryName || null, // Store Facebook category name if resolved
-            purchase_date: new Date().toISOString(),
-            notes: null, // User can add their own notes
-          })
-          .select('id')
-          .single();
+          .select('id, item_name, status, listing_price')
+          .eq('user_id', userId)
+          .eq('source', 'Facebook')
+          .ilike('item_name', item.title) // Exact title match
+          .is('deleted_at', null)
+          .maybeSingle();
+        
+        if (existingItem) {
+          // Double-check price is similar (within $5)
+          const priceDiff = Math.abs((existingItem.listing_price || 0) - (item.price || 0));
+          if (priceDiff <= 5) {
+            inventoryId = existingItem.id;
+            isExistingItem = true;
+            console.log(`✅ Found existing inventory item: ${existingItem.item_name} (ID: ${inventoryId})`);
+          }
+        }
+        
+        if (!isExistingItem) {
+          // Create new inventory item
+          console.log(`💾 Creating new inventory item...`);
 
-        if (insertError) {
-          failed++;
-          const errorMsg = insertError.message;
-          errors.push({ itemId: item.itemId, error: errorMsg });
-          console.error(`❌ Failed to import item ${item.itemId}:`, insertError);
-        } else {
-          imported++;
-          importedItems.push({
-            itemId: item.itemId,
-            inventoryId: insertData.id,
-          });
-          console.log(`✅ Successfully imported item ${item.itemId} with inventory ID ${insertData.id}`);
+          // Create inventory item
+          const { data: insertData, error: insertError } = await supabase
+            .from('inventory_items')
+            .insert({
+              user_id: userId,
+              item_name: item.title,
+              description: item.description || item.title,
+              purchase_price: null, // Don't set purchase price - user will add their actual cost later
+              listing_price: item.price, // Facebook price = suggested listing price for crosslisting
+              status: 'listed',
+              source: 'Facebook', // Changed from "Facebook Marketplace" to "Facebook"
+              images: item.pictureURLs || [item.imageUrl].filter(Boolean),
+              image_url: item.imageUrl || null,
+              condition: item.condition || null, // From GraphQL attribute_data (e.g., "Used - Good")
+              brand: item.brand || null, // From GraphQL attribute_data or extracted from title
+              size: item.size || null, // From GraphQL attribute_data if available
+              category: orbenCategory || facebookCategoryName || null, // Use mapped Orben category or fallback to FB category
+              facebook_category_id: item.categoryId || null, // Store Facebook category ID (e.g., "1670493229902393")
+              facebook_category_name: facebookCategoryName || null, // Store Facebook category name if resolved
+              purchase_date: new Date().toISOString(),
+              notes: null, // User can add their own notes
+            })
+            .select('id')
+            .single();
+
+          if (insertError) {
+            failed++;
+            const errorMsg = insertError.message;
+            errors.push({ itemId: item.itemId, error: errorMsg });
+            console.error(`❌ Failed to import item ${item.itemId}:`, insertError);
+            continue;
+          }
+          
+          inventoryId = insertData.id;
+          console.log(`✅ Created new inventory item with ID ${inventoryId}`);
         }
 
+        imported++;
+        importedItems.push({
+          itemId: item.itemId,
+          inventoryId,
+          isExistingItem,
+        });
+        console.log(`✅ Successfully imported item ${item.itemId} with inventory ID ${inventoryId}${isExistingItem ? ' (linked to existing inventory)' : ''}`);
       } catch (error) {
         failed++;
         const errorMsg = error.message;
@@ -128,10 +161,14 @@ export default async function handler(req, res) {
     }
 
     console.log(`📊 Import summary: ${imported} imported, ${failed} failed`);
+    
+    // Count duplicates
+    const duplicateCount = importedItems.filter(item => item.isExistingItem).length;
 
     return res.status(200).json({
       imported,
       failed,
+      duplicates: duplicateCount,
       errors: failed > 0 ? errors : undefined,
       importedItems, // Return the mapping of itemId to inventoryId
     });

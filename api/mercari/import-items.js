@@ -56,7 +56,7 @@ export default async function handler(req, res) {
           continue;
         }
 
-        console.log(`💾 Inserting item ${item.itemId} into database...`);
+        console.log(`💾 Checking for existing inventory item...`);
 
         // Proxy Mercari images to avoid CORS issues
         const proxyImageUrl = (url) => {
@@ -69,29 +69,69 @@ export default async function handler(req, res) {
 
         const proxiedImageUrl = proxyImageUrl(item.imageUrl);
         const proxiedPictureURLs = (item.pictureURLs || []).map(proxyImageUrl);
-
-        // Create inventory item with all available metadata
-        const { data: insertData, error: insertError} = await supabase
+        
+        // Check if inventory item already exists (by title and price for Mercari)
+        // Mercari has item IDs but they're not stored in our DB, so match by title + price
+        let inventoryId = null;
+        let isExistingItem = false;
+        
+        const { data: existingItem, error: searchError } = await supabase
           .from('inventory_items')
-          .insert({
-            user_id: userId,
-            item_name: item.title,
-            description: item.description || item.title,
-            purchase_price: null, // Don't set purchase price for imports
-            listing_price: item.price, // Price from marketplace becomes listing price
-            status: 'listed',
-            source: 'Mercari',
-            images: proxiedPictureURLs.filter(Boolean),
-            image_url: proxiedImageUrl,
-            condition: item.condition || null,
-            brand: item.brand || null,
-            category: item.category || null,
-            size: item.size || null,
-            purchase_date: new Date().toISOString().split('T')[0], // Date only
-            notes: null, // User can add their own notes
-          })
-          .select('id')
-          .single();
+          .select('id, item_name, status, listing_price')
+          .eq('user_id', userId)
+          .eq('source', 'Mercari')
+          .ilike('item_name', item.title) // Exact title match
+          .is('deleted_at', null)
+          .maybeSingle();
+        
+        if (existingItem) {
+          // Double-check price is similar (within $5)
+          const priceDiff = Math.abs((existingItem.listing_price || 0) - (item.price || 0));
+          if (priceDiff <= 5) {
+            inventoryId = existingItem.id;
+            isExistingItem = true;
+            console.log(`✅ Found existing inventory item: ${existingItem.item_name} (ID: ${inventoryId})`);
+          }
+        }
+        
+        if (!isExistingItem) {
+          // Create new inventory item
+          console.log(`💾 Creating new inventory item...`);
+
+          // Create inventory item with all available metadata
+          const { data: insertData, error: insertError} = await supabase
+            .from('inventory_items')
+            .insert({
+              user_id: userId,
+              item_name: item.title,
+              description: item.description || item.title,
+              purchase_price: null, // Don't set purchase price for imports
+              listing_price: item.price, // Price from marketplace becomes listing price
+              status: 'listed',
+              source: 'Mercari',
+              images: proxiedPictureURLs.filter(Boolean),
+              image_url: proxiedImageUrl,
+              condition: item.condition || null,
+              brand: item.brand || null,
+              category: item.category || null,
+              size: item.size || null,
+              purchase_date: new Date().toISOString().split('T')[0], // Date only
+              notes: null, // User can add their own notes
+            })
+            .select('id')
+            .single();
+
+          if (insertError) {
+            failed++;
+            const errorMsg = insertError.message;
+            errors.push({ itemId: item.itemId, error: errorMsg });
+            console.error(`❌ Failed to import item ${item.itemId}:`, insertError);
+            continue;
+          }
+          
+          inventoryId = insertData.id;
+          console.log(`✅ Created new inventory item with ID ${inventoryId}`);
+        }
         
         console.log(`📊 Item data received:`, {
           itemId: item.itemId,
@@ -103,20 +143,13 @@ export default async function handler(req, res) {
           description_length: item.description?.length
         });
 
-        if (insertError) {
-          failed++;
-          const errorMsg = insertError.message;
-          errors.push({ itemId: item.itemId, error: errorMsg });
-          console.error(`❌ Failed to import item ${item.itemId}:`, insertError);
-        } else {
-          imported++;
-          importedItems.push({
-            itemId: item.itemId,
-            inventoryId: insertData.id,
-          });
-          console.log(`✅ Successfully imported item ${item.itemId} with inventory ID ${insertData.id}`);
-        }
-
+        imported++;
+        importedItems.push({
+          itemId: item.itemId,
+          inventoryId,
+          isExistingItem,
+        });
+        console.log(`✅ Successfully imported item ${item.itemId} with inventory ID ${inventoryId}${isExistingItem ? ' (linked to existing inventory)' : ''}`);
       } catch (error) {
         failed++;
         const errorMsg = error.message;
@@ -126,10 +159,14 @@ export default async function handler(req, res) {
     }
 
     console.log(`📊 Import summary: ${imported} imported, ${failed} failed`);
+    
+    // Count duplicates
+    const duplicateCount = importedItems.filter(item => item.isExistingItem).length;
 
     return res.status(200).json({
       imported,
       failed,
+      duplicates: duplicateCount,
       errors: failed > 0 ? errors : undefined,
       importedItems, // Return the mapping of itemId to inventoryId
     });

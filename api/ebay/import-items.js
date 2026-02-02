@@ -254,97 +254,135 @@ export default async function handler(req, res) {
           continue;
         }
 
-        console.log(`💾 Inserting item ${itemId} into database...`);
+        console.log(`💾 Checking for existing inventory item...`);
 
-        // Create inventory item
-        const { data: insertData, error: insertError } = await supabase
+        // Check if inventory item already exists (by eBay item ID)
+        let inventoryId = null;
+        let isExistingItem = false;
+        
+        const { data: existingItem, error: searchError } = await supabase
           .from('inventory_items')
-          .insert({
-            user_id: userId,
-            item_name: itemDetails.title,
-            description: itemDetails.description,
-            purchase_price: itemDetails.price,
-            listing_price: itemDetails.price,
-            status: isSoldItem ? 'sold' : 'listed',
-            source: 'eBay',
-            images: itemDetails.images,
-            image_url: itemDetails.images[0] || null,
-            sku: itemDetails.sku,
-            ebay_item_id: itemDetails.itemId || itemDetails.originalItemId,
-            condition: itemDetails.condition || itemDetails.itemCondition,
-            purchase_date: new Date().toISOString(),
-            notes: null, // User can add their own notes
-          })
-          .select('id')
-          .single();
-
-        if (insertError) {
-          failed++;
-          const errorMsg = insertError.message;
-          errors.push({ itemId, error: errorMsg });
-          console.error(`❌ Failed to import item ${itemId}:`, insertError);
-        } else {
-          imported++;
-          const importResult = {
-            itemId,
-            inventoryId: insertData.id,
-          };
+          .select('id, item_name, status')
+          .eq('user_id', userId)
+          .eq('ebay_item_id', itemDetails.itemId)
+          .is('deleted_at', null)
+          .maybeSingle();
+        
+        if (existingItem) {
+          inventoryId = existingItem.id;
+          isExistingItem = true;
+          console.log(`✅ Found existing inventory item: ${existingItem.item_name} (ID: ${inventoryId})`);
           
-          // If this is a sold item, also create a sale record
-          if (isSoldItem && fullItemData) {
-            try {
-              console.log(`📊 Creating sale record for sold item ${itemId}...`);
-              
-              const { data: saleData, error: saleError } = await supabase
-                .from('sales')
-                .insert({
-                  user_id: userId,
-                  inventory_id: insertData.id,
-                  item_name: fullItemData.title || itemDetails.title,
-                  sale_price: fullItemData.price,
-                  sale_date: fullItemData.dateSold || new Date().toISOString(),
-                  platform: 'eBay',
-                  shipping_cost: fullItemData.shippingCost || 0,
-                  platform_fees: fullItemData.finalValueFee || 0,
-                  vat_fees: fullItemData.salesTax || 0,
-                  profit: fullItemData.netPayout || (fullItemData.price - (fullItemData.finalValueFee || 0)),
-                  image_url: fullItemData.images?.[0] || itemDetails.images?.[0] || null,
-                  // Fully displayed fields
-                  tracking_number: fullItemData.trackingNumber,
-                  shipping_carrier: fullItemData.shippingCarrier,
-                  delivery_date: fullItemData.deliveryDate,
-                  shipped_date: fullItemData.shippedDate,
-                  item_condition: fullItemData.itemCondition || itemDetails.condition,
-                  // Hidden fields
-                  buyer_address: fullItemData.buyerAddress,
-                  payment_method: fullItemData.paymentMethod,
-                  payment_status: fullItemData.paymentStatus,
-                  payment_date: fullItemData.paymentDate,
-                  item_location: fullItemData.itemLocation,
-                  buyer_notes: fullItemData.buyerNotes,
-                  // eBay identifiers
-                  ebay_order_id: fullItemData.orderId,
-                  ebay_transaction_id: fullItemData.transactionId,
-                  ebay_buyer_username: fullItemData.buyerUsername,
-                })
-                .select('id')
-                .single();
-              
-              if (saleError) {
-                console.error(`⚠️ Failed to create sale record for ${itemId}:`, saleError);
-              } else {
-                console.log(`✅ Created sale record for ${itemId} with ID ${saleData.id}`);
-                importResult.saleId = saleData.id; // Add sale ID to result
-              }
-            } catch (saleErr) {
-              console.error(`⚠️ Error creating sale record for ${itemId}:`, saleErr);
+          // If it's a sold item, update the inventory status to 'sold'
+          if (isSoldItem && existingItem.status !== 'sold') {
+            const { error: updateError } = await supabase
+              .from('inventory_items')
+              .update({ status: 'sold' })
+              .eq('id', inventoryId);
+            
+            if (updateError) {
+              console.error(`⚠️ Failed to update inventory status to sold:`, updateError);
+            } else {
+              console.log(`✅ Updated inventory item status to 'sold'`);
             }
           }
+        } else {
+          // Create new inventory item
+          console.log(`💾 Creating new inventory item...`);
           
-          importedItems.push(importResult);
-          console.log(`✅ Successfully imported item ${itemId} with inventory ID ${insertData.id}`);
+          const { data: insertData, error: insertError } = await supabase
+            .from('inventory_items')
+            .insert({
+              user_id: userId,
+              item_name: itemDetails.title,
+              description: itemDetails.description,
+              purchase_price: itemDetails.price,
+              listing_price: itemDetails.price,
+              status: isSoldItem ? 'sold' : 'listed',
+              source: 'eBay',
+              images: itemDetails.images,
+              image_url: itemDetails.images[0] || null,
+              sku: itemDetails.sku,
+              ebay_item_id: itemDetails.itemId,
+              condition: itemDetails.condition,
+              purchase_date: new Date().toISOString(),
+              notes: null,
+            })
+            .select('id')
+            .single();
+
+          if (insertError) {
+            failed++;
+            const errorMsg = insertError.message;
+            errors.push({ itemId, error: errorMsg });
+            console.error(`❌ Failed to import item ${itemId}:`, insertError);
+            continue;
+          }
+          
+          inventoryId = insertData.id;
+          console.log(`✅ Created new inventory item with ID ${inventoryId}`);
         }
 
+        imported++;
+        const importResult = {
+          itemId,
+          inventoryId,
+          isExistingItem, // Flag to show if it was a duplicate
+        };
+        
+        // If this is a sold item, also create a sale record
+        if (isSoldItem && fullItemData) {
+          try {
+            console.log(`📊 Creating sale record for sold item ${itemId}...`);
+            
+            const { data: saleData, error: saleError } = await supabase
+              .from('sales')
+              .insert({
+                user_id: userId,
+                inventory_id: inventoryId,
+                item_name: fullItemData.title || itemDetails.title,
+                sale_price: fullItemData.price,
+                sale_date: fullItemData.dateSold || new Date().toISOString(),
+                platform: 'eBay',
+                shipping_cost: fullItemData.shippingCost || 0,
+                platform_fees: fullItemData.finalValueFee || 0,
+                vat_fees: fullItemData.salesTax || 0,
+                profit: fullItemData.netPayout || (fullItemData.price - (fullItemData.finalValueFee || 0)),
+                image_url: fullItemData.images?.[0] || itemDetails.images?.[0] || null,
+                // Fully displayed fields
+                tracking_number: fullItemData.trackingNumber,
+                shipping_carrier: fullItemData.shippingCarrier,
+                delivery_date: fullItemData.deliveryDate,
+                shipped_date: fullItemData.shippedDate,
+                item_condition: fullItemData.itemCondition || itemDetails.condition,
+                // Hidden fields
+                buyer_address: fullItemData.buyerAddress,
+                payment_method: fullItemData.paymentMethod,
+                payment_status: fullItemData.paymentStatus,
+                payment_date: fullItemData.paymentDate,
+                item_location: fullItemData.itemLocation,
+                buyer_notes: fullItemData.buyerNotes,
+                // eBay identifiers
+                ebay_order_id: fullItemData.orderId,
+                ebay_transaction_id: fullItemData.transactionId,
+                ebay_buyer_username: fullItemData.buyerUsername,
+              })
+              .select('id')
+              .single();
+            
+            if (saleError) {
+              console.error(`⚠️ Failed to create sale record for ${itemId}:`, saleError);
+            } else {
+              console.log(`✅ Created sale record for ${itemId} with ID ${saleData.id}`);
+              importResult.saleId = saleData.id; // Add sale ID to result
+            }
+          } catch (saleErr) {
+            console.error(`⚠️ Error creating sale record for ${itemId}:`, saleErr);
+          }
+        }
+        
+        importedItems.push(importResult);
+        console.log(`✅ Successfully imported item ${itemId} with inventory ID ${inventoryId}${isExistingItem ? ' (linked to existing inventory)' : ''}`);
       } catch (error) {
         failed++;
         const errorMsg = error.message;
@@ -354,12 +392,16 @@ export default async function handler(req, res) {
     }
 
     console.log(`📊 Import summary: ${imported} imported, ${failed} failed`);
+    
+    // Count duplicates
+    const duplicateCount = importedItems.filter(item => item.isExistingItem).length;
 
     return res.status(200).json({
       imported,
       failed,
+      duplicates: duplicateCount,
       errors: failed > 0 ? errors : undefined,
-      importedItems, // Return the mapping of itemId to inventoryId
+      importedItems, // Return the mapping of itemId to inventoryId (includes isExistingItem flag)
     });
 
   } catch (error) {

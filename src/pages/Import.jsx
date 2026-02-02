@@ -510,12 +510,29 @@ export default function Import() {
       return result;
     },
     onSuccess: (data) => {
-      const message = data.failed > 0 
-        ? `Imported ${data.imported} item(s), ${data.failed} failed. Check console for details.`
-        : `Successfully imported ${data.imported} item(s)`;
+      // Build message based on results
+      let message = '';
+      const parts = [];
+      
+      if (data.imported > 0) {
+        parts.push(`Imported ${data.imported} item(s)`);
+      }
+      if (data.duplicates > 0) {
+        parts.push(`${data.duplicates} linked to existing inventory`);
+      }
+      if (data.failed > 0) {
+        parts.push(`${data.failed} failed`);
+      }
+      
+      message = parts.join(', ');
+      if (data.failed > 0) {
+        message += '. Check console for details.';
+      }
         
       toast({
-        title: data.failed > 0 ? "Import completed with errors" : "Import successful",
+        title: data.failed > 0 ? "Import completed with errors" : 
+               data.duplicates > 0 ? "Import completed (duplicates detected)" : 
+               "Import successful",
         description: message,
         variant: data.failed > 0 ? "destructive" : "default",
       });
