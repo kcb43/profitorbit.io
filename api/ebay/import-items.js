@@ -242,23 +242,38 @@ export default async function handler(req, res) {
         if (isSoldItem && fullItemData) {
           console.log(`🔄 Fetching fresh transaction data from my-listings API...`);
           try {
-            const myListingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://profitorbit.io'}/api/ebay/my-listings?status=Sold`, {
+            const apiUrl = process.env.VERCEL_URL 
+              ? `https://${process.env.VERCEL_URL}/api/ebay/my-listings?status=Sold`
+              : `${process.env.NEXT_PUBLIC_API_URL || 'https://profitorbit.io'}/api/ebay/my-listings?status=Sold`;
+              
+            const myListingsResponse = await fetch(apiUrl, {
               headers: {
                 'X-User-Id': userId,
                 'X-eBay-Token': accessToken,
+                'Content-Type': 'application/json',
               }
             });
             
             if (myListingsResponse.ok) {
               const myListingsData = await myListingsResponse.json();
+              console.log(`📡 Received ${myListingsData.listings?.length || 0} listings from my-listings API`);
+              
               // Find this specific item in the fresh data
               const freshItemData = myListingsData.listings?.find(item => item.itemId === itemId);
               if (freshItemData) {
-                console.log(`✅ Found fresh data with transaction details`);
+                console.log(`✅ Found fresh data with transaction details for ${itemId}`);
+                console.log(`🔍 Fresh item has fields:`, {
+                  trackingNumber: freshItemData.trackingNumber,
+                  shippingCarrier: freshItemData.shippingCarrier,
+                  buyerAddress: !!freshItemData.buyerAddress,
+                  itemCondition: freshItemData.itemCondition,
+                });
                 fullItemData = freshItemData; // Use fresh data with all fields
               } else {
                 console.warn(`⚠️ Item ${itemId} not found in fresh my-listings data`);
               }
+            } else {
+              console.error(`⚠️ my-listings API returned ${myListingsResponse.status}: ${await myListingsResponse.text()}`);
             }
           } catch (fetchError) {
             console.error(`⚠️ Failed to fetch fresh data from my-listings:`, fetchError);
