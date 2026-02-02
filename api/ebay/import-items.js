@@ -222,8 +222,29 @@ export default async function handler(req, res) {
         const fullItemData = itemsDataMap[itemId];
         const isSoldItem = fullItemData && fullItemData.status === 'Sold';
         
-        // Fetch detailed item info from eBay Trading API (if not sold, or to get full details)
-        const itemDetails = fullItemData || await getItemDetails(itemId, accessToken);
+        let itemDetails;
+        
+        if (isSoldItem && fullItemData) {
+          // For sold items, we already have the data - no need to call eBay API
+          // Use originalItemId for the actual eBay item ID
+          const actualEbayItemId = fullItemData.originalItemId || fullItemData.itemId;
+          
+          console.log(`📦 Using cached sold item data for ${actualEbayItemId} (transaction ${fullItemData.transactionId})`);
+          
+          itemDetails = {
+            itemId: actualEbayItemId,
+            title: fullItemData.title,
+            description: fullItemData.description || '',
+            price: fullItemData.price,
+            condition: fullItemData.itemCondition || fullItemData.condition,
+            images: fullItemData.images || [],
+            quantity: 1,
+            sku: fullItemData.sku || null,
+          };
+        } else {
+          // For active items, fetch from eBay API
+          itemDetails = await getItemDetails(itemId, accessToken);
+        }
 
         if (!itemDetails || !itemDetails.itemId) {
           const error = 'Failed to parse item data';
@@ -279,7 +300,7 @@ export default async function handler(req, res) {
                 .insert({
                   user_id: userId,
                   inventory_id: insertData.id,
-                  item_name: itemDetails.title,
+                  item_name: fullItemData.title || itemDetails.title,
                   sale_price: fullItemData.price,
                   sale_date: fullItemData.dateSold || new Date().toISOString(),
                   platform: 'eBay',
@@ -287,7 +308,7 @@ export default async function handler(req, res) {
                   platform_fees: fullItemData.finalValueFee || 0,
                   vat_fees: fullItemData.salesTax || 0,
                   profit: fullItemData.netPayout || (fullItemData.price - (fullItemData.finalValueFee || 0)),
-                  image_url: itemDetails.images?.[0] || null,
+                  image_url: fullItemData.images?.[0] || itemDetails.images?.[0] || null,
                   // Fully displayed fields
                   tracking_number: fullItemData.trackingNumber,
                   shipping_carrier: fullItemData.shippingCarrier,
