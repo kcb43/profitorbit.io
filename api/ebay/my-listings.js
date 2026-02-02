@@ -9,6 +9,35 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Simple in-memory cache for GetItemTransactions data
+// Cache structure: { userId-status: { data: {...}, timestamp: number } }
+const transactionDataCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getCachedTransactionData(userId, status) {
+  const cacheKey = `${userId}-${status}`;
+  const cached = transactionDataCache.get(cacheKey);
+  
+  if (!cached) return null;
+  
+  const age = Date.now() - cached.timestamp;
+  if (age > CACHE_TTL_MS) {
+    transactionDataCache.delete(cacheKey);
+    return null;
+  }
+  
+  console.log(`🚀 Using cached transaction data (age: ${Math.round(age / 1000)}s)`);
+  return cached.data;
+}
+
+function setCachedTransactionData(userId, status, data) {
+  const cacheKey = `${userId}-${status}`;
+  transactionDataCache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+}
+
 // Helper to decode HTML entities in strings
 function decodeHtmlEntities(text) {
   if (!text) return text;
@@ -400,15 +429,22 @@ export default async function handler(req, res) {
       console.log(`💰 Fetching detailed financial data for ${allTransactions.length} individual transactions...`);
       
       // Fetch GetItemTransactions for each specific transaction
-      // We'll do this in batches to avoid overwhelming the API
-      const batchSize = 20;
-      const feesByItemId = {};
+      // Check cache first
+      const cachedFees = getCachedTransactionData(userId, status);
+      let feesByItemId = {};
       
-      for (let i = 0; i < allTransactions.length; i += batchSize) {
-        const batch = allTransactions.slice(i, i + batchSize);
-        console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allTransactions.length / batchSize)} (${batch.length} transactions)...`);
+      if (cachedFees) {
+        feesByItemId = cachedFees;
+        console.log(`✅ Using cached fees for ${Object.keys(feesByItemId).length} items`);
+      } else {
+        // We'll do this in batches to avoid overwhelming the API
+        const batchSize = 20;
         
-        const batchPromises = batch.map(async ({ itemId, transactionId }) => {
+        for (let i = 0; i < allTransactions.length; i += batchSize) {
+          const batch = allTransactions.slice(i, i + batchSize);
+          console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allTransactions.length / batchSize)} (${batch.length} transactions)...`);
+          
+          const batchPromises = batch.map(async ({ itemId, transactionId }) => {
           const getItemTransactionsRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetItemTransactionsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   <RequesterCredentials>
@@ -600,13 +636,18 @@ export default async function handler(req, res) {
           }
         }
         
-        // Add small delay between batches to avoid rate limiting
+        // Add small delay between batches to avoid rate limiting (reduced from 500ms)
         if (i + batchSize < allTransactions.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 250));
         }
       }
       
       console.log(`💰 Fetched financial details for ${Object.keys(feesByItemId).length} items with fees`);
+      
+      // Cache the fee data for 5 minutes
+      setCachedTransactionData(userId, status, feesByItemId);
+      console.log(`💾 Cached transaction data for ${Object.keys(feesByItemId).length} items`);
+    }
       
       // Merge fee data into transactions by matching TransactionID
       let matchedCount = 0;
