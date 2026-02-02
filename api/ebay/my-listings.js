@@ -449,10 +449,14 @@ export default async function handler(req, res) {
       const cachedFees = getCachedTransactionData(userId, status);
       let feesByItemId = {};
       
-      if (cachedFees) {
+      if (cachedFees && Object.keys(cachedFees).length > 0) {
         feesByItemId = cachedFees;
+        console.log(`🚀 Using cached transaction data (age: ${Math.round((Date.now() - cachedFees.timestamp) / 1000)}s)`);
         console.log(`✅ Using cached fees for ${Object.keys(feesByItemId).length} items`);
       } else {
+        if (cachedFees) {
+          console.log(`⚠️ Cache exists but is empty, will fetch from API`);
+        }
         // We'll do this in batches to avoid overwhelming the API
         const batchSize = 20;
         
@@ -660,9 +664,13 @@ export default async function handler(req, res) {
       
       console.log(`💰 Fetched financial details for ${Object.keys(feesByItemId).length} items with fees`);
       
-      // Cache the fee data for 5 minutes
-      setCachedTransactionData(userId, status, feesByItemId);
-      console.log(`💾 Cached transaction data for ${Object.keys(feesByItemId).length} items`);
+      // Cache the fee data for 5 minutes (only if not empty)
+      if (Object.keys(feesByItemId).length > 0) {
+        setCachedTransactionData(userId, status, feesByItemId);
+        console.log(`💾 Cached transaction data for ${Object.keys(feesByItemId).length} items`);
+      } else {
+        console.log(`⚠️ No transaction data to cache (empty result)`);
+      }
     }
       
       // Merge fee data into transactions by matching TransactionID
