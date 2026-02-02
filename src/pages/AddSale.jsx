@@ -93,7 +93,20 @@ export default function AddSale() {
 
   const { data: existingSale, isLoading: isLoadingSale } = useQuery({
     queryKey: ['sale', idToLoad],
-    queryFn: () => salesApi.get(idToLoad),
+    queryFn: async () => {
+      console.log('🔍 Fetching sale data for ID:', idToLoad);
+      const result = await salesApi.get(idToLoad);
+      console.log('🔍 API returned sale data:', {
+        id: result?.id,
+        platform: result?.platform,
+        ebay_transaction_id: result?.ebay_transaction_id,
+        ebay_order_id: result?.ebay_order_id,
+        tracking_number: result?.tracking_number,
+        shipping_carrier: result?.shipping_carrier,
+        buyer_address: result?.buyer_address ? 'present' : 'missing'
+      });
+      return result;
+    },
     enabled: !!idToLoad, // Only fetch if saleId or copyId is present
   });
 
@@ -615,6 +628,19 @@ export default function AddSale() {
 
   const isEbay = formData.platform?.toLowerCase() === 'ebay'; // Case-insensitive comparison
   const isImportedEbaySale = isEbay && (formData.ebay_transaction_id || formData.ebay_order_id); // Only show eBay fields for imported items
+  
+  // Debug: Log eBay field visibility
+  console.log('🔍 AddSale eBay Check:', {
+    platform: formData.platform,
+    isEbay,
+    ebay_transaction_id: formData.ebay_transaction_id,
+    ebay_order_id: formData.ebay_order_id,
+    isImportedEbaySale,
+    tracking_number: formData.tracking_number,
+    shipping_carrier: formData.shipping_carrier,
+    shipped_date: formData.shipped_date,
+    buyer_address: formData.buyer_address
+  });
   const facebookSaleType = formData.facebook_sale_type || 'online';
   const isFacebookPlatform = formData.platform === 'facebook_marketplace';
   const isFacebookLocal = isFacebookPlatform && facebookSaleType === 'local';
