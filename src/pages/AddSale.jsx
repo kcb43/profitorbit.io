@@ -151,6 +151,7 @@ export default function AddSale() {
     delivery_date: "",
     shipped_date: "",
     item_condition: "",
+    funds_status: "",
     // eBay-specific fields (hidden behind button)
     buyer_address: null,
     payment_method: "",
@@ -244,6 +245,7 @@ export default function AddSale() {
         delivery_date: dataToLoad.delivery_date || "",
         shipped_date: dataToLoad.shipped_date || "",
         item_condition: dataToLoad.item_condition || "",
+        funds_status: dataToLoad.funds_status || "",
         buyer_address: dataToLoad.buyer_address || null,
         payment_method: dataToLoad.payment_method || "",
         payment_status: dataToLoad.payment_status || "",
@@ -1325,6 +1327,13 @@ export default function AddSale() {
                             <Label className="dark:text-gray-200">Item Location</Label>
                             <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                               {formData.item_location || 'N/A'}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="dark:text-gray-200">Funds Status</Label>
+                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                              {formData.funds_status || 'Unknown'}
                             </div>
                           </div>
 

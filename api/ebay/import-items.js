@@ -311,7 +311,21 @@ export default async function handler(req, res) {
                   fullItemData.shippingCarrier = carrierMatch ? carrierMatch[1] : null;
                   console.log(`🚢 Carrier: ${fullItemData.shippingCarrier || 'NOT FOUND'}`);
                   
-                  const deliveryMatch = shippingXml.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
+                  // Try multiple delivery date fields
+                  let deliveryMatch = shippingXml.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
+                  if (!deliveryMatch) {
+                    deliveryMatch = shippingXml.match(/<DeliveryDate>([^<]*)<\/DeliveryDate>/);
+                  }
+                  if (!deliveryMatch) {
+                    // Check outside ShippingDetails in Status/ShipmentTracking
+                    const shipTrackingMatch = txnXml.match(/<ShipmentTrackingDetails>([\s\S]*?)<\/ShipmentTrackingDetails>/);
+                    if (shipTrackingMatch) {
+                      deliveryMatch = shipTrackingMatch[1].match(/<ShipmentDeliveryDate>([^<]*)<\/ShipmentDeliveryDate>/);
+                      if (!deliveryMatch) {
+                        deliveryMatch = shipTrackingMatch[1].match(/<DeliveryDate>([^<]*)<\/DeliveryDate>/);
+                      }
+                    }
+                  }
                   fullItemData.deliveryDate = deliveryMatch ? deliveryMatch[1] : null;
                   console.log(`📅 Delivery: ${fullItemData.deliveryDate || '(Not yet delivered)'}`);
                 } else {
@@ -586,6 +600,7 @@ export default async function handler(req, res) {
                 delivery_date: fullItemData.deliveryDate,
                 shipped_date: fullItemData.shippedDate,
                 item_condition: fullItemData.itemCondition || itemDetails.condition,
+                funds_status: fullItemData.fundsStatus,
                 // Hidden fields
                 buyer_address: fullItemData.buyerAddress,
                 payment_method: fullItemData.paymentMethod,
