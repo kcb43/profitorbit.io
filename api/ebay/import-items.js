@@ -452,12 +452,13 @@ export default async function handler(req, res) {
               
               if (orderResponse.ok) {
                 const orderXml = await orderResponse.text();
-                console.log(`📄 GetOrders XML response (first 2000 chars):`, orderXml.substring(0, 2000));
+                console.log(`📄 GetOrders XML response (first 5000 chars):`, orderXml.substring(0, 5000));
                 
                 // Parse order-level data
                 const orderMatch = orderXml.match(/<Order>([\s\S]*?)<\/Order>/);
                 if (orderMatch) {
                   const orderBlock = orderMatch[1];
+                  console.log(`🔍 Found Order block, length: ${orderBlock.length} chars`);
                   
                   // Delivery Date - multiple possible locations
                   let deliveryMatch = orderBlock.match(/<DeliveredDate>([^<]*)<\/DeliveredDate>/);
@@ -479,43 +480,54 @@ export default async function handler(req, res) {
                   }
                   if (deliveryMatch) {
                     fullItemData.deliveryDate = deliveryMatch[1];
-                    console.log(`📅 Order Delivery Date: ${fullItemData.deliveryDate}`);
-                  }
-                  
-                  // Funds Status
-                  const payoutStatusMatch = orderBlock.match(/<SellerPaymentStatus>([^<]*)<\/SellerPaymentStatus>/);
-                  if (payoutStatusMatch) {
-                    fullItemData.fundsStatus = payoutStatusMatch[1];
-                    console.log(`💰 Funds Status: ${fullItemData.fundsStatus}`);
-                  }
-                  
-                  // Payment Method
-                  const paymentMethodMatch = orderBlock.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
-                  if (paymentMethodMatch) {
-                    fullItemData.paymentMethod = paymentMethodMatch[1];
-                    console.log(`💳 Payment Method: ${fullItemData.paymentMethod}`);
+                    console.log(`✅ Delivery Date: ${fullItemData.deliveryDate}`);
                   } else {
-                    // Try CheckoutStatus
-                    const checkoutMatch = orderBlock.match(/<CheckoutStatus>([\s\S]*?)<\/CheckoutStatus>/);
-                    if (checkoutMatch) {
-                      const checkoutXml = checkoutMatch[1];
-                      const methodMatch = checkoutXml.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
-                      if (methodMatch) {
-                        fullItemData.paymentMethod = methodMatch[1];
-                        console.log(`💳 Payment Method (from CheckoutStatus): ${fullItemData.paymentMethod}`);
-                      }
-                    }
+                    console.log(`⚠️ Delivery Date: NOT FOUND`);
                   }
                   
-                  // Payment Status (eBayPaymentStatus)
-                  const statusMatch = orderBlock.match(/<Status>([\s\S]*?)<\/Status>/);
-                  if (statusMatch) {
-                    const statusXml = statusMatch[1];
-                    const paymentStatusMatch = statusXml.match(/<eBayPaymentStatus>([^<]*)<\/eBayPaymentStatus>/);
-                    if (paymentStatusMatch) {
-                      fullItemData.paymentStatus = paymentStatusMatch[1];
-                      console.log(`💳 Payment Status: ${fullItemData.paymentStatus}`);
+                  // CheckoutStatus block - has payment info AND status
+                  const checkoutMatch = orderBlock.match(/<CheckoutStatus>([\s\S]*?)<\/CheckoutStatus>/);
+                  if (checkoutMatch) {
+                    const checkoutXml = checkoutMatch[1];
+                    console.log(`🔍 Found CheckoutStatus block: ${checkoutXml.substring(0, 500)}`);
+                    
+                    // Payment Method from CheckoutStatus
+                    const methodMatch = checkoutXml.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
+                    if (methodMatch) {
+                      fullItemData.paymentMethod = methodMatch[1];
+                      console.log(`✅ Payment Method: ${fullItemData.paymentMethod}`);
                     }
+                    
+                    // Payment Status (eBayPaymentStatus) from CheckoutStatus
+                    const paymentStatusMatch = checkoutXml.match(/<eBayPaymentStatus>([^<]*)<\/eBayPaymentStatus>/);
+                    if (paymentStatusMatch) {
+                      // Map eBay status to user-friendly name
+                      const statusMap = {
+                        'NoPaymentFailure': 'Paid',
+                        'PaymentFailed': 'Failed',
+                        'BuyerECheckBounced': 'Bounced',
+                        'BuyerFailedPaymentReportedBySeller': 'Failed',
+                        'PayPalPaymentInProcess': 'Processing'
+                      };
+                      fullItemData.paymentStatus = statusMap[paymentStatusMatch[1]] || paymentStatusMatch[1];
+                      console.log(`✅ Payment Status: ${fullItemData.paymentStatus} (raw: ${paymentStatusMatch[1]})`);
+                    }
+                    
+                    // Order Status (Complete, Cancelled, etc) - use this as "Funds Status"
+                    const orderStatusMatch = checkoutXml.match(/<Status>([^<]*)<\/Status>/);
+                    if (orderStatusMatch) {
+                      fullItemData.fundsStatus = orderStatusMatch[1];
+                      console.log(`✅ Funds Status (Order Status): ${fullItemData.fundsStatus}`);
+                    }
+                  } else {
+                    console.log(`⚠️ NO CheckoutStatus block found`);
+                  }
+                  
+                  // Also check for MonetaryDetails (payout info)
+                  const monetaryMatch = orderBlock.match(/<MonetaryDetails>([\s\S]*?)<\/MonetaryDetails>/);
+                  if (monetaryMatch) {
+                    console.log(`💰 Found MonetaryDetails block: ${monetaryMatch[1].substring(0, 500)}`);
+                    // Could parse payout status here if needed
                   }
                   
                   console.log(`✅ Fetched order-level details for ${fullItemData.orderId}`);
