@@ -634,7 +634,7 @@ export default function Import() {
   // Delete mutation for imported items
   const deleteMutation = useMutation({
     mutationFn: async (itemId) => {
-      // Find the item in the cached listings to get its inventory ID
+      // Find the item in the cached listings to get its inventory ID and sale ID
       const sourceListings = selectedSource === "facebook" 
         ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
         : selectedSource === "mercari"
@@ -643,19 +643,44 @@ export default function Import() {
       
       const item = sourceListings.find(i => i.itemId === itemId);
       
+      if (!item) {
+        console.warn(`⚠️ Item ${itemId} not found in listings`);
+        return { id: null, success: true };
+      }
+      
+      // For eBay sold items, delete from sales table instead of inventory
+      if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
+        console.log(`🗑️ Deleting eBay sold item from sales: ${item.saleId}`);
+        const response = await fetch(`/api/sales/${item.saleId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete sale');
+        }
+        
+        return { id: item.saleId, success: true, isSale: true };
+      }
+      
+      // For non-sold items, delete from inventory
       if (!item?.inventoryId) {
-        // If item has no inventory ID, just mark it as not imported locally
         console.warn(`⚠️ Item ${itemId} has no inventory ID, marking as not imported locally`);
-        return { id: null, success: true }; // Return success to allow cache update
+        return { id: null, success: true };
       }
       
       // Soft delete from inventory (permanent delete)
       return await inventoryApi.delete(item.inventoryId, true);
     },
     onSuccess: (data, itemId) => {
+      const isSale = data?.isSale;
       toast({
         title: "Item deleted",
-        description: "Item has been removed from your inventory",
+        description: isSale 
+          ? "Sale has been removed from your sales history" 
+          : "Item has been removed from your inventory",
       });
       
       // Update the listing to mark as not imported and remove inventory ID
