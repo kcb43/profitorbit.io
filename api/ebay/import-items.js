@@ -378,6 +378,17 @@ export default async function handler(req, res) {
         if (isSoldItem && fullItemData) {
           try {
             console.log(`📊 Creating sale record for sold item ${itemId}...`);
+            console.log(`🔍 eBay fields being saved:`, {
+              trackingNumber: fullItemData.trackingNumber,
+              shippingCarrier: fullItemData.shippingCarrier,
+              deliveryDate: fullItemData.deliveryDate,
+              shippedDate: fullItemData.shippedDate,
+              itemCondition: fullItemData.itemCondition,
+              buyerAddress: fullItemData.buyerAddress,
+              paymentMethod: fullItemData.paymentMethod,
+              orderId: fullItemData.orderId,
+              transactionId: fullItemData.transactionId,
+            });
             
             const { data: saleData, error: saleError } = await supabase
               .from('sales')

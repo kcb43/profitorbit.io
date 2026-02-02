@@ -684,7 +684,7 @@ export default function Import() {
           : "Item has been removed from your inventory",
       });
       
-      // Update the listing to mark as not imported and remove inventory ID
+      // Update the listing to mark as not imported and remove inventory/sale IDs
       if (selectedSource === 'facebook') {
         const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
         const updatedListings = facebookListings.map(item => {
@@ -710,10 +710,19 @@ export default function Import() {
         localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
         setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'ebay') {
+        // Update eBay cache immediately for fast UI update
+        const ebayListings = queryClient.getQueryData(["ebay-listings", listingStatus, userId]) || [];
+        const updatedListings = ebayListings.map(item => {
+          if (item.itemId === itemId) {
+            return { ...item, imported: false, inventoryId: null, saleId: null };
+          }
+          return item;
+        });
+        
+        queryClient.setQueryData(["ebay-listings", listingStatus, userId], updatedListings);
+        
+        // Also invalidate to refresh counts in the background
         queryClient.invalidateQueries(["ebay-listings"]);
-        if (refetch) {
-          refetch();
-        }
       }
       
       // Refresh inventory
