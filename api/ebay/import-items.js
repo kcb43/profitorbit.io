@@ -246,7 +246,8 @@ export default async function handler(req, res) {
           console.log(`🔄 Fetching transaction details for ${originalItemId}, txn ${transactionId}...`);
           
           try {
-            const tradingUrl = useProduction
+            const ebayEnv = process.env.EBAY_ENV || 'production';
+            const tradingUrl = ebayEnv === 'production'
               ? 'https://api.ebay.com/ws/api.dll'
               : 'https://api.sandbox.ebay.com/ws/api.dll';
               
