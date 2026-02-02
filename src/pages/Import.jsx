@@ -470,7 +470,8 @@ export default function Import() {
         
       } else if (selectedSource === 'ebay') {
         // For eBay, get full item data from cache (especially important for sold items)
-        const ebayListings = queryClient.getQueryData(['ebay-listings', userId, listingStatus]) || [];
+        // IMPORTANT: Query key order MUST match the order used in the query definition (line 235)
+        const ebayListings = queryClient.getQueryData(['ebay-listings', listingStatus, userId]) || [];
         console.log(`📦 Retrieved ${ebayListings.length} eBay listings from cache`);
         console.log(`🔍 Item IDs to import:`, itemIds);
         
@@ -594,7 +595,8 @@ export default function Import() {
         setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'ebay') {
         // Update eBay listings cache with imported status, inventory IDs, and sale IDs
-        const ebayListings = queryClient.getQueryData(['ebay-listings', userId, listingStatus]) || [];
+        // IMPORTANT: Query key order MUST match the order used in the query definition (line 235)
+        const ebayListings = queryClient.getQueryData(['ebay-listings', listingStatus, userId]) || [];
         const updatedListings = ebayListings.map(item => {
           // Check if this item was successfully imported
           const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
@@ -611,7 +613,7 @@ export default function Import() {
         });
         
         // Update cache
-        queryClient.setQueryData(['ebay-listings', userId, listingStatus], updatedListings);
+        queryClient.setQueryData(['ebay-listings', listingStatus, userId], updatedListings);
         console.log('✅ Marked', data.importedItems?.length || 0, 'eBay items as imported with inventory IDs and sale IDs');
       }
       
