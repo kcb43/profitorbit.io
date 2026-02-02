@@ -366,7 +366,6 @@ export default async function handler(req, res) {
               } else {
                 console.log(`⚠️ NO Transaction block found in XML response`);
               }
-              }
             } else {
               console.warn(`⚠️ GetItemTransactions API returned ${response.status}`);
             }
