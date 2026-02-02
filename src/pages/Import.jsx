@@ -1935,9 +1935,21 @@ export default function Import() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Item from Inventory?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {(() => {
+                const item = sourceListings.find(i => i.itemId === itemToDelete);
+                const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
+                return isEbaySold ? 'Remove Sale from History?' : 'Remove Item from Inventory?';
+              })()}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the item from your inventory. You can re-import it later from the Import page.
+              {(() => {
+                const item = sourceListings.find(i => i.itemId === itemToDelete);
+                const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
+                return isEbaySold 
+                  ? 'This will remove the sale from your sales history. You can re-import it later from the Import page.'
+                  : 'This will remove the item from your inventory. You can re-import it later from the Import page.';
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1950,7 +1962,11 @@ export default function Import() {
               }}
               className="bg-red-600 hover:bg-red-700"
             >
-              Yes, Remove from Inventory
+              {(() => {
+                const item = sourceListings.find(i => i.itemId === itemToDelete);
+                const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
+                return isEbaySold ? 'Yes, Remove from Sales History' : 'Yes, Remove from Inventory';
+              })()}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
