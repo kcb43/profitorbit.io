@@ -204,9 +204,14 @@ export default async function handler(req, res) {
     // itemsData is optional - contains full item details from my-listings endpoint (for sold items)
     const itemsDataMap = {};
     if (itemsData && Array.isArray(itemsData)) {
+      console.log(`📦 Building itemsDataMap from ${itemsData.length} items...`);
       itemsData.forEach(item => {
         itemsDataMap[item.itemId] = item;
+        console.log(`  Mapped: ${item.itemId} → ${item.title?.substring(0, 50)}`);
       });
+      console.log(`✅ Built itemsDataMap with ${Object.keys(itemsDataMap).length} entries`);
+    } else {
+      console.log(`⚠️ No itemsData provided in request`);
     }
 
     let imported = 0;
@@ -220,7 +225,18 @@ export default async function handler(req, res) {
         
         // Check if we have full item data from my-listings (for sold items)
         const fullItemData = itemsDataMap[itemId];
+        console.log(`🔍 Looking for itemId "${itemId}" in map:`, {
+          found: !!fullItemData,
+          mapKeys: Object.keys(itemsDataMap).slice(0, 5),
+          totalMapEntries: Object.keys(itemsDataMap).length
+        });
+        
         const isSoldItem = fullItemData && fullItemData.status === 'Sold';
+        console.log(`📊 Item status check:`, {
+          hasFullItemData: !!fullItemData,
+          status: fullItemData?.status,
+          isSoldItem
+        });
         
         let itemDetails;
         
