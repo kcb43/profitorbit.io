@@ -1253,46 +1253,46 @@ export default function AddSale() {
                               <Input
                                 placeholder="Name"
                                 value={formData.buyer_address?.name || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, name: e.target.value })}
+                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), name: e.target.value })}
                               />
                               <Input
                                 placeholder="Street Address"
                                 value={formData.buyer_address?.street1 || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, street1: e.target.value })}
+                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), street1: e.target.value })}
                               />
                               <Input
                                 placeholder="Apt/Suite (optional)"
                                 value={formData.buyer_address?.street2 || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, street2: e.target.value })}
+                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), street2: e.target.value })}
                               />
                               <div className="grid grid-cols-2 gap-2">
                                 <Input
                                   placeholder="City"
                                   value={formData.buyer_address?.city || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, city: e.target.value })}
+                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), city: e.target.value })}
                                 />
                                 <Input
                                   placeholder="State"
                                   value={formData.buyer_address?.state || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, state: e.target.value })}
+                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), state: e.target.value })}
                                 />
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <Input
                                   placeholder="ZIP Code"
                                   value={formData.buyer_address?.zip || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, zip: e.target.value })}
+                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), zip: e.target.value })}
                                 />
                                 <Input
                                   placeholder="Country"
                                   value={formData.buyer_address?.country || ""}
-                                  onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, country: e.target.value })}
+                                  onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), country: e.target.value })}
                                 />
                               </div>
                               <Input
                                 placeholder="Phone (optional)"
                                 value={formData.buyer_address?.phone || ""}
-                                onChange={(e) => handleChange('buyer_address', { ...formData.buyer_address, phone: e.target.value })}
+                                onChange={(e) => handleChange('buyer_address', { ...(formData.buyer_address || {}), phone: e.target.value })}
                               />
                             </div>
                           </div>

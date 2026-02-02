@@ -560,12 +560,26 @@ export default function Import() {
         // Trigger re-render
         setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'ebay') {
-        queryClient.invalidateQueries(["ebay-listings"]);
+        // Update eBay listings cache with imported status, inventory IDs, and sale IDs
+        const ebayListings = queryClient.getQueryData(['ebay-listings', userId, selectedStatus]) || [];
+        const updatedListings = ebayListings.map(item => {
+          // Check if this item was successfully imported
+          const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
+          
+          if (importedItem) {
+            return { 
+              ...item, 
+              imported: true, 
+              inventoryId: importedItem.inventoryId,
+              saleId: importedItem.saleId // Will be present for sold items
+            };
+          }
+          return item;
+        });
         
-        // Only refetch if it's eBay (refetch is the eBay query refetch function)
-        if (refetch) {
-          refetch();
-        }
+        // Update cache
+        queryClient.setQueryData(['ebay-listings', userId, selectedStatus], updatedListings);
+        console.log('✅ Marked', data.importedItems?.length || 0, 'eBay items as imported with inventory IDs and sale IDs');
       }
       
       // Always refresh inventory
@@ -1749,38 +1763,55 @@ export default function Import() {
                                       className="gap-2"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (item.inventoryId) {
+                                        // For sold eBay items, navigate to Sales History with sale ID
+                                        if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
+                                          navigate(`/AddSale?id=${item.saleId}`);
+                                        } else if (item.inventoryId) {
                                           navigate(`/AddInventoryItem?id=${item.inventoryId}`);
                                         } else {
                                           navigate('/Inventory');
                                         }
                                       }}
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                                      </svg>
-                                      View Inventory
+                                      {selectedSource === 'ebay' && item.status === 'Sold' ? (
+                                        <>
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 3h18v18H3zM3 9h18M9 21V9"/>
+                                          </svg>
+                                          View Sales History
+                                        </>
+                                      ) : (
+                                        <>
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                          </svg>
+                                          View Inventory
+                                        </>
+                                      )}
                                     </Button>
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      className="gap-2 bg-blue-600 hover:bg-blue-700"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (item.inventoryId) {
-                                          navigate(`/CrosslistComposer?ids=${item.inventoryId}`);
-                                        }
-                                      }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="7 10 12 15 17 10"></polyline>
-                                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                                      </svg>
-                                      Crosslist
-                                    </Button>
+                                    {/* Only show Crosslist button for non-sold items */}
+                                    {!(selectedSource === 'ebay' && item.status === 'Sold') && (
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="gap-2 bg-blue-600 hover:bg-blue-700"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (item.inventoryId) {
+                                            navigate(`/CrosslistComposer?ids=${item.inventoryId}`);
+                                          }
+                                        }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                          <polyline points="7 10 12 15 17 10"></polyline>
+                                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        Crosslist
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="destructive"
                                       size="sm"

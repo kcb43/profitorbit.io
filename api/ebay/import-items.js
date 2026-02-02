@@ -264,18 +264,17 @@ export default async function handler(req, res) {
           console.error(`❌ Failed to import item ${itemId}:`, insertError);
         } else {
           imported++;
-          importedItems.push({
+          const importResult = {
             itemId,
             inventoryId: insertData.id,
-          });
-          console.log(`✅ Successfully imported item ${itemId} with inventory ID ${insertData.id}`);
+          };
           
           // If this is a sold item, also create a sale record
           if (isSoldItem && fullItemData) {
             try {
               console.log(`📊 Creating sale record for sold item ${itemId}...`);
               
-              const { error: saleError } = await supabase
+              const { data: saleData, error: saleError } = await supabase
                 .from('sales')
                 .insert({
                   user_id: userId,
@@ -306,17 +305,23 @@ export default async function handler(req, res) {
                   ebay_order_id: fullItemData.orderId,
                   ebay_transaction_id: fullItemData.transactionId,
                   ebay_buyer_username: fullItemData.buyerUsername,
-                });
+                })
+                .select('id')
+                .single();
               
               if (saleError) {
                 console.error(`⚠️ Failed to create sale record for ${itemId}:`, saleError);
               } else {
-                console.log(`✅ Created sale record for ${itemId}`);
+                console.log(`✅ Created sale record for ${itemId} with ID ${saleData.id}`);
+                importResult.saleId = saleData.id; // Add sale ID to result
               }
             } catch (saleErr) {
               console.error(`⚠️ Error creating sale record for ${itemId}:`, saleErr);
             }
           }
+          
+          importedItems.push(importResult);
+          console.log(`✅ Successfully imported item ${itemId} with inventory ID ${insertData.id}`);
         }
 
       } catch (error) {
