@@ -255,6 +255,11 @@ export default async function handler(req, res) {
         }
 
         console.log(`💾 Checking for existing inventory item...`);
+        console.log(`🔍 Item details:`, {
+          itemId: itemDetails.itemId,
+          title: itemDetails.title,
+          isSoldItem,
+        });
 
         // Check if inventory item already exists (by eBay item ID)
         let inventoryId = null;
@@ -267,6 +272,10 @@ export default async function handler(req, res) {
           .eq('ebay_item_id', itemDetails.itemId)
           .is('deleted_at', null)
           .maybeSingle();
+        
+        if (searchError) {
+          console.error(`❌ Error searching for existing inventory:`, searchError);
+        }
         
         if (existingItem) {
           inventoryId = existingItem.id;

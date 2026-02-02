@@ -505,6 +505,13 @@ export default function Import() {
       // Log detailed errors if any
       if (result.errors && result.errors.length > 0) {
         console.error('❌ Import errors:', result.errors);
+        // Log each error individually for clarity
+        result.errors.forEach((err, index) => {
+          console.error(`  Error ${index + 1}:`, {
+            itemId: err.itemId,
+            error: err.error
+          });
+        });
       }
       
       return result;
