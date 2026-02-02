@@ -534,7 +534,7 @@ export default async function handler(req, res) {
                 item_name: fullItemData.title || itemDetails.title,
                 sale_price: fullItemData.price,
                 sale_date: fullItemData.dateSold || new Date().toISOString(),
-                platform: 'eBay',
+                platform: 'ebay', // Lowercase to match platformOptions
                 shipping_cost: fullItemData.shippingCost || 0,
                 platform_fees: fullItemData.finalValueFee || 0,
                 vat_fees: fullItemData.salesTax || 0,

@@ -227,6 +227,7 @@ export default function AddSale() {
       setFormData(prev => ({
         ...prev,
         ...dataToLoad,
+        platform: dataToLoad.platform?.toLowerCase() || "", // Normalize platform to lowercase
         return_deadline: dataToLoad.return_deadline || "", // Initialize return_deadline
         facebook_sale_type: dataToLoad.facebook_sale_type || "local",
         purchase_price: String(dataToLoad.purchase_price ?? ''),
