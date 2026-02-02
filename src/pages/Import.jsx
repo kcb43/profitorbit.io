@@ -651,10 +651,11 @@ export default function Import() {
       // For eBay sold items, delete from sales table instead of inventory
       if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
         console.log(`🗑️ Deleting eBay sold item from sales: ${item.saleId}`);
-        const response = await fetch(`/api/sales/${item.saleId}`, {
+        const response = await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
+            'X-User-Id': userId,
           },
         });
         
