@@ -230,6 +230,19 @@ export default async function handler(req, res) {
           const actualEbayItemId = fullItemData.originalItemId || fullItemData.itemId;
           
           console.log(`📦 Using cached sold item data for ${actualEbayItemId} (transaction ${fullItemData.transactionId})`);
+          console.log(`📦 Full item data:`, {
+            originalItemId: fullItemData.originalItemId,
+            itemId: fullItemData.itemId,
+            title: fullItemData.title?.substring(0, 50),
+            hasImages: !!fullItemData.images,
+            imagesType: Array.isArray(fullItemData.images) ? 'array' : typeof fullItemData.images,
+            pictureURLs: fullItemData.pictureURLs,
+          });
+          
+          // Use pictureURLs if images is not an array
+          const itemImages = Array.isArray(fullItemData.images) 
+            ? fullItemData.images 
+            : (fullItemData.pictureURLs || []);
           
           itemDetails = {
             itemId: actualEbayItemId,
@@ -237,10 +250,16 @@ export default async function handler(req, res) {
             description: fullItemData.description || '',
             price: fullItemData.price,
             condition: fullItemData.itemCondition || fullItemData.condition,
-            images: fullItemData.images || [],
+            images: itemImages,
             quantity: 1,
             sku: fullItemData.sku || null,
           };
+          
+          console.log(`✅ Built itemDetails:`, {
+            itemId: itemDetails.itemId,
+            title: itemDetails.title?.substring(0, 50),
+            imagesCount: itemDetails.images?.length || 0,
+          });
         } else {
           // For active items, fetch from eBay API
           itemDetails = await getItemDetails(itemId, accessToken);
