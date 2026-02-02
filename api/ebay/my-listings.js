@@ -678,8 +678,76 @@ export default async function handler(req, res) {
         })));
       }
       
+      // Check which items are already imported
+      const itemIds = items.map(item => item.itemId).filter(Boolean);
+      
+      if (itemIds.length > 0) {
+        // For sold items with transaction IDs, extract original eBay item IDs
+        const originalItemIds = itemIds.map(id => {
+          if (id.includes('-txn-')) {
+            return id.split('-txn-')[0];
+          }
+          return id;
+        });
+
+        const { data: importedItems } = await supabase
+          .from('inventory_items')
+          .select('ebay_item_id')
+          .eq('user_id', userId)
+          .in('ebay_item_id', originalItemIds);
+
+        const importedItemIds = new Set(importedItems?.map(item => item.ebay_item_id) || []);
+
+        // For sold items, also check if there's a sale record for this specific transaction
+        let soldItemsMap = new Map();
+        const transactionIds = items
+          .filter(item => item.transactionId)
+          .map(item => item.transactionId);
+
+        if (transactionIds.length > 0) {
+          const { data: salesRecords } = await supabase
+            .from('sales')
+            .select('ebay_transaction_id')
+            .eq('user_id', userId)
+            .in('ebay_transaction_id', transactionIds);
+
+          // Map transaction IDs to sold status
+          salesRecords?.forEach(sale => {
+            if (sale.ebay_transaction_id) {
+              soldItemsMap.set(sale.ebay_transaction_id, true);
+            }
+          });
+        }
+
+        // Mark items as imported or not
+        const listings = items.map(item => {
+          // Extract original item ID if it's a transaction ID format
+          const originalItemId = item.itemId.includes('-txn-') 
+            ? item.itemId.split('-txn-')[0] 
+            : item.itemId;
+
+          // Check if imported: either inventory exists OR (for sold items) sale record exists
+          let isImported = importedItemIds.has(originalItemId);
+          
+          // For sold items, also check if the specific transaction was imported
+          if (item.transactionId) {
+            isImported = isImported && soldItemsMap.has(item.transactionId);
+          }
+
+          return {
+            ...item,
+            imported: isImported,
+          };
+        });
+
+        return res.status(200).json({
+          listings,
+          total: listings.length,
+        });
+      }
+      
       return res.status(200).json({ 
-        listings: items,
+        listings: items.map(item => ({ ...item, imported: false })),
         total: items.length,
       });
       

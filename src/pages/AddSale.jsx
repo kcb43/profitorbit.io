@@ -614,6 +614,7 @@ export default function AddSale() {
   }
 
   const isEbay = formData.platform === 'ebay';
+  const isImportedEbaySale = isEbay && (formData.ebay_transaction_id || formData.ebay_order_id); // Only show eBay fields for imported items
   const facebookSaleType = formData.facebook_sale_type || 'online';
   const isFacebookPlatform = formData.platform === 'facebook_marketplace';
   const isFacebookLocal = isFacebookPlatform && facebookSaleType === 'local';
@@ -1168,7 +1169,7 @@ export default function AddSale() {
 
 
                 {/* eBay-specific fields section */}
-                {isEbay && (
+                {isImportedEbaySale && (
                   <>
                     {/* Fully displayed fields */}
                     <div className="space-y-2 min-w-0">
