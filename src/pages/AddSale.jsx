@@ -304,7 +304,7 @@ export default function AddSale() {
     const otherCosts = parseFloat(saleData.other_costs) || 0;
     const vatFees = parseFloat(saleData.vat_fees) || 0;
     const quantitySold = parseInt(saleData.quantity_sold, 10) || 1;
-    const includeCustomFees = saleData.platform === 'ebay';
+    const includeCustomFees = saleData.platform?.toLowerCase() === 'ebay';
     const activeCustomFees = includeCustomFees ? feeList : [];
     const customFeesTotal = getCustomFeesTotal(activeCustomFees);
     const combinedOtherCosts = otherCosts + customFeesTotal;
@@ -594,7 +594,7 @@ export default function AddSale() {
     const platformFees = parseFloat(formData.platform_fees) || 0;
     const otherCosts = parseFloat(formData.other_costs) || 0;
     const vatFees = parseFloat(formData.vat_fees) || 0;
-    const includeCustomFees = formData.platform === 'ebay';
+    const includeCustomFees = formData.platform?.toLowerCase() === 'ebay';
     const customFeesTotal = includeCustomFees ? getCustomFeesTotal(customFees) : 0;
 
     const totalCosts = purchasePrice + shippingCost + platformFees + otherCosts + vatFees + customFeesTotal;
@@ -613,26 +613,15 @@ export default function AddSale() {
     return <div className="p-8 text-center text-gray-700 dark:text-gray-300">Loading data...</div>
   }
 
-  const isEbay = formData.platform === 'ebay';
+  const isEbay = formData.platform?.toLowerCase() === 'ebay'; // Case-insensitive comparison
   const isImportedEbaySale = isEbay && (formData.ebay_transaction_id || formData.ebay_order_id); // Only show eBay fields for imported items
-  
-  // Debug logging for eBay fields visibility
-  console.log('🔍 AddSale Debug:', {
-    isEbay,
-    ebay_transaction_id: formData.ebay_transaction_id,
-    ebay_order_id: formData.ebay_order_id,
-    isImportedEbaySale,
-    tracking_number: formData.tracking_number,
-    shipping_carrier: formData.shipping_carrier,
-    platform: formData.platform
-  });
   const facebookSaleType = formData.facebook_sale_type || 'online';
   const isFacebookPlatform = formData.platform === 'facebook_marketplace';
   const isFacebookLocal = isFacebookPlatform && facebookSaleType === 'local';
   const shippingRequired =
-    (formData.platform === 'ebay' ||
-      formData.platform === 'mercari' ||
-      formData.platform === 'etsy' ||
+    (formData.platform?.toLowerCase() === 'ebay' ||
+      formData.platform?.toLowerCase() === 'mercari' ||
+      formData.platform?.toLowerCase() === 'etsy' ||
       (isFacebookPlatform && !isFacebookLocal));
   const otherCostsLabel = isEbay ? 'Transaction Fees' : 'Other Costs';
   const otherCostsPlaceholder = '0.00';
