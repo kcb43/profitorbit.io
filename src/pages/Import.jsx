@@ -471,7 +471,16 @@ export default function Import() {
       } else if (selectedSource === 'ebay') {
         // For eBay, get full item data from cache (especially important for sold items)
         const ebayListings = queryClient.getQueryData(['ebay-listings', userId, listingStatus]) || [];
+        console.log(`📦 Retrieved ${ebayListings.length} eBay listings from cache`);
+        console.log(`🔍 Item IDs to import:`, itemIds);
+        
         const itemsToImport = ebayListings.filter(item => itemIds.includes(item.itemId));
+        console.log(`✅ Found ${itemsToImport.length} matching items to import`);
+        console.log(`📦 Items to import:`, itemsToImport.map(item => ({
+          itemId: item.itemId,
+          title: item.title?.substring(0, 50),
+          status: item.status
+        })));
         
         endpoint = "/api/ebay/import-items";
         headers = {
