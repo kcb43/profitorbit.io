@@ -276,7 +276,22 @@ export default async function handler(req, res) {
               const xml = await response.text();
               console.log(`📄 GetItemTransactions XML response (first 2000 chars):`, xml.substring(0, 2000));
               
-              // Parse the XML to extract all fields
+              // Parse Item block (at top level, NOT in Transaction)
+              const itemMatch = xml.match(/<Item>([\s\S]*?)<\/Item>/);
+              if (itemMatch) {
+                const itemXml = itemMatch[1];
+                const conditionMatch = itemXml.match(/<ConditionDisplayName>([^<]*)<\/ConditionDisplayName>/);
+                fullItemData.itemCondition = conditionMatch ? conditionMatch[1] : null;
+                console.log(`🏷️ Condition: ${fullItemData.itemCondition || 'NOT FOUND'}`);
+                
+                const locationMatch = itemXml.match(/<Location>([^<]*)<\/Location>/);
+                fullItemData.itemLocation = locationMatch ? locationMatch[1] : null;
+                console.log(`📍 Location: ${fullItemData.itemLocation || 'NOT FOUND'}`);
+              } else {
+                console.log(`⚠️ NO Item block found in XML response`);
+              }
+              
+              // Parse Transaction block
               const txnMatch = xml.match(/<Transaction>([\s\S]*?)<\/Transaction>/);
               if (txnMatch) {
                 const txnXml = txnMatch[1];
@@ -298,7 +313,7 @@ export default async function handler(req, res) {
                   
                   const deliveryMatch = shippingXml.match(/<ActualDeliveryTime>([^<]*)<\/ActualDeliveryTime>/);
                   fullItemData.deliveryDate = deliveryMatch ? deliveryMatch[1] : null;
-                  console.log(`📅 Delivery: ${fullItemData.deliveryDate || 'NOT FOUND'}`);
+                  console.log(`📅 Delivery: ${fullItemData.deliveryDate || '(Not yet delivered)'}`);
                 } else {
                   console.log(`⚠️ NO ShippingDetails block found in transaction XML`);
                 }
@@ -306,22 +321,6 @@ export default async function handler(req, res) {
                 const shippedTimeMatch = txnXml.match(/<ShippedTime>([^<]*)<\/ShippedTime>/);
                 fullItemData.shippedDate = shippedTimeMatch ? shippedTimeMatch[1] : null;
                 console.log(`📅 Shipped: ${fullItemData.shippedDate || 'NOT FOUND'}`);
-                
-                
-                // Item Condition
-                const itemMatch = txnXml.match(/<Item>([\s\S]*?)<\/Item>/);
-                if (itemMatch) {
-                  const itemXml = itemMatch[1];
-                  const conditionMatch = itemXml.match(/<ConditionDisplayName>([^<]*)<\/ConditionDisplayName>/);
-                  fullItemData.itemCondition = conditionMatch ? conditionMatch[1] : null;
-                  console.log(`🏷️ Condition: ${fullItemData.itemCondition || 'NOT FOUND'}`);
-                  
-                  const locationMatch = itemXml.match(/<Location>([^<]*)<\/Location>/);
-                  fullItemData.itemLocation = locationMatch ? locationMatch[1] : null;
-                  console.log(`📍 Location: ${fullItemData.itemLocation || 'NOT FOUND'}`);
-                } else {
-                  console.log(`⚠️ NO Item block found in transaction XML`);
-                }
                 
                 // Buyer Address
                 const buyerMatch = txnXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);
@@ -353,22 +352,35 @@ export default async function handler(req, res) {
                   console.log(`⚠️ NO Buyer block found in transaction XML`);
                 }
                 
-                // Payment Info
+                // Payment Info - check multiple possible locations
                 const statusMatch = txnXml.match(/<Status>([\s\S]*?)<\/Status>/);
                 if (statusMatch) {
                   const statusXml = statusMatch[1];
                   const paymentStatusMatch = statusXml.match(/<eBayPaymentStatus>([^<]*)<\/eBayPaymentStatus>/);
                   fullItemData.paymentStatus = paymentStatusMatch ? paymentStatusMatch[1] : null;
                   console.log(`💳 Payment Status: ${fullItemData.paymentStatus || 'NOT FOUND'}`);
-                } else {
-                  console.log(`⚠️ NO Status block found in transaction XML`);
                 }
                 
-                const paymentMethodMatch = txnXml.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
+                // Payment method can be in multiple places
+                let paymentMethodMatch = txnXml.match(/<PaymentMethod>([^<]*)<\/PaymentMethod>/);
+                if (!paymentMethodMatch) {
+                  // Try ExternalTransaction block
+                  const extTxnMatch = txnXml.match(/<ExternalTransaction>([\s\S]*?)<\/ExternalTransaction>/);
+                  if (extTxnMatch) {
+                    paymentMethodMatch = extTxnMatch[1].match(/<PaymentOrRefundMethod>([^<]*)<\/PaymentOrRefundMethod>/);
+                  }
+                }
                 fullItemData.paymentMethod = paymentMethodMatch ? paymentMethodMatch[1] : null;
                 console.log(`💳 Payment Method: ${fullItemData.paymentMethod || 'NOT FOUND'}`);
                 
-                const paidTimeMatch = txnXml.match(/<PaidTime>([^<]*)<\/PaidTime>/);
+                // Try multiple date fields
+                let paidTimeMatch = txnXml.match(/<PaidTime>([^<]*)<\/PaidTime>/);
+                if (!paidTimeMatch) {
+                  paidTimeMatch = txnXml.match(/<PaymentTime>([^<]*)<\/PaymentTime>/);
+                }
+                if (!paidTimeMatch) {
+                  paidTimeMatch = txnXml.match(/<CreatedDate>([^<]*)<\/CreatedDate>/);
+                }
                 fullItemData.paymentDate = paidTimeMatch ? paidTimeMatch[1] : null;
                 console.log(`💳 Payment Date: ${fullItemData.paymentDate || 'NOT FOUND'}`);
                 
