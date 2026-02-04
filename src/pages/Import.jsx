@@ -1440,15 +1440,52 @@ export default function Import() {
                         Connect eBay
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => navigate(createPageUrl("Settings"))}
-                    >
-                      <Settings className="h-4 w-4" />
-                      Go to Settings
-                    </Button>
+                    {selectedSource === "facebook" && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          // Open Facebook Marketplace in new tab for user to login
+                          window.open('https://www.facebook.com/marketplace', '_blank');
+                          toast({
+                            title: "Login to Facebook",
+                            description: "Log in to Facebook Marketplace in the new tab, then come back and click 'Get Latest Items'",
+                          });
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                          <line x1="19" y1="8" x2="19" y2="14"></line>
+                          <line x1="22" y1="11" x2="16" y2="11"></line>
+                        </svg>
+                        Login to Facebook
+                      </Button>
+                    )}
+                    {selectedSource === "mercari" && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          // Open Mercari in new tab for user to login
+                          window.open('https://www.mercari.com/mypage/', '_blank');
+                          toast({
+                            title: "Login to Mercari",
+                            description: "Log in to Mercari in the new tab, then come back and click 'Get Latest Items'",
+                          });
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                          <line x1="19" y1="8" x2="19" y2="14"></line>
+                          <line x1="22" y1="11" x2="16" y2="11"></line>
+                        </svg>
+                        Login to Mercari
+                      </Button>
+                    )}
                   </div>
                 </AlertDescription>
               </Alert>
