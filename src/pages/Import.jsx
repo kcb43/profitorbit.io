@@ -284,10 +284,29 @@ export default function Import() {
       }
       
       setLastSync(new Date());
+      
+      // Cache listings in localStorage so they persist across page navigation
+      const cacheKey = `ebay_listings_${listingStatus}_${userId}`;
+      localStorage.setItem(cacheKey, JSON.stringify(data.listings || []));
+      localStorage.setItem(`${cacheKey}_timestamp`, new Date().toISOString());
+      
       return data.listings || [];
     },
-    enabled: selectedSource === "ebay" && isConnected && !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: false, // DISABLED: Only fetch when user clicks "Get Latest Items"
+    staleTime: Infinity, // Never auto-refetch - user must click button
+    gcTime: Infinity, // Keep in cache indefinitely
+    initialData: () => {
+      // Load from localStorage on mount
+      if (selectedSource === "ebay" && userId) {
+        const cacheKey = `ebay_listings_${listingStatus}_${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          console.log('📦 Loading cached eBay listings from localStorage');
+          return JSON.parse(cached);
+        }
+      }
+      return undefined;
+    },
   });
 
   // Check Facebook connection
@@ -1589,13 +1608,75 @@ export default function Import() {
                         <Button
                           variant="destructive"
                           className="gap-2"
-                          onClick={() => {
+                          onClick={async () => {
                             const importedIds = selectedItems.filter(id => {
                               const item = filteredListings.find(i => i.itemId === id);
                               return item && item.imported;
                             });
-                            // Delete all selected imported items
-                            importedIds.forEach(itemId => handleDelete(itemId));
+                            
+                            if (importedIds.length === 0) {
+                              toast({
+                                title: "No items to delete",
+                                description: "Please select imported items to delete",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            
+                            // Bulk delete all selected items at once
+                            console.log(`🗑️ Bulk deleting ${importedIds.length} items...`);
+                            
+                            try {
+                              // Delete all items in parallel
+                              await Promise.all(importedIds.map(async (itemId) => {
+                                const sourceListings = selectedSource === "facebook" 
+                                  ? (queryClient.getQueryData(['facebook-listings', userId]) || [])
+                                  : selectedSource === "mercari"
+                                  ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
+                                  : (ebayListings || []);
+                                
+                                const item = sourceListings.find(i => i.itemId === itemId);
+                                if (!item) return;
+                                
+                                // For eBay sold items, delete from sales
+                                if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
+                                  await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' }
+                                  });
+                                } else if (item.inventoryId) {
+                                  // Delete from inventory
+                                  await inventoryApi.delete(item.inventoryId);
+                                }
+                              }));
+                              
+                              console.log(`✅ Bulk deleted ${importedIds.length} items`);
+                              
+                              // Clear selection and refresh
+                              setSelectedItems([]);
+                              
+                              // Update cache
+                              if (selectedSource === 'ebay') {
+                                queryClient.invalidateQueries(["ebay-listings"]);
+                              } else if (selectedSource === 'facebook') {
+                                queryClient.invalidateQueries(['facebook-listings', userId]);
+                                setFacebookListingsVersion(v => v + 1);
+                              } else if (selectedSource === 'mercari') {
+                                queryClient.invalidateQueries(['mercari-listings', userId]);
+                              }
+                              
+                              toast({
+                                title: "Success",
+                                description: `Deleted ${importedIds.length} item${importedIds.length === 1 ? '' : 's'}`,
+                              });
+                            } catch (error) {
+                              console.error('❌ Bulk delete error:', error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to delete some items. Please try again.",
+                                variant: "destructive",
+                              });
+                            }
                           }}
                           disabled={deleteMutation.isPending}
                         >
