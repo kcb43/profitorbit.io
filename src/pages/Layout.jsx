@@ -189,7 +189,7 @@ export default function Layout({ children }) {
     <SidebarProvider>
       <style>{themeStyles}</style>
       <div className="min-h-screen flex w-full bg-[#FAFAF9] dark:bg-gray-900/95">
-        <Sidebar className="border-r border-border/60 bg-background w-[252px]">
+        <Sidebar className="border-r border-black dark:border-black bg-background w-[252px]">
           <SidebarHeader className="border-b border-border/60 px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
