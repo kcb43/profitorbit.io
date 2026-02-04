@@ -575,7 +575,7 @@ export default function Landing() {
                 <Sparkles className="w-6 h-6 text-emerald-500 flex-shrink-0 mt-1" />
                 <div className="text-left">
                   <h4 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
-                    AI-Powered Insights
+                    Powered Insights
                   </h4>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
                     Leverage intelligent analytics to identify trends and optimize your pricing strategy.

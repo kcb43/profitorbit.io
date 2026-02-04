@@ -79,7 +79,7 @@ export function DescriptionGenerator({
       console.error('Error generating descriptions:', error);
       toast({
         title: "Generation failed",
-        description: error.message || "Failed to generate descriptions. Please check your AI API configuration.",
+        description: error.message || "Failed to generate descriptions. Please check your API configuration.",
         variant: "destructive",
       });
     } finally {

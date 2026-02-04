@@ -127,7 +127,7 @@ function PlatformCard({ platformData, meta }) {
   // Get category breakdown (would come from API in real implementation)
   const topCategories = []; // Placeholder - would be populated from API
 
-  // Mock tip - will be AI-controlled later
+  // Mock tip - will be controlled later
   const tip = `Based on your ${sales} sales on ${meta.name}, you're averaging ${fmtMoney(avgProfit)} profit per sale. Consider focusing on items with higher profit margins to maximize your earnings on this platform.`;
 
   return (
