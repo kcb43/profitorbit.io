@@ -190,7 +190,7 @@ export default function Layout({ children }) {
       <style>{themeStyles}</style>
       <div className="min-h-screen flex w-full bg-[#FAFAF9] dark:bg-gray-900/95">
         <Sidebar className="border-r border-black dark:border-black bg-background w-[252px]">
-          <SidebarHeader className="border-b border-border/60 px-4 py-4">
+          <SidebarHeader className="border-b border-black dark:border-black px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -253,13 +253,13 @@ export default function Layout({ children }) {
 
                 {/* Category Divider (except for last category) */}
                 {categoryIndex < navigationCategories.length - 1 && (
-                  <div className="h-px bg-border/60 mx-4 my-1.5" />
+                  <div className="h-px bg-black dark:bg-black mx-4 my-1.5" />
                 )}
               </React.Fragment>
             ))}
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-border/60 p-4 space-y-3">
+          <SidebarFooter className="border-t border-black dark:border-black p-4 space-y-3">
             <div className="flex items-center justify-between">
               <UserProfile />
               
@@ -289,7 +289,7 @@ export default function Layout({ children }) {
               </DropdownMenu>
 
             </div>
-            <div className="pt-2 border-t border-border/60">
+            <div className="pt-2 border-t border-black dark:border-black">
               <Link
                 to={createPageUrl("PrivacyPolicy")}
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
