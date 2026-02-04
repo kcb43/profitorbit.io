@@ -551,7 +551,7 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Security & AI Section */}
+          {/* Security & Analytics Section */}
           <div className={`rounded-2xl ${darkMode ? 'bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-800/30' : 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200'} p-12 text-center`}>
             <h2 className={`text-3xl md:text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>
               Secure & Smart Reselling
