@@ -153,7 +153,7 @@ export default function Landing() {
                 <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <span className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Profit Orbit
+                Orben
               </span>
             </div>
             
@@ -269,7 +269,9 @@ export default function Landing() {
             <span className="text-emerald-500">Big Sale</span> Before Others
           </h1>
           <p className={`text-xl md:text-2xl ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-10 max-w-3xl mx-auto leading-relaxed`}>
-            Your reselling command center. Everything you need. Nothing you don't. All for One.
+            Your reselling command center.
+            <br />
+            Inventory, listings, and profits — perfectly in sync. Everything you need. Nothing you don't.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -388,14 +390,14 @@ export default function Landing() {
               Loved by Resellers
             </h2>
             <p className={`text-xl ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Real stories from real sellers who are growing their businesses with Profit Orbit.
+              Real stories from real sellers who are growing their businesses with Orben.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { name: "Sarah M.", badge: "Pro User", quote: "Profit Orbit has completely transformed how I manage my reselling business. The crosslisting feature alone saves me hours every week!" },
-              { name: "Mike R.", badge: "Pro User", quote: "I've tried other tools, but nothing compares to the analytics and insights I get from Profit Orbit. My profits have increased by 40% since I started using it." },
+              { name: "Sarah M.", badge: "Pro User", quote: "Orben has completely transformed how I manage my reselling business. The crosslisting feature alone saves me hours every week!" },
+              { name: "Mike R.", badge: "Pro User", quote: "I've tried other tools, but nothing compares to the analytics and insights I get from Orben. My profits have increased by 40% since I started using it." },
               { name: "Jessica L.", badge: "Pro User", quote: "The inventory management is seamless, and the ability to track everything in one place has been a game changer for my business." }
             ].map((testimonial, index) => (
               <div key={index} className={`rounded-xl ${darkMode ? 'bg-[#111111] border border-gray-800' : 'bg-gray-50 border border-gray-200'} p-6`}>
@@ -428,7 +430,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className={`text-4xl md:text-5xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>
-              How Profit Orbit Works
+              How Orben Works
             </h2>
             <p className={`text-xl ${darkMode ? 'text-gray-400' : 'text-gray-600'} max-w-3xl mx-auto`}>
               Our platform combines inventory management, analytics, and automation to help you make smart reselling decisions and grow your business.
@@ -480,10 +482,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className={`text-4xl md:text-5xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>
-              Key Features of Profit Orbit
+              Key Features of Orben
             </h2>
             <p className={`text-xl ${darkMode ? 'text-gray-400' : 'text-gray-600'} max-w-3xl mx-auto`}>
-              Explore the powerful tools Profit Orbit offers to give you an edge in the reselling market.
+              Explore the powerful tools Orben offers to give you an edge in the reselling market.
             </p>
           </div>
 
@@ -555,7 +557,7 @@ export default function Landing() {
               Secure & Smart Reselling
             </h2>
             <p className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-8 max-w-3xl mx-auto`}>
-              Profit Orbit combines intelligent analytics with advanced security to protect your business and maximize your growth potential.
+              Orben combines intelligent analytics with advanced security to protect your business and maximize your growth potential.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <div className="flex items-start gap-4">
@@ -693,7 +695,7 @@ export default function Landing() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { name: "David T.", badge: "Pro User", quote: "Best reselling tool I've ever used. The crosslisting feature saves me so much time and the analytics help me price my items perfectly." },
-              { name: "Emily K.", badge: "Pro User", quote: "I was skeptical at first, but Profit Orbit has completely changed how I run my reselling business. Worth every penny!" },
+              { name: "Emily K.", badge: "Pro User", quote: "I was skeptical at first, but Orben has completely changed how I run my reselling business. Worth every penny!" },
               { name: "James P.", badge: "Pro User", quote: "The profit tracking is incredible. I can see exactly which items are making me money and adjust my strategy accordingly." }
             ].map((testimonial, index) => (
               <div key={index} className={`rounded-xl ${darkMode ? 'bg-[#111111] border border-gray-800' : 'bg-gray-50 border border-gray-200'} p-6`}>
@@ -728,7 +730,7 @@ export default function Landing() {
             Discover Your Next Big Sale Before Everyone Else
           </h2>
           <p className="text-xl text-emerald-100 mb-8">
-            Join thousands of successful resellers using Profit Orbit to grow their business.
+            Join thousands of successful resellers using Orben to grow their business.
           </p>
           <Button 
             onClick={handleGetStarted} 
@@ -846,11 +848,11 @@ export default function Landing() {
                 <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Profit Orbit
+                Orben
               </span>
             </div>
             <p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-600'}`}>
-              © {new Date().getFullYear()} Profit Orbit. All rights reserved.
+              © {new Date().getFullYear()} Orben. All rights reserved.
             </p>
           </div>
         </div>
