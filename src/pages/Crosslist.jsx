@@ -467,6 +467,8 @@ export default function Crosslist() {
     localStorage.setItem('crosslist_layout', layout);
   }, [layout]);
   
+  const [isMobile, setIsMobile] = useState(false);
+  
   // Hybrid variation logic based on user preference:
   // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
   const viewVariation = React.useMemo(() => {
@@ -523,7 +525,6 @@ export default function Crosslist() {
     }
   };
   
-  const [isMobile, setIsMobile] = useState(false);
   const [q, setQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [selected, setSelected] = useState([]);
