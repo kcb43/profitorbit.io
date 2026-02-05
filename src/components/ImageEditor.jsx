@@ -838,7 +838,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
           alert('Failed to read cropped image. Please try again.');
         };
         reader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.95);
+      }, 'image/jpeg', 0.92);  // Increased from 0.95 to consistent 0.92 quality
       
     } catch (error) {
       console.error('Error cropping image:', error);
@@ -1007,9 +1007,10 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
       // Upload and add new image to the item
       try {
         const compressedFile = await imageCompression(file, {
-          maxSizeMB: 0.25,
-          maxWidthOrHeight: 1200,
+          maxSizeMB: 2.0,          // Increased from 0.25 to 2MB for better quality
+          maxWidthOrHeight: 2400,   // Increased from 1200 to support modern displays
           useWebWorker: true,
+          initialQuality: 0.92      // Consistent high quality
         });
         const fileToUpload = compressedFile || file;
         const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
@@ -1223,7 +1224,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
             } else {
               reject(new Error('Failed to create blob'));
             }
-          }, 'image/jpeg', 0.9);
+          }, 'image/jpeg', 0.92);  // Consistent high quality across all saves
         } catch (error) {
           console.error('Error in applyFiltersToImage:', error);
           reject(error);
@@ -1448,7 +1449,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
             });
           }
         }
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.92);  // Consistent high quality for all image saves
     } catch (error) {
       console.error('Error saving image:', error);
       toast({
