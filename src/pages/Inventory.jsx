@@ -2224,7 +2224,7 @@ export default function InventoryPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                  className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-muted-foreground hover:bg-gray-300 dark:hover:bg-slate-500"
+                                  className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
                                 >
                                   <X className="h-2 w-2 sm:h-3 sm:w-3" />
                                 </button>
@@ -2243,7 +2243,7 @@ export default function InventoryPage() {
                         )}
                       </div>
 
-                      <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-slate-800/80 w-[200px] min-w-[200px] max-w-[200px]"
+                      <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-card/80 w-[200px] min-w-[200px] max-w-[200px]"
                         style={{
                           flexShrink: 0
                         }}
@@ -2507,7 +2507,7 @@ export default function InventoryPage() {
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-muted-foreground hover:bg-gray-300 dark:hover:bg-slate-500"
+                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
                                       title="Remove tag"
                                     >
                                       <X className="h-3 w-3" />
@@ -2656,7 +2656,7 @@ export default function InventoryPage() {
             return (
               <Card 
                 key={item.id} 
-                className={`group overflow-hidden transition-all duration-300 sm:hover:shadow-2xl sm:hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-slate-700/50'}`}
+                className={`group overflow-hidden transition-all duration-300 sm:hover:shadow-2xl sm:hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-border'}`}
                 style={{
                   borderRadius: '16px',
                 }}
@@ -2741,7 +2741,7 @@ export default function InventoryPage() {
                               type="button"
                               variant="secondary"
                               size="sm"
-                              className="h-7 px-2 text-xs gap-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-foreground border-gray-300 dark:border-slate-600"
+                              className="h-7 px-2 text-xs gap-1 bg-gray-100 dark:bg-card hover:bg-gray-200 dark:hover:bg-card/70 text-foreground border-gray-300 dark:border-border"
                               onClick={(e) => handleEditImage(e, item)}
                             >
                               <ImageIcon className="h-3 w-3" />
@@ -2801,12 +2801,12 @@ export default function InventoryPage() {
                       {itemTags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-3">
                           {itemTags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px] bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-slate-600">
+                            <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px] bg-gray-100 dark:bg-card text-gray-700 dark:text-muted-foreground border-gray-300 dark:border-border">
                               {tag}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-muted-foreground hover:bg-gray-300 dark:hover:bg-slate-500"
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
                               >
                                 <X className="h-3 w-3" />
                                 <span className="sr-only">Remove tag</span>

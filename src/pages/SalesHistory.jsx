@@ -1522,7 +1522,7 @@ export default function SalesHistory() {
                       return (
                         <Card 
                           key={sale.id} 
-                          className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-700 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg`}
+                          className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg`}
                           style={{
                             borderRadius: '16px',
                           }}
@@ -1792,7 +1792,7 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-1 sm:py-3 mr-1.5 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-slate-800/80 w-[75px] sm:w-[200px] min-w-[75px] sm:min-w-[200px] max-w-[75px] sm:max-w-[200px]"
+                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-1 sm:py-3 mr-1.5 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-card/80 w-[75px] sm:w-[200px] min-w-[75px] sm:min-w-[200px] max-w-[75px] sm:max-w-[200px]"
                       style={{
                         flexShrink: 0
                       }}>
