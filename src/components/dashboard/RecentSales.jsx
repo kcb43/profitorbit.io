@@ -65,7 +65,7 @@ export default function RecentSales({ sales }) {
                       <div className="group relative">
                         <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}`)}>
                           <div className="overflow-hidden rounded-xl relative shadow-md transition-all duration-300 group-hover:scale-[1.02] group-hover:-translate-y-1 group-hover:shadow-lg">
-                            <div className="aspect-square bg-gray-100 dark:bg-gray-800">
+                            <div className="aspect-square bg-gray-100 dark:bg-card">
                               <img
                                 src={sale.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
                                 alt={sale.item_name}
@@ -104,7 +104,7 @@ export default function RecentSales({ sales }) {
                                 );
                               })()}
                               {sale.platform && platformIcons[sale.platform] && (
-                                <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg p-1.5 shadow-md border border-white/20 dark:border-gray-700/50">
+                                <div className="bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-lg p-1.5 shadow-md border border-white/20 dark:border-border/50">
                                   <img 
                                     src={platformIcons[sale.platform]} 
                                     alt={sale.platform} 
@@ -134,7 +134,7 @@ export default function RecentSales({ sales }) {
                 })}
               </CarouselContent>
           ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-8 text-muted-foreground">
               <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png" alt="No Sales" className="w-12 h-12 mx-auto mb-3 text-gray-300 opacity-50" />
               <p>No sales yet</p>
               <p className="text-sm mt-1">Add your first sale to get started</p>

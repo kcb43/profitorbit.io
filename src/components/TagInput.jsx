@@ -145,7 +145,7 @@ export function TagInput({
       {showDropdown && inputValue.trim() && !disabled && (
         <div 
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-input rounded-md shadow-lg"
+          className="absolute z-50 w-full mt-1 bg-white dark:bg-card border border-input rounded-md shadow-lg"
         >
           <button
             type="button"

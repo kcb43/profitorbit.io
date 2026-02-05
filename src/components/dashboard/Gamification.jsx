@@ -213,7 +213,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
     // OG (Original) Variant
     if (progressVariant === "og") {
       return (
-        <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-sm bg-white dark:bg-gray-950">
+        <Card className="border border-gray-200/70 dark:border-border shadow-sm bg-white dark:bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold text-foreground">Your Progress</CardTitle>
           </CardHeader>
@@ -262,7 +262,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </div>
 
               {/* Points Card */}
-              <div className="rounded-2xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-md border border-white/20 dark:border-gray-700/20 p-4 shadow-lg">
+              <div className="rounded-2xl bg-white/50 dark:bg-card backdrop-blur-md border border-white/20 dark:border-border p-4 shadow-lg">
                 <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Total Points</div>
                 <div className="text-2xl font-bold text-foreground">{points.toLocaleString()}</div>
               </div>
@@ -279,7 +279,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
     // Variation 2: Minimalist Badge - Clean, focused design
     if (progressVariant === "minimal") {
       return (
-        <Card className="border border-gray-200/50 dark:border-gray-800/50 shadow-sm bg-white dark:bg-gray-950">
+        <Card className="border border-gray-200/50 dark:border-border shadow-sm bg-white dark:bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold text-foreground">Your Progress</CardTitle>
           </CardHeader>
@@ -311,7 +311,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
       const isMobile = useIsMobile();
 
       return (
-        <Card className="your-progress-card border border-gray-200/70 dark:border-gray-800/70 shadow-xl bg-white dark:bg-gray-950 [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
+        <Card className="your-progress-card border border-gray-200/70 dark:border-border shadow-xl bg-white dark:bg-card [data-theme='money-green-dark']:border-white/5 relative overflow-hidden">
           {/* Top gradient bar */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500" />
           
@@ -338,7 +338,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
 
               {/* Points - Hidden on mobile */}
               {!isMobile && (
-                <div className="your-progress-points rounded-xl bg-blue-50/80 dark:bg-gray-950 backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
+                <div className="your-progress-points rounded-xl bg-blue-50/80 dark:bg-card backdrop-blur-sm border border-blue-500/30 dark:border-blue-500/30 [data-theme='money-green-dark']:border-white/5 p-4 shadow-lg">
                   <div className="text-xs text-blue-600 dark:text-blue-400 [data-theme='money-green-dark']:text-slate-300 mb-1 uppercase tracking-wide font-semibold">Points</div>
                   <div className="text-2xl font-bold text-blue-900 dark:text-white [data-theme='money-green-dark']:text-white">{points.toLocaleString()}</div>
                 </div>
@@ -351,7 +351,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                 {/* View Rewards Dropdown Button */}
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5 relative"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-border [data-theme='money-green-dark']:border-white/5 relative"
                 >
                   {!isExpanded ? (
                     <>
@@ -372,7 +372,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 animate-in slide-in-from-top-2">
+                  <div className="your-progress-achievements bg-gray-100/60 dark:bg-card rounded-xl p-4 border border-gray-300/50 dark:border-border [data-theme='money-green-dark']:border-white/5 animate-in slide-in-from-top-2">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Shipping Label Vouchers</div>
                     </div>
@@ -384,14 +384,14 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                             <div key={voucher.id} className="relative flex-shrink-0">
                               <button
                                 onClick={() => setSelectedAchievement(selectedAchievement === voucher.id ? null : voucher.id)}
-                                className="relative p-3 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
+                                className="relative p-3 rounded-xl bg-white/80 dark:bg-card hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-border hover:border-gray-400 dark:hover:border-border transition-all group"
                               >
                                 <VoucherIcon className={`w-6 h-6 ${voucher.color}`} />
                                 {/* Smooth label on click */}
                                 {selectedAchievement === voucher.id && (
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-card text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-border animate-in fade-in slide-in-from-bottom-2 z-30">
                                     {voucher.name}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-card border-r border-b border-gray-700 dark:border-border rotate-45"></div>
                                   </div>
                                 )}
                               </button>
@@ -404,10 +404,10 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                     </div>
                     
                     {/* View Rewards Button */}
-                    <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
+                    <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-border [data-theme='money-green-dark']:border-white/5 relative">
                       <Link 
                         to={createPageUrl("Rewards")} 
-                        className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
+                        className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-border [data-theme='money-green-dark']:border-white/5"
                       >
                         {/* Green dot positioned on top right of button - only show when expanded */}
                         <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
@@ -420,7 +420,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
               </>
             ) : (
               /* Desktop: Show shipping label vouchers and rewards button always */
-              <div className="your-progress-achievements bg-gray-100/60 dark:bg-gray-950 rounded-xl p-4 border border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5">
+              <div className="your-progress-achievements bg-gray-100/60 dark:bg-card rounded-xl p-4 border border-gray-300/50 dark:border-border [data-theme='money-green-dark']:border-white/5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-sm font-medium text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white">Shipping Label Vouchers</div>
                 </div>
@@ -432,14 +432,14 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                         <div key={voucher.id} className="relative flex-shrink-0">
                           <button
                             onClick={() => setSelectedAchievement(selectedAchievement === voucher.id ? null : voucher.id)}
-                            className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-gray-600/50 hover:border-gray-400 dark:hover:border-gray-500/70 transition-all group"
+                            className="relative p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-card hover:bg-white dark:hover:bg-gray-700/70 border border-gray-300/50 dark:border-border hover:border-gray-400 dark:hover:border-border transition-all group"
                           >
                             <VoucherIcon className={`w-6 h-6 sm:w-8 sm:h-8 ${voucher.color}`} />
                             {/* Smooth label on click */}
                             {selectedAchievement === voucher.id && (
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600 animate-in fade-in slide-in-from-bottom-2 z-30">
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-card text-white dark:text-gray-100 text-xs font-semibold rounded-lg whitespace-nowrap shadow-lg border border-gray-700 dark:border-border animate-in fade-in slide-in-from-bottom-2 z-30">
                                 {voucher.name}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-gray-800 border-r border-b border-gray-700 dark:border-gray-600 rotate-45"></div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 dark:bg-card border-r border-b border-gray-700 dark:border-border rotate-45"></div>
                               </div>
                             )}
                           </button>
@@ -452,10 +452,10 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                 </div>
                 
                 {/* View Rewards Button */}
-                <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-gray-800/50 [data-theme='money-green-dark']:border-white/5 relative">
+                <div className="pt-4 mt-4 border-t border-gray-300/50 dark:border-border [data-theme='money-green-dark']:border-white/5 relative">
                   <Link 
                     to={createPageUrl("Rewards")} 
-                    className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-gray-800 [data-theme='money-green-dark']:border-white/5"
+                    className="your-progress-rewards-btn w-full flex items-center justify-center px-4 py-3 rounded-lg bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white [data-theme='money-green-dark']:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg relative border border-gray-300 dark:border-border [data-theme='money-green-dark']:border-white/5"
                   >
                     {/* Green dot positioned on top right of button */}
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-30" />
@@ -478,7 +478,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-100 to-green-100 dark:from-emerald-950/30 dark:to-green-950/30 rounded-2xl transform translate-y-1 translate-x-1 opacity-50" />
           
           {/* Main card */}
-          <Card className="border border-gray-200/70 dark:border-gray-800/70 shadow-lg bg-white dark:bg-gray-950 relative z-10">
+          <Card className="border border-gray-200/70 dark:border-border shadow-lg bg-white dark:bg-card relative z-10">
             <CardHeader className="pb-3 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20 rounded-t-lg">
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
@@ -514,12 +514,12 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
   }
 
   return (
-    <Card className="border-0 shadow-sm bg-white dark:bg-gray-900 relative overflow-hidden">
+    <Card className="border-0 shadow-sm bg-white dark:bg-card relative overflow-hidden">
       
-      <CardHeader className="relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 rounded-t-lg">
+      <CardHeader className="relative z-10 bg-gray-50/50 dark:bg-card [data-theme='money-green-dark']:bg-card rounded-t-lg">
         <CardTitle className="text-xl font-bold text-foreground">Your Progress</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 relative z-10 bg-gray-50/50 dark:bg-gray-800/30 [data-theme='money-green-dark']:bg-gray-800/30 rounded-b-lg min-w-0">
+      <CardContent className="space-y-6 relative z-10 bg-gray-50/50 dark:bg-card [data-theme='money-green-dark']:bg-card rounded-b-lg min-w-0">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 min-w-0">
           {/* Left side - Current Level */}
           <div className="flex-1 min-w-0 w-full sm:w-auto">
@@ -576,7 +576,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
                 {achievements.map(ach => (
                   <Tooltip key={ach.name}>
                     <TooltipTrigger asChild>
-                      <button className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                      <button className="p-2 rounded-lg bg-gray-100 dark:bg-card hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                         <ach.icon className={`w-5 h-5 ${ach.color}`} />
                       </button>
                     </TooltipTrigger>
@@ -592,7 +592,7 @@ export default function Gamification({ sales, stats, variant, progressVariant = 
           </div>
           
           {/* View Rewards Button */}
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="pt-4 border-t border-gray-200 dark:border-border">
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 text-center">
               Earn points, enjoy Rewards
             </p>

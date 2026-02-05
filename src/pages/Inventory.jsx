@@ -1889,7 +1889,7 @@ export default function InventoryPage() {
                             e.stopPropagation();
                             handleSelect(item.id);
                           }}
-                          className="relative aspect-square bg-gray-50 dark:bg-slate-900/50 cursor-pointer"
+                          className="relative aspect-square bg-gray-50 dark:bg-card/70 cursor-pointer"
                         >
                           <OptimizedImage
                             src={item.image_url || DEFAULT_IMAGE_URL}
@@ -1955,7 +1955,7 @@ export default function InventoryPage() {
                     <div key={item.id} className="w-full max-w-full">
                       {/* Mobile/Tablet list layout (unchanged) */}
                       <div
-                        className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                        className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                         style={{
                           minHeight: 'auto',
                           height: 'auto',
@@ -1972,7 +1972,7 @@ export default function InventoryPage() {
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-slate-900/50 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-slate-600/50 hover:opacity-90 hover:shadow-md'}`}
+                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-slate-600/50 hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
@@ -2243,7 +2243,7 @@ export default function InventoryPage() {
                         )}
                       </div>
 
-                      <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80 w-[200px] min-w-[200px] max-w-[200px]"
+                      <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-slate-800/80 w-[200px] min-w-[200px] max-w-[200px]"
                         style={{
                           flexShrink: 0
                         }}
@@ -2302,14 +2302,14 @@ export default function InventoryPage() {
                             handleSelect(item.id);
                           }
                         }}
-                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
                       >
                         <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
                           {/* Image */}
                           <div className="p-4">
                             <div
                               onClick={() => handleSelect(item.id)}
-                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600`}
+                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
                               style={{ height: 140 }}
                               title="Click image to select"
                             >
@@ -2342,7 +2342,7 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Details */}
-                          <div className={`min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
+                          <div className={`min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
                             <div className="flex items-start justify-between gap-3 mb-3">
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1 rounded-xl`}>
@@ -2528,7 +2528,7 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Actions */}
-                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                          <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
                             <Button
                               onClick={() => {
                                 setItemToView(item);
@@ -2578,7 +2578,7 @@ export default function InventoryPage() {
                                     setSoldDialogName(item.item_name || "");
                                     setSoldDialogOpen(true);
                                   }}
-                                  className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900"
+                                  className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                                 >
                                   <BarChart className="w-4 h-4 mr-2" />
                                   Search
@@ -2591,7 +2591,7 @@ export default function InventoryPage() {
                                 >
                                   <Button
                                     variant="outline"
-                                    className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900"
+                                    className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                                   >
                                     <Edit className="w-4 h-4 mr-2" />
                                     Edit Item
@@ -2661,7 +2661,7 @@ export default function InventoryPage() {
                   borderRadius: '16px',
                 }}
               >
-                <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-slate-900/50"
+                <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-card/70"
                 >
                   <div
                     onClick={() => handleSelect(item.id)}
@@ -2753,7 +2753,7 @@ export default function InventoryPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs gap-1 border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                            className="h-7 px-2 text-xs gap-1 border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
                             onClick={() => handleTagEditorToggle(item.id)}
                           >
                             <Tag className="h-3.5 w-3.5" />
@@ -2960,7 +2960,7 @@ export default function InventoryPage() {
                               state={returnStateForInventory}
                               className="flex-1"
                             >
-                              <Button variant="outline" size="sm" className="w-full h-8 text-xs border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">
+                              <Button variant="outline" size="sm" className="w-full h-8 text-xs border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">
                                 <Edit className="w-3 h-3 mr-1" />
                                 Edit
                               </Button>

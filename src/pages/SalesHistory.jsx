@@ -1530,7 +1530,7 @@ export default function SalesHistory() {
                           <div className="relative">
                             <div 
                               onClick={() => handleSelect(sale.id)}
-                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50`}
+                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-card/70`}
                             >
                               {sale.image_url ? (
                                 <OptimizedImage
@@ -1660,7 +1660,7 @@ export default function SalesHistory() {
                       {/* Product Image Section - Clickable */}
                       <div 
                         onClick={() => handleSelect(sale.id)}
-                        className={`glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-slate-900/50 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-700/50 hover:opacity-90 hover:shadow-md'}`}
+                        className={`glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-card/70 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-700/50 hover:opacity-90 hover:shadow-md'}`}
                         style={{
                           borderRadius: '12px',
                           flexShrink: 0
@@ -1678,7 +1678,7 @@ export default function SalesHistory() {
                         )}
                         {/* Platform Icon Overlay - hidden on mobile */}
                         {platformIcons[sale.platform] && (
-                          <div className="glass absolute top-2 right-2 hidden sm:flex items-center justify-center z-10 bg-card border border-gray-200 dark:border-slate-700 shadow-md"
+                          <div className="glass absolute top-2 right-2 hidden sm:flex items-center justify-center z-10 bg-card border border-gray-200 dark:border-border shadow-md"
                             style={{
                               width: '43px',
                               height: '55px',
@@ -1792,12 +1792,12 @@ export default function SalesHistory() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-1 sm:py-3 mr-1.5 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80 w-[75px] sm:w-[200px] min-w-[75px] sm:min-w-[200px] max-w-[75px] sm:max-w-[200px]"
+                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-1 sm:py-3 mr-1.5 sm:mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-slate-800/80 w-[75px] sm:w-[200px] min-w-[75px] sm:min-w-[200px] max-w-[75px] sm:max-w-[200px]"
                       style={{
                         flexShrink: 0
                       }}>
                       {/* Profit Display - Desktop Only */}
-                      <div className="hidden sm:block glass px-3 py-1.5 rounded-xl font-bold text-base text-center border border-gray-300 dark:border-slate-600 bg-card text-foreground">
+                      <div className="hidden sm:block glass px-3 py-1.5 rounded-xl font-bold text-base text-center border border-gray-300 dark:border-border bg-card text-foreground">
                         <span className="font-semibold">Profit: </span>
                         <span className={`${sale.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                           {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(2) || '0.00'}
@@ -1950,17 +1950,17 @@ export default function SalesHistory() {
 
                       {/* Desktop list layout (new) */}
                       <div
-                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-border bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : ''}`}
                       >
                         <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
                           {/* Image */}
                           <div className="p-4">
                             <div
                               onClick={() => handleSelect(sale.id)}
-                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition ${
+                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition ${
                                 selectedSales.includes(sale.id)
                                   ? "border-green-500 shadow-lg shadow-green-500/20"
-                                  : "border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600"
+                                  : "border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80"
                               }`}
                               style={{ height: 140 }}
                               title="Click image to select"
@@ -1977,7 +1977,7 @@ export default function SalesHistory() {
                               )}
 
                               {platformIcons[sale.platform] && (
-                                <div className="absolute top-2 right-2 rounded-lg bg-white/90 dark:bg-slate-900/80 border border-gray-200/70 dark:border-slate-700/60 p-1.5 shadow-sm">
+                                <div className="absolute top-2 right-2 rounded-lg bg-white/90 dark:bg-card/95 border border-gray-200/70 dark:border-border p-1.5 shadow-sm">
                                   <img
                                     src={platformIcons[sale.platform]}
                                     alt={platformNames[sale.platform]}
@@ -1997,7 +1997,7 @@ export default function SalesHistory() {
                           </div>
 
                           {/* Details */}
-                          <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-slate-700/60 px-5 py-4">
+                          <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-border px-5 py-4">
                             <div className="flex items-center justify-between gap-3 mb-3">
                               <div className="flex items-center gap-2 min-w-0">
                                 <div
@@ -2070,7 +2070,7 @@ export default function SalesHistory() {
                           </div>
 
                           {/* Actions */}
-                          <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                          <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full">
                               <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs h-9 shadow-sm">
                                 View Details
@@ -2102,13 +2102,13 @@ export default function SalesHistory() {
                             ) : (
                               <>
                                 <Link to={createPageUrl(`AddSale?id=${sale.id}`)} className="w-full">
-                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900">
+                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
                                     <Pencil className="w-4 h-4 mr-2" />
                                     Edit
                                   </Button>
                                 </Link>
                                 <Link to={createPageUrl(`AddSale?copyId=${sale.id}`)} className="w-full">
-                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900">
+                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
                                     <Copy className="w-4 h-4 mr-2" />
                                     Copy
                                   </Button>

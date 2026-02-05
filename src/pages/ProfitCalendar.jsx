@@ -350,7 +350,7 @@ export default function ProfitCalendar() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background md:bg-[#0b1220]">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background md:bg-background">
       <div className="max-w-5xl mx-auto md:max-w-6xl lg:max-w-7xl">
         {error ? (
           <div className="mb-4">
@@ -371,7 +371,7 @@ export default function ProfitCalendar() {
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
           {/* Calendar */}
           <Card className="border-0 shadow-lg mb-4 lg:mb-0 lg:col-span-8 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden">
-            <CardHeader className="border-b bg-gray-800 dark:bg-gray-800 p-4 md:bg-transparent md:border-b md:border-white/5 md:px-6 md:py-5">
+            <CardHeader className="border-b bg-card p-4 md:bg-card/50 md:border-b md:border-white/5 md:px-6 md:py-5">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <CardTitle className="text-lg sm:text-xl text-white">
                   {format(currentMonth, 'MMMM yyyy')}
@@ -427,7 +427,7 @@ export default function ProfitCalendar() {
               </div>
             </div>
 
-            <CardContent className="p-2 sm:p-3 md:px-6 md:py-5 md:bg-transparent">
+            <CardContent className="p-2 sm:p-3 md:px-6 md:py-5 md:bg-card/50">
               <div
                 className="select-none touch-pan-y"
                 style={{ touchAction: 'pan-y' }}
@@ -467,7 +467,7 @@ export default function ProfitCalendar() {
                           ${!isCurrentMonth ? 'opacity-30' : ''}
                           ${isToday ? 'ring-2 ring-blue-500 md:ring-emerald-400/70' : ''}
                           ${dayData ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}
-                          ${profit > 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-gray-50 dark:bg-gray-800/50'}
+                          ${profit > 0 ? 'bg-green-50 dark:bg-emerald-900/30' : 'bg-gray-50 dark:bg-card/50'}
                           ${heatStyles[heatLevel]}
                         `}
                       >
@@ -583,7 +583,7 @@ export default function ProfitCalendar() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 md:px-6 md:pb-4">
             <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
               <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
-                <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg md:bg-emerald-500/10 md:border md:border-emerald-400/40">
+                <div className="p-2 sm:p-3 bg-green-100 dark:bg-emerald-900/30 rounded-lg md:bg-emerald-500/10 md:border md:border-emerald-400/40">
                   <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 md:text-emerald-300" />
                 </div>
                 <div>

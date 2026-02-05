@@ -1852,7 +1852,7 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
             {/* Main Content - Image preview */}
             <div className="w-full md:flex-1 flex flex-col min-w-0 flex-1 overflow-hidden bg-transparent dark:bg-transparent mt-1 md:mt-0 md:pl-3 order-2" style={{ scale: 1, outline: 'none' }}>
               <div 
-                className={`image-edit-container w-full flex-1 min-h-[calc(100dvh-35vh)] md:min-h-0 overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700'}`}
+                className={`image-edit-container w-full flex-1 min-h-[calc(100dvh-35vh)] md:min-h-0 overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-card border border-gray-200 dark:border-border' : 'bg-white dark:bg-card border border-gray-200 dark:border-border'}`}
                 style={{ 
                   scale: 1,
                   outline: 'none'

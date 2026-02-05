@@ -56,14 +56,14 @@ export default function PlatformBreakdown({ sales, variant }) {
   }, [sales]);
 
   return (
-    <Card className={isMosaic ? "border border-gray-200/70 dark:border-gray-800/70 shadow-sm" : "border-0 shadow-sm"}>
+    <Card className={isMosaic ? "border border-gray-200/70 dark:border-border shadow-sm" : "border-0 shadow-sm"}>
       <CardHeader>
         <CardTitle className="text-xl font-bold text-foreground">Platform Performance</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {platformStats.map(([platform, stats]) => (
-            <div key={platform} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <div key={platform} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-card rounded-lg">
               <div className="flex items-center gap-3">
                 <Badge className={`${platformColors[platform]} border px-3 py-1 flex items-center justify-center`}>
                   {platformIcons[platform] ? (

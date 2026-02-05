@@ -20,7 +20,7 @@ export default function ReportsExport({ sales, totalProfit, totalSales }) {
   };
 
   return (
-    <Card className="border-0 shadow-sm bg-white dark:bg-gray-900 h-full">
+    <Card className="border-0 shadow-sm bg-white dark:bg-card h-full">
       <CardHeader>
         <CardTitle className="text-xl font-bold text-foreground flex items-center gap-2">
           <Download className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -52,7 +52,7 @@ export default function ReportsExport({ sales, totalProfit, totalSales }) {
           </div>
         </div>
 
-        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="pt-2 border-t border-gray-200 dark:border-border">
           <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Tax Reports</p>
           <Link to={createPageUrl("Reports")}>
             <Button
@@ -66,7 +66,7 @@ export default function ReportsExport({ sales, totalProfit, totalSales }) {
           </Link>
         </div>
 
-        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="pt-2 border-t border-gray-200 dark:border-border">
           <Link to={createPageUrl("Reports")}>
             <Button
               variant="ghost"

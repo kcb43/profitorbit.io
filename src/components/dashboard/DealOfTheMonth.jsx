@@ -12,10 +12,10 @@ const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/o
 const DealHighlight = ({ itemName, saleId, imageUrl, profit }) => {
   if (!saleId) {
     return (
-      <Card className="bg-gray-50 dark:bg-gray-800/50 border-0 shadow-sm">
+      <Card className="bg-gray-50 dark:bg-card border-0 shadow-sm">
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col items-center text-center">
-            <div className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 mb-3">
+            <div className="p-3 rounded-full bg-gray-200 dark:bg-card mb-3">
               <Award className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400" />
             </div>
             <p className="text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Highest Profit</p>
@@ -28,10 +28,10 @@ const DealHighlight = ({ itemName, saleId, imageUrl, profit }) => {
 
   return (
     <Link to={createPageUrl(`SoldItemDetail?id=${saleId}`)} className="block w-full max-w-full min-w-0">
-      <Card className="bg-gray-50 dark:bg-gray-800/50 border-0 shadow-sm hover:shadow-lg transition-shadow duration-200 overflow-hidden w-full max-w-full min-w-0">
+      <Card className="bg-gray-50 dark:bg-card border-0 shadow-sm hover:shadow-lg transition-shadow duration-200 overflow-hidden w-full max-w-full min-w-0">
         <CardContent className="p-0 relative w-full max-w-full min-w-0">
           {/* Image */}
-          <div className="relative w-full h-32 sm:h-40 overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <div className="relative w-full h-32 sm:h-40 overflow-hidden bg-gray-100 dark:bg-card">
             <OptimizedImage
               src={imageUrl || DEFAULT_IMAGE_URL}
               alt={itemName || 'Item'}
@@ -40,7 +40,7 @@ const DealHighlight = ({ itemName, saleId, imageUrl, profit }) => {
               lazy={true}
             />
             {/* Icon overlay */}
-            <div className="absolute top-2 right-2 p-2 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-md bg-gradient-to-br from-amber-400 to-yellow-500">
+            <div className="absolute top-2 right-2 p-2 rounded-full bg-white/90 dark:bg-card backdrop-blur-sm shadow-md bg-gradient-to-br from-amber-400 to-yellow-500">
               <Award className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
           </div>

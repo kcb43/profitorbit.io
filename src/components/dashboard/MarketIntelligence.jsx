@@ -38,7 +38,7 @@ export default function MarketIntelligence() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Feed Beta API */}
-        <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800">
+        <div className="p-3 bg-white/60 dark:bg-card rounded-lg border border-purple-200 dark:border-purple-800">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -90,7 +90,7 @@ export default function MarketIntelligence() {
         </div>
 
         {/* Feed API */}
-        <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800">
+        <div className="p-3 bg-white/60 dark:bg-card rounded-lg border border-purple-200 dark:border-purple-800">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -122,7 +122,7 @@ export default function MarketIntelligence() {
         </div>
 
         {/* Inventory Refresh - Notification API */}
-        <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-purple-200 dark:border-purple-800">
+        <div className="p-3 bg-white/60 dark:bg-card rounded-lg border border-purple-200 dark:border-purple-800">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400" />

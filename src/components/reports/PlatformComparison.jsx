@@ -70,7 +70,7 @@ export default function PlatformComparison({ sales, rangeLabel }) {
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
                 {p.platformKey && platformIcons[p.platformKey] && (
-                  <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg p-1.5 shadow-sm border border-white/20 dark:border-gray-700/50">
+                  <div className="bg-white/90 dark:bg-card backdrop-blur-sm rounded-lg p-1.5 shadow-sm border border-white/20 dark:border-border">
                     <img 
                       src={platformIcons[p.platformKey]} 
                       alt={p.name} 
@@ -127,7 +127,7 @@ export default function PlatformComparison({ sales, rangeLabel }) {
                   <TableCell className="font-medium whitespace-nowrap text-foreground">
                     <div className="flex items-center gap-2">
                       {p.platformKey && platformIcons[p.platformKey] && (
-                        <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg p-1.5 shadow-sm border border-white/20 dark:border-gray-700/50">
+                        <div className="bg-white/90 dark:bg-card backdrop-blur-sm rounded-lg p-1.5 shadow-sm border border-white/20 dark:border-border">
                           <img 
                             src={platformIcons[p.platformKey]} 
                             alt={p.name} 

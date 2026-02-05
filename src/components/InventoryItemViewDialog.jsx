@@ -14,7 +14,7 @@ const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/o
 const statusColors = {
   available: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 hover:dark:bg-blue-900/30",
   listed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 hover:dark:bg-green-900/30",
-  sold: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 hover:dark:bg-gray-900/30",
+  sold: "bg-gray-100 text-gray-800 dark:bg-card dark:text-gray-400 border border-gray-200 dark:border-border hover:bg-gray-100 hover:dark:bg-card",
 };
 
 const statusLabels = {

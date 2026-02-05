@@ -2082,14 +2082,14 @@ export default function Crosslist() {
                       toggleSelect(it.id);
                     }
                   }}
-                  className={`product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-slate-700/60'} bg-white/80 dark:bg-slate-900/70 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60`}
+                  className={`product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60`}
                 >
                   <div className="grid grid-cols-[168px_1fr_220px] gap-0 min-w-0">
                     {/* Product Image Section */}
                     <div className="p-4">
                       <div
                         onClick={() => toggleSelect(it.id)}
-                        className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-slate-900/40 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-slate-700/60 hover:border-gray-300 dark:hover:border-slate-600`}
+                        className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
                         style={{ height: 140 }}
                         title="Click image to select"
                       >
@@ -2112,7 +2112,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Details Section */}
-                    <div className={`min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-slate-700/60'}`}>
+                    <div className={`min-w-0 px-5 py-4 ${selected.includes(it.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
                     {/* Status Badge */}
                       <div className="flex items-center justify-between gap-3 mb-3">
                         <Badge className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} px-3 py-1.5 rounded-xl text-xs font-semibold`}>
@@ -2160,10 +2160,10 @@ export default function Crosslist() {
                             <div
                               className={`relative inline-flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
                                 isListed
-                                  ? "bg-white dark:bg-slate-900 border-emerald-500/40 opacity-100 shadow-sm"
+                                  ? "bg-white dark:bg-card border-emerald-500/40 opacity-100 shadow-sm"
                                   : isProcessing
-                                    ? "bg-white dark:bg-slate-900 border-blue-500/40 opacity-100 shadow-sm"
-                                  : "bg-gray-500/10 border-gray-300 dark:border-slate-600 opacity-50 hover:opacity-70"
+                                    ? "bg-white dark:bg-card border-blue-500/40 opacity-100 shadow-sm"
+                                  : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50 hover:opacity-70"
                               }`}
                               title={
                                 isListed
@@ -2187,12 +2187,12 @@ export default function Crosslist() {
                             >
                               {renderMarketplaceIcon(m, "w-6 h-6")}
                               {isListed && listingUrl && (
-                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-1 shadow">
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-1 shadow">
                                   <ExternalLink className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                                 </span>
                               )}
                               {isProcessing && (
-                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-1 shadow">
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-1 shadow">
                                   <RefreshCw className="w-3 h-3 text-blue-600 animate-spin" />
                                 </span>
                               )}
@@ -2222,7 +2222,7 @@ export default function Crosslist() {
                     </div>
 
                     {/* Actions Section */}
-                    <div className="p-4 bg-gray-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+                    <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
                     {/* Crosslist Button */}
                     <Button
                       onClick={() => openComposer([it.id], false)}
@@ -2238,7 +2238,7 @@ export default function Crosslist() {
                     <Button
                       variant="ghost"
                       onClick={() => navigate(createPageUrl(`AddInventoryItem?id=${it.id}`))}
-                      className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-slate-900/60 border border-gray-200/70 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900"
+                      className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-card/80 border border-gray-200/70 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                     >
                       Edit
                     </Button>
@@ -2267,7 +2267,7 @@ export default function Crosslist() {
                     borderRadius: '16px',
                   }}
                 >
-                  <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-slate-900/50"
+                  <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-card/70"
                   >
                     <div
                       onClick={() => toggleSelect(it.id)}
@@ -2352,12 +2352,12 @@ export default function Crosslist() {
                             >
                               {renderMarketplaceIcon(m, "w-4 h-4")}
                               {isListed && listingUrl && (
-                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-0.5 shadow">
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
                                   <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
                                 </span>
                               )}
                               {isProcessing && (
-                                <span className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full p-0.5 shadow">
+                                <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
                                   <RefreshCw className="w-2.5 h-2.5 text-blue-600 animate-spin" />
                                 </span>
                               )}
@@ -2392,7 +2392,7 @@ export default function Crosslist() {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="w-full border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 text-xs" 
+                        className="w-full border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 text-xs" 
                         onClick={() => navigate(createPageUrl(`AddInventoryItem?id=${it.id}`))}
                       >
                         Edit

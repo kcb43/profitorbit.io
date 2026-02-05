@@ -86,7 +86,7 @@ export function OptimizedImage({
       {/* Loading placeholder */}
       {isLoading && isInView && (
         <div 
-          className="absolute inset-0 bg-gray-200 dark:bg-gray-800 animate-pulse flex items-center justify-center"
+          className="absolute inset-0 bg-gray-200 dark:bg-card animate-pulse flex items-center justify-center"
           aria-hidden="true"
         >
           <svg 
@@ -127,7 +127,7 @@ export function OptimizedImage({
       {/* Error state */}
       {hasError && imageSrc === fallback && (
         <div 
-          className="absolute inset-0 bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+          className="absolute inset-0 bg-gray-100 dark:bg-card flex items-center justify-center"
           aria-hidden="true"
         >
           <svg 

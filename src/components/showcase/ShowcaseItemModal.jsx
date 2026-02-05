@@ -135,12 +135,12 @@ export default function ShowcaseItemModal({ item, isOpen, onClose }) {
                   </div>
                   <p className="font-semibold">${totalCosts.toFixed(2)}</p>
                   {feesExpanded && (
-                    <div className="mt-2 space-y-2 border-t dark:border-gray-700 pt-2 text-[11px] sm:text-xs">
+                    <div className="mt-2 space-y-2 border-t dark:border-border pt-2 text-[11px] sm:text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="break-words text-gray-700 dark:text-gray-300">Sold Price</span>
                         <span className="font-semibold break-words text-green-600 dark:text-green-400">${sellingPrice.toFixed(2)}</span>
                       </div>
-                      <div className="border-t dark:border-gray-700 pt-2 mt-2 space-y-1 text-red-500 dark:text-red-300">
+                      <div className="border-t dark:border-border pt-2 mt-2 space-y-1 text-red-500 dark:text-red-300">
                         <div className="flex items-center justify-between gap-2">
                           <span className="break-words">Purchase Price</span>
                           <span className="font-semibold break-words">${purchasePrice.toFixed(2)}</span>
@@ -173,7 +173,7 @@ export default function ShowcaseItemModal({ item, isOpen, onClose }) {
                           <p className="text-muted-foreground">No additional fees recorded.</p>
                         )}
                       </div>
-                      <div className="border-t dark:border-gray-700 pt-2 mt-2">
+                      <div className="border-t dark:border-border pt-2 mt-2">
                         <div className="flex items-center justify-between gap-2">
                           <span className="break-words text-gray-700 dark:text-gray-300">Profit</span>
                           <span className={`font-semibold break-words ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
@@ -234,7 +234,7 @@ export default function ShowcaseItemModal({ item, isOpen, onClose }) {
               {/* Edit and Delete Buttons */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t">
                 <Link to={createPageUrl(`AddSale?id=${item.id}`)} className="flex-1 min-w-0">
-                  <Button variant="outline" className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:text-white text-sm sm:text-base h-9 sm:h-10">
+                  <Button variant="outline" className="w-full dark:bg-card dark:text-gray-200 dark:border-border dark:hover:bg-gray-700 dark:hover:text-white text-sm sm:text-base h-9 sm:h-10">
                     <Pencil className="w-4 h-4 mr-2" />
                     Edit
                   </Button>
@@ -254,7 +254,7 @@ export default function ShowcaseItemModal({ item, isOpen, onClose }) {
       </DialogContent>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700 dark:text-white max-w-[90vw] sm:max-w-md">
+        <AlertDialogContent className="dark:bg-card dark:border-border dark:text-white max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white break-words">Delete Sale?</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-300 break-words">
@@ -262,7 +262,7 @@ export default function ShowcaseItemModal({ item, isOpen, onClose }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="dark:bg-card dark:text-gray-200 dark:border-border dark:hover:bg-gray-600 dark:hover:text-white w-full sm:w-auto">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 dark:text-white w-full sm:w-auto"
