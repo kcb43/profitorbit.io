@@ -180,7 +180,6 @@ export default function InventoryPage() {
     }
   };
   
-  const [showDismissedReturns, setShowDismissedReturns] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
   const [viewMode, setViewMode] = useState(() => {
