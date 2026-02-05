@@ -1409,7 +1409,7 @@ export default function InventoryPage() {
   }, [activeMode, selectedItems.length, isMobile]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <ModeBanner 
         mode={activeMode} 
         onClose={handleCloseMode}
@@ -1588,8 +1588,8 @@ export default function InventoryPage() {
 
           {/* Desktop Filter Card */}
           <Card className="hidden md:block border-0 shadow-lg mb-4">
-            <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
-              <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Filters & Sort</CardTitle>
+            <CardHeader className="border-b bg-card">
+              <CardTitle className="text-base sm:text-lg text-foreground">Filters & Sort</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1816,7 +1816,7 @@ export default function InventoryPage() {
           )}
 
           {selectedItems.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg min-w-0 overflow-x-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-card/50 rounded-lg min-w-0 overflow-x-hidden">
               <span className="text-sm font-medium min-w-0 break-words">
                 {selectedItems.length} item{selectedItems.length === 1 ? "" : "s"} selected
               </span>
@@ -1851,7 +1851,7 @@ export default function InventoryPage() {
           )}
 
           {sortedItems.length > 0 && (
-            <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-t-lg">
               <Checkbox
                 checked={selectedItems.length === sortedItems.length && sortedItems.length > 0}
                 onCheckedChange={handleSelectAll}
@@ -1859,7 +1859,7 @@ export default function InventoryPage() {
                 className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
               />
               <div className="flex flex-col">
-                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-gray-900 dark:text-white">
+                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
                   Select All ({sortedItems.length})
                 </label>
                 <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
@@ -2088,7 +2088,7 @@ export default function InventoryPage() {
                         </div>
                         
                         <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
-                          <h3 className="text-sm sm:text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2 text-left"
+                          <h3 className="text-sm sm:text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2 text-left"
                             style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
                             {item.item_name || 'Untitled Item'}
                           </h3>
@@ -2117,7 +2117,7 @@ export default function InventoryPage() {
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
                           <div>
                             <span>Price: </span>
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-foreground">
                               ${(item.purchase_price || 0).toFixed(2)}
                               {item.quantity > 1 && <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>}
                             </span>
@@ -2132,38 +2132,38 @@ export default function InventoryPage() {
                           </div>
                           <div>
                             <span>Purchase Date: </span>
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-foreground">
                               {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
                             </span>
                           </div>
                           {item.condition && (
                             <div>
                               <span>Condition: </span>
-                              <span className="font-medium text-gray-900 dark:text-white">{item.condition}</span>
+                              <span className="font-medium text-foreground">{item.condition}</span>
                             </div>
                           )}
                           {item.brand && (
                             <div>
                               <span>Brand: </span>
-                              <span className="font-medium text-gray-900 dark:text-white">{item.brand}</span>
+                              <span className="font-medium text-foreground">{item.brand}</span>
                             </div>
                           )}
                           {item.size && (
                             <div>
                               <span>Size: </span>
-                              <span className="font-medium text-gray-900 dark:text-white">{item.size}</span>
+                              <span className="font-medium text-foreground">{item.size}</span>
                             </div>
                           )}
                           {item.category && (
                             <div>
                               <span>Category: </span>
-                              <span className="font-medium text-gray-900 dark:text-white">{item.category}</span>
+                              <span className="font-medium text-foreground">{item.category}</span>
                             </div>
                           )}
                           {item.source && (
                             <div>
                               <span>Source: </span>
-                              <span className="font-medium text-gray-900 dark:text-white">{item.source}</span>
+                              <span className="font-medium text-foreground">{item.source}</span>
                             </div>
                           )}
                           
@@ -2224,7 +2224,7 @@ export default function InventoryPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                  className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-500"
+                                  className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-muted-foreground hover:bg-gray-300 dark:hover:bg-slate-500"
                                 >
                                   <X className="h-2 w-2 sm:h-3 sm:w-3" />
                                 </button>
@@ -2418,7 +2418,7 @@ export default function InventoryPage() {
                               state={returnStateForInventory}
                               className="block mb-2"
                             >
-                              <h3 className="text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                              <h3 className="text-base font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
                                 {item.item_name || "Untitled Item"}
                               </h3>
                             </Link>
@@ -2426,13 +2426,13 @@ export default function InventoryPage() {
                             <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Price</span>
-                                <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-bold text-foreground tabular-nums">
                                   ${Number(item.purchase_price || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Qty</span>
-                                <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-bold text-foreground tabular-nums">
                                   {item.quantity}
                                   {quantitySold > 0 && (
                                     <span className={`ml-2 text-xs font-semibold ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
@@ -2443,13 +2443,13 @@ export default function InventoryPage() {
                               </div>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Purchased</span>
-                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-semibold text-foreground tabular-nums">
                                   {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Available</span>
-                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-semibold text-foreground tabular-nums">
                                   {Math.max((item.quantity || 0) - (quantitySold || 0), 0)}
                                 </span>
                               </div>
@@ -2458,7 +2458,7 @@ export default function InventoryPage() {
                                   {item.condition && (
                                     <div className="flex items-center justify-between gap-3">
                                       <span className="text-muted-foreground text-xs font-semibold">Condition</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                      <span className="font-semibold text-foreground text-right truncate">
                                         {item.condition}
                                       </span>
                                     </div>
@@ -2466,7 +2466,7 @@ export default function InventoryPage() {
                                   {item.brand && (
                                     <div className="flex items-center justify-between gap-3">
                                       <span className="text-muted-foreground text-xs font-semibold">Brand</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                      <span className="font-semibold text-foreground text-right truncate">
                                         {item.brand}
                                       </span>
                                     </div>
@@ -2474,7 +2474,7 @@ export default function InventoryPage() {
                                   {item.size && (
                                     <div className="flex items-center justify-between gap-3">
                                       <span className="text-muted-foreground text-xs font-semibold">Size</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                      <span className="font-semibold text-foreground text-right truncate">
                                         {item.size}
                                       </span>
                                     </div>
@@ -2482,7 +2482,7 @@ export default function InventoryPage() {
                                   {item.category && (
                                     <div className="flex items-center justify-between gap-3">
                                       <span className="text-muted-foreground text-xs font-semibold">Category</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                      <span className="font-semibold text-foreground text-right truncate">
                                         {item.category}
                                       </span>
                                     </div>
@@ -2490,7 +2490,7 @@ export default function InventoryPage() {
                                   {item.source && (
                                     <div className="flex items-center justify-between gap-3">
                                       <span className="text-muted-foreground text-xs font-semibold">Source</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white text-right truncate">
+                                      <span className="font-semibold text-foreground text-right truncate">
                                         {item.source}
                                       </span>
                                     </div>
@@ -2507,7 +2507,7 @@ export default function InventoryPage() {
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-500"
+                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-muted-foreground hover:bg-gray-300 dark:hover:bg-slate-500"
                                       title="Remove tag"
                                     >
                                       <X className="h-3 w-3" />
@@ -2741,7 +2741,7 @@ export default function InventoryPage() {
                               type="button"
                               variant="secondary"
                               size="sm"
-                              className="h-7 px-2 text-xs gap-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-900 dark:text-white border-gray-300 dark:border-slate-600"
+                              className="h-7 px-2 text-xs gap-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-foreground border-gray-300 dark:border-slate-600"
                               onClick={(e) => handleEditImage(e, item)}
                             >
                               <ImageIcon className="h-3 w-3" />
@@ -2766,7 +2766,7 @@ export default function InventoryPage() {
                         to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
                         state={returnStateForInventory}
                       >
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        <h3 className="font-bold text-foreground text-sm mb-3 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                           {item.item_name || 'Untitled Item'}
                         </h3>
                       </Link>
@@ -2774,7 +2774,7 @@ export default function InventoryPage() {
                       <div className="space-y-1.5 text-xs mb-3">
                         <div className="flex justify-between text-gray-700 dark:text-gray-300">
                           <span>Price:</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
+                          <span className="font-semibold text-foreground">
                             ${(item.purchase_price || 0).toFixed(2)}
                             {item.quantity > 1 && (
                               <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>
@@ -2783,7 +2783,7 @@ export default function InventoryPage() {
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                           <span>Qty:</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
+                          <span className="font-semibold text-foreground">
                             {item.quantity}
                             {quantitySold > 0 && (
                               <span className={`ml-1 ${isSoldOut ? 'text-red-600 dark:text-red-400 font-bold' : 'text-blue-600 dark:text-blue-400'}`}>
@@ -2794,7 +2794,7 @@ export default function InventoryPage() {
                         </div>
                         <div className="flex justify-between text-gray-700 dark:text-gray-300">
                           <span>Purchase Date:</span>
-                          <span className="text-gray-900 dark:text-white">{item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}</span>
+                          <span className="text-foreground">{item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}</span>
                         </div>
                       </div>
 
@@ -2806,7 +2806,7 @@ export default function InventoryPage() {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-500"
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-muted-foreground hover:bg-gray-300 dark:hover:bg-slate-500"
                               >
                                 <X className="h-3 w-3" />
                                 <span className="sr-only">Remove tag</span>

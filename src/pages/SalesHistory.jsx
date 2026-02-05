@@ -1047,7 +1047,7 @@ export default function SalesHistory() {
   }, [selectedSales.length, isMobile]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+    <div className="min-h-screen bg-background overflow-x-hidden w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
       <SelectionBanner
         selectedCount={selectedSales.length}
         onClear={() => setSelectedSales([])}
@@ -1208,8 +1208,8 @@ export default function SalesHistory() {
 
         {/* Desktop Filter Card */}
         <Card className="hidden md:block border-0 shadow-lg mb-6">
-          <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white break-words">
+          <CardHeader className="border-b bg-card">
+            <CardTitle className="flex items-center gap-2 text-foreground break-words">
               <Filter className="w-5 h-5 flex-shrink-0" />
               Filters & Sort
             </CardTitle>
@@ -1403,11 +1403,11 @@ export default function SalesHistory() {
         </Card>
 
         <Card className="border-0 shadow-lg w-full min-w-0 max-w-full overflow-x-hidden">
-          <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
+          <CardHeader className="border-b bg-card">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 min-w-0">
               {selectedSales.length > 0 ? (
                 <>
-                  <CardTitle className="text-gray-900 dark:text-white break-words">{selectedSales.length} sale(s) selected</CardTitle>
+                  <CardTitle className="text-foreground break-words">{selectedSales.length} sale(s) selected</CardTitle>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Button
                       variant="outline"
@@ -1576,18 +1576,18 @@ export default function SalesHistory() {
                           </div>
                           <CardContent className="p-4">
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)}>
-                              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                              <h3 className="font-bold text-foreground text-sm mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                 {sale.item_name || 'Untitled Item'}
                               </h3>
                             </Link>
                             <div className="space-y-1.5 text-xs mb-3">
                               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                                 <span>Sold Price:</span>
-                                <span className="font-semibold text-gray-900 dark:text-white">${sale.selling_price?.toFixed(2)}</span>
+                                <span className="font-semibold text-foreground">${sale.selling_price?.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                                 <span>Date:</span>
-                                <span className="text-gray-900 dark:text-white">
+                                <span className="text-foreground">
                                   {sale.sale_date ? format(parseISO(sale.sale_date), 'MM/dd/yyyy') : 'N/A'}
                                 </span>
                               </div>
@@ -1642,7 +1642,7 @@ export default function SalesHistory() {
                   return (
                     <div key={sale.id} className="w-full max-w-full">
                       {/* Mobile/Tablet list layout (unchanged) */}
-                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-slate-900 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-card border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
@@ -1678,7 +1678,7 @@ export default function SalesHistory() {
                         )}
                         {/* Platform Icon Overlay - hidden on mobile */}
                         {platformIcons[sale.platform] && (
-                          <div className="glass absolute top-2 right-2 hidden sm:flex items-center justify-center z-10 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-md"
+                          <div className="glass absolute top-2 right-2 hidden sm:flex items-center justify-center z-10 bg-card border border-gray-200 dark:border-slate-700 shadow-md"
                             style={{
                               width: '43px',
                               height: '55px',
@@ -1741,7 +1741,7 @@ export default function SalesHistory() {
 
                       {/* Title - Now starts right after image on mobile */}
                       <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-0.5 sm:mb-3">
-                        <h3 className="text-xs sm:text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2"
+                        <h3 className="text-xs sm:text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2"
                           style={{ letterSpacing: '0.5px', lineHeight: '1.25' }}>
                           {sale.item_name || 'Untitled Item'}
                         </h3>
@@ -1797,7 +1797,7 @@ export default function SalesHistory() {
                         flexShrink: 0
                       }}>
                       {/* Profit Display - Desktop Only */}
-                      <div className="hidden sm:block glass px-3 py-1.5 rounded-xl font-bold text-base text-center border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
+                      <div className="hidden sm:block glass px-3 py-1.5 rounded-xl font-bold text-base text-center border border-gray-300 dark:border-slate-600 bg-card text-foreground">
                         <span className="font-semibold">Profit: </span>
                         <span className={`${sale.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                           {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(2) || '0.00'}
@@ -2021,7 +2021,7 @@ export default function SalesHistory() {
                             </div>
 
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-2">
-                              <h3 className="text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                              <h3 className="text-base font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
                                 {sale.item_name || "Untitled Item"}
                               </h3>
                             </Link>
@@ -2029,25 +2029,25 @@ export default function SalesHistory() {
                             <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Sold</span>
-                                <span className="font-bold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-bold text-foreground tabular-nums">
                                   ${Number(sale.selling_price || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">ROI</span>
-                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-semibold text-foreground tabular-nums">
                                   {Number.isFinite(Number(sale.roi)) ? `${Number(sale.roi).toFixed(0)}%` : "—"}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Costs</span>
-                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-semibold text-foreground tabular-nums">
                                   ${Number(totalCosts || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Net</span>
-                                <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
+                                <span className="font-semibold text-foreground tabular-nums">
                                   ${Number((sale.selling_price || 0) - (totalCosts || 0)).toFixed(2)}
                                 </span>
                               </div>

@@ -38251,7 +38251,7 @@ export default function CrosslistComposer() {
   };
   
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden">
       {/* Mobile Layout - Keep existing structure */}
       <div className="lg:hidden max-w-5xl mx-auto space-y-6 min-w-0">
         {/* Header */}
@@ -44007,7 +44007,7 @@ export default function CrosslistComposer() {
       {/* Desktop Layout - Top Nav, Left Sidebar, Main Content */}
       <div className="hidden lg:flex flex-col min-h-screen">
         {/* Top Navigation Bar */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="sticky top-0 z-10 bg-white dark:bg-card border-b border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="max-w-[1200px] mx-auto px-5 py-4 w-full">
             <div className="flex items-center justify-between gap-4">
               <Button
@@ -44078,7 +44078,7 @@ export default function CrosslistComposer() {
         {/* Main Container: Left Sidebar + Main Content */}
         <div className="flex flex-1 max-w-[1200px] mx-auto w-full">
           {/* Left Sidebar - Form Selector */}
-          <div className="sticky top-[73px] h-[calc(100vh-73px)] w-[350px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 overflow-y-auto">
+          <div className="sticky top-[73px] h-[calc(100vh-73px)] w-[350px] bg-white dark:bg-card border-r border-gray-200 dark:border-gray-800 overflow-y-auto">
             <div className="p-5">
               <div className="space-y-2">
                 <button
@@ -44154,7 +44154,7 @@ export default function CrosslistComposer() {
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+          <div className="flex-1 bg-gray-50 dark:bg-background">
             <div className="p-5 max-w-[800px] mx-auto w-full">
               <div className="space-y-6">
                 {/* Header */}

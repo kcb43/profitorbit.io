@@ -134,9 +134,9 @@ export default function MarketIntelligenceDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full max-w-full">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full max-w-full">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 w-full max-w-full overflow-x-hidden">
+      <div className="bg-card border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 w-full max-w-full overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 w-full max-w-full box-border">
           <div className="flex items-center gap-2 sm:gap-4 w-full max-w-full">
             <Button
@@ -176,10 +176,10 @@ export default function MarketIntelligenceDetail() {
               ) : null}
             </div>
             <div className="flex-1 min-w-0 max-w-full">
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white break-words">
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground break-words">
                 {marketplace.name}
               </h1>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
                 {marketplace.description}
               </p>
             </div>
@@ -237,13 +237,13 @@ export default function MarketIntelligenceDetail() {
                   ].map((category, idx) => (
                     <div key={idx} className="p-2.5 sm:p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden box-border">
                       <div className="flex items-start justify-between mb-1.5 sm:mb-2 gap-1.5 sm:gap-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm md:text-base break-words flex-1 min-w-0 max-w-full">{category.name}</h4>
+                        <h4 className="font-semibold text-foreground text-xs sm:text-sm md:text-base break-words flex-1 min-w-0 max-w-full">{category.name}</h4>
                         <Badge className="bg-emerald-500 text-white text-xs flex-shrink-0">{category.change}</Badge>
                       </div>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1 break-words">
                         {category.items} active listings
                       </p>
-                      <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white break-words">
+                      <p className="text-xs sm:text-sm font-medium text-foreground break-words">
                         Avg price: {category.avgPrice}
                       </p>
                     </div>
@@ -270,8 +270,8 @@ export default function MarketIntelligenceDetail() {
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden gap-1.5 sm:gap-2 box-border">
                       <div className="flex-1 min-w-0 max-w-full">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-xs sm:text-sm md:text-base break-words">{item.name}</h4>
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">
+                        <h4 className="font-semibold text-foreground mb-1 text-xs sm:text-sm md:text-base break-words">{item.name}</h4>
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground break-words">
                           <span>Avg: {item.avgPrice}</span>
                           <span>•</span>
                           <span>{item.sales} sales</span>
@@ -291,16 +291,16 @@ export default function MarketIntelligenceDetail() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6 w-full max-w-full">
                 <Button variant="outline" className="h-auto p-2.5 sm:p-3 md:p-4 flex items-center gap-1.5 sm:gap-2 md:gap-3 w-full max-w-full overflow-hidden box-border">
                   <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-indigo-600 flex-shrink-0" />
-                  <div className="text-left flex-1 min-w-0 max-w-full">
-                    <div className="font-semibold text-xs sm:text-sm md:text-base break-words">Local Items</div>
-                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Items near you</div>
-                  </div>
+                      <div className="text-left flex-1 min-w-0 max-w-full">
+                        <div className="font-semibold text-xs sm:text-sm md:text-base break-words">Local Items</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground break-words">Items near you</div>
+                      </div>
                 </Button>
                 <Button variant="outline" className="h-auto p-2.5 sm:p-3 md:p-4 flex items-center gap-1.5 sm:gap-2 md:gap-3 w-full max-w-full overflow-hidden box-border">
                   <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-indigo-600 flex-shrink-0" />
                   <div className="text-left flex-1 min-w-0 max-w-full">
                     <div className="font-semibold text-xs sm:text-sm md:text-base break-words">Online Items</div>
-                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Nationwide listings</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground break-words">Nationwide listings</div>
                   </div>
                 </Button>
               </div>
@@ -321,11 +321,11 @@ export default function MarketIntelligenceDetail() {
                       { title: 'Apple AirPods Pro - $50 Off', price: '$199.99', originalPrice: '$249.99', source: 'Best Buy', timeAgo: '5 hours ago' },
                       { title: 'Levi\'s 501 Jeans - Buy 1 Get 1', price: '$39.99', originalPrice: '$79.98', source: 'Levi\'s Store', timeAgo: '1 day ago' },
                     ].map((deal, idx) => (
-                      <div key={idx} className="p-2.5 sm:p-3 md:p-4 bg-white dark:bg-gray-800 rounded-lg border border-emerald-200 dark:border-emerald-800 w-full max-w-full overflow-hidden box-border">
+                      <div key={idx} className="p-2.5 sm:p-3 md:p-4 bg-card rounded-lg border border-emerald-200 dark:border-emerald-800 w-full max-w-full overflow-hidden box-border">
                         <div className="flex items-start justify-between mb-1.5 sm:mb-2 gap-1.5 sm:gap-2">
                           <div className="flex-1 min-w-0 max-w-full">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-xs sm:text-sm md:text-base break-words">{deal.title}</h4>
-                            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">
+                            <h4 className="font-semibold text-foreground mb-1 text-xs sm:text-sm md:text-base break-words">{deal.title}</h4>
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground break-words">
                               <span className="font-medium text-emerald-600">{deal.price}</span>
                               <span className="line-through">{deal.originalPrice}</span>
                               <span>•</span>
@@ -361,8 +361,8 @@ export default function MarketIntelligenceDetail() {
                         <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-gray-400" />
                       </div>
                       <div className="flex-1 min-w-0 max-w-full">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-xs sm:text-sm md:text-base break-words">{item.name}</h4>
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">
+                        <h4 className="font-semibold text-foreground mb-1 text-xs sm:text-sm md:text-base break-words">{item.name}</h4>
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground break-words">
                           <span>{item.price}</span>
                           <span>•</span>
                           <span>{item.sales} sales</span>
@@ -428,10 +428,10 @@ export default function MarketIntelligenceDetail() {
                   ].map((tip, idx) => (
                     <div key={idx} className="p-2.5 sm:p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden box-border">
                       <div className="flex items-start justify-between mb-1.5 sm:mb-2 gap-1.5 sm:gap-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm md:text-base break-words flex-1 min-w-0 max-w-full">{tip.title}</h4>
+                        <h4 className="font-semibold text-foreground text-xs sm:text-sm md:text-base break-words flex-1 min-w-0 max-w-full">{tip.title}</h4>
                         <Badge variant="outline" className="text-xs flex-shrink-0">{tip.category}</Badge>
                       </div>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">{tip.description}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground break-words">{tip.description}</p>
                     </div>
                   ))}
                 </div>

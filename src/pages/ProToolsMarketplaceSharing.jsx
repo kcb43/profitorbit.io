@@ -61,7 +61,7 @@ export default function ProToolsMarketplaceSharing() {
   const actionLabel = MARKETPLACES.find((m) => m.id === marketplace)?.action || "Run";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 min-w-0">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="min-w-0">

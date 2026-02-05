@@ -362,11 +362,11 @@ export default function MigrateData() {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900/95 min-h-screen">
+    <div className="p-4 md:p-8 bg-background min-h-screen">
       <div className="max-w-4xl mx-auto space-y-4">
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Migrate Data (Base44 → Supabase)</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+        <div className="bg-card border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
+          <h1 className="text-xl font-semibold text-foreground">Migrate Data (Base44 → Supabase)</h1>
+          <p className="text-sm text-muted-foreground mt-2">
             Paste the JSON from your Base44 export page (inventory + sales). This will import into your currently signed-in Supabase user.
           </p>
 
@@ -394,15 +394,15 @@ export default function MigrateData() {
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-              <div className="text-gray-500">Inventory rows</div>
+              <div className="text-muted-foreground">Inventory rows</div>
               <div className="text-lg font-semibold">{preview.inventoryCount}</div>
             </div>
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-              <div className="text-gray-500">Sales rows</div>
+              <div className="text-muted-foreground">Sales rows</div>
               <div className="text-lg font-semibold">{preview.salesCount}</div>
             </div>
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-              <div className="text-gray-500">Profit sum (preview)</div>
+              <div className="text-muted-foreground">Profit sum (preview)</div>
               <div className="text-lg font-semibold">${preview.profitSum.toFixed(2)}</div>
             </div>
           </div>
@@ -436,7 +436,7 @@ export default function MigrateData() {
 
           <div className="mt-4 grid grid-cols-1 gap-3">
             <div>
-              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Full Base44 export JSON (recommended)</div>
+              <div className="text-sm font-medium text-foreground mb-1">Full Base44 export JSON (recommended)</div>
               <Textarea
                 value={fullExportJson}
                 onChange={(e) => setFullExportJson(e.target.value)}
@@ -448,7 +448,7 @@ export default function MigrateData() {
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Inventory JSON</div>
+              <div className="text-sm font-medium text-foreground mb-1">Inventory JSON</div>
               <Textarea
                 value={inventoryJson}
                 onChange={(e) => setInventoryJson(e.target.value)}
@@ -457,7 +457,7 @@ export default function MigrateData() {
               />
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Sales JSON</div>
+              <div className="text-sm font-medium text-foreground mb-1">Sales JSON</div>
               <Textarea
                 value={salesJson}
                 onChange={(e) => setSalesJson(e.target.value)}
@@ -504,7 +504,7 @@ export default function MigrateData() {
 
           {errors.length > 0 && (
             <div className="mt-4">
-              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Errors (first 25)</div>
+              <div className="text-sm font-semibold text-foreground mb-2">Errors (first 25)</div>
               <pre className="text-xs whitespace-pre-wrap bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-3 max-h-[240px] overflow-auto">
                 {errors.slice(0, 25).join("\n")}
               </pre>

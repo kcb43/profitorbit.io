@@ -690,7 +690,7 @@ export default function AddSale() {
 
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-background">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Button
@@ -706,8 +706,8 @@ export default function AddSale() {
             <ArrowLeft className="w-5 h-5 mr-2" /> Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{saleId ? "Edit Sale" : (copyId ? "Copy Sale" : "Add New Sale")}</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">{saleId ? "Update the details of this sale" : (copyId ? "Create a new sale from a copy" : "Record a new sale and track your profit")}</p>
+            <h1 className="text-3xl font-bold text-foreground">{saleId ? "Edit Sale" : (copyId ? "Copy Sale" : "Add New Sale")}</h1>
+            <p className="text-muted-foreground mt-1">{saleId ? "Update the details of this sale" : (copyId ? "Create a new sale from a copy" : "Record a new sale and track your profit")}</p>
           </div>
         </div>
 
@@ -846,7 +846,7 @@ export default function AddSale() {
                                  Warning: This inventory item is marked as sold out.
                                </p>
                            ) : (
-                               <p className="text-sm text-gray-500 dark:text-gray-400">
+                               <p className="text-sm text-muted-foreground">
                                  {remainingAfterThisSale} of {totalItemQuantity} remaining after this sale.
                                </p>
                            )}
@@ -1208,7 +1208,7 @@ export default function AddSale() {
                           href={`https://www.google.com/search?q=${encodeURIComponent(formData.tracking_number + ' ' + (formData.shipping_carrier || 'tracking'))}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
+                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-card hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -1216,7 +1216,7 @@ export default function AddSale() {
                           {formData.tracking_number}
                         </a>
                       ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No tracking number available</p>
+                        <p className="text-sm text-muted-foreground italic">No tracking number available</p>
                       )}
                     </div>
 
@@ -1256,7 +1256,7 @@ export default function AddSale() {
                           href={`https://www.ebay.com/sh/ord/details?orderid=${formData.ebay_order_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
+                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-card hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -1264,7 +1264,7 @@ export default function AddSale() {
                           View Order #{formData.ebay_order_id}
                         </a>
                       ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No order ID available</p>
+                        <p className="text-sm text-muted-foreground italic">No order ID available</p>
                       )}
                     </div>
 

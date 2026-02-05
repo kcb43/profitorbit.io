@@ -158,7 +158,7 @@ export default function SoldItemDetail() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-background overflow-x-hidden">
       <div className="max-w-5xl mx-auto min-w-0">
         <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8 min-w-0">
           <Button
@@ -183,7 +183,7 @@ export default function SoldItemDetail() {
 
         <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8 min-w-0">
           <div className="rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-            <div className="aspect-video bg-white dark:bg-gray-900 flex items-center justify-center p-6 sm:p-8">
+            <div className="aspect-video bg-card flex items-center justify-center p-6 sm:p-8">
               <img 
                 src={sale?.image_url || DEFAULT_IMAGE_URL} 
                 alt={sale?.item_name} 
@@ -213,31 +213,31 @@ export default function SoldItemDetail() {
               </CardHeader>
               <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 min-w-0">
                 <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Selling Price</span>
-                  <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">${sellingPrice?.toFixed(2)}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground break-words">Selling Price</span>
+                  <span className="font-semibold text-sm sm:text-base text-foreground break-words">${sellingPrice?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Platform</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground break-words">Platform</span>
                   <Badge className={`${platformColors[sale?.platform] || platformColors.default} text-xs sm:text-sm whitespace-nowrap flex-shrink-0`}>
                     {platformNames[sale?.platform] || "N/A"}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Sale Date</span>
-                  <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words">
+                  <span className="text-xs sm:text-sm text-muted-foreground break-words">Sale Date</span>
+                  <span className="font-semibold text-sm sm:text-base text-foreground break-words">
                     {sale?.sale_date ? format(parseISO(sale.sale_date), 'MMM dd, yyyy') : 'N/A'}
                   </span>
                 </div>
                 {sale?.category && (
                   <div className="flex justify-between items-center py-2 border-b dark:border-gray-700 gap-2 min-w-0">
-                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Category</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground break-words">Category</span>
                     <Badge variant="secondary" className="dark:bg-gray-700 dark:text-gray-200 text-xs sm:text-sm break-words max-w-[60%] text-right">{sale.category}</Badge>
                   </div>
                 )}
                 {sale?.source && (
                   <div className="flex justify-between items-center py-2 dark:border-gray-700 gap-2 min-w-0">
-                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">Source</span>
-                    <span className="font-semibold text-sm sm:text-base text-white dark:text-white break-words text-right max-w-[60%]">
+                    <span className="text-xs sm:text-sm text-muted-foreground break-words">Source</span>
+                    <span className="font-semibold text-sm sm:text-base text-foreground break-words text-right max-w-[60%]">
                       {sourceIcons[sale.source] ? (
                         <img src={sourceIcons[sale.source]} alt={sale.source} className="w-auto h-3 sm:h-4 object-contain inline-block mr-1 align-text-bottom" />
                       ) : sale.source}
@@ -253,8 +253,8 @@ export default function SoldItemDetail() {
               </CardHeader>
               <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6 min-w-0">
                 <div className="flex justify-between items-center gap-2 min-w-0">
-                  <span className="text-sm sm:text-base text-white dark:text-white break-words">Total Costs</span>
-                  <span className="text-sm sm:text-base font-semibold text-white dark:text-white break-words">${totalCosts.toFixed(2)}</span>
+                  <span className="text-sm sm:text-base text-foreground break-words">Total Costs</span>
+                  <span className="text-sm sm:text-base font-semibold text-foreground break-words">${totalCosts.toFixed(2)}</span>
                 </div>
 
                 <button
@@ -325,7 +325,7 @@ export default function SoldItemDetail() {
                 <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg gap-2 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 break-words">ROI</span>
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground break-words">ROI</span>
                   </div>
                   <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 break-words whitespace-nowrap">
                     {isFinite(roi) ? `${roi.toFixed(1)}%` : '∞%'}
@@ -334,7 +334,7 @@ export default function SoldItemDetail() {
                 <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg gap-2 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 break-words">Profit Margin</span>
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground break-words">Profit Margin</span>
                   </div>
                   <span className="text-base sm:text-lg font-bold text-purple-600 dark:text-purple-400 break-words whitespace-nowrap">
                     {isFinite(profitMargin) ? `${profitMargin.toFixed(1)}%` : '∞%'}
@@ -344,7 +344,7 @@ export default function SoldItemDetail() {
                   <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg gap-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                       <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-                      <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 break-words">Sale Speed</span>
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground break-words">Sale Speed</span>
                   </div>
                     <span className="text-base sm:text-lg font-bold text-orange-600 dark:text-orange-400 break-words whitespace-nowrap">
                       {saleSpeed} days
@@ -375,12 +375,12 @@ export default function SoldItemDetail() {
               <Card className="border-0 shadow-sm dark:bg-gray-800">
                 <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
                   <CardTitle className="text-base sm:text-lg flex items-center gap-2 dark:text-white">
-                    <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground flex-shrink-0" />
                     <span className="break-words">Notes</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
-                  <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 italic break-words">"{displayNotes}"</p>
+                  <p className="text-sm sm:text-base text-muted-foreground italic break-words">"{displayNotes}"</p>
                 </CardContent>
               </Card>
             )}
@@ -392,7 +392,7 @@ export default function SoldItemDetail() {
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700 dark:text-white max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="dark:text-white break-words">Delete Sale?</AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-300 break-words">
+            <AlertDialogDescription className="dark:text-muted-foreground break-words">
               Are you sure you want to delete this sale? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

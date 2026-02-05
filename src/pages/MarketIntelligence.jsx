@@ -121,16 +121,16 @@ export default function MarketIntelligence() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      <div className="bg-card border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full">
           <div className="flex items-center justify-between w-full">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white break-words">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">
                 Pulse
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">
+              <p className="text-sm text-muted-foreground mt-1 break-words">
                 Source items, find deals, and learn platform strategies
               </p>
             </div>
@@ -141,25 +141,25 @@ export default function MarketIntelligence() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full overflow-x-hidden">
         {/* Discounted Items Alert Banner - Uber style card */}
         <div className="mb-6 w-full">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 shadow-sm w-full overflow-hidden">
+          <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 shadow-sm w-full overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-4 w-full">
               <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
                 <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
                   <Tag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-base md:text-lg break-words">
+                  <h3 className="font-semibold text-foreground mb-2 text-base md:text-lg break-words">
                     Hot Deals Alert
                   </h3>
                   <div className="space-y-2">
                     {DISCOUNTED_ITEMS.slice(0, 2).map((item) => (
                       <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 text-sm w-full">
                         <div className="flex-1 min-w-0 w-full">
-                          <span className="font-medium text-gray-900 dark:text-white break-words">{item.title}</span>
+                          <span className="font-medium text-foreground break-words">{item.title}</span>
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5">
                             <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{item.price}</span>
                             <span className="text-gray-400 dark:text-gray-500 line-through text-xs">{item.originalPrice}</span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">• {item.timeAgo}</span>
+                            <span className="text-xs text-muted-foreground">• {item.timeAgo}</span>
                           </div>
                         </div>
                       </div>
@@ -181,7 +181,7 @@ export default function MarketIntelligence() {
 
         {/* Marketplace Grid - Uber Style */}
         <div className="mb-8 w-full overflow-x-hidden">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 break-words">
+          <h2 className="text-xl font-semibold text-foreground mb-4 break-words">
             Marketplace Insights
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 w-full">
@@ -192,7 +192,7 @@ export default function MarketIntelligence() {
                 <button
                   key={marketplace.id}
                   onClick={() => handleMarketplaceClick(marketplace.id)}
-                  className="group relative bg-white dark:bg-gray-800 rounded-2xl p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-600 transition-all duration-200 hover:shadow-xl active:scale-95 text-center flex flex-col items-center justify-center min-h-[120px] sm:min-h-[140px] md:min-h-[160px] w-full overflow-hidden"
+                  className="group relative bg-card rounded-2xl p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-600 transition-all duration-200 hover:shadow-xl active:scale-95 text-center flex flex-col items-center justify-center min-h-[120px] sm:min-h-[140px] md:min-h-[160px] w-full overflow-hidden"
                 >
                   {/* Badge - Top Left (Uber style) */}
                   {marketplace.badge && (
@@ -221,12 +221,12 @@ export default function MarketIntelligence() {
                   </div>
 
                   {/* Name */}
-                  <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-0.5 sm:mb-1 break-words px-1">
+                  <h3 className="text-sm sm:text-base md:text-lg font-semibold text-foreground mb-0.5 sm:mb-1 break-words px-1">
                     {marketplace.name}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-xs sm:text-xs md:text-sm text-gray-600 dark:text-gray-400 leading-tight break-words px-1">
+                  <p className="text-xs sm:text-xs md:text-sm text-muted-foreground leading-tight break-words px-1">
                     {marketplace.description}
                   </p>
                 </button>
@@ -237,11 +237,11 @@ export default function MarketIntelligence() {
 
         {/* Quick Stats Section - Uber style cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-8 w-full overflow-x-hidden">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+          <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">Trending Categories</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">12</p>
+                <p className="text-xs md:text-sm text-muted-foreground mb-1 break-words">Trending Categories</p>
+                <p className="text-2xl md:text-3xl font-bold text-foreground">12</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
                 <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
@@ -249,11 +249,11 @@ export default function MarketIntelligence() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+          <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">Active Deals</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{DISCOUNTED_ITEMS.length}</p>
+                <p className="text-xs md:text-sm text-muted-foreground mb-1 break-words">Active Deals</p>
+                <p className="text-2xl md:text-3xl font-bold text-foreground">{DISCOUNTED_ITEMS.length}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
                 <Tag className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
@@ -261,11 +261,11 @@ export default function MarketIntelligence() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+          <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">Community Tips</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">48</p>
+                <p className="text-xs md:text-sm text-muted-foreground mb-1 break-words">Community Tips</p>
+                <p className="text-2xl md:text-3xl font-bold text-foreground">48</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
                 <Lightbulb className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
@@ -277,9 +277,9 @@ export default function MarketIntelligence() {
         {/* Recent Activity / Insights Preview - Uber style cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full overflow-x-hidden">
           {/* Trending Now */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+          <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
             <div className="flex items-center justify-between mb-4 gap-2">
-              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-1 min-w-0">
+              <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2 flex-1 min-w-0">
                 <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -298,8 +298,8 @@ export default function MarketIntelligence() {
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl w-full overflow-hidden">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white text-sm md:text-base break-words">{item.name}</p>
-                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">{item.platform}</p>
+                    <p className="font-medium text-foreground text-sm md:text-base break-words">{item.name}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{item.platform}</p>
                   </div>
                   <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs md:text-sm ml-2 flex-shrink-0">
                     {item.change}
@@ -310,9 +310,9 @@ export default function MarketIntelligence() {
           </div>
 
           {/* Top Categories */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
+          <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
             <div className="flex items-center justify-between mb-4 gap-2">
-              <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-1 min-w-0">
+              <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2 flex-1 min-w-0">
                 <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                   <ShoppingBag className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -331,8 +331,8 @@ export default function MarketIntelligence() {
               ].map((category, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl w-full overflow-hidden">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white text-sm md:text-base break-words">{category.name}</p>
-                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 break-words">
+                    <p className="font-medium text-foreground text-sm md:text-base break-words">{category.name}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground break-words">
                       {category.items} items • Avg: {category.avgPrice}
                     </p>
                   </div>
@@ -344,9 +344,9 @@ export default function MarketIntelligence() {
         </div>
 
         {/* Community Tips Preview - Uber style */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 mt-6 w-full overflow-x-hidden">
+        <div className="bg-card rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-gray-700 mt-6 w-full overflow-x-hidden">
           <div className="flex items-center justify-between mb-4 gap-2">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-1 min-w-0">
+            <h3 className="text-base md:text-lg font-semibold text-foreground flex items-center gap-2 flex-1 min-w-0">
               <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <MessageCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
@@ -381,13 +381,13 @@ export default function MarketIntelligence() {
               <div key={idx} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-700 w-full overflow-hidden">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0 w-full">
-                    <h4 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm md:text-base break-words">{tip.title}</h4>
-                    <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-2 break-words">{tip.description}</p>
+                    <h4 className="font-semibold text-foreground mb-1 text-sm md:text-base break-words">{tip.title}</h4>
+                    <p className="text-xs md:text-sm text-muted-foreground mb-2 break-words">{tip.description}</p>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <Badge className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs">
                         {tip.platform}
                       </Badge>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         {tip.likes} likes
                       </span>
                     </div>

@@ -1682,7 +1682,7 @@ export default function Crosslist() {
   }, [selected.length, isMobile]);
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full max-w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-background overflow-x-hidden w-full max-w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
       <SelectionBanner
         selectedCount={selected.length}
         onClear={() => setSelected([])}
@@ -1904,8 +1904,8 @@ export default function Crosslist() {
 
         {/* Desktop Filter Card */}
         <Card className="hidden md:block border-0 shadow-lg">
-          <CardHeader className="border-b bg-gray-50 dark:bg-gray-800">
-            <CardTitle className="text-gray-900 dark:text-white text-base flex items-center gap-2">
+          <CardHeader className="border-b bg-card">
+            <CardTitle className="text-foreground text-base flex items-center gap-2">
               <Filter className="w-4 h-4" />
               Filters & Marketplaces
             </CardTitle>
@@ -2047,7 +2047,7 @@ export default function Crosslist() {
         ) : (
           <>
             {filtered.length > 0 && (
-              <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+              <div className="flex items-center gap-3 p-4 bg-card rounded-t-lg">
                 <Checkbox
                   checked={selected.length === filtered.length && filtered.length > 0}
                   onCheckedChange={toggleAll}
@@ -2055,7 +2055,7 @@ export default function Crosslist() {
                   className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
                 />
                 <div className="flex flex-col">
-                  <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-gray-900 dark:text-white">
+                  <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
                     Select All ({filtered.length})
                   </label>
                   <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
@@ -2126,7 +2126,7 @@ export default function Crosslist() {
                       </div>
 
                     {/* Title */}
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white break-words line-clamp-2 mb-1">
+                    <h3 className="text-lg font-bold text-foreground break-words line-clamp-2 mb-1">
                       {it.item_name || 'Untitled Item'}
                     </h3>
 
@@ -2215,7 +2215,7 @@ export default function Crosslist() {
                     {/* Purchase Price */}
                       <div className="mt-3 flex items-center justify-between">
                       <span className="text-xs font-semibold text-muted-foreground">Purchase Price</span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">
+                      <span className="text-sm font-bold text-foreground tabular-nums">
                         ${(it.purchase_price || 0).toFixed(2)}
                       </span>
                     </div>
@@ -2295,7 +2295,7 @@ export default function Crosslist() {
                     </div>
                   </div>
                   <CardContent className="p-4 card-clickable-area">
-                    <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-2 line-clamp-2">
+                    <h3 className="font-bold text-foreground text-sm mb-2 line-clamp-2">
                       {it.item_name}
                     </h3>
                     <div className="text-xs text-gray-700 dark:text-gray-300 mb-3">{it.category || "—"}</div>

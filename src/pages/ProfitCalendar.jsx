@@ -350,7 +350,7 @@ export default function ProfitCalendar() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 md:bg-[#0b1220]">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background md:bg-[#0b1220]">
       <div className="max-w-5xl mx-auto md:max-w-6xl lg:max-w-7xl">
         {error ? (
           <div className="mb-4">
@@ -587,7 +587,7 @@ export default function ProfitCalendar() {
                   <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 md:text-emerald-300" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 md:text-slate-400">This Month</p>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground md:text-slate-400">This Month</p>
                   <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">${monthlyProfit.toFixed(2)}</p>
                 </div>
               </CardContent>
@@ -598,7 +598,7 @@ export default function ProfitCalendar() {
                   <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 md:text-blue-300" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 md:text-slate-400">Sales Count</p>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground md:text-slate-400">Sales Count</p>
                   <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">{monthlySalesCount}</p>
                 </div>
               </CardContent>
@@ -609,7 +609,7 @@ export default function ProfitCalendar() {
                   <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 md:text-purple-300" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 md:text-slate-400">Avg Daily</p>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground md:text-slate-400">Avg Daily</p>
                   <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">${avgDailyProfit.toFixed(2)}</p>
                 </div>
               </CardContent>

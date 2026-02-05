@@ -24,7 +24,7 @@ function HubCard({ title, description, to, icon: Icon, gradient }) {
 
 export default function Tools() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-4">
         <Card className="border border-border/60 shadow-sm bg-card/60">
           <CardHeader className="pb-2">

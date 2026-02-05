@@ -730,17 +730,17 @@ export default function AddInventoryItem() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-background overflow-x-hidden">
       <div className="max-w-3xl mx-auto w-full min-w-0">
         <div className="flex items-center gap-4 mb-8 min-w-0">
           <Button variant="outline" size="icon" onClick={navigateBackToReturn}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white break-words">
+            <h1 className="text-3xl font-bold text-foreground break-words">
               {itemId ? "Edit Inventory Item" : (copyId ? "Copy Inventory Item" : "Add Inventory Item")}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 break-words">
+            <p className="text-muted-foreground mt-1 break-words">
               {itemId ? "Update the details of this item" : (copyId ? "Create a new item from a copy" : "Add a new item to your inventory")}
             </p>
           </div>

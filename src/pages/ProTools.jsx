@@ -31,7 +31,7 @@ function ToolCard({ title, description, to, icon: Icon, statusLabel }) {
 
 export default function ProTools() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden">
       <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 min-w-0">
         <Card className="border border-border/60 shadow-sm bg-card/60">
           <CardHeader className="pb-2">

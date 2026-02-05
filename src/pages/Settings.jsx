@@ -1197,15 +1197,15 @@ export default function Settings() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Settings</h1>
-        <p className="text-gray-600 dark:text-gray-400">Customize your app appearance and preferences</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-foreground mb-2">Settings</h1>
+        <p className="text-gray-600 dark:text-muted-foreground">Customize your app appearance and preferences</p>
       </div>
 
       {/* View Rewards Button */}
       <div className="mb-6">
         <Button
           onClick={() => navigate(createPageUrl("Rewards"))}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 relative"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-foreground font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 relative"
         >
           {/* Green dot positioned on top left of button */}
           <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-10" />
@@ -1328,7 +1328,7 @@ export default function Settings() {
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center p-2 border border-gray-200 dark:border-gray-700">
+                            <div className="w-10 h-10 rounded-lg bg-white dark:bg-card flex items-center justify-center p-2 border border-gray-200 dark:border-gray-700">
                               <img src={iconSrc} alt={marketplace.name} className="w-full h-full object-contain" />
                             </div>
                             <div>
@@ -1374,13 +1374,13 @@ export default function Settings() {
                         </div>
 
                         {status.connected && status.accountName && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                          <div className="text-xs text-gray-600 dark:text-muted-foreground">
                             Account: <span className="font-medium">{status.accountName}</span>
                           </div>
                         )}
 
                         {marketplace.id === 'facebook' && facebookStatus?.connected && facebookPages.length > 0 && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                          <div className="text-xs text-gray-600 dark:text-muted-foreground">
                             Pages: {facebookPages.length}
                           </div>
                         )}
@@ -1530,12 +1530,12 @@ export default function Settings() {
                   {facebookPages.map((page) => (
                     <div
                       key={page.id}
-                      className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                      className="p-2 bg-gray-50 dark:bg-card rounded-lg border border-gray-200 dark:border-gray-700"
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <p className="text-sm font-medium text-gray-900 dark:text-foreground">
                         {page.name}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-gray-600 dark:text-muted-foreground">
                         Page ID: {page.id}
                       </p>
                     </div>
@@ -1550,7 +1550,7 @@ export default function Settings() {
                 <AlertCircle className="w-4 h-4 text-gray-500" />
                 <Label className="text-sm font-medium">About Marketplace Connections</Label>
               </div>
-              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+              <div className="space-y-1 text-xs text-gray-600 dark:text-muted-foreground">
                 <p>• Connecting your marketplace accounts allows you to crosslist items across multiple platforms</p>
                 <p>• Your OAuth tokens are stored securely and automatically refreshed when needed</p>
                 <p>• You can disconnect at any time from this page</p>
