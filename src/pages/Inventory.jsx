@@ -101,13 +101,6 @@ export default function InventoryPage() {
   const [tagDrafts, setTagDrafts] = useState({});
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
-  // Hybrid variation logic based on user preference:
-  // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
-  const viewVariation = React.useMemo(() => {
-    if (isMobile) return 2; // V2 for all mobile views
-    return viewMode === 'grid' ? 1 : 2; // Desktop: V1 for grid, V2 for list
-  }, [isMobile, viewMode]);
-  
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
   
   // Variation configurations
@@ -192,6 +185,14 @@ export default function InventoryPage() {
   useEffect(() => {
     localStorage.setItem('inventory_view_mode', viewMode);
   }, [viewMode]);
+  
+  // Hybrid variation logic based on user preference:
+  // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
+  const viewVariation = React.useMemo(() => {
+    if (isMobile) return 2; // V2 for all mobile views
+    return viewMode === 'grid' ? 1 : 2; // Desktop: V1 for grid, V2 for list
+  }, [isMobile, viewMode]);
+  
   const [pageSize, setPageSize] = useState(50);
   const [pageIndex, setPageIndex] = useState(0);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
