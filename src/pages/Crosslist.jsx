@@ -2058,10 +2058,10 @@ export default function Crosslist() {
                   <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
                     Select All ({filtered.length})
                   </label>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
+                  <span className="text-xs text-muted-foreground md:hidden">
                     Tap image to select for bulk edit
                   </span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">Click image to select for bulk edit</span>
+                  <span className="text-xs text-muted-foreground hidden md:block">Click image to select for bulk edit</span>
                 </div>
               </div>
             )}
@@ -2262,7 +2262,7 @@ export default function Crosslist() {
                       toggleSelect(it.id);
                     }
                   }}
-                  className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} bg-gradient-to-br from-white to-gray-50 dark:from-slate-900 dark:to-slate-800 shadow-sm dark:shadow-lg max-w-full`}
+                  className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg max-w-full`}
                   style={{
                     borderRadius: '16px',
                   }}

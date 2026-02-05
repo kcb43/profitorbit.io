@@ -1642,7 +1642,7 @@ export default function SalesHistory() {
                   return (
                     <div key={sale.id} className="w-full max-w-full">
                       {/* Mobile/Tablet list layout (unchanged) */}
-                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-card border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-slate-700/50'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-card border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
@@ -1660,7 +1660,7 @@ export default function SalesHistory() {
                       {/* Product Image Section - Clickable */}
                       <div 
                         onClick={() => handleSelect(sale.id)}
-                        className={`glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-card/70 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-slate-700/50 hover:opacity-90 hover:shadow-md'}`}
+                        className={`glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-4 cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-card/70 border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 opacity-80 shadow-lg shadow-green-500/50' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
                         style={{
                           borderRadius: '12px',
                           flexShrink: 0

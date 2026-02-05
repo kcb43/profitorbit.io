@@ -405,14 +405,14 @@ export default function ProfitCalendar() {
               </div>
             </CardHeader>
 
-            <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0d1728]">
-              <div className="flex items-center gap-6 text-sm text-slate-300">
-                <span className="uppercase tracking-wide text-xs text-slate-400">Month Total</span>
+            <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-white/5 bg-card">
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <span className="uppercase tracking-wide text-xs text-muted-foreground">Month Total</span>
                 <span className="text-lg font-semibold text-emerald-300">${monthlyProfit.toFixed(2)}</span>
-                <span className="text-xs text-slate-500">Avg / Day</span>
+                <span className="text-xs text-muted-foreground">Avg / Day</span>
                 <span className="text-lg font-semibold text-emerald-200">${avgDailyProfit.toFixed(2)}</span>
               </div>
-              <div className="flex items-center gap-4 text-xs text-slate-400">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 {[
                   { label: 'Low', color: 'bg-emerald-700/40 border border-emerald-500/40' },
                   { label: 'Mid', color: 'bg-emerald-500/40 border border-emerald-400/60' },
@@ -495,13 +495,13 @@ export default function ProfitCalendar() {
 
           {/* Desktop KPIs (use horizontal space; avoid vertical scrolling) */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="profit-calendar-this-month rounded-2xl border border-white/5 bg-[#111b2d] p-4 shadow-lg">
-              <div className="text-xs uppercase tracking-wide text-slate-400">This Month</div>
+            <div className="profit-calendar-this-month rounded-2xl border border-white/5 bg-card p-4 shadow-lg">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">This Month</div>
 
               <div className="mt-3">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-slate-300">Top sold</div>
-                  <div className="text-[11px] text-slate-500">Tap to view details</div>
+                  <div className="text-xs font-medium text-muted-foreground">Top sold</div>
+                  <div className="text-[11px] text-muted-foreground">Tap to view details</div>
                 </div>
 
                 {Array.isArray(topSoldItems) && topSoldItems.length > 0 ? (
@@ -510,7 +510,7 @@ export default function ProfitCalendar() {
                       <button
                         key={s.id}
                         type="button"
-                        className="profit-calendar-item-btn group relative overflow-hidden rounded-xl border border-white/10 bg-[#0d1728]"
+                        className="profit-calendar-item-btn group relative overflow-hidden rounded-xl border border-white/10 bg-card"
                         onClick={() => {
                           window.location.href = `/SoldItemDetail?id=${encodeURIComponent(s.id)}&expandFees=true`;
                         }}
