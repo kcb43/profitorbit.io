@@ -45,6 +45,18 @@ import { useIsMobile } from "@/hooks/use-mobile";
 function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'edited-image.jpg', allImages = [], onApplyToAll, itemId, onAddImage }) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  
+  // Editor variation state (1 = Canva Classic, 2 = Minimalist Pro, 3 = Split Panel)
+  const [editorVariation, setEditorVariation] = useState(() => {
+    const saved = localStorage.getItem('image_editor_variation');
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  
+  // Save variation preference
+  useEffect(() => {
+    localStorage.setItem('image_editor_variation', editorVariation.toString());
+  }, [editorVariation]);
+  
   // When itemId is not available (e.g. editing before the item is created),
   // use a stable per-session key so per-image settings don't get lost when URLs change after uploads.
   const sessionKeyRef = useRef(null);
@@ -870,6 +882,30 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
     const k = normalizedImageKeys?.[idx] ?? String(idx);
     return itemId !== undefined ? `${itemId}_${k}` : `session_${sessionKeyRef.current}_${k}`;
   };
+  
+  // Improved save button logic - clearer flow
+  const getPrimaryButtonState = () => {
+    const allSaved = editedImages.size === normalizedImages.length;
+    const currentSaved = editedImages.has(currentImageIndex);
+    
+    if (allSaved && !hasUnsavedChanges) {
+      return { text: 'Done ✓', action: () => onOpenChange(false), variant: 'success' };
+    }
+    
+    if (hasUnsavedChanges && hasMultipleImages && currentImageIndex === 0) {
+      return { text: '✨ Apply & Save All', action: handleApplyFiltersToAll, variant: 'purple' };
+    }
+    
+    if (currentSaved && !hasUnsavedChanges) {
+      return { text: 'Done ✓', action: () => onOpenChange(false), variant: 'success' };
+    }
+    
+    return { 
+      text: hasMultipleImages ? `Save Image ${currentImageIndex + 1}` : 'Save Image',
+      action: handleSave,
+      variant: 'primary'
+    };
+  };
 
   const resetCurrentImage = () => {
     // Restore original baseline image for this index (undoes any crops/dataUrl changes)
@@ -1483,11 +1519,39 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[100vw] h-[100dvh] sm:w-[85vw] sm:max-w-[1200px] sm:max-h-[90vh] p-0 overflow-hidden bg-white border-gray-200 flex flex-col shadow-2xl rounded-none sm:rounded-lg">
           <DialogHeader className="px-4 py-2.5 border-b border-gray-200 bg-gray-50 backdrop-blur-sm flex-shrink-0" style={{ paddingTop: '17px', paddingBottom: '17px' }}>
-            <div className="flex items-center gap-3">
-              <DialogTitle className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                <Camera className="w-4 h-4" />
-                <span>Photo Editor</span>
-              </DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <DialogTitle className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                  <Camera className="w-4 h-4" />
+                  <span>Photo Editor</span>
+                </DialogTitle>
+                
+                {/* Variation Switcher */}
+                <div className="flex gap-1 p-0.5 bg-white rounded-md border border-gray-300">
+                  <button
+                    onClick={() => setEditorVariation(1)}
+                    className={`text-[10px] px-2 py-1 rounded ${editorVariation === 1 ? 'bg-indigo-600 text-white' : 'bg-transparent text-gray-700 hover:bg-gray-100'}`}
+                    title="Canva Classic - Sidebar layout"
+                  >
+                    V1
+                  </button>
+                  <button
+                    onClick={() => setEditorVariation(2)}
+                    className={`text-[10px] px-2 py-1 rounded ${editorVariation === 2 ? 'bg-indigo-600 text-white' : 'bg-transparent text-gray-700 hover:bg-gray-100'}`}
+                    title="Minimalist Pro - Top toolbar"
+                  >
+                    V2
+                  </button>
+                  <button
+                    onClick={() => setEditorVariation(3)}
+                    className={`text-[10px] px-2 py-1 rounded ${editorVariation === 3 ? 'bg-indigo-600 text-white' : 'bg-transparent text-gray-700 hover:bg-gray-100'}`}
+                    title="Split Panel - Before/After view"
+                  >
+                    V3
+                  </button>
+                </div>
+              </div>
+              
               <DialogDescription className="sr-only">
                 Edit photos with brightness, contrast, saturation, shadows, crop, and rotation. Save changes or apply to all images.
               </DialogDescription>
