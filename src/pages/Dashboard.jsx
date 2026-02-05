@@ -390,8 +390,8 @@ export default function Dashboard() {
   const hasStockAlerts = (itemsWithUpcomingReturns?.length || 0) > 0 || (staleItems?.length || 0) > 0;
   
   return (
-    <div className="p-4 md:p-6 lg:p-0 min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden w-full max-w-full">
-      <div className="px-0 lg:px-6 py-4 lg:py-8 w-full max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-background overflow-x-hidden w-full max-w-full">
+      <div className="w-full max-w-7xl mx-auto">
         {(salesError || inventoryError || salesSummaryError) && (
           <div className="mb-6">
             <Alert variant="destructive">
@@ -407,8 +407,8 @@ export default function Dashboard() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 lg:mb-8">
           <div className="flex items-center justify-between w-full lg:w-auto">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-              <p className="hidden lg:block text-sm text-gray-500 dark:text-gray-400 mt-1">Track your business performance</p>
+              <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+              <p className="hidden lg:block text-sm text-muted-foreground mt-1">Track your business performance</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -418,13 +418,13 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-3">
               <Link to={createPageUrl("AddSale")}>
-                <Button className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-md">
+                <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Sale
                 </Button>
               </Link>
               <Link to={createPageUrl("AddInventoryItem")} state={{ from: location.pathname || "/Dashboard" }}>
-                <Button className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md">
+                <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25">
                   <Package className="w-4 h-4 mr-2" />
                   Add Inventory
                 </Button>
@@ -438,7 +438,7 @@ export default function Dashboard() {
           <div className="hidden lg:grid grid-cols-2 gap-4 mb-6">
             {(itemsWithUpcomingReturns?.length || 0) > 0 && (
               <Link to={createPageUrl("Inventory?filter=returnDeadline")} className="block">
-                <div className="relative rounded-2xl p-5 backdrop-blur bg-card/60 border border-red-500/40 hover:border-red-500/60 transition shadow-sm overflow-hidden">
+                <div className="relative rounded-2xl p-5 backdrop-blur bg-card border border-red-500/40 hover:border-red-500/60 transition shadow-sm overflow-hidden">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-500/15 to-rose-500/10 rounded-full blur-2xl" />
                   <div className="relative flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-red-500 via-red-600 to-rose-500 shadow-lg shadow-red-500/30 flex-shrink-0">
@@ -455,7 +455,7 @@ export default function Dashboard() {
             )}
             {(staleItems?.length || 0) > 0 && (
               <Link to={createPageUrl("Inventory?filter=stale")} className="block">
-                <div className="relative rounded-2xl p-5 backdrop-blur bg-card/60 border border-emerald-500/35 hover:border-emerald-500/55 transition shadow-sm overflow-hidden">
+                <div className="relative rounded-2xl p-5 backdrop-blur bg-card border border-emerald-500/35 hover:border-emerald-500/55 transition shadow-sm overflow-hidden">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 rounded-full blur-2xl" />
                   <div className="relative flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/30 flex-shrink-0">
@@ -490,7 +490,7 @@ export default function Dashboard() {
               data={(sales || []).slice(0, 30).reverse().map((s) => ({ v: Number(s?.profit ?? 0) || 0 }))}
               right={
                 <Link to={createPageUrl("Gallery")} className="group">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:opacity-95 transition-opacity">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform">
                     <DollarSign className="h-6 w-6 text-white" />
                   </div>
                 </Link>
@@ -503,7 +503,7 @@ export default function Dashboard() {
               deltaPositive={true}
               right={
                 <Link to={createPageUrl("SalesHistory")} className="group">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:opacity-95 transition-opacity">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
                     <ShoppingBag className="h-6 w-6 text-white" />
                   </div>
                 </Link>
@@ -528,7 +528,7 @@ export default function Dashboard() {
                     </button>
                   )}
                   <Link to={createPageUrl("Inventory")} className="group">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:opacity-95 transition-opacity">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
                       <Box className="h-6 w-6 text-white" />
                     </div>
                   </Link>
@@ -543,7 +543,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(itemsWithUpcomingReturns?.length || 0) > 0 && (
                   <Link to={createPageUrl("Inventory?filter=returnDeadline")} className="block">
-                    <div className="relative rounded-2xl p-4 backdrop-blur bg-card/60 border border-red-500/40 shadow-sm overflow-hidden">
+                    <div className="relative rounded-2xl p-4 backdrop-blur bg-card border border-red-500/40 shadow-sm overflow-hidden">
                       <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-red-500/15 to-rose-500/10 rounded-full blur-2xl" />
                       <div className="relative flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-red-500 via-red-600 to-rose-500 shadow-lg shadow-red-500/25 flex-shrink-0">
@@ -560,7 +560,7 @@ export default function Dashboard() {
                 )}
                 {(staleItems?.length || 0) > 0 && (
                   <Link to={createPageUrl("Inventory?filter=stale")} className="block">
-                    <div className="relative rounded-2xl p-4 backdrop-blur bg-card/60 border border-emerald-500/35 shadow-sm overflow-hidden">
+                    <div className="relative rounded-2xl p-4 backdrop-blur bg-card border border-emerald-500/35 shadow-sm overflow-hidden">
                       <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 rounded-full blur-2xl" />
                       <div className="relative flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/25 flex-shrink-0">
