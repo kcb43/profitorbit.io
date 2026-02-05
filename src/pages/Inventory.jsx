@@ -100,6 +100,88 @@ export default function InventoryPage() {
   const [tagEditorFor, setTagEditorFor] = useState(null);
   const [tagDrafts, setTagDrafts] = useState({});
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  
+  // View variation state (1 = Compact Professional, 2 = Visual Showcase, 3 = Mobile-First Hybrid)
+  const [viewVariation, setViewVariation] = useState(() => {
+    const saved = localStorage.getItem('inventory_view_variation');
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  
+  // Save variation preference
+  useEffect(() => {
+    localStorage.setItem('inventory_view_variation', viewVariation.toString());
+  }, [viewVariation]);
+  
+  // Variation configurations
+  const gridVariations = {
+    1: { // Compact Professional
+      containerClass: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3",
+      cardClass: "rounded-lg",
+      paddingClass: "p-3",
+      imageWrapperClass: "aspect-square",
+      badgeClass: "text-[9px] px-1.5 py-0.5",
+      titleClass: "text-xs font-bold",
+      dataTextClass: "text-[10px]",
+      hoverEffect: "",
+      buttonSizeClass: "h-6 w-6",
+      iconSizeClass: "h-3 w-3"
+    },
+    2: { // Visual Showcase
+      containerClass: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6",
+      cardClass: "rounded-2xl",
+      paddingClass: "p-6",
+      imageWrapperClass: "aspect-square",
+      badgeClass: "text-xs px-3 py-1.5",
+      titleClass: "text-base font-bold",
+      dataTextClass: "text-sm",
+      hoverEffect: "hover:scale-105 transition-transform duration-300",
+      buttonSizeClass: "h-9 w-9",
+      iconSizeClass: "h-4 w-4"
+    },
+    3: { // Mobile-First Hybrid
+      containerClass: "grid-cols-2 gap-4",
+      cardClass: "rounded-xl",
+      paddingClass: "p-4",
+      imageWrapperClass: "", // Dynamic height for masonry
+      badgeClass: "text-[10px] px-2 py-1",
+      titleClass: "text-sm font-bold",
+      dataTextClass: "text-xs",
+      hoverEffect: "",
+      buttonSizeClass: "h-11 w-11", // Larger for touch
+      iconSizeClass: "h-4 w-4"
+    }
+  };
+
+  const listVariations = {
+    1: { // Compact Professional
+      gridCols: "grid-cols-[100px_1fr_220px]",
+      imageHeight: 100,
+      padding: "p-3 py-3",
+      titleClass: "text-sm font-bold",
+      dataTextClass: "text-xs",
+      buttonSizeClass: "h-7 w-7",
+      iconSizeClass: "h-3.5 w-3.5"
+    },
+    2: { // Visual Showcase
+      gridCols: "grid-cols-[220px_1fr_280px]",
+      imageHeight: 220,
+      padding: "p-6 py-5",
+      titleClass: "text-lg font-bold",
+      dataTextClass: "text-base",
+      buttonSizeClass: "h-9 w-9",
+      iconSizeClass: "h-4 w-4"
+    },
+    3: { // Mobile-First Hybrid
+      gridCols: "grid-cols-[160px_1fr_auto]",
+      imageHeight: 160,
+      padding: "p-4",
+      titleClass: "text-base font-bold",
+      dataTextClass: "text-sm",
+      buttonSizeClass: "h-11 w-11",
+      iconSizeClass: "h-5 w-5"
+    }
+  };
+  
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
@@ -1435,6 +1517,37 @@ export default function InventoryPage() {
               </Link>
             </div>
             <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0">
+              {/* Variation Switcher */}
+              <div className="flex gap-1 p-1 bg-muted rounded-lg flex-shrink-0">
+                <Button
+                  variant={viewVariation === 1 ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewVariation(1)}
+                  className="text-xs h-8 px-2"
+                  title="Compact Professional - Dense info layout"
+                >
+                  V1
+                </Button>
+                <Button
+                  variant={viewVariation === 2 ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewVariation(2)}
+                  className="text-xs h-8 px-2"
+                  title="Visual Showcase - Beautiful presentation"
+                >
+                  V2
+                </Button>
+                <Button
+                  variant={viewVariation === 3 ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewVariation(3)}
+                  className="text-xs h-8 px-2"
+                  title="Mobile-First Hybrid - Touch optimized"
+                >
+                  V3
+                </Button>
+              </div>
+              
               <Button
                 variant="outline"
                 onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
@@ -2302,15 +2415,15 @@ export default function InventoryPage() {
                             handleSelect(item.id);
                           }
                         }}
-                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden ${listVariations[viewVariation].gridCols === "grid-cols-[220px_1fr_280px]" ? 'rounded-2xl' : 'rounded-xl'} border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
                       >
-                        <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
+                        <div className={`grid ${listVariations[viewVariation].gridCols} min-w-0`}>
                           {/* Image */}
-                          <div className="p-4">
+                          <div className={listVariations[viewVariation].padding}>
                             <div
                               onClick={() => handleSelect(item.id)}
                               className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
-                              style={{ height: 140 }}
+                              style={{ height: listVariations[viewVariation].imageHeight }}
                               title="Click image to select"
                             >
                               {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
@@ -2342,10 +2455,10 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Details */}
-                          <div className={`min-w-0 px-5 py-4 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
-                            <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className={`min-w-0 px-5 ${listVariations[viewVariation].padding} ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
+                            <div className={`flex items-start justify-between gap-3 ${viewVariation === 2 ? 'mb-4' : 'mb-3'}`}>
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1 rounded-xl`}>
+                                <Badge variant="outline" className={`${statusColors[item.status]} ${gridVariations[viewVariation].badgeClass} rounded-xl`}>
                                   {statusLabels[item.status] || statusLabels.available}
                                 </Badge>
                                 {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
@@ -2362,14 +2475,14 @@ export default function InventoryPage() {
                                     e.stopPropagation();
                                     toggleFavorite(item.id);
                                   }}
-                                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition ${
+                                  className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition ${
                                     favoriteMarked
                                       ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                       : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
                                   }`}
                                   title={favoriteMarked ? "Unfavorite" : "Favorite"}
                                 >
-                                  <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                                  <Star className={`${listVariations[viewVariation].iconSizeClass} ${favoriteMarked ? "fill-current" : ""}`} />
                                 </button>
 
                                 {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
@@ -2379,10 +2492,10 @@ export default function InventoryPage() {
                                       e.stopPropagation();
                                       handleEditImage(e, item);
                                     }}
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                    className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20`}
                                     title="Edit photo"
                                   >
-                                    <ImageIcon className="h-4 w-4" />
+                                    <ImageIcon className={listVariations[viewVariation].iconSizeClass} />
                                   </button>
                                 )}
 
@@ -2393,10 +2506,10 @@ export default function InventoryPage() {
                                     setItemToView(item);
                                     setViewDialogOpen(true);
                                   }}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                                  className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20`}
                                   title="View details"
                                 >
-                                  <Search className="h-4 w-4" />
+                                  <Search className={listVariations[viewVariation].iconSizeClass} />
                                 </button>
 
                                 <button
@@ -2405,10 +2518,10 @@ export default function InventoryPage() {
                                     e.stopPropagation();
                                     handleDeleteClick(item);
                                   }}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                                  className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20`}
                                   title="Delete"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className={listVariations[viewVariation].iconSizeClass} />
                                 </button>
                               </div>
                             </div>
@@ -2416,14 +2529,14 @@ export default function InventoryPage() {
                             <Link
                               to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
                               state={returnStateForInventory}
-                              className="block mb-2"
+                              className={`block ${viewVariation === 2 ? 'mb-3' : 'mb-2'}`}
                             >
-                              <h3 className="text-base font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                              <h3 className={`${listVariations[viewVariation].titleClass} text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2`}>
                                 {item.item_name || "Untitled Item"}
                               </h3>
                             </Link>
 
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div className={`grid grid-cols-2 gap-x-8 gap-y-2 ${listVariations[viewVariation].dataTextClass}`}>
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-muted-foreground text-xs font-semibold">Price</span>
                                 <span className="font-bold text-foreground tabular-nums">
@@ -2621,7 +2734,7 @@ export default function InventoryPage() {
                 })}
               </div>
             ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className={`grid ${gridVariations[viewVariation].containerClass}`}>
               {sortedItems.map(item => {
                 const today = new Date();
                 const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
@@ -2656,12 +2769,9 @@ export default function InventoryPage() {
             return (
               <Card 
                 key={item.id} 
-                className={`group overflow-hidden transition-all duration-300 sm:hover:shadow-2xl sm:hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-border'}`}
-                style={{
-                  borderRadius: '16px',
-                }}
+                className={`group overflow-hidden transition-all duration-300 ${gridVariations[viewVariation].hoverEffect} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg ${gridVariations[viewVariation].cardClass} ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-border'}`}
               >
-                <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-card/70"
+                <div className={`relative ${gridVariations[viewVariation].imageWrapperClass} overflow-hidden bg-gray-50 dark:bg-card/70`}
                 >
                   <div
                     onClick={() => handleSelect(item.id)}
@@ -2692,26 +2802,26 @@ export default function InventoryPage() {
                     </div>
                   )}
                   <div className="absolute bottom-2 right-2 z-10">
-                    <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5 backdrop-blur-sm`}>
+                    <Badge variant="outline" className={`${statusColors[item.status]} ${gridVariations[viewVariation].badgeClass} backdrop-blur-sm`}>
                       {statusLabels[item.status] || statusLabels.available}
                     </Badge>
                   </div>
                 </div>
 
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
+                    <CardContent className={gridVariations[viewVariation].paddingClass}>
+                      <div className={`flex items-center justify-between ${viewVariation === 2 ? 'mb-4' : 'mb-3'}`}>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => toggleFavorite(item.id)}
-                            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition ${
+                            className={`inline-flex ${gridVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-md border border-transparent transition ${
                               favoriteMarked
                                 ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                 : "text-gray-700 dark:text-gray-300 hover:text-amber-500 hover:bg-amber-500/10"
                             }`}
                             title={favoriteButtonLabel}
                           >
-                            <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                            <Star className={`${gridVariations[viewVariation].iconSizeClass} ${favoriteMarked ? "fill-current" : ""}`} />
                             <span className="sr-only">{favoriteButtonLabel}</span>
                           </button>
                           <button
@@ -2720,18 +2830,18 @@ export default function InventoryPage() {
                               setSoldDialogName(item.item_name || "");
                               setSoldDialogOpen(true);
                             }}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-600 hover:bg-blue-600/10"
+                            className={`inline-flex ${gridVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-600 hover:bg-blue-600/10`}
                             title="Search"
                           >
-                            <BarChart className="h-4 w-4" />
+                            <BarChart className={gridVariations[viewVariation].iconSizeClass} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteClick(item)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-600 hover:bg-red-600/10"
+                            className={`inline-flex ${gridVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-600 hover:bg-red-600/10`}
                             title="Delete"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className={gridVariations[viewVariation].iconSizeClass} />
                           </button>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2766,12 +2876,12 @@ export default function InventoryPage() {
                         to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
                         state={returnStateForInventory}
                       >
-                        <h3 className="font-bold text-foreground text-sm mb-3 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        <h3 className={`${gridVariations[viewVariation].titleClass} text-foreground ${viewVariation === 2 ? 'mb-4' : 'mb-3'} line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors`}>
                           {item.item_name || 'Untitled Item'}
                         </h3>
                       </Link>
                       
-                      <div className="space-y-1.5 text-xs mb-3">
+                      <div className={`space-y-${viewVariation === 2 ? '2' : '1.5'} ${gridVariations[viewVariation].dataTextClass} mb-3`}>
                         <div className="flex justify-between text-gray-700 dark:text-gray-300">
                           <span>Price:</span>
                           <span className="font-semibold text-foreground">
