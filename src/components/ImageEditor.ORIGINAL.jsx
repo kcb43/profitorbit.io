@@ -32,7 +32,6 @@ import {
   Layers
 } from 'lucide-react';
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ImageEditorV1Layout, ImageEditorV2Layout, ImageEditorV3Layout } from './image-editor/variations';
 
 /**
  * Advanced Image Editor Component
@@ -890,20 +889,20 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
     const currentSaved = editedImages.has(currentImageIndex);
     
     if (allSaved && !hasUnsavedChanges) {
-      return { label: 'Done ✓', onClick: () => onOpenChange(false), variant: 'success' };
+      return { text: 'Done ✓', action: () => onOpenChange(false), variant: 'success' };
     }
     
     if (hasUnsavedChanges && hasMultipleImages && currentImageIndex === 0) {
-      return { label: '✨ Apply & Save All', onClick: handleApplyFiltersToAll, variant: 'purple' };
+      return { text: '✨ Apply & Save All', action: handleApplyFiltersToAll, variant: 'purple' };
     }
     
     if (currentSaved && !hasUnsavedChanges) {
-      return { label: 'Done ✓', onClick: () => onOpenChange(false), variant: 'success' };
+      return { text: 'Done ✓', action: () => onOpenChange(false), variant: 'success' };
     }
     
     return { 
-      label: hasMultipleImages ? `Save Image ${currentImageIndex + 1}` : 'Save Image',
-      onClick: handleSave,
+      text: hasMultipleImages ? `Save Image ${currentImageIndex + 1}` : 'Save Image',
+      action: handleSave,
       variant: 'primary'
     };
   };
@@ -1515,56 +1514,6 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
   const sliderValue = getSliderValue();
   const sliderRange = sliderMax - sliderMin;
 
-  // Prepare props for layout components
-  const layoutProps = {
-    // State
-    isMobile,
-    isCropping,
-    aspectRatio,
-    activeFilter,
-    filters,
-    transform,
-    imgSrc,
-    originalImgSrc,
-    templates,
-    selectedTemplate,
-    hasMultipleImages,
-    currentImageIndex,
-    normalizedImages,
-    editedImages,
-    hasUnsavedChanges,
-    appliedToAll,
-    
-    // Refs
-    imageRef,
-    previewCanvasRef,
-    
-    // Handlers
-    handleFileUpload,
-    handleTransform,
-    handleAspectRatioChange,
-    applyCrop,
-    cancelCrop,
-    handleSliderChange,
-    setActiveFilter,
-    handleLoadTemplate,
-    handleSaveTemplateClick,
-    handleDeleteTemplate,
-    resetCurrentImage,
-    handlePrevImage: goToPrevImage,
-    handleNextImage: goToNextImage,
-    handleSave,
-    resetAllImages,
-    onOpenChange,
-    
-    // Helper functions
-    getSliderMin,
-    getSliderMax,
-    getSliderValue,
-    hasChangesFromOriginal,
-    getPrimaryButtonState
-  };
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1620,11 +1569,551 @@ function ImageEditorInner({ open, onOpenChange, imageSrc, onSave, fileName = 'ed
             </div>
           </DialogHeader>
 
-          {/* === VARIATION LAYOUTS === */}
-          {editorVariation === 1 && <ImageEditorV1Layout {...layoutProps} />}
-          {editorVariation === 2 && <ImageEditorV2Layout {...layoutProps} />}
-          {editorVariation === 3 && <ImageEditorV3Layout {...layoutProps} />}
+          <div className="ant-modal-body flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden p-2 sm:p-4" style={{ scale: 1, outline: 'none' }}>
+            {/* Compact Sidebar */}
+            <div className="w-full md:w-[220px] bg-gray-50 backdrop-blur-sm md:border-r border-gray-200 overflow-y-auto overflow-x-hidden px-2 md:px-3 py-2 md:py-3 space-y-2 md:space-y-3 flex-shrink-0 max-h-[25dvh] md:max-h-none order-1">
+              {/* Template Section - Compact */}
+              <div className="space-y-2">
+                <Select
+                  value={selectedTemplate || 'none'}
+                  onValueChange={(value) => {
+                    if (value === 'none') {
+                      setSelectedTemplate(null);
+                      resetCurrentImage();
+                    } else {
+                      const template = templates.find(t => t.id === value);
+                      if (template) {
+                        handleLoadTemplate(template);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900 text-xs h-7">
+                    <SelectValue placeholder="Template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (Custom)</SelectItem>
+                    {templates.map((template) => (
+                      <SelectItem 
+                        key={template.id} 
+                        value={template.id}
+                        className="group relative"
+                      >
+                        <div className="flex items-center justify-between w-full gap-2 pr-6">
+                          <span className="flex-1 truncate">{template.name}</span>
+                          <button
+                            onClick={(e) => handleDeleteTemplate(template.id, template.name, e)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded flex items-center justify-center flex-shrink-0 z-10"
+                            title="Delete template"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                          </button>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleSaveTemplateClick}
+                  className="w-full bg-indigo-600/80 hover:bg-indigo-500 text-white flex items-center justify-center gap-1.5 text-xs h-7 sm:h-[41px]"
+                >
+                  <Save className="w-3 h-3" />
+                  <span>Save Template</span>
+                </Button>
+              </div>
 
+              {/* Upload & Crop Section - Combined on mobile, separate on desktop */}
+              {isMobile ? (
+                <div className="flex gap-1.5">
+                  <input
+                    type="file"
+                    id="imageUploader"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => document.getElementById('imageUploader')?.click()}
+                    className="flex-1 bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center h-7 border border-gray-300 p-0"
+                    title="Upload"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </Button>
+                  {isCropping ? (
+                    <>
+                      <Button
+                        onClick={cancelCrop}
+                        className="flex-1 bg-red-600/80 hover:bg-red-500 text-white text-xs h-7"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={applyCrop}
+                        className="flex-1 bg-green-600/80 hover:bg-green-500 text-white text-xs h-7"
+                      >
+                        ✓
+                      </Button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleTransform('crop')}
+                      className="flex-1 h-7 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center p-0"
+                      title="Crop"
+                    >
+                      <Crop className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Upload Section - Desktop */}
+                  <div>
+                    <input
+                      type="file"
+                      id="imageUploader"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      onClick={() => document.getElementById('imageUploader')?.click()}
+                      className="w-full bg-white hover:bg-gray-100 text-gray-900 flex items-center justify-center gap-1.5 text-xs h-7 border border-gray-300"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Upload</span>
+                    </Button>
+                  </div>
+
+                  {/* Transform Section - Desktop */}
+                  <div className="space-y-2">
+                    {isCropping ? (
+                      // When cropping, show aspect ratio selector and crop controls
+                      <div className="space-y-2">
+                        <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
+                          <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900 text-xs h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="free">Free</SelectItem>
+                            <SelectItem value="square">Square (1:1)</SelectItem>
+                            <SelectItem value="4:3">Landscape (4:3)</SelectItem>
+                            <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
+                            <SelectItem value="4:5">Portrait (4:5)</SelectItem>
+                            <SelectItem value="9:16">Vertical (9:16)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex gap-1.5">
+                          <Button
+                            onClick={cancelCrop}
+                            className="flex-1 bg-red-600/80 hover:bg-red-500 text-white text-xs h-7"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={applyCrop}
+                            className="flex-1 bg-green-600/80 hover:bg-green-500 text-white text-xs h-7"
+                          >
+                            ✓ Apply
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleTransform('crop')}
+                        className="w-full p-2 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-200 flex items-center justify-center gap-1.5 text-xs h-9 sm:h-[54px]"
+                      >
+                        <Crop className="w-3.5 h-3.5" />
+                        <span>Crop</span>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              {/* Aspect Ratio Selector - Mobile only when cropping */}
+              {isMobile && isCropping && (
+                <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
+                  <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900 text-xs h-7">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="square">Square (1:1)</SelectItem>
+                    <SelectItem value="4:3">Landscape (4:3)</SelectItem>
+                    <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
+                    <SelectItem value="4:5">Portrait (4:5)</SelectItem>
+                    <SelectItem value="9:16">Vertical (9:16)</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Adjustments Section - Hidden when cropping */}
+              {!isCropping && (
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs text-gray-600 mb-1">
+                      <span className="capitalize font-medium">{activeFilter}</span>
+                      <span className="text-gray-900 font-semibold">{sliderValue}%</span>
+                    </div>
+                    <div className="relative py-1">
+                      {/* Tick marks */}
+                      <div className="absolute top-0 left-0 right-0 h-1 flex items-center justify-between pointer-events-none z-0" style={{ marginTop: '6px' }}>
+                        {[0, 25, 50, 75, 100, 125, 150, 175, 200].map((tick) => {
+                          if (tick < sliderMin || tick > sliderMax) return null;
+                          const position = ((tick - sliderMin) / sliderRange) * 100;
+                          return (
+                            <div
+                              key={tick}
+                              className="w-0.5 h-1 bg-gray-400"
+                              style={{
+                                position: 'absolute',
+                                left: `${position}%`,
+                                transform: 'translateX(-50%)'
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <input
+                        type="range"
+                        min={sliderMin}
+                        max={sliderMax}
+                        value={sliderValue}
+                        onChange={(e) => {
+                          let value = Number(e.target.value);
+                          // Snap to nearest tick mark (0, 25, 50, 75, 100) if within 3 units
+                          const tickMarks = [0, 25, 50, 75, 100, 125, 150, 175, 200];
+                          const nearestTick = tickMarks.reduce((prev, curr) => {
+                            return (Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev);
+                          });
+                          if (Math.abs(value - nearestTick) <= 3 && nearestTick >= sliderMin && nearestTick <= sliderMax) {
+                            value = nearestTick;
+                          }
+                          handleSliderChange(value);
+                        }}
+                        className="modern-slider w-full appearance-none cursor-pointer relative z-10"
+                        style={{
+                          background: sliderRange > 0
+                            ? `linear-gradient(to right, rgba(209, 213, 219, 0.6) 0%, rgba(99, 102, 241, 0.8) ${((sliderValue - sliderMin) / sliderRange) * 100}%, rgba(99, 102, 241, 0.8) ${((sliderValue - sliderMin) / sliderRange) * 100}%, rgba(209, 213, 219, 0.6) 100%)`
+                            : 'rgba(209, 213, 219, 0.6)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+              {/* Filters Section - Hidden when cropping */}
+              {!isCropping && (
+                <div className="space-y-2">
+                  {/* Brightness and Contrast Row */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: 'brightness', icon: BrightnessIcon, label: 'Bright' },
+                      { id: 'contrast', icon: Contrast, label: 'Contrast' },
+                    ].map(({ id, icon: Icon, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => handleFilterClick(id)}
+                        className={`p-1.5 rounded-md border transition-all duration-200 flex flex-col items-center gap-1 ${
+                          activeFilter === id
+                            ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
+                            : 'bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span className="text-[10px] leading-tight">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Saturation and Shadow Row */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: 'saturate', icon: Palette, label: 'Saturate' },
+                      { id: 'shadow', icon: Layers, label: 'Shadow' },
+                    ].map(({ id, icon: Icon, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => handleFilterClick(id)}
+                        className={`p-1.5 rounded-md border transition-all duration-200 flex flex-col items-center gap-1 ${
+                          activeFilter === id
+                            ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
+                            : 'bg-white border-gray-300 text-gray-900 hover:bg-indigo-50 hover:border-indigo-400'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span className="text-[10px] leading-tight">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Action Buttons - Desktop only */}
+                  <div className="hidden md:flex flex-col gap-2 pt-2">
+                    {/* Reset All - only show when there are changes from ORIGINAL */}
+                    {(() => {
+                      const canShowResetAll =
+                        hasMultipleImages &&
+                        currentImageIndex === 0 &&
+                        appliedToAll &&
+                        normalizedImages.length > 1;
+
+                      const canShowResetCurrent =
+                        hasChangesFromOriginal() &&
+                        (!appliedToAll || currentImageIndex !== 0 || !hasMultipleImages);
+
+                      // Image 1:
+                      // - After Apply-to-All: show only "Reset All"
+                      // - Otherwise (single-image edits): show "Reset for Image 1"
+                      // Other images:
+                      // - Only show "Reset" (this image)
+                      if (canShowResetAll) {
+                        return (
+                          <Button
+                            onClick={resetAllImages}
+                            className="w-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                          >
+                            <Undo2 className="w-3 h-3" />
+                            <span>Reset All</span>
+                          </Button>
+                        );
+                      }
+
+                      if (canShowResetCurrent) {
+                        return (
+                          <Button
+                            onClick={resetCurrentImage}
+                            className="w-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                          >
+                            <Undo2 className="w-3 h-3" />
+                            <span>Reset</span>
+                          </Button>
+                        );
+                      }
+
+                      return null;
+                    })()}
+                    
+                    {/* Save/Done button */}
+                    <Button
+                      onClick={(appliedToAll || editedImages.has(currentImageIndex)) && !hasUnsavedChanges ? () => onOpenChange(false) : handleSave}
+                      className="w-full bg-green-600/80 hover:bg-green-500 text-white flex items-center justify-center gap-1.5 text-xs h-10 font-medium"
+                      style={{ paddingTop: '27px', paddingBottom: '27px', height: '40px' }}
+                      disabled={!imgSrc}
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>
+                        {(appliedToAll || editedImages.has(currentImageIndex)) && !hasUnsavedChanges
+                          ? 'Done' 
+                          : hasMultipleImages 
+                            ? `Save Image ${currentImageIndex + 1}` 
+                            : 'Save Image'}
+                      </span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Main Content - Image preview */}
+            <div className="w-full md:flex-1 flex flex-col min-w-0 flex-1 overflow-hidden bg-transparent dark:bg-transparent mt-1 md:mt-0 md:pl-3 order-2" style={{ scale: 1, outline: 'none' }}>
+              <div 
+                className={`image-edit-container w-full flex-1 min-h-[calc(100dvh-35vh)] md:min-h-0 overflow-hidden flex items-center justify-center rounded-lg ${isCropping ? 'bg-white dark:bg-card border border-gray-200 dark:border-border' : 'bg-white dark:bg-card border border-gray-200 dark:border-border'}`}
+                style={{ 
+                  scale: 1,
+                  outline: 'none'
+                }}
+              >
+                {imgSrc && (
+                  <div
+                    className="relative flex items-center justify-center pb-20 md:pb-0 pt-1 md:pt-0"
+                    style={{ outline: 'none', border: 'none', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 1)' }}
+                  >
+                    {/* Image edited checkmark - top right */}
+                    {editedImages.has(currentImageIndex) && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <CheckCircle className="w-8 h-8 text-green-500 fill-white drop-shadow-lg" />
+                      </div>
+                    )}
+
+                    {/* Multi-image navigation */}
+                    {hasMultipleImages && (
+                      <>
+                        {/* Previous button */}
+                        {currentImageIndex > 0 && (
+                          <button
+                            onClick={goToPrevImage}
+                            className="image-editor-nav-btn absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
+                            title="Previous image"
+                          >
+                            <ChevronLeft className="w-6 h-6 text-gray-800" />
+                          </button>
+                        )}
+
+                        {/* Next button */}
+                        {currentImageIndex < normalizedImages.length - 1 && (
+                          <button
+                            onClick={goToNextImage}
+                            className="image-editor-nav-btn absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white hover:bg-white shadow-xl ring-1 ring-black/5 flex items-center justify-center z-20 transition-all hover:scale-110"
+                            title="Next image"
+                          >
+                            <ChevronRight className="w-6 h-6 text-gray-800" />
+                          </button>
+                        )}
+
+                        {/* Image counter */}
+                        <div className="absolute top-4 left-4 bg-white/90 text-gray-900 text-sm px-3 py-1.5 rounded-full z-10 border border-gray-200 shadow-md">
+                          {currentImageIndex + 1} / {normalizedImages.length}
+                        </div>
+                      </>
+                    )}
+
+                    {isCropping ? (
+                      <img
+                        ref={imageRef}
+                        src={imgSrc}
+                        alt="Editor Preview"
+                        className="block object-contain"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    ) : (
+                      <canvas
+                        ref={previewCanvasRef}
+                        aria-label="Editor Preview"
+                        className="block object-contain"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          objectFit: 'contain',
+                          display: 'block',
+                          imageRendering: 'auto'
+                        }}
+                        width={800}
+                        height={600}
+                      />
+                    )}
+                    
+                    {/* Rotate buttons overlay - always visible */}
+                    <div style={{
+                      position: 'absolute',
+                      // Keep above the mobile footer buttons (Reset/Apply/Save)
+                      bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 100px)' : '12px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      display: 'flex',
+                      gap: '8px',
+                      zIndex: 2000
+                    }}>
+                      <button
+                        onClick={() => handleTransform('rotate_left')}
+                        className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white hover:bg-gray-50 border border-gray-300 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105"
+                        style={{
+                          borderColor: 'rgba(209, 213, 219, 1)',
+                          boxShadow: '0px 1px 10px 4px rgba(0, 0, 0, 0.1), 0px 0px 0px 0px rgba(0, 0, 0, 0), 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05)'
+                        }}
+                        title="Rotate Left"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-700" />
+                      </button>
+                      <button
+                        onClick={() => handleTransform('rotate_right')}
+                        className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white hover:bg-gray-50 border border-gray-300 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105"
+                        style={{
+                          borderColor: 'rgba(209, 213, 219, 1)',
+                          boxShadow: '0px 1px 10px 4px rgba(0, 0, 0, 0.1), 0px 0px 0px 0px rgba(0, 0, 0, 0), 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05)'
+                        }}
+                        title="Rotate Right"
+                      >
+                        <RotateCw className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-700" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {isCropping && (
+                <div className="mt-3 text-center text-gray-700 text-sm bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
+                  <p className="font-medium">✨ Drag the crop box or resize using the corners and edges</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer - Mobile only */}
+          <div className="md:hidden px-4 py-2.5 border-t border-gray-200 bg-gray-50 backdrop-blur-sm flex flex-col gap-2 flex-shrink-0">
+            {/* Reset All - only show when there are changes from ORIGINAL */}
+            {(() => {
+              const canShowResetAll =
+                hasMultipleImages &&
+                currentImageIndex === 0 &&
+                appliedToAll &&
+                normalizedImages.length > 1;
+
+              const canShowResetCurrent =
+                hasChangesFromOriginal() &&
+                (!appliedToAll || currentImageIndex !== 0 || !hasMultipleImages);
+
+              if (canShowResetAll) {
+                return (
+                  <Button
+                    onClick={resetAllImages}
+                    className="flex-1 bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                  >
+                    <Undo2 className="w-3 h-3" />
+                    <span>Reset All</span>
+                  </Button>
+                );
+              }
+
+              if (canShowResetCurrent) {
+                return (
+                  <Button
+                    onClick={resetCurrentImage}
+                    className="flex-1 bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                  >
+                    <Undo2 className="w-3 h-3" />
+                    <span>Reset</span>
+                  </Button>
+                );
+              }
+
+              return null;
+            })()}
+            
+            {/* Apply to All button - Mobile only in footer */}
+            {hasUnsavedChanges && hasMultipleImages && onApplyToAll && (
+              <Button
+                onClick={handleApplyFiltersToAll}
+                className="flex-1 bg-purple-600/80 hover:bg-purple-500 text-white text-xs h-7"
+              >
+                ✨ Apply to All
+              </Button>
+            )}
+            
+            {/* Save/Done button - Mobile only */}
+            {!isCropping && (
+              <Button
+                onClick={(appliedToAll || editedImages.has(currentImageIndex)) && !hasUnsavedChanges ? () => onOpenChange(false) : handleSave}
+                className="flex-1 bg-green-600/80 hover:bg-green-500 text-white flex items-center justify-center gap-1.5 text-xs h-7"
+                disabled={!imgSrc}
+              >
+                <Download className="w-3 h-3" />
+                <span>
+                  {(appliedToAll || editedImages.has(currentImageIndex)) && !hasUnsavedChanges
+                    ? 'Done' 
+                    : hasMultipleImages 
+                      ? `Save ${currentImageIndex + 1}` 
+                      : 'Save'}
+                </span>
+              </Button>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
