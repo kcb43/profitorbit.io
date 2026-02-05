@@ -466,6 +466,63 @@ export default function Crosslist() {
   useEffect(() => {
     localStorage.setItem('crosslist_layout', layout);
   }, [layout]);
+  
+  // Hybrid variation logic based on user preference:
+  // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
+  const viewVariation = React.useMemo(() => {
+    if (isMobile) return 2; // V2 for all mobile views
+    return layout === 'grid' ? 1 : 2; // Desktop: V1 for grid, V2 for list/rows
+  }, [isMobile, layout]);
+  
+  // Variation configurations
+  const gridVariations = {
+    1: { // Compact Professional
+      containerClass: "gap-3",
+      cardClass: "rounded-lg",
+      paddingClass: "p-3",
+      imageWrapperClass: "aspect-square",
+      badgeClass: "text-[9px] px-1.5 py-0.5",
+      titleClass: "text-xs font-bold",
+      dataTextClass: "text-[10px]",
+      hoverEffect: "",
+      buttonSizeClass: "h-6 w-6",
+      iconSizeClass: "h-3 w-3"
+    },
+    2: { // Visual Showcase
+      containerClass: "gap-6",
+      cardClass: "rounded-2xl",
+      paddingClass: "p-6",
+      imageWrapperClass: "aspect-square",
+      badgeClass: "text-xs px-3 py-1.5",
+      titleClass: "text-base font-bold",
+      dataTextClass: "text-sm",
+      hoverEffect: "hover:scale-105 transition-transform duration-300",
+      buttonSizeClass: "h-9 w-9",
+      iconSizeClass: "h-4 w-4"
+    }
+  };
+
+  const listVariations = {
+    1: { // Compact Professional
+      gridCols: "grid-cols-[100px_1fr_220px]",
+      imageHeight: 100,
+      padding: "p-3 py-3",
+      titleClass: "text-sm font-bold",
+      dataTextClass: "text-xs",
+      buttonSizeClass: "h-7 w-7",
+      iconSizeClass: "h-3.5 w-3.5"
+    },
+    2: { // Visual Showcase
+      gridCols: "grid-cols-[220px_1fr_280px]",
+      imageHeight: 220,
+      padding: "p-6 py-5",
+      titleClass: "text-lg font-bold",
+      dataTextClass: "text-base",
+      buttonSizeClass: "h-9 w-9",
+      iconSizeClass: "h-4 w-4"
+    }
+  };
+  
   const [isMobile, setIsMobile] = useState(false);
   const [q, setQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
@@ -2084,13 +2141,13 @@ export default function Crosslist() {
                   }}
                   className={`product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60`}
                 >
-                  <div className="grid grid-cols-[168px_1fr_220px] gap-0 min-w-0">
+                  <div className={`grid ${listVariations[viewVariation].gridCols} gap-0 min-w-0`}>
                     {/* Product Image Section */}
-                    <div className="p-4">
+                    <div className={listVariations[viewVariation].padding}>
                       <div
                         onClick={() => toggleSelect(it.id)}
                         className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
-                        style={{ height: 140 }}
+                        style={{ height: listVariations[viewVariation].imageHeight }}
                         title="Click image to select"
                       >
                         <OptimizedImage
@@ -2126,7 +2183,7 @@ export default function Crosslist() {
                       </div>
 
                     {/* Title */}
-                    <h3 className="text-lg font-bold text-foreground break-words line-clamp-2 mb-1">
+                    <h3 className={`${listVariations[viewVariation].titleClass} text-foreground break-words line-clamp-2 mb-1`}>
                       {it.item_name || 'Untitled Item'}
                     </h3>
 
@@ -2158,7 +2215,7 @@ export default function Crosslist() {
                         return (
                           <div key={m.id} className="flex flex-col items-center gap-1">
                             <div
-                              className={`relative inline-flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
+                              className={`relative inline-flex items-center justify-center ${listVariations[viewVariation].buttonSizeClass} rounded-xl border transition-all ${
                                 isListed
                                   ? "bg-white dark:bg-card border-emerald-500/40 opacity-100 shadow-sm"
                                   : isProcessing
@@ -2185,7 +2242,7 @@ export default function Crosslist() {
                                 }
                               }}
                             >
-                              {renderMarketplaceIcon(m, "w-6 h-6")}
+                              {renderMarketplaceIcon(m, listVariations[viewVariation].iconSizeClass)}
                               {isListed && listingUrl && (
                                 <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-1 shadow">
                                   <ExternalLink className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
@@ -2249,7 +2306,7 @@ export default function Crosslist() {
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full overflow-x-hidden mt-6" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${gridVariations[viewVariation].containerClass} w-full max-w-full overflow-x-hidden mt-6`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
             {filtered.map((it) => {
               const map = computeListingState(it);
               const listedCount = Object.values(map).filter((v) => v === 'active').length;
@@ -2262,12 +2319,9 @@ export default function Crosslist() {
                       toggleSelect(it.id);
                     }
                   }}
-                  className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] cursor-pointer ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg max-w-full`}
-                  style={{
-                    borderRadius: '16px',
-                  }}
+                  className={`group overflow-hidden transition-all duration-300 cursor-pointer ${gridVariations[viewVariation].hoverEffect} ${gridVariations[viewVariation].cardClass} ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg max-w-full`}
                 >
-                  <div className="relative aspect-square overflow-hidden bg-gray-50 dark:bg-card/70"
+                  <div className={`relative ${gridVariations[viewVariation].imageWrapperClass} overflow-hidden bg-gray-50 dark:bg-card/70`}
                   >
                     <div
                       onClick={() => toggleSelect(it.id)}
@@ -2289,16 +2343,16 @@ export default function Crosslist() {
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 z-10">
-                      <Badge variant="outline" className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} text-[10px] px-1.5 py-0.5 backdrop-blur-sm`}>
+                      <Badge variant="outline" className={`${STATUS_COLORS[it.status] || STATUS_COLORS.available} ${gridVariations[viewVariation].badgeClass} backdrop-blur-sm`}>
                         {STATUS_LABELS[it.status] || STATUS_LABELS.available}
                       </Badge>
                     </div>
                   </div>
-                  <CardContent className="p-4 card-clickable-area">
-                    <h3 className="font-bold text-foreground text-sm mb-2 line-clamp-2">
+                  <CardContent className={`${gridVariations[viewVariation].paddingClass} card-clickable-area`}>
+                    <h3 className={`${gridVariations[viewVariation].titleClass} text-foreground mb-2 line-clamp-2`}>
                       {it.item_name}
                     </h3>
-                    <div className="text-xs text-gray-700 dark:text-gray-300 mb-3">{it.category || "—"}</div>
+                    <div className={`${gridVariations[viewVariation].dataTextClass} text-gray-700 dark:text-gray-300 mb-3`}>{it.category || "—"}</div>
                     <div className="flex flex-wrap gap-1.5 mb-3" onClick={(e) => e.stopPropagation()}>
                       {MARKETPLACES.map((m) => {
                         const state = map[m.id];
@@ -2323,7 +2377,7 @@ export default function Crosslist() {
                             className="flex flex-col items-center gap-1"
                           >
                             <div
-                              className={`relative inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all backdrop-blur-sm ${
+                              className={`relative inline-flex items-center justify-center ${gridVariations[viewVariation].buttonSizeClass} rounded-lg border transition-all backdrop-blur-sm ${
                                 isListed
                                   ? "bg-green-600/30 border-green-500/50 opacity-100"
                                   : isProcessing
@@ -2350,7 +2404,7 @@ export default function Crosslist() {
                                 }
                               }}
                             >
-                              {renderMarketplaceIcon(m, "w-4 h-4")}
+                              {renderMarketplaceIcon(m, gridVariations[viewVariation].iconSizeClass)}
                               {isListed && listingUrl && (
                                 <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
                                   <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />

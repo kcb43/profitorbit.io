@@ -162,6 +162,73 @@ export default function SalesHistory() {
     if (isMobile && viewMode !== "grid") setViewMode("grid");
   }, [isMobile, viewMode]);
 
+  // Hybrid variation logic based on user preference:
+  // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
+  const viewVariation = React.useMemo(() => {
+    if (isMobile) return 2; // V2 for all mobile views
+    return viewMode === 'grid' ? 1 : 2; // Desktop: V1 for grid, V2 for list
+  }, [isMobile, viewMode]);
+
+  // Variation configurations
+  const gridVariations = {
+    1: { // Compact Professional
+      containerClass: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3",
+      cardClass: "rounded-lg",
+      paddingClass: "p-3",
+      imageWrapperClass: "aspect-square",
+      badgeClass: "text-[9px] px-1.5 py-0.5",
+      titleClass: "text-xs font-bold",
+      dataTextClass: "text-[10px]",
+      hoverEffect: "",
+      buttonSizeClass: "h-6 w-6",
+      iconSizeClass: "h-3 w-3",
+      cardBorderRadius: "12px",
+      imageBorderRadius: "8px"
+    },
+    2: { // Visual Showcase
+      containerClass: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6",
+      cardClass: "rounded-2xl",
+      paddingClass: "p-6",
+      imageWrapperClass: "aspect-square",
+      badgeClass: "text-xs px-3 py-1.5",
+      titleClass: "text-base font-bold",
+      dataTextClass: "text-sm",
+      hoverEffect: "hover:scale-105 transition-transform duration-300",
+      buttonSizeClass: "h-9 w-9",
+      iconSizeClass: "h-4 w-4",
+      cardBorderRadius: "16px",
+      imageBorderRadius: "12px"
+    }
+  };
+
+  const listVariations = {
+    1: { // Compact Professional
+      gridCols: "grid-cols-[100px_1fr_220px]",
+      imageHeight: 100,
+      padding: "p-3 py-3",
+      titleClass: "text-sm font-bold",
+      dataTextClass: "text-xs",
+      buttonSizeClass: "h-7 w-7",
+      iconSizeClass: "h-3.5 w-3.5",
+      cardBorderRadius: "12px",
+      imageBorderRadius: "8px"
+    },
+    2: { // Visual Showcase
+      gridCols: "grid-cols-[168px_1fr_260px]",
+      imageHeight: 140,
+      padding: "p-4 py-4",
+      titleClass: "text-base font-bold",
+      dataTextClass: "text-sm",
+      buttonSizeClass: "h-9 w-9",
+      iconSizeClass: "h-4 w-4",
+      cardBorderRadius: "16px",
+      imageBorderRadius: "12px"
+    }
+  };
+
+  const currentGridConfig = gridVariations[viewVariation];
+  const currentListConfig = listVariations[viewVariation];
+
   async function apiGetJson(path) {
     // Wait briefly for Supabase session hydration.
     let session = null;
@@ -1503,7 +1570,7 @@ export default function SalesHistory() {
                   </div>
                 )}
                 {viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                  <div className={`grid ${currentGridConfig.containerClass}`}>
                     {filteredSales.map((sale) => {
                       const safeNotes = splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean;
                       const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
@@ -1522,15 +1589,15 @@ export default function SalesHistory() {
                       return (
                         <Card 
                           key={sale.id} 
-                          className={`group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg`}
+                          className={`group overflow-hidden transition-all duration-300 ${currentGridConfig.hoverEffect} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${currentGridConfig.cardClass}`}
                           style={{
-                            borderRadius: '16px',
+                            borderRadius: currentGridConfig.cardBorderRadius,
                           }}
                         >
                           <div className="relative">
                             <div 
                               onClick={() => handleSelect(sale.id)}
-                              className={`relative aspect-square overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-card/70`}
+                              className={`relative ${currentGridConfig.imageWrapperClass} overflow-hidden cursor-pointer transition-all duration-200 bg-gray-50 dark:bg-card/70`}
                             >
                               {sale.image_url ? (
                                 <OptimizedImage
@@ -1541,13 +1608,13 @@ export default function SalesHistory() {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="w-16 h-16 text-gray-400" />
+                                  <Package className={`${currentGridConfig.buttonSizeClass} text-gray-400`} style={{ width: '4rem', height: '4rem' }} />
                                 </div>
                               )}
                               {selectedSales.includes(sale.id) && (
                                 <div className="absolute top-2 left-2 z-20">
                                   <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                                    <Check className="w-4 h-4 text-white" />
+                                    <Check className={currentGridConfig.iconSizeClass} />
                                   </div>
                                 </div>
                               )}
@@ -1556,31 +1623,31 @@ export default function SalesHistory() {
                                   <img 
                                     src={platformIcons[sale.platform]} 
                                     alt={platformNames[sale.platform]}
-                                    className="w-5 h-5 object-contain"
-                                    style={{ filter: sale.platform === 'ebay' ? 'none' : 'none' }}
+                                    className={`${currentGridConfig.iconSizeClass} object-contain`}
+                                    style={{ width: '1.25rem', height: '1.25rem', filter: sale.platform === 'ebay' ? 'none' : 'none' }}
                                   />
                                 </div>
                               )}
                               <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                                <div className="px-2 py-1 rounded-lg text-white text-xs font-semibold backdrop-blur-sm"
+                                <div className={`${currentGridConfig.badgeClass} rounded-lg text-white font-semibold backdrop-blur-sm`}
                                   style={{
                                     background: resaleValue.color,
                                   }}>
                                   {resaleValue.label}
                                 </div>
-                                <div className={`px-2 py-1 rounded-lg text-white text-xs font-bold backdrop-blur-sm ${sale.profit >= 0 ? 'bg-green-600/90' : 'bg-red-600/90'}`}>
+                                <div className={`${currentGridConfig.badgeClass} rounded-lg text-white font-bold backdrop-blur-sm ${sale.profit >= 0 ? 'bg-green-600/90' : 'bg-red-600/90'}`}>
                                   {sale.profit >= 0 ? '+' : ''}${sale.profit?.toFixed(0) || '0'}
                                 </div>
                               </div>
                             </div>
                           </div>
-                          <CardContent className="p-4">
+                          <CardContent className={currentGridConfig.paddingClass}>
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)}>
-                              <h3 className="font-bold text-foreground text-sm mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                              <h3 className={`${currentGridConfig.titleClass} text-foreground mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors`}>
                                 {sale.item_name || 'Untitled Item'}
                               </h3>
                             </Link>
-                            <div className="space-y-1.5 text-xs mb-3">
+                            <div className={`space-y-1.5 ${currentGridConfig.dataTextClass} mb-3`}>
                               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                                 <span>Sold Price:</span>
                                 <span className="font-semibold text-foreground">${sale.selling_price?.toFixed(2)}</span>
@@ -1599,16 +1666,17 @@ export default function SalesHistory() {
                               </div>
                             </div>
                             {isDeleted && daysUntilPermanentDelete !== null && (
-                              <div className="mb-3 p-2 bg-orange-100 border-l-2 border-orange-500 rounded-r text-orange-800 text-xs">
+                              <div className={`mb-3 p-2 bg-orange-100 border-l-2 border-orange-500 rounded-r text-orange-800 ${currentGridConfig.dataTextClass}`}>
                                 <p className="font-semibold flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
+                                  <Calendar className={currentGridConfig.iconSizeClass} />
                                   {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until deletion
                                 </p>
                               </div>
                             )}
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block">
                               <Button 
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm"
+                                className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold ${currentGridConfig.dataTextClass} shadow-sm`}
+                                style={{ height: viewVariation === 1 ? '28px' : '36px' }}
                               >
                                 View Details
                               </Button>
@@ -1950,19 +2018,25 @@ export default function SalesHistory() {
 
                       {/* Desktop list layout (new) */}
                       <div
-                        className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-border bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden ${currentListConfig.cardClass} border border-gray-200/80 dark:border-border bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : ''}`}
+                        style={{
+                          borderRadius: currentListConfig.cardBorderRadius,
+                        }}
                       >
-                        <div className="grid grid-cols-[168px_1fr_260px] min-w-0">
+                        <div className={`grid ${currentListConfig.gridCols} min-w-0`}>
                           {/* Image */}
-                          <div className="p-4">
+                          <div className={currentListConfig.padding}>
                             <div
                               onClick={() => handleSelect(sale.id)}
-                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition ${
+                              className={`relative overflow-hidden border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition ${
                                 selectedSales.includes(sale.id)
                                   ? "border-green-500 shadow-lg shadow-green-500/20"
                                   : "border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80"
                               }`}
-                              style={{ height: 140 }}
+                              style={{ 
+                                height: currentListConfig.imageHeight,
+                                borderRadius: currentListConfig.imageBorderRadius
+                              }}
                               title="Click image to select"
                             >
                               {sale.image_url ? (
@@ -1973,7 +2047,7 @@ export default function SalesHistory() {
                                   lazy={true}
                                 />
                               ) : (
-                                <Package className="w-10 h-10 text-gray-400" />
+                                <Package className={`${currentListConfig.iconSizeClass} text-gray-400`} style={{ width: '2.5rem', height: '2.5rem' }} />
                               )}
 
                               {platformIcons[sale.platform] && (
@@ -1981,7 +2055,8 @@ export default function SalesHistory() {
                                   <img
                                     src={platformIcons[sale.platform]}
                                     alt={platformNames[sale.platform]}
-                                    className="w-5 h-5 object-contain"
+                                    className={currentListConfig.iconSizeClass}
+                                    style={{ width: '1.25rem', height: '1.25rem' }}
                                   />
                                 </div>
                               )}
@@ -1989,7 +2064,7 @@ export default function SalesHistory() {
                               {selectedSales.includes(sale.id) && (
                                 <div className="absolute top-2 left-2 z-20">
                                   <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                                    <Check className="w-4 h-4 text-white" />
+                                    <Check className={currentListConfig.iconSizeClass} />
                                   </div>
                                 </div>
                               )}
@@ -1997,23 +2072,23 @@ export default function SalesHistory() {
                           </div>
 
                           {/* Details */}
-                          <div className="min-w-0 border-l border-r border-gray-200/70 dark:border-border px-5 py-4">
+                          <div className={`min-w-0 border-l border-r border-gray-200/70 dark:border-border px-5 ${currentListConfig.padding}`}>
                             <div className="flex items-center justify-between gap-3 mb-3">
                               <div className="flex items-center gap-2 min-w-0">
                                 <div
-                                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
+                                  className={`inline-flex items-center ${currentListConfig.dataTextClass === 'text-xs' ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'} rounded-xl font-semibold text-white`}
                                   style={{ background: resaleValue.color }}
                                   title="Resale value"
                                 >
                                   {resaleValue.label}
                                 </div>
-                                <div className="text-xs text-muted-foreground truncate">
+                                <div className={`${currentListConfig.dataTextClass} text-muted-foreground truncate`}>
                                   {platformNames[sale.platform] || "—"} • {sale.sale_date ? format(parseISO(sale.sale_date), "MMM d, yyyy") : 'N/A'}
                                 </div>
                               </div>
 
-                              <div className="text-sm font-bold tabular-nums">
-                                <span className="text-muted-foreground text-xs font-semibold mr-2">Profit</span>
+                              <div className={`${currentListConfig.dataTextClass} font-bold tabular-nums`}>
+                                <span className={`text-muted-foreground ${currentListConfig.dataTextClass === 'text-xs' ? 'text-[10px]' : 'text-xs'} font-semibold mr-2`}>Profit</span>
                                 <span className={`${(sale.profit || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                   {(sale.profit || 0) >= 0 ? '+' : ''}${(sale.profit || 0).toFixed(2)}
                                 </span>
@@ -2021,32 +2096,32 @@ export default function SalesHistory() {
                             </div>
 
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="block mb-2">
-                              <h3 className="text-base font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                              <h3 className={`${currentListConfig.titleClass} text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2`}>
                                 {sale.item_name || "Untitled Item"}
                               </h3>
                             </Link>
 
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div className={`grid grid-cols-2 gap-x-8 gap-y-2 ${currentListConfig.dataTextClass}`}>
                               <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Sold</span>
+                                <span className={`text-muted-foreground ${currentListConfig.dataTextClass === 'text-xs' ? 'text-[10px]' : 'text-xs'} font-semibold`}>Sold</span>
                                 <span className="font-bold text-foreground tabular-nums">
                                   ${Number(sale.selling_price || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">ROI</span>
+                                <span className={`text-muted-foreground ${currentListConfig.dataTextClass === 'text-xs' ? 'text-[10px]' : 'text-xs'} font-semibold`}>ROI</span>
                                 <span className="font-semibold text-foreground tabular-nums">
                                   {Number.isFinite(Number(sale.roi)) ? `${Number(sale.roi).toFixed(0)}%` : "—"}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Costs</span>
+                                <span className={`text-muted-foreground ${currentListConfig.dataTextClass === 'text-xs' ? 'text-[10px]' : 'text-xs'} font-semibold`}>Costs</span>
                                 <span className="font-semibold text-foreground tabular-nums">
                                   ${Number(totalCosts || 0).toFixed(2)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Net</span>
+                                <span className={`text-muted-foreground ${currentListConfig.dataTextClass === 'text-xs' ? 'text-[10px]' : 'text-xs'} font-semibold`}>Net</span>
                                 <span className="font-semibold text-foreground tabular-nums">
                                   ${Number((sale.selling_price || 0) - (totalCosts || 0)).toFixed(2)}
                                 </span>
@@ -2054,15 +2129,15 @@ export default function SalesHistory() {
                             </div>
 
                             {safeNotes && (
-                              <div className="mt-3 text-xs text-muted-foreground line-clamp-2">
+                              <div className={`mt-3 ${currentListConfig.dataTextClass} text-muted-foreground line-clamp-2`}>
                                 {safeNotes}
                               </div>
                             )}
 
                             {isDeleted && daysUntilPermanentDelete !== null && (
-                              <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-xs">
+                              <div className={`mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 ${currentListConfig.dataTextClass}`}>
                                 <p className="font-semibold flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
+                                  <Calendar className={currentListConfig.iconSizeClass} />
                                   {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
                                 </p>
                               </div>
@@ -2070,9 +2145,12 @@ export default function SalesHistory() {
                           </div>
 
                           {/* Actions */}
-                          <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
+                          <div className={`${currentListConfig.padding} bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2`}>
                             <Link to={createPageUrl(`SoldItemDetail?id=${sale.id}&expandFees=true`)} className="w-full">
-                              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs h-9 shadow-sm">
+                              <Button 
+                                className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl ${currentListConfig.dataTextClass} shadow-sm`}
+                                style={{ height: viewVariation === 1 ? '28px' : '36px' }}
+                              >
                                 View Details
                               </Button>
                             </Link>
@@ -2082,9 +2160,10 @@ export default function SalesHistory() {
                                 <Button
                                   onClick={() => recoverSaleMutation.mutate(sale)}
                                   disabled={recoverSaleMutation.isPending}
-                                  className="w-full bg-green-600 hover:bg-green-700 rounded-xl text-xs h-9"
+                                  className={`w-full bg-green-600 hover:bg-green-700 rounded-xl ${currentListConfig.dataTextClass}`}
+                                  style={{ height: viewVariation === 1 ? '28px' : '36px' }}
                                 >
-                                  <ArchiveRestore className="w-4 h-4 mr-2" />
+                                  <ArchiveRestore className={currentListConfig.iconSizeClass} style={{ marginRight: '0.5rem' }} />
                                   {recoverSaleMutation.isPending ? "Recovering..." : "Recover"}
                                 </Button>
                                 <Button
@@ -2093,23 +2172,32 @@ export default function SalesHistory() {
                                     setPermanentDeleteDialogOpen(true);
                                   }}
                                   disabled={permanentDeleteSaleMutation.isPending}
-                                  className="w-full bg-red-600 hover:bg-red-700 rounded-xl text-xs h-9"
+                                  className={`w-full bg-red-600 hover:bg-red-700 rounded-xl ${currentListConfig.dataTextClass}`}
+                                  style={{ height: viewVariation === 1 ? '28px' : '36px' }}
                                 >
-                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  <Trash2 className={currentListConfig.iconSizeClass} style={{ marginRight: '0.5rem' }} />
                                   Delete Forever
                                 </Button>
                               </>
                             ) : (
                               <>
                                 <Link to={createPageUrl(`AddSale?id=${sale.id}`)} className="w-full">
-                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
-                                    <Pencil className="w-4 h-4 mr-2" />
+                                  <Button 
+                                    variant="outline" 
+                                    className={`w-full rounded-xl ${currentListConfig.dataTextClass} border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900`}
+                                    style={{ height: viewVariation === 1 ? '28px' : '36px' }}
+                                  >
+                                    <Pencil className={currentListConfig.iconSizeClass} style={{ marginRight: '0.5rem' }} />
                                     Edit
                                   </Button>
                                 </Link>
                                 <Link to={createPageUrl(`AddSale?copyId=${sale.id}`)} className="w-full">
-                                  <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
-                                    <Copy className="w-4 h-4 mr-2" />
+                                  <Button 
+                                    variant="outline" 
+                                    className={`w-full rounded-xl ${currentListConfig.dataTextClass} border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900`}
+                                    style={{ height: viewVariation === 1 ? '28px' : '36px' }}
+                                  >
+                                    <Copy className={currentListConfig.iconSizeClass} style={{ marginRight: '0.5rem' }} />
                                     Copy
                                   </Button>
                                 </Link>
@@ -2121,9 +2209,10 @@ export default function SalesHistory() {
                                       setLinkSearch(sale?.item_name || "");
                                       setLinkDialogOpen(true);
                                     }}
-                                    className="w-full rounded-xl text-xs h-9 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                                    className={`w-full rounded-xl ${currentListConfig.dataTextClass} border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20`}
+                                    style={{ height: viewVariation === 1 ? '28px' : '36px' }}
                                   >
-                                    <Link2 className="w-4 h-4 mr-2" />
+                                    <Link2 className={currentListConfig.iconSizeClass} style={{ marginRight: '0.5rem' }} />
                                     Link Inventory
                                   </Button>
                                 )}
@@ -2131,9 +2220,10 @@ export default function SalesHistory() {
                                   variant="outline"
                                   onClick={() => handleDeleteClick(sale)}
                                   disabled={deleteSaleMutation.isPending}
-                                  className="w-full rounded-xl text-xs h-9 border-red-500/40 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                  className={`w-full rounded-xl ${currentListConfig.dataTextClass} border-red-500/40 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20`}
+                                  style={{ height: viewVariation === 1 ? '28px' : '36px' }}
                                 >
-                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  <Trash2 className={currentListConfig.iconSizeClass} style={{ marginRight: '0.5rem' }} />
                                   Delete
                                 </Button>
                               </>

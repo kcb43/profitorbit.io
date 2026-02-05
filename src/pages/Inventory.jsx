@@ -101,16 +101,14 @@ export default function InventoryPage() {
   const [tagDrafts, setTagDrafts] = useState({});
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
-  // View variation state (1 = Compact Professional, 2 = Visual Showcase, 3 = Mobile-First Hybrid)
-  const [viewVariation, setViewVariation] = useState(() => {
-    const saved = localStorage.getItem('inventory_view_variation');
-    return saved ? parseInt(saved, 10) : 1;
-  });
+  // Hybrid variation logic based on user preference:
+  // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
+  const viewVariation = React.useMemo(() => {
+    if (isMobile) return 2; // V2 for all mobile views
+    return viewMode === 'grid' ? 1 : 2; // Desktop: V1 for grid, V2 for list
+  }, [isMobile, viewMode]);
   
-  // Save variation preference
-  useEffect(() => {
-    localStorage.setItem('inventory_view_variation', viewVariation.toString());
-  }, [viewVariation]);
+  const [showDismissedReturns, setShowDismissedReturns] = useState(false);
   
   // Variation configurations
   const gridVariations = {
@@ -1517,37 +1515,6 @@ export default function InventoryPage() {
               </Link>
             </div>
             <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0">
-              {/* Variation Switcher */}
-              <div className="flex gap-1 p-1 bg-muted rounded-lg flex-shrink-0">
-                <Button
-                  variant={viewVariation === 1 ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewVariation(1)}
-                  className="text-xs h-8 px-2"
-                  title="Compact Professional - Dense info layout"
-                >
-                  V1
-                </Button>
-                <Button
-                  variant={viewVariation === 2 ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewVariation(2)}
-                  className="text-xs h-8 px-2"
-                  title="Visual Showcase - Beautiful presentation"
-                >
-                  V2
-                </Button>
-                <Button
-                  variant={viewVariation === 3 ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewVariation(3)}
-                  className="text-xs h-8 px-2"
-                  title="Mobile-First Hybrid - Touch optimized"
-                >
-                  V3
-                </Button>
-              </div>
-              
               <Button
                 variant="outline"
                 onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
