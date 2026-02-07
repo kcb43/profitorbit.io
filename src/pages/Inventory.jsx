@@ -2035,7 +2035,7 @@ export default function InventoryPage() {
                     <div key={item.id} className="w-full max-w-full">
                       {/* Mobile/Tablet list layout (unchanged) */}
                       <div
-                        className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                        className={`lg:hidden product-list-item relative flex flex-row flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                         style={{
                           minHeight: 'auto',
                           height: 'auto',
@@ -2049,7 +2049,7 @@ export default function InventoryPage() {
                           boxShadow: selectedItems.includes(item.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
                         }}
                       >
-                      <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4 w-[150px] sm:w-auto" style={{ minWidth: '150px', maxWidth: '150px' }}>
+                      <div className="flex-shrink-0 m-1 sm:m-4 w-[150px] sm:w-auto" style={{ minWidth: '150px', maxWidth: '150px' }}>
                         <div
                           onClick={() => handleSelect(item.id)}
                           className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[150px] sm:w-[220px] min-w-[150px] sm:min-w-[220px] max-w-[150px] sm:max-w-[220px] h-[150px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
