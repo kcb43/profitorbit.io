@@ -2045,14 +2045,14 @@ export default function InventoryPage() {
                           width: '100%',
                           boxSizing: 'border-box',
                           flexShrink: 0,
-                          paddingBottom: window.innerWidth < 768 ? '2.50rem' : '0',
+                          paddingBottom: '0',
                           boxShadow: selectedItems.includes(item.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
                         }}
                       >
                       <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[130px] sm:w-[220px] min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] h-[130px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
+                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[150px] sm:w-[220px] min-w-[150px] sm:min-w-[220px] max-w-[150px] sm:max-w-[220px] h-[150px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
@@ -2093,21 +2093,21 @@ export default function InventoryPage() {
                         </div>
                         
                         {/* Mobile: Favorite, Edit Image icons, and Status badge below image */}
-                        <div className="md:hidden mt-2">
-                          <div className="flex items-center gap-1.5">
+                        <div className="md:hidden mt-3">
+                          <div className="flex items-center gap-2 mb-1">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFavorite(item.id);
                               }}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                              className={`inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent transition ${
                                 favoriteMarked
                                   ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                   : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
                               }`}
                             >
-                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                              <Star className={`h-5 w-5 ${favoriteMarked ? "fill-current" : ""}`} />
                             </button>
                             {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
                               <button
@@ -2116,9 +2116,9 @@ export default function InventoryPage() {
                                   e.stopPropagation();
                                   handleEditImage(e, item);
                                 }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
                               >
-                                <ImageIcon className="h-3.5 w-3.5" />
+                                <ImageIcon className="h-5 w-5" />
                               </button>
                             )}
                             <button
@@ -2128,9 +2128,9 @@ export default function InventoryPage() {
                                 setItemToView(item);
                                 setViewDialogOpen(true);
                               }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
                             >
-                              <Search className="h-3.5 w-3.5" />
+                              <Search className="h-5 w-5" />
                             </button>
                             <button
                               type="button"
@@ -2138,15 +2138,20 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 handleDeleteClick(item);
                               }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
-                          </div>
-                          <div className="absolute right-2 top-[140px]">
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              {item.source && (
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                  {item.source}
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                                {statusLabels[item.status] || statusLabels.available}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2168,11 +2173,21 @@ export default function InventoryPage() {
                         </div>
                         
                         <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
-                          <h3 className="text-sm sm:text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-3 sm:line-clamp-2 text-left"
+                          <h3 className="text-sm sm:text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2 text-left"
                             style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
                             {item.item_name || 'Untitled Item'}
                           </h3>
                         </Link>
+
+                        {/* Mobile return banner */}
+                        {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
+                          <div className="md:hidden mb-2 p-2 bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500 rounded-r text-red-700 dark:text-red-300">
+                            <p className="font-semibold text-[10px] flex items-center gap-1">
+                              <AlarmClock className="w-3 h-3" />
+                              Return in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        )}
 
                         <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
                           <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
@@ -2191,6 +2206,10 @@ export default function InventoryPage() {
                                 (${(perItemPrice || 0).toFixed(2)} ea)
                               </span>
                             )}
+                          </p>
+                          
+                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
+                            <span className="font-semibold">Purchased:</span> {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
                           </p>
                         </div>
 
@@ -2350,24 +2369,39 @@ export default function InventoryPage() {
                         </Button>
                       </div>
                       
-                      {/* Mobile: Mark Sold and View Details buttons at bottom */}
-                      <div className="md:hidden flex gap-2 px-2 pt-3 mt-5 border-t border-gray-200 w-full -mb-2">
+                      {/* Mobile: Mark Sold and Edit buttons at bottom */}
+                      <div 
+                        onClick={(e) => {
+                          // Make card clickable for details (except image)
+                          const target = e.target;
+                          const isImage = target.closest('.glass');
+                          const isButton = target.closest('button');
+                          if (!isImage && !isButton) {
+                            setItemToView(item);
+                            setViewDialogOpen(true);
+                          }
+                        }}
+                        className="md:hidden flex gap-2 px-2 pt-2 pb-2 border-t border-gray-200 dark:border-border w-full"
+                      >
                         {!isSoldOut && item.status !== 'sold' && (
                           <Button
-                            onClick={() => handleMarkAsSold(item)}
-                            className="flex-1 text-white font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[11px] bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsSold(item);
+                            }}
+                            className="flex-1 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                           >
                             Mark Sold
                           </Button>
                         )}
                         <Button
-                          onClick={() => {
-                            setItemToView(item);
-                            setViewDialogOpen(true);
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(createPageUrl(`AddInventoryItem?id=${item.id}`), { state: returnStateForInventory });
                           }}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-[11px]"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
                         >
-                          View Details
+                          Edit
                         </Button>
                       </div>
                       </div>
