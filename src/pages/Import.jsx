@@ -197,9 +197,8 @@ export default function Import() {
         try {
           const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
           const fbConnected = bridgeStatus.facebook?.loggedIn === true;
-          const fbUser = localStorage.getItem('profit_orbit_facebook_user');
           
-          if (fbConnected && fbUser) {
+          if (fbConnected) {
             setIsConnected(true);
             console.log('✅ Facebook connected');
           } else {
@@ -322,11 +321,10 @@ export default function Import() {
       try {
         const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
         const fbConnected = bridgeStatus.facebook?.loggedIn === true;
-        const fbUser = localStorage.getItem('profit_orbit_facebook_user');
         
-        console.log('🔍 Facebook connection check:', { fbConnected, fbUser });
+        console.log('🔍 Facebook connection check:', { fbConnected });
         
-        if (fbConnected && fbUser) {
+        if (fbConnected) {
           setIsConnected(true);
           console.log('✅ Facebook connected');
           
