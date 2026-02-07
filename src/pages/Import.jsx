@@ -193,16 +193,22 @@ export default function Import() {
           setIsConnected(false);
         }
       } else if (selectedSource === "facebook") {
-        // Check Facebook connection
-        const isConnected = localStorage.getItem('profit_orbit_facebook_connected') === 'true';
-        const fbUser = localStorage.getItem('profit_orbit_facebook_user');
-        
-        if (isConnected && fbUser) {
-          setIsConnected(true);
-          console.log('✅ Facebook connected');
-        } else {
+        // Check Facebook connection from bridge status
+        try {
+          const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+          const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+          const fbUser = localStorage.getItem('profit_orbit_facebook_user');
+          
+          if (fbConnected && fbUser) {
+            setIsConnected(true);
+            console.log('✅ Facebook connected');
+          } else {
+            setIsConnected(false);
+            console.log('❌ Facebook not connected');
+          }
+        } catch (e) {
+          console.error('Error checking Facebook connection:', e);
           setIsConnected(false);
-          console.log('❌ Facebook not connected');
         }
       } else if (selectedSource === "mercari") {
         // Check Mercari connection
@@ -312,14 +318,15 @@ export default function Import() {
   // Check Facebook connection
   useEffect(() => {
     if (selectedSource === "facebook") {
-      // Check if Facebook is connected via extension
+      // Check if Facebook is connected via bridge status
       try {
-        const isConnected = localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+        const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+        const fbConnected = bridgeStatus.facebook?.loggedIn === true;
         const fbUser = localStorage.getItem('profit_orbit_facebook_user');
         
-        console.log('🔍 Facebook connection check:', { isConnected, fbUser });
+        console.log('🔍 Facebook connection check:', { fbConnected, fbUser });
         
-        if (isConnected && fbUser) {
+        if (fbConnected && fbUser) {
           setIsConnected(true);
           console.log('✅ Facebook connected');
           
@@ -981,12 +988,34 @@ export default function Import() {
       
     } catch (error) {
       console.error('❌ Facebook sync error:', error);
-      toast({
-        title: "Sync failed",
-        description: error.message || "Failed to sync Facebook listings",
-        variant: "destructive",
-        duration: 6000,
-      });
+      
+      // Check if this is a token expiration error
+      const isTokenError = error.message && (
+        error.message.includes('fb_dtsg') || 
+        error.message.includes('CSRF token') ||
+        error.message.includes('Empty response')
+      );
+      
+      if (isTokenError) {
+        // Mark Facebook as disconnected in bridge status
+        const currentStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+        currentStatus.facebook = { loggedIn: false };
+        localStorage.setItem('profit_orbit_bridge_status', JSON.stringify(currentStatus));
+        
+        toast({
+          title: "Facebook Session Expired",
+          description: "Please reconnect Facebook Marketplace in Settings to continue importing.",
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "Sync failed",
+          description: error.message || "Failed to sync Facebook listings",
+          variant: "destructive",
+          duration: 6000,
+        });
+      }
     }
   };
 
