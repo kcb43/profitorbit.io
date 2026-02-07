@@ -383,6 +383,52 @@ export default function Import() {
     }
   }, [selectedSource, userId, queryClient]);
 
+  // Listen for bridge ready event and re-check connection
+  useEffect(() => {
+    const handleBridgeReady = (event) => {
+      console.log('🔵 Import: Bridge ready event received, re-checking connection');
+      
+      // Re-check connection status from localStorage after bridge updates it
+      if (selectedSource === 'facebook') {
+        try {
+          const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+          const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+          console.log('🔵 Import: Facebook status after bridge ready:', fbConnected);
+          setIsConnected(fbConnected);
+        } catch (e) {
+          console.error('Error re-checking Facebook connection:', e);
+        }
+      }
+    };
+    
+    window.addEventListener('profitOrbitBridgeReady', handleBridgeReady);
+    return () => window.removeEventListener('profitOrbitBridgeReady', handleBridgeReady);
+  }, [selectedSource]);
+
+  // Listen for bridge status updates
+  useEffect(() => {
+    const handleBridgeStatusUpdate = (event) => {
+      console.log('🔵 Import: Bridge status update event received:', event.detail);
+      
+      if (selectedSource === 'facebook' && event.detail?.marketplace === 'facebook') {
+        const isConnected = event.detail?.status?.loggedIn === true;
+        console.log('🔵 Import: Facebook status from bridge event:', isConnected);
+        setIsConnected(isConnected);
+      } else if (selectedSource === 'mercari' && event.detail?.marketplace === 'mercari') {
+        const isConnected = event.detail?.status?.loggedIn === true;
+        console.log('🔵 Import: Mercari status from bridge event:', isConnected);
+        setIsConnected(isConnected);
+      } else if (selectedSource === 'ebay' && event.detail?.marketplace === 'ebay') {
+        const isConnected = event.detail?.status?.loggedIn === true;
+        console.log('🔵 Import: eBay status from bridge event:', isConnected);
+        setIsConnected(isConnected);
+      }
+    };
+    
+    window.addEventListener('marketplaceStatusUpdate', handleBridgeStatusUpdate);
+    return () => window.removeEventListener('marketplaceStatusUpdate', handleBridgeStatusUpdate);
+  }, [selectedSource]);
+
   // Listen for Facebook connection from extension
   useEffect(() => {
     const handleConnectionReady = (event) => {
