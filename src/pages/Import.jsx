@@ -193,32 +193,38 @@ export default function Import() {
           setIsConnected(false);
         }
       } else if (selectedSource === "facebook") {
-        // Wait for bridge to be ready before checking Facebook connection
-        const checkFacebookConnection = () => {
-          try {
-            const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
-            const fbConnected = bridgeStatus.facebook?.loggedIn === true;
-            
-            if (fbConnected) {
-              setIsConnected(true);
-              console.log('✅ Facebook connected');
-            } else {
-              setIsConnected(false);
-              console.log('❌ Facebook not connected');
-            }
-          } catch (e) {
-            console.error('Error checking Facebook connection:', e);
+        // Check Facebook connection from localStorage
+        try {
+          const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+          const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+          
+          console.log('🔍 Facebook connection check:', { fbConnected });
+          
+          if (fbConnected) {
+            setIsConnected(true);
+            console.log('✅ Facebook connected from localStorage');
+          } else {
             setIsConnected(false);
+            console.log('❌ Facebook not connected (will update when bridge sends status)');
           }
-        };
-        
-        // Check if bridge is already loaded
-        if (window.__PROFIT_ORBIT_BRIDGE_LOADED) {
-          console.log('🔵 Bridge already loaded, checking connection immediately');
-          checkFacebookConnection();
-        } else {
-          console.log('🔵 Bridge not loaded yet, will wait for profitOrbitBridgeReady event');
-          // Will be updated by profitOrbitBridgeReady event listener
+          
+          // ALWAYS load cached items if available, regardless of connection status
+          // This prevents the "items disappear" issue when navigating away and back
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          if (cachedListings) {
+            try {
+              const parsedListings = JSON.parse(cachedListings);
+              if (parsedListings.length > 0) {
+                console.log('📦 Pre-loading cached Facebook listings:', parsedListings.length, 'items');
+                queryClient.setQueryData(['facebook-listings', userId], parsedListings);
+                setFacebookListingsVersion(v => v + 1);
+              }
+            } catch (e) {
+              console.error('Error pre-loading cached listings:', e);
+            }
+          }
+        } catch (e) {
+          console.error('Error checking Facebook connection:', e);
           setIsConnected(false);
         }
       } else if (selectedSource === "mercari") {
