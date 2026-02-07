@@ -332,75 +332,6 @@ export default function Import() {
     },
   });
 
-  // Check Facebook connection
-  useEffect(() => {
-    if (selectedSource === "facebook") {
-      // Check if Facebook is connected via bridge status
-      try {
-        const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
-        const fbConnected = bridgeStatus.facebook?.loggedIn === true;
-        
-        console.log('🔍 Facebook connection check:', { fbConnected });
-        
-        if (fbConnected) {
-          setIsConnected(true);
-          console.log('✅ Facebook connected');
-          
-          // Load cached Facebook listings from localStorage
-          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
-          if (cachedListings) {
-            try {
-              const parsedListings = JSON.parse(cachedListings);
-              console.log('📦 Loaded cached Facebook listings:', parsedListings.length, 'items');
-              queryClient.setQueryData(['facebook-listings', userId], parsedListings);
-              setFacebookListingsVersion(v => v + 1);
-            } catch (e) {
-              console.error('Error parsing cached listings:', e);
-            }
-          }
-        } else {
-          setIsConnected(false);
-          console.log('❌ Facebook not connected');
-        }
-      } catch (e) {
-        console.error('Error checking Facebook connection:', e);
-        setIsConnected(false);
-      }
-    } else if (selectedSource === "mercari") {
-      // Check if Mercari is connected via extension
-      try {
-        const isConnected = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
-        const mercariUser = localStorage.getItem('profit_orbit_mercari_user');
-        
-        console.log('🔍 Mercari connection check:', { isConnected, mercariUser });
-        
-        if (isConnected && mercariUser) {
-          setIsConnected(true);
-          console.log('✅ Mercari connected');
-          
-          // Load cached Mercari listings from localStorage
-          const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
-          if (cachedListings) {
-            try {
-              const parsedListings = JSON.parse(cachedListings);
-              console.log('📦 Loaded cached Mercari listings:', parsedListings.length, 'items');
-              queryClient.setQueryData(['mercari-listings', userId], parsedListings);
-              setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
-            } catch (e) {
-              console.error('Error parsing cached Mercari listings:', e);
-            }
-          }
-        } else {
-          setIsConnected(false);
-          console.log('❌ Mercari not connected');
-        }
-      } catch (e) {
-        console.error('Error checking Mercari connection:', e);
-        setIsConnected(false);
-      }
-    }
-  }, [selectedSource, userId, queryClient]);
-
   // Listen for bridge ready event and re-check connection
   useEffect(() => {
     const handleBridgeReady = (event) => {
@@ -426,20 +357,18 @@ export default function Import() {
   // Listen for bridge status updates
   useEffect(() => {
     const handleBridgeStatusUpdate = (event) => {
-      console.log('🔵 Import: Bridge status update event received:', event.detail);
-      
-      if (selectedSource === 'facebook' && event.detail?.marketplace === 'facebook') {
-        const isConnected = event.detail?.status?.loggedIn === true;
-        console.log('🔵 Import: Facebook status from bridge event:', isConnected);
-        setIsConnected(isConnected);
-      } else if (selectedSource === 'mercari' && event.detail?.marketplace === 'mercari') {
-        const isConnected = event.detail?.status?.loggedIn === true;
-        console.log('🔵 Import: Mercari status from bridge event:', isConnected);
-        setIsConnected(isConnected);
-      } else if (selectedSource === 'ebay' && event.detail?.marketplace === 'ebay') {
-        const isConnected = event.detail?.status?.loggedIn === true;
-        console.log('🔵 Import: eBay status from bridge event:', isConnected);
-        setIsConnected(isConnected);
+      // Only log once to reduce spam
+      if (event.detail?.marketplace === selectedSource) {
+        const newConnectionStatus = event.detail?.status?.loggedIn === true;
+        
+        // Only update if status actually changed
+        setIsConnected((prevConnected) => {
+          if (prevConnected !== newConnectionStatus) {
+            console.log(`🔵 Import: ${selectedSource} status changed:`, prevConnected, '→', newConnectionStatus);
+            return newConnectionStatus;
+          }
+          return prevConnected; // No change, don't trigger re-render
+        });
       }
     };
     
