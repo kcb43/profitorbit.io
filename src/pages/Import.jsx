@@ -385,6 +385,34 @@ export default function Import() {
     }
   }, [selectedSource, userId, queryClient]);
 
+  // Listen for Facebook connection from extension
+  useEffect(() => {
+    const handleConnectionReady = (event) => {
+      if (event.data && event.data.type === 'FACEBOOK_CONNECTION_READY') {
+        console.log('✅ Import Page: FACEBOOK_CONNECTION_READY received:', event.data.payload);
+        
+        // Update connection state
+        const userName = event.data.payload?.userName || 'Facebook User';
+        localStorage.setItem('profit_orbit_facebook_connected', 'true');
+        localStorage.setItem('profit_orbit_facebook_user', userName);
+        localStorage.removeItem('profit_orbit_facebook_disconnected');
+        
+        // Update React state immediately
+        if (selectedSource === 'facebook') {
+          setIsConnected(true);
+          
+          toast({
+            title: 'Facebook Connected!',
+            description: 'You can now fetch your Facebook Marketplace listings.',
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleConnectionReady);
+    return () => window.removeEventListener('message', handleConnectionReady);
+  }, [selectedSource, toast]);
+
   // Reload cache when user returns to the page (e.g., after deleting items from inventory)
   useEffect(() => {
     const handleVisibilityChange = () => {
