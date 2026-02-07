@@ -2091,71 +2091,6 @@ export default function InventoryPage() {
                             className="hidden sm:block absolute inset-0 z-5"
                           />
                         </div>
-                        
-                        {/* Mobile: Icons on LEFT, Badges on RIGHT - SAME ROW */}
-                        <div className="md:hidden mt-3 flex items-center justify-between w-full gap-2">
-                          {/* Left: Action icons */}
-                          <div className="flex items-center gap-1 flex-nowrap">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item.id);
-                              }}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
-                                favoriteMarked
-                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                              }`}
-                            >
-                              <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
-                            </button>
-                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditImage(e, item);
-                                }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
-                              >
-                                <ImageIcon className="h-4 w-4" />
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setItemToView(item);
-                                setViewDialogOpen(true);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
-                            >
-                              <Search className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteClick(item);
-                              }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                          
-                          {/* Right: Status and Source badges */}
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {item.source && (
-                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                                {item.source}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
-                          </div>
                         </div>
                       </div>
 
@@ -2343,6 +2278,72 @@ export default function InventoryPage() {
                             </p>
                           </div>
                         )}
+                      </div>
+
+                      {/* Mobile: Icons on LEFT, Badges on RIGHT - SAME ROW - Full width */}
+                      <div className="md:hidden flex items-center justify-between w-full px-2 py-2 border-t border-gray-200 dark:border-border">
+                        {/* Left: Action icons */}
+                        <div className="flex items-center gap-1 flex-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(item.id);
+                            }}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                              favoriteMarked
+                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                            }`}
+                          >
+                            <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                          </button>
+                          {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditImage(e, item);
+                              }}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                            >
+                              <ImageIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToView(item);
+                              setViewDialogOpen(true);
+                            }}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                          >
+                            <Search className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(item);
+                            }}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        
+                        {/* Right: Status and Source badges */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {item.source && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                              {item.source}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                            {statusLabels[item.status] || statusLabels.available}
+                          </Badge>
+                        </div>
                       </div>
 
                       <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-card/80 w-[200px] min-w-[200px] max-w-[200px]"
