@@ -2414,8 +2414,8 @@ export default function InventoryPage() {
                       </div>
                     </div>
 
-                      {/* Desktop list layout (new) */}
-                      <div
+                    {/* Desktop list layout (new) */}
+                    <div
                         onClick={(e) => {
                           // Only toggle if NOT clicking on an interactive element
                           const target = e.target;
