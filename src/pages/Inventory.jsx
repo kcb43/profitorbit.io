@@ -2049,6 +2049,15 @@ export default function InventoryPage() {
                           boxShadow: selectedItems.includes(item.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
                         }}
                       >
+                      {/* Mobile return banner - attached at top */}
+                      {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
+                        <div className="md:hidden w-full bg-gradient-to-r from-red-500 to-orange-500 dark:from-red-600 dark:to-orange-600 text-white px-3 py-2">
+                          <p className="font-semibold text-[11px] flex items-center gap-1.5">
+                            <AlarmClock className="w-3.5 h-3.5" />
+                            Return in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      )}
                       {/* Image and content row */}
                       <div className="flex flex-row items-stretch sm:items-center">
                       <div className="flex-shrink-0 m-1 sm:m-4 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
@@ -2141,14 +2150,14 @@ export default function InventoryPage() {
                             <span className="font-semibold">Purchased:</span> {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
                           </p>
 
-                          {/* Mobile return banner */}
-                          {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
-                            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500 rounded-r text-red-700 dark:text-red-300">
-                              <p className="font-semibold text-[10px] flex items-center gap-1">
-                                <AlarmClock className="w-3 h-3" />
-                                Return in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
-                              </p>
-                            </div>
+                          {/* Source badge */}
+                          {item.source && (
+                            <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
+                              <span className="font-semibold">Source:</span>
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                {item.source}
+                              </Badge>
+                            </p>
                           )}
                         </div>
 
@@ -2335,13 +2344,8 @@ export default function InventoryPage() {
                           </button>
                         </div>
                         
-                        {/* Right: Status and Source badges */}
+                        {/* Right: Status badge only */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {item.source && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                              {item.source}
-                            </Badge>
-                          )}
                           <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
                             {statusLabels[item.status] || statusLabels.available}
                           </Badge>
