@@ -322,10 +322,11 @@ export default function Import() {
       try {
         const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
         const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+        const fbUser = localStorage.getItem('profit_orbit_facebook_user');
         
-        console.log('🔍 Facebook connection check:', { fbConnected });
+        console.log('🔍 Facebook connection check:', { fbConnected, fbUser });
         
-        if (fbConnected) {
+        if (fbConnected && fbUser) {
           setIsConnected(true);
           console.log('✅ Facebook connected');
           
