@@ -2051,7 +2051,7 @@ export default function InventoryPage() {
                       >
                       {/* Mobile return banner - attached at top */}
                       {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
-                        <div className="md:hidden w-full bg-gradient-to-r from-red-500 to-orange-500 dark:from-red-600 dark:to-orange-600 text-white px-3 py-2">
+                        <div className="md:hidden w-full bg-red-500 dark:bg-red-600 text-white px-3 py-2">
                           <p className="font-semibold text-[11px] flex items-center gap-1.5">
                             <AlarmClock className="w-3.5 h-3.5" />
                             Return in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
@@ -2344,13 +2344,83 @@ export default function InventoryPage() {
                           </button>
                         </div>
                         
-                        {/* Right: Status badge only */}
+                        {/* Right: Add Tags button and Status badge */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Toggle tag input visibility for this item
+                              setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
+                            }}
+                            className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Tags
+                          </button>
                           <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
                             {statusLabels[item.status] || statusLabels.available}
                           </Badge>
                         </div>
                       </div>
+
+                      {/* Mobile: Tags row (shows below icons) */}
+                      {(itemTags.length > 0 || tagDrafts[`show_${item.id}`]) && (
+                        <div className="md:hidden w-full px-2 py-2 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-card/50">
+                          {itemTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {itemTags.map((tag) => (
+                                <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[9px]">
+                                  {tag}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveTagFromItem(item.id, tag);
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {tagDrafts[`show_${item.id}`] && (
+                            <div className="flex gap-1">
+                              <input
+                                type="text"
+                                value={tagDrafts[item.id] || ''}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  setTagDrafts((prev) => ({ ...prev, [item.id]: e.target.value }));
+                                }}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.stopPropagation();
+                                    handleAddTagToItem(item.id, tagDrafts[item.id]);
+                                    setTagDrafts((prev) => ({ ...prev, [item.id]: '', [`show_${item.id}`]: false }));
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="Enter tag..."
+                                className="flex-1 text-[11px] px-2 py-1 border border-gray-300 dark:border-border rounded-md bg-white dark:bg-card"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddTagToItem(item.id, tagDrafts[item.id]);
+                                  setTagDrafts((prev) => ({ ...prev, [item.id]: '', [`show_${item.id}`]: false }));
+                                }}
+                                className="px-3 py-1 text-[10px] font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+                              >
+                                Add
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-card/80 w-[200px] min-w-[200px] max-w-[200px]"
                         style={{
