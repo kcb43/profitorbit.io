@@ -2413,7 +2413,6 @@ export default function InventoryPage() {
                       </div>
                       </div>
                     </div>
-
                     {/* Desktop list layout (new) */}
                     <div
                         onClick={(e) => {
