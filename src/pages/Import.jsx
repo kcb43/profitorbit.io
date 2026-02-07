@@ -1178,24 +1178,22 @@ export default function Import() {
               </Button>
               <h1 className="text-2xl font-bold">Import</h1>
             </div>
-            {lastSync && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Last sync: {format(lastSync, "h:mm a")}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={isLoading || !canSync}
-                  className="gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-                  {!canSync && nextSyncTime 
-                    ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
-                    : `Get Latest ${selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items`
-                  }
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {lastSync && <span>Last sync: {format(lastSync, "h:mm a")}</span>}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isLoading || !canSync}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                {!canSync && nextSyncTime 
+                  ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
+                  : `Get Latest ${selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items`
+                }
+              </Button>
+            </div>
           </div>
         </div>
       </div>
