@@ -997,10 +997,9 @@ export default function Import() {
       );
       
       if (isTokenError) {
-        // Mark Facebook as disconnected in bridge status
-        const currentStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
-        currentStatus.facebook = { loggedIn: false };
-        localStorage.setItem('profit_orbit_bridge_status', JSON.stringify(currentStatus));
+        // Mark Facebook as disconnected - update the actual localStorage key used by Settings.jsx
+        localStorage.setItem('profit_orbit_facebook_connected', 'false');
+        localStorage.removeItem('profit_orbit_facebook_user');
         
         // Update React state to reflect disconnection
         setIsConnected(false);
