@@ -205,6 +205,25 @@ export default function Settings() {
           });
         }
       }
+      
+      // Handle Facebook disconnection (token expired)
+      if (event.detail.marketplace === 'facebook' && !event.detail.status.loggedIn) {
+        console.log('⚠️ Profit Orbit: Facebook disconnected detected via event');
+        
+        // Clear Facebook connection from localStorage
+        localStorage.removeItem('profit_orbit_facebook_connected');
+        localStorage.removeItem('profit_orbit_facebook_user');
+        localStorage.setItem('profit_orbit_facebook_disconnected', 'true');
+        
+        // Refresh Facebook status to update UI
+        checkFacebookStatus();
+        
+        toast({
+          title: 'Facebook Session Expired',
+          description: 'Please reconnect to Facebook from the Import page',
+          variant: 'destructive',
+        });
+      }
     };
     
     window.addEventListener('marketplaceStatusUpdate', handleMarketplaceUpdate);
