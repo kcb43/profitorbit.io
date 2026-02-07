@@ -593,7 +593,7 @@ export default function Dashboard() {
             <PlatformRevenueTableCard
               rows={platformSummary}
               title="Platform Performance"
-              reportsHref={createPageUrl("PlatformPerformance")}
+              reportsHref={createPageUrl("Reports")}
             />
           </div>
 
