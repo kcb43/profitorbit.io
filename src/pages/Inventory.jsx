@@ -2091,7 +2091,6 @@ export default function InventoryPage() {
                             className="hidden sm:block absolute inset-0 z-5"
                           />
                         </div>
-                        </div>
                       </div>
 
                       <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
