@@ -197,18 +197,31 @@ export default function Import() {
         try {
           const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
           const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          
+          // Optimistic connection status: if we have cached items, assume connected until proven otherwise
+          let hasCache = false;
+          if (cachedListings) {
+            try {
+              const parsedListings = JSON.parse(cachedListings);
+              hasCache = parsedListings.length > 0;
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
           
           // Only log if we're seeing a definitive status (not just empty localStorage)
           const hasStatus = Object.keys(bridgeStatus).length > 0;
-          if (hasStatus) {
-            console.log('🔍 Facebook connection check:', { fbConnected });
-          }
           
           if (fbConnected) {
             setIsConnected(true);
             if (hasStatus) {
-              console.log('✅ Facebook connected from localStorage');
+              console.log('✅ Facebook connected from bridge');
             }
+          } else if (hasCache) {
+            // Optimistically assume connected if we have cached items
+            setIsConnected(true);
+            console.log('📦 Facebook: Assuming connected (have cached items)');
           } else {
             setIsConnected(false);
             if (hasStatus) {
@@ -216,49 +229,61 @@ export default function Import() {
             }
           }
           
-          // ALWAYS load cached items if available, regardless of connection status
-          // This prevents the "items disappear" issue when navigating away and back
-          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
-          if (cachedListings) {
+          // ALWAYS load cached items if available
+          if (hasCache) {
             try {
               const parsedListings = JSON.parse(cachedListings);
-              if (parsedListings.length > 0) {
-                console.log('📦 Pre-loading cached Facebook listings:', parsedListings.length, 'items');
-                queryClient.setQueryData(['facebook-listings', userId], parsedListings);
-                setFacebookListingsVersion(v => v + 1);
-              }
+              console.log('📦 Pre-loading cached Facebook listings:', parsedListings.length, 'items');
+              queryClient.setQueryData(['facebook-listings', userId], parsedListings);
+              setFacebookListingsVersion(v => v + 1);
             } catch (e) {
               console.error('Error pre-loading cached listings:', e);
             }
           }
         } catch (e) {
           console.error('Error checking Facebook connection:', e);
-          setIsConnected(false);
+          // Only set disconnected if we truly have no cache
+          const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
+          if (!cachedListings) {
+            setIsConnected(false);
+          }
         }
       } else if (selectedSource === "mercari") {
         // Check Mercari connection
         const mercariUser = localStorage.getItem('profit_orbit_mercari_user');
-        const isConnected = mercariUser && JSON.parse(mercariUser)?.loggedIn === true;
+        const isConnectedFromStorage = mercariUser && JSON.parse(mercariUser)?.loggedIn === true;
+        const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
         
-        if (isConnected) {
+        // Optimistic connection status: if we have cached items, assume connected until proven otherwise
+        let hasCache = false;
+        if (cachedListings) {
+          try {
+            const parsedListings = JSON.parse(cachedListings);
+            hasCache = parsedListings.length > 0;
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        if (isConnectedFromStorage) {
           setIsConnected(true);
-          console.log('✅ Mercari connected');
+          console.log('✅ Mercari connected from storage');
+        } else if (hasCache) {
+          // Optimistically assume connected if we have cached items
+          setIsConnected(true);
+          console.log('📦 Mercari: Assuming connected (have cached items)');
         } else {
           setIsConnected(false);
           console.log('❌ Mercari not connected');
         }
         
-        // ALWAYS load cached Mercari items if available, regardless of connection status
-        // This matches the Facebook behavior and prevents items from disappearing
-        const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
-        if (cachedListings) {
+        // ALWAYS load cached Mercari items if available
+        if (hasCache) {
           try {
             const parsedListings = JSON.parse(cachedListings);
-            if (parsedListings.length > 0) {
-              console.log('📦 Pre-loading cached Mercari listings:', parsedListings.length, 'items');
-              queryClient.setQueryData(['mercari-listings', userId], parsedListings);
-              setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
-            }
+            console.log('📦 Pre-loading cached Mercari listings:', parsedListings.length, 'items');
+            queryClient.setQueryData(['mercari-listings', userId], parsedListings);
+            setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
           } catch (e) {
             console.error('Error pre-loading cached Mercari listings:', e);
           }
