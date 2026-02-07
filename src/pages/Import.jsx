@@ -1002,6 +1002,9 @@ export default function Import() {
         currentStatus.facebook = { loggedIn: false };
         localStorage.setItem('profit_orbit_bridge_status', JSON.stringify(currentStatus));
         
+        // Update React state to reflect disconnection
+        setIsConnected(false);
+        
         toast({
           title: "Facebook Session Expired",
           description: "Please reconnect Facebook Marketplace in Settings to continue importing.",
