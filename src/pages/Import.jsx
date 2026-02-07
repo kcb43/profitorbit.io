@@ -247,6 +247,22 @@ export default function Import() {
           setIsConnected(false);
           console.log('❌ Mercari not connected');
         }
+        
+        // ALWAYS load cached Mercari items if available, regardless of connection status
+        // This matches the Facebook behavior and prevents items from disappearing
+        const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
+        if (cachedListings) {
+          try {
+            const parsedListings = JSON.parse(cachedListings);
+            if (parsedListings.length > 0) {
+              console.log('📦 Pre-loading cached Mercari listings:', parsedListings.length, 'items');
+              queryClient.setQueryData(['mercari-listings', userId], parsedListings);
+              setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
+            }
+          } catch (e) {
+            console.error('Error pre-loading cached Mercari listings:', e);
+          }
+        }
       } else {
         // For other marketplaces not yet implemented
         setIsConnected(false);
