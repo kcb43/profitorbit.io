@@ -2412,6 +2412,7 @@ export default function InventoryPage() {
                         </div>
                       </div>
                       </div>
+                    </div>
 
                       {/* Desktop list layout (new) */}
                       <div
