@@ -2102,13 +2102,13 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 toggleFavorite(item.id);
                               }}
-                              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition ${
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
                                 favoriteMarked
                                   ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                   : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
                               }`}
                             >
-                              <Star className={`h-4.5 w-4.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                              <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
                             </button>
                             {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
                               <button
@@ -2117,9 +2117,9 @@ export default function InventoryPage() {
                                   e.stopPropagation();
                                   handleEditImage(e, item);
                                 }}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
                               >
-                                <ImageIcon className="h-4.5 w-4.5" />
+                                <ImageIcon className="h-4 w-4" />
                               </button>
                             )}
                             <button
@@ -2129,9 +2129,9 @@ export default function InventoryPage() {
                                 setItemToView(item);
                                 setViewDialogOpen(true);
                               }}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
                             >
-                              <Search className="h-4.5 w-4.5" />
+                              <Search className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
@@ -2139,9 +2139,9 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 handleDeleteClick(item);
                               }}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
-                              <Trash2 className="h-4.5 w-4.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                           
