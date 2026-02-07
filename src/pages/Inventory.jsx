@@ -2092,9 +2092,10 @@ export default function InventoryPage() {
                           />
                         </div>
                         
-                        {/* Mobile: Favorite, Edit Image icons below image - LEFT side only */}
-                        <div className="md:hidden mt-3" style={{ width: '150px' }}>
-                          <div className="flex items-center gap-1 mb-1 flex-nowrap" style={{ width: '150px' }}>
+                        {/* Mobile: Icons on LEFT, Badges on RIGHT - SAME ROW */}
+                        <div className="md:hidden mt-3 flex items-center justify-between w-full gap-2">
+                          {/* Left: Action icons */}
+                          <div className="flex items-center gap-1 flex-nowrap">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -2142,6 +2143,18 @@ export default function InventoryPage() {
                             >
                               <Trash2 className="h-4.5 w-4.5" />
                             </button>
+                          </div>
+                          
+                          {/* Right: Status and Source badges */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {item.source && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                {item.source}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
                           </div>
                         </div>
                       </div>
@@ -2359,20 +2372,8 @@ export default function InventoryPage() {
                         </Button>
                       </div>
                       
-                      {/* Mobile: Mark Sold and Edit buttons at bottom with badges above */}
+                      {/* Mobile: Mark Sold and Edit buttons at bottom */}
                       <div className="md:hidden w-full">
-                        {/* Status and Source badges - RIGHT aligned, above buttons */}
-                        <div className="flex items-center justify-end gap-1.5 px-2 pb-1.5 pt-2">
-                          {item.source && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                              {item.source}
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
-                            {statusLabels[item.status] || statusLabels.available}
-                          </Badge>
-                        </div>
-                        
                         {/* Buttons */}
                         <div 
                           onClick={(e) => {
