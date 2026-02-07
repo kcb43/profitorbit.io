@@ -385,6 +385,34 @@ export default function Import() {
     }
   }, [selectedSource, userId, queryClient]);
 
+  // Listen for Facebook connection from extension
+  useEffect(() => {
+    const handleConnectionReady = (event) => {
+      if (event.data && event.data.type === 'FACEBOOK_CONNECTION_READY') {
+        console.log('✅ Import Page: FACEBOOK_CONNECTION_READY received:', event.data.payload);
+        
+        // Update connection state
+        const userName = event.data.payload?.userName || 'Facebook User';
+        localStorage.setItem('profit_orbit_facebook_connected', 'true');
+        localStorage.setItem('profit_orbit_facebook_user', userName);
+        localStorage.removeItem('profit_orbit_facebook_disconnected');
+        
+        // Update React state immediately
+        if (selectedSource === 'facebook') {
+          setIsConnected(true);
+          
+          toast({
+            title: 'Facebook Connected!',
+            description: 'You can now fetch your Facebook Marketplace listings.',
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleConnectionReady);
+    return () => window.removeEventListener('message', handleConnectionReady);
+  }, [selectedSource, toast]);
+
   // Reload cache when user returns to the page (e.g., after deleting items from inventory)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1120,11 +1148,32 @@ export default function Import() {
           });
         }
       }
+      
+      // Listen for Facebook connection from extension
+      if (event.data?.type === 'FACEBOOK_CONNECTION_READY') {
+        console.log('✅ Import Page: FACEBOOK_CONNECTION_READY received:', event.data.payload);
+        
+        // Update connection state
+        const userName = event.data.payload?.userName || 'Facebook User';
+        localStorage.setItem('profit_orbit_facebook_connected', 'true');
+        localStorage.setItem('profit_orbit_facebook_user', userName);
+        localStorage.removeItem('profit_orbit_facebook_disconnected');
+        
+        // Update React state immediately
+        if (selectedSource === 'facebook') {
+          setIsConnected(true);
+          
+          toast({
+            title: 'Facebook Connected!',
+            description: 'You can now fetch your Facebook Marketplace listings.',
+          });
+        }
+      }
     };
     
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [userId, queryClient, toast]);
+  }, [userId, queryClient, toast, selectedSource]);
 
   const handleImport = () => {
     if (selectedItems.length === 0) {
@@ -1475,21 +1524,11 @@ export default function Import() {
                         size="sm"
                         className="gap-2"
                         onClick={() => {
-                          // Open Facebook Marketplace in centered popup window
-                          const width = 600;
-                          const height = 700;
-                          const left = (window.screen.width - width) / 2;
-                          const top = (window.screen.height - height) / 2;
-                          
-                          window.open(
-                            'https://www.facebook.com/marketplace',
-                            'FacebookLogin',
-                            `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
-                          );
-                          
+                          // Open Facebook Marketplace in new tab for user to login
+                          window.open('https://www.facebook.com/marketplace', '_blank');
                           toast({
                             title: "Login to Facebook",
-                            description: "Log in to Facebook Marketplace in the popup window, then come back and click 'Get Latest Items'",
+                            description: "Log in to Facebook Marketplace in the new tab, then come back and click 'Get Latest Items'",
                           });
                         }}
                       >
