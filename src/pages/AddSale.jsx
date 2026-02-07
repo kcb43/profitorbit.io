@@ -626,7 +626,7 @@ export default function AddSale() {
 
   // Show a loading indicator if sale data is being fetched for edit/copy, or inventory data for new sale from inventory
   if (isLoadingSale || (inventoryId && !idToLoad && isLoadingInventoryItem)) {
-    return <div className="p-8 text-center text-gray-700 dark:text-gray-300">Loading data...</div>
+    return <div className="p-8 text-center text-foreground">Loading data...</div>
   }
 
   const isEbay = formData.platform?.toLowerCase() === 'ebay'; // Case-insensitive comparison
@@ -711,10 +711,10 @@ export default function AddSale() {
           </div>
         </div>
 
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="border-b bg-gray-800 dark:bg-gray-800">
+        <Card className="border-0 shadow-lg bg-card">
+          <CardHeader className="border-b bg-muted/50 border-border">
             <div className="flex items-center gap-3">
-              <CardTitle className="text-xl text-white">Sale Details</CardTitle>
+              <CardTitle className="text-xl text-foreground">Sale Details</CardTitle>
               {copyId && (
                 <Badge className="bg-orange-100 text-orange-800">Copied</Badge>
               )}
@@ -731,7 +731,7 @@ export default function AddSale() {
                     </Alert>
                 )}
               <div className="space-y-3">
-                <Label htmlFor="image-upload-input" className="dark:text-gray-200 break-words">Item Image</Label>
+                <Label htmlFor="image-upload-input" className="text-foreground break-words">Item Image</Label>
                 <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
                   <button
                     type="button"
@@ -797,7 +797,7 @@ export default function AddSale() {
 
               <div className="grid md:grid-cols-2 gap-6 min-w-0">
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="item_name" className="dark:text-gray-200 flex items-center gap-1">
+                  <Label htmlFor="item_name" className="text-foreground flex items-center gap-1">
                     <span>Item Name</span>
                     <span className="text-red-500">*</span>
                   </Label>
@@ -807,7 +807,7 @@ export default function AddSale() {
                     onChange={(e) => handleChange('item_name', e.target.value)}
                     placeholder="e.g., Vintage Nike Sneakers"
                     required
-                    className="w-full"
+                    className="w-full text-foreground bg-background"
                   />
                 </div>
 
@@ -817,7 +817,7 @@ export default function AddSale() {
                       type="button"
                       variant="outline"
                       onClick={() => setSoldDialogOpen(true)}
-                      className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700"
+                      className="w-full"
                     >
                       <BarChart className="w-4 h-4 mr-2" />
                       Search Sold Listings
@@ -826,7 +826,7 @@ export default function AddSale() {
                 )}
 
                 <div className="space-y-2 min-w-0">
-                   <Label htmlFor="quantity_sold" className="dark:text-gray-200">
+                   <Label htmlFor="quantity_sold" className="text-foreground">
                      Quantity Sold <span className="text-red-500">*</span>
                    </Label>
                    <Input 
@@ -837,7 +837,7 @@ export default function AddSale() {
                        value={formData.quantity_sold} 
                        onChange={(e) => handleChange('quantity_sold', e.target.value)} 
                        required
-                       className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                       className="w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                    />
                    {inventoryId && !idToLoad && totalItemQuantity > 0 && (
                        <>
@@ -855,7 +855,7 @@ export default function AddSale() {
                 </div>
 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="purchase_price" className="dark:text-gray-200 flex items-center gap-1">
+                  <Label htmlFor="purchase_price" className="text-foreground flex items-center gap-1">
                     <span>
                       Purchase Price
                       {inventoryId && !idToLoad && perItemPurchasePrice !== null
@@ -873,7 +873,7 @@ export default function AddSale() {
                     onChange={(e) => handleChange('purchase_price', e.target.value)}
                     placeholder="0.00"
                     required
-                    className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
 
@@ -886,25 +886,25 @@ export default function AddSale() {
                 />
 
                  <div className="space-y-2 min-w-0">
-                  <Label htmlFor="source_select" className="dark:text-gray-200">Source</Label>
+                  <Label htmlFor="source_select" className="text-foreground">Source</Label>
                   <Select
                     onValueChange={handleSourceSelectChange}
                     value={isOtherSource ? 'other' : formData.source}
                   >
-                    <SelectTrigger id="source_select" className="w-full">
+                    <SelectTrigger id="source_select" className="w-full text-foreground bg-background">
                       <SelectValue placeholder="Select a source">{isOtherSource && formData.source ? formData.source : (PREDEFINED_SOURCES.includes(formData.source) ? formData.source : "Select a source")}</SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-popover text-popover-foreground">
                       {PREDEFINED_SOURCES.map(source => (
-                        <SelectItem key={source} value={source}>{source}</SelectItem>
+                        <SelectItem key={source} value={source} className="text-foreground">{source}</SelectItem>
                       ))}
-                      <SelectItem value="other">Other...</SelectItem>
+                      <SelectItem value="other" className="text-foreground">Other...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="platform" className="dark:text-gray-200 flex items-center gap-1">
+                  <Label htmlFor="platform" className="text-foreground flex items-center gap-1">
                     <span>Sold On</span>
                     <span className="text-red-500">*</span>
                   </Label>
@@ -913,7 +913,7 @@ export default function AddSale() {
                     onValueChange={(value) => handleChange('platform', value)}
                     required
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full text-foreground bg-background">
                       <SelectValue placeholder="Select platform">
                         {formData.platform && platformIcons[formData.platform] ? (
                           <div className="flex items-center gap-2">
@@ -927,9 +927,9 @@ export default function AddSale() {
                         ) : null}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-popover text-popover-foreground">
                       {platformOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
+                        <SelectItem key={option.value} value={option.value} className="text-foreground">
                           <div className="flex items-center gap-2">
                             {platformIcons[option.value] && (
                               <img 
@@ -948,19 +948,19 @@ export default function AddSale() {
 
                 {isFacebookPlatform && (
                   <div className="space-y-2 min-w-0">
-                    <Label htmlFor="facebook_sale_type" className="dark:text-gray-200">
+                    <Label htmlFor="facebook_sale_type" className="text-foreground">
                       Facebook Sale Type
                     </Label>
                     <Select
                       value={facebookSaleType}
                       onValueChange={(value) => handleChange('facebook_sale_type', value)}
                     >
-                      <SelectTrigger id="facebook_sale_type" className="w-full">
+                      <SelectTrigger id="facebook_sale_type" className="w-full text-foreground bg-background">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="online">Online (Shipped)</SelectItem>
-                        <SelectItem value="local">Local Pickup</SelectItem>
+                      <SelectContent className="bg-popover text-popover-foreground">
+                        <SelectItem value="online" className="text-foreground">Online (Shipped)</SelectItem>
+                        <SelectItem value="local" className="text-foreground">Local Pickup</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -968,19 +968,19 @@ export default function AddSale() {
 
                 {isOtherSource ? (
                   <div className="space-y-2 md:col-span-2 min-w-0">
-                    <Label htmlFor="other_source" className="dark:text-gray-200">Custom Source</Label>
+                    <Label htmlFor="other_source" className="text-foreground">Custom Source</Label>
                     <Input
                       id="other_source"
                       value={formData.source}
                       onChange={(e) => handleChange('source', e.target.value)}
                       placeholder="e.g., Garage Sale, Flea Market"
-                      className="w-full"
+                      className="w-full text-foreground bg-background"
                     />
                   </div>
                 ) : null}
 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="selling_price" className="dark:text-gray-200">
+                  <Label htmlFor="selling_price" className="text-foreground">
                     Selling Price <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -992,7 +992,7 @@ export default function AddSale() {
                     onChange={(e) => handleChange('selling_price', e.target.value)}
                     placeholder="0.00"
                     required
-                    className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
                 
@@ -1006,7 +1006,7 @@ export default function AddSale() {
 
                 {!isFacebookLocal && (
                   <div className="space-y-2 min-w-0">
-                    <Label htmlFor="shipping_cost" className="dark:text-gray-200 flex items-center gap-2">
+                    <Label htmlFor="shipping_cost" className="text-foreground flex items-center gap-2">
                       <Truck className="w-4 h-4 text-muted-foreground" />
                       Shipping Cost {shippingRequired && <span className="text-red-500">*</span>}
                     </Label>
@@ -1018,7 +1018,7 @@ export default function AddSale() {
                       value={formData.shipping_cost}
                       onChange={(e) => handleChange('shipping_cost', e.target.value)}
                       placeholder="0.00"
-                      className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       required={shippingRequired}
                     />
                   </div>
@@ -1026,8 +1026,8 @@ export default function AddSale() {
 
                 {!isFacebookLocal && (
                   <div className="space-y-2 min-w-0">
-                    <Label htmlFor="platform_fees" className="dark:text-gray-200 flex items-center gap-2">
-                      <MoneyPrinterIcon className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
+                    <Label htmlFor="platform_fees" className="text-foreground flex items-center gap-2">
+                      <MoneyPrinterIcon className="w-4 h-4 text-muted-foreground" />
                       {isEbay ? 'Sales Tax (collected from buyer)' : 'Platform Fees'}
                     </Label>
                     <Input
@@ -1038,7 +1038,7 @@ export default function AddSale() {
                       value={formData.platform_fees}
                       onChange={(e) => handleChange('platform_fees', e.target.value)}
                       placeholder="0.00"
-                      className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
                 )}
@@ -1067,6 +1067,7 @@ export default function AddSale() {
                           placeholder="e.g., International surcharge"
                           value={customFeeDraft.name}
                           onChange={(e) => handleCustomFeeDraftChange('name', e.target.value)}
+                          className="text-foreground bg-background"
                         />
                         <Input
                           type="number"
@@ -1075,7 +1076,7 @@ export default function AddSale() {
                           placeholder="0.00"
                           value={customFeeDraft.amount}
                           onChange={(e) => handleCustomFeeDraftChange('amount', e.target.value)}
-                          className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          className="text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                         <Button
                           type="button"
@@ -1126,8 +1127,8 @@ export default function AddSale() {
                 )}
 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="other_costs" className="dark:text-gray-200 flex items-center gap-2">
-                    <MoneyPrinterIcon className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
+                  <Label htmlFor="other_costs" className="text-foreground flex items-center gap-2">
+                    <MoneyPrinterIcon className="w-4 h-4 text-muted-foreground" />
                     {otherCostsLabel}
                   </Label>
                   <Input
@@ -1138,13 +1139,13 @@ export default function AddSale() {
                     value={formData.other_costs}
                     onChange={(e) => handleChange('other_costs', e.target.value)}
                     placeholder={otherCostsPlaceholder}
-                    className={`w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${isFacebookLocal ? 'sm:max-w-[160px]' : ''}`}
+                    className={`w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${isFacebookLocal ? 'sm:max-w-[160px]' : ''}`}
                   />
                 </div>
 
                 {isEbay && !isFacebookLocal && (
                   <div className="space-y-2 min-w-0">
-                    <Label htmlFor="vat_fees" className="dark:text-gray-200">
+                    <Label htmlFor="vat_fees" className="text-foreground">
                       VAT Fees (if applicable, collected from buyer)
                     </Label>
                     <Input
@@ -1155,14 +1156,14 @@ export default function AddSale() {
                       value={formData.vat_fees}
                       onChange={(e) => handleChange('vat_fees', e.target.value)}
                       placeholder="0.00"
-                      className="w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-full text-foreground bg-background [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
                 )}
                 
                 <div className="space-y-2 min-w-0">
-                  <Label htmlFor="category_select" className="dark:text-gray-200 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground dark:text-muted-foreground">
+                  <Label htmlFor="category_select" className="text-foreground flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground">
                       <path fill="currentColor" d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/>
                     </svg>
                     Category
@@ -1171,27 +1172,27 @@ export default function AddSale() {
                     onValueChange={handleCategorySelectChange}
                     value={isOtherCategory ? 'other' : formData.category}
                   >
-                    <SelectTrigger id="category_select" className="w-full">
+                    <SelectTrigger id="category_select" className="w-full text-foreground bg-background">
                       <SelectValue placeholder="Select a category">{isOtherCategory && formData.category ? formData.category : (PREDEFINED_CATEGORIES.includes(formData.category) ? formData.category : "Select a category")}</SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-popover text-popover-foreground">
                       {PREDEFINED_CATEGORIES.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        <SelectItem key={cat} value={cat} className="text-foreground">{cat}</SelectItem>
                       ))}
-                      <SelectItem value="other">Other...</SelectItem>
+                      <SelectItem value="other" className="text-foreground">Other...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {isOtherCategory ? (
                   <div className="space-y-2 min-w-0">
-                    <Label htmlFor="other_category" className="dark:text-gray-200">Custom Category</Label>
+                    <Label htmlFor="other_category" className="text-foreground">Custom Category</Label>
                     <Input
                       id="other_category"
                       value={formData.category}
                       onChange={(e) => handleChange('category', e.target.value)}
                       placeholder="e.g., Video Games"
-                      className="w-full"
+                      className="w-full text-foreground bg-background"
                     />
                   </div>
                 ) : <div />}
@@ -1202,13 +1203,13 @@ export default function AddSale() {
                   <>
                     {/* Fully displayed fields */}
                     <div className="space-y-2 min-w-0">
-                      <Label htmlFor="tracking_number" className="dark:text-gray-200">Tracking Number</Label>
+                      <Label htmlFor="tracking_number" className="text-foreground">Tracking Number</Label>
                       {formData.tracking_number ? (
                         <a 
                           href={`https://www.google.com/search?q=${encodeURIComponent(formData.tracking_number + ' ' + (formData.shipping_carrier || 'tracking'))}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-card hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
+                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -1221,42 +1222,42 @@ export default function AddSale() {
                     </div>
 
                     <div className="space-y-2 min-w-0">
-                      <Label htmlFor="shipping_carrier" className="dark:text-gray-200">Shipping Carrier</Label>
-                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                      <Label htmlFor="shipping_carrier" className="text-foreground">Shipping Carrier</Label>
+                      <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                         {formData.shipping_carrier || 'N/A'}
                       </div>
                     </div>
 
                     <div className="space-y-2 min-w-0">
-                      <Label className="dark:text-gray-200">Shipped Date</Label>
-                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                      <Label className="text-foreground">Shipped Date</Label>
+                      <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                         {formData.shipped_date ? new Date(formData.shipped_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
                       </div>
                     </div>
 
                     <div className="space-y-2 min-w-0">
-                      <Label className="dark:text-gray-200">Delivery Date</Label>
-                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                      <Label className="text-foreground">Delivery Date</Label>
+                      <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                         {formData.delivery_date ? new Date(formData.delivery_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not yet delivered'}
                       </div>
                     </div>
 
                     <div className="space-y-2 min-w-0">
-                      <Label className="dark:text-gray-200">Item Condition</Label>
-                      <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                      <Label className="text-foreground">Item Condition</Label>
+                      <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                         {formData.item_condition || 'N/A'}
                       </div>
                     </div>
 
                     {/* eBay Order Link */}
                     <div className="space-y-2 min-w-0">
-                      <Label className="dark:text-gray-200">eBay Order</Label>
+                      <Label className="text-foreground">eBay Order</Label>
                       {formData.ebay_order_id ? (
                         <a 
                           href={`https://www.ebay.com/sh/ord/details?orderid=${formData.ebay_order_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-card hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
+                          className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-blue-600 dark:text-blue-400 hover:underline"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -1270,7 +1271,7 @@ export default function AddSale() {
 
                     {/* Buyer Username as label */}
                     <div className="space-y-2 min-w-0">
-                      <Label className="dark:text-gray-200">Buyer</Label>
+                      <Label className="text-foreground">Buyer</Label>
                       <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20">
                         <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -1303,36 +1304,36 @@ export default function AddSale() {
                         <div className="grid md:grid-cols-2 gap-4 pt-2">
                           {/* Payment Info */}
                           <div className="space-y-2">
-                            <Label className="dark:text-gray-200">Payment Method</Label>
-                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            <Label className="text-foreground">Payment Method</Label>
+                            <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                               {formData.payment_method || 'N/A'}
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="dark:text-gray-200">Payment Status</Label>
-                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            <Label className="text-foreground">Payment Status</Label>
+                            <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                               {formData.payment_status || 'N/A'}
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="dark:text-gray-200">Payment Date</Label>
-                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            <Label className="text-foreground">Payment Date</Label>
+                            <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                               {formData.payment_date ? new Date(formData.payment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="dark:text-gray-200">Item Location</Label>
-                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            <Label className="text-foreground">Item Location</Label>
+                            <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                               {formData.item_location || 'N/A'}
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="dark:text-gray-200">Funds Status</Label>
-                            <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            <Label className="text-foreground">Funds Status</Label>
+                            <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground">
                               {formData.funds_status || 'Unknown'}
                             </div>
                           </div>
@@ -1340,8 +1341,8 @@ export default function AddSale() {
                           {/* Buyer Notes - only show if there are notes */}
                           {formData.buyer_notes && (
                             <div className="space-y-2 md:col-span-2">
-                              <Label className="dark:text-gray-200">Buyer Notes/Messages</Label>
-                              <div className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                              <Label className="text-foreground">Buyer Notes/Messages</Label>
+                              <div className="px-3 py-2 rounded-md border border-border bg-muted text-foreground whitespace-pre-wrap">
                                 {formData.buyer_notes}
                               </div>
                             </div>
@@ -1354,14 +1355,14 @@ export default function AddSale() {
 
 
                 <div className="space-y-2 md:col-span-2 min-w-0">
-                  <Label htmlFor="notes" className="dark:text-gray-200">Notes</Label>
+                  <Label htmlFor="notes" className="text-foreground">Notes</Label>
                   <Textarea
                     id="notes"
                     value={formData.notes}
                     onChange={(e) => handleChange('notes', e.target.value)}
                     placeholder="Any additional details about this sale..."
                     rows={3}
-                    className="w-full"
+                    className="w-full text-foreground bg-background"
                   />
                 </div>
 
@@ -1382,7 +1383,7 @@ export default function AddSale() {
                   <Alert className={calculatedProfit >= 0 ? "border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800" : "border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800"}>
                     <AlertDescription>
                       <div className="flex items-center justify-between">
-                        <span className="font-medium dark:text-gray-200">Estimated Profit:</span>
+                        <span className="font-medium text-foreground">Estimated Profit:</span>
                         <span className={`text-2xl font-bold ${calculatedProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                           ${calculatedProfit.toFixed(2)}
                         </span>

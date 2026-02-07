@@ -498,6 +498,35 @@ export default function Import() {
     };
   }, [selectedSource, userId, queryClient]);
 
+  // Listen for localStorage changes (when Inventory page un-marks items)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      // Only react to changes in marketplace listing caches
+      if (e.key === 'profit_orbit_facebook_listings' && selectedSource === 'facebook') {
+        console.log('💾 Facebook cache updated in localStorage, reloading...');
+        try {
+          const parsedListings = JSON.parse(e.newValue || '[]');
+          queryClient.setQueryData(['facebook-listings', userId], parsedListings);
+          setFacebookListingsVersion(v => v + 1);
+        } catch (err) {
+          console.error('Error parsing updated Facebook cache:', err);
+        }
+      } else if (e.key === 'profit_orbit_mercari_listings' && selectedSource === 'mercari') {
+        console.log('💾 Mercari cache updated in localStorage, reloading...');
+        try {
+          const parsedListings = JSON.parse(e.newValue || '[]');
+          queryClient.setQueryData(['mercari-listings', userId], parsedListings);
+          setFacebookListingsVersion(v => v + 1);
+        } catch (err) {
+          console.error('Error parsing updated Mercari cache:', err);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [selectedSource, userId, queryClient]);
+
   // Import mutation
   const importMutation = useMutation({
     mutationFn: async (itemIds) => {

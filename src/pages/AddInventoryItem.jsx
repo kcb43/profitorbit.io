@@ -726,7 +726,7 @@ export default function AddInventoryItem() {
   };
 
   if (isLoadingItem || isLoadingCopy) {
-    return <div className="p-8 text-center text-gray-700 dark:text-gray-300">Loading item data...</div>;
+    return <div className="p-8 text-center text-foreground">Loading item data...</div>;
   }
 
   return (
@@ -745,10 +745,10 @@ export default function AddInventoryItem() {
             </p>
           </div>
         </div>
-        <Card className="border-0 shadow-lg dark:bg-gray-800 dark:text-gray-50">
-          <CardHeader className="border-b bg-gray-50 dark:bg-gray-800/50 dark:border-gray-600">
+        <Card className="border-0 shadow-lg bg-card">
+          <CardHeader className="border-b bg-muted/50 border-border">
             <div className="flex items-center gap-3">
-              <CardTitle className="text-xl dark:text-white">Item Details</CardTitle>
+              <CardTitle className="text-xl text-foreground">Item Details</CardTitle>
               {copyId && (
                 <Badge className="bg-orange-100 text-orange-800 border border-orange-200 dark:bg-orange-800 dark:text-orange-100 dark:border-orange-700">Copied</Badge>
               )}
@@ -766,7 +766,7 @@ export default function AddInventoryItem() {
                 )}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="dark:text-gray-200 break-words">Item Photos</Label>
+                    <Label className="text-foreground break-words">Item Photos</Label>
                     <span className="text-xs text-muted-foreground">
                       {formData.photos.length} / {MAX_PHOTOS} photos
                     </span>
@@ -957,7 +957,7 @@ export default function AddInventoryItem() {
 
                 <div className="grid md:grid-cols-2 gap-6 min-w-0">
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="item_name" className="dark:text-gray-200 break-words">
+                        <Label htmlFor="item_name" className="text-foreground break-words">
                           Item Name <span className="text-red-500">*</span>
                         </Label>
                         <div className="flex gap-2">
@@ -967,7 +967,7 @@ export default function AddInventoryItem() {
                             onChange={(e) => handleChange('item_name', e.target.value)} 
                             placeholder="e.g., Vintage Nike Sneakers"
                             required
-                            className="w-full"
+                            className="w-full text-foreground bg-background"
                           />
                           {formData.item_name?.trim() && (
                             <Button
@@ -986,7 +986,7 @@ export default function AddInventoryItem() {
                         </div>
                     </div>
                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="purchase_price" className="dark:text-gray-200 break-words">
+                        <Label htmlFor="purchase_price" className="text-foreground break-words">
                           Purchase Price / Cost {formData.source !== 'Facebook' && formData.source !== 'Mercari' && <span className="text-red-500">*</span>}
                         </Label>
                         <Input 
@@ -998,7 +998,7 @@ export default function AddInventoryItem() {
                           onChange={(e) => handleChange('purchase_price', e.target.value)} 
                           placeholder={formData.source === 'Facebook' || formData.source === 'Mercari' ? "Optional - add your actual cost" : "0.00"}
                           required={formData.source !== 'Facebook' && formData.source !== 'Mercari'}
-                          className="w-full"
+                          className="w-full text-foreground bg-background"
                         />
                         {(formData.source === 'Facebook' || formData.source === 'Mercari') && (
                           <p className="text-xs text-muted-foreground">
@@ -1016,7 +1016,7 @@ export default function AddInventoryItem() {
                     />
                     
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="quantity" className="dark:text-gray-200 break-words">Quantity *</Label>
+                        <Label htmlFor="quantity" className="text-foreground break-words">Quantity *</Label>
                         <Input 
                           id="quantity" 
                           type="number" 
@@ -1026,16 +1026,16 @@ export default function AddInventoryItem() {
                           onChange={(e) => handleChange('quantity', e.target.value)} 
                           placeholder="1"
                           required
-                          className="w-full"
+                          className="w-full text-foreground bg-background"
                         />
                     </div>
                     <div className="space-y-2 min-w-0">
-                      <Label htmlFor="source_select" className="dark:text-gray-200 break-words">Source</Label>
+                      <Label htmlFor="source_select" className="text-foreground break-words">Source</Label>
                       <Select
                         onValueChange={handleSourceSelectChange}
                         value={isOtherSource ? 'other' : formData.source} 
                       >
-                        <SelectTrigger id="source_select" className="w-full">
+                        <SelectTrigger id="source_select" className="w-full text-foreground bg-background">
                           <SelectValue placeholder="Select a source">
                             {formData.source && !isOtherSource && sourceIcons[formData.source] ? (
                               <div className="flex items-center gap-2">
@@ -1051,9 +1051,9 @@ export default function AddInventoryItem() {
                             )}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-popover text-popover-foreground">
                           {PREDEFINED_SOURCES.map(source => (
-                            <SelectItem key={source} value={source}>
+                            <SelectItem key={source} value={source} className="text-foreground">
                               <div className="flex items-center gap-2">
                                 {sourceIcons[source] && (
                                   <img 
@@ -1066,7 +1066,7 @@ export default function AddInventoryItem() {
                               </div>
                             </SelectItem>
                           ))}
-                          <SelectItem value="other">Other...</SelectItem>
+                          <SelectItem value="other" className="text-foreground">Other...</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1080,37 +1080,37 @@ export default function AddInventoryItem() {
 
                     {isOtherSource ? (
                       <div className="space-y-2 md:col-span-2 min-w-0">
-                        <Label htmlFor="other_source" className="dark:text-gray-200 break-words">Custom Source</Label>
+                        <Label htmlFor="other_source" className="text-foreground break-words">Custom Source</Label>
                         <Input
                           id="other_source"
                           placeholder="e.g., Garage Sale, Flea Market"
                           value={formData.source}
                           onChange={(e) => handleChange('source', e.target.value)}
-                          className="w-full"
+                          className="w-full text-foreground bg-background"
                         />
                       </div>
                     ) : null}
                      
                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="status" className="dark:text-gray-200 break-words">Status *</Label>
+                        <Label htmlFor="status" className="text-foreground break-words">Status *</Label>
                         <Select 
                           value={formData.status} 
                           onValueChange={(value) => handleChange('status', value)}
                           required
                         >
-                            <SelectTrigger id="status" className="w-full">
+                            <SelectTrigger id="status" className="w-full text-foreground bg-background">
                               <SelectValue placeholder="Select status"/>
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="available">In Stock</SelectItem>
-                                <SelectItem value="listed">Listed</SelectItem>
-                                <SelectItem value="sold">Sold</SelectItem>
+                            <SelectContent className="bg-popover text-popover-foreground">
+                                <SelectItem value="available" className="text-foreground">In Stock</SelectItem>
+                                <SelectItem value="listed" className="text-foreground">Listed</SelectItem>
+                                <SelectItem value="sold" className="text-foreground">Sold</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="category_select" className="dark:text-gray-200 break-words flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground dark:text-muted-foreground">
+                        <Label htmlFor="category_select" className="text-foreground break-words flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground">
                             <path fill="currentColor" d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/>
                           </svg>
                           Category
@@ -1119,56 +1119,56 @@ export default function AddInventoryItem() {
                             onValueChange={handleCategorySelectChange}
                             value={isOtherCategory ? 'other' : formData.category}
                         >
-                            <SelectTrigger id="category_select" className="w-full">
+                            <SelectTrigger id="category_select" className="w-full text-foreground bg-background">
                                 <SelectValue placeholder="Select a category">{isOtherCategory && formData.category ? formData.category : (PREDEFINED_CATEGORIES.includes(formData.category) ? formData.category : "Select a category")}</SelectValue>
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-popover text-popover-foreground">
                                 {PREDEFINED_CATEGORIES.map(cat => (
-                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    <SelectItem key={cat} value={cat} className="text-foreground">{cat}</SelectItem>
                                 ))}
-                                <SelectItem value="other">Other...</SelectItem>
+                                <SelectItem value="other" className="text-foreground">Other...</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     {isOtherCategory ? (
                         <div className="space-y-2 md:col-span-2 min-w-0">
-                            <Label htmlFor="other_category" className="dark:text-gray-200 break-words">Custom Category</Label>
+                            <Label htmlFor="other_category" className="text-foreground break-words">Custom Category</Label>
                             <Input
                                 id="other_category"
                                 placeholder="e.g., Video Games"
                                 value={formData.category}
                                 onChange={(e) => handleChange('category', e.target.value)}
-                                className="w-full"
+                                className="w-full text-foreground bg-background"
                             />
                         </div>
                     ) : null}
 
                     {/* Brand Field */}
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="brand" className="dark:text-gray-200 break-words">Brand</Label>
+                        <Label htmlFor="brand" className="text-foreground break-words">Brand</Label>
                         <Input
                             id="brand"
                             placeholder="e.g., Nike, Adidas, Unbranded"
                             value={formData.brand || ""}
                             onChange={(e) => handleChange('brand', e.target.value)}
-                            className="w-full"
+                            className="w-full text-foreground bg-background"
                         />
                     </div>
 
                     {/* Condition Field */}
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="condition" className="dark:text-gray-200 break-words">Condition</Label>
+                        <Label htmlFor="condition" className="text-foreground break-words">Condition</Label>
                         <Select
                             value={formData.condition || undefined}
                             onValueChange={(value) => handleChange('condition', value)}
                         >
-                            <SelectTrigger id="condition" className="w-full">
+                            <SelectTrigger id="condition" className="w-full text-foreground bg-background">
                                 <SelectValue placeholder="Select condition" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-popover text-popover-foreground">
                                 {CONDITION_OPTIONS.map(cond => (
-                                    <SelectItem key={cond} value={cond}>{cond}</SelectItem>
+                                    <SelectItem key={cond} value={cond} className="text-foreground">{cond}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -1176,19 +1176,19 @@ export default function AddInventoryItem() {
 
                     {/* Size Field (for clothing/shoes) */}
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="size" className="dark:text-gray-200 break-words">Size (if applicable)</Label>
+                        <Label htmlFor="size" className="text-foreground break-words">Size (if applicable)</Label>
                         <Input
                             id="size"
                             placeholder="e.g., M, 10, XL, 32x34"
                             value={formData.size || ""}
                             onChange={(e) => handleChange('size', e.target.value)}
-                            className="w-full"
+                            className="w-full text-foreground bg-background"
                         />
                     </div>
 
 
                     <div className="space-y-2 md:col-span-2 min-w-0">
-                        <Label htmlFor="description" className="dark:text-gray-200 break-words">Description</Label>
+                        <Label htmlFor="description" className="text-foreground break-words">Description</Label>
                         <Textarea
                           id="description"
                           value={formData.description}
@@ -1203,12 +1203,12 @@ export default function AddInventoryItem() {
                           }}
                           placeholder="Listing description (this will carry into Crosslist)"
                           rows={5}
-                          className="w-full"
+                          className="w-full text-foreground bg-background"
                         />
                     </div>
 
                     <div className="space-y-2 md:col-span-2 min-w-0">
-                        <Label htmlFor="notes" className="dark:text-gray-200 break-words">Notes</Label>
+                        <Label htmlFor="notes" className="text-foreground break-words">Notes</Label>
                         <Textarea 
                           id="notes" 
                           value={formData.notes} 
@@ -1224,7 +1224,7 @@ export default function AddInventoryItem() {
                           }}
                           placeholder="Any additional details..."
                           rows={3}
-                          className="w-full"
+                          className="w-full text-foreground bg-background"
                         />
                     </div>
                 </div>

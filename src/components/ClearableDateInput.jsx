@@ -22,7 +22,7 @@ export default function ClearableDateInput({
 
   return (
     <div className="space-y-2 min-w-0">
-      {label && <Label htmlFor={id} className="dark:text-gray-200 break-words">{label}{required ? " *" : ""}</Label>}
+      {label && <Label htmlFor={id} className="text-foreground break-words">{label}{required ? " *" : ""}</Label>}
 
       <div className="relative w-full max-w-full overflow-hidden min-w-0">
         <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 dark:text-emerald-400 pointer-events-none z-10" />
