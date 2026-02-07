@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2 } from "lucide-react";
+import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2, Plus } from "lucide-react";
 import { format, parseISO, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -151,6 +151,7 @@ export default function SalesHistory() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [pageSize, setPageSize] = useState(50);
   const [pageIndex, setPageIndex] = useState(0);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
@@ -1128,16 +1129,25 @@ export default function SalesHistory() {
             <h1 className="text-3xl font-bold text-foreground break-words">Sales History</h1>
             <p className="text-muted-foreground mt-1 break-words">View and manage all your sales</p>
           </div>
-          {!isMobile && (
+          <div className="flex gap-2 flex-shrink-0">
             <Button
-              variant="outline"
-              onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-              className="flex-shrink-0"
+              onClick={() => navigate(createPageUrl("PlatformPerformance"))}
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-              {viewMode === "list" ? "Grid View" : "List View"}
+              <Plus className="w-4 h-4 mr-2" />
+              Add Sale
             </Button>
-          )}
+            {!isMobile && (
+              <Button
+                variant="outline"
+                onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
+                className="flex-shrink-0"
+              >
+                {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
+                {viewMode === "list" ? "Grid View" : "List View"}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Mobile Filter Bar */}
