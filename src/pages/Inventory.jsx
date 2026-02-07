@@ -2049,7 +2049,7 @@ export default function InventoryPage() {
                           boxShadow: selectedItems.includes(item.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
                         }}
                       >
-                      <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4">
+                      <div className="flex flex-col sm:block flex-shrink-0 m-1 sm:m-4" style={{ minWidth: '170px' }}>
                         <div
                           onClick={() => handleSelect(item.id)}
                           className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[150px] sm:w-[220px] min-w-[150px] sm:min-w-[220px] max-w-[150px] sm:max-w-[220px] h-[150px] sm:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
@@ -2093,8 +2093,8 @@ export default function InventoryPage() {
                         </div>
                         
                         {/* Mobile: Favorite, Edit Image icons below image - LEFT side only */}
-                        <div className="md:hidden mt-3">
-                          <div className="flex items-center gap-2 mb-1">
+                        <div className="md:hidden mt-3" style={{ width: '150px' }}>
+                          <div className="flex items-center gap-1 mb-1 flex-nowrap" style={{ width: '150px' }}>
                             <button
                               type="button"
                               onClick={(e) => {
