@@ -2155,18 +2155,6 @@ export default function InventoryPage() {
                       >
                         <div className="absolute left-0 top-0 w-px h-[130px] sm:h-full bg-gray-300"></div>
                         
-                        {/* Mobile: Status and Source badges - TOP RIGHT */}
-                        <div className="md:hidden absolute right-2 top-2 flex items-center gap-1.5">
-                          {item.source && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                              {item.source}
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
-                            {statusLabels[item.status] || statusLabels.available}
-                          </Badge>
-                        </div>
-                        
                         {/* Status badge above title - Desktop only */}
                         <div className="hidden sm:block mb-2">
                           <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5`}>
@@ -2369,6 +2357,18 @@ export default function InventoryPage() {
                         >
                           View Details
                         </Button>
+                      </div>
+                      
+                      {/* Mobile: Status and Source badges - BOTTOM RIGHT, above buttons */}
+                      <div className="md:hidden flex items-center justify-end gap-1.5 px-2 pb-2">
+                        {item.source && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                            {item.source}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                          {statusLabels[item.status] || statusLabels.available}
+                        </Badge>
                       </div>
                       
                       {/* Mobile: Mark Sold and Edit buttons at bottom */}
