@@ -2410,6 +2410,7 @@ export default function InventoryPage() {
                         </Button>
                       </div>
                     </div>
+                    </div>
                     
                     {/* Desktop list layout (new) */}
                     <div
