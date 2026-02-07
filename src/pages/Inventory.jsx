@@ -2118,16 +2118,6 @@ export default function InventoryPage() {
                           </h3>
                         </Link>
 
-                        {/* Mobile return banner */}
-                        {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
-                          <div className="md:hidden mb-2 p-2 bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500 rounded-r text-red-700 dark:text-red-300">
-                            <p className="font-semibold text-[10px] flex items-center gap-1">
-                              <AlarmClock className="w-3 h-3" />
-                              Return in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-                        )}
-
                         <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
                           <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
                             <span className="font-semibold">Qty:</span> {item.quantity}
@@ -2150,6 +2140,16 @@ export default function InventoryPage() {
                           <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
                             <span className="font-semibold">Purchased:</span> {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
                           </p>
+
+                          {/* Mobile return banner */}
+                          {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
+                            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500 rounded-r text-red-700 dark:text-red-300">
+                              <p className="font-semibold text-[10px] flex items-center gap-1">
+                                <AlarmClock className="w-3 h-3" />
+                                Return in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
