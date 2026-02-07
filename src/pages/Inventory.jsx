@@ -2409,10 +2409,9 @@ export default function InventoryPage() {
                         >
                           Edit
                         </Button>
-                        </div>
-                      </div>
                       </div>
                     </div>
+                    
                     {/* Desktop list layout (new) */}
                     <div
                         onClick={(e) => {
