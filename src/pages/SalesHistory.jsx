@@ -151,7 +151,6 @@ export default function SalesHistory() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [pageSize, setPageSize] = useState(50);
   const [pageIndex, setPageIndex] = useState(0);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
