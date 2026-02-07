@@ -2359,32 +2359,34 @@ export default function InventoryPage() {
                         </Button>
                       </div>
                       
-                      {/* Mobile: Status and Source badges - BOTTOM RIGHT, above buttons */}
-                      <div className="md:hidden flex items-center justify-end gap-1.5 px-2 pb-2">
-                        {item.source && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                            {item.source}
+                      {/* Mobile: Mark Sold and Edit buttons at bottom with badges above */}
+                      <div className="md:hidden w-full">
+                        {/* Status and Source badges - RIGHT aligned, above buttons */}
+                        <div className="flex items-center justify-end gap-1.5 px-2 pb-1.5 pt-2">
+                          {item.source && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                              {item.source}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                            {statusLabels[item.status] || statusLabels.available}
                           </Badge>
-                        )}
-                        <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
-                          {statusLabels[item.status] || statusLabels.available}
-                        </Badge>
-                      </div>
-                      
-                      {/* Mobile: Mark Sold and Edit buttons at bottom */}
-                      <div 
-                        onClick={(e) => {
-                          // Make card clickable for details (except image)
-                          const target = e.target;
-                          const isImage = target.closest('.glass');
-                          const isButton = target.closest('button');
-                          if (!isImage && !isButton) {
-                            setItemToView(item);
-                            setViewDialogOpen(true);
-                          }
-                        }}
-                        className="md:hidden flex gap-2 px-2 pt-2 pb-2 border-t border-gray-200 dark:border-border w-full"
-                      >
+                        </div>
+                        
+                        {/* Buttons */}
+                        <div 
+                          onClick={(e) => {
+                            // Make card clickable for details (except image)
+                            const target = e.target;
+                            const isImage = target.closest('.glass');
+                            const isButton = target.closest('button');
+                            if (!isImage && !isButton) {
+                              setItemToView(item);
+                              setViewDialogOpen(true);
+                            }
+                          }}
+                          className="flex gap-2 px-2 pb-2 border-t border-gray-200 dark:border-border w-full pt-1.5"
+                        >
                         {!isSoldOut && item.status !== 'sold' && (
                           <Button
                             onClick={(e) => {
@@ -2405,6 +2407,7 @@ export default function InventoryPage() {
                         >
                           Edit
                         </Button>
+                        </div>
                       </div>
                       </div>
 
