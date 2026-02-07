@@ -193,20 +193,32 @@ export default function Import() {
           setIsConnected(false);
         }
       } else if (selectedSource === "facebook") {
-        // Check Facebook connection from bridge status
-        try {
-          const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
-          const fbConnected = bridgeStatus.facebook?.loggedIn === true;
-          
-          if (fbConnected) {
-            setIsConnected(true);
-            console.log('✅ Facebook connected');
-          } else {
+        // Wait for bridge to be ready before checking Facebook connection
+        const checkFacebookConnection = () => {
+          try {
+            const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+            const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+            
+            if (fbConnected) {
+              setIsConnected(true);
+              console.log('✅ Facebook connected');
+            } else {
+              setIsConnected(false);
+              console.log('❌ Facebook not connected');
+            }
+          } catch (e) {
+            console.error('Error checking Facebook connection:', e);
             setIsConnected(false);
-            console.log('❌ Facebook not connected');
           }
-        } catch (e) {
-          console.error('Error checking Facebook connection:', e);
+        };
+        
+        // Check if bridge is already loaded
+        if (window.__PROFIT_ORBIT_BRIDGE_LOADED) {
+          console.log('🔵 Bridge already loaded, checking connection immediately');
+          checkFacebookConnection();
+        } else {
+          console.log('🔵 Bridge not loaded yet, will wait for profitOrbitBridgeReady event');
+          // Will be updated by profitOrbitBridgeReady event listener
           setIsConnected(false);
         }
       } else if (selectedSource === "mercari") {
@@ -1568,11 +1580,21 @@ export default function Import() {
                         size="sm"
                         className="gap-2"
                         onClick={() => {
-                          // Open Facebook Marketplace in new tab for user to login
-                          window.open('https://www.facebook.com/marketplace', '_blank');
+                          // Open Facebook Marketplace in centered popup window
+                          const width = 600;
+                          const height = 700;
+                          const left = (window.screen.width - width) / 2;
+                          const top = (window.screen.height - height) / 2;
+                          
+                          window.open(
+                            'https://www.facebook.com/marketplace',
+                            'FacebookLogin',
+                            `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+                          );
+                          
                           toast({
                             title: "Login to Facebook",
-                            description: "Log in to Facebook Marketplace in the new tab, then come back and click 'Get Latest Items'",
+                            description: "Log in to Facebook Marketplace in the popup window, then come back and click 'Get Latest Items'",
                           });
                         }}
                       >
