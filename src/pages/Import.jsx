@@ -198,14 +198,22 @@ export default function Import() {
           const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
           const fbConnected = bridgeStatus.facebook?.loggedIn === true;
           
-          console.log('🔍 Facebook connection check:', { fbConnected });
+          // Only log if we're seeing a definitive status (not just empty localStorage)
+          const hasStatus = Object.keys(bridgeStatus).length > 0;
+          if (hasStatus) {
+            console.log('🔍 Facebook connection check:', { fbConnected });
+          }
           
           if (fbConnected) {
             setIsConnected(true);
-            console.log('✅ Facebook connected from localStorage');
+            if (hasStatus) {
+              console.log('✅ Facebook connected from localStorage');
+            }
           } else {
             setIsConnected(false);
-            console.log('❌ Facebook not connected (will update when bridge sends status)');
+            if (hasStatus) {
+              console.log('❌ Facebook not connected');
+            }
           }
           
           // ALWAYS load cached items if available, regardless of connection status
