@@ -153,7 +153,10 @@ window.addEventListener("message", (event) => {
 
   // Scrape Facebook listings for Import page
   if (msg.type === "PO_SCRAPE_FACEBOOK_LISTINGS") {
-    poTrySendMessage({ type: "SCRAPE_FACEBOOK_LISTINGS" }, "PO_SCRAPE_FACEBOOK_LISTINGS_RESULT");
+    poTrySendMessage({ 
+      type: "SCRAPE_FACEBOOK_LISTINGS", 
+      statusFilter: msg.payload?.statusFilter || 'all' 
+    }, "PO_SCRAPE_FACEBOOK_LISTINGS_RESULT");
     return;
   }
 

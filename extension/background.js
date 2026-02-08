@@ -2309,7 +2309,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (type === 'SCRAPE_FACEBOOK_LISTINGS') {
     (async () => {
       try {
-        console.log('📡 SCRAPE_FACEBOOK_LISTINGS received - using GraphQL API');
+        const statusFilter = message.statusFilter || 'all';
+        console.log('📡 SCRAPE_FACEBOOK_LISTINGS received - using GraphQL API with status filter:', statusFilter);
         
         // Check if facebook-api.js is loaded
         if (!self.__facebookApi) {
@@ -2364,16 +2365,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         console.log('✅ Facebook auth ready, fetching listings via API...');
-        console.log('📤 Calling fetchFacebookListings with:', { hasDtsg: !!auth.dtsg, cookieCount: auth.cookies?.length || 0 });
+        console.log('📤 Calling fetchFacebookListings with:', { 
+          hasDtsg: !!auth.dtsg, 
+          cookieCount: auth.cookies?.length || 0,
+          statusFilter 
+        });
         
-        // Fetch listings via GraphQL API with progress callback
+        // Fetch listings via GraphQL API with status filter
         const result = await self.__facebookApi.fetchFacebookListings({
           dtsg: auth.dtsg,
           cookies: auth.cookies,
           count: 50,
+          statusFilter, // Pass the status filter to the API
         });
         
         console.log('✅ Fetched listings via API:', result.listings?.length || 0);
+        
+        // Log status breakdown
+        const statusCounts = result.listings?.reduce((acc, item) => {
+          acc[item.status || 'unknown'] = (acc[item.status || 'unknown'] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('📊 Status breakdown:', statusCounts);
+        
         console.log('📦 First listing sample:', JSON.stringify(result.listings?.[0], null, 2));
         
         // Store in chrome.storage

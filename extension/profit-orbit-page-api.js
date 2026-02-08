@@ -336,18 +336,19 @@
     },
 
     // Facebook scraper for Import page
-    async scrapeFacebookListings() {
-      console.log('🟣 [FACEBOOK] Page API -> scrapeFacebookListings');
+    async scrapeFacebookListings(options = {}) {
+      const { statusFilter = 'all' } = options;
+      console.log('🟣 [FACEBOOK] Page API -> scrapeFacebookListings', { statusFilter });
 
       const resp = await postAndWait(
         'PO_SCRAPE_FACEBOOK_LISTINGS',
         'PO_SCRAPE_FACEBOOK_LISTINGS_RESULT',
-        null,
+        { statusFilter },
         120000
       );
 
       try {
-        localStorage.setItem('profit_orbit_last_facebook_scrape_result', JSON.stringify({ t: Date.now(), resp }));
+        localStorage.setItem('profit_orbit_last_facebook_scrape_result', JSON.stringify({ t: Date.now(), statusFilter, resp }));
       } catch (_) {}
 
       return resp;

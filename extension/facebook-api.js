@@ -140,18 +140,32 @@ async function getFacebookAuth() {
 }
 
 // Fetch listings via GraphQL API
-async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null }) {
+async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null, statusFilter = 'all' }) {
   try {
-    console.log('📡 Fetching Facebook listings via GraphQL API...', { count, cursor, hasDtsg: !!dtsg });
+    console.log('📡 Fetching Facebook listings via GraphQL API...', { count, cursor, statusFilter, hasDtsg: !!dtsg });
     
     // Build cookie header
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    
+    // Determine status array based on filter
+    // Facebook uses: IN_STOCK for active, OUT_OF_STOCK for sold items
+    let statusArray;
+    if (statusFilter === 'available' || statusFilter === 'active') {
+      statusArray = ['IN_STOCK'];
+    } else if (statusFilter === 'sold') {
+      statusArray = ['OUT_OF_STOCK'];
+    } else {
+      // 'all' - fetch both active and sold items
+      statusArray = ['IN_STOCK', 'OUT_OF_STOCK'];
+    }
+    
+    console.log('📊 Using status filter:', { statusFilter, statusArray });
     
     // GraphQL query parameters
     const variables = {
       count,
       state: 'LIVE',
-      status: ['IN_STOCK'],
+      status: statusArray,
       cursor,
       order: 'CREATION_TIMESTAMP_DESC',
       scale: 1,
@@ -269,6 +283,28 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
       // Extract size from custom_sub_titles_with_rendering_flags
       const size = listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || null;
       
+      // Determine status from multiple sources
+      // Priority: is_sold flag > inventory_item.inventory_status > is_pending flag > default 'available'
+      let itemStatus = 'available';
+      
+      if (listing.is_sold) {
+        itemStatus = 'sold';
+      } else if (listing.inventory_item?.inventory_status === 'OUT_OF_STOCK') {
+        itemStatus = 'sold';
+      } else if (listing.is_pending) {
+        itemStatus = 'pending';
+      } else if (listing.inventory_item?.inventory_status === 'IN_STOCK') {
+        itemStatus = 'available';
+      }
+      
+      console.log(`🔍 [${index + 1}] Status detection:`, {
+        itemId: listing.id,
+        is_sold: listing.is_sold,
+        inventory_status: listing.inventory_item?.inventory_status,
+        is_pending: listing.is_pending,
+        finalStatus: itemStatus
+      });
+      
       const result = {
         itemId: listing.id,
         title: listing.marketplace_listing_title || listing.base_marketplace_listing_title || '',
@@ -277,7 +313,7 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null 
         pictureURLs: listing.primary_listing_photo?.image?.uri ? [listing.primary_listing_photo.image.uri] : [],
         listingUrl: listing.story?.url || `https://www.facebook.com/marketplace/item/${listing.id}/`,
         source: 'facebook',
-        status: listing.is_sold ? 'sold' : listing.is_pending ? 'pending' : 'available',
+        status: itemStatus,
         description: description,
         category: category,
         condition: condition,

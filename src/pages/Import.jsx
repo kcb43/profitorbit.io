@@ -1070,7 +1070,7 @@ export default function Import() {
   // Handle Facebook sync via extension
   const handleFacebookSync = async () => {
     try {
-      console.log('📡 Requesting Facebook scrape from extension...');
+      console.log('📡 Requesting Facebook scrape from extension with status filter:', listingStatus);
       
       // Check if extension API is available
       if (!window.ProfitOrbitExtension || typeof window.ProfitOrbitExtension.scrapeFacebookListings !== 'function') {
@@ -1079,11 +1079,11 @@ export default function Import() {
       
       toast({
         title: "Syncing Facebook Marketplace",
-        description: "Checking for Facebook tab...",
+        description: "Fetching listings...",
       });
       
-      // Use the extension API
-      const result = await window.ProfitOrbitExtension.scrapeFacebookListings();
+      // Use the extension API with status filter
+      const result = await window.ProfitOrbitExtension.scrapeFacebookListings({ statusFilter: listingStatus });
       
       if (!result?.success) {
         throw new Error(result?.error || 'Failed to scrape Facebook listings');
@@ -1093,6 +1093,13 @@ export default function Import() {
       const listings = result?.listings || [];
       console.log('✅ Received Facebook listings:', listings.length);
       console.log('📦 Sample listing:', listings[0]);
+      
+      // Log status breakdown
+      const statusCounts = listings.reduce((acc, item) => {
+        acc[item.status || 'unknown'] = (acc[item.status || 'unknown'] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📊 Status breakdown:', statusCounts);
       
       // Load existing imported status from localStorage
       const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
