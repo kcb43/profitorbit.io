@@ -1269,11 +1269,6 @@ export default function Import() {
         throw new Error('Extension API not available. Please make sure the Profit Orbit extension is installed and enabled.');
       }
       
-      toast({
-        title: "Syncing Mercari",
-        description: "Fetching all your listings (on sale + sold)...",
-      });
-      
       // Use the extension API with status parameter - always fetch 'all'
       const result = await window.ProfitOrbitExtension.scrapeMercariListings({ status: mercariStatus });
       
