@@ -2450,7 +2450,7 @@ export default function Crosslist() {
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-gray-600 dark:text-gray-400">Quantity:</span>
                               <span className="text-[11px] font-medium text-foreground">
-                                {availableQuantity}
+                                {totalQuantity}
                                 {quantitySold > 0 && (
                                   <span className={`ml-1 ${availableQuantity === 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                     {availableQuantity === 0 ? '(Sold Out)' : `(${quantitySold} sold)`}
