@@ -79,11 +79,11 @@ export default function Import() {
   // Update listing status default when source changes
   useEffect(() => {
     if (selectedSource === "facebook") {
-      setListingStatus("available");
+      setListingStatus("all"); // Changed to "all" by default
     } else if (selectedSource === "ebay") {
-      setListingStatus("Active");
+      setListingStatus("All"); // Changed to "All" by default
     } else if (selectedSource === "mercari") {
-      setListingStatus("on_sale");
+      setListingStatus("all"); // Changed to "all" by default
     }
   }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -302,17 +302,18 @@ export default function Import() {
     setSearchParams({ source: selectedSource });
   }, [selectedSource, setSearchParams]);
 
-  // Fetch eBay listings
+  // Fetch eBay listings - ALWAYS fetch both Active and Sold together for better UX
   const { data: ebayListings, isLoading, refetch, error } = useQuery({
-    queryKey: ["ebay-listings", listingStatus, userId],
+    queryKey: ["ebay-listings", "All", userId], // Always fetch "All" status
     queryFn: async () => {
-      console.log('📡 Fetching eBay listings...', { userId, hasToken: !!ebayToken?.access_token });
+      console.log('📡 Fetching eBay listings (Active + Sold)...', { userId, hasToken: !!ebayToken?.access_token });
       
       if (!userId) {
         throw new Error('User ID not available');
       }
       
-      const response = await fetch(`/api/ebay/my-listings?status=${listingStatus}`, {
+      // Always fetch ALL listings (both Active and Sold) in one go
+      const response = await fetch(`/api/ebay/my-listings?status=All&limit=200`, {
         headers: {
           'x-user-id': userId,  // lowercase to match API
           'x-user-token': ebayToken?.access_token || '',
@@ -320,7 +321,7 @@ export default function Import() {
       });
       
       console.log('📡 Response status:', response.status);
-      console.log('📊 Request params:', { listingStatus, userId: userId.substring(0, 8) + '...' });
+      console.log('📊 Request params: Fetching ALL listings (Active + Sold)');
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -358,7 +359,8 @@ export default function Import() {
       setLastSync(new Date());
       
       // Cache listings in localStorage so they persist across page navigation
-      const cacheKey = `ebay_listings_${listingStatus}_${userId}`;
+      // Always cache as "All" since we're fetching everything together
+      const cacheKey = `ebay_listings_All_${userId}`;
       localStorage.setItem(cacheKey, JSON.stringify(data.listings || []));
       localStorage.setItem(`${cacheKey}_timestamp`, new Date().toISOString());
       
@@ -368,12 +370,12 @@ export default function Import() {
     staleTime: Infinity, // Never auto-refetch - user must click button
     gcTime: Infinity, // Keep in cache indefinitely
     initialData: () => {
-      // Load from localStorage on mount
+      // Load from localStorage on mount - always load from "All" cache
       if (selectedSource === "ebay" && userId) {
-        const cacheKey = `ebay_listings_${listingStatus}_${userId}`;
+        const cacheKey = `ebay_listings_All_${userId}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          console.log('📦 Loading cached eBay listings from localStorage');
+          console.log('📦 Loading cached eBay listings from localStorage (All statuses)');
           return JSON.parse(cached);
         }
       }
@@ -931,11 +933,33 @@ export default function Import() {
     if (!sourceListings || sourceListings.length === 0) return [];
     
     let filtered = sourceListings.filter((item) => {
+      // Filter by import status
       if (importingStatus === "not_imported") {
-        return !item.imported;
+        if (item.imported) return false;
       } else if (importingStatus === "imported") {
-        return item.imported;
+        if (!item.imported) return false;
       }
+      
+      // Filter by listing status (Active/Sold/All)
+      if (selectedSource === "ebay") {
+        if (listingStatus === "Active" && item.status !== "Active") {
+          return false;
+        } else if (listingStatus === "Sold" && item.status !== "Sold") {
+          return false;
+        }
+        // "All" shows everything - no filter needed
+      } else if (selectedSource === "facebook") {
+        // Facebook uses different status values
+        if (listingStatus !== "all" && item.status !== listingStatus) {
+          return false;
+        }
+      } else if (selectedSource === "mercari") {
+        // Mercari uses different status values
+        if (listingStatus !== "all" && item.status !== listingStatus) {
+          return false;
+        }
+      }
+      
       return true;
     });
 
@@ -954,7 +978,7 @@ export default function Import() {
     });
 
     return filtered;
-  }, [ebayListings, importingStatus, sortBy, selectedSource, userId, queryClient, facebookListingsVersion]);
+  }, [ebayListings, importingStatus, listingStatus, sortBy, selectedSource, userId, queryClient, facebookListingsVersion]);
 
   // Calculate counts from ALL listings (not filtered)
   const { notImportedCount, importedCount } = React.useMemo(() => {
