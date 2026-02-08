@@ -2113,22 +2113,35 @@ export default function Crosslist() {
         ) : (
           <>
             {filtered.length > 0 && (
-              <div className="flex items-center gap-3 p-4 bg-card rounded-t-lg">
-                <Checkbox
-                  checked={selected.length === filtered.length && filtered.length > 0}
-                  onCheckedChange={toggleAll}
-                  id="select-all"
-                  className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
-                />
-                <div className="flex flex-col">
-                  <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
-                    Select All ({filtered.length})
-                  </label>
-                  <span className="text-xs text-muted-foreground md:hidden">
-                    Tap image to select for bulk edit
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden md:block">Click image to select for bulk edit</span>
+              <div className="flex items-center justify-between gap-3 p-4 bg-card rounded-t-lg">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={selected.length === filtered.length && filtered.length > 0}
+                    onCheckedChange={toggleAll}
+                    id="select-all"
+                    className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
+                  />
+                  <div className="flex flex-col">
+                    <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
+                      Select All ({filtered.length})
+                    </label>
+                    <span className="text-xs text-muted-foreground md:hidden">
+                      Tap image to select for bulk edit
+                    </span>
+                    <span className="text-xs text-muted-foreground hidden md:block">Click image to select for bulk edit</span>
+                  </div>
                 </div>
+                
+                {/* Mobile view toggle button */}
+                <Button
+                  variant="outline"
+                  onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}
+                  className="md:hidden flex-shrink-0"
+                  size="sm"
+                >
+                  {layout === "rows" ? <Grid2X2 className="w-4 h-4 mr-1" /> : <Rows className="w-4 h-4 mr-1" />}
+                  {layout === "rows" ? "Grid" : "List"}
+                </Button>
               </div>
             )}
             {layout === "rows" ? (
