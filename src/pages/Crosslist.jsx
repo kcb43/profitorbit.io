@@ -79,7 +79,7 @@ import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
-import InventoryItemViewDialog from "@/components/InventoryItemViewDialog";
+import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
