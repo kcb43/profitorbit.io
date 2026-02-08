@@ -2222,7 +2222,7 @@ export default function Crosslist() {
                             e.stopPropagation();
                             toggleSelect(it.id);
                           }}
-                          className={`item-image-clickable cursor-pointer flex items-center justify-center relative w-[120px] sm:w-[150px] min-w-[120px] sm:min-w-[150px] max-w-[120px] sm:max-w-[150px] h-[120px] sm:h-[150px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
+                          className="item-image-clickable cursor-pointer flex items-center justify-center relative w-[120px] sm:w-[150px] min-w-[120px] sm:min-w-[150px] max-w-[120px] sm:max-w-[150px] h-[120px] sm:h-[150px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0

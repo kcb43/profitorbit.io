@@ -2063,7 +2063,7 @@ export default function InventoryPage() {
                       <div className="flex-shrink-0 m-1 sm:m-4 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
                         <div
                           onClick={() => handleSelect(item.id)}
-                          className={`md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[120px] sm:w-[150px] lg:w-[220px] min-w-[120px] sm:min-w-[150px] lg:min-w-[220px] max-w-[120px] sm:max-w-[150px] lg:max-w-[220px] h-[120px] sm:h-[150px] lg:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
+                          className="md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[120px] sm:w-[150px] lg:w-[220px] min-w-[120px] sm:min-w-[150px] lg:min-w-[220px] max-w-[120px] sm:max-w-[150px] lg:max-w-[220px] h-[120px] sm:h-[150px] lg:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
