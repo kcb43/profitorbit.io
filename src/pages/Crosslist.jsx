@@ -60,6 +60,9 @@ import {
   Sparkles,
   Download,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  Eye,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
@@ -561,6 +564,7 @@ export default function Crosslist() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemToView, setItemToView] = useState(null);
   const [showMoreMarketplaces, setShowMoreMarketplaces] = useState({});
+  const [expandedDetails, setExpandedDetails] = useState({});
   
   // Track mobile state but don't force grid view
   useEffect(() => {
@@ -2359,8 +2363,9 @@ export default function Crosslist() {
                       </div>
                     </div>
 
-                    {/* Row 2: Title and Details - Mobile only */}
+                    {/* Row 2: Title, Source, and View Details - Mobile only */}
                     <div className="sm:hidden w-full px-3 pb-3">
+                      {/* Title */}
                       <div className="mb-2">
                         <h3 className="text-sm font-bold text-foreground break-words line-clamp-3 text-left"
                           style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
@@ -2368,26 +2373,66 @@ export default function Crosslist() {
                         </h3>
                       </div>
 
-                      <div className="space-y-0.5 w-full text-left">
-                        <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
-                          <span className="font-semibold">Category:</span> {it.category || "—"}
-                        </p>
-                        
-                        <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] pt-1">
-                          <span className="font-semibold">Price:</span> ${(it.purchase_price || 0).toFixed(2)}
-                        </p>
-                        
-                        <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
-                          <span className="font-semibold">Purchased:</span> {it.purchase_date ? format(parseISO(it.purchase_date), 'MMM d, yyyy') : '—'}
-                        </p>
-
-                        {it.source && (
+                      {/* Source */}
+                      {it.source && (
+                        <div className="mb-2">
                           <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
                             <span className="font-semibold">Source:</span>
                             <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
                               {it.source}
                             </Badge>
                           </p>
+                        </div>
+                      )}
+
+                      {/* View Details Dropdown */}
+                      <div className="border border-gray-200 dark:border-border rounded-lg overflow-hidden">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedDetails(prev => ({ ...prev, [it.id]: !prev[it.id] }));
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-card/50 hover:bg-gray-100 dark:hover:bg-card/70 transition-colors"
+                        >
+                          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <Eye className="w-4 h-4" />
+                            View Details
+                          </span>
+                          {expandedDetails[it.id] ? (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </button>
+                        
+                        {expandedDetails[it.id] && (
+                          <div className="px-3 py-2 space-y-1.5 bg-white dark:bg-card border-t border-gray-200 dark:border-border">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-gray-600 dark:text-gray-400">Category:</span>
+                              <span className="text-[11px] font-medium text-foreground">{it.category || "—"}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-gray-600 dark:text-gray-400">Price:</span>
+                              <span className="text-[11px] font-medium text-foreground">${(it.purchase_price || 0).toFixed(2)}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-gray-600 dark:text-gray-400">Purchased:</span>
+                              <span className="text-[11px] font-medium text-foreground">
+                                {it.purchase_date ? format(parseISO(it.purchase_date), 'MMM d, yyyy') : '—'}
+                              </span>
+                            </div>
+
+                            {it.source && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Source:</span>
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                  {it.source}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
