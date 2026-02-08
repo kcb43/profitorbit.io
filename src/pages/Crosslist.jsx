@@ -2225,7 +2225,7 @@ export default function Crosslist() {
                       boxSizing: 'border-box'
                     }}
                   >
-                    {/* Row 1: Image and Marketplace icons */}
+                    {/* Row 1: Image and Crosslist/Edit Buttons */}
                     <div className="flex flex-row items-start gap-3 p-3">
                       {/* Image - 15% bigger (138px from 120px) */}
                       <div className="flex-shrink-0 w-[138px] sm:w-[173px]" style={{ minWidth: '138px', maxWidth: '138px' }}>
@@ -2281,75 +2281,30 @@ export default function Crosslist() {
                         </div>
                       </div>
 
-                      {/* Marketplace icons - Mobile only */}
-                      <div className="sm:hidden flex-1 flex flex-col">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-semibold text-muted-foreground">Listed on:</span>
-                          {listedCount > 0 && (
-                            <Badge variant="outline" className="text-[9px] px-2 py-0.5">
-                              {listedCount} of {MARKETPLACES.length}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {MARKETPLACES.slice(0, showMoreMarketplaces[it.id] ? MARKETPLACES.length : 4).map((m) => {
-                            const state = map[m.id];
-                            const isListed = state === 'active';
-                            const isProcessing = state === 'processing';
-                            const listings = getItemListings(it.id);
-                            const listing =
-                              listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
-                              listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
-                              listings.find((l) => l.marketplace === m.id) ||
-                              null;
-                            const listingUrl =
-                              typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
-                                ? listing.marketplace_listing_url
-                                : null;
-                            
-                            return (
-                              <div key={m.id} className="flex flex-col items-center gap-0.5">
-                                <div
-                                  className={`relative inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
-                                    isListed
-                                      ? "bg-white dark:bg-card border-emerald-500/40 shadow-sm"
-                                      : isProcessing
-                                        ? "bg-white dark:bg-card border-blue-500/40 shadow-sm"
-                                      : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50"
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (listingUrl) window.open(listingUrl, '_blank');
-                                  }}
-                                >
-                                  {renderMarketplaceIcon(m, "w-5 h-5")}
-                                  {isListed && listingUrl && (
-                                    <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
-                                      <ExternalLink className="w-2 h-2 text-emerald-700 dark:text-emerald-400" />
-                                    </span>
-                                  )}
-                                  {isProcessing && (
-                                    <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
-                                      <RefreshCw className="w-2 h-2 text-blue-600 animate-spin" />
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[8px] text-muted-foreground">{m.label}</span>
-                              </div>
-                            );
-                          })}
-                          {MARKETPLACES.length > 4 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowMoreMarketplaces(prev => ({ ...prev, [it.id]: !prev[it.id] }));
-                              }}
-                              className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-border bg-gray-100 dark:bg-card/50 text-muted-foreground hover:bg-gray-200 dark:hover:bg-card text-xs font-medium"
-                            >
-                              {showMoreMarketplaces[it.id] ? '−' : `+${MARKETPLACES.length - 4}`}
-                            </button>
-                          )}
-                        </div>
+                      {/* Crosslist and Edit Buttons - Mobile only */}
+                      <div className="sm:hidden flex-1 flex flex-col gap-2">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openComposer([it.id], false);
+                          }}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
+                        >
+                          <span className="flex justify-center items-center gap-1">
+                            Crosslist
+                            <ArrowRight className="w-4 h-4" />
+                          </span>
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(createPageUrl(`AddInventoryItem?id=${it.id}`));
+                          }}
+                          variant="outline"
+                          className="w-full bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
+                        >
+                          Edit
+                        </Button>
                       </div>
 
                       {/* Desktop content - keep original layout */}
@@ -2488,32 +2443,74 @@ export default function Crosslist() {
                       </div>
                     </div>
 
-                    {/* Mobile: Action buttons */}
-                    <div className="md:hidden w-full">
-                      {/* Row 1: Crosslist and Edit buttons */}
-                      <div className="flex gap-2 p-3 border-t border-gray-200 dark:border-border bg-white dark:bg-card">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openComposer([it.id], false);
-                          }}
-                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
-                        >
-                          <span className="flex justify-center items-center gap-1">
-                            Crosslist
-                            <ArrowRight className="w-4 h-4" />
-                          </span>
-                        </Button>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(createPageUrl(`AddInventoryItem?id=${it.id}`));
-                          }}
-                          variant="outline"
-                          className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
-                        >
-                          Edit
-                        </Button>
+                    {/* Row 3: Marketplace icons - Mobile only */}
+                    <div className="sm:hidden w-full px-3 pb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground">Listed on:</span>
+                        {listedCount > 0 && (
+                          <Badge variant="outline" className="text-[9px] px-2 py-0.5">
+                            {listedCount} of {MARKETPLACES.length}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MARKETPLACES.slice(0, showMoreMarketplaces[it.id] ? MARKETPLACES.length : 4).map((m) => {
+                          const state = map[m.id];
+                          const isListed = state === 'active';
+                          const isProcessing = state === 'processing';
+                          const listings = getItemListings(it.id);
+                          const listing =
+                            listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                            listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
+                            listings.find((l) => l.marketplace === m.id) ||
+                            null;
+                          const listingUrl =
+                            typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
+                              ? listing.marketplace_listing_url
+                              : null;
+                          
+                          return (
+                            <div key={m.id} className="flex flex-col items-center gap-0.5">
+                              <div
+                                className={`relative inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
+                                  isListed
+                                    ? "bg-white dark:bg-card border-emerald-500/40 shadow-sm"
+                                    : isProcessing
+                                      ? "bg-white dark:bg-card border-blue-500/40 shadow-sm"
+                                    : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50"
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (listingUrl) window.open(listingUrl, '_blank');
+                                }}
+                              >
+                                {renderMarketplaceIcon(m, "w-5 h-5")}
+                                {isListed && listingUrl && (
+                                  <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                    <ExternalLink className="w-2 h-2 text-emerald-700 dark:text-emerald-400" />
+                                  </span>
+                                )}
+                                {isProcessing && (
+                                  <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                    <RefreshCw className="w-2 h-2 text-blue-600 animate-spin" />
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[8px] text-muted-foreground">{m.label}</span>
+                            </div>
+                          );
+                        })}
+                        {MARKETPLACES.length > 4 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMoreMarketplaces(prev => ({ ...prev, [it.id]: !prev[it.id] }));
+                            }}
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-border bg-gray-100 dark:bg-card/50 text-muted-foreground hover:bg-gray-200 dark:hover:bg-card text-xs font-medium"
+                          >
+                            {showMoreMarketplaces[it.id] ? '−' : `+${MARKETPLACES.length - 4}`}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
