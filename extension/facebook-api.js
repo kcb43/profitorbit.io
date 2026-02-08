@@ -340,6 +340,18 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
         itemStatus = 'available';
       }
       
+      // Filter sold items to only include last 90 days
+      if (itemStatus === 'sold' && listing.creation_time) {
+        const itemDate = new Date(listing.creation_time * 1000);
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        
+        if (itemDate < ninetyDaysAgo) {
+          console.log(`🔍 [${index + 1}] Skipping old sold item (${Math.floor((Date.now() - itemDate.getTime()) / (1000 * 60 * 60 * 24))} days old)`);
+          return null; // Skip items sold more than 90 days ago
+        }
+      }
+      
       console.log(`🔍 [${index + 1}] Status detection:`, {
         itemId: listing.id,
         is_sold: listing.is_sold,
@@ -381,6 +393,13 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       
       return result;
     }).filter(Boolean);
+    
+    // Log filtering summary for sold items
+    const totalEdges = edges.length;
+    const filteredOutCount = totalEdges - listings.length;
+    if (filteredOutCount > 0 && statusFilter === 'sold') {
+      console.log(`📅 90-day filter: Excluded ${filteredOutCount} sold items older than 90 days`);
+    }
     
     console.log(`✅ Extracted ${listings.length} Facebook listings from GraphQL API`);
     console.log(`📦 Sample listing:`, listings[0]);
