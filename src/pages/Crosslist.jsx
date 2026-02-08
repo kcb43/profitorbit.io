@@ -1910,7 +1910,7 @@ export default function Crosslist() {
               </>
             )}
           />
-          <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-3 flex flex-col gap-2">
             <Button
               type="button"
               variant="outline"
@@ -1920,10 +1920,10 @@ export default function Crosslist() {
               <Sparkles className="w-4 h-4 mr-2" />
               Pro Tools
             </Button>
-            <div className="flex gap-2 justify-end min-w-0 w-full max-w-full overflow-hidden">
+            <div className="flex flex-col md:flex-row gap-2 md:justify-end min-w-0 w-full max-w-full overflow-hidden">
               <Button
                 variant="default"
-                className="whitespace-nowrap flex-shrink-0 bg-blue-600 hover:bg-blue-700"
+                className="w-full md:w-auto whitespace-nowrap flex-shrink-0 bg-blue-600 hover:bg-blue-700"
                 onClick={() => navigate(createPageUrl("Import"), {
                   state: {
                     from: {
@@ -1961,7 +1961,7 @@ export default function Crosslist() {
                     openComposer([]);
                   }
                 }}
-                className="bg-green-600 hover:bg-green-700 whitespace-nowrap flex-shrink-0"
+                className="w-full md:w-auto bg-green-600 hover:bg-green-700 whitespace-nowrap flex-shrink-0"
               >
                 <Rocket className="w-4 h-4 mr-2" />
                 Crosslist
