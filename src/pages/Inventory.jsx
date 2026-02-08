@@ -2137,7 +2137,7 @@ export default function InventoryPage() {
                                 const searchQuery = encodeURIComponent(item.item_name || '');
                                 window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
                               }}
-                              className="inline-flex h-10 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground transition-all shadow-md"
                             >
                               <Search className="h-5 w-5" />
                             </button>
@@ -2150,7 +2150,7 @@ export default function InventoryPage() {
                                   e.stopPropagation();
                                   setOpenDropdown(openDropdown === item.id ? null : item.id);
                                 }}
-                                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground transition-all shadow-md"
                               >
                                 <MoreVertical className="h-5 w-5" />
                               </button>
