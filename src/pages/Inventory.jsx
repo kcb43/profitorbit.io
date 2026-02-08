@@ -1733,7 +1733,7 @@ export default function InventoryPage() {
                 <div className="text-xs text-muted-foreground min-w-0 break-words w-full md:w-auto">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
-                <div className="flex gap-2 flex-wrap items-center min-w-0 w-full md:w-auto justify-start md:justify-end">
+                <div className="flex flex-col md:flex-row gap-2 flex-wrap items-start md:items-center min-w-0 w-full md:w-auto">
                   {/* Per Page Selector */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
@@ -1756,22 +1756,24 @@ export default function InventoryPage() {
                   </div>
                   
                   {/* Pagination Buttons */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!canPrev}
-                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!canNext}
-                    onClick={() => setPageIndex((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
+                  <div className="flex gap-2 items-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canPrev}
+                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canNext}
+                      onClick={() => setPageIndex((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
                   
                   {/* Export CSV */}
                   <Button
