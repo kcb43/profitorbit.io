@@ -57,6 +57,13 @@ export default async function handler(req, res) {
         }
 
         console.log(`💾 Checking for existing inventory item...`);
+        
+        // Check if this is a sold item
+        const isSoldItem = item.status === 'sold';
+        console.log(`📊 Item status check:`, {
+          status: item.status,
+          isSoldItem
+        });
 
         // Proxy Mercari images to avoid CORS issues
         const proxyImageUrl = (url) => {
@@ -107,7 +114,7 @@ export default async function handler(req, res) {
               description: item.description || item.title,
               purchase_price: null, // Don't set purchase price for imports
               listing_price: item.price, // Price from marketplace becomes listing price
-              status: 'listed',
+              status: isSoldItem ? 'sold' : 'listed', // Set status based on item status
               source: 'Mercari',
               images: proxiedPictureURLs.filter(Boolean),
               image_url: proxiedImageUrl,
@@ -131,6 +138,20 @@ export default async function handler(req, res) {
           
           inventoryId = insertData.id;
           console.log(`✅ Created new inventory item with ID ${inventoryId}`);
+        } else {
+          // If it's a sold item, update the inventory status to 'sold'
+          if (isSoldItem && existingItem.status !== 'sold') {
+            const { error: updateError } = await supabase
+              .from('inventory_items')
+              .update({ status: 'sold' })
+              .eq('id', inventoryId);
+            
+            if (updateError) {
+              console.error(`⚠️ Failed to update inventory status to sold:`, updateError);
+            } else {
+              console.log(`✅ Updated inventory item status to 'sold'`);
+            }
+          }
         }
         
         console.log(`📊 Item data received:`, {
@@ -144,11 +165,48 @@ export default async function handler(req, res) {
         });
 
         imported++;
-        importedItems.push({
+        const importResult = {
           itemId: item.itemId,
           inventoryId,
           isExistingItem,
-        });
+        };
+        
+        // If this is a sold item, also create a sale record
+        if (isSoldItem) {
+          try {
+            console.log(`📊 Creating sale record for sold item ${item.itemId}...`);
+            
+            const { data: saleData, error: saleError } = await supabase
+              .from('sales')
+              .insert({
+                user_id: userId,
+                inventory_id: inventoryId,
+                item_name: item.title,
+                sale_price: item.price,
+                sale_date: item.listingDate || item.startTime || new Date().toISOString(), // Use creation time as sale date
+                platform: 'mercari', // Lowercase to match platformOptions
+                shipping_cost: 0, // Mercari doesn't provide this in the import
+                platform_fees: 0, // Mercari doesn't provide this in the import
+                vat_fees: 0, // Mercari doesn't provide this in the import
+                profit: item.price, // Since we don't know costs, profit = sale price
+                image_url: proxiedImageUrl,
+                item_condition: item.condition || null,
+              })
+              .select('id')
+              .single();
+            
+            if (saleError) {
+              console.error(`⚠️ Failed to create sale record for ${item.itemId}:`, saleError);
+            } else {
+              console.log(`✅ Created sale record for ${item.itemId} with ID ${saleData.id}`);
+              importResult.saleId = saleData.id; // Add sale ID to result
+            }
+          } catch (saleErr) {
+            console.error(`⚠️ Error creating sale record for ${item.itemId}:`, saleErr);
+          }
+        }
+        
+        importedItems.push(importResult);
         console.log(`✅ Successfully imported item ${item.itemId} with inventory ID ${inventoryId}${isExistingItem ? ' (linked to existing inventory)' : ''}`);
       } catch (error) {
         failed++;
