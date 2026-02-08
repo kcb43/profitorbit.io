@@ -173,15 +173,32 @@ export default function Import() {
 
   // Check if user is connected to the selected marketplace
   useEffect(() => {
-    const checkConnection = () => {
+    const checkConnection = async () => {
       if (selectedSource === "ebay") {
         try {
           const stored = localStorage.getItem('ebay_user_token');
           if (stored) {
             const parsed = JSON.parse(stored);
+            
+            // Check if token is expired
+            const now = Date.now();
+            const expiresAt = parsed.expires_at; // Unix timestamp in milliseconds
+            
+            if (expiresAt && now >= expiresAt) {
+              console.log('❌ eBay token expired');
+              setEbayToken(null);
+              setIsConnected(false);
+              toast({
+                title: "eBay Connection Expired",
+                description: "Your eBay session has expired. Please reconnect to continue importing.",
+                variant: "destructive",
+              });
+              return;
+            }
+            
             setEbayToken(parsed);
             setIsConnected(true);
-            console.log('✅ eBay connected, token found');
+            console.log('✅ eBay connected, token found and valid');
           } else {
             setEbayToken(null);
             setIsConnected(false);
@@ -329,6 +346,8 @@ export default function Import() {
         
         // Check for expired token error
         if (errorData.errorCode === 'TOKEN_EXPIRED') {
+          // Set isConnected to false so the "Not Connected" alert shows
+          setIsConnected(false);
           throw new Error('TOKEN_EXPIRED');
         }
         
@@ -369,6 +388,13 @@ export default function Import() {
     enabled: false, // DISABLED: Only fetch when user clicks "Get Latest Items"
     staleTime: Infinity, // Never auto-refetch - user must click button
     gcTime: Infinity, // Keep in cache indefinitely
+    onError: (err) => {
+      // If token expired, mark as not connected
+      if (err.message === 'TOKEN_EXPIRED') {
+        console.log('🔴 Token expired - setting isConnected to false');
+        setIsConnected(false);
+      }
+    },
     initialData: () => {
       // Load from localStorage on mount - always load from "All" cache
       if (selectedSource === "ebay" && userId) {
