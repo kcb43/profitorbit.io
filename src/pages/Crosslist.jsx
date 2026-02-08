@@ -63,6 +63,7 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
+  MoreVertical,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import BulkActionsMenu from "../components/BulkActionsMenu";
@@ -84,6 +85,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
+import SoldLookupDialog from "@/components/SoldLookupDialog";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -566,6 +568,9 @@ export default function Crosslist() {
   const [itemToView, setItemToView] = useState(null);
   const [showMoreMarketplaces, setShowMoreMarketplaces] = useState({});
   const [expandedDetails, setExpandedDetails] = useState({});
+  const [soldLookupOpen, setSoldLookupOpen] = useState(false);
+  const [soldLookupItem, setSoldLookupItem] = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
   
   // Track mobile state but don't force grid view
   useEffect(() => {
@@ -2306,30 +2311,50 @@ export default function Crosslist() {
                           Edit
                         </Button>
                         
-                        {/* Delete and Search buttons row */}
+                        {/* Search and More Actions buttons row */}
                         <div className="flex gap-2">
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setItemsToDelete([it.id]);
-                              setDeleteDialogOpen(true);
-                            }}
-                            variant="destructive"
-                            className="flex-1 font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const searchQuery = encodeURIComponent(it.item_name || '');
-                              window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+                              setSoldLookupItem(it);
+                              setSoldLookupOpen(true);
                             }}
                             variant="outline"
                             className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
                           >
                             <Search className="w-4 h-4" />
                           </Button>
+                          
+                          {/* More Actions Dropdown */}
+                          <div className="relative flex-1">
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(openDropdown === it.id ? null : it.id);
+                              }}
+                              variant="outline"
+                              className="w-full bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                            
+                            {openDropdown === it.id && (
+                              <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-lg shadow-lg overflow-hidden">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdown(null);
+                                    setItemsToDelete([it.id]);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete Item
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -2376,27 +2401,23 @@ export default function Crosslist() {
                       </div>
                     </div>
 
-                    {/* Row 2: Title, Source, and View Details - Mobile only */}
+                    {/* Row 2: Title and View Details - Mobile only */}
                     <div className="sm:hidden w-full px-3 pb-3">
                       {/* Title */}
                       <div className="mb-2">
-                        <h3 className="text-sm font-bold text-foreground break-words line-clamp-3 text-left"
-                          style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                        <h3 className="text-sm font-bold text-foreground break-words line-clamp-2 text-left"
+                          style={{ 
+                            letterSpacing: '0.3px', 
+                            lineHeight: '1.35',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
+                          }}>
                           {it.item_name || 'Untitled Item'}
                         </h3>
                       </div>
-
-                      {/* Source */}
-                      {it.source && (
-                        <div className="mb-2">
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
-                            <span className="font-semibold">Source:</span>
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                              {it.source}
-                            </Badge>
-                          </p>
-                        </div>
-                      )}
 
                       {/* View Details Dropdown */}
                       <div className="border border-gray-200 dark:border-border rounded-lg overflow-hidden">
@@ -2712,6 +2733,19 @@ export default function Crosslist() {
                     >
                       Edit
                     </Button>
+
+                    {/* Search Button */}
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSoldLookupItem(it);
+                        setSoldLookupOpen(true);
+                      }}
+                      className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-card/80 border border-gray-200/70 dark:border-border hover:bg-white dark:hover:bg-slate-900"
+                    >
+                      <Search className="w-4 h-4 mr-1" />
+                      Search
+                    </Button>
                     </div>
                   </div>
                 </div>
@@ -3023,6 +3057,18 @@ export default function Crosslist() {
           tags={[]} // Crosslist doesn't have tags feature yet
           onAddTag={() => {}}
           onRemoveTag={() => {}}
+        />
+      )}
+
+      {/* Sold Lookup Dialog */}
+      {soldLookupItem && (
+        <SoldLookupDialog
+          item={soldLookupItem}
+          isOpen={soldLookupOpen}
+          onClose={() => {
+            setSoldLookupOpen(false);
+            setSoldLookupItem(null);
+          }}
         />
       )}
     </div>

@@ -2353,26 +2353,41 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
-                      {/* Row 2: Title, Source, View Details - Mobile only */}
+                      {/* Row 2: Title, Tags/Status, View Details - Mobile only */}
                       <div className="sm:hidden w-full px-3 pb-3">
-                        <div className="mb-2">
-                          <h3 className="text-sm font-bold text-foreground break-words line-clamp-3 text-left"
-                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                        {/* Title and Tags/Status row */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="text-sm font-bold text-foreground break-words line-clamp-2 text-left flex-1"
+                            style={{ 
+                              letterSpacing: '0.3px', 
+                              lineHeight: '1.35',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical'
+                            }}>
                             {item.item_name || 'Untitled Item'}
                           </h3>
-                        </div>
-
-                        {/* Source */}
-                        {item.source && (
-                          <div className="mb-2">
-                            <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
-                              <span className="font-semibold">Source:</span>
-                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                                {item.source}
-                              </Badge>
-                            </p>
+                          
+                          {/* Tags + Status on right */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
+                              }}
+                              className="inline-flex h-6 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
+                            >
+                              <Plus className="h-3 w-3 mr-0.5" />
+                              Tags
+                            </button>
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
                           </div>
-                        )}
+                        </div>
 
                         {/* View Details Dropdown */}
                         <div className="border border-gray-200 dark:border-border rounded-lg overflow-hidden">
