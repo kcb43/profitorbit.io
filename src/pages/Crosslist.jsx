@@ -536,7 +536,6 @@ export default function Crosslist() {
   const [q, setQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
-  const [tempQ, setTempQ] = useState("");
   const [tempPlatformFilter, setTempPlatformFilter] = useState("all");
   const [tempActiveMkts, setTempActiveMkts] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -1662,21 +1661,18 @@ export default function Crosslist() {
     setActiveMkts((prev) => (prev.includes(mkt) ? prev.filter((x) => x !== mkt) : [...prev, mkt]));
 
   const handleSaveFilters = () => {
-    setQ(tempQ);
     setPlatformFilter(tempPlatformFilter);
     setActiveMkts(tempActiveMkts);
     setFiltersDialogOpen(false);
   };
 
   const handleClearFilters = () => {
-    setTempQ("");
     setTempPlatformFilter("all");
     setTempActiveMkts([]);
   };
 
   const handleOpenFiltersDialog = () => {
     // Sync temp values with current values when opening
-    setTempQ(q);
     setTempPlatformFilter(platformFilter);
     setTempActiveMkts(activeMkts);
     setFiltersDialogOpen(true);
@@ -2022,31 +2018,16 @@ export default function Crosslist() {
               <DialogTitle>Filters & Marketplaces</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="temp-q" className="text-xs mb-1.5 block">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="temp-q"
-                      placeholder="Item name, category, source…"
-                      value={tempQ}
-                      onChange={(e) => setTempQ(e.target.value)}
-                      className="pl-8 w-full"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Status</Label>
-                  <Select value={tempPlatformFilter} onValueChange={setTempPlatformFilter}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="listed">Listed somewhere</SelectItem>
-                      <SelectItem value="unlisted">In Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">Status</Label>
+                <Select value={tempPlatformFilter} onValueChange={setTempPlatformFilter}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="listed">Listed somewhere</SelectItem>
+                    <SelectItem value="unlisted">In Stock</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className="text-xs mb-1.5 block">Marketplaces</Label>

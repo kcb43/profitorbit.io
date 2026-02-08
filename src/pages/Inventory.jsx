@@ -1709,20 +1709,7 @@ export default function InventoryPage() {
                 <DialogTitle>Filters & Sort</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="temp-search" className="text-xs mb-1.5 block">Search</Label>
-                    <div className="relative">
-                      <Input 
-                        id="temp-search"
-                        placeholder="Search..." 
-                        value={tempFilters.search} 
-                        onChange={e => setTempFilters(f => ({ ...f, search: e.target.value }))} 
-                        className="pl-8"
-                      />
-                      <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="temp-status" className="text-xs mb-1.5 block">Status</Label>
                     <Select id="temp-status" value={tempFilters.status} onValueChange={val => setTempFilters(f => ({ ...f, status: val }))}>
