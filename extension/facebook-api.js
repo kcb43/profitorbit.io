@@ -234,17 +234,19 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       throw new Error('Empty response from Facebook API. The fb_dtsg CSRF token is required but could not be obtained.');
     }
     
-    console.log('📥 Response preview:', text.substring(0, 200));
+    console.log('📥 Response preview:', text.substring(0, 500));
     
     // Parse response (it's newline-delimited JSON)
     const lines = text.trim().split('\n').filter(l => l.trim());
     let data = null;
+    let fullResponse = null;
     
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
         if (parsed.data?.viewer?.marketplace_listing_sets) {
           data = parsed.data;
+          fullResponse = parsed;
           break;
         }
       } catch (e) {
@@ -253,10 +255,12 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     }
     
     if (!data) {
+      console.log('❌ FULL RESPONSE FOR DEBUG:', text);
       throw new Error('No listing data in GraphQL response');
     }
     
     console.log('✅ GraphQL response parsed successfully');
+    console.log('🔍 FULL marketplace_listing_sets structure:', JSON.stringify(data.viewer.marketplace_listing_sets, null, 2).substring(0, 2000));
     
     // Extract page info for pagination
     const pageInfo = data.viewer?.marketplace_listing_sets?.page_info;
@@ -266,7 +270,8 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     console.log('📄 Pagination info:', {
       hasNextPage,
       endCursor: endCursor ? endCursor.substring(0, 50) + '...' : null,
-      currentCursor: cursor ? cursor.substring(0, 50) + '...' : null
+      currentCursor: cursor ? cursor.substring(0, 50) + '...' : null,
+      pageInfoFull: pageInfo
     });
     
     // Extract listings from GraphQL response - all data is already here!
