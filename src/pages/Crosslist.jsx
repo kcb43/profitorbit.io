@@ -79,6 +79,7 @@ import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
+import InventoryItemViewDialog from "@/components/InventoryItemViewDialog";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -557,6 +558,9 @@ export default function Crosslist() {
   const [activeJobs, setActiveJobs] = useState({}); // { itemId: jobId }
   const [platformConnections, setPlatformConnections] = useState([]);
   const [showPlatformConnect, setShowPlatformConnect] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [itemToView, setItemToView] = useState(null);
+  const [showMoreMarketplaces, setShowMoreMarketplaces] = useState({});
   
   // Track mobile state but don't force grid view
   useEffect(() => {
@@ -2185,7 +2189,22 @@ export default function Crosslist() {
                 <div key={it.id} className="w-full max-w-full">
                   {/* Mobile/Tablet list layout */}
                   <div
-                    className={`lg:hidden product-list-item relative flex flex-col mb-6 min-w-0 w-full bg-white dark:bg-card border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg`}
+                    onClick={(e) => {
+                      // Check if clicking on button or image
+                      const isButton = e.target.closest('button, a, input, [role="button"]');
+                      const isImage = e.target.closest('.item-image-clickable');
+                      
+                      // If clicking image, toggle selection
+                      if (isImage) {
+                        toggleSelect(it.id);
+                      }
+                      // If clicking elsewhere (not button, not image), open view dialog
+                      else if (!isButton) {
+                        setItemToView(it);
+                        setViewDialogOpen(true);
+                      }
+                    }}
+                    className={`lg:hidden product-list-item relative flex flex-col mb-6 min-w-0 w-full bg-white dark:bg-card border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg cursor-pointer hover:shadow-md transition-shadow`}
                     style={{
                       borderRadius: '16px',
                       overflow: 'hidden',
@@ -2198,8 +2217,11 @@ export default function Crosslist() {
                     <div className="flex flex-row items-stretch sm:items-center">
                       <div className="flex-shrink-0 m-1 sm:m-4 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
                         <div
-                          onClick={() => toggleSelect(it.id)}
-                          className={`cursor-pointer flex items-center justify-center relative w-[120px] sm:w-[150px] min-w-[120px] sm:min-w-[150px] max-w-[120px] sm:max-w-[150px] h-[120px] sm:h-[150px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelect(it.id);
+                          }}
+                          className={`item-image-clickable cursor-pointer flex items-center justify-center relative w-[120px] sm:w-[150px] min-w-[120px] sm:min-w-[150px] max-w-[120px] sm:max-w-[150px] h-[120px] sm:h-[150px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
@@ -2232,8 +2254,79 @@ export default function Crosslist() {
                           </Badge>
                         </div>
                         
+                        {/* Mobile: Marketplace icons (moved to top) */}
+                        <div className="sm:hidden w-full mb-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-muted-foreground">Listed on:</span>
+                            {listedCount > 0 && (
+                              <Badge variant="outline" className="text-[9px] px-2 py-0.5">
+                                {listedCount} of {MARKETPLACES.length}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {MARKETPLACES.slice(0, showMoreMarketplaces[it.id] ? MARKETPLACES.length : 4).map((m) => {
+                              const state = map[m.id];
+                              const isListed = state === 'active';
+                              const isProcessing = state === 'processing';
+                              const listings = getItemListings(it.id);
+                              const listing =
+                                listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                                listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
+                                listings.find((l) => l.marketplace === m.id) ||
+                                null;
+                              const listingUrl =
+                                typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
+                                  ? listing.marketplace_listing_url
+                                  : null;
+                              
+                              return (
+                                <div key={m.id} className="flex flex-col items-center gap-0.5">
+                                  <div
+                                    className={`relative inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
+                                      isListed
+                                        ? "bg-white dark:bg-card border-emerald-500/40 shadow-sm"
+                                        : isProcessing
+                                          ? "bg-white dark:bg-card border-blue-500/40 shadow-sm"
+                                        : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50"
+                                    }`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (listingUrl) window.open(listingUrl, '_blank');
+                                    }}
+                                  >
+                                    {renderMarketplaceIcon(m, "w-5 h-5")}
+                                    {isListed && listingUrl && (
+                                      <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                        <ExternalLink className="w-2 h-2 text-emerald-700 dark:text-emerald-400" />
+                                      </span>
+                                    )}
+                                    {isProcessing && (
+                                      <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                        <RefreshCw className="w-2 h-2 text-blue-600 animate-spin" />
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[8px] text-muted-foreground">{m.label}</span>
+                                </div>
+                              );
+                            })}
+                            {MARKETPLACES.length > 4 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowMoreMarketplaces(prev => ({ ...prev, [it.id]: !prev[it.id] }));
+                                }}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-border bg-gray-100 dark:bg-card/50 text-muted-foreground hover:bg-gray-200 dark:hover:bg-card text-xs font-medium"
+                              >
+                                {showMoreMarketplaces[it.id] ? '−' : `+${MARKETPLACES.length - 4}`}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
                         <div className="block mb-1 sm:mb-3 w-full text-left">
-                          <h3 className="text-sm sm:text-xl font-bold text-foreground break-words line-clamp-2 text-left"
+                          <h3 className="text-sm sm:text-xl font-bold text-foreground break-words line-clamp-3 text-left"
                             style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
                             {it.item_name || 'Untitled Item'}
                           </h3>
@@ -2284,80 +2377,6 @@ export default function Crosslist() {
                             </div>
                           )}
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Mobile: Marketplace icons row */}
-                    <div className="md:hidden w-full px-2 py-3 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-card/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-muted-foreground">Marketplaces:</span>
-                        {listedCount > 0 && (
-                          <Badge variant="outline" className="text-[9px] px-2 py-0.5">
-                            {listedCount} of {MARKETPLACES.length} listed
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {MARKETPLACES.map((m) => {
-                          const state = map[m.id];
-                          const isListed = state === 'active';
-                          const isProcessing = state === 'processing';
-                          const listings = getItemListings(it.id);
-                          const listing =
-                            listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
-                            listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
-                            listings.find((l) => l.marketplace === m.id) ||
-                            null;
-                          const listingUrl =
-                            typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
-                              ? listing.marketplace_listing_url
-                              : null;
-                          
-                          return (
-                            <div key={m.id} className="flex flex-col items-center gap-1">
-                              <div
-                                className={`relative inline-flex items-center justify-center w-12 h-12 rounded-xl border transition-all ${
-                                  isListed
-                                    ? "bg-white dark:bg-card border-emerald-500/40 opacity-100 shadow-sm"
-                                    : isProcessing
-                                      ? "bg-white dark:bg-card border-blue-500/40 opacity-100 shadow-sm"
-                                    : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50 hover:opacity-70"
-                                }`}
-                                title={
-                                  isListed
-                                    ? (listingUrl ? `✓ Listed on ${m.label}` : `✓ Listed on ${m.label}`)
-                                    : isProcessing
-                                      ? `Listing in progress`
-                                    : `Not listed on ${m.label}`
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (listingUrl) window.open(listingUrl, '_blank');
-                                }}
-                              >
-                                {renderMarketplaceIcon(m, "w-7 h-7")}
-                                {isListed && listingUrl && (
-                                  <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
-                                    <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
-                                  </span>
-                                )}
-                                {isProcessing && (
-                                  <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
-                                    <RefreshCw className="w-2.5 h-2.5 text-blue-600 animate-spin" />
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[9px] text-muted-foreground">{m.label}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {/* Status badge on mobile */}
-                      <div className="mt-2 flex items-center gap-2">
-                        <Badge variant="outline" className={`${STATUS_COLORS[it.status]} text-[10px] px-2 py-1`}>
-                          {STATUS_LABELS[it.status] || STATUS_LABELS.available}
-                        </Badge>
                       </div>
                     </div>
 
@@ -2860,6 +2879,21 @@ export default function Crosslist() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Item Details Dialog */}
+      {itemToView && (
+        <InventoryItemViewDialog
+          item={itemToView}
+          isOpen={viewDialogOpen}
+          onClose={() => {
+            setViewDialogOpen(false);
+            setItemToView(null);
+          }}
+          tags={[]} // Crosslist doesn't have tags feature yet
+          onAddTag={() => {}}
+          onRemoveTag={() => {}}
+        />
+      )}
     </div>
   );
 }
