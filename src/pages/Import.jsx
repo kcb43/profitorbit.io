@@ -82,6 +82,8 @@ export default function Import() {
     return "Active";
   });
   const [importingStatus, setImportingStatus] = useState("not_imported");
+  const [isSyncingFacebook, setIsSyncingFacebook] = useState(false);
+  const [isSyncingMercari, setIsSyncingMercari] = useState(false);
 
   // Save listing status to localStorage whenever it changes
   useEffect(() => {
@@ -1104,7 +1106,7 @@ export default function Import() {
 
   // Handle Facebook sync via extension
   const handleFacebookSync = async () => {
-    setIsLoading(true); // Start loading spinner
+    setIsSyncingFacebook(true); // Start loading spinner
     try {
       console.log('📡 Requesting Facebook scrape from extension with status filter:', listingStatus);
       
@@ -1209,13 +1211,13 @@ export default function Import() {
         });
       }
     } finally {
-      setIsLoading(false); // Always stop loading spinner
+      setIsSyncingFacebook(false); // Always stop loading spinner
     }
   };
 
   // Handle Mercari sync via extension
   const handleMercariSync = async () => {
-    setIsLoading(true); // Start loading spinner
+    setIsSyncingMercari(true); // Start loading spinner
     try {
       console.log('📡 Requesting Mercari scrape from extension...');
       
@@ -1289,7 +1291,7 @@ export default function Import() {
         duration: 6000,
       });
     } finally {
-      setIsLoading(false); // Always stop loading spinner
+      setIsSyncingMercari(false); // Always stop loading spinner
     }
   };
 
@@ -1431,10 +1433,10 @@ export default function Import() {
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
-                disabled={isLoading || !canSync}
+                disabled={isLoading || isSyncingFacebook || isSyncingMercari || !canSync}
                 className="gap-2"
               >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-4 w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
                 {!canSync && nextSyncTime 
                   ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
                   : `Get Latest ${selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items`
