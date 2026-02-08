@@ -529,6 +529,67 @@ export default function SalesHistory() {
     cleanupOldDeletedSales();
   }, [cleanupOldDeletedSales]);
 
+  // Helper function to update Import page cache when deleting a sale
+  const updateImportCacheAfterSaleDelete = async (sale) => {
+    try {
+      console.log('📝 Updating Import cache after sale delete...', { saleId: sale.id, inventoryId: sale.inventory_id, platform: sale.platform });
+      
+      // Get user ID from Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('⚠️ No user found, cannot update Import cache');
+        return;
+      }
+      
+      const userId = user.id;
+      
+      // Determine which marketplace this sale came from
+      let cacheKey = null;
+      let cacheQueryKey = null;
+      
+      if (sale.platform === 'facebook' || sale.platform === 'facebook_marketplace') {
+        cacheKey = 'profit_orbit_facebook_listings';
+        cacheQueryKey = ['facebook-listings', userId];
+      } else if (sale.platform === 'mercari') {
+        cacheKey = 'profit_orbit_mercari_listings';
+        cacheQueryKey = ['mercari-listings', userId];
+      } else if (sale.platform === 'ebay') {
+        // eBay uses different cache structure, skip for now
+        console.log('📝 eBay sale - Import cache update handled by Import page');
+        return;
+      }
+      
+      if (!cacheKey || !cacheQueryKey) {
+        console.log('📝 Platform not found or not supported for Import cache update');
+        return;
+      }
+      
+      // Update localStorage cache
+      const cachedListings = localStorage.getItem(cacheKey);
+      if (cachedListings) {
+        try {
+          const parsedListings = JSON.parse(cachedListings);
+          const updatedListings = parsedListings.map(item => {
+            // Match by inventory_id since that's what links them
+            if (item.inventoryId === sale.inventory_id) {
+              console.log('✅ Found item in Import cache, marking as not imported:', item.itemId);
+              return { ...item, imported: false, inventoryId: null, saleId: null };
+            }
+            return item;
+          });
+          
+          localStorage.setItem(cacheKey, JSON.stringify(updatedListings));
+          queryClient.setQueryData(cacheQueryKey, updatedListings);
+          console.log('✅ Updated Import cache for platform:', sale.platform);
+        } catch (e) {
+          console.error('❌ Failed to update Import cache:', e);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error updating Import cache:', error);
+    }
+  };
+
   // NEW DELETE FUNCTIONALITY FOR SALES - Simple and direct
   const deleteSaleMutation = useMutation({
     mutationFn: async (sale) => {
@@ -636,6 +697,10 @@ export default function SalesHistory() {
       });
       // Only invalidate inventoryItems since we updated quantity_sold
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Update Import page cache to mark item as not imported
+      updateImportCacheAfterSaleDelete(sale);
+      
       setDeleteDialogOpen(false);
       setSaleToDelete(null);
     },
@@ -719,9 +784,13 @@ export default function SalesHistory() {
       await salesApi.delete(sale.id, true);
       return sale.id;
     },
-    onSuccess: (saleId) => {
+    onSuccess: (saleId, sale) => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Update Import page cache to mark item as not imported
+      updateImportCacheAfterSaleDelete(sale);
+      
       setPermanentDeleteDialogOpen(false);
       setSaleToPermanentDelete(null);
       toast({
@@ -768,11 +837,15 @@ export default function SalesHistory() {
         saleIds.map(id => salesApi.delete(id, true))
       );
       
-      return saleIds;
+      return { saleIds, salesToDelete };
     },
-    onSuccess: (saleIds) => {
+    onSuccess: ({ saleIds, salesToDelete }) => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Update Import page cache for each deleted sale
+      salesToDelete.forEach(sale => updateImportCacheAfterSaleDelete(sale));
+      
       setSelectedSales([]);
       setBulkPermanentDeleteDialogOpen(false);
       toast({
@@ -833,7 +906,7 @@ export default function SalesHistory() {
         }
       }
       
-      return saleIds;
+      return { saleIds, salesToDelete };
     },
     onMutate: async (saleIds) => {
       // IMMEDIATELY update cache - sales disappear right away
@@ -853,7 +926,7 @@ export default function SalesHistory() {
       
       return { previousData };
     },
-    onSuccess: async (saleIds) => {
+    onSuccess: async ({ saleIds, salesToDelete }) => {
       // Wait a moment, then refetch to verify server state matches our optimistic update
       setTimeout(async () => {
         try {
@@ -882,6 +955,10 @@ export default function SalesHistory() {
       
       // Only invalidate inventoryItems since we updated quantity_sold
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
+      
+      // Update Import page cache for each deleted sale
+      salesToDelete.forEach(sale => updateImportCacheAfterSaleDelete(sale));
+      
       setBulkDeleteDialogOpen(false);
       toast({
         title: `✅ ${saleIds.length} Sale${saleIds.length > 1 ? 's' : ''} Deleted`,
