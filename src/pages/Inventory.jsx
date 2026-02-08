@@ -2127,15 +2127,15 @@ export default function InventoryPage() {
 
                         {/* 4 Icon Buttons + Add Tags + Status - Mobile only */}
                         <div className="sm:hidden flex-1 flex flex-col gap-2">
-                          {/* Top row: 4 icon buttons */}
-                          <div className="flex items-center gap-1.5">
+                          {/* Icon buttons in 2x2 grid */}
+                          <div className="grid grid-cols-2 gap-1.5">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFavorite(item.id);
                               }}
-                              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition ${
+                              className={`inline-flex h-8 items-center justify-center rounded-md border border-transparent transition ${
                                 favoriteMarked
                                   ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                   : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
@@ -2143,17 +2143,19 @@ export default function InventoryPage() {
                             >
                               <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
                             </button>
-                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL ? (
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleEditImage(e, item);
                                 }}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                className="inline-flex h-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
                               >
                                 <ImageIcon className="h-4 w-4" />
                               </button>
+                            ) : (
+                              <div></div>
                             )}
                             <button
                               type="button"
@@ -2162,7 +2164,7 @@ export default function InventoryPage() {
                                 const searchQuery = encodeURIComponent(item.item_name || '');
                                 window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
                               }}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              className="inline-flex h-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
                             >
                               <Search className="h-4 w-4" />
                             </button>
@@ -2172,7 +2174,7 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 handleDeleteClick(item);
                               }}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                              className="inline-flex h-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -2189,7 +2191,7 @@ export default function InventoryPage() {
                               className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
                             >
                               <Plus className="h-3 w-3 mr-1" />
-                              Add Tags
+                              Tags
                             </button>
                             <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
                               {statusLabels[item.status] || statusLabels.available}
