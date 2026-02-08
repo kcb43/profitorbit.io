@@ -558,14 +558,11 @@ export default function Crosslist() {
   const [platformConnections, setPlatformConnections] = useState([]);
   const [showPlatformConnect, setShowPlatformConnect] = useState(false);
   
-  // Force grid view on mobile screens (md breakpoint is 768px)
+  // Track mobile state but don't force grid view
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile && layout !== "grid") {
-        setLayout("grid");
-      }
     };
     
     // Check on mount and resize
@@ -573,7 +570,7 @@ export default function Crosslist() {
     window.addEventListener("resize", checkMobile);
     
     return () => window.removeEventListener("resize", checkMobile);
-  }, [layout]);
+  }, []);
   
   // Get eBay category tree ID
   const { data: categoryTreeData, isLoading: isLoadingCategoryTree } = useEbayCategoryTreeId('EBAY_US');
@@ -2123,15 +2120,224 @@ export default function Crosslist() {
                 </div>
               </div>
             )}
-            {layout === "rows" && !isMobile ? (
+            {layout === "rows" ? (
           <div className="space-y-4">
             {filtered.map((it) => {
               const map = computeListingState(it);
               const listedCount = Object.values(map).filter((v) => v === 'active').length;
               
               return (
+                <div key={it.id} className="w-full max-w-full">
+                  {/* Mobile/Tablet list layout */}
+                  <div
+                    className={`lg:hidden product-list-item relative flex flex-col mb-6 min-w-0 w-full bg-white dark:bg-card border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg`}
+                    style={{
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      maxWidth: '100%',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {/* Image and content row */}
+                    <div className="flex flex-row items-stretch sm:items-center">
+                      <div className="flex-shrink-0 m-1 sm:m-4 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
+                        <div
+                          onClick={() => toggleSelect(it.id)}
+                          className={`cursor-pointer flex items-center justify-center relative w-[120px] sm:w-[150px] min-w-[120px] sm:min-w-[150px] max-w-[120px] sm:max-w-[150px] h-[120px] sm:h-[150px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border ${selected.includes(it.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md'}`}
+                          style={{
+                            borderRadius: '12px',
+                            flexShrink: 0
+                          }}
+                        >
+                          <OptimizedImage
+                            src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
+                            alt={it.item_name}
+                            fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
+                            className="w-full h-full object-contain rounded-lg"
+                            lazy={true}
+                          />
+                          {selected.includes(it.id) && (
+                            <div className="absolute top-2 left-2 z-20">
+                              <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 min-w-0 overflow-hidden relative">
+                        <div className="absolute left-0 top-0 w-px h-[130px] sm:h-full bg-gray-300"></div>
+                        
+                        {/* Status badge - Desktop only */}
+                        <div className="hidden sm:block mb-2">
+                          <Badge variant="outline" className={`${STATUS_COLORS[it.status]} text-[10px] px-1.5 py-0.5`}>
+                            {STATUS_LABELS[it.status] || STATUS_LABELS.available}
+                          </Badge>
+                        </div>
+                        
+                        <div className="block mb-1 sm:mb-3 w-full text-left">
+                          <h3 className="text-sm sm:text-xl font-bold text-foreground break-words line-clamp-2 text-left"
+                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                            {it.item_name || 'Untitled Item'}
+                          </h3>
+                        </div>
+
+                        <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
+                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
+                            <span className="font-semibold">Category:</span> {it.category || "—"}
+                          </p>
+                          
+                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] pt-1">
+                            <span className="font-semibold">Price:</span> ${(it.purchase_price || 0).toFixed(2)}
+                          </p>
+                          
+                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
+                            <span className="font-semibold">Purchased:</span> {it.purchase_date ? format(parseISO(it.purchase_date), 'MMM d, yyyy') : '—'}
+                          </p>
+
+                          {it.source && (
+                            <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
+                              <span className="font-semibold">Source:</span>
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                {it.source}
+                              </Badge>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
+                          <div>
+                            <span>Price: </span>
+                            <span className="font-medium text-foreground">${(it.purchase_price || 0).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span>Category: </span>
+                            <span className="font-medium text-foreground">{it.category || "—"}</span>
+                          </div>
+                          <div>
+                            <span>Purchase Date: </span>
+                            <span className="font-medium text-foreground">
+                              {it.purchase_date ? format(parseISO(it.purchase_date), 'MMM dd, yyyy') : '—'}
+                            </span>
+                          </div>
+                          {it.source && (
+                            <div>
+                              <span>Source: </span>
+                              <span className="font-medium text-foreground">{it.source}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mobile: Marketplace icons row */}
+                    <div className="md:hidden w-full px-2 py-3 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-card/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground">Marketplaces:</span>
+                        {listedCount > 0 && (
+                          <Badge variant="outline" className="text-[9px] px-2 py-0.5">
+                            {listedCount} of {MARKETPLACES.length} listed
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {MARKETPLACES.map((m) => {
+                          const state = map[m.id];
+                          const isListed = state === 'active';
+                          const isProcessing = state === 'processing';
+                          const listings = getItemListings(it.id);
+                          const listing =
+                            listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                            listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
+                            listings.find((l) => l.marketplace === m.id) ||
+                            null;
+                          const listingUrl =
+                            typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
+                              ? listing.marketplace_listing_url
+                              : null;
+                          
+                          return (
+                            <div key={m.id} className="flex flex-col items-center gap-1">
+                              <div
+                                className={`relative inline-flex items-center justify-center w-12 h-12 rounded-xl border transition-all ${
+                                  isListed
+                                    ? "bg-white dark:bg-card border-emerald-500/40 opacity-100 shadow-sm"
+                                    : isProcessing
+                                      ? "bg-white dark:bg-card border-blue-500/40 opacity-100 shadow-sm"
+                                    : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50 hover:opacity-70"
+                                }`}
+                                title={
+                                  isListed
+                                    ? (listingUrl ? `✓ Listed on ${m.label}` : `✓ Listed on ${m.label}`)
+                                    : isProcessing
+                                      ? `Listing in progress`
+                                    : `Not listed on ${m.label}`
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (listingUrl) window.open(listingUrl, '_blank');
+                                }}
+                              >
+                                {renderMarketplaceIcon(m, "w-7 h-7")}
+                                {isListed && listingUrl && (
+                                  <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                    <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400" />
+                                  </span>
+                                )}
+                                {isProcessing && (
+                                  <span className="absolute -top-1 -right-1 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                    <RefreshCw className="w-2.5 h-2.5 text-blue-600 animate-spin" />
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[9px] text-muted-foreground">{m.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Status badge on mobile */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <Badge variant="outline" className={`${STATUS_COLORS[it.status]} text-[10px] px-2 py-1`}>
+                          {STATUS_LABELS[it.status] || STATUS_LABELS.available}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Mobile: Action buttons */}
+                    <div className="md:hidden w-full">
+                      <div className="flex gap-2 p-3 border-t border-gray-200 dark:border-border bg-white dark:bg-card">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openComposer([it.id], false);
+                          }}
+                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
+                        >
+                          <span className="flex justify-center items-center gap-1">
+                            Crosslist
+                            <ArrowRight className="w-4 h-4" />
+                          </span>
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(createPageUrl(`AddInventoryItem?id=${it.id}`));
+                          }}
+                          variant="outline"
+                          className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop list layout (existing) */}
+                  <div className="hidden lg:block">
                 <div
-                  key={it.id}
                   onClick={(e) => {
                     // Only toggle if NOT clicking on an interactive element
                     const target = e.target;
@@ -2301,6 +2507,8 @@ export default function Crosslist() {
                       Edit
                     </Button>
                     </div>
+                  </div>
+                </div>
                   </div>
                 </div>
               );

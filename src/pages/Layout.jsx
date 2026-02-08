@@ -286,7 +286,7 @@ export default function Layout({ children }) {
                 <img 
                   src="/orben-logo.svg" 
                   alt="Orben Logo" 
-                  className="w-9 h-9"
+                  className="w-12 h-12"
                 />
                 <h1 className="text-xl font-bold text-foreground">Orben</h1>
               </div>
