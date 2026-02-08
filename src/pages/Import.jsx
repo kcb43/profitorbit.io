@@ -1939,20 +1939,21 @@ export default function Import() {
                     }`}
                     onClick={() => toggleSelectItem(item.itemId, item)}
                   >
-                    <div className="flex gap-4">
+                    <div className="flex gap-3 items-start">
                       <Checkbox
                         checked={selectedItems.includes(item.itemId)}
                         onCheckedChange={() => toggleSelectItem(item.itemId, item)}
                         onClick={(e) => e.stopPropagation()} // Prevent double-toggle
+                        className="mt-1"
                       />
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 w-24">
                         <OptimizedImage
                           src={getImageUrl(item.imageUrl || item.pictureURLs?.[0], selectedSource)}
                           alt={item.title}
                           className="w-24 h-24 object-cover rounded"
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <h3 className="font-medium truncate">{item.title}</h3>
                         <p className="text-sm text-muted-foreground mt-1">
                           {item.startTime && (

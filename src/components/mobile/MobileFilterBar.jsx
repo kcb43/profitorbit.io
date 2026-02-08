@@ -3,7 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, Search, Archive, Star, Download, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Filter, Search, Archive, Star, Download, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function MobileFilterBar({
@@ -26,9 +34,28 @@ export default function MobileFilterBar({
   
   // Custom render function for additional filters
   renderAdditionalFilters,
+  
+  // Callbacks for Save and Clear
+  onOpenFilters,
+  onSaveFilters,
+  onClearFilters,
 }) {
   const isMobile = useIsMobile();
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const handleSave = () => {
+    if (onSaveFilters) onSaveFilters();
+    setFiltersOpen(false);
+  };
+
+  const handleClear = () => {
+    if (onClearFilters) onClearFilters();
+  };
+
+  const handleOpenDialog = () => {
+    if (onOpenFilters) onOpenFilters();
+    setFiltersOpen(true);
+  };
 
   if (!isMobile) {
     // Desktop: render nothing, let parent handle it
@@ -148,27 +175,29 @@ export default function MobileFilterBar({
         </div>
       )}
 
-      {/* Filters & Sort Collapsible Section */}
+      {/* Filters & Sort Dialog */}
       {(additionalFilters.length > 0 || renderAdditionalFilters) && (
-        <div className="border border-gray-200 dark:border-border rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-card/50 hover:bg-gray-100 dark:hover:bg-card/70 transition-colors"
-          >
-            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Filter className="w-4 h-4" />
-              Filters & Sort
-            </span>
-            {filtersOpen ? (
-              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            )}
-          </button>
-          
-          {filtersOpen && (
-            <div className="px-3 py-3 space-y-3 bg-white dark:bg-card border-t border-gray-200 dark:border-border">
+        <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full justify-between" 
+              size="sm"
+              type="button"
+              onClick={handleOpenDialog}
+            >
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                <span>Filters & Sort</span>
+              </div>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg w-full">
+            <DialogHeader>
+              <DialogTitle>Filters & Sort</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
               {renderAdditionalFilters ? (
                 renderAdditionalFilters()
               ) : (
@@ -179,8 +208,24 @@ export default function MobileFilterBar({
                 ))
               )}
             </div>
-          )}
-        </div>
+            <DialogFooter className="flex gap-2 sm:gap-2">
+              <Button
+                variant="outline"
+                onClick={handleClear}
+                className="flex-1 sm:flex-initial"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+              <Button
+                onClick={handleSave}
+                className="flex-1 sm:flex-initial"
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

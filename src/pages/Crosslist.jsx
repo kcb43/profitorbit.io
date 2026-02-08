@@ -535,6 +535,10 @@ export default function Crosslist() {
   
   const [q, setQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  const [tempQ, setTempQ] = useState("");
+  const [tempPlatformFilter, setTempPlatformFilter] = useState("all");
+  const [tempActiveMkts, setTempActiveMkts] = useState([]);
   const [selected, setSelected] = useState([]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerTargets, setComposerTargets] = useState([]);
@@ -1657,6 +1661,30 @@ export default function Crosslist() {
   const toggleMarketActive = (mkt) =>
     setActiveMkts((prev) => (prev.includes(mkt) ? prev.filter((x) => x !== mkt) : [...prev, mkt]));
 
+  const handleSaveFilters = () => {
+    setQ(tempQ);
+    setPlatformFilter(tempPlatformFilter);
+    setActiveMkts(tempActiveMkts);
+    setFiltersDialogOpen(false);
+  };
+
+  const handleClearFilters = () => {
+    setTempQ("");
+    setTempPlatformFilter("all");
+    setTempActiveMkts([]);
+  };
+
+  const handleOpenFiltersDialog = () => {
+    // Sync temp values with current values when opening
+    setTempQ(q);
+    setTempPlatformFilter(platformFilter);
+    setTempActiveMkts(activeMkts);
+    setFiltersDialogOpen(true);
+  };
+
+  const toggleTempMarketActive = (mkt) =>
+    setTempActiveMkts((prev) => (prev.includes(mkt) ? prev.filter((x) => x !== mkt) : [...prev, mkt]));
+
   const openComposer = (ids, autoSelect = true) => {
     const itemIds = ids && ids.length > 0 ? ids : selected.length > 0 ? selected : [];
     
@@ -1858,11 +1886,14 @@ export default function Crosslist() {
             onPageSizeChange={undefined}
             onExportCSV={undefined}
             pageInfo={undefined}
+            onOpenFilters={handleOpenFiltersDialog}
+            onSaveFilters={handleSaveFilters}
+            onClearFilters={handleClearFilters}
             renderAdditionalFilters={() => (
               <>
                 <div>
                   <Label className="text-xs mb-1.5 block">Status</Label>
-                  <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                  <Select value={tempPlatformFilter} onValueChange={setTempPlatformFilter}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
@@ -1875,12 +1906,12 @@ export default function Crosslist() {
                   <Label className="text-xs mb-1.5 block">Marketplaces</Label>
                   <div className="flex flex-wrap gap-2">
                     {MARKETPLACES.map((m) => {
-                      const active = activeMkts.includes(m.id);
+                      const active = tempActiveMkts.includes(m.id);
                       return (
                         <button
                           key={m.id}
                           type="button"
-                          onClick={() => toggleMarketActive(m.id)}
+                          onClick={() => toggleTempMarketActive(m.id)}
                           className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-sm transition whitespace-nowrap
                             ${active
                               ? "bg-foreground text-background dark:bg-foreground dark:text-background"
@@ -1897,11 +1928,11 @@ export default function Crosslist() {
                     })}
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {activeMkts.length === 0
+                    {tempActiveMkts.length === 0
                       ? "Showing all items. Select marketplaces to filter by crosslisting status."
-                      : activeMkts.length === MARKETPLACES.length
+                      : tempActiveMkts.length === MARKETPLACES.length
                       ? "Showing items crosslisted to ALL marketplaces."
-                      : `Showing items crosslisted to ${activeMkts.length} marketplace${activeMkts.length === 1 ? "" : "s"}.`
+                      : `Showing items crosslisted to ${tempActiveMkts.length} marketplace${tempActiveMkts.length === 1 ? "" : "s"}.`
                     }
                   </p>
                 </div>
@@ -1968,8 +1999,111 @@ export default function Crosslist() {
           </div>
         </div>
 
+        {/* Desktop Filters Dialog Trigger */}
+        <div className="hidden md:block mb-4">
+          <Button
+            onClick={handleOpenFiltersDialog}
+            variant="outline"
+            className="w-full justify-between"
+            size="lg"
+          >
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4" />
+              <span>Filters & Marketplaces</span>
+            </div>
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Filters Dialog (Desktop & Mobile) */}
+        <Dialog open={filtersDialogOpen} onOpenChange={setFiltersDialogOpen}>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-3xl w-full">
+            <DialogHeader>
+              <DialogTitle>Filters & Marketplaces</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="temp-q" className="text-xs mb-1.5 block">Search</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="temp-q"
+                      placeholder="Item name, category, source…"
+                      value={tempQ}
+                      onChange={(e) => setTempQ(e.target.value)}
+                      className="pl-8 w-full"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Status</Label>
+                  <Select value={tempPlatformFilter} onValueChange={setTempPlatformFilter}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="listed">Listed somewhere</SelectItem>
+                      <SelectItem value="unlisted">In Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">Marketplaces</Label>
+                <div className="flex flex-wrap gap-2">
+                  {MARKETPLACES.map((m) => {
+                    const active = tempActiveMkts.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => toggleTempMarketActive(m.id)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-sm transition whitespace-nowrap
+                          ${active
+                            ? "bg-foreground text-background dark:bg-foreground dark:text-background"
+                            : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
+                          }`}
+                        aria-pressed={active}
+                      >
+                        <span aria-hidden="true" className="flex items-center justify-center">
+                          {renderMarketplaceIcon(m, "w-4 h-4")}
+                        </span>
+                        <span>{m.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {tempActiveMkts.length === 0
+                    ? "Showing all items. Select marketplaces to filter by crosslisting status."
+                    : tempActiveMkts.length === MARKETPLACES.length
+                    ? "Showing items crosslisted to ALL marketplaces."
+                    : `Showing items crosslisted to ${tempActiveMkts.length} marketplace${tempActiveMkts.length === 1 ? "" : "s"}.`
+                  }
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2 sm:gap-2">
+              <Button
+                variant="outline"
+                onClick={handleClearFilters}
+                className="flex-1 sm:flex-initial"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+              <Button
+                onClick={handleSaveFilters}
+                className="flex-1 sm:flex-initial"
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Desktop Filter Card */}
-        <Card className="hidden md:block border-0 shadow-lg">
+        <Card className="hidden border-0 shadow-lg">
           <CardHeader className="border-b bg-card">
             <CardTitle className="text-foreground text-base flex items-center gap-2">
               <Filter className="w-4 h-4" />

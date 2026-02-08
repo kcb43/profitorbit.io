@@ -78,6 +78,9 @@ export default function InventoryPage() {
   const isMobile = useIsMobile();
   const [filters, setFilters] = useState({ search: "", status: "not_sold", daysInStock: "all" });
   const [sort, setSort] = useState("newest");
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState({ search: "", status: "not_sold", daysInStock: "all" });
+  const [tempSort, setTempSort] = useState("newest");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
@@ -1408,6 +1411,26 @@ export default function InventoryPage() {
     }
   };
 
+  const handleSaveFilters = () => {
+    setFilters(tempFilters);
+    setSort(tempSort);
+    setFiltersDialogOpen(false);
+  };
+
+  const handleClearFilters = () => {
+    const defaultFilters = { search: "", status: "not_sold", daysInStock: "all" };
+    const defaultSort = "newest";
+    setTempFilters(defaultFilters);
+    setTempSort(defaultSort);
+  };
+
+  const handleOpenFiltersDialog = () => {
+    // Set temp values to current values when opening
+    setTempFilters(filters);
+    setTempSort(sort);
+    setFiltersDialogOpen(true);
+  };
+
   const handleBulkUpdateConfirm = () => {
     const updates = buildBulkUpdatePayload();
     if (selectedItems.length === 0 || Object.keys(updates).length === 0) return;
@@ -1603,11 +1626,14 @@ export default function InventoryPage() {
               }}
               onPrevPage={() => setPageIndex((p) => Math.max(0, p - 1))}
               onNextPage={() => setPageIndex((p) => p + 1)}
+              onOpenFilters={handleOpenFiltersDialog}
+              onSaveFilters={handleSaveFilters}
+              onClearFilters={handleClearFilters}
               renderAdditionalFilters={() => (
                 <>
                   <div>
                     <Label htmlFor="mobile-status" className="text-xs mb-1.5 block">Status</Label>
-                    <Select id="mobile-status" value={filters.status} onValueChange={val => setFilters(f => ({ ...f, status: val }))}>
+                    <Select id="mobile-status" value={tempFilters.status} onValueChange={val => setTempFilters(f => ({ ...f, status: val }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1622,7 +1648,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <Label htmlFor="mobile-sort" className="text-xs mb-1.5 block">Sort By</Label>
-                    <Select id="mobile-sort" value={sort} onValueChange={setSort}>
+                    <Select id="mobile-sort" value={tempSort} onValueChange={setTempSort}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1639,7 +1665,7 @@ export default function InventoryPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {filters.daysInStock === "returnDeadline" && (
+                  {tempFilters.daysInStock === "returnDeadline" && (
                     <div>
                       <Button
                         variant={showDismissedReturns ? "default" : "outline"}
@@ -1660,8 +1686,112 @@ export default function InventoryPage() {
             />
           </div>
 
+          {/* Desktop Filters Dialog Trigger */}
+          <div className="hidden md:block mb-4">
+            <Button
+              onClick={handleOpenFiltersDialog}
+              variant="outline"
+              className="w-full justify-between"
+              size="lg"
+            >
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                <span>Filters & Sort</span>
+              </div>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Filters Dialog (Desktop) */}
+          <Dialog open={filtersDialogOpen} onOpenChange={setFiltersDialogOpen}>
+            <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-3xl w-full">
+              <DialogHeader>
+                <DialogTitle>Filters & Sort</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="temp-search" className="text-xs mb-1.5 block">Search</Label>
+                    <div className="relative">
+                      <Input 
+                        id="temp-search"
+                        placeholder="Search..." 
+                        value={tempFilters.search} 
+                        onChange={e => setTempFilters(f => ({ ...f, search: e.target.value }))} 
+                        className="pl-8"
+                      />
+                      <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="temp-status" className="text-xs mb-1.5 block">Status</Label>
+                    <Select id="temp-status" value={tempFilters.status} onValueChange={val => setTempFilters(f => ({ ...f, status: val }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_sold">In Stock/Listed</SelectItem>
+                        <SelectItem value="available">In Stock</SelectItem>
+                        <SelectItem value="listed">Listed</SelectItem>
+                        <SelectItem value="sold">Sold</SelectItem>
+                        <SelectItem value="all">All Items</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="temp-sort" className="text-xs mb-1.5 block">Sort By</Label>
+                    <Select id="temp-sort" value={tempSort} onValueChange={setTempSort}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest First</SelectItem>
+                        <SelectItem value="oldest">Oldest First</SelectItem>
+                        <SelectItem value="price-high">Price: High to Low</SelectItem>
+                        <SelectItem value="price-low">Price: Low to High</SelectItem>
+                        <SelectItem value="name-az">Name: A to Z</SelectItem>
+                        <SelectItem value="name-za">Name: Z to A</SelectItem>
+                        <SelectItem value="purchase-newest">Purchase: Newest</SelectItem>
+                        <SelectItem value="purchase-oldest">Purchase: Oldest</SelectItem>
+                        <SelectItem value="return-soon">Return Soon</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Showing <span className="font-semibold text-foreground">{inventoryItems.length}</span>
+                  {totalItems ? (
+                    <>
+                      {" "}
+                      of <span className="font-semibold text-foreground">{totalItems}</span>
+                    </>
+                  ) : null}
+                  {" "}items
+                  {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
+                  {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
+                </div>
+              </div>
+              <DialogFooter className="flex gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  className="flex-1 sm:flex-initial"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleSaveFilters}
+                  className="flex-1 sm:flex-initial"
+                >
+                  Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {/* Desktop Filter Card */}
-          <Card className="hidden md:block border-0 shadow-lg mb-4">
+          <Card className="hidden border-0 shadow-lg mb-4">
             <CardHeader className="border-b bg-card">
               <CardTitle className="text-base sm:text-lg text-foreground">Filters & Sort</CardTitle>
             </CardHeader>
