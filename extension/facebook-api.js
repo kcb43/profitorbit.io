@@ -188,9 +188,26 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     
     const formData = new URLSearchParams();
     formData.append('variables', JSON.stringify(variables));
-    formData.append('doc_id', '6222877017763459'); // This is the doc_id from Vendoo's network log
-    formData.append('fb_api_req_friendly_name', 'MarketplaceYouSellingFastActiveSectionPaginationQuery');
     
+    // Use different GraphQL queries based on what we're fetching
+    // For SOLD items, we may need a different query to access historical data
+    // The "Active" query intentionally limits sold items to recent ones
+    if (statusFilter === 'sold' || (statusArray.length === 1 && statusArray[0] === 'OUT_OF_STOCK')) {
+      // Try using the active query but request more items
+      // TODO: Need to find the correct "Sold Section" query from Facebook's network traffic
+      // For now, use the same query but log that we need a different one
+      console.log('⚠️ Using ActiveSection query for sold items - may be limited');
+      console.log('💡 To get more sold items, we need to find the correct GraphQL query');
+      console.log('   Go to https://www.facebook.com/marketplace/you/selling → Click "Sold" tab');
+      console.log('   Check Network tab for the GraphQL request with different doc_id');
+      formData.append('doc_id', '6222877017763459'); // Active query (not ideal for sold)
+      formData.append('fb_api_req_friendly_name', 'MarketplaceYouSellingFastActiveSectionPaginationQuery');
+    } else {
+      // For active items or 'all', use the standard active query
+      formData.append('doc_id', '6222877017763459'); // This is the doc_id from Vendoo's network log
+      formData.append('fb_api_req_friendly_name', 'MarketplaceYouSellingFastActiveSectionPaginationQuery');
+    }
+   
     // Only include fb_dtsg if we have it
     if (dtsg) {
       formData.append('fb_dtsg', dtsg);
