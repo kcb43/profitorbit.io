@@ -1069,6 +1069,7 @@ export default function Import() {
 
   // Handle Facebook sync via extension
   const handleFacebookSync = async () => {
+    setIsLoading(true); // Start loading spinner
     try {
       console.log('📡 Requesting Facebook scrape from extension with status filter:', listingStatus);
       
@@ -1172,11 +1173,14 @@ export default function Import() {
           duration: 6000,
         });
       }
+    } finally {
+      setIsLoading(false); // Always stop loading spinner
     }
   };
 
   // Handle Mercari sync via extension
   const handleMercariSync = async () => {
+    setIsLoading(true); // Start loading spinner
     try {
       console.log('📡 Requesting Mercari scrape from extension...');
       
@@ -1249,6 +1253,8 @@ export default function Import() {
         variant: "destructive",
         duration: 6000,
       });
+    } finally {
+      setIsLoading(false); // Always stop loading spinner
     }
   };
 
