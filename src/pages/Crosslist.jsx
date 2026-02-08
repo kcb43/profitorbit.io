@@ -69,6 +69,7 @@ import BulkActionsMenu from "../components/BulkActionsMenu";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import imageCompression from "browser-image-compression";
 import { OptimizedImage } from "@/components/OptimizedImage";
+import { ImageCarousel } from "@/components/ImageCarousel";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { useEbayCategoryTreeId, useEbayCategories } from "@/hooks/useEbayCategorySuggestions";
@@ -2219,30 +2220,54 @@ export default function Crosslist() {
                   >
                     {/* Row 1: Image and Marketplace icons */}
                     <div className="flex flex-row items-start gap-3 p-3">
-                      {/* Image */}
-                      <div className="flex-shrink-0 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
+                      {/* Image - 15% bigger (138px from 120px) */}
+                      <div className="flex-shrink-0 w-[138px] sm:w-[173px]" style={{ minWidth: '138px', maxWidth: '138px' }}>
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleSelect(it.id);
                           }}
-                          className="item-image-clickable cursor-pointer flex items-center justify-center relative w-[120px] sm:w-[150px] min-w-[120px] sm:min-w-[150px] max-w-[120px] sm:max-w-[150px] h-[120px] sm:h-[150px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
+                          className="item-image-clickable cursor-pointer flex items-center justify-center relative w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px] h-[138px] sm:h-[173px] p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
                           }}
                         >
-                          <OptimizedImage
-                            src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
-                            alt={it.item_name}
-                            fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
-                            className="w-full h-full object-contain rounded-lg"
-                            lazy={true}
-                          />
+                          {Array.isArray(it.images) && it.images.filter(Boolean).length > 1 ? (
+                            <ImageCarousel
+                              images={(it.images || [])
+                                .filter(Boolean)
+                                .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
+                              imageClassName="object-contain rounded-lg"
+                              counterPosition="bottom"
+                            />
+                          ) : (
+                            <OptimizedImage
+                              src={it.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
+                              alt={it.item_name}
+                              fallback="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"
+                              className="w-full h-full object-contain rounded-lg"
+                              lazy={true}
+                            />
+                          )}
+                          
+                          {/* Selection checkmark */}
                           {selected.includes(it.id) && (
                             <div className="absolute top-2 left-2 z-20">
                               <div className="bg-green-600 rounded-full p-1 shadow-lg">
                                 <Check className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Quantity badge - bottom right */}
+                          {it.quantity > 0 && (
+                            <div className="absolute bottom-2 right-2 z-20">
+                              <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-lg px-2 py-1 shadow-lg flex items-center gap-1">
+                                <Package className="w-3 h-3 text-white" />
+                                <span className="text-white font-semibold text-xs">
+                                  {it.quantity}
+                                </span>
                               </div>
                             </div>
                           )}
@@ -2415,6 +2440,11 @@ export default function Crosslist() {
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-gray-600 dark:text-gray-400">Price:</span>
                               <span className="text-[11px] font-medium text-foreground">${(it.purchase_price || 0).toFixed(2)}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-gray-600 dark:text-gray-400">Quantity:</span>
+                              <span className="text-[11px] font-medium text-foreground">{it.quantity || 0}</span>
                             </div>
                             
                             <div className="flex justify-between items-center">
