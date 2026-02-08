@@ -1139,34 +1139,59 @@ export default function Import() {
       }, {});
       console.log('📊 Status breakdown:', statusCounts);
       
-      // Load existing imported status from localStorage
+      // Load ALL existing listings from localStorage (don't overwrite, MERGE!)
       const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
-      let existingImportedIds = new Set();
+      let existingListingsMap = new Map();
       
       if (cachedListings) {
         try {
           const parsedListings = JSON.parse(cachedListings);
-          existingImportedIds = new Set(
-            parsedListings
-              .filter(item => item.imported)
-              .map(item => item.itemId)
-          );
-          console.log('📦 Found', existingImportedIds.size, 'previously imported items');
+          // Create a map of existing listings by itemId for quick lookup
+          parsedListings.forEach(item => {
+            existingListingsMap.set(item.itemId, item);
+          });
+          console.log('📦 Found', existingListingsMap.size, 'existing cached items');
         } catch (e) {
           console.error('Error parsing cached listings:', e);
         }
       }
       
-      // Merge with existing imported status
-      const mergedListings = listings.map(item => ({
-        ...item,
-        imported: existingImportedIds.has(item.itemId) || false
-      }));
+      // MERGE: Update existing items with new data, preserve imported status, add new items
+      listings.forEach(newItem => {
+        const existingItem = existingListingsMap.get(newItem.itemId);
+        
+        if (existingItem) {
+          // Item exists - update it but preserve the imported status
+          existingListingsMap.set(newItem.itemId, {
+            ...newItem,
+            imported: existingItem.imported || false
+          });
+        } else {
+          // New item - add it to the map
+          existingListingsMap.set(newItem.itemId, {
+            ...newItem,
+            imported: false
+          });
+        }
+      });
+      
+      // Convert map back to array
+      const mergedListings = Array.from(existingListingsMap.values());
+      
+      console.log('✅ Merged cache:', {
+        totalItems: mergedListings.length,
+        newItems: listings.length,
+        existingItems: existingListingsMap.size - listings.length,
+        byStatus: mergedListings.reduce((acc, item) => {
+          acc[item.status] = (acc[item.status] || 0) + 1;
+          return acc;
+        }, {})
+      });
       
       // Update the query data and persist to localStorage
       queryClient.setQueryData(['facebook-listings', userId], mergedListings);
       localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(mergedListings));
-      console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'listings');
+      console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'total listings');
       
       // Force a re-render
       setFacebookListingsVersion(v => v + 1);
@@ -1243,34 +1268,55 @@ export default function Import() {
       console.log('✅ Received Mercari listings:', listings.length);
       console.log('📦 Sample listing:', listings[0]);
       
-      // Load existing imported status from localStorage
+      // Load ALL existing listings from localStorage (don't overwrite, MERGE!)
       const cachedListings = localStorage.getItem('profit_orbit_mercari_listings');
-      let existingImportedIds = new Set();
+      let existingListingsMap = new Map();
       
       if (cachedListings) {
         try {
           const parsedListings = JSON.parse(cachedListings);
-          existingImportedIds = new Set(
-            parsedListings
-              .filter(item => item.imported)
-              .map(item => item.itemId)
-          );
-          console.log('📦 Found', existingImportedIds.size, 'previously imported items');
+          // Create a map of existing listings by itemId for quick lookup
+          parsedListings.forEach(item => {
+            existingListingsMap.set(item.itemId, item);
+          });
+          console.log('📦 Found', existingListingsMap.size, 'existing cached items');
         } catch (e) {
           console.error('Error parsing cached listings:', e);
         }
       }
       
-      // Merge with existing imported status
-      const mergedListings = listings.map(item => ({
-        ...item,
-        imported: existingImportedIds.has(item.itemId) || false
-      }));
+      // MERGE: Update existing items with new data, preserve imported status, add new items
+      listings.forEach(newItem => {
+        const existingItem = existingListingsMap.get(newItem.itemId);
+        
+        if (existingItem) {
+          // Item exists - update it but preserve the imported status
+          existingListingsMap.set(newItem.itemId, {
+            ...newItem,
+            imported: existingItem.imported || false
+          });
+        } else {
+          // New item - add it to the map
+          existingListingsMap.set(newItem.itemId, {
+            ...newItem,
+            imported: false
+          });
+        }
+      });
+      
+      // Convert map back to array
+      const mergedListings = Array.from(existingListingsMap.values());
+      
+      console.log('✅ Merged cache:', {
+        totalItems: mergedListings.length,
+        newItems: listings.length,
+        existingItems: existingListingsMap.size - listings.length
+      });
       
       // Update the query data and persist to localStorage
       queryClient.setQueryData(['mercari-listings', userId], mergedListings);
       localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(mergedListings));
-      console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'listings');
+      console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'total listings');
       
       // Force a re-render
       setFacebookListingsVersion(v => v + 1); // Reuse this to trigger re-render
