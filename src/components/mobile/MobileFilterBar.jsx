@@ -154,9 +154,14 @@ export default function MobileFilterBar({
 
       {/* Filters & Sort Dropdown */}
       {(additionalFilters.length > 0 || renderAdditionalFilters) && (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between" size="sm">
+            <Button 
+              variant="outline" 
+              className="w-full justify-between" 
+              size="sm"
+              type="button"
+            >
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4" />
                 <span>Filters & Sort</span>
@@ -164,7 +169,11 @@ export default function MobileFilterBar({
               <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-sm">
+          <DropdownMenuContent 
+            align="start" 
+            className="w-[calc(100vw-2rem)] max-w-sm"
+            onInteractOutside={(e) => e.preventDefault()}
+          >
             <div className="p-3 space-y-3">
               {renderAdditionalFilters ? (
                 renderAdditionalFilters()

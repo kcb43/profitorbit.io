@@ -1729,7 +1729,7 @@ export default function InventoryPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between md:justify-between gap-3 min-w-0 overflow-x-hidden">
+              <div className="mt-4 flex flex-col md:flex-row flex-wrap items-start md:items-center justify-start md:justify-between gap-3 min-w-0 overflow-x-hidden">
                 <div className="text-xs text-muted-foreground min-w-0 break-words w-full md:w-auto">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
