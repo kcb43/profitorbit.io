@@ -2213,9 +2213,10 @@ export default function Crosslist() {
                       boxSizing: 'border-box'
                     }}
                   >
-                    {/* Image and content row */}
-                    <div className="flex flex-row items-stretch sm:items-center">
-                      <div className="flex-shrink-0 m-1 sm:m-4 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
+                    {/* Row 1: Image and Marketplace icons */}
+                    <div className="flex flex-row items-start gap-3 p-3">
+                      {/* Image */}
+                      <div className="flex-shrink-0 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2244,118 +2245,96 @@ export default function Crosslist() {
                         </div>
                       </div>
 
-                      <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 min-w-0 overflow-hidden relative">
-                        <div className="absolute left-0 top-0 w-px h-[130px] sm:h-full bg-gray-300"></div>
+                      {/* Marketplace icons - Mobile only */}
+                      <div className="sm:hidden flex-1 flex flex-col">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-semibold text-muted-foreground">Listed on:</span>
+                          {listedCount > 0 && (
+                            <Badge variant="outline" className="text-[9px] px-2 py-0.5">
+                              {listedCount} of {MARKETPLACES.length}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {MARKETPLACES.slice(0, showMoreMarketplaces[it.id] ? MARKETPLACES.length : 4).map((m) => {
+                            const state = map[m.id];
+                            const isListed = state === 'active';
+                            const isProcessing = state === 'processing';
+                            const listings = getItemListings(it.id);
+                            const listing =
+                              listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
+                              listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
+                              listings.find((l) => l.marketplace === m.id) ||
+                              null;
+                            const listingUrl =
+                              typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
+                                ? listing.marketplace_listing_url
+                                : null;
+                            
+                            return (
+                              <div key={m.id} className="flex flex-col items-center gap-0.5">
+                                <div
+                                  className={`relative inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
+                                    isListed
+                                      ? "bg-white dark:bg-card border-emerald-500/40 shadow-sm"
+                                      : isProcessing
+                                        ? "bg-white dark:bg-card border-blue-500/40 shadow-sm"
+                                      : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (listingUrl) window.open(listingUrl, '_blank');
+                                  }}
+                                >
+                                  {renderMarketplaceIcon(m, "w-5 h-5")}
+                                  {isListed && listingUrl && (
+                                    <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                      <ExternalLink className="w-2 h-2 text-emerald-700 dark:text-emerald-400" />
+                                    </span>
+                                  )}
+                                  {isProcessing && (
+                                    <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
+                                      <RefreshCw className="w-2 h-2 text-blue-600 animate-spin" />
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[8px] text-muted-foreground">{m.label}</span>
+                              </div>
+                            );
+                          })}
+                          {MARKETPLACES.length > 4 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMoreMarketplaces(prev => ({ ...prev, [it.id]: !prev[it.id] }));
+                              }}
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-border bg-gray-100 dark:bg-card/50 text-muted-foreground hover:bg-gray-200 dark:hover:bg-card text-xs font-medium"
+                            >
+                              {showMoreMarketplaces[it.id] ? '−' : `+${MARKETPLACES.length - 4}`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Desktop content - keep original layout */}
+                      <div className="hidden sm:flex flex-1 flex-col justify-start items-start px-2 sm:px-6 py-2 min-w-0 overflow-hidden relative">
+                        <div className="absolute left-0 top-0 w-px h-full bg-gray-300"></div>
                         
                         {/* Status badge - Desktop only */}
-                        <div className="hidden sm:block mb-2">
+                        <div className="mb-2">
                           <Badge variant="outline" className={`${STATUS_COLORS[it.status]} text-[10px] px-1.5 py-0.5`}>
                             {STATUS_LABELS[it.status] || STATUS_LABELS.available}
                           </Badge>
                         </div>
-                        
-                        {/* Mobile: Marketplace icons (moved to top) */}
-                        <div className="sm:hidden w-full mb-2">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-muted-foreground">Listed on:</span>
-                            {listedCount > 0 && (
-                              <Badge variant="outline" className="text-[9px] px-2 py-0.5">
-                                {listedCount} of {MARKETPLACES.length}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {MARKETPLACES.slice(0, showMoreMarketplaces[it.id] ? MARKETPLACES.length : 4).map((m) => {
-                              const state = map[m.id];
-                              const isListed = state === 'active';
-                              const isProcessing = state === 'processing';
-                              const listings = getItemListings(it.id);
-                              const listing =
-                                listings.find((l) => l.marketplace === m.id && l.status === 'active') ||
-                                listings.find((l) => l.marketplace === m.id && l.status === 'processing') ||
-                                listings.find((l) => l.marketplace === m.id) ||
-                                null;
-                              const listingUrl =
-                                typeof listing?.marketplace_listing_url === 'string' && listing.marketplace_listing_url.startsWith('http')
-                                  ? listing.marketplace_listing_url
-                                  : null;
-                              
-                              return (
-                                <div key={m.id} className="flex flex-col items-center gap-0.5">
-                                  <div
-                                    className={`relative inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-all ${
-                                      isListed
-                                        ? "bg-white dark:bg-card border-emerald-500/40 shadow-sm"
-                                        : isProcessing
-                                          ? "bg-white dark:bg-card border-blue-500/40 shadow-sm"
-                                        : "bg-gray-500/10 border-gray-300 dark:border-border opacity-50"
-                                    }`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (listingUrl) window.open(listingUrl, '_blank');
-                                    }}
-                                  >
-                                    {renderMarketplaceIcon(m, "w-5 h-5")}
-                                    {isListed && listingUrl && (
-                                      <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
-                                        <ExternalLink className="w-2 h-2 text-emerald-700 dark:text-emerald-400" />
-                                      </span>
-                                    )}
-                                    {isProcessing && (
-                                      <span className="absolute -top-0.5 -right-0.5 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-full p-0.5 shadow">
-                                        <RefreshCw className="w-2 h-2 text-blue-600 animate-spin" />
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[8px] text-muted-foreground">{m.label}</span>
-                                </div>
-                              );
-                            })}
-                            {MARKETPLACES.length > 4 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowMoreMarketplaces(prev => ({ ...prev, [it.id]: !prev[it.id] }));
-                                }}
-                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-border bg-gray-100 dark:bg-card/50 text-muted-foreground hover:bg-gray-200 dark:hover:bg-card text-xs font-medium"
-                              >
-                                {showMoreMarketplaces[it.id] ? '−' : `+${MARKETPLACES.length - 4}`}
-                              </button>
-                            )}
-                          </div>
-                        </div>
 
-                        <div className="block mb-1 sm:mb-3 w-full text-left">
-                          <h3 className="text-sm sm:text-xl font-bold text-foreground break-words line-clamp-3 text-left"
+                        <div className="block mb-3 w-full text-left">
+                          <h3 className="text-xl font-bold text-foreground break-words line-clamp-3 text-left"
                             style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
                             {it.item_name || 'Untitled Item'}
                           </h3>
                         </div>
 
-                        <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
-                            <span className="font-semibold">Category:</span> {it.category || "—"}
-                          </p>
-                          
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] pt-1">
-                            <span className="font-semibold">Price:</span> ${(it.purchase_price || 0).toFixed(2)}
-                          </p>
-                          
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
-                            <span className="font-semibold">Purchased:</span> {it.purchase_date ? format(parseISO(it.purchase_date), 'MMM d, yyyy') : '—'}
-                          </p>
-
-                          {it.source && (
-                            <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
-                              <span className="font-semibold">Source:</span>
-                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                                {it.source}
-                              </Badge>
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
+                        <div className="space-y-1.5 text-sm mb-4 text-gray-700 dark:text-gray-300 break-words">
                           <div>
                             <span>Price: </span>
                             <span className="font-medium text-foreground">${(it.purchase_price || 0).toFixed(2)}</span>
@@ -2377,6 +2356,39 @@ export default function Crosslist() {
                             </div>
                           )}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Title and Details - Mobile only */}
+                    <div className="sm:hidden w-full px-3 pb-3">
+                      <div className="mb-2">
+                        <h3 className="text-sm font-bold text-foreground break-words line-clamp-3 text-left"
+                          style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                          {it.item_name || 'Untitled Item'}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-0.5 w-full text-left">
+                        <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
+                          <span className="font-semibold">Category:</span> {it.category || "—"}
+                        </p>
+                        
+                        <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] pt-1">
+                          <span className="font-semibold">Price:</span> ${(it.purchase_price || 0).toFixed(2)}
+                        </p>
+                        
+                        <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
+                          <span className="font-semibold">Purchased:</span> {it.purchase_date ? format(parseISO(it.purchase_date), 'MMM d, yyyy') : '—'}
+                        </p>
+
+                        {it.source && (
+                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
+                            <span className="font-semibold">Source:</span>
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                              {it.source}
+                            </Badge>
+                          </p>
+                        )}
                       </div>
                     </div>
 
