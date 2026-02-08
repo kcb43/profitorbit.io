@@ -1686,7 +1686,7 @@ export default function Import() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="on_sale">On Sale</SelectItem>
-                      <SelectItem value="sold_out">Sold Out</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
                       <SelectItem value="all">All</SelectItem>
                     </SelectContent>
                   </Select>
