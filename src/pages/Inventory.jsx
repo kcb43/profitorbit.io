@@ -2325,23 +2325,6 @@ export default function InventoryPage() {
                             </div>
                           </div>
 
-                          {itemTags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
-                              {itemTags.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[9px] sm:text-[11px]">
-                                  {tag}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                    className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
-                                  >
-                                    <X className="h-2 w-2 sm:h-3 sm:w-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-
                           {isDeleted && daysUntilPermanentDelete !== null && (
                             <div className="mt-2 sm:mt-3 p-2 bg-orange-100 border-l-2 border-orange-500 rounded-r text-orange-800">
                               <p className="font-semibold text-xs flex items-center gap-1">
