@@ -188,7 +188,7 @@ export default function Layout({ children }) {
                 <img 
                   src="/orben-logo.svg" 
                   alt="Orben Logo" 
-                  className="w-12 h-12"
+                  className="w-16 h-16"
                 />
                 <div>
                   <h2 className="font-bold text-sidebar-foreground text-lg leading-tight">Orben</h2>
@@ -286,7 +286,7 @@ export default function Layout({ children }) {
                 <img 
                   src="/orben-logo.svg" 
                   alt="Orben Logo" 
-                  className="w-14 h-14"
+                  className="w-16 h-16"
                 />
                 <h1 className="text-xl font-bold text-foreground">Orben</h1>
               </div>
