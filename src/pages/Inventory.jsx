@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -197,6 +197,7 @@ export default function InventoryPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemToView, setItemToView] = useState(null);
+  const [expandedDetails, setExpandedDetails] = useState({});
   const [facebookListingDialogOpen, setFacebookListingDialogOpen] = useState(false);
   const [itemForFacebookListing, setItemForFacebookListing] = useState(null);
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
@@ -2033,9 +2034,9 @@ export default function InventoryPage() {
 
                   return (
                     <div key={item.id} className="w-full max-w-full">
-                      {/* Mobile/Tablet list layout (unchanged) */}
+                      {/* Mobile/Tablet list layout - Restructured */}
                       <div
-                        className={`lg:hidden product-list-item relative flex flex-col mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                        className={`lg:hidden product-list-item relative flex flex-col mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} cursor-pointer hover:shadow-md transition-shadow`}
                         style={{
                           minHeight: 'auto',
                           height: 'auto',
@@ -2045,8 +2046,18 @@ export default function InventoryPage() {
                           width: '100%',
                           boxSizing: 'border-box',
                           flexShrink: 0,
-                          paddingBottom: '0',
-                          boxShadow: selectedItems.includes(item.id) ? '0 0 0 3px rgba(34, 197, 94, 0.3), 0 10px 30px -5px rgba(34, 197, 94, 0.5)' : undefined
+                          paddingBottom: '0'
+                        }}
+                        onClick={(e) => {
+                          const isButton = e.target.closest('button, a, input, [role="button"]');
+                          const isImage = e.target.closest('.item-image-clickable');
+                          
+                          if (isImage) {
+                            handleSelect(item.id);
+                          } else if (!isButton) {
+                            setItemToView(item);
+                            setViewDialogOpen(true);
+                          }
                         }}
                       >
                       {/* Mobile return banner - attached at top */}
@@ -2058,174 +2069,79 @@ export default function InventoryPage() {
                           </p>
                         </div>
                       )}
-                      {/* Image and content row */}
-                      <div className="flex flex-row items-stretch sm:items-center">
-                      <div className="flex-shrink-0 m-1 sm:m-4 w-[120px] sm:w-[150px]" style={{ minWidth: '120px', maxWidth: '120px' }}>
-                        <div
-                          onClick={() => handleSelect(item.id)}
-                          className="md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[120px] sm:w-[150px] lg:w-[220px] min-w-[120px] sm:min-w-[150px] lg:min-w-[220px] max-w-[120px] sm:max-w-[150px] lg:max-w-[220px] h-[120px] sm:h-[150px] lg:h-[210px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
-                          style={{
-                            borderRadius: '12px',
-                            flexShrink: 0
-                          }}
-                        >
-                          {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
-                            <ImageCarousel
-                              images={(item.images || [])
-                                .filter(Boolean)
-                                .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
-                              imageClassName="object-contain rounded-lg"
-                              counterPosition="bottom"
-                            />
-                          ) : (
-                            <OptimizedImage
-                              src={item.image_url || DEFAULT_IMAGE_URL}
-                              alt={item.item_name}
-                              fallback={DEFAULT_IMAGE_URL}
-                              className="w-full h-full object-contain rounded-lg"
-                              style={{ maxHeight: '100%' }}
-                              lazy={true}
-                            />
-                          )}
-                          {selectedItems.includes(item.id) && (
-                            <div className="absolute top-2 left-2 z-20">
-                              <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                                <Check className="w-4 h-4 sm:w-2.5 sm:h-2.5 text-white" />
+                      
+                      {/* Row 1: Image and 4 Icon Buttons + Status/Tags */}
+                      <div className="flex flex-row items-start gap-3 p-3">
+                        {/* Image */}
+                        <div className="flex-shrink-0 w-[138px] sm:w-[173px]" style={{ minWidth: '138px', maxWidth: '138px' }}>
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelect(item.id);
+                            }}
+                            className="item-image-clickable md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px] h-[138px] sm:h-[173px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
+                            style={{
+                              borderRadius: '12px',
+                              flexShrink: 0
+                            }}
+                          >
+                            {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
+                              <ImageCarousel
+                                images={(item.images || [])
+                                  .filter(Boolean)
+                                  .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
+                                imageClassName="object-contain rounded-lg"
+                                counterPosition="bottom"
+                              />
+                            ) : (
+                              <OptimizedImage
+                                src={item.image_url || DEFAULT_IMAGE_URL}
+                                alt={item.item_name}
+                                fallback={DEFAULT_IMAGE_URL}
+                                className="w-full h-full object-contain rounded-lg"
+                                style={{ maxHeight: '100%' }}
+                                lazy={true}
+                              />
+                            )}
+                            {selectedItems.includes(item.id) && (
+                              <div className="absolute top-2 left-2 z-20">
+                                <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                                  <Check className="w-4 h-4 text-white" />
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          
-                          {/* Desktop link overlay */}
-                          <Link
-                            to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
-                            state={returnStateForInventory}
-                            className="hidden sm:block absolute inset-0 z-5"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
-                        style={{
-                          borderColor: 'rgba(229, 231, 235, 0.8)',
-                          flexShrink: 1,
-                          minWidth: 0
-                        }}
-                      >
-                        <div className="absolute left-0 top-0 w-px h-[130px] sm:h-full bg-gray-300"></div>
-                        
-                        {/* Status badge above title - Desktop only */}
-                        <div className="hidden sm:block mb-2">
-                          <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5`}>
-                            {statusLabels[item.status] || statusLabels.available}
-                          </Badge>
-                        </div>
-                        
-                        <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
-                          <h3 className="text-sm sm:text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2 text-left"
-                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
-                            {item.item_name || 'Untitled Item'}
-                          </h3>
-                        </Link>
-
-                        <div className="mb-1 sm:hidden space-y-0.5 w-full text-left">
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
-                            <span className="font-semibold">Qty:</span> {item.quantity}
-                            {quantitySold > 0 && (
-                              <span className={isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}>
-                                {isSoldOut ? ' (Sold Out)' : ` (${quantitySold} sold)`}
-                              </span>
                             )}
-                          </p>
-                          
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] pt-1">
-                            <span className="font-semibold">Price:</span> ${(item.purchase_price || 0).toFixed(2)}
-                            {item.quantity > 1 && (
-                              <span className="text-gray-600 dark:text-gray-400 text-[10px] ml-1">
-                                (${(perItemPrice || 0).toFixed(2)} ea)
-                              </span>
-                            )}
-                          </p>
-                          
-                          <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px]">
-                            <span className="font-semibold">Purchased:</span> {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
-                          </p>
-
-                          {/* Source badge */}
-                          {item.source && (
-                            <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
-                              <span className="font-semibold">Source:</span>
-                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
-                                {item.source}
-                              </Badge>
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="hidden sm:block space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
-                          <div>
-                            <span>Price: </span>
-                            <span className="font-medium text-foreground">
-                              ${(item.purchase_price || 0).toFixed(2)}
-                              {item.quantity > 1 && <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span>Qty: {item.quantity}</span>
-                            {quantitySold > 0 && (
-                              <span className={`font-medium ${isSoldOut ? 'text-red-600 dark:text-red-400 font-bold' : 'text-blue-600 dark:text-blue-400'}`}>
-                                {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
-                              </span>
+                            
+                            {/* Quantity badge - bottom right */}
+                            {availableToSell > 0 && (
+                              <div className="absolute bottom-2 right-2 z-20">
+                                <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-lg px-2 py-1 shadow-lg flex items-center gap-1">
+                                  <Package className="w-3 h-3 text-white" />
+                                  <span className="text-white font-semibold text-xs">
+                                    {availableToSell}
+                                  </span>
+                                </div>
+                              </div>
                             )}
                           </div>
-                          <div>
-                            <span>Purchase Date: </span>
-                            <span className="font-medium text-foreground">
-                              {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
-                            </span>
-                          </div>
-                          {item.condition && (
-                            <div>
-                              <span>Condition: </span>
-                              <span className="font-medium text-foreground">{item.condition}</span>
-                            </div>
-                          )}
-                          {item.brand && (
-                            <div>
-                              <span>Brand: </span>
-                              <span className="font-medium text-foreground">{item.brand}</span>
-                            </div>
-                          )}
-                          {item.size && (
-                            <div>
-                              <span>Size: </span>
-                              <span className="font-medium text-foreground">{item.size}</span>
-                            </div>
-                          )}
-                          {item.category && (
-                            <div>
-                              <span>Category: </span>
-                              <span className="font-medium text-foreground">{item.category}</span>
-                            </div>
-                          )}
-                          {item.source && (
-                            <div>
-                              <span>Source: </span>
-                              <span className="font-medium text-foreground">{item.source}</span>
-                            </div>
-                          )}
-                          
-                          {/* Action icons below Purchase Date - Desktop only */}
-                          <div className="flex items-center gap-2 mt-3">
+                        </div>
+
+                        {/* 4 Icon Buttons + Add Tags + Status - Mobile only */}
+                        <div className="sm:hidden flex-1 flex flex-col gap-2">
+                          {/* Top row: 4 icon buttons */}
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => toggleFavorite(item.id)}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item.id);
+                              }}
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition ${
                                 favoriteMarked
                                   ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                   : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
                               }`}
                             >
-                              <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                              <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
                             </button>
                             {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
                               <button
@@ -2234,21 +2150,21 @@ export default function InventoryPage() {
                                   e.stopPropagation();
                                   handleEditImage(e, item);
                                 }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
                               >
-                                <ImageIcon className="h-3.5 w-3.5" />
+                                <ImageIcon className="h-4 w-4" />
                               </button>
                             )}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setItemToView(item);
-                                setViewDialogOpen(true);
+                                const searchQuery = encodeURIComponent(item.item_name || '');
+                                window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
                               }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
                             >
-                              <Search className="h-3.5 w-3.5" />
+                              <Search className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
@@ -2256,117 +2172,308 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 handleDeleteClick(item);
                               }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                        </div>
-
-                        {itemTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
-                            {itemTags.map((tag) => (
-                              <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[9px] sm:text-[11px]">
-                                {tag}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                  className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
-                                >
-                                  <X className="h-2 w-2 sm:h-3 sm:w-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                        {isDeleted && daysUntilPermanentDelete !== null && (
-                          <div className="mt-2 sm:mt-3 p-2 bg-orange-100 border-l-2 border-orange-500 rounded-r text-orange-800">
-                            <p className="font-semibold text-xs flex items-center gap-1">
-                              <AlarmClock className="w-3 h-3" />
-                              {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      </div>
-
-                      {/* Mobile: Icons on LEFT, Badges on RIGHT - SAME ROW - Full width */}
-                      <div className="md:hidden flex items-center justify-between w-full px-2 py-2 border-t border-gray-200 dark:border-border">
-                        {/* Left: Action icons */}
-                        <div className="flex items-center gap-1 flex-nowrap">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(item.id);
-                            }}
-                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
-                              favoriteMarked
-                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                            }`}
-                          >
-                            <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
-                          </button>
-                          {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                          
+                          {/* Bottom row: Add Tags + Status badge */}
+                          <div className="flex items-center gap-2 flex-wrap">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditImage(e, item);
+                                setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
                               }}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                              className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
                             >
-                              <ImageIcon className="h-4 w-4" />
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add Tags
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setItemToView(item);
-                              setViewDialogOpen(true);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
-                          >
-                            <Search className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(item);
-                            }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
+                          </div>
                         </div>
-                        
-                        {/* Right: Add Tags button and Status badge */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Toggle tag input visibility for this item
-                              setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
-                            }}
-                            className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add Tags
-                          </button>
-                          <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
-                            {statusLabels[item.status] || statusLabels.available}
-                          </Badge>
+
+                        {/* Desktop content - keep original */}
+                        <div className="hidden sm:flex flex-1 flex-col justify-start items-start px-2 sm:px-6 py-2 sm:py-6 sm:border-r min-w-0 overflow-hidden relative"
+                          style={{
+                            borderColor: 'rgba(229, 231, 235, 0.8)',
+                            flexShrink: 1,
+                            minWidth: 0
+                          }}
+                        >
+                          <div className="absolute left-0 top-0 w-px h-full bg-gray-300"></div>
+                          
+                          {/* Status badge above title - Desktop only */}
+                          <div className="mb-2">
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-1.5 py-0.5`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
+                          </div>
+                          
+                          <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
+                            <h3 className="text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2 text-left"
+                              style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                              {item.item_name || 'Untitled Item'}
+                            </h3>
+                          </Link>
+
+                          <div className="space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
+                            <div>
+                              <span>Price: </span>
+                              <span className="font-medium text-foreground">
+                                ${(item.purchase_price || 0).toFixed(2)}
+                                {item.quantity > 1 && <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Qty: {item.quantity}</span>
+                              {quantitySold > 0 && (
+                                <span className={`font-medium ${isSoldOut ? 'text-red-600 dark:text-red-400 font-bold' : 'text-blue-600 dark:text-blue-400'}`}>
+                                  {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <span>Purchase Date: </span>
+                              <span className="font-medium text-foreground">
+                                {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
+                              </span>
+                            </div>
+                            {item.condition && (
+                              <div>
+                                <span>Condition: </span>
+                                <span className="font-medium text-foreground">{item.condition}</span>
+                              </div>
+                            )}
+                            {item.brand && (
+                              <div>
+                                <span>Brand: </span>
+                                <span className="font-medium text-foreground">{item.brand}</span>
+                              </div>
+                            )}
+                            {item.size && (
+                              <div>
+                                <span>Size: </span>
+                                <span className="font-medium text-foreground">{item.size}</span>
+                              </div>
+                            )}
+                            {item.category && (
+                              <div>
+                                <span>Category: </span>
+                                <span className="font-medium text-foreground">{item.category}</span>
+                              </div>
+                            )}
+                            {item.source && (
+                              <div>
+                                <span>Source: </span>
+                                <span className="font-medium text-foreground">{item.source}</span>
+                              </div>
+                            )}
+                            
+                            {/* Action icons below Purchase Date - Desktop only */}
+                            <div className="flex items-center gap-2 mt-3">
+                              <button
+                                type="button"
+                                onClick={() => toggleFavorite(item.id)}
+                                className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                                  favoriteMarked
+                                    ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                    : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
+                                }`}
+                              >
+                                <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                              </button>
+                              {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditImage(e, item);
+                                  }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                >
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setItemToView(item);
+                                  setViewDialogOpen(true);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              >
+                                <Search className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(item);
+                                }}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {itemTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
+                              {itemTags.map((tag) => (
+                                <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[9px] sm:text-[11px]">
+                                  {tag}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveTagFromItem(item.id, tag)}
+                                    className="inline-flex h-3 w-3 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
+                                  >
+                                    <X className="h-2 w-2 sm:h-3 sm:w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {isDeleted && daysUntilPermanentDelete !== null && (
+                            <div className="mt-2 sm:mt-3 p-2 bg-orange-100 border-l-2 border-orange-500 rounded-r text-orange-800">
+                              <p className="font-semibold text-xs flex items-center gap-1">
+                                <AlarmClock className="w-3 h-3" />
+                                {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* Mobile: Tags row (shows below icons) */}
+                      {/* Row 2: Title, Source, View Details - Mobile only */}
+                      <div className="sm:hidden w-full px-3 pb-3">
+                        <div className="mb-2">
+                          <h3 className="text-sm font-bold text-foreground break-words line-clamp-3 text-left"
+                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                            {item.item_name || 'Untitled Item'}
+                          </h3>
+                        </div>
+
+                        {/* Source */}
+                        {item.source && (
+                          <div className="mb-2">
+                            <p className="text-gray-700 dark:text-gray-300 text-[11px] break-words leading-[14px] flex items-center gap-1.5">
+                              <span className="font-semibold">Source:</span>
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                {item.source}
+                              </Badge>
+                            </p>
+                          </div>
+                        )}
+
+                        {/* View Details Dropdown */}
+                        <div className="border border-gray-200 dark:border-border rounded-lg overflow-hidden">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedDetails(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                            }}
+                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-card/50 hover:bg-gray-100 dark:hover:bg-card/70 transition-colors"
+                          >
+                            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                              <Eye className="w-4 h-4" />
+                              View Details
+                            </span>
+                            {expandedDetails[item.id] ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                          
+                          {expandedDetails[item.id] && (
+                            <div className="px-3 py-2 space-y-1.5 bg-white dark:bg-card border-t border-gray-200 dark:border-border">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Status:</span>
+                                <Badge variant="outline" className="text-[9px] px-2 py-0.5">
+                                  {statusLabels[item.status] || statusLabels.available}
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Category:</span>
+                                <span className="text-[11px] font-medium text-foreground">{item.category || "—"}</span>
+                              </div>
+                              
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Price:</span>
+                                <span className="text-[11px] font-medium text-foreground">
+                                  ${(item.purchase_price || 0).toFixed(2)}
+                                  {item.quantity > 1 && (
+                                    <span className="text-gray-600 dark:text-gray-400 text-[10px] ml-1">
+                                      (${(perItemPrice || 0).toFixed(2)} ea)
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Quantity:</span>
+                                <span className="text-[11px] font-medium text-foreground">
+                                  {item.quantity}
+                                  {quantitySold > 0 && (
+                                    <span className={`ml-1 ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                      {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Purchased:</span>
+                                <span className="text-[11px] font-medium text-foreground">
+                                  {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
+                                </span>
+                              </div>
+
+                              {item.condition && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[11px] text-gray-600 dark:text-gray-400">Condition:</span>
+                                  <span className="text-[11px] font-medium text-foreground">{item.condition}</span>
+                                </div>
+                              )}
+
+                              {item.brand && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[11px] text-gray-600 dark:text-gray-400">Brand:</span>
+                                  <span className="text-[11px] font-medium text-foreground">{item.brand}</span>
+                                </div>
+                              )}
+
+                              {item.size && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[11px] text-gray-600 dark:text-gray-400">Size:</span>
+                                  <span className="text-[11px] font-medium text-foreground">{item.size}</span>
+                                </div>
+                              )}
+
+                              {item.source && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[11px] text-gray-600 dark:text-gray-400">Source:</span>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                                    {item.source}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 3: Tags (if any) - Mobile only */}
                       {(itemTags.length > 0 || tagDrafts[`show_${item.id}`]) && (
-                        <div className="md:hidden w-full px-2 py-2 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-card/50">
+                        <div className="sm:hidden w-full px-3 py-2 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-card/50">
                           {itemTags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-2">
                               {itemTags.map((tag) => (
