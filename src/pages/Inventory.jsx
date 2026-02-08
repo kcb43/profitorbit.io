@@ -1431,6 +1431,9 @@ export default function InventoryPage() {
     setFiltersDialogOpen(true);
   };
 
+  // Check if filters are active (not default values)
+  const hasActiveFilters = filters.status !== "not_sold" || sort !== "newest";
+
   const handleBulkUpdateConfirm = () => {
     const updates = buildBulkUpdatePayload();
     if (selectedItems.length === 0 || Object.keys(updates).length === 0) return;
@@ -1688,21 +1691,41 @@ export default function InventoryPage() {
 
           {/* Desktop Filters Dialog Trigger */}
           <div className="hidden md:block mb-4">
-            <Button
-              onClick={handleOpenFiltersDialog}
-              variant="outline"
-              className="w-full justify-between"
-              size="lg"
-            >
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4" />
-                <span>Filters & Sort</span>
-              </div>
-              <ChevronDown className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleOpenFiltersDialog}
+                variant="outline"
+                className="flex-1 justify-between"
+                size="lg"
+              >
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4" />
+                  <span>Filters & Sort</span>
+                  {hasActiveFilters && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  onClick={() => {
+                    setFilters({ search: "", status: "not_sold", daysInStock: "all" });
+                    setSort("newest");
+                  }}
+                  variant="outline"
+                  size="lg"
+                  className="px-4"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Filters Dialog (Desktop) */}
+          {/* Filters Dialog (Desktop & Mobile) */}
           <Dialog open={filtersDialogOpen} onOpenChange={setFiltersDialogOpen}>
             <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-3xl w-full">
               <DialogHeader>
@@ -1758,18 +1781,10 @@ export default function InventoryPage() {
                   {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
                 </div>
               </div>
-              <DialogFooter className="flex gap-2 sm:gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleClearFilters}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Clear
-                </Button>
+              <DialogFooter>
                 <Button
                   onClick={handleSaveFilters}
-                  className="flex-1 sm:flex-initial"
+                  className="w-full"
                 >
                   Save
                 </Button>

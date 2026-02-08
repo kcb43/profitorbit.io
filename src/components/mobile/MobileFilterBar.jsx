@@ -3,14 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Filter, Search, Archive, Star, Download, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -41,21 +33,6 @@ export default function MobileFilterBar({
   onClearFilters,
 }) {
   const isMobile = useIsMobile();
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const handleSave = () => {
-    if (onSaveFilters) onSaveFilters();
-    setFiltersOpen(false);
-  };
-
-  const handleClear = () => {
-    if (onClearFilters) onClearFilters();
-  };
-
-  const handleOpenDialog = () => {
-    if (onOpenFilters) onOpenFilters();
-    setFiltersOpen(true);
-  };
 
   if (!isMobile) {
     // Desktop: render nothing, let parent handle it
@@ -175,57 +152,21 @@ export default function MobileFilterBar({
         </div>
       )}
 
-      {/* Filters & Sort Dialog */}
+      {/* Filters & Sort Button */}
       {(additionalFilters.length > 0 || renderAdditionalFilters) && (
-        <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full justify-between" 
-              size="sm"
-              type="button"
-              onClick={handleOpenDialog}
-            >
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4" />
-                <span>Filters & Sort</span>
-              </div>
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg w-full">
-            <DialogHeader>
-              <DialogTitle>Filters & Sort</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-              {renderAdditionalFilters ? (
-                renderAdditionalFilters()
-              ) : (
-                additionalFilters.map((filter, idx) => (
-                  <div key={idx}>
-                    {filter}
-                  </div>
-                ))
-              )}
-            </div>
-            <DialogFooter className="flex gap-2 sm:gap-2">
-              <Button
-                variant="outline"
-                onClick={handleClear}
-                className="flex-1 sm:flex-initial"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Clear
-              </Button>
-              <Button
-                onClick={handleSave}
-                className="flex-1 sm:flex-initial"
-              >
-                Save
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          variant="outline" 
+          className="w-full justify-between" 
+          size="sm"
+          type="button"
+          onClick={onOpenFilters}
+        >
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4" />
+            <span>Filters & Sort</span>
+          </div>
+          <ChevronDown className="w-4 h-4" />
+        </Button>
       )}
     </div>
   );
