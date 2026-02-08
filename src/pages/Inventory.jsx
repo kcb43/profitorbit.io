@@ -1519,14 +1519,6 @@ export default function InventoryPage() {
             <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0">
               <Button
                 variant="outline"
-                onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-                className="flex-shrink-0"
-              >
-                {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-                {viewMode === "list" ? "Grid View" : "List View"}
-              </Button>
-              <Button
-                variant="outline"
                 onClick={() => setViewMode((m) => (m === "gallery" ? "grid" : "gallery"))}
                 className="flex-shrink-0"
               >
@@ -1952,11 +1944,11 @@ export default function InventoryPage() {
                 </div>
               </div>
               
-              {/* Mobile view toggle button */}
+              {/* View toggle button (mobile and desktop) */}
               <Button
                 variant="outline"
-                onClick={() => setViewMode((v) => (v === "list" ? "gallery" : "list"))}
-                className="md:hidden flex-shrink-0"
+                onClick={() => setViewMode((v) => (v === "list" ? "grid" : "list"))}
+                className="flex-shrink-0"
                 size="sm"
               >
                 {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-1" /> : <Rows className="w-4 h-4 mr-1" />}

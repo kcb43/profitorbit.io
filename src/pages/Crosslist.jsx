@@ -1819,14 +1819,6 @@ export default function Crosslist() {
               <RefreshCw className="w-4 h-4 mr-2" />
               Sync Sales
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}
-              className="whitespace-nowrap"
-            >
-              {layout === "rows" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-              {layout === "rows" ? "Grid View" : "List View"}
-            </Button>
           </div>
         </div>
 
@@ -1868,17 +1860,6 @@ export default function Crosslist() {
             pageInfo={undefined}
             renderAdditionalFilters={() => (
               <>
-                <div>
-                  <Label className="text-xs mb-1.5 block">View Mode</Label>
-                  <Button
-                    variant="outline"
-                    onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}
-                    className="w-full"
-                  >
-                    {layout === "rows" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-                    {layout === "rows" ? "Grid View" : "List View"}
-                  </Button>
-                </div>
                 <div>
                   <Label className="text-xs mb-1.5 block">Status</Label>
                   <Select value={platformFilter} onValueChange={setPlatformFilter}>
@@ -2153,11 +2134,11 @@ export default function Crosslist() {
                   </div>
                 </div>
                 
-                {/* Mobile view toggle button */}
+                {/* View toggle button (mobile and desktop) */}
                 <Button
                   variant="outline"
                   onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}
-                  className="md:hidden flex-shrink-0"
+                  className="flex-shrink-0"
                   size="sm"
                 >
                   {layout === "rows" ? <Grid2X2 className="w-4 h-4 mr-1" /> : <Rows className="w-4 h-4 mr-1" />}
