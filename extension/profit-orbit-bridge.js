@@ -4,7 +4,7 @@
  */
 
 // BUILD stamp (high-signal): use this to confirm Chrome is running the file you think it is.
-const PO_BRIDGE_BUILD = '2025-12-29-bridge-build-1';
+const PO_BRIDGE_BUILD = '2026-02-08-mercari-sold-items-bridge-fix';
 
 // IMMEDIATE LOG - Should appear FIRST
 // Using try-catch to prevent any parse errors from silently failing
@@ -172,11 +172,14 @@ window.addEventListener("message", (event) => {
 
   // Scrape Mercari listings for Import page
   if (msg.type === "PO_SCRAPE_MERCARI_LISTINGS") {
+    console.log('🔵 Bridge: Received PO_SCRAPE_MERCARI_LISTINGS with msg:', msg);
     // Forward the entire message payload including status
-    poTrySendMessage({ 
+    const forwardMessage = { 
       type: "SCRAPE_MERCARI_LISTINGS",
       status: msg.status || 'on_sale' // Pass the status from the original message
-    }, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
+    };
+    console.log('🔵 Bridge: Forwarding to background:', forwardMessage);
+    poTrySendMessage(forwardMessage, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
     return;
   }
 
