@@ -1865,9 +1865,9 @@ export default function InventoryPage() {
                 <div className="text-xs text-muted-foreground min-w-0 break-words">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
-                <div className="flex flex-col md:flex-row gap-2 md:flex-wrap items-start md:items-center min-w-0">
+                <div className="flex flex-col md:flex-row gap-2 md:flex-wrap md:items-center min-w-0 w-full md:w-auto">
                   {/* Per Page Selector */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full md:w-auto">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
                     <Select
                       value={String(pageSize)}
@@ -1888,12 +1888,13 @@ export default function InventoryPage() {
                   </div>
                   
                   {/* Pagination Buttons */}
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center w-full md:w-auto">
                     <Button
                       variant="outline"
                       size="sm"
                       disabled={!canPrev}
                       onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                      className="flex-1 md:flex-initial"
                     >
                       Prev
                     </Button>
@@ -1902,6 +1903,7 @@ export default function InventoryPage() {
                       size="sm"
                       disabled={!canNext}
                       onClick={() => setPageIndex((p) => p + 1)}
+                      className="flex-1 md:flex-initial"
                     >
                       Next
                     </Button>
@@ -1921,7 +1923,7 @@ export default function InventoryPage() {
                       qs.set('limit', '5000');
                       window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
                     }}
-                    className="flex items-center gap-2 min-w-0 max-w-full self-start"
+                    className="flex items-center gap-2 min-w-0 w-full md:w-auto"
                   >
                     Export CSV
                   </Button>
