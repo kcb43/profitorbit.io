@@ -1865,7 +1865,7 @@ export default function InventoryPage() {
                 <div className="text-xs text-muted-foreground min-w-0 break-words">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
-                <div className="flex flex-col md:flex-row gap-2 md:flex-wrap md:items-center min-w-0 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row gap-2 md:flex-wrap md:items-center items-start min-w-0 w-full md:w-auto">
                   {/* Per Page Selector */}
                   <div className="flex items-center gap-2 w-full md:w-auto">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
@@ -1923,7 +1923,7 @@ export default function InventoryPage() {
                       qs.set('limit', '5000');
                       window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
                     }}
-                    className="justify-start w-full md:w-auto md:justify-center"
+                    className="self-start md:self-auto"
                   >
                     Export CSV
                   </Button>
