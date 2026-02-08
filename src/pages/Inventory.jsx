@@ -2204,19 +2204,19 @@ export default function InventoryPage() {
                           </div>
 
                           {/* Tags + Status below buttons */}
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
                               }}
-                              className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
+                              className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium flex-shrink-0"
                             >
-                              <Plus className="h-3 w-3 mr-1" />
+                              <Plus className="h-3 w-3 mr-0.5" />
                               Tags
                             </button>
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5 flex-shrink-0`}>
                               {statusLabels[item.status] || statusLabels.available}
                             </Badge>
                           </div>
