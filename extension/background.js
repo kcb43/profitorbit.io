@@ -2371,34 +2371,74 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           statusFilter 
         });
         
-        // Fetch listings via GraphQL API with status filter
-        const result = await self.__facebookApi.fetchFacebookListings({
-          dtsg: auth.dtsg,
-          cookies: auth.cookies,
-          count: 50,
-          statusFilter, // Pass the status filter to the API
-        });
+        // Fetch listings via GraphQL API with status filter and pagination
+        let allListings = [];
+        let cursor = null;
+        let hasNextPage = true;
+        let pageCount = 0;
+        const maxPages = 20; // Safety limit to prevent infinite loops
         
-        console.log('✅ Fetched listings via API:', result.listings?.length || 0);
+        while (hasNextPage && pageCount < maxPages) {
+          pageCount++;
+          console.log(`📄 Fetching page ${pageCount}${cursor ? ' (cursor: ' + cursor.substring(0, 30) + '...)' : ' (initial)'}`);
+          
+          const result = await self.__facebookApi.fetchFacebookListings({
+            dtsg: auth.dtsg,
+            cookies: auth.cookies,
+            count: 50, // Fetch 50 items per page
+            cursor,
+            statusFilter,
+          });
+          
+          if (!result.success || !result.listings) {
+            console.error('❌ Failed to fetch page', pageCount);
+            break;
+          }
+          
+          allListings.push(...result.listings);
+          console.log(`✅ Page ${pageCount}: Fetched ${result.listings.length} items (total so far: ${allListings.length})`);
+          
+          hasNextPage = result.hasNextPage || false;
+          cursor = result.endCursor || null;
+          
+          if (!hasNextPage) {
+            console.log('✅ Reached last page');
+            break;
+          }
+          
+          // Small delay between pages to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        if (pageCount >= maxPages) {
+          console.log(`⚠️ Reached maximum page limit (${maxPages}), stopping pagination`);
+        }
+        
+        console.log(`✅ Fetched total of ${allListings.length} listings across ${pageCount} page(s)`);
         
         // Log status breakdown
-        const statusCounts = result.listings?.reduce((acc, item) => {
+        const statusCounts = allListings.reduce((acc, item) => {
           acc[item.status || 'unknown'] = (acc[item.status || 'unknown'] || 0) + 1;
           return acc;
         }, {});
         console.log('📊 Status breakdown:', statusCounts);
         
-        console.log('📦 First listing sample:', JSON.stringify(result.listings?.[0], null, 2));
+        console.log('📦 First listing sample:', JSON.stringify(allListings[0], null, 2));
         
         // Store in chrome.storage
         await chrome.storage.local.set({
-          'facebook_listings': result.listings || [],
-          'facebook_listings_total': result.total || 0,
-          'facebook_listings_timestamp': result.timestamp || Date.now(),
+          'facebook_listings': allListings,
+          'facebook_listings_total': allListings.length,
+          'facebook_listings_timestamp': new Date().toISOString(),
         });
         
         // Send response
-        sendResponse(result);
+        sendResponse({
+          success: true,
+          listings: allListings,
+          total: allListings.length,
+          timestamp: new Date().toISOString(),
+        });
         
       } catch (error) {
         console.error('❌ Error handling SCRAPE_FACEBOOK_LISTINGS:', error);

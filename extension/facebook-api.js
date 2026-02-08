@@ -148,11 +148,13 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     
     // Determine status array based on filter
-    // Facebook uses: IN_STOCK for active, OUT_OF_STOCK for sold items
+    // Facebook uses: IN_STOCK for active, OUT_OF_STOCK for sold/out of stock items
     let statusArray;
     if (statusFilter === 'available' || statusFilter === 'active') {
       statusArray = ['IN_STOCK'];
     } else if (statusFilter === 'sold') {
+      statusArray = ['OUT_OF_STOCK'];
+    } else if (statusFilter === 'out_of_stock') {
       statusArray = ['OUT_OF_STOCK'];
     } else {
       // 'all' - fetch both active and sold items
@@ -238,6 +240,17 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     
     console.log('✅ GraphQL response parsed successfully');
     
+    // Extract page info for pagination
+    const pageInfo = data.viewer?.marketplace_listing_sets?.page_info;
+    const hasNextPage = pageInfo?.has_next_page || false;
+    const endCursor = pageInfo?.end_cursor || null;
+    
+    console.log('📄 Pagination info:', {
+      hasNextPage,
+      endCursor: endCursor ? endCursor.substring(0, 50) + '...' : null,
+      currentCursor: cursor ? cursor.substring(0, 50) + '...' : null
+    });
+    
     // Extract listings from GraphQL response - all data is already here!
     const edges = data.viewer?.marketplace_listing_sets?.edges || [];
     
@@ -290,9 +303,9 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       if (listing.is_sold) {
         itemStatus = 'sold';
       } else if (listing.inventory_item?.inventory_status === 'OUT_OF_STOCK') {
-        itemStatus = 'sold';
+        itemStatus = 'out_of_stock';
       } else if (listing.is_pending) {
-        itemStatus = 'pending';
+        itemStatus = 'out_of_stock'; // Pending items are also marked as out of stock
       } else if (listing.inventory_item?.inventory_status === 'IN_STOCK') {
         itemStatus = 'available';
       }
@@ -345,6 +358,8 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       listings,
       total: listings.length,
       timestamp: new Date().toISOString(),
+      hasNextPage,
+      endCursor,
     };
     
   } catch (error) {
