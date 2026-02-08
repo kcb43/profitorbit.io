@@ -164,9 +164,21 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     console.log('📊 Using status filter:', { statusFilter, statusArray });
     
     // GraphQL query parameters
+    // IMPORTANT: Facebook's MarketplaceYouSellingFastActiveSectionPaginationQuery
+    // may limit sold items to recent items only (typically 10-50 items)
+    // This appears to be a Facebook API limitation
+    let queryState = 'LIVE';
+    
+    // For sold items, try to request more per page
+    let requestCount = count;
+    if (statusFilter === 'sold' || statusFilter === 'out_of_stock' || statusArray.includes('OUT_OF_STOCK')) {
+      console.log('🕐 Requesting historical sold/out-of-stock items');
+      requestCount = Math.max(count, 100); // Try to fetch 100 items per page minimum
+    }
+    
     const variables = {
-      count,
-      state: 'LIVE',
+      count: requestCount,
+      state: queryState,
       status: statusArray,
       cursor,
       order: 'CREATION_TIMESTAMP_DESC',
@@ -297,22 +309,27 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
       const size = listing.custom_sub_titles_with_rendering_flags?.find(s => s.rendering_style === 'SIZE')?.subtitle || null;
       
       // Determine status from multiple sources
-      // Priority: is_sold flag > inventory_item.inventory_status > is_pending flag > default 'available'
+      // Priority: is_sold flag > inventory_count/total_inventory > is_pending flag > default 'available'
       let itemStatus = 'available';
       
       if (listing.is_sold) {
         itemStatus = 'sold';
+      } else if (listing.inventory_count === 0 && listing.total_inventory === 0) {
+        // Items with zero inventory are out of stock
+        itemStatus = 'out_of_stock';
       } else if (listing.inventory_item?.inventory_status === 'OUT_OF_STOCK') {
         itemStatus = 'out_of_stock';
       } else if (listing.is_pending) {
         itemStatus = 'out_of_stock'; // Pending items are also marked as out of stock
-      } else if (listing.inventory_item?.inventory_status === 'IN_STOCK') {
+      } else if (listing.inventory_item?.inventory_status === 'IN_STOCK' || listing.inventory_count > 0) {
         itemStatus = 'available';
       }
       
       console.log(`🔍 [${index + 1}] Status detection:`, {
         itemId: listing.id,
         is_sold: listing.is_sold,
+        inventory_count: listing.inventory_count,
+        total_inventory: listing.total_inventory,
         inventory_status: listing.inventory_item?.inventory_status,
         is_pending: listing.is_pending,
         finalStatus: itemStatus

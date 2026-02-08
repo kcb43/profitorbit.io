@@ -2378,6 +2378,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let pageCount = 0;
         const maxPages = 20; // Safety limit to prevent infinite loops
         
+        // For sold items, use higher count per page
+        const itemsPerPage = (statusFilter === 'sold' || statusFilter === 'out_of_stock') ? 100 : 50;
+        
+        console.log(`📊 Fetching with ${itemsPerPage} items per page for status: ${statusFilter}`);
+        
         while (hasNextPage && pageCount < maxPages) {
           pageCount++;
           console.log(`📄 Fetching page ${pageCount}${cursor ? ' (cursor: ' + cursor.substring(0, 30) + '...)' : ' (initial)'}`);
@@ -2385,7 +2390,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const result = await self.__facebookApi.fetchFacebookListings({
             dtsg: auth.dtsg,
             cookies: auth.cookies,
-            count: 50, // Fetch 50 items per page
+            count: itemsPerPage,
             cursor,
             statusFilter,
           });
