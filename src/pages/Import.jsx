@@ -76,7 +76,10 @@ export default function Import() {
   const [listingStatus, setListingStatus] = useState(() => {
     // Try to restore from localStorage
     const saved = localStorage.getItem('import_listing_status');
-    return saved || "Active";
+    // Return saved value if it exists, otherwise use appropriate default
+    if (saved) return saved;
+    // Will be set by useEffect based on selectedSource
+    return "Active";
   });
   const [importingStatus, setImportingStatus] = useState("not_imported");
 
@@ -85,19 +88,17 @@ export default function Import() {
     localStorage.setItem('import_listing_status', listingStatus);
   }, [listingStatus]);
 
-  // Update listing status default when source changes (but only if not already set)
+  // Update listing status default when source changes
   useEffect(() => {
-    const saved = localStorage.getItem('import_listing_status');
-    if (!saved) {
-      if (selectedSource === "facebook") {
-        setListingStatus("all"); // Changed to "all" by default
-      } else if (selectedSource === "ebay") {
-        setListingStatus("All"); // Changed to "All" by default
-      } else if (selectedSource === "mercari") {
-        setListingStatus("all"); // Changed to "all" by default
-      }
+    // Set appropriate default for the source if no explicit selection was made
+    if (selectedSource === "facebook" && !['all', 'available', 'sold', 'out_of_stock'].includes(listingStatus)) {
+      setListingStatus("all");
+    } else if (selectedSource === "ebay" && !['All', 'Active', 'Sold'].includes(listingStatus)) {
+      setListingStatus("All");
+    } else if (selectedSource === "mercari" && !['all', 'on_sale', 'sold'].includes(listingStatus)) {
+      setListingStatus("all");
     }
-  }, [selectedSource]);
+  }, [selectedSource, listingStatus]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [visibleItemIds, setVisibleItemIds] = useState([]); // Track which item IDs are currently visible
   const [itemsPerPage, setItemsPerPage] = useState(100);
