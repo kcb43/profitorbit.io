@@ -74,33 +74,47 @@ export default function Import() {
   }, [selectedSource, setSearchParams]);
   
   const [listingStatus, setListingStatus] = useState(() => {
-    // Try to restore from localStorage
-    const saved = localStorage.getItem('import_listing_status');
-    // Return saved value if it exists, otherwise use appropriate default
-    if (saved) return saved;
-    // Will be set by useEffect based on selectedSource
-    return "Active";
+    // Don't restore from localStorage - always default to "all"/"All" based on source
+    // This prevents blank/invalid values when switching between marketplaces
+    if (selectedSource === "facebook") return "all";
+    if (selectedSource === "ebay") return "All";
+    if (selectedSource === "mercari") return "all";
+    return "all"; // Default fallback
   });
   const [importingStatus, setImportingStatus] = useState("not_imported");
   const [isSyncingFacebook, setIsSyncingFacebook] = useState(false);
   const [isSyncingMercari, setIsSyncingMercari] = useState(false);
 
-  // Save listing status to localStorage whenever it changes
+  // Save listing status to localStorage for the current session (per-source)
   useEffect(() => {
-    localStorage.setItem('import_listing_status', listingStatus);
-  }, [listingStatus]);
+    localStorage.setItem(`import_listing_status_${selectedSource}`, listingStatus);
+  }, [listingStatus, selectedSource]);
 
-  // Update listing status default when source changes
+  // When source changes, restore the last status for that source or use default
   useEffect(() => {
-    // Set appropriate default for the source if no explicit selection was made
-    if (selectedSource === "facebook" && !['all', 'available', 'sold', 'out_of_stock'].includes(listingStatus)) {
-      setListingStatus("all");
-    } else if (selectedSource === "ebay" && !['All', 'Active', 'Sold'].includes(listingStatus)) {
-      setListingStatus("All");
-    } else if (selectedSource === "mercari" && !['all', 'on_sale', 'sold'].includes(listingStatus)) {
-      setListingStatus("all");
+    const savedForSource = localStorage.getItem(`import_listing_status_${selectedSource}`);
+    
+    if (savedForSource) {
+      // Validate the saved value is valid for this source
+      if (selectedSource === "facebook" && ['all', 'available', 'sold', 'out_of_stock'].includes(savedForSource)) {
+        setListingStatus(savedForSource);
+      } else if (selectedSource === "ebay" && ['All', 'Active', 'Sold'].includes(savedForSource)) {
+        setListingStatus(savedForSource);
+      } else if (selectedSource === "mercari" && ['all', 'on_sale', 'sold'].includes(savedForSource)) {
+        setListingStatus(savedForSource);
+      } else {
+        // Invalid saved value, use default
+        if (selectedSource === "facebook") setListingStatus("all");
+        else if (selectedSource === "ebay") setListingStatus("All");
+        else if (selectedSource === "mercari") setListingStatus("all");
+      }
+    } else {
+      // No saved value, use default
+      if (selectedSource === "facebook") setListingStatus("all");
+      else if (selectedSource === "ebay") setListingStatus("All");
+      else if (selectedSource === "mercari") setListingStatus("all");
     }
-  }, [selectedSource, listingStatus]);
+  }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [visibleItemIds, setVisibleItemIds] = useState([]); // Track which item IDs are currently visible
   const [itemsPerPage, setItemsPerPage] = useState(100);
@@ -2129,7 +2143,38 @@ export default function Import() {
                         />
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <h3 className="font-medium truncate">{item.title}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium truncate">{item.title}</h3>
+                          {/* Show status badge when viewing "All" statuses */}
+                          {((selectedSource === "facebook" && listingStatus === "all") ||
+                            (selectedSource === "ebay" && listingStatus === "All") ||
+                            (selectedSource === "mercari" && listingStatus === "all")) && (
+                            <Badge 
+                              variant="outline"
+                              className={
+                                item.status === 'sold' || item.status === 'Sold'
+                                  ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200 dark:border-green-700'
+                                  : item.status === 'available' || item.status === 'Active' || item.status === 'on_sale'
+                                  ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700'
+                                  : item.status === 'out_of_stock'
+                                  ? 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
+                                  : 'bg-gray-100 text-gray-800 border-gray-300'
+                              }
+                            >
+                              {item.status === 'sold' || item.status === 'Sold'
+                                ? 'Sold'
+                                : item.status === 'available'
+                                ? 'Available'
+                                : item.status === 'Active'
+                                ? 'Active'
+                                : item.status === 'on_sale'
+                                ? 'On Sale'
+                                : item.status === 'out_of_stock'
+                                ? 'Out of Stock'
+                                : item.status}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {item.startTime && (
                             <>
