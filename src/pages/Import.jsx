@@ -73,17 +73,29 @@ export default function Import() {
     setSearchParams({ source: selectedSource }, { replace: true });
   }, [selectedSource, setSearchParams]);
   
-  const [listingStatus, setListingStatus] = useState("Active");
+  const [listingStatus, setListingStatus] = useState(() => {
+    // Try to restore from localStorage
+    const saved = localStorage.getItem('import_listing_status');
+    return saved || "Active";
+  });
   const [importingStatus, setImportingStatus] = useState("not_imported");
 
-  // Update listing status default when source changes
+  // Save listing status to localStorage whenever it changes
   useEffect(() => {
-    if (selectedSource === "facebook") {
-      setListingStatus("all"); // Changed to "all" by default
-    } else if (selectedSource === "ebay") {
-      setListingStatus("All"); // Changed to "All" by default
-    } else if (selectedSource === "mercari") {
-      setListingStatus("all"); // Changed to "all" by default
+    localStorage.setItem('import_listing_status', listingStatus);
+  }, [listingStatus]);
+
+  // Update listing status default when source changes (but only if not already set)
+  useEffect(() => {
+    const saved = localStorage.getItem('import_listing_status');
+    if (!saved) {
+      if (selectedSource === "facebook") {
+        setListingStatus("all"); // Changed to "all" by default
+      } else if (selectedSource === "ebay") {
+        setListingStatus("All"); // Changed to "All" by default
+      } else if (selectedSource === "mercari") {
+        setListingStatus("all"); // Changed to "all" by default
+      }
     }
   }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -1014,11 +1026,33 @@ export default function Import() {
       ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
       : (ebayListings || []);
     
+    // Filter by listing status FIRST, then count by import status
+    let statusFilteredListings = sourceListings;
+    
+    if (selectedSource === "ebay") {
+      if (listingStatus === "Active") {
+        statusFilteredListings = sourceListings.filter(item => item.status === "Active");
+      } else if (listingStatus === "Sold") {
+        statusFilteredListings = sourceListings.filter(item => item.status === "Sold");
+      }
+      // "All" shows everything - no filter needed
+    } else if (selectedSource === "facebook") {
+      // Facebook uses different status values
+      if (listingStatus !== "all") {
+        statusFilteredListings = sourceListings.filter(item => item.status === listingStatus);
+      }
+    } else if (selectedSource === "mercari") {
+      // Mercari uses different status values
+      if (listingStatus !== "all") {
+        statusFilteredListings = sourceListings.filter(item => item.status === listingStatus);
+      }
+    }
+    
     return {
-      notImportedCount: sourceListings?.filter((item) => !item.imported).length || 0,
-      importedCount: sourceListings?.filter((item) => item.imported).length || 0,
+      notImportedCount: statusFilteredListings?.filter((item) => !item.imported).length || 0,
+      importedCount: statusFilteredListings?.filter((item) => item.imported).length || 0,
     };
-  }, [ebayListings, selectedSource, userId, queryClient, facebookListingsVersion]);
+  }, [ebayListings, selectedSource, userId, queryClient, facebookListingsVersion, listingStatus]);
 
   // Pagination
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
