@@ -2438,6 +2438,13 @@ export default function Crosslist() {
                         {expandedDetails[it.id] && (
                           <div className="px-3 py-2 space-y-1.5 bg-white dark:bg-card border-t border-gray-200 dark:border-border">
                             <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-gray-600 dark:text-gray-400">Status:</span>
+                              <Badge variant="outline" className="text-[9px] px-2 py-0.5">
+                                {STATUS_LABELS[it.status] || STATUS_LABELS.available}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
                               <span className="text-[11px] text-gray-600 dark:text-gray-400">Category:</span>
                               <span className="text-[11px] font-medium text-foreground">{it.category || "—"}</span>
                             </div>

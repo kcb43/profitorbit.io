@@ -29,10 +29,11 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
   
   if (!item) return null;
 
-  const perItemPrice = item.purchase_price / (item.quantity > 0 ? item.quantity : 1);
+  const quantity = item.quantity || 0;
+  const perItemPrice = quantity > 0 ? (item.purchase_price || 0) / quantity : (item.purchase_price || 0);
   const quantitySold = item.quantity_sold || 0;
-  const availableToSell = item.quantity - quantitySold;
-  const isSoldOut = quantitySold >= item.quantity;
+  const availableToSell = Math.max(quantity - quantitySold, 0);
+  const isSoldOut = quantitySold >= quantity;
   
   // Notes truncation for desktop (show first 150 characters)
   const NOTES_TRUNCATE_LENGTH = 150;
@@ -109,15 +110,15 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Quantity</p>
-                  <p className="font-semibold">{item.quantity}</p>
+                  <p className="font-semibold">{item.quantity || 0}</p>
                   {item.quantity > 1 && (
                     <p className="text-xs text-gray-400">${perItemPrice.toFixed(2)} each</p>
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Available</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
                   <p className={`font-semibold ${isSoldOut ? 'text-red-600' : 'text-green-600'}`}>
-                    {isSoldOut ? 'Sold Out' : availableToSell}
+                    {isSoldOut ? 'Sold Out' : `${availableToSell} Available`}
                   </p>
                   {quantitySold > 0 && (
                     <p className="text-xs text-gray-400">{quantitySold} sold</p>
