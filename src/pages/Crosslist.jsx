@@ -654,6 +654,8 @@ export default function Crosslist() {
     'purchase_date',
     'category',
     'source',
+    'quantity',
+    'quantity_sold',
     'image_url',
     'images',
     'photos',
