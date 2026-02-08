@@ -234,18 +234,25 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     
     console.log('📥 Response preview:', text.substring(0, 500));
     
-    // Parse response (it's newline-delimited JSON)
+    // Parse response - Facebook uses GraphQL @defer so pagination comes in a SECOND JSON chunk!
     const lines = text.trim().split('\n').filter(l => l.trim());
     let data = null;
-    let fullResponse = null;
+    let pageInfo = null;
     
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line);
+        
+        // First chunk: listings data
         if (parsed.data?.viewer?.marketplace_listing_sets) {
           data = parsed.data;
-          fullResponse = parsed;
-          break;
+          console.log('✅ Found listings data chunk');
+        }
+        
+        // Second chunk: deferred page_info (Facebook's @defer directive)
+        if (parsed.label && parsed.label.includes('page_info') && parsed.data?.page_info) {
+          pageInfo = parsed.data.page_info;
+          console.log('✅ Found deferred page_info chunk:', pageInfo);
         }
       } catch (e) {
         // Skip invalid JSON lines
@@ -258,18 +265,17 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     }
     
     console.log('✅ GraphQL response parsed successfully');
-    console.log('🔍 FULL marketplace_listing_sets structure:', JSON.stringify(data.viewer.marketplace_listing_sets, null, 2).substring(0, 2000));
     
-    // Extract page info for pagination
-    const pageInfo = data.viewer?.marketplace_listing_sets?.page_info;
-    const hasNextPage = pageInfo?.has_next_page || false;
-    const endCursor = pageInfo?.end_cursor || null;
+    // Extract pagination from deferred chunk (or fallback to inline if present)
+    const hasNextPage = pageInfo?.has_next_page || data.viewer?.marketplace_listing_sets?.page_info?.has_next_page || false;
+    const endCursor = pageInfo?.end_cursor || data.viewer?.marketplace_listing_sets?.page_info?.end_cursor || null;
     
     console.log('📄 Pagination info:', {
       hasNextPage,
       endCursor: endCursor ? endCursor.substring(0, 50) + '...' : null,
       currentCursor: cursor ? cursor.substring(0, 50) + '...' : null,
-      pageInfoFull: pageInfo
+      foundInDeferredChunk: !!pageInfo,
+      totalResponseLines: lines.length
     });
     
     // Extract listings from GraphQL response - all data is already here!
