@@ -2383,6 +2383,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         console.log(`📊 Fetching with ${itemsPerPage} items per page for status: ${statusFilter}`);
         
+        // Load existing listings from storage to enable smart sync
+        let existingItemIds = new Set();
+        try {
+          const stored = await chrome.storage.local.get(['facebook_listings']);
+          if (stored.facebook_listings && Array.isArray(stored.facebook_listings)) {
+            existingItemIds = new Set(stored.facebook_listings.map(item => item.itemId));
+            console.log(`📋 Found ${existingItemIds.size} existing items in cache for smart sync`);
+          }
+        } catch (e) {
+          console.log('⚠️ Could not load existing items for smart sync:', e.message);
+        }
+        
+        let newItemsFound = 0;
+        let duplicatesEncountered = 0;
+        let consecutiveDuplicatePages = 0;
+        const STOP_AFTER_DUPLICATE_PAGES = 2; // Stop if we see 2 consecutive pages of all duplicates
+        
         while (hasNextPage && pageCount < maxPages) {
           pageCount++;
           console.log(`📄 Fetching page ${pageCount}${cursor ? ' (cursor: ' + cursor.substring(0, 30) + '...)' : ' (initial)'}`);
@@ -2400,8 +2417,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             break;
           }
           
+          // Smart sync: Check how many items in this page are new
+          const pageNewItems = result.listings.filter(item => !existingItemIds.has(item.itemId));
+          const pageDuplicates = result.listings.length - pageNewItems.length;
+          
+          newItemsFound += pageNewItems.length;
+          duplicatesEncountered += pageDuplicates;
+          
           allListings.push(...result.listings);
-          console.log(`✅ Page ${pageCount}: Fetched ${result.listings.length} items (total so far: ${allListings.length})`);
+          console.log(`✅ Page ${pageCount}: ${result.listings.length} items (${pageNewItems.length} new, ${pageDuplicates} already synced) - Total: ${allListings.length}`);
+          
+          // Smart sync: Stop if this entire page was duplicates (and previous page too)
+          if (pageNewItems.length === 0 && result.listings.length > 0) {
+            consecutiveDuplicatePages++;
+            console.log(`⚠️ Page ${pageCount} had 0 new items (consecutive duplicate pages: ${consecutiveDuplicatePages})`);
+            
+            if (consecutiveDuplicatePages >= STOP_AFTER_DUPLICATE_PAGES) {
+              console.log(`✅ Smart sync: Stopping early - ${STOP_AFTER_DUPLICATE_PAGES} consecutive pages with no new items`);
+              console.log(`📊 Smart sync saved time: Found ${newItemsFound} new items, skipped ${duplicatesEncountered} duplicates`);
+              break;
+            }
+          } else {
+            consecutiveDuplicatePages = 0; // Reset counter if we found new items
+          }
           
           hasNextPage = result.hasNextPage || false;
           cursor = result.endCursor || null;
@@ -2420,6 +2458,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         console.log(`✅ Fetched total of ${allListings.length} listings across ${pageCount} page(s)`);
+        
+        // Smart sync summary
+        if (existingItemIds.size > 0) {
+          console.log(`📊 Smart sync results: ${newItemsFound} new items, ${duplicatesEncountered} already synced (saved ${Math.max(0, duplicatesEncountered - newItemsFound)} API calls)`);
+        }
         
         // Log status breakdown
         const statusCounts = allListings.reduce((acc, item) => {
