@@ -2190,6 +2190,11 @@ export default function Crosslist() {
               const map = computeListingState(it);
               const listedCount = Object.values(map).filter((v) => v === 'active').length;
               
+              // Calculate available quantity (total - sold)
+              const totalQuantity = it.quantity || 0;
+              const quantitySold = it.quantity_sold || 0;
+              const availableQuantity = Math.max(totalQuantity - quantitySold, 0);
+              
               return (
                 <div key={it.id} className="w-full max-w-full">
                   {/* Mobile/Tablet list layout */}
@@ -2261,12 +2266,12 @@ export default function Crosslist() {
                           )}
                           
                           {/* Quantity badge - bottom right */}
-                          {it.quantity > 0 && (
+                          {availableQuantity > 0 && (
                             <div className="absolute bottom-2 right-2 z-20">
                               <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-lg px-2 py-1 shadow-lg flex items-center gap-1">
                                 <Package className="w-3 h-3 text-white" />
                                 <span className="text-white font-semibold text-xs">
-                                  {it.quantity}
+                                  {availableQuantity}
                                 </span>
                               </div>
                             </div>
@@ -2444,7 +2449,14 @@ export default function Crosslist() {
                             
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-gray-600 dark:text-gray-400">Quantity:</span>
-                              <span className="text-[11px] font-medium text-foreground">{it.quantity || 0}</span>
+                              <span className="text-[11px] font-medium text-foreground">
+                                {availableQuantity}
+                                {quantitySold > 0 && (
+                                  <span className={`ml-1 ${availableQuantity === 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                    {availableQuantity === 0 ? '(Sold Out)' : `(${quantitySold} sold)`}
+                                  </span>
+                                )}
+                              </span>
                             </div>
                             
                             <div className="flex justify-between items-center">
