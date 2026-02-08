@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Filter, Search, Archive, Star, Download, ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -33,6 +35,7 @@ export default function MobileFilterBar({
   renderAdditionalFilters,
 }) {
   const isMobile = useIsMobile();
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   if (!isMobile) {
     // Desktop: render nothing, let parent handle it
@@ -152,10 +155,10 @@ export default function MobileFilterBar({
         </div>
       )}
 
-      {/* Filters & Sort Dropdown */}
+      {/* Filters & Sort Dialog */}
       {(additionalFilters.length > 0 || renderAdditionalFilters) && (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
+        <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DialogTrigger asChild>
             <Button 
               variant="outline" 
               className="w-full justify-between" 
@@ -168,13 +171,12 @@ export default function MobileFilterBar({
               </div>
               <ChevronDown className="w-4 h-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="start" 
-            className="w-[calc(100vw-2rem)] max-w-sm"
-            onInteractOutside={(e) => e.preventDefault()}
-          >
-            <div className="p-3 space-y-3">
+          </DialogTrigger>
+          <DialogContent className="max-w-[calc(100vw-2rem)] w-full">
+            <DialogHeader>
+              <DialogTitle>Filters & Sort</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
               {renderAdditionalFilters ? (
                 renderAdditionalFilters()
               ) : (
@@ -185,8 +187,8 @@ export default function MobileFilterBar({
                 ))
               )}
             </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

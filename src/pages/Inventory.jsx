@@ -1729,11 +1729,11 @@ export default function InventoryPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex flex-col md:flex-row flex-wrap items-start md:items-center justify-start md:justify-between gap-3 min-w-0 overflow-x-hidden">
-                <div className="text-xs text-muted-foreground min-w-0 break-words w-full md:w-auto">
+              <div className="mt-4 space-y-3 md:space-y-0 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3 min-w-0 overflow-x-hidden">
+                <div className="text-xs text-muted-foreground min-w-0 break-words">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
-                <div className="flex flex-col md:flex-row gap-2 flex-wrap items-start md:items-center min-w-0 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row gap-2 md:flex-wrap items-start md:items-center min-w-0">
                   {/* Per Page Selector */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
@@ -1789,7 +1789,7 @@ export default function InventoryPage() {
                       qs.set('limit', '5000');
                       window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
                     }}
-                    className="flex items-center gap-2 min-w-0 max-w-full"
+                    className="flex items-center gap-2 min-w-0 max-w-full self-start"
                   >
                     Export CSV
                   </Button>
