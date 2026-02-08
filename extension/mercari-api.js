@@ -544,6 +544,8 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       itemStatuses = [2]; // 2 = sold
     } else if (status === 'on_sale') {
       itemStatuses = [1]; // 1 = on_sale
+    } else if (status === 'all') {
+      itemStatuses = [1, 2]; // Both on_sale and sold
     } else {
       // Default to on_sale if invalid status provided
       itemStatuses = [1];

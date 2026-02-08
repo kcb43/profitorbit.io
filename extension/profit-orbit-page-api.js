@@ -373,13 +373,13 @@
     },
 
     // Mercari scraper for Import page
-    async scrapeMercariListings() {
-      console.log('🟣 [MERCARI] Page API -> scrapeMercariListings');
+    async scrapeMercariListings(options = {}) {
+      console.log('🟣 [MERCARI] Page API -> scrapeMercariListings with options:', options);
 
       const resp = await postAndWait(
         'PO_SCRAPE_MERCARI_LISTINGS',
         'PO_SCRAPE_MERCARI_LISTINGS_RESULT',
-        null,
+        options, // Pass options (including status) to background script
         120000
       );
 

@@ -2577,7 +2577,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (type === 'SCRAPE_MERCARI_LISTINGS') {
     (async () => {
       try {
-        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API');
+        const requestedStatus = message.status || 'on_sale'; // Get status from message payload
+        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API with status:', requestedStatus);
         
         // Check if mercari-api.js is loaded
         if (!self.__mercariApi) {
@@ -2619,10 +2620,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               // Navigate to listings page and reload
               for (const tab of tabs) {
                 try {
-                  // Ensure we're on the listings page
+                  // Ensure we're on the listings page (use /complete/ for sold items, /active/ for active)
+                  const targetUrl = requestedStatus === 'sold' 
+                    ? 'https://www.mercari.com/mypage/listings/complete/'
+                    : 'https://www.mercari.com/mypage/listings/active/';
+                  
                   if (!tab.url.includes('/mypage/listings')) {
-                    console.log('Navigating to Mercari active listings page...');
-                    await chrome.tabs.update(tab.id, { url: 'https://www.mercari.com/mypage/listings/active/' });
+                    console.log('Navigating to Mercari listings page:', targetUrl);
+                    await chrome.tabs.update(tab.id, { url: targetUrl });
                     // Wait for navigation
                     await new Promise(resolve => setTimeout(resolve, 2000));
                   } else {
@@ -2665,12 +2670,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         }
         
-        console.log('✅ Mercari auth ready, fetching listings via API...');
+        console.log('✅ Mercari auth ready, fetching listings via API with status:', requestedStatus);
         
-        // Fetch listings using the API module
+        // Fetch listings using the API module with the requested status
         const result = await self.__mercariApi.fetchMercariListings({
           page: 1,
-          status: 'on_sale'
+          status: requestedStatus
         });
         
         if (!result.success) {
@@ -2804,7 +2809,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (type === 'SCRAPE_MERCARI_LISTINGS') {
     (async () => {
       try {
-        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API');
+        const requestedStatus = message.status || 'on_sale'; // Get status from message payload
+        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API with status:', requestedStatus);
         
         // Check if mercari-api.js is loaded
         if (!self.__mercariApi) {
@@ -2835,12 +2841,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        console.log('✅ Mercari auth ready, fetching listings via API...');
+        console.log('✅ Mercari auth ready, fetching listings via API with status:', requestedStatus);
         
-        // Fetch listings using the API module
+        // Fetch listings using the API module with the requested status
         const result = await self.__mercariApi.fetchMercariListings({
           page: 1,
-          status: 'on_sale'
+          status: requestedStatus
         });
         
         if (!result.success) {
