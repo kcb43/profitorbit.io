@@ -185,9 +185,11 @@ export default function Layout({ children }) {
             {/* Logo/Branding */}
             <div className="px-3 mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-                  <BarChart3 className="w-6 h-6 text-white" />
-                </div>
+                <img 
+                  src="/orben-logo.svg" 
+                  alt="Orben Logo" 
+                  className="w-10 h-10"
+                />
                 <div>
                   <h2 className="font-bold text-sidebar-foreground text-lg leading-tight">Orben</h2>
                   <p className="text-xs text-muted-foreground">Reselling Platform</p>
@@ -281,9 +283,11 @@ export default function Layout({ children }) {
           <header className="bg-card border-b border-border px-6 py-4 md:hidden sticky top-0 z-40">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-white" />
-                </div>
+                <img 
+                  src="/orben-logo.svg" 
+                  alt="Orben Logo" 
+                  className="w-9 h-9"
+                />
                 <h1 className="text-xl font-bold text-foreground">Orben</h1>
               </div>
               <div className="flex items-center gap-2">
