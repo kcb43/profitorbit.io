@@ -2305,6 +2305,32 @@ export default function Crosslist() {
                         >
                           Edit
                         </Button>
+                        
+                        {/* Delete and Search buttons row */}
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemsToDelete([it.id]);
+                              setDeleteDialogOpen(true);
+                            }}
+                            variant="destructive"
+                            className="flex-1 font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const searchQuery = encodeURIComponent(it.item_name || '');
+                              window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+                            }}
+                            variant="outline"
+                            className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
+                          >
+                            <Search className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Desktop content - keep original layout */}
