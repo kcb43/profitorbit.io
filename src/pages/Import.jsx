@@ -1259,31 +1259,22 @@ export default function Import() {
   const handleMercariSync = async () => {
     setIsSyncingMercari(true); // Start loading spinner
     try {
-      // Map UI listingStatus to Mercari API status
-      let mercariStatus = 'on_sale'; // Default
-      if (listingStatus === 'all') {
-        mercariStatus = 'all'; // Fetch both on_sale and sold
-      } else if (listingStatus === 'sold') {
-        mercariStatus = 'sold'; // Only sold items
-      } else if (listingStatus === 'on_sale') {
-        mercariStatus = 'on_sale'; // Only on_sale items
-      }
+      // ALWAYS fetch ALL items (both on_sale and sold) - the dropdown just filters display
+      const mercariStatus = 'all';
       
-      console.log('📡 Requesting Mercari scrape from extension with status filter:', mercariStatus);
+      console.log('📡 Requesting Mercari scrape from extension - fetching ALL items (on_sale + sold)');
       
       // Check if extension API is available
       if (!window.ProfitOrbitExtension || typeof window.ProfitOrbitExtension.scrapeMercariListings !== 'function') {
         throw new Error('Extension API not available. Please make sure the Profit Orbit extension is installed and enabled.');
       }
       
-      const statusLabel = mercariStatus === 'all' ? 'all' : mercariStatus === 'sold' ? 'sold' : 'on sale';
-      
       toast({
         title: "Syncing Mercari",
-        description: `Fetching your ${statusLabel} listings...`,
+        description: "Fetching all your listings (on sale + sold)...",
       });
       
-      // Use the extension API with status parameter
+      // Use the extension API with status parameter - always fetch 'all'
       const result = await window.ProfitOrbitExtension.scrapeMercariListings({ status: mercariStatus });
       
       if (!result?.success) {
