@@ -172,7 +172,11 @@ window.addEventListener("message", (event) => {
 
   // Scrape Mercari listings for Import page
   if (msg.type === "PO_SCRAPE_MERCARI_LISTINGS") {
-    poTrySendMessage({ type: "SCRAPE_MERCARI_LISTINGS" }, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
+    // Forward the entire message payload including status
+    poTrySendMessage({ 
+      type: "SCRAPE_MERCARI_LISTINGS",
+      status: msg.status || 'on_sale' // Pass the status from the original message
+    }, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
     return;
   }
 
