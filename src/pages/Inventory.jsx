@@ -2134,8 +2134,8 @@ export default function InventoryPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const searchQuery = encodeURIComponent(item.item_name || '');
-                                window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+                                setSoldDialogName(item.item_name || "");
+                                setSoldDialogOpen(true);
                               }}
                               className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground transition-all shadow-md"
                             >
@@ -2203,20 +2203,22 @@ export default function InventoryPage() {
                             </div>
                           </div>
 
-                          {/* Tags + Status below buttons */}
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
-                              }}
-                              className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium flex-shrink-0"
-                            >
-                              <Plus className="h-3 w-3 mr-0.5" />
-                              Tags
-                            </button>
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5 flex-shrink-0`}>
+                          {/* Tags button - takes up most of row */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
+                            }}
+                            className="inline-flex h-7 px-3 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium w-full"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Tags
+                          </button>
+
+                          {/* Status badge - on its own row, right-aligned */}
+                          <div className="flex justify-end">
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
                               {statusLabels[item.status] || statusLabels.available}
                             </Badge>
                           </div>
