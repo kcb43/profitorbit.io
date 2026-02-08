@@ -151,7 +151,7 @@ export default function SalesHistory() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(100); // Default to 100 items per page
   const [pageIndex, setPageIndex] = useState(0);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [saleToLink, setSaleToLink] = useState(null);
@@ -2248,6 +2248,31 @@ export default function SalesHistory() {
             )}
           </CardContent>
         </Card>
+        
+        {/* Bottom Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6 pb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+              disabled={pageIndex === 0}
+            >
+              Prev
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {pageIndex + 1} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPageIndex((p) => p + 1)}
+              disabled={pageIndex >= totalPages - 1}
+            >
+              Next
+            </Button>
+          </div>
+        )}
         </div>
 
       <Dialog

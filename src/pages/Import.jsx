@@ -856,7 +856,7 @@ export default function Import() {
         const facebookListings = queryClient.getQueryData(['facebook-listings', userId]) || [];
         const updatedListings = facebookListings.map(item => {
           if (item.itemId === itemId) {
-            return { ...item, imported: false, inventoryId: null };
+            return { ...item, imported: false, inventoryId: null, saleId: null };
           }
           return item;
         });
@@ -868,7 +868,7 @@ export default function Import() {
         const mercariListings = queryClient.getQueryData(['mercari-listings', userId]) || [];
         const updatedListings = mercariListings.map(item => {
           if (item.itemId === itemId) {
-            return { ...item, imported: false, inventoryId: null };
+            return { ...item, imported: false, inventoryId: null, saleId: null };
           }
           return item;
         });
@@ -1907,10 +1907,11 @@ export default function Import() {
                         </>
                       )}
                       
-                      {/* Show Crosslist button only if imported items are selected */}
+                      {/* Show Crosslist button only if imported NON-SOLD items are selected */}
                       {selectedItems.some(id => {
                         const item = filteredListings.find(i => i.itemId === id);
-                        return item && item.imported;
+                        const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                        return item && item.imported && !isSoldItem;
                       }) && (
                         <Button
                           variant="default"
@@ -1918,7 +1919,8 @@ export default function Import() {
                           onClick={() => {
                             const importedItems = selectedItems.filter(id => {
                               const item = filteredListings.find(i => i.itemId === id);
-                              return item && item.imported;
+                              const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                              return item && item.imported && !isSoldItem;
                             }).map(id => {
                               const item = filteredListings.find(i => i.itemId === id);
                               return item.inventoryId;
@@ -1936,8 +1938,30 @@ export default function Import() {
                           </svg>
                           Crosslist ({selectedItems.filter(id => {
                             const item = filteredListings.find(i => i.itemId === id);
-                            return item && item.imported;
+                            const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                            return item && item.imported && !isSoldItem;
                           }).length})
+                        </Button>
+                      )}
+                      
+                      {/* Show Clear button for sold items */}
+                      {selectedItems.some(id => {
+                        const item = filteredListings.find(i => i.itemId === id);
+                        const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                        return item && item.imported && isSoldItem;
+                      }) && (
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => {
+                            setSelectedItems([]);
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                          Clear
                         </Button>
                       )}
                       
