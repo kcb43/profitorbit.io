@@ -2179,24 +2179,6 @@ export default function InventoryPage() {
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                          
-                          {/* Bottom row: Add Tags + Status badge */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
-                              }}
-                              className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Tags
-                            </button>
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
-                          </div>
                         </div>
 
                         {/* Desktop content - keep original */}
