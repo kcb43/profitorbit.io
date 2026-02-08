@@ -569,7 +569,7 @@ export default function Crosslist() {
   const [showMoreMarketplaces, setShowMoreMarketplaces] = useState({});
   const [expandedDetails, setExpandedDetails] = useState({});
   const [soldLookupOpen, setSoldLookupOpen] = useState(false);
-  const [soldLookupItem, setSoldLookupItem] = useState(null);
+  const [soldLookupItemName, setSoldLookupItemName] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
   
   // Track mobile state but don't force grid view
@@ -2316,7 +2316,7 @@ export default function Crosslist() {
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSoldLookupItem(it);
+                              setSoldLookupItemName(it.item_name || "");
                               setSoldLookupOpen(true);
                             }}
                             variant="outline"
@@ -2738,7 +2738,7 @@ export default function Crosslist() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setSoldLookupItem(it);
+                        setSoldLookupItemName(it.item_name || "");
                         setSoldLookupOpen(true);
                       }}
                       className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-card/80 border border-gray-200/70 dark:border-border hover:bg-white dark:hover:bg-slate-900"
@@ -3061,16 +3061,11 @@ export default function Crosslist() {
       )}
 
       {/* Sold Lookup Dialog */}
-      {soldLookupItem && (
-        <SoldLookupDialog
-          item={soldLookupItem}
-          isOpen={soldLookupOpen}
-          onClose={() => {
-            setSoldLookupOpen(false);
-            setSoldLookupItem(null);
-          }}
-        />
-      )}
+      <SoldLookupDialog
+        open={soldLookupOpen}
+        onOpenChange={setSoldLookupOpen}
+        itemName={soldLookupItemName}
+      />
     </div>
   );
 }

@@ -2135,13 +2135,13 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 toggleFavorite(item.id);
                               }}
-                              className={`inline-flex h-8 items-center justify-center rounded-md border border-transparent transition ${
+                              className={`inline-flex h-10 items-center justify-center rounded-md border border-transparent transition ${
                                 favoriteMarked
                                   ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
                                   : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
                               }`}
                             >
-                              <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                              <Star className={`h-5 w-5 ${favoriteMarked ? "fill-current" : ""}`} />
                             </button>
                             {item.image_url && item.image_url !== DEFAULT_IMAGE_URL ? (
                               <button
@@ -2150,9 +2150,9 @@ export default function InventoryPage() {
                                   e.stopPropagation();
                                   handleEditImage(e, item);
                                 }}
-                                className="inline-flex h-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
+                                className="inline-flex h-10 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
                               >
-                                <ImageIcon className="h-4 w-4" />
+                                <ImageIcon className="h-5 w-5" />
                               </button>
                             ) : (
                               <div></div>
@@ -2164,9 +2164,9 @@ export default function InventoryPage() {
                                 const searchQuery = encodeURIComponent(item.item_name || '');
                                 window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
                               }}
-                              className="inline-flex h-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
+                              className="inline-flex h-10 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
                             >
-                              <Search className="h-4 w-4" />
+                              <Search className="h-5 w-5" />
                             </button>
                             <button
                               type="button"
@@ -2174,10 +2174,28 @@ export default function InventoryPage() {
                                 e.stopPropagation();
                                 handleDeleteClick(item);
                               }}
-                              className="inline-flex h-8 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
+                              className="inline-flex h-10 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
+                          </div>
+
+                          {/* Tags + Status below buttons */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
+                              }}
+                              className="inline-flex h-7 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Tags
+                            </button>
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-1`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
                           </div>
                         </div>
 
@@ -2318,11 +2336,11 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
-                      {/* Row 2: Title, Tags/Status, View Details - Mobile only */}
+                      {/* Row 2: Title and View Details - Mobile only */}
                       <div className="sm:hidden w-full px-3 pb-3">
-                        {/* Title and Tags/Status row */}
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <h3 className="text-sm font-bold text-foreground break-words line-clamp-2 text-left flex-1"
+                        {/* Title */}
+                        <div className="mb-2">
+                          <h3 className="text-sm font-bold text-foreground break-words line-clamp-2 text-left"
                             style={{ 
                               letterSpacing: '0.3px', 
                               lineHeight: '1.35',
@@ -2334,24 +2352,6 @@ export default function InventoryPage() {
                             }}>
                             {item.item_name || 'Untitled Item'}
                           </h3>
-                          
-                          {/* Tags + Status on right */}
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTagDrafts((prev) => ({ ...prev, [`show_${item.id}`]: !prev[`show_${item.id}`] }));
-                              }}
-                              className="inline-flex h-6 px-2 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium"
-                            >
-                              <Plus className="h-3 w-3 mr-0.5" />
-                              Tags
-                            </button>
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
-                          </div>
                         </div>
 
                         {/* View Details Dropdown */}
