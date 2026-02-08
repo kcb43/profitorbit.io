@@ -1852,6 +1852,17 @@ export default function Crosslist() {
             renderAdditionalFilters={() => (
               <>
                 <div>
+                  <Label className="text-xs mb-1.5 block">View Mode</Label>
+                  <Button
+                    variant="outline"
+                    onClick={() => setLayout((l) => (l === "rows" ? "grid" : "rows"))}
+                    className="w-full"
+                  >
+                    {layout === "rows" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
+                    {layout === "rows" ? "Grid View" : "List View"}
+                  </Button>
+                </div>
+                <div>
                   <Label className="text-xs mb-1.5 block">Status</Label>
                   <Select value={platformFilter} onValueChange={setPlatformFilter}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
