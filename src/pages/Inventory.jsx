@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -198,6 +198,7 @@ export default function InventoryPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [itemToView, setItemToView] = useState(null);
   const [expandedDetails, setExpandedDetails] = useState({});
+  const [openDropdown, setOpenDropdown] = useState(null);
   const [facebookListingDialogOpen, setFacebookListingDialogOpen] = useState(false);
   const [itemForFacebookListing, setItemForFacebookListing] = useState(null);
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
@@ -2125,38 +2126,10 @@ export default function InventoryPage() {
                           </div>
                         </div>
 
-                        {/* 4 Icon Buttons + Add Tags + Status - Mobile only */}
+                        {/* Search and More Actions buttons + Add Tags + Status - Mobile only */}
                         <div className="sm:hidden flex-1 flex flex-col gap-2">
-                          {/* Icon buttons in 2x2 grid */}
+                          {/* Search and More Actions buttons */}
                           <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item.id);
-                              }}
-                              className={`inline-flex h-10 items-center justify-center rounded-md border border-transparent transition ${
-                                favoriteMarked
-                                  ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                  : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                              }`}
-                            >
-                              <Star className={`h-5 w-5 ${favoriteMarked ? "fill-current" : ""}`} />
-                            </button>
-                            {item.image_url && item.image_url !== DEFAULT_IMAGE_URL ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditImage(e, item);
-                                }}
-                                className="inline-flex h-10 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
-                              >
-                                <ImageIcon className="h-5 w-5" />
-                              </button>
-                            ) : (
-                              <div></div>
-                            )}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -2168,16 +2141,66 @@ export default function InventoryPage() {
                             >
                               <Search className="h-5 w-5" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteClick(item);
-                              }}
-                              className="inline-flex h-10 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </button>
+                            
+                            {/* More Actions Dropdown */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdown(openDropdown === item.id ? null : item.id);
+                                }}
+                                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                              >
+                                <MoreVertical className="h-5 w-5" />
+                              </button>
+                              
+                              {openDropdown === item.id && (
+                                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-card border border-gray-200 dark:border-border rounded-lg shadow-lg overflow-hidden">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdown(null);
+                                      toggleFavorite(item.id);
+                                    }}
+                                    className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
+                                      favoriteMarked
+                                        ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20"
+                                        : "text-foreground hover:bg-gray-100 dark:hover:bg-slate-900"
+                                    }`}
+                                  >
+                                    <Star className={`w-4 h-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                                    {favoriteMarked ? "Remove from Favorites" : "Set as Favorite"}
+                                  </button>
+                                  
+                                  {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenDropdown(null);
+                                        handleEditImage(e, item);
+                                      }}
+                                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-gray-100 dark:hover:bg-slate-900 transition-colors"
+                                    >
+                                      <ImageIcon className="w-4 h-4" />
+                                      Edit Image
+                                    </button>
+                                  )}
+                                  
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdown(null);
+                                      handleDeleteClick(item);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete Item
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Tags + Status below buttons */}
