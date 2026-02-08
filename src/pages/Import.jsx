@@ -814,9 +814,10 @@ export default function Import() {
         return { id: null, success: true };
       }
       
-      // For eBay sold items, delete from sales table instead of inventory
-      if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
-        console.log(`🗑️ Deleting eBay sold item from sales: ${item.saleId}`);
+      // For ALL sold items (eBay, Facebook, Mercari), delete from sales table instead of inventory
+      const isSoldItem = item.status === 'Sold' || item.status === 'sold';
+      if (isSoldItem && item.saleId) {
+        console.log(`🗑️ Deleting sold item from sales: ${item.saleId}`);
         const response = await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
           method: 'DELETE',
           headers: {
@@ -1978,11 +1979,15 @@ export default function Import() {
                                 const item = sourceListings.find(i => i.itemId === itemId);
                                 if (!item) return;
                                 
-                                // For eBay sold items, delete from sales
-                                if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
+                                // For ALL sold items (eBay, Facebook, Mercari), delete from sales
+                                const isSoldItem = item.status === 'Sold' || item.status === 'sold';
+                                if (isSoldItem && item.saleId) {
                                   await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
                                     method: 'DELETE',
-                                    headers: { 'Content-Type': 'application/json' }
+                                    headers: { 
+                                      'Content-Type': 'application/json',
+                                      'X-User-Id': userId
+                                    }
                                   });
                                 } else if (item.inventoryId) {
                                   // Delete from inventory
@@ -2255,8 +2260,9 @@ export default function Import() {
                                       className="gap-2"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        // For sold eBay items, navigate to Sales History with sale ID
-                                        if (selectedSource === 'ebay' && item.status === 'Sold' && item.saleId) {
+                                        // For ALL sold items (eBay, Facebook, Mercari), navigate to Sales History with sale ID
+                                        const isSoldItem = item.status === 'Sold' || item.status === 'sold';
+                                        if (isSoldItem && item.saleId) {
                                           navigate(`/AddSale?id=${item.saleId}`);
                                         } else if (item.inventoryId) {
                                           navigate(`/AddInventoryItem?id=${item.inventoryId}`);
@@ -2265,7 +2271,7 @@ export default function Import() {
                                         }
                                       }}
                                     >
-                                      {selectedSource === 'ebay' && item.status === 'Sold' ? (
+                                      {(item.status === 'Sold' || item.status === 'sold') ? (
                                         <>
                                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M3 3h18v18H3zM3 9h18M9 21V9"/>
@@ -2284,7 +2290,7 @@ export default function Import() {
                                       )}
                                     </Button>
                                     {/* Only show Crosslist button for non-sold items */}
-                                    {!(selectedSource === 'ebay' && item.status === 'Sold') && (
+                                    {!(item.status === 'Sold' || item.status === 'sold') && (
                                       <Button
                                         variant="default"
                                         size="sm"
@@ -2374,8 +2380,8 @@ export default function Import() {
                   ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
                   : (ebayListings || []);
                 const item = sourceListings.find(i => i.itemId === itemToDelete);
-                const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
-                return isEbaySold ? 'Remove Sale from History?' : 'Remove Item from Inventory?';
+                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                return isSoldItem ? 'Remove Sale from History?' : 'Remove Item from Inventory?';
               })()}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -2386,8 +2392,8 @@ export default function Import() {
                   ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
                   : (ebayListings || []);
                 const item = sourceListings.find(i => i.itemId === itemToDelete);
-                const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
-                return isEbaySold 
+                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                return isSoldItem 
                   ? 'This will remove the sale from your sales history. You can re-import it later from the Import page.'
                   : 'This will remove the item from your inventory. You can re-import it later from the Import page.';
               })()}
@@ -2410,8 +2416,8 @@ export default function Import() {
                   ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
                   : (ebayListings || []);
                 const item = sourceListings.find(i => i.itemId === itemToDelete);
-                const isEbaySold = selectedSource === 'ebay' && item?.status === 'Sold';
-                return isEbaySold ? 'Yes, Remove from Sales History' : 'Yes, Remove from Inventory';
+                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                return isSoldItem ? 'Yes, Remove from Sales History' : 'Yes, Remove from Inventory';
               })()}
             </AlertDialogAction>
           </AlertDialogFooter>
