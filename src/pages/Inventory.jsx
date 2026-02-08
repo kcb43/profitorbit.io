@@ -1923,7 +1923,7 @@ export default function InventoryPage() {
                       qs.set('limit', '5000');
                       window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
                     }}
-                    className="flex items-center gap-2 min-w-0 w-full md:w-auto"
+                    className="justify-start w-full md:w-auto md:justify-center"
                   >
                     Export CSV
                   </Button>
