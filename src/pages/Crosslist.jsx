@@ -2319,6 +2319,7 @@ export default function Crosslist() {
 
                     {/* Mobile: Action buttons */}
                     <div className="md:hidden w-full">
+                      {/* Row 1: Crosslist and Edit buttons */}
                       <div className="flex gap-2 p-3 border-t border-gray-200 dark:border-border bg-white dark:bg-card">
                         <Button
                           onClick={(e) => {
@@ -2343,6 +2344,34 @@ export default function Crosslist() {
                           Edit
                         </Button>
                       </div>
+                      
+                      {/* Row 2: Bulk Actions button (only if more than 1 item selected) */}
+                      {selected.length > 1 && (
+                        <div className="px-3 pb-2">
+                          <BulkActionsMenu 
+                            selectedItems={selected}
+                            onActionComplete={() => setSelected([])}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Row 3: Delete button (only if at least 1 item selected) */}
+                      {selected.length > 0 && (
+                        <div className="px-3 pb-3">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick();
+                            }}
+                            variant="destructive"
+                            className="w-full"
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            {deleteMutation.isPending ? "Deleting..." : "Delete Selected"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
