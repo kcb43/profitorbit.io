@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical } from "lucide-react";
+import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -1945,7 +1945,7 @@ export default function InventoryPage() {
                   Select All ({sortedItems.length})
                 </label>
                 <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
-                  {viewMode === "list" ? "Tap image to select for bulk edit" : "Tap image to select for bulk edit"}
+                  Tap image to select
                 </span>
                 <span className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">Click image to select for bulk edit</span>
               </div>
@@ -2212,7 +2212,11 @@ export default function InventoryPage() {
                             }}
                             className="inline-flex h-7 px-3 items-center justify-center rounded-md border border-gray-300 dark:border-border transition text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[10px] font-medium w-full"
                           >
-                            <Plus className="h-3 w-3 mr-1" />
+                            {tagDrafts[`show_${item.id}`] ? (
+                              <Minus className="h-3 w-3 mr-1" />
+                            ) : (
+                              <Plus className="h-3 w-3 mr-1" />
+                            )}
                             Tags
                           </button>
 

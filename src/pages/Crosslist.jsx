@@ -48,6 +48,7 @@ import {
   Rows,
   ArrowRight,
   Plus,
+  Minus,
   Rocket,
   Search,
   ImagePlus,
@@ -2146,7 +2147,7 @@ export default function Crosslist() {
                       Select All ({filtered.length})
                     </label>
                     <span className="text-xs text-muted-foreground md:hidden">
-                      Tap image to select for bulk edit
+                      Tap image to select
                     </span>
                     <span className="text-xs text-muted-foreground hidden md:block">Click image to select for bulk edit</span>
                   </div>
