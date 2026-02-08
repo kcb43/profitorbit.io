@@ -4,7 +4,8 @@
  */
 
 // BUILD stamp (high-signal): use this to confirm Chrome is running the file you think it is.
-const PO_BRIDGE_BUILD = '2026-02-08-mercari-payload-fix';
+const PO_BRIDGE_BUILD = '2026-02-08-23-51-PAYLOAD-FIX';
+console.log('🔵🔵🔵 BRIDGE BUILD:', PO_BRIDGE_BUILD, '🔵🔵🔵');
 
 // IMMEDIATE LOG - Should appear FIRST
 // Using try-catch to prevent any parse errors from silently failing
