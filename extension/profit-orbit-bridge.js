@@ -4,7 +4,7 @@
  */
 
 // BUILD stamp (high-signal): use this to confirm Chrome is running the file you think it is.
-const PO_BRIDGE_BUILD = '2026-02-08-mercari-sold-items-bridge-fix';
+const PO_BRIDGE_BUILD = '2026-02-08-mercari-payload-fix';
 
 // IMMEDIATE LOG - Should appear FIRST
 // Using try-catch to prevent any parse errors from silently failing
@@ -173,10 +173,13 @@ window.addEventListener("message", (event) => {
   // Scrape Mercari listings for Import page
   if (msg.type === "PO_SCRAPE_MERCARI_LISTINGS") {
     console.log('🔵 Bridge: Received PO_SCRAPE_MERCARI_LISTINGS with msg:', msg);
+    // The status is in msg.payload, not msg directly
+    const status = msg.payload?.status || msg.status || 'on_sale';
+    console.log('🔵 Bridge: Extracted status:', status);
     // Forward the entire message payload including status
     const forwardMessage = { 
       type: "SCRAPE_MERCARI_LISTINGS",
-      status: msg.status || 'on_sale' // Pass the status from the original message
+      status: status
     };
     console.log('🔵 Bridge: Forwarding to background:', forwardMessage);
     poTrySendMessage(forwardMessage, "PO_SCRAPE_MERCARI_LISTINGS_RESULT");
