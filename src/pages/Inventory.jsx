@@ -1737,11 +1737,11 @@ export default function InventoryPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 min-w-0 overflow-x-hidden">
-                <div className="text-xs text-muted-foreground min-w-0 break-words">
+              <div className="mt-4 flex flex-wrap items-center justify-between md:justify-between gap-3 min-w-0 overflow-x-hidden">
+                <div className="text-xs text-muted-foreground min-w-0 break-words w-full md:w-auto">
                   Favorites let you flag items for quick actions such as returns.
                 </div>
-                <div className="flex gap-2 flex-wrap items-center min-w-0">
+                <div className="flex gap-2 flex-wrap items-center min-w-0 w-full md:w-auto justify-start md:justify-end">
                   {/* Per Page Selector */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
@@ -1933,22 +1933,35 @@ export default function InventoryPage() {
           )}
 
           {sortedItems.length > 0 && (
-            <div className="flex items-center gap-3 p-4 bg-card rounded-t-lg">
-              <Checkbox
-                checked={selectedItems.length === sortedItems.length && sortedItems.length > 0}
-                onCheckedChange={handleSelectAll}
-                id="select-all"
-                className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
-              />
-              <div className="flex flex-col">
-                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
-                  Select All ({sortedItems.length})
-                </label>
-                <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
-                  Tap image to select
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">Click image to select for bulk edit</span>
+            <div className="flex items-center justify-between gap-3 p-4 bg-card rounded-t-lg">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={selectedItems.length === sortedItems.length && sortedItems.length > 0}
+                  onCheckedChange={handleSelectAll}
+                  id="select-all"
+                  className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
+                />
+                <div className="flex flex-col">
+                  <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
+                    Select All ({sortedItems.length})
+                  </label>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
+                    Tap image to select
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">Click image to select for bulk edit</span>
+                </div>
               </div>
+              
+              {/* Mobile view toggle button */}
+              <Button
+                variant="outline"
+                onClick={() => setViewMode((v) => (v === "list" ? "gallery" : "list"))}
+                className="md:hidden flex-shrink-0"
+                size="sm"
+              >
+                {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-1" /> : <Rows className="w-4 h-4 mr-1" />}
+                {viewMode === "list" ? "Grid" : "List"}
+              </Button>
             </div>
           )}
 
@@ -2220,8 +2233,8 @@ export default function InventoryPage() {
                             Tags
                           </button>
 
-                          {/* Status badge - on its own row, right-aligned */}
-                          <div className="flex justify-end">
+                          {/* Status badge - on its own row, left-aligned */}
+                          <div className="flex justify-start">
                             <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
                               {statusLabels[item.status] || statusLabels.available}
                             </Badge>
@@ -3011,7 +3024,7 @@ export default function InventoryPage() {
                 </div>
 
                     <CardContent className={gridVariations[viewVariation].paddingClass}>
-                      <div className={`flex items-center justify-between ${viewVariation === 2 ? 'mb-4' : 'mb-3'}`}>
+                      <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 ${viewVariation === 2 ? 'mb-4' : 'mb-3'}`}>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -3046,7 +3059,7 @@ export default function InventoryPage() {
                             <Trash2 className={gridVariations[viewVariation].iconSizeClass} />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                           {/* Edit Photo Button */}
                           {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
                             <Button
@@ -3060,12 +3073,12 @@ export default function InventoryPage() {
                               Edit
                             </Button>
                           )}
-                          {/* Add Tag Button */}
+                          {/* Add Tag Button - Full width on mobile */}
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs gap-1 border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                            className="h-7 px-2 text-xs gap-1 border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 flex-1 sm:flex-initial"
                             onClick={() => handleTagEditorToggle(item.id)}
                           >
                             <Tag className="h-3.5 w-3.5" />

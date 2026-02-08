@@ -33,7 +33,6 @@ export default function MobileFilterBar({
   renderAdditionalFilters,
 }) {
   const isMobile = useIsMobile();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   if (!isMobile) {
     // Desktop: render nothing, let parent handle it
@@ -155,14 +154,14 @@ export default function MobileFilterBar({
 
       {/* Filters & Sort Dropdown */}
       {(additionalFilters.length > 0 || renderAdditionalFilters) && (
-        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-full justify-between" size="sm">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4" />
                 <span>Filters & Sort</span>
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-sm">
