@@ -1257,12 +1257,14 @@ export default function Import() {
 
   // Handle Mercari sync via extension
   const handleMercariSync = async () => {
+    console.log('🔥🔥🔥 NEW CODE LOADED - MERCARI SYNC STARTING 🔥🔥🔥');
     setIsSyncingMercari(true); // Start loading spinner
     try {
       // ALWAYS fetch ALL items (both on_sale and sold) - the dropdown just filters display
       const mercariStatus = 'all';
       
       console.log('📡 Requesting Mercari scrape from extension - fetching ALL items (on_sale + sold)');
+      console.log('🔍 Mercari status being sent:', mercariStatus);
       
       // Check if extension API is available
       if (!window.ProfitOrbitExtension || typeof window.ProfitOrbitExtension.scrapeMercariListings !== 'function') {
@@ -1271,6 +1273,7 @@ export default function Import() {
       
       // Use the extension API with status parameter - always fetch 'all'
       const result = await window.ProfitOrbitExtension.scrapeMercariListings({ status: mercariStatus });
+      console.log('✅ Extension returned result:', result);
       
       if (!result?.success) {
         throw new Error(result?.error || 'Failed to fetch Mercari listings');
