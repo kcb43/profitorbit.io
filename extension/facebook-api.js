@@ -189,12 +189,10 @@ async function fetchFacebookListings({ dtsg, cookies, count = 50, cursor = null,
     const formData = new URLSearchParams();
     formData.append('variables', JSON.stringify(variables));
     
-    // Use the original doc_id that works reliably
-    // The newer doc_id (25467927229556480) requires additional Facebook internal parameters
-    // that we don't have access to (__aaid, __user, __req, __hs, __dyn, __csr, etc.)
-    // The original doc_id (6222877017763459) works with just GraphQL variables
+    // Use the original doc_id - need to find working pagination solution
+    // The old doc_id (6222877017763459) no longer returns page_info in response
     console.log(`📊 Fetching ${statusFilter} items with count: ${requestCount}`);
-    formData.append('doc_id', '6222877017763459'); // Original doc_id that works without extra params
+    formData.append('doc_id', '6222877017763459');
     formData.append('fb_api_req_friendly_name', 'MarketplaceYouSellingFastActiveSectionPaginationQuery');
    
     // Only include fb_dtsg if we have it
