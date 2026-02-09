@@ -166,23 +166,6 @@ export default function SalesHistory() {
     if (isMobile && viewMode !== "grid") setViewMode("grid");
   }, [isMobile, viewMode]);
 
-  // Scroll to highlighted item when it's found
-  useEffect(() => {
-    if (highlightId && highlightRef.current && !isLoading) {
-      // Wait a bit for the layout to settle
-      setTimeout(() => {
-        highlightRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
-        // Remove the highlight parameter after scrolling
-        setTimeout(() => {
-          setSearchParams({}, { replace: true });
-        }, 3000);
-      }, 100);
-    }
-  }, [highlightId, highlightRef, isLoading, setSearchParams]);
-
   // Hybrid variation logic based on user preference:
   // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
   const viewVariation = React.useMemo(() => {
@@ -436,6 +419,23 @@ export default function SalesHistory() {
   const totalPages = Math.max(1, Math.ceil(totalSales / pageSize));
   const canPrev = pageIndex > 0;
   const canNext = pageIndex + 1 < totalPages;
+
+  // Scroll to highlighted item when it's found
+  useEffect(() => {
+    if (highlightId && highlightRef.current && !isLoading) {
+      // Wait a bit for the layout to settle
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        // Remove the highlight parameter after scrolling
+        setTimeout(() => {
+          setSearchParams({}, { replace: true });
+        }, 3000);
+      }, 100);
+    }
+  }, [highlightId, highlightRef, isLoading, setSearchParams]);
 
   const salesWithMetrics = React.useMemo(() => {
     if (!rawSales) return [];

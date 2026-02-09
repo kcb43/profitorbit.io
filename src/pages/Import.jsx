@@ -748,7 +748,12 @@ export default function Import() {
           const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
           
           if (importedItem) {
-            return { ...item, imported: true, inventoryId: importedItem.inventoryId };
+            return { 
+              ...item, 
+              imported: true, 
+              inventoryId: importedItem.inventoryId,
+              saleId: importedItem.saleId // Will be present for sold items
+            };
           }
           return item;
         });
@@ -767,7 +772,12 @@ export default function Import() {
           const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
           
           if (importedItem) {
-            return { ...item, imported: true, inventoryId: importedItem.inventoryId };
+            return { 
+              ...item, 
+              imported: true, 
+              inventoryId: importedItem.inventoryId,
+              saleId: importedItem.saleId // Will be present for sold items
+            };
           }
           return item;
         });
