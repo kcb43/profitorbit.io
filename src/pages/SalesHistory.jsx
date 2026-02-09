@@ -422,20 +422,32 @@ export default function SalesHistory() {
 
   // Scroll to highlighted item when it's found
   useEffect(() => {
-    if (highlightId && highlightRef.current && !isLoading) {
-      // Wait a bit for the layout to settle
-      setTimeout(() => {
-        highlightRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
-        // Remove the highlight parameter after scrolling
+    if (highlightId && !isLoading) {
+      console.log('🔍 Highlight effect triggered:', {
+        highlightId,
+        hasRef: !!highlightRef.current,
+        isLoading,
+        salesCount: rawSales?.length
+      });
+
+      if (highlightRef.current) {
+        // Wait a bit for the layout to settle
         setTimeout(() => {
-          setSearchParams({}, { replace: true });
-        }, 3000);
-      }, 100);
+          console.log('📍 Scrolling to highlighted item...');
+          highlightRef.current?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          // Remove the highlight parameter after scrolling
+          setTimeout(() => {
+            setSearchParams({}, { replace: true });
+          }, 3000);
+        }, 300);
+      } else {
+        console.warn('⚠️ Highlight ref not found - item may be on a different page or filtered out');
+      }
     }
-  }, [highlightId, highlightRef, isLoading, setSearchParams]);
+  }, [highlightId, isLoading, rawSales, setSearchParams]);
 
   const salesWithMetrics = React.useMemo(() => {
     if (!rawSales) return [];
