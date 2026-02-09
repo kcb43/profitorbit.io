@@ -2347,10 +2347,10 @@ export default function Import() {
                                       className="gap-2"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        // For ALL sold items (eBay, Facebook, Mercari), navigate to Sales History with sale ID
+                                        // For ALL sold items (eBay, Facebook, Mercari), navigate to Sales History page with item highlighted
                                         const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
                                         if (isSoldItem && item.saleId) {
-                                          navigate(`/AddSale?id=${item.saleId}`);
+                                          navigate(`/SalesHistory?highlight=${item.saleId}`);
                                         } else if (item.inventoryId) {
                                           navigate(`/AddInventoryItem?id=${item.inventoryId}`);
                                         } else {

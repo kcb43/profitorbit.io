@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { sortSalesByRecency } from "@/utils/sales";
 import { salesApi } from "@/api/salesApi";
@@ -107,6 +107,10 @@ const PREDEFINED_CATEGORIES = [
 ];
 
 export default function SalesHistory() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+  const highlightRef = useRef(null);
+  
   const [filters, setFilters] = useState({
     searchTerm: "",
     platform: "all",
@@ -161,6 +165,23 @@ export default function SalesHistory() {
   React.useEffect(() => {
     if (isMobile && viewMode !== "grid") setViewMode("grid");
   }, [isMobile, viewMode]);
+
+  // Scroll to highlighted item when it's found
+  useEffect(() => {
+    if (highlightId && highlightRef.current && !isLoading) {
+      // Wait a bit for the layout to settle
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        // Remove the highlight parameter after scrolling
+        setTimeout(() => {
+          setSearchParams({}, { replace: true });
+        }, 3000);
+      }, 100);
+    }
+  }, [highlightId, highlightRef, isLoading, setSearchParams]);
 
   // Hybrid variation logic based on user preference:
   // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
@@ -1674,8 +1695,9 @@ export default function SalesHistory() {
 
                       return (
                         <Card 
-                          key={sale.id} 
-                          className={`group overflow-hidden transition-all duration-300 ${currentGridConfig.hoverEffect} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${currentGridConfig.cardClass}`}
+                          key={sale.id}
+                          ref={highlightId && sale.id === highlightId ? highlightRef : null}
+                          className={`group overflow-hidden transition-all duration-300 ${currentGridConfig.hoverEffect} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && sale.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${currentGridConfig.cardClass}`}
                           style={{
                             borderRadius: currentGridConfig.cardBorderRadius,
                           }}
@@ -1794,9 +1816,13 @@ export default function SalesHistory() {
                   const totalCosts = ((sale.purchase_price || 0) + (sale.shipping_cost || 0) + (sale.platform_fees || 0) + (sale.other_costs || 0));
                   
                   return (
-                    <div key={sale.id} className="w-full max-w-full">
+                    <div 
+                      key={sale.id} 
+                      className="w-full max-w-full"
+                      ref={highlightId && sale.id === highlightId ? highlightRef : null}
+                    >
                       {/* Mobile/Tablet list layout (unchanged) */}
-                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-card border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
+                      <div className={`lg:hidden product-list-item relative flex flex-row flex-wrap sm:flex-nowrap items-stretch sm:items-center mb-6 sm:mb-6 min-w-0 w-full bg-card border ${selectedSales.includes(sale.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && sale.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                       style={{
                         minHeight: 'auto',
                         height: 'auto',
@@ -2104,7 +2130,7 @@ export default function SalesHistory() {
 
                       {/* Desktop list layout (new) */}
                       <div
-                        className={`hidden lg:block product-list-item group relative overflow-hidden ${currentListConfig.cardClass} border border-gray-200/80 dark:border-border bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden ${currentListConfig.cardClass} border border-gray-200/80 dark:border-border bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''} ${selectedSales.includes(sale.id) ? 'ring-2 ring-green-500' : highlightId && sale.id === highlightId ? 'ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30 border-blue-500' : ''}`}
                         style={{
                           borderRadius: currentListConfig.cardBorderRadius,
                         }}
