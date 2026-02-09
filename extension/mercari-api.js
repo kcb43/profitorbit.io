@@ -1,13 +1,36 @@
 /**
  * Mercari API Module for Profit Orbit Extension
  * Handles fetching user's Mercari listings via GraphQL API
- * Version: 3.0.6-script-tag-timestamps
+ * Version: 3.1.0-user-items-query
  */
 
-console.log('🟣 Mercari API module loading (v3.0.6-script-tag-timestamps)...');
+console.log('🟣 Mercari API module loading (v3.1.0-user-items-query)...');
 
-// GraphQL query for searching user items (provides detailed information)
-const SEARCH_QUERY = {
+// NEW: GraphQL query for user items (correct query for sold & available items)
+// This is the query Mercari uses on the "Complete" and "Active" pages
+const USER_ITEMS_QUERY = {
+  operationName: "userItemsQuery",
+  variables: {
+    userItemsInput: {
+      sellerId: null, // Will be populated dynamically
+      status: "on_sale", // "on_sale" or "sold_out"
+      keyword: "",
+      sortBy: "created",
+      sortType: "desc",
+      page: 1,
+      includeTotalCount: true
+    }
+  },
+  extensions: {
+    persistedQuery: {
+      sha256Hash: "de32fb1b4a2727c67de3f242224d5647a5db015cd5f075fc4aee10d9c43ecce7",
+      version: 1
+    }
+  }
+};
+
+// DEPRECATED: Old searchQuery (doesn't work for sold items)
+const SEARCH_QUERY_OLD = {
   operationName: "searchQuery",
   variables: {
     criteria: {
@@ -519,11 +542,12 @@ async function fetchMercariItemDetails(itemId, bearerToken, csrfToken) {
 }
 
 /**
- * Fetch Mercari listings via GraphQL API
+ * Fetch Mercari listings via GraphQL API using userItemsQuery
+ * NEW: Uses the correct query that Mercari's own UI uses
  */
 async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
   try {
-    console.log('📡 Fetching Mercari listings via GraphQL API...', { page, status });
+    console.log('📡 Fetching Mercari listings via userItemsQuery...', { page, status });
 
     // Get authentication tokens
     const { bearerToken, csrfToken, sellerId, needsRefresh } = await getMercariAuth();
@@ -538,58 +562,58 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       throw new Error('Seller ID not available. Please navigate to your Mercari listings page to capture your seller ID.');
     }
 
-    // Convert status string to itemStatuses array
-    let itemStatuses;
+    // Convert status string to Mercari's expected status format
+    let mercariStatus;
     if (status === 'sold') {
-      itemStatuses = [2]; // 2 = sold
-    } else if (status === 'on_sale') {
-      itemStatuses = [1]; // 1 = on_sale
-    } else if (status === 'all') {
-      itemStatuses = [1, 2]; // Both on_sale and sold
+      mercariStatus = 'sold_out';
+    } else if (status === 'on_sale' || status === 'all') {
+      // For 'all', we'll need to fetch both separately and merge
+      mercariStatus = 'on_sale';
     } else {
-      // Default to on_sale if invalid status provided
-      itemStatuses = [1];
+      mercariStatus = 'on_sale'; // Default
     }
 
-    // Calculate offset for pagination (0-indexed)
-    const pageSize = 20;
-    const offset = (page - 1) * pageSize;
-
-    // Prepare query with seller ID, status, and pagination
+    // Prepare query using userItemsQuery (the correct query!)
     const query = {
-      ...SEARCH_QUERY,
+      ...USER_ITEMS_QUERY,
       variables: {
-        criteria: {
-          length: pageSize,
-          offset: offset, // Add offset for pagination
-          itemStatuses: itemStatuses, // Use dynamic status
-          sellerIds: [parseInt(sellerId, 10)]
+        userItemsInput: {
+          sellerId: parseInt(sellerId, 10),
+          status: mercariStatus,
+          keyword: "",
+          sortBy: "created",
+          sortType: "desc",
+          page: page,
+          includeTotalCount: true
         }
       }
     };
     
     console.log('🔑 Using seller ID:', sellerId, '-> parseInt:', parseInt(sellerId, 10));
+    console.log('📊 Status mapping:', status, '->', mercariStatus);
 
-    // Make the GraphQL request
-    const timestamp = Date.now();
-    const url = `https://www.mercari.com/v1/api?timestamp=${timestamp}`;
+    // Make the GraphQL request using GET method (like Mercari does)
+    const queryParams = new URLSearchParams({
+      operationName: query.operationName,
+      variables: JSON.stringify(query.variables),
+      extensions: JSON.stringify(query.extensions)
+    });
+    
+    const url = `https://www.mercari.com/v1/api?${queryParams.toString()}`;
 
-    console.log('📡 Making request to:', url);
-    console.log('📡 Query:', JSON.stringify(query, null, 2));
+    console.log('📡 Making GET request to Mercari API...');
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${bearerToken}`,
         'x-csrf-token': csrfToken,
-        'content-type': 'application/json',
+        'accept': '*/*',
         'apollo-require-preflight': 'true',
         'x-app-version': '1',
         'x-double-web': '1',
-        'x-gql-migration': '1',
         'x-platform': 'web',
       },
-      body: JSON.stringify(query),
       credentials: 'include'
     });
 
@@ -600,40 +624,41 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
     }
 
     const data = await response.json();
-    console.log('📥 Raw GraphQL response:', data);
+    console.log('📥 Raw userItemsQuery response:', data);
 
-    if (!data.data?.search?.itemsList) {
+    // NEW: Parse userItems response structure (different from search response)
+    if (!data.data?.userItems) {
       console.error('❌ Unexpected response structure:', data);
       throw new Error('Invalid response structure from Mercari API');
     }
 
-    const items = data.data.search.itemsList;
-    const count = data.data.search.count;
+    const userItems = data.data.userItems;
+    const items = userItems.items || [];
+    const totalCount = userItems.totalCount || 0;
+    const hasMore = userItems.hasMore || false;
 
-    console.log('✅ Fetched', items.length, 'Mercari listings (total:', count, ')');
-    console.log('📦 Sample item from searchQuery:', items[0]); // Log full item structure
+    console.log('✅ Fetched', items.length, 'Mercari listings (total:', totalCount, ', hasMore:', hasMore, ')');
+    console.log('📦 Sample item from userItemsQuery:', items[0]); // Log full item structure
     
-    // DEBUG: Log ALL keys available in the first item to find description
+    // DEBUG: Log ALL keys available in the first item
     if (items[0]) {
       console.log('🔍 ALL available fields in item:', Object.keys(items[0]));
-      console.log('🔍 Description field value:', items[0].description);
-      console.log('🔍 Description field type:', typeof items[0].description);
-      console.log('🔍 Description field length:', items[0].description?.length);
       
-      // Check if there's any other field that might contain description
-      const possibleDescFields = Object.keys(items[0]).filter(key => 
-        key.toLowerCase().includes('desc') || 
-        key.toLowerCase().includes('detail') ||
-        key.toLowerCase().includes('text') ||
-        key.toLowerCase().includes('body')
-      );
-      console.log('🔍 Possible description fields:', possibleDescFields);
-      possibleDescFields.forEach(field => {
-        console.log(`🔍   ${field}:`, items[0][field]);
+      // Check for common fields
+      const fieldsToCheck = [
+        'id', 'name', 'price', 'status', 'photos', 'description',
+        'created', 'updated', 'itemCondition', 'brand', 'itemCategory',
+        'itemSize', 'color', 'favorites', 'numLikes', 'autoLiked'
+      ];
+      
+      fieldsToCheck.forEach(field => {
+        if (items[0].hasOwnProperty(field)) {
+          console.log(`🔍   ${field}:`, typeof items[0][field], items[0][field]);
+        }
       });
     }
 
-    // Transform to our format with detailed information
+    // Transform to our format with all available information
     const listings = await Promise.all(items.map(async (item, index) => {
       const listing = {
         itemId: item.id,
@@ -643,7 +668,8 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         status: item.status,
         imageUrl: item.photos?.[0]?.imageUrl || item.photos?.[0]?.thumbnail || null,
         pictureURLs: (item.photos || []).map(p => p.imageUrl || p.thumbnail).filter(Boolean),
-        // Detailed information now available from searchQuery
+        
+        // Detailed information from userItemsQuery
         description: item.description || null,
         condition: item.itemCondition?.name || null,
         brand: item.brand?.name || null,
@@ -651,6 +677,12 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         categoryPath: (item.itemCategoryHierarchy || []).map(c => c.name).join(' > ') || null,
         size: item.itemSize?.name || null,
         color: item.color || null,
+        
+        // NEW: Additional metadata we can now capture
+        favorites: item.favorites || 0,
+        numLikes: item.numLikes || 0,
+        autoLiked: item.autoLiked || false,
+        
         // Posted/listed date (use created or updated timestamp)
         startTime: item.created ? new Date(item.created * 1000).toISOString() : 
                    item.updated ? new Date(item.updated * 1000).toISOString() : null,
@@ -696,27 +728,56 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
           itemId: listing.itemId,
           title: listing.title?.substring(0, 50),
           price: listing.price,
+          status: listing.status,
           startTime: listing.startTime,
           listingDate: listing.listingDate,
           description: listing.description?.substring(0, 100),
           condition: listing.condition,
           brand: listing.brand,
           category: listing.category,
-          size: listing.size
+          size: listing.size,
+          favorites: listing.favorites,
+          numLikes: listing.numLikes
         });
       }
       
       return listing;
     }));
 
+    // If status is 'all', we need to fetch both on_sale and sold_out
+    if (status === 'all' && mercariStatus === 'on_sale') {
+      console.log('🔄 Status is "all", fetching sold items as well...');
+      
+      // Recursively fetch sold items (page 1 only for now)
+      const soldResult = await fetchMercariListings({ page: 1, status: 'sold' });
+      
+      if (soldResult.success) {
+        // Merge the results
+        const allListings = [...listings, ...soldResult.listings];
+        
+        console.log('✅ Combined on_sale + sold:', allListings.length, 'total items');
+        
+        return {
+          success: true,
+          listings: allListings,
+          pagination: {
+            currentPage: page,
+            pageSize: listings.length + soldResult.listings.length,
+            totalCount: totalCount + soldResult.pagination.totalCount,
+            hasNext: hasMore || soldResult.pagination.hasNext
+          }
+        };
+      }
+    }
+
     return {
       success: true,
       listings,
       pagination: {
         currentPage: page,
-        pageSize: pageSize,
-        totalCount: count,
-        hasNext: (offset + listings.length) < count
+        pageSize: items.length,
+        totalCount,
+        hasNext: hasMore
       }
     };
   } catch (error) {
