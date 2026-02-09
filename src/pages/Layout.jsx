@@ -47,13 +47,14 @@ const navigationCategories = [
       { title: "Pro Tools", url: createPageUrl("Pro Tools"), icon: Sparkles },
       { title: "Import", url: createPageUrl("Import"), icon: Activity },
       { title: "Pulse", url: createPageUrl("Pulse"), icon: TrendingUp },
-      { title: "Add Sale", url: createPageUrl("PlatformPerformance"), icon: Plus },
+      { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
     ]
   },
   {
     title: "Analytics",
     items: [
       { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
+      { title: "Platform Performance", url: createPageUrl("PlatformPerformance"), icon: BarChart3 },
       { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
       { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal },
       { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
