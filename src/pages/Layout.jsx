@@ -54,7 +54,6 @@ const navigationCategories = [
     title: "Analytics",
     items: [
       { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
-      { title: "Platform Performance", url: createPageUrl("PlatformPerformance"), icon: BarChart3 },
       { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
       { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal },
       { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
