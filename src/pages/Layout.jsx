@@ -185,7 +185,7 @@ export default function Layout({ children }) {
             {/* Logo/Branding */}
             <div className="px-3 mb-6 flex justify-center">
               <img 
-                src="/orben-logo-v2.svg" 
+                src="/orben-logo-v3.svg" 
                 alt="Orben Logo" 
                 className="w-32 h-auto"
               />
@@ -277,7 +277,7 @@ export default function Layout({ children }) {
           <header className="bg-card border-b border-border px-6 py-4 md:hidden sticky top-0 z-40">
             <div className="flex items-center justify-between gap-4">
               <img 
-                src="/orben-logo-v2.svg" 
+                src="/orben-logo-v3.svg" 
                 alt="Orben Logo" 
                 className="h-12 w-auto"
               />
