@@ -1231,8 +1231,8 @@ export default function SalesHistory() {
         showAtTop={false}
         threshold={200}
       />
-      <div className="p-4 md:p-6 lg:p-8 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', paddingTop: topOffset }}>
-        <div className="max-w-7xl mx-auto min-w-0 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <div className="p-4 md:p-6 lg:p-8 w-full" style={{ paddingTop: topOffset }}>
+        <div className="max-w-7xl mx-auto min-w-0 space-y-6">
         <div className="mb-8 min-w-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground break-words">Sales History</h1>
@@ -1665,7 +1665,7 @@ export default function SalesHistory() {
             {isLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading...</div>
             ) : (
-              <div className="w-full min-w-0 max-w-full overflow-x-hidden px-1 sm:px-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+              <div className="w-full min-w-0 overflow-x-hidden px-1 sm:px-0">
                 {filteredSales.length > 0 && (
                   <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 bg-gray-50/50 dark:bg-gray-800/30 min-w-0 mb-4 rounded-lg">
                     <Checkbox
