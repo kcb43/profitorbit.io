@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-mercari-user-items-query';
+const EXT_BUILD = '2026-02-01-fix-sold-filter-and-badge';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 

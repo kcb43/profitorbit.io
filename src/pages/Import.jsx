@@ -202,6 +202,12 @@ export default function Import() {
 
   // Check if user is connected to the selected marketplace
   useEffect(() => {
+    // Don't check connection until userId is loaded
+    if (!userId) {
+      console.log('⏳ Waiting for userId before checking connection...');
+      return;
+    }
+    
     const checkConnection = async () => {
       if (selectedSource === "ebay") {
         try {
@@ -341,7 +347,7 @@ export default function Import() {
     };
 
     checkConnection();
-  }, [selectedSource]);
+  }, [selectedSource, userId]); // Add userId dependency
 
   // Update URL when source changes
   useEffect(() => {
@@ -1011,7 +1017,13 @@ export default function Import() {
         }
       } else if (selectedSource === "mercari") {
         // Mercari uses different status values
-        if (listingStatus !== "all" && item.status !== listingStatus) {
+        // API returns "sold_out" but dropdown uses "sold"
+        if (listingStatus === "sold") {
+          // When "Sold" is selected, show items with status "sold_out"
+          if (item.status !== "sold_out" && item.status !== "sold") {
+            return false;
+          }
+        } else if (listingStatus !== "all" && item.status !== listingStatus) {
           return false;
         }
       }
@@ -1061,7 +1073,12 @@ export default function Import() {
       }
     } else if (selectedSource === "mercari") {
       // Mercari uses different status values
-      if (listingStatus !== "all") {
+      // API returns "sold_out" but dropdown uses "sold"
+      if (listingStatus === "sold") {
+        statusFilteredListings = sourceListings.filter(item => 
+          item.status === "sold_out" || item.status === "sold"
+        );
+      } else if (listingStatus !== "all") {
         statusFilteredListings = sourceListings.filter(item => item.status === listingStatus);
       }
     }
@@ -2162,7 +2179,7 @@ export default function Import() {
                                   : 'bg-gray-100 text-gray-800 border-gray-300'
                               }
                             >
-                              {item.status === 'sold' || item.status === 'Sold'
+                              {item.status === 'sold' || item.status === 'Sold' || item.status === 'sold_out'
                                 ? 'Sold'
                                 : item.status === 'available'
                                 ? 'Available'
