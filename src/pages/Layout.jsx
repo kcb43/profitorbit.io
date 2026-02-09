@@ -183,18 +183,12 @@ export default function Layout({ children }) {
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background hidden md:flex">
           <SidebarContent className="flex flex-col flex-grow px-2 py-4">
             {/* Logo/Branding */}
-            <div className="px-3 mb-6">
-              <div className="flex items-center gap-3">
-                <img 
-                  src="/orben-logo.svg" 
-                  alt="Orben Logo" 
-                  className="w-16 h-16"
-                />
-                <div>
-                  <h2 className="font-bold text-sidebar-foreground text-lg leading-tight">Orben</h2>
-                  <p className="text-xs text-muted-foreground">Reselling Platform</p>
-                </div>
-              </div>
+            <div className="px-3 mb-6 flex justify-center">
+              <img 
+                src="/orben-logo.svg" 
+                alt="Orben Logo" 
+                className="w-32 h-auto"
+              />
             </div>
 
             {/* Navigation Sections */}
@@ -282,14 +276,11 @@ export default function Layout({ children }) {
           {/* Mobile Header */}
           <header className="bg-card border-b border-border px-6 py-4 md:hidden sticky top-0 z-40">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <img 
-                  src="/orben-logo.svg" 
-                  alt="Orben Logo" 
-                  className="w-16 h-16"
-                />
-                <h1 className="text-xl font-bold text-foreground">Orben</h1>
-              </div>
+              <img 
+                src="/orben-logo.svg" 
+                alt="Orben Logo" 
+                className="h-12 w-auto"
+              />
               <div className="flex items-center gap-2">
                 <UserProfile />
                 <Link to={createPageUrl("Settings")} className="inline-flex">
