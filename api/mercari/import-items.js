@@ -59,7 +59,8 @@ export default async function handler(req, res) {
         console.log(`💾 Checking for existing inventory item...`);
         
         // Check if this is a sold item
-        const isSoldItem = item.status === 'sold';
+        // Mercari API returns 'sold_out' for sold items
+        const isSoldItem = item.status === 'sold' || item.status === 'sold_out';
         console.log(`📊 Item status check:`, {
           status: item.status,
           isSoldItem

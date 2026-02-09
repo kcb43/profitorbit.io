@@ -748,8 +748,8 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
     if (status === 'all' && mercariStatus === 'on_sale') {
       console.log('🔄 Status is "all", fetching sold items as well...');
       
-      // Recursively fetch sold items (page 1 only for now)
-      const soldResult = await fetchMercariListings({ page: 1, status: 'sold' });
+      // FIX: Fetch sold items with the SAME page number to maintain pagination
+      const soldResult = await fetchMercariListings({ page: page, status: 'sold' });
       
       if (soldResult.success) {
         // Merge the results
@@ -764,6 +764,7 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
             currentPage: page,
             pageSize: listings.length + soldResult.listings.length,
             totalCount: totalCount + soldResult.pagination.totalCount,
+            // FIX: hasNext should be true only if EITHER category has more pages
             hasNext: hasMore || soldResult.pagination.hasNext
           }
         };
