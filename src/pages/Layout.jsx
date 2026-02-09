@@ -181,7 +181,7 @@ export default function Layout({ children }) {
       <div className="min-h-screen flex w-full bg-background">
         {/* Desktop Sidebar - StalkFun Inspired */}
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background hidden md:flex">
-          <SidebarContent className="flex flex-col flex-grow px-2 py-4">
+          <SidebarContent className="flex flex-col flex-grow px-2 pt-2 pb-4">
             {/* Logo/Branding */}
             <div className="px-3 mb-2 flex justify-center">
               <img 
