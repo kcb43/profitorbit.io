@@ -1788,7 +1788,7 @@ export default function Crosslist() {
         showAtTop={false}
         threshold={200}
       />
-      <div className="max-w-7xl mx-auto space-y-6 min-w-0 w-full max-w-full overflow-x-hidden" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden', paddingTop: topOffset }}>
+      <div className="max-w-7xl mx-auto space-y-6 min-w-0 overflow-x-hidden" style={{ paddingTop: topOffset }}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">Crosslist</h1>
@@ -2867,7 +2867,7 @@ export default function Crosslist() {
             })}
           </div>
         ) : (
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${gridVariations[viewVariation].containerClass} w-full max-w-full overflow-x-hidden mt-6`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${gridVariations[viewVariation].containerClass} w-full overflow-x-hidden mt-6`}>
             {filtered.map((it) => {
               const map = computeListingState(it);
               const listedCount = Object.values(map).filter((v) => v === 'active').length;
