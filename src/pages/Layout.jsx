@@ -192,7 +192,7 @@ export default function Layout({ children }) {
             </div>
 
             {/* Navigation Sections */}
-            <div className="flex-grow overflow-auto pb-24 -mt-2">
+            <div className="flex-grow overflow-auto pb-24 -mt-2 po-scrollbar-hide">
               {navigationCategories.map((category, categoryIndex) => (
                 <div key={category.title} className="mb-4">
                   {/* Section Header */}
