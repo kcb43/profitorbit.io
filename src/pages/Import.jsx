@@ -2349,8 +2349,25 @@ export default function Import() {
                                         e.stopPropagation();
                                         // For ALL sold items (eBay, Facebook, Mercari), navigate to Sales History page with item highlighted
                                         const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
-                                        if (isSoldItem && item.saleId) {
-                                          navigate(`/SalesHistory?highlight=${item.saleId}`);
+                                        
+                                        console.log('🔍 View button clicked:', {
+                                          itemId: item.itemId,
+                                          status: item.status,
+                                          isSoldItem,
+                                          saleId: item.saleId,
+                                          inventoryId: item.inventoryId,
+                                          imported: item.imported
+                                        });
+                                        
+                                        if (isSoldItem) {
+                                          // If it's a sold item, always go to Sales History
+                                          // If we have a saleId, highlight it; otherwise just go to the page
+                                          if (item.saleId) {
+                                            navigate(`/SalesHistory?highlight=${item.saleId}`);
+                                          } else {
+                                            // No saleId yet - maybe not imported? Go to sales history anyway
+                                            navigate('/SalesHistory');
+                                          }
                                         } else if (item.inventoryId) {
                                           navigate(`/AddInventoryItem?id=${item.inventoryId}`);
                                         } else {
