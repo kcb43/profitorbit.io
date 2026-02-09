@@ -1689,8 +1689,8 @@ export default function InventoryPage() {
             />
           </div>
 
-          {/* Desktop Filters Dialog Trigger */}
-          <div className="hidden md:block mb-4">
+          {/* Desktop Filters Dialog Trigger - Hidden since we show the filter card */}
+          <div className="hidden mb-4">
             <div className="flex gap-2">
               <Button
                 onClick={handleOpenFiltersDialog}
@@ -1793,7 +1793,7 @@ export default function InventoryPage() {
           </Dialog>
 
           {/* Desktop Filter Card */}
-          <Card className="hidden border-0 shadow-lg mb-4">
+          <Card className="hidden md:block border-0 shadow-lg mb-4">
             <CardHeader className="border-b bg-card">
               <CardTitle className="text-base sm:text-lg text-foreground">Filters & Sort</CardTitle>
             </CardHeader>
