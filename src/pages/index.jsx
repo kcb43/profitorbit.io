@@ -190,7 +190,7 @@ function PagesContent() {
               />
               
               <Route
-                path="/PlatformPerformance"
+                path="/platformperformance"
                 element={
                   <AuthGuard>
                     {withSuspense(

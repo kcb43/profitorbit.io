@@ -1667,14 +1667,24 @@ export default function SalesHistory() {
             ) : (
               <div className="w-full min-w-0 overflow-x-hidden px-1 sm:px-0">
                 {filteredSales.length > 0 && (
-                  <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 bg-gray-50/50 dark:bg-gray-800/30 min-w-0 mb-4 rounded-lg">
-                    <Checkbox
-                      checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
-                      onCheckedChange={handleSelectAll}
-                      id="select-all"
-                      className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
-                    />
-                    <label htmlFor="select-all" className="font-medium text-xs sm:text-sm text-foreground cursor-pointer break-words">Select All</label>
+                  <div className="flex items-center justify-between gap-3 p-4 bg-card rounded-t-lg">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        id="select-all"
+                        className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
+                      />
+                      <div className="flex flex-col">
+                        <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
+                          Select All ({filteredSales.length})
+                        </label>
+                        <span className="text-xs text-muted-foreground md:hidden">
+                          Tap image to select
+                        </span>
+                        <span className="text-xs text-muted-foreground hidden md:block">Click image to select for bulk edit</span>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {filteredSales.length === 0 && (
