@@ -1998,8 +1998,8 @@ export default function Crosslist() {
           </div>
         </div>
 
-        {/* Desktop Filters Dialog Trigger */}
-        <div className="hidden md:block mb-4">
+        {/* Desktop Filters Dialog Trigger - Hidden since we show the filter card */}
+        <div className="hidden mb-4">
           <div className="flex gap-2">
             <Button
               onClick={handleOpenFiltersDialog}
@@ -2099,7 +2099,7 @@ export default function Crosslist() {
         </Dialog>
 
         {/* Desktop Filter Card */}
-        <Card className="hidden border-0 shadow-lg">
+        <Card className="hidden md:block border-0 shadow-lg">
           <CardHeader className="border-b bg-card">
             <CardTitle className="text-foreground text-base flex items-center gap-2">
               <Filter className="w-4 h-4" />
