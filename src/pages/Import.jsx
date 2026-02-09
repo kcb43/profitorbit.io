@@ -2170,7 +2170,7 @@ export default function Import() {
                             <Badge 
                               variant="outline"
                               className={
-                                item.status === 'sold' || item.status === 'Sold'
+                                item.status === 'sold' || item.status === 'Sold' || item.status === 'sold_out'
                                   ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200 dark:border-green-700'
                                   : item.status === 'available' || item.status === 'Active' || item.status === 'on_sale'
                                   ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700'
