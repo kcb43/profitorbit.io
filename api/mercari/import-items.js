@@ -122,7 +122,12 @@ export default async function handler(req, res) {
               brand: item.brand || null,
               category: item.category || null,
               size: item.size || null,
-              purchase_date: new Date().toISOString().split('T')[0], // Date only
+              // Use the actual posted date from Mercari, fallback to today
+              purchase_date: item.listingDate 
+                ? new Date(item.listingDate).toISOString().split('T')[0]
+                : item.startTime 
+                  ? new Date(item.startTime).toISOString().split('T')[0]
+                  : new Date().toISOString().split('T')[0],
               notes: null, // User can add their own notes
             })
             .select('id')

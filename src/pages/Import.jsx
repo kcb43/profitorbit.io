@@ -2180,9 +2180,9 @@ export default function Import() {
                           {item.startTime && (
                             <>
                               {selectedSource === "mercari" 
-                                ? "Posted: " 
+                                ? (item.status === "sold" || item.status === "sold_out" ? "Date sold: " : "Posted: ")
                                 : selectedSource === "facebook" 
-                                ? "Posted: " 
+                                ? (item.status === "sold" ? "Date sold: " : "Posted: ")
                                 : selectedSource === "ebay" 
                                   ? (item.status === "Sold" ? "Date sold: " : "Posted: ")
                                   : ""}
