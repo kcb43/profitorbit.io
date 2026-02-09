@@ -835,7 +835,7 @@ export default function Import() {
       }
       
       // For ALL sold items (eBay, Facebook, Mercari), delete from sales table instead of inventory
-      const isSoldItem = item.status === 'Sold' || item.status === 'sold';
+      const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
       if (isSoldItem && item.saleId) {
         console.log(`🗑️ Deleting sold item from sales: ${item.saleId}`);
         const response = await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
@@ -1942,7 +1942,7 @@ export default function Import() {
                       {/* Show Crosslist button only if imported NON-SOLD items are selected */}
                       {selectedItems.some(id => {
                         const item = filteredListings.find(i => i.itemId === id);
-                        const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                        const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                         return item && item.imported && !isSoldItem;
                       }) && (
                         <Button
@@ -1951,7 +1951,7 @@ export default function Import() {
                           onClick={() => {
                             const importedItems = selectedItems.filter(id => {
                               const item = filteredListings.find(i => i.itemId === id);
-                              const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                              const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                               return item && item.imported && !isSoldItem;
                             }).map(id => {
                               const item = filteredListings.find(i => i.itemId === id);
@@ -1970,7 +1970,7 @@ export default function Import() {
                           </svg>
                           Crosslist ({selectedItems.filter(id => {
                             const item = filteredListings.find(i => i.itemId === id);
-                            const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                            const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                             return item && item.imported && !isSoldItem;
                           }).length})
                         </Button>
@@ -1979,7 +1979,7 @@ export default function Import() {
                       {/* Show Clear button for sold items */}
                       {selectedItems.some(id => {
                         const item = filteredListings.find(i => i.itemId === id);
-                        const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                        const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                         return item && item.imported && isSoldItem;
                       }) && (
                         <Button
@@ -2036,7 +2036,7 @@ export default function Import() {
                                 if (!item) return;
                                 
                                 // For ALL sold items (eBay, Facebook, Mercari), delete from sales
-                                const isSoldItem = item.status === 'Sold' || item.status === 'sold';
+                                const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
                                 if (isSoldItem && item.saleId) {
                                   await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
                                     method: 'DELETE',
@@ -2186,7 +2186,7 @@ export default function Import() {
                                 : item.status === 'Active'
                                 ? 'Active'
                                 : item.status === 'on_sale'
-                                ? 'On Sale'
+                                ? 'Available'
                                 : item.status === 'out_of_stock'
                                 ? 'Out of Stock'
                                 : item.status}
@@ -2348,7 +2348,7 @@ export default function Import() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         // For ALL sold items (eBay, Facebook, Mercari), navigate to Sales History with sale ID
-                                        const isSoldItem = item.status === 'Sold' || item.status === 'sold';
+                                        const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
                                         if (isSoldItem && item.saleId) {
                                           navigate(`/AddSale?id=${item.saleId}`);
                                         } else if (item.inventoryId) {
@@ -2358,7 +2358,7 @@ export default function Import() {
                                         }
                                       }}
                                     >
-                                      {(item.status === 'Sold' || item.status === 'sold') ? (
+                                      {(item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out') ? (
                                         <>
                                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M3 3h18v18H3zM3 9h18M9 21V9"/>
@@ -2377,7 +2377,7 @@ export default function Import() {
                                       )}
                                     </Button>
                                     {/* Only show Crosslist button for non-sold items */}
-                                    {!(item.status === 'Sold' || item.status === 'sold') && (
+                                    {!(item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out') && (
                                       <Button
                                         variant="default"
                                         size="sm"
@@ -2467,7 +2467,7 @@ export default function Import() {
                   ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
                   : (ebayListings || []);
                 const item = sourceListings.find(i => i.itemId === itemToDelete);
-                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                 return isSoldItem ? 'Remove Sale from History?' : 'Remove Item from Inventory?';
               })()}
             </AlertDialogTitle>
@@ -2479,7 +2479,7 @@ export default function Import() {
                   ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
                   : (ebayListings || []);
                 const item = sourceListings.find(i => i.itemId === itemToDelete);
-                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                 return isSoldItem 
                   ? 'This will remove the sale from your sales history. You can re-import it later from the Import page.'
                   : 'This will remove the item from your inventory. You can re-import it later from the Import page.';
@@ -2503,7 +2503,7 @@ export default function Import() {
                   ? (queryClient.getQueryData(['mercari-listings', userId]) || [])
                   : (ebayListings || []);
                 const item = sourceListings.find(i => i.itemId === itemToDelete);
-                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold';
+                const isSoldItem = item?.status === 'Sold' || item?.status === 'sold' || item?.status === 'sold_out';
                 return isSoldItem ? 'Yes, Remove from Sales History' : 'Yes, Remove from Inventory';
               })()}
             </AlertDialogAction>
