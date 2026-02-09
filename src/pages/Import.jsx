@@ -964,8 +964,11 @@ export default function Import() {
         queryClient.invalidateQueries(["ebay-listings"]);
       }
       
-      // Refresh inventory
+      // Refresh inventory and sales
       queryClient.invalidateQueries(["inventory-items"]);
+      if (isSale) {
+        queryClient.invalidateQueries(["sales"]);
+      }
     },
     onError: (error) => {
       console.error('❌ Delete error:', error);
