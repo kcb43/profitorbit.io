@@ -2180,11 +2180,11 @@ export default function Import() {
                           {item.startTime && (
                             <>
                               {selectedSource === "mercari" 
-                                ? (item.status === "sold" || item.status === "sold_out" ? "Date sold: " : "Posted: ")
+                                ? (item.status === "sold" || item.status === "sold_out" ? "Sold: " : "Posted: ")
                                 : selectedSource === "facebook" 
-                                ? (item.status === "sold" ? "Date sold: " : "Posted: ")
+                                ? (item.status === "sold" ? "Sold: " : "Posted: ")
                                 : selectedSource === "ebay" 
-                                  ? (item.status === "Sold" ? "Date sold: " : "Posted: ")
+                                  ? (item.status === "Sold" ? "Sold: " : "Posted: ")
                                   : ""}
                               {format(new Date(item.startTime), "MMM dd, yyyy")} · 
                             </>
