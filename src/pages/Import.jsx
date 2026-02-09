@@ -846,21 +846,63 @@ export default function Import() {
       
       // For ALL sold items (eBay, Facebook, Mercari), delete from sales table instead of inventory
       const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
-      if (isSoldItem && item.saleId) {
-        console.log(`🗑️ Deleting sold item from sales: ${item.saleId}`);
-        const response = await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': userId,
-          },
-        });
+      
+      console.log('🔍 Delete mutation - item details:', {
+        itemId,
+        status: item.status,
+        isSoldItem,
+        saleId: item.saleId,
+        inventoryId: item.inventoryId
+      });
+      
+      if (isSoldItem) {
+        let saleIdToDelete = item.saleId;
         
-        if (!response.ok) {
-          throw new Error('Failed to delete sale');
+        // If we don't have a saleId but we have an inventoryId, query the sales table to find it
+        if (!saleIdToDelete && item.inventoryId) {
+          console.log(`🔍 No saleId found, querying sales table by inventory_id: ${item.inventoryId}`);
+          try {
+            const response = await fetch(`/api/sales?inventory_id=${item.inventoryId}&limit=1`, {
+              headers: {
+                'X-User-Id': userId,
+              },
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              const sales = result.data || result;
+              if (sales && sales.length > 0) {
+                saleIdToDelete = sales[0].id;
+                console.log(`✅ Found sale by inventory_id: ${saleIdToDelete}`);
+              } else {
+                console.warn(`⚠️ No sale found for inventory_id: ${item.inventoryId}`);
+              }
+            }
+          } catch (err) {
+            console.error('Error querying sales by inventory_id:', err);
+          }
         }
         
-        return { id: item.saleId, success: true, isSale: true };
+        if (saleIdToDelete) {
+          console.log(`🗑️ Deleting sold item from sales: ${saleIdToDelete}`);
+          const response = await fetch(`/api/sales?id=${saleIdToDelete}&hard=true`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-User-Id': userId,
+            },
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to delete sale');
+          }
+          
+          console.log(`✅ Successfully deleted sale: ${saleIdToDelete}`);
+          return { id: saleIdToDelete, success: true, isSale: true };
+        } else {
+          console.warn(`⚠️ Could not find saleId for sold item ${itemId}, will not delete from sales table`);
+          return { id: null, success: true };
+        }
       }
       
       // For non-sold items, delete from inventory
@@ -2047,14 +2089,36 @@ export default function Import() {
                                 
                                 // For ALL sold items (eBay, Facebook, Mercari), delete from sales
                                 const isSoldItem = item.status === 'Sold' || item.status === 'sold' || item.status === 'sold_out';
-                                if (isSoldItem && item.saleId) {
-                                  await fetch(`/api/sales?id=${item.saleId}&hard=true`, {
-                                    method: 'DELETE',
-                                    headers: { 
-                                      'Content-Type': 'application/json',
-                                      'X-User-Id': userId
+                                if (isSoldItem) {
+                                  let saleIdToDelete = item.saleId;
+                                  
+                                  // If we don't have a saleId but we have an inventoryId, query to find it
+                                  if (!saleIdToDelete && item.inventoryId) {
+                                    try {
+                                      const response = await fetch(`/api/sales?inventory_id=${item.inventoryId}&limit=1`, {
+                                        headers: { 'X-User-Id': userId },
+                                      });
+                                      if (response.ok) {
+                                        const result = await response.json();
+                                        const sales = result.data || result;
+                                        if (sales && sales.length > 0) {
+                                          saleIdToDelete = sales[0].id;
+                                        }
+                                      }
+                                    } catch (err) {
+                                      console.error('Error querying sales:', err);
                                     }
-                                  });
+                                  }
+                                  
+                                  if (saleIdToDelete) {
+                                    await fetch(`/api/sales?id=${saleIdToDelete}&hard=true`, {
+                                      method: 'DELETE',
+                                      headers: { 
+                                        'Content-Type': 'application/json',
+                                        'X-User-Id': userId
+                                      }
+                                    });
+                                  }
                                 } else if (item.inventoryId) {
                                   // Delete from inventory
                                   await inventoryApi.delete(item.inventoryId);
