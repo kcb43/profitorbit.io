@@ -550,13 +550,61 @@ function updateLoginStatus(force = false) {
             }
           }
           
-          if (bearerToken || csrfToken || sellerId) {
+          // ** CRITICAL: Capture device token from localStorage **
+          let deviceToken = null;
+          try {
+            console.log('🔍 Searching for device token in localStorage...');
+            
+            // Try all common device token keys
+            deviceToken = localStorage.getItem('de_device_token') ||
+                         localStorage.getItem('x-de-device-token') ||
+                         localStorage.getItem('device_token') ||
+                         localStorage.getItem('deviceToken') ||
+                         localStorage.getItem('x_de_device_token') ||
+                         sessionStorage.getItem('de_device_token') ||
+                         sessionStorage.getItem('x-de-device-token');
+            
+            // If not found, scan ALL localStorage keys for anything device-related
+            if (!deviceToken) {
+              console.log('🔍 Device token not found in common keys, scanning all localStorage...');
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key) {
+                  const lowerKey = key.toLowerCase();
+                  if (lowerKey.includes('device') || lowerKey.includes('de_') || (lowerKey.includes('token') && !lowerKey.includes('csrf'))) {
+                    const value = localStorage.getItem(key);
+                    if (value && typeof value === 'string' && value.length >= 8 && value.length < 500) {
+                      deviceToken = value;
+                      console.log(`✅ Found device token in localStorage key: "${key}"`);
+                      break;
+                    }
+                  }
+                }
+              }
+            } else {
+              console.log('✅ Found device token in common key');
+            }
+            
+            if (deviceToken) {
+              console.log('✅ Device token captured:', deviceToken.substring(0, 20) + '...');
+            } else {
+              console.log('⚠️ Device token not found in localStorage/sessionStorage');
+              console.log('📋 Available localStorage keys:', 
+                Array.from({length: localStorage.length}, (_, i) => localStorage.key(i)).join(', '));
+            }
+          } catch (e) {
+            console.warn('Could not capture device token:', e);
+          }
+          
+          if (bearerToken || csrfToken || sellerId || deviceToken) {
             console.log('✅ Captured Mercari tokens:', {
               hasBearerToken: !!bearerToken,
               hasCsrfToken: !!csrfToken,
               hasSellerId: !!sellerId,
+              hasDeviceToken: !!deviceToken,
               bearerPreview: bearerToken ? bearerToken.substring(0, 20) + '...' : 'none',
               csrfPreview: csrfToken ? csrfToken.substring(0, 20) + '...' : 'none',
+              deviceTokenPreview: deviceToken ? deviceToken.substring(0, 20) + '...' : 'none',
               sellerId: sellerId
             });
             
@@ -564,6 +612,7 @@ function updateLoginStatus(force = false) {
               type: 'MERCARI_AUTH_CAPTURED',
               bearerToken: bearerToken,
               csrfToken: csrfToken,
+              deviceToken: deviceToken,
               sellerId: sellerId,
               timestamp: Date.now(),
             });

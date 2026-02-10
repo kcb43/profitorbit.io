@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-mercari-proactive-token-capture';
+const EXT_BUILD = '2026-02-01-mercari-device-token-from-popup';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -2756,71 +2756,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Handle Mercari auth capture from content script
   if (type === 'MERCARI_AUTH_CAPTURED') {
-    const bearerToken = message.bearerToken;
-    const csrfToken = message.csrfToken;
-    const sellerId = message.sellerId;
-    const timestamp = message.timestamp || Date.now();
+    (async () => {
+      try {
+        const bearerToken = message.bearerToken;
+        const csrfToken = message.csrfToken;
+        const deviceToken = message.deviceToken;
+        const sellerId = message.sellerId;
+        const timestamp = message.timestamp || Date.now();
+        
+        const dataToStore = {
+          'mercari_tokens_timestamp': timestamp,
+        };
+        
+        if (bearerToken) {
+          dataToStore['mercari_bearer_token'] = bearerToken;
+          console.log('✅ Storing Mercari bearer token');
+        }
+        
+        if (csrfToken) {
+          dataToStore['mercari_csrf_token'] = csrfToken;
+          console.log('✅ Storing Mercari CSRF token');
+        }
+        
+        // ** CRITICAL: Store device token in mercariApiHeaders **
+        if (deviceToken) {
+          console.log('✅ Device token captured from content script:', deviceToken.substring(0, 20) + '...');
+          
+          // Get existing headers
+          const stored = await chrome.storage.local.get(['mercariApiHeaders']);
+          const existing = (stored?.mercariApiHeaders && typeof stored.mercariApiHeaders === 'object') 
+            ? stored.mercariApiHeaders 
+            : {};
+          
+          // Merge device token with existing headers
+          const updated = {
+            ...existing,
+            'x-de-device-token': deviceToken
+          };
+          
+          dataToStore['mercariApiHeaders'] = updated;
+          dataToStore['mercariApiHeadersTimestamp'] = timestamp;
+          dataToStore['mercariApiHeadersSourceUrl'] = 'content_script_localStorage';
+          dataToStore['mercariApiHeadersType'] = 'localStorage_capture';
+          
+          console.log('✅ Storing device token in mercariApiHeaders');
+        }
+        
+        if (sellerId) {
+          dataToStore['mercari_seller_id'] = sellerId;
+          console.log('✅ Storing Mercari seller ID:', sellerId);
+        }
+        
+        await chrome.storage.local.set(dataToStore);
+        console.log('✅ Stored Mercari auth data');
+        
+        sendResponse({ success: true });
+      } catch (e) {
+        console.error('❌ Error storing Mercari auth data:', e);
+        sendResponse({ success: false, error: e.message });
+      }
+    })();
     
-    const dataToStore = {
-      'mercari_tokens_timestamp': timestamp,
-    };
-    
-    if (bearerToken) {
-      dataToStore['mercari_bearer_token'] = bearerToken;
-      console.log('✅ Storing Mercari bearer token');
-    }
-    
-    if (csrfToken) {
-      dataToStore['mercari_csrf_token'] = csrfToken;
-      console.log('✅ Storing Mercari CSRF token');
-    }
-    
-    if (sellerId) {
-      dataToStore['mercari_seller_id'] = sellerId;
-      console.log('✅ Storing Mercari seller ID:', sellerId);
-    }
-    
-    chrome.storage.local.set(dataToStore).then(() => {
-      console.log('✅ Stored Mercari auth data');
-    });
-    
-    sendResponse({ success: true });
-    return true;
+    return true; // Keep channel open for async response
   }
-
-  
-  // Handle Mercari auth capture from content script
-  if (type === 'MERCARI_AUTH_CAPTURED') {
-    const bearerToken = message.bearerToken;
-    const csrfToken = message.csrfToken;
-    const sellerId = message.sellerId;
-    const timestamp = message.timestamp || Date.now();
-    
-    const dataToStore = {
-      'mercari_tokens_timestamp': timestamp,
-    };
-    
-    if (bearerToken) {
-      dataToStore['mercari_bearer_token'] = bearerToken;
-      console.log('✅ Storing Mercari bearer token');
-    }
-    
-    if (csrfToken) {
-      dataToStore['mercari_csrf_token'] = csrfToken;
-      console.log('✅ Storing Mercari CSRF token');
-    }
-    
-    if (sellerId) {
-      dataToStore['mercari_seller_id'] = sellerId;
-      console.log('✅ Storing Mercari seller ID:', sellerId);
-    }
-    
-    chrome.storage.local.set(dataToStore).then(() => {
-      console.log('✅ Stored Mercari auth data');
-    });
-    
-    sendResponse({ success: true });
-    return true;
   }
 
   // Handle Facebook listings scraped result (from content script)
