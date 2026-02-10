@@ -4,16 +4,16 @@
  * Version: 3.1.0-user-items-query
  */
 
-console.log('🟣 Mercari API module loading (v3.1.0-user-items-query)...');
+console.log('🟣 Mercari API module loading (v3.2.0-trading-status)...');
 
 // NEW: GraphQL query for user items (correct query for sold & available items)
-// This is the query Mercari uses on the "Complete" and "Active" pages
+// This is the query Mercari uses on the "Complete", "In Progress", and "Active" pages
 const USER_ITEMS_QUERY = {
   operationName: "userItemsQuery",
   variables: {
     userItemsInput: {
       sellerId: null, // Will be populated dynamically
-      status: "on_sale", // "on_sale" or "sold_out"
+      status: "on_sale", // "on_sale", "sold_out", or "trading" (in progress sales)
       keyword: "",
       sortBy: "created",
       sortType: "desc",
@@ -744,7 +744,140 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
       return listing;
     }));
 
-    // If status is 'all', we need to fetch both on_sale and sold_out
+    // If status is 'sold', we need to fetch both sold_out AND trading (in progress)
+    if (status === 'sold' && mercariStatus === 'sold_out') {
+      console.log('🔄 Status is "sold", fetching "In Progress" (trading) items as well...');
+      
+      // Fetch "In Progress" items using the 'trading' status
+      const tradingQuery = {
+        ...USER_ITEMS_QUERY,
+        variables: {
+          userItemsInput: {
+            sellerId: parseInt(sellerId, 10),
+            status: 'trading', // This is the status for "In Progress" items
+            keyword: "",
+            sortBy: "created",
+            sortType: "desc",
+            page: page,
+            includeTotalCount: true
+          }
+        }
+      };
+      
+      const tradingQueryParams = new URLSearchParams({
+        operationName: tradingQuery.operationName,
+        variables: JSON.stringify(tradingQuery.variables),
+        extensions: JSON.stringify(tradingQuery.extensions)
+      });
+      
+      const tradingUrl = `https://www.mercari.com/v1/api?${tradingQueryParams.toString()}`;
+      
+      try {
+        console.log('📡 Fetching "In Progress" (trading) items...');
+        const tradingResponse = await fetch(tradingUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${bearerToken}`,
+            'x-csrf-token': csrfToken,
+            'accept': '*/*',
+            'apollo-require-preflight': 'true',
+            'x-app-version': '1',
+            'x-double-web': '1',
+            'x-platform': 'web',
+          },
+          credentials: 'include'
+        });
+        
+        if (tradingResponse.ok) {
+          const tradingData = await tradingResponse.json();
+          console.log('📥 Raw "In Progress" (trading) response:', tradingData);
+          
+          if (tradingData.data?.userItems) {
+            const tradingItems = tradingData.data.userItems.items || [];
+            const tradingTotalCount = tradingData.data.userItems.totalCount || 0;
+            const tradingHasMore = tradingData.data.userItems.hasMore || false;
+            
+            console.log('✅ Fetched', tradingItems.length, '"In Progress" items (total:', tradingTotalCount, ')');
+            
+            // Transform trading items to our format
+            const tradingListings = await Promise.all(tradingItems.map(async (item, index) => {
+              const listing = {
+                itemId: item.id,
+                title: item.name,
+                price: item.price ? (item.price / 100) : 0,
+                originalPrice: item.originalPrice ? (item.originalPrice / 100) : null,
+                status: 'sold_out', // Treat as sold for badge/filter purposes
+                imageUrl: item.photos?.[0]?.imageUrl || item.photos?.[0]?.thumbnail || null,
+                pictureURLs: (item.photos || []).map(p => p.imageUrl || p.thumbnail).filter(Boolean),
+                description: item.description || null,
+                condition: item.itemCondition?.name || null,
+                brand: item.brand?.name || null,
+                category: item.itemCategory?.name || null,
+                categoryPath: (item.itemCategoryHierarchy || []).map(c => c.name).join(' > ') || null,
+                size: item.itemSize?.name || null,
+                color: item.color || null,
+                favorites: item.favorites || 0,
+                numLikes: item.numLikes || 0,
+                autoLiked: item.autoLiked || false,
+                startTime: item.created ? new Date(item.created * 1000).toISOString() : 
+                           item.updated ? new Date(item.updated * 1000).toISOString() : null,
+                listingDate: item.created ? new Date(item.created * 1000).toISOString() :
+                             item.updated ? new Date(item.updated * 1000).toISOString() : null,
+                imported: false,
+                // Add flag to indicate this is an "in progress" sale
+                inProgress: true,
+                activeOrder: item.activeOrder || null
+              };
+              
+              // If description is empty, try to scrape it
+              if (!listing.description || listing.description.length === 0) {
+                console.log(`📝 Description empty for ${item.id}, attempting to scrape from page...`);
+                const scrapedDesc = await scrapeMercariItemDescription(item.id);
+                if (scrapedDesc) {
+                  listing.description = scrapedDesc;
+                }
+              }
+              
+              // If date is missing, scrape it
+              if (!listing.startTime) {
+                console.log(`📅 Date missing for ${item.id}, attempting to scrape from page...`);
+                const scrapedDate = await scrapeMercariItemDate(item.id);
+                if (scrapedDate) {
+                  listing.startTime = scrapedDate;
+                  listing.listingDate = scrapedDate;
+                  console.log(`✅ Set scraped date for ${item.id}: ${scrapedDate}`);
+                }
+              }
+              
+              return listing;
+            }));
+            
+            // Merge sold_out + trading items
+            const allSoldListings = [...listings, ...tradingListings];
+            console.log('✅ Combined sold_out + trading:', allSoldListings.length, 'total sold items');
+            
+            return {
+              success: true,
+              listings: allSoldListings,
+              pagination: {
+                currentPage: page,
+                pageSize: listings.length + tradingListings.length,
+                totalCount: totalCount + tradingTotalCount,
+                hasNext: hasMore || tradingHasMore
+              }
+            };
+          }
+        } else {
+          console.warn('⚠️ Failed to fetch "In Progress" items:', tradingResponse.status, tradingResponse.statusText);
+          // Continue with just sold_out items if trading fetch fails
+        }
+      } catch (tradingError) {
+        console.error('❌ Error fetching "In Progress" (trading) items:', tradingError);
+        // Continue with just sold_out items if trading fetch fails
+      }
+    }
+    
+    // If status is 'all', we need to fetch both on_sale and sold_out (which includes trading)
     if (status === 'all' && mercariStatus === 'on_sale') {
       console.log('🔄 Status is "all", fetching sold items as well...');
       
