@@ -34089,11 +34089,42 @@ export default function CrosslistComposer() {
     };
     window.addEventListener('extensionReady', handleExtensionReady);
     
+    // Handle Mercari connection ready - auto-close popup
+    const handleMercariConnectionReady = (event) => {
+      if (event.source !== window) return;
+      if (event.data && event.data.type === 'MERCARI_CONNECTION_READY') {
+        console.log('🟢 Mercari CONNECTION_READY received in CrosslistComposer:', event.data.payload);
+        
+        // Close the login popup if it's open
+        if (window._mercariLoginPopup && !window._mercariLoginPopup.closed) {
+          try {
+            console.log('🔒 Closing Mercari login popup');
+            window._mercariLoginPopup.close();
+            window._mercariLoginPopup = null;
+          } catch (e) {
+            console.error('Error closing Mercari popup:', e);
+          }
+        }
+        
+        // Check connection state
+        checkMercariConnection();
+        
+        // Show success message
+        const userName = event.data.payload?.userName || 'Mercari User';
+        toast({
+          title: 'Mercari Connected!',
+          description: `Connected as ${userName}`,
+        });
+      }
+    };
+    window.addEventListener('message', handleMercariConnectionReady);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('mercari-connection-update', handleMercariConnectionUpdate);
       window.removeEventListener('marketplaceStatusUpdate', handleMarketplaceStatusUpdate);
       window.removeEventListener('extensionReady', handleExtensionReady);
+      window.removeEventListener('message', handleMercariConnectionReady);
       if (pollInterval) {
         clearInterval(pollInterval);
       }
@@ -34175,24 +34206,14 @@ export default function CrosslistComposer() {
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
     );
     
-    // Auto-close popup after 5 seconds
+    // Store popup reference globally so event listener can close it
     if (popup) {
-      setTimeout(() => {
-        try {
-          // Check if popup is still open before closing
-          if (popup && !popup.closed) {
-            popup.close();
-          }
-        } catch (e) {
-          // Popup may have been closed by user or blocked
-          console.log('Mercari popup close error:', e);
-        }
-      }, 5000);
+      window._mercariLoginPopup = popup;
     }
     
     toast({
       title: 'Mercari Login',
-      description: 'Log into Mercari in the popup, then close it and click "Connect Mercari".',
+      description: 'Log into Mercari in the popup. It will close automatically when connected.',
       duration: 6000,
     });
   };
@@ -34479,14 +34500,51 @@ export default function CrosslistComposer() {
       }
     };
 
+    // Handle Facebook connection ready - auto-close popup
+    const handleFacebookConnectionReady = (event) => {
+      if (event.source !== window) return;
+      if (event.data && event.data.type === 'FACEBOOK_CONNECTION_READY') {
+        console.log('🟢 Facebook CONNECTION_READY received in CrosslistComposer:', event.data.payload);
+        
+        // Close the login popup if it's open
+        if (window._facebookLoginPopup && !window._facebookLoginPopup.closed) {
+          try {
+            console.log('🔒 Closing Facebook login popup');
+            window._facebookLoginPopup.close();
+            window._facebookLoginPopup = null;
+          } catch (e) {
+            console.error('Error closing Facebook popup:', e);
+          }
+        }
+        
+        // Clear the timeout if it exists
+        if (window._facebookLoginPopupTimeout) {
+          clearTimeout(window._facebookLoginPopupTimeout);
+          window._facebookLoginPopupTimeout = null;
+        }
+        
+        // Sync connection state
+        sync();
+        
+        // Show success message
+        const userName = event.data.payload?.userName || 'Facebook User';
+        toast({
+          title: 'Facebook Connected!',
+          description: `Connected as ${userName}`,
+        });
+      }
+    };
+
     window.addEventListener('marketplaceStatusUpdate', onMarketplaceStatusUpdate);
     window.addEventListener('extensionReady', onExtensionReady);
+    window.addEventListener('message', handleFacebookConnectionReady);
 
     sync();
     const poll = setInterval(sync, 1500);
     return () => {
       window.removeEventListener('marketplaceStatusUpdate', onMarketplaceStatusUpdate);
       window.removeEventListener('extensionReady', onExtensionReady);
+      window.removeEventListener('message', handleFacebookConnectionReady);
       clearInterval(poll);
     };
   }, []);
