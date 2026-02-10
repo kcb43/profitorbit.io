@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-mercari-device-token-fallback';
+const EXT_BUILD = '2026-02-01-mercari-tab-detection-v2';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -456,15 +456,34 @@ async function ensureFacebookTabId(options = {}) {
 
 async function pickMercariTabId() {
   try {
+    console.log('🔍 [MERCARI] Looking for Mercari tabs...');
     const tabs = await chrome.tabs.query({ url: ['https://www.mercari.com/*', 'https://mercari.com/*', 'https://*.mercari.com/*'] });
+    console.log(`🔍 [MERCARI] Found ${tabs?.length || 0} Mercari tabs`);
+    
     const valid = (tabs || []).filter((t) => t && typeof t.id === 'number');
-    if (!valid.length) return null;
+    console.log(`🔍 [MERCARI] Valid tabs: ${valid.length}`);
+    
+    if (!valid.length) {
+      console.log('❌ [MERCARI] No valid Mercari tabs found');
+      return null;
+    }
+    
     const active = valid.find((t) => t.active);
-    if (active?.id) return active.id;
+    if (active?.id) {
+      console.log(`✅ [MERCARI] Using active tab ${active.id}: ${active.url}`);
+      return active.id;
+    }
+    
     const lastFocused = valid.find((t) => t.lastAccessed);
-    if (lastFocused?.id) return lastFocused.id;
+    if (lastFocused?.id) {
+      console.log(`✅ [MERCARI] Using last focused tab ${lastFocused.id}: ${lastFocused.url}`);
+      return lastFocused.id;
+    }
+    
+    console.log(`✅ [MERCARI] Using first valid tab ${valid[0].id}: ${valid[0].url}`);
     return valid[0].id;
   } catch (_) {
+    console.log('❌ [MERCARI] Error in pickMercariTabId:', _);
     return null;
   }
 }
@@ -1440,6 +1459,7 @@ async function getMercariAuthHeaders() {
       }
     }
 
+    // Log status for debugging
     try {
       chrome.storage.local.set(
         {
@@ -1458,9 +1478,19 @@ async function getMercariAuthHeaders() {
       );
     } catch (_) {}
 
+    // Provide actionable guidance based on what's missing
+    let guidance = '';
+    if (missing.includes('x-de-device-token') && !missing.includes('authorization') && !missing.includes('x-csrf-token')) {
+      // Only device token is missing - this is the common case
+      guidance = 'Please open www.mercari.com in a new tab (any Mercari page will work), wait for it to load completely, then try listing again. The extension will automatically capture the missing authentication token from your active browser session.';
+    } else {
+      // Multiple headers missing - need full re-auth
+      guidance = 'Please open www.mercari.com in a new tab, log in if needed, and browse to any page (your listings, search, etc.). The extension will capture fresh authentication tokens from your browser session.';
+    }
+
     throw new Error(
       `Missing Mercari API session headers (${missing.join(', ')}). ` +
-        `Please open a Mercari tab, navigate to your listings page, and refresh it once to capture fresh auth headers.` +
+        `${guidance}` +
         `${ts ? ` (Headers last captured ${Math.max(0, Date.now() - ts)}ms ago` : ' (No headers captured yet'}` +
         `${src ? ` from ${src}` : ''}${typ ? `, type=${typ}` : ''})`
     );
