@@ -2475,7 +2475,8 @@ export default function Import() {
                                             navigate('/SalesHistory');
                                           }
                                         } else if (item.inventoryId) {
-                                          navigate(`/AddInventoryItem?id=${item.inventoryId}`);
+                                          // For available items, go to Inventory page with highlight
+                                          navigate(`/Inventory?highlight=${item.inventoryId}`);
                                         } else {
                                           navigate('/Inventory');
                                         }

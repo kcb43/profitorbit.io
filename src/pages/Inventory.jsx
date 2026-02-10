@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
 import { uploadApi } from "@/api/uploadApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,6 +105,11 @@ export default function InventoryPage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
+  
+  // Highlight functionality (for navigation from Import page)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+  const highlightRef = useRef(null);
   
   // Variation configurations
   const gridVariations = {
@@ -380,6 +385,35 @@ export default function InventoryPage() {
       setFilters(prev => ({ ...prev, ...location.state.filters }));
     }
   }, [location.state]);
+
+  // Scroll to highlighted item when navigating from Import page
+  useEffect(() => {
+    if (highlightId && !isLoading) {
+      console.log('🔍 [Inventory] Highlight effect triggered:', {
+        highlightId,
+        hasRef: !!highlightRef.current,
+        isLoading,
+        itemsCount: inventoryItems?.length
+      });
+
+      if (highlightRef.current) {
+        // Wait for layout to settle
+        setTimeout(() => {
+          console.log('📍 [Inventory] Scrolling to highlighted item...');
+          highlightRef.current?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          // Remove highlight parameter after scrolling
+          setTimeout(() => {
+            setSearchParams({}, { replace: true });
+          }, 3000);
+        }, 300);
+      } else {
+        console.warn('⚠️ [Inventory] Highlight ref not found - item may be on a different page or filtered out');
+      }
+    }
+  }, [highlightId, isLoading, inventoryItems, setSearchParams]);
 
   // Cleanup function to hard delete items older than 30 days
   const cleanupOldDeletedItems = React.useCallback(async () => {
@@ -2105,8 +2139,12 @@ export default function InventoryPage() {
                   const quantitySold = Number.isFinite(rawSold) && rawSold >= 0 ? rawSold : 0;
                   const remaining = Math.max(quantity - quantitySold, 0);
                   return (
-                    <div key={item.id} className="group block">
-                      <div className={`relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-border/60'} bg-card/60 hover:bg-muted/40 transition-colors`}>
+                    <div 
+                      key={item.id} 
+                      className="group block"
+                      ref={highlightId && item.id === highlightId ? highlightRef : null}
+                    >
+                      <div className={`relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-border/60'} bg-card/60 hover:bg-muted/40 transition-colors`}>
                         <div 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2197,10 +2235,14 @@ export default function InventoryPage() {
                   }
 
                   return (
-                    <div key={item.id} className="w-full max-w-full">
+                    <div 
+                      key={item.id} 
+                      className="w-full max-w-full"
+                      ref={highlightId && item.id === highlightId ? highlightRef : null}
+                    >
                       {/* Mobile/Tablet list layout - Restructured */}
                       <div
-                        className={`lg:hidden product-list-item relative flex flex-col mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} cursor-pointer hover:shadow-md transition-shadow`}
+                        className={`lg:hidden product-list-item relative flex flex-col mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} cursor-pointer hover:shadow-md transition-shadow`}
                         style={{
                           minHeight: 'auto',
                           height: 'auto',
@@ -2780,7 +2822,7 @@ export default function InventoryPage() {
                             handleSelect(item.id);
                           }
                         }}
-                        className={`hidden lg:block product-list-item group relative overflow-hidden ${listVariations[viewVariation].gridCols === "grid-cols-[220px_1fr_280px]" ? 'rounded-2xl' : 'rounded-xl'} border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
+                        className={`hidden lg:block product-list-item group relative overflow-hidden ${listVariations[viewVariation].gridCols === "grid-cols-[220px_1fr_280px]" ? 'rounded-2xl' : 'rounded-xl'} border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
                       >
                         <div className={`grid ${listVariations[viewVariation].gridCols} min-w-0`}>
                           {/* Image */}
