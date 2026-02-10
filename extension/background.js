@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-fix-sold-filter-and-badge';
+const EXT_BUILD = '2026-02-01-mercari-auth-helper';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -1442,8 +1442,8 @@ async function getMercariAuthHeaders() {
 
     throw new Error(
       `Missing Mercari API session headers (${missing.join(', ')}). ` +
-        `Open https://www.mercari.com/ in this Chrome profile, refresh once, then try again.` +
-        `${ts ? ` (last capture ${Math.max(0, Date.now() - ts)}ms ago` : ' (no captured headers yet'}` +
+        `Please open a Mercari tab, navigate to your listings page, and refresh it once to capture fresh auth headers.` +
+        `${ts ? ` (Headers last captured ${Math.max(0, Date.now() - ts)}ms ago` : ' (No headers captured yet'}` +
         `${src ? ` from ${src}` : ''}${typ ? `, type=${typ}` : ''})`
     );
   }
@@ -3614,7 +3614,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       } catch (e) {
         console.error('🔴 [MERCARI] CREATE_MERCARI_LISTING failed', e);
-        sendResponse({ success: false, error: e?.message || String(e) });
+        
+        // Check if it's a missing auth headers error
+        const errorMsg = e?.message || String(e);
+        if (errorMsg.includes('x-de-device-token')) {
+          sendResponse({ 
+            success: false, 
+            error: 'Mercari connection needs refresh. Please open www.mercari.com/mypage/listings in a new tab, wait for it to load completely, then try listing again.',
+            errorType: 'auth_refresh_needed'
+          });
+        } else {
+          sendResponse({ success: false, error: errorMsg });
+        }
       }
     })();
     return true;
