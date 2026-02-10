@@ -130,6 +130,9 @@ export default async function handler(req, res) {
                   ? new Date(item.startTime).toISOString().split('T')[0]
                   : new Date().toISOString().split('T')[0],
               notes: null, // User can add their own notes
+              mercari_item_id: item.itemId, // Store Mercari item ID for reference
+              mercari_likes: item.numLikes || 0, // Store likes/favorites count
+              mercari_views: item.views || 0, // Store page views count
             })
             .select('id')
             .single();
@@ -156,6 +159,23 @@ export default async function handler(req, res) {
               console.error(`⚠️ Failed to update inventory status to sold:`, updateError);
             } else {
               console.log(`✅ Updated inventory item status to 'sold'`);
+            }
+          }
+          
+          // Always update Mercari metrics for existing items (likes/views can change)
+          if (!isSoldItem) {
+            const { error: metricsError } = await supabase
+              .from('inventory_items')
+              .update({ 
+                mercari_likes: item.numLikes || 0,
+                mercari_views: item.views || 0
+              })
+              .eq('id', inventoryId);
+            
+            if (metricsError) {
+              console.error(`⚠️ Failed to update Mercari metrics:`, metricsError);
+            } else {
+              console.log(`✅ Updated Mercari metrics (likes: ${item.numLikes}, views: ${item.views})`);
             }
           }
         }

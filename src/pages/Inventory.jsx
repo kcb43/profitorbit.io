@@ -2144,6 +2144,28 @@ export default function InventoryPage() {
                             ${Number(item.purchase_price || 0).toFixed(2)}
                             {item.purchase_date ? ` • ${format(parseISO(item.purchase_date), "MMM d, yyyy")}` : ""}
                           </div>
+                          {/* Show Mercari metrics for items from Mercari source */}
+                          {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && item.status !== 'sold' && (
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                              {item.mercari_likes > 0 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">
+                                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                                  </svg>
+                                  {item.mercari_likes}
+                                </span>
+                              )}
+                              {item.mercari_views > 0 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                  </svg>
+                                  {item.mercari_views}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </Link>
                       </div>
                     </div>
@@ -2950,6 +2972,38 @@ export default function InventoryPage() {
                                         {item.source}
                                       </span>
                                     </div>
+                                  )}
+                                  {/* Show Mercari metrics for items from Mercari */}
+                                  {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && item.status !== 'sold' && (
+                                    <>
+                                      {item.mercari_likes > 0 && (
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-muted-foreground text-xs font-semibold inline-flex items-center gap-1">
+                                            <svg className="w-3 h-3 text-pink-600 dark:text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                                            </svg>
+                                            Likes
+                                          </span>
+                                          <span className="font-bold text-pink-600 dark:text-pink-400 text-right">
+                                            {item.mercari_likes}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {item.mercari_views > 0 && (
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-muted-foreground text-xs font-semibold inline-flex items-center gap-1">
+                                            <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                            </svg>
+                                            Views
+                                          </span>
+                                          <span className="font-bold text-blue-600 dark:text-blue-400 text-right">
+                                            {item.mercari_views}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </>
                               )}

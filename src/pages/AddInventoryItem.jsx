@@ -225,7 +225,9 @@ export default function AddInventoryItem() {
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,
         return_deadline: isCopying ? "" : (dataToLoad.return_deadline || ""),
-        photos: photos
+        photos: photos,
+        mercari_likes: dataToLoad.mercari_likes || 0, // Load Mercari likes
+        mercari_views: dataToLoad.mercari_views || 0, // Load Mercari views
       });
       
       // Debug log to verify data is loaded
@@ -1227,6 +1229,46 @@ export default function AddInventoryItem() {
                           className="w-full text-foreground bg-background"
                         />
                     </div>
+                    
+                    {/* Mercari Metrics Display (read-only) */}
+                    {itemId && formData.source === 'Mercari' && (formData.mercari_likes > 0 || formData.mercari_views > 0) && formData.status !== 'sold' && (
+                      <div className="md:col-span-2 space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <Label className="text-foreground flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                          </svg>
+                          Mercari Performance Metrics
+                        </Label>
+                        <div className="flex gap-4">
+                          {formData.mercari_likes > 0 && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card rounded-md border border-pink-200 dark:border-pink-800">
+                              <svg className="w-5 h-5 text-pink-600 dark:text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                              </svg>
+                              <div>
+                                <div className="text-xs text-muted-foreground">Likes</div>
+                                <div className="text-lg font-bold text-pink-600 dark:text-pink-400">{formData.mercari_likes}</div>
+                              </div>
+                            </div>
+                          )}
+                          {formData.mercari_views > 0 && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-card rounded-md border border-blue-200 dark:border-blue-800">
+                              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                              </svg>
+                              <div>
+                                <div className="text-xs text-muted-foreground">Views</div>
+                                <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{formData.mercari_views}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          These metrics are from your Mercari listing and update when you sync items.
+                        </p>
+                      </div>
+                    )}
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                     <Button 

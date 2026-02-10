@@ -4,7 +4,7 @@
  * Version: 3.1.0-user-items-query
  */
 
-console.log('🟣 Mercari API module loading (v3.2.0-trading-status)...');
+console.log('🟣 Mercari API module loading (v3.3.0-metrics)...');
 
 // NEW: GraphQL query for user items (correct query for sold & available items)
 // This is the query Mercari uses on the "Complete", "In Progress", and "Active" pages
@@ -682,6 +682,7 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
         favorites: item.favorites || 0,
         numLikes: item.numLikes || 0,
         autoLiked: item.autoLiked || false,
+        views: item.itemPv || 0, // Page views counter
         
         // Posted/listed date (use created or updated timestamp)
         startTime: item.created ? new Date(item.created * 1000).toISOString() : 
@@ -819,6 +820,7 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
                 favorites: item.favorites || 0,
                 numLikes: item.numLikes || 0,
                 autoLiked: item.autoLiked || false,
+                views: item.itemPv || 0, // Page views counter
                 startTime: item.created ? new Date(item.created * 1000).toISOString() : 
                            item.updated ? new Date(item.updated * 1000).toISOString() : null,
                 listingDate: item.created ? new Date(item.created * 1000).toISOString() :
