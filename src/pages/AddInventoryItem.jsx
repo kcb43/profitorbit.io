@@ -1230,8 +1230,8 @@ export default function AddInventoryItem() {
                         />
                     </div>
                     
-                    {/* Mercari Metrics Display (read-only) - only for on_sale/available items */}
-                    {itemId && formData.source === 'Mercari' && (formData.mercari_likes > 0 || formData.mercari_views > 0) && (formData.status === 'available' || formData.status === 'listed') && (
+                    {/* Mercari Metrics Display (read-only) - only for on_sale/available/listed items */}
+                    {itemId && formData.source === 'Mercari' && (formData.mercari_likes > 0 || formData.mercari_views > 0) && (formData.status === 'available' || formData.status === 'listed' || formData.status === 'on_sale') && (
                       <div className="md:col-span-2 space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <Label className="text-foreground flex items-center gap-2">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
