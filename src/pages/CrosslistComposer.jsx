@@ -35043,7 +35043,7 @@ export default function CrosslistComposer() {
     return (
       <button
         type="button"
-        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-background border border-border p-1 shadow-sm hover:bg-accent transition-colors"
         onClick={onClick}
         aria-label={labelText}
       >
@@ -35146,7 +35146,7 @@ export default function CrosslistComposer() {
     return (
       <button
         type="button"
-        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-background border border-border p-1 shadow-sm hover:bg-accent transition-colors"
         onClick={onClick}
         aria-label={labelText}
       >
@@ -35245,7 +35245,7 @@ export default function CrosslistComposer() {
     return (
       <button
         type="button"
-        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-background border border-border p-1 shadow-sm hover:bg-accent transition-colors"
         onClick={onClick}
         aria-label={labelText}
       >
@@ -35343,7 +35343,7 @@ export default function CrosslistComposer() {
     return (
       <button
         type="button"
-        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-white border border-black/10 p-1 shadow-sm"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-background border border-border p-1 shadow-sm hover:bg-accent transition-colors"
         onClick={onClick}
         aria-label={labelText}
       >
