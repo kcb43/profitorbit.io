@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-mercari-auth-helper';
+const EXT_BUILD = '2026-02-01-mercari-device-token-fallback';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -1398,27 +1398,45 @@ async function getMercariAuthHeaders() {
 
   if (missing.length) {
     // Mercari sometimes stops sending x-de-device-token on the first captured API call.
-    // If that's the only missing piece, try to read it from an existing Mercari tab (no new tabs).
-    if (missing.length === 1 && missing[0] === 'x-de-device-token') {
+    // If device token is missing, try to read it from an existing Mercari tab (no new tabs).
+    if (missing.includes('x-de-device-token')) {
+      console.log('🟡 [MERCARI] x-de-device-token missing, attempting to read from tab...');
       const attempt = await tryPopulateDeviceTokenFromTab();
+      console.log('🟡 [MERCARI] Device token fallback result:', attempt);
+      
       try {
         chrome.storage.local.set({ mercariDeviceTokenAttempt: { t: Date.now(), attempt } }, () => {});
       } catch (_) {}
 
       if (attempt?.ok && attempt?.out?.best?.value) {
         const token = String(attempt.out.best.value);
+        console.log('✅ [MERCARI] Found device token from tab:', token.substring(0, 20) + '...');
         try {
           const current = await chrome.storage.local.get(['mercariApiHeaders']);
           const prev = (current?.mercariApiHeaders && typeof current.mercariApiHeaders === 'object') ? current.mercariApiHeaders : {};
           const next = { ...prev, 'x-de-device-token': token };
           await chrome.storage.local.set({ mercariApiHeaders: next, mercariApiHeadersTimestamp: Date.now() });
+          console.log('✅ [MERCARI] Updated storage with device token');
         } catch (_) {}
+        
         // Re-read after setting
         const reread = await chrome.storage.local.get(['mercariApiHeaders']);
         const hdrs2 = reread?.mercariApiHeaders || null;
-        if (hdrs2?.authorization && hdrs2?.['x-csrf-token'] && hdrs2?.['x-de-device-token']) {
+        
+        // Check if ALL required headers are now present
+        const stillMissing = [];
+        if (!hdrs2?.authorization) stillMissing.push('authorization');
+        if (!hdrs2?.['x-csrf-token']) stillMissing.push('x-csrf-token');
+        if (!hdrs2?.['x-de-device-token']) stillMissing.push('x-de-device-token');
+        
+        if (stillMissing.length === 0) {
+          console.log('✅ [MERCARI] All required headers now present after device token fallback');
           return hdrs2;
+        } else {
+          console.log('⚠️ [MERCARI] Still missing headers after device token fallback:', stillMissing);
         }
+      } else {
+        console.log('❌ [MERCARI] Device token fallback failed:', attempt?.reason || 'unknown');
       }
     }
 
