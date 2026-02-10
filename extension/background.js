@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-mercari-tab-detection-v2';
+const EXT_BUILD = '2026-02-01-mercari-proactive-token-capture';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -1481,11 +1481,11 @@ async function getMercariAuthHeaders() {
     // Provide actionable guidance based on what's missing
     let guidance = '';
     if (missing.includes('x-de-device-token') && !missing.includes('authorization') && !missing.includes('x-csrf-token')) {
-      // Only device token is missing - this is the common case
-      guidance = 'Please open www.mercari.com in a new tab (any Mercari page will work), wait for it to load completely, then try listing again. The extension will automatically capture the missing authentication token from your active browser session.';
+      // Only device token is missing - this shouldn't happen with proactive capture, but provide guidance anyway
+      guidance = 'The Mercari authentication token expired or was not captured. Please click "Login" in Settings to refresh your Mercari connection, then try again.';
     } else {
       // Multiple headers missing - need full re-auth
-      guidance = 'Please open www.mercari.com in a new tab, log in if needed, and browse to any page (your listings, search, etc.). The extension will capture fresh authentication tokens from your browser session.';
+      guidance = 'Mercari authentication is missing or expired. Please click "Login" in Settings to connect your Mercari account, then try again.';
     }
 
     throw new Error(
@@ -2947,8 +2947,116 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (type === 'GET_ALL_STATUS') {
-    sendResponse({ status: marketplaceStatus });
-    return true;
+    // When status is queried, if Mercari is logged in but device token is missing,
+    // proactively try to read it from any open Mercari tab
+    (async () => {
+      try {
+        const mercariLoggedIn = marketplaceStatus?.mercari?.loggedIn === true;
+        
+        if (mercariLoggedIn) {
+          console.log('🔍 [MERCARI] User is logged in, checking if device token needs refresh...');
+          
+          // Check current stored headers
+          const stored = await chrome.storage.local.get(['mercariApiHeaders']);
+          const hdrs = stored?.mercariApiHeaders || null;
+          const hasDeviceToken = !!hdrs?.['x-de-device-token'];
+          
+          if (!hasDeviceToken) {
+            console.log('⚠️ [MERCARI] Device token missing, attempting to populate from tab...');
+            
+            // Try to populate device token from localStorage
+            const tabId = await pickMercariTabId();
+            if (tabId) {
+              console.log(`🔍 [MERCARI] Found Mercari tab ${tabId}, reading device token...`);
+              
+              try {
+                const res = await chrome.scripting.executeScript({
+                  target: { tabId },
+                  func: () => {
+                    const candidates = [];
+                    const add = (source, key, value) => {
+                      try {
+                        const v = typeof value === 'string' ? value : value == null ? '' : String(value);
+                        if (!v || v.length < 8) return;
+                        candidates.push({ source, key: key ? String(key) : null, value: v });
+                      } catch (_) {}
+                    };
+
+                    // Common guesses
+                    try {
+                      add('localStorage', 'de_device_token', localStorage.getItem('de_device_token'));
+                      add('localStorage', 'x-de-device-token', localStorage.getItem('x-de-device-token'));
+                      add('localStorage', 'device_token', localStorage.getItem('device_token'));
+                      add('localStorage', 'deviceToken', localStorage.getItem('deviceToken'));
+                    } catch (_) {}
+
+                    // Scan localStorage keys
+                    try {
+                      for (let i = 0; i < localStorage.length; i += 1) {
+                        const k = localStorage.key(i);
+                        if (!k) continue;
+                        const lk = k.toLowerCase();
+                        if (!lk.includes('device') && !lk.includes('de_') && !lk.includes('token')) continue;
+                        add('localStorageScan', k, localStorage.getItem(k));
+                      }
+                    } catch (_) {}
+
+                    // Pick best candidate
+                    const score = (c) => {
+                      const k = (c.key || '').toLowerCase();
+                      let s = 0;
+                      if (k.includes('de_device')) s += 5;
+                      if (k.includes('x-de-device-token')) s += 5;
+                      if (k.includes('device_token')) s += 4;
+                      if (k.includes('device')) s += 2;
+                      if (k.includes('token')) s += 1;
+                      if (c.source === 'localStorage') s += 2;
+                      return s;
+                    };
+                    candidates.sort((a, b) => score(b) - score(a));
+                    const best = candidates[0] || null;
+                    return best ? { value: best.value, key: best.key, source: best.source } : null;
+                  },
+                });
+                
+                const result = res?.[0]?.result || null;
+                if (result?.value) {
+                  console.log(`✅ [MERCARI] Found device token from ${result.source}/${result.key}:`, result.value.substring(0, 20) + '...');
+                  
+                  // Merge with existing headers
+                  const current = await chrome.storage.local.get(['mercariApiHeaders']);
+                  const prev = (current?.mercariApiHeaders && typeof current.mercariApiHeaders === 'object') ? current.mercariApiHeaders : {};
+                  const next = { ...prev, 'x-de-device-token': result.value };
+                  
+                  await chrome.storage.local.set({
+                    mercariApiHeaders: next,
+                    mercariApiHeadersTimestamp: Date.now(),
+                    mercariApiHeadersSourceUrl: 'localStorage_proactive_read',
+                    mercariApiHeadersType: 'proactive',
+                  });
+                  
+                  console.log('✅ [MERCARI] Proactively stored device token');
+                } else {
+                  console.log('⚠️ [MERCARI] No device token found in tab localStorage');
+                }
+              } catch (e) {
+                console.log('❌ [MERCARI] Error reading device token from tab:', e);
+              }
+            } else {
+              console.log('⚠️ [MERCARI] No Mercari tab found to read device token from');
+            }
+          } else {
+            console.log('✅ [MERCARI] Device token already present');
+          }
+        }
+        
+        sendResponse({ status: marketplaceStatus });
+      } catch (e) {
+        console.error('❌ [MERCARI] Error in GET_ALL_STATUS proactive check:', e);
+        sendResponse({ status: marketplaceStatus });
+      }
+    })();
+    return true; // Keep channel open for async response
   }
 
   if (type === 'GET_MERCARI_HEADERS_STATUS') {
