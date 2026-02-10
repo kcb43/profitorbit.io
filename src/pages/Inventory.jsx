@@ -2144,8 +2144,8 @@ export default function InventoryPage() {
                             ${Number(item.purchase_price || 0).toFixed(2)}
                             {item.purchase_date ? ` • ${format(parseISO(item.purchase_date), "MMM d, yyyy")}` : ""}
                           </div>
-                          {/* Show Mercari metrics for items from Mercari source */}
-                          {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && item.status !== 'sold' && (
+                          {/* Show Mercari metrics for items from Mercari source (on_sale/available status only) */}
+                          {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && (item.status === 'available' || item.status === 'listed' || item.status === 'on_sale') && (
                             <div className="mt-2 flex items-center gap-2 flex-wrap">
                               {item.mercari_likes > 0 && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">
@@ -2973,8 +2973,8 @@ export default function InventoryPage() {
                                       </span>
                                     </div>
                                   )}
-                                  {/* Show Mercari metrics for items from Mercari */}
-                                  {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && item.status !== 'sold' && (
+                                  {/* Show Mercari metrics for items from Mercari (on_sale/available status only) */}
+                                  {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && (item.status === 'available' || item.status === 'listed' || item.status === 'on_sale') && (
                                     <>
                                       {item.mercari_likes > 0 && (
                                         <div className="flex items-center justify-between gap-3">

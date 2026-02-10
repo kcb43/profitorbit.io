@@ -2284,8 +2284,8 @@ export default function Import() {
                             </>
                           )}
                           ${item.price}
-                          {/* Show Mercari likes and views for Available items only */}
-                          {selectedSource === "mercari" && item.status !== "sold" && item.status !== "sold_out" && (
+                          {/* Show Mercari likes and views for Available items only (on_sale status) */}
+                          {selectedSource === "mercari" && (item.status === "on_sale" || item.status === "available") && (
                             <>
                               {(item.numLikes > 0 || item.views > 0) && (
                                 <>
