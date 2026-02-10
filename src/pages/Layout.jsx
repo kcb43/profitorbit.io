@@ -183,7 +183,7 @@ export default function Layout({ children }) {
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background hidden md:flex">
           <SidebarContent className="flex flex-col flex-grow px-2 pt-0 pb-4">
             {/* Logo/Branding */}
-            <div className="px-3 mb-1 flex justify-center pt-2">
+            <div className="px-3 mb-0 flex justify-center pt-1">
               <img 
                 src={themes[theme]?.isDark ? "/orben-logo-v3-dark.svg" : "/orben-logo-v3.svg"}
                 alt="Orben Logo" 
@@ -192,7 +192,7 @@ export default function Layout({ children }) {
             </div>
 
             {/* Navigation Sections */}
-            <div className="flex-grow overflow-auto pb-24 -mt-2 po-scrollbar-hide">
+            <div className="flex-grow overflow-auto pb-24 -mt-3 po-scrollbar-hide">
               {navigationCategories.map((category, categoryIndex) => (
                 <div key={category.title} className="mb-4">
                   {/* Section Header */}
