@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
@@ -9,8 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Send, ExternalLink } from "lucide-react";
+import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const MARKETPLACES = [
   { id: "ebay", label: "eBay", color: "bg-blue-600" },
@@ -19,6 +30,11 @@ const MARKETPLACES = [
   { id: "poshmark", label: "Poshmark", color: "bg-pink-600" },
   { id: "depop", label: "Depop", color: "bg-red-600" },
   { id: "grailed", label: "Grailed", color: "bg-black" },
+];
+
+const OFFER_PRICE_BASED_ON_OPTIONS = [
+  { value: "vendoo_price", label: "Vendoo price" },
+  { value: "marketplace_price", label: "Marketplace price" },
 ];
 
 function readMarketplaceListings() {
@@ -31,6 +47,47 @@ function readMarketplaceListings() {
   }
 }
 
+function loadOfferDefaults(marketplace) {
+  try {
+    const key = `offer_defaults_${marketplace}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveOfferDefaults(marketplace, data) {
+  try {
+    const key = `offer_defaults_${marketplace}`;
+    const existing = loadOfferDefaults(marketplace) || {};
+    localStorage.setItem(key, JSON.stringify({ ...existing, ...data }));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function loadOffersSentCount() {
+  try {
+    const raw = localStorage.getItem("offers_sent_count");
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveOffersSentCount(counts) {
+  try {
+    localStorage.setItem("offers_sent_count", JSON.stringify(counts));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 export default function ProToolsSendOffers() {
   const { toast } = useToast();
   const location = useLocation();
@@ -40,7 +97,63 @@ export default function ProToolsSendOffers() {
 
   const [marketplace, setMarketplace] = useState(initialMkt);
   const [offerPct, setOfferPct] = useState("10");
+  const [offerPriceBasedOn, setOfferPriceBasedOn] = useState("vendoo_price");
+  const [offerMessage, setOfferMessage] = useState("");
   const [selectedIds, setSelectedIds] = useState(() => (initialItemId ? [initialItemId] : []));
+  const [editingOfferId, setEditingOfferId] = useState(null);
+  const [customOffers, setCustomOffers] = useState({});
+  const [isLoadingEbayItems, setIsLoadingEbayItems] = useState(false);
+  const [ebayConnectionError, setEbayConnectionError] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [offersSentCount, setOffersSentCount] = useState(() => loadOffersSentCount());
+
+  // Save offers sent count to localStorage whenever it changes
+  useEffect(() => {
+    saveOffersSentCount(offersSentCount);
+  }, [offersSentCount]);
+
+  // Load defaults when marketplace changes
+  useEffect(() => {
+    const defaults = loadOfferDefaults(marketplace);
+    if (defaults) {
+      if (defaults.offerPct) setOfferPct(String(defaults.offerPct));
+      if (defaults.offerPriceBasedOn) setOfferPriceBasedOn(defaults.offerPriceBasedOn);
+      if (defaults.offerMessage) setOfferMessage(defaults.offerMessage);
+    }
+  }, [marketplace]);
+
+  // Auto-fetch eBay items when marketplace is eBay
+  useEffect(() => {
+    if (marketplace === "ebay") {
+      fetchEbayItems();
+    }
+  }, [marketplace]);
+
+  const fetchEbayItems = async () => {
+    setIsLoadingEbayItems(true);
+    setEbayConnectionError(false);
+    try {
+      // Check if extension is available
+      const ext = window?.ProfitOrbitExtension;
+      if (typeof ext?.getMarketplaceStatus === "function") {
+        const status = await ext.getMarketplaceStatus("ebay");
+        if (!status?.connected) {
+          setEbayConnectionError(true);
+          setIsLoadingEbayItems(false);
+          return;
+        }
+      }
+
+      // Attempt to fetch eBay items that are eligible for offers
+      // This would typically call the extension to get active listings from eBay
+      // For now, we'll rely on the inventory items that have eBay connections
+    } catch (e) {
+      console.error("Error fetching eBay items:", e);
+      setEbayConnectionError(true);
+    } finally {
+      setIsLoadingEbayItems(false);
+    }
+  };
 
   const { data: inventoryItems = [], isLoading } = useQuery({
     queryKey: ["inventoryItems"],
@@ -68,18 +181,45 @@ export default function ProToolsSendOffers() {
       .map((it) => {
         const id = String(it.id);
         const listing = activeListingsByItemId.get(id);
-        const basePrice =
-          Number(it?.listing_price) ||
-          Number(it?.price) ||
-          Number(it?.purchase_price) ||
-          0;
-        const offerPrice = Math.max(0, basePrice * (1 - safePct / 100));
+        
+        // Vendoo price = our listing price or purchase price
+        const vendooPrice = Number(it?.listing_price) || Number(it?.price) || Number(it?.purchase_price) || 0;
+        
+        // Marketplace price = the price on the actual marketplace listing
+        const mktplacePrice = Number(listing?.marketplace_price) || vendooPrice;
+        
+        // Base price depends on "offer price based on" selection
+        const basePrice = offerPriceBasedOn === "marketplace_price" ? mktplacePrice : vendooPrice;
+        
+        // Calculate offer price (check if custom override exists)
+        const defaultOfferPrice = Math.max(0, basePrice * (1 - safePct / 100));
+        const offerPrice = customOffers[id] !== undefined ? customOffers[id] : defaultOfferPrice;
+        
+        // Discount = base price - offer price
+        const discount = Math.max(0, basePrice - offerPrice);
+        
+        // COG = cost of goods
+        const cog = Number(it?.purchase_price) || 0;
+        
+        // Earnings = offer price - cog
+        const earnings = Math.max(0, offerPrice - cog);
+        
+        // Likes/watchers count (from listing data or Mercari metrics)
+        const likes = Number(listing?.likes) || Number(it?.mercari_likes) || 0;
+        
         const url = String(listing?.marketplace_listing_url || "");
+        
         return {
           id,
           title: it?.item_name || "Untitled item",
-          basePrice,
+          image: it?.photos?.[0] || "",
+          likes,
+          vendooPrice,
+          mktplacePrice,
+          discount,
           offerPrice,
+          cog,
+          earnings,
           listingUrl: url && url.startsWith("http") ? url : "",
         };
       });
@@ -88,7 +228,7 @@ export default function ProToolsSendOffers() {
     const pinned = initialItemId ? eligible.filter((r) => r.id === String(initialItemId)) : [];
     const rest = initialItemId ? eligible.filter((r) => r.id !== String(initialItemId)) : eligible;
     return [...pinned, ...rest];
-  }, [inventoryItems, activeListingsByItemId, offerPct, initialItemId]);
+  }, [inventoryItems, activeListingsByItemId, offerPct, offerPriceBasedOn, customOffers, initialItemId]);
 
   const selectedSet = useMemo(() => new Set(selectedIds.map(String)), [selectedIds]);
   const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(r.id));
@@ -107,6 +247,36 @@ export default function ProToolsSendOffers() {
     });
   };
 
+  const updateCustomOffer = (id, value) => {
+    const price = parseFloat(value);
+    if (Number.isFinite(price) && price >= 0) {
+      setCustomOffers((prev) => ({ ...prev, [id]: price }));
+      setEditingOfferId(null);
+    }
+  };
+
+  const saveDefaultOffer = () => {
+    const success = saveOfferDefaults(marketplace, {
+      offerPct: Number(offerPct),
+    });
+    if (success) {
+      toast({ title: "Saved!", description: "Offer percentage saved as default for " + MARKETPLACES.find(m => m.id === marketplace)?.label });
+    } else {
+      toast({ title: "Error", description: "Failed to save defaults", variant: "destructive" });
+    }
+  };
+
+  const saveDefaultOfferPriceBasedOn = () => {
+    const success = saveOfferDefaults(marketplace, {
+      offerPriceBasedOn,
+    });
+    if (success) {
+      toast({ title: "Saved!", description: "Offer price basis saved as default for " + MARKETPLACES.find(m => m.id === marketplace)?.label });
+    } else {
+      toast({ title: "Error", description: "Failed to save defaults", variant: "destructive" });
+    }
+  };
+
   const runSendOffers = async () => {
     const targets = rows.filter((r) => selectedSet.has(r.id));
     if (!targets.length) {
@@ -120,7 +290,15 @@ export default function ProToolsSendOffers() {
         t: Date.now(),
         marketplace,
         offerPct: Number(offerPct),
-        targets: targets.map((t) => ({ id: t.id, listingUrl: t.listingUrl })),
+        offerPriceBasedOn,
+        offerMessage,
+        targets: targets.map((t) => ({
+          id: t.id,
+          listingUrl: t.listingUrl,
+          vendooPrice: t.vendooPrice,
+          mktplacePrice: t.mktplacePrice,
+          offerPrice: t.offerPrice,
+        })),
       };
       localStorage.setItem("po_send_offers_last_draft", JSON.stringify(draft));
     } catch (_) {}
@@ -132,18 +310,33 @@ export default function ProToolsSendOffers() {
         const resp = await ext.sendOffersBulk({
           marketplace,
           offerPct: Number(offerPct),
-          targets: targets.map((t) => ({ inventoryItemId: t.id, listingUrl: t.listingUrl })),
+          offerPriceBasedOn,
+          message: offerMessage || undefined,
+          targets: targets.map((t) => ({
+            inventoryItemId: t.id,
+            listingUrl: t.listingUrl,
+            vendooPrice: t.vendooPrice,
+            mktplacePrice: t.mktplacePrice,
+            offerPrice: t.offerPrice,
+          })),
         });
         if (!resp?.success) {
           throw new Error(resp?.error || "Send Offers failed");
         }
-        toast({ title: "Offers queued", description: "Offers have been queued for sending." });
+        toast({ title: "Offers sent!", description: `${targets.length} offers have been sent.` });
+        // Update offers sent count for this marketplace
+        setOffersSentCount((prev) => ({
+          ...prev,
+          [marketplace]: (prev[marketplace] || 0) + targets.length,
+        }));
+        // Clear selection
+        setSelectedIds([]);
         return;
       }
     } catch (e) {
       toast({
         title: "Automation not wired yet",
-        description: e?.message || "We’ll wire Send Offers to extension recording/replay next.",
+        description: e?.message || "We'll wire Send Offers to extension recording/replay next.",
       });
       return;
     }
@@ -171,7 +364,7 @@ export default function ProToolsSendOffers() {
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words mt-1">Send Offers</h1>
             <p className="text-sm text-muted-foreground break-words">
-              Send bulk offers to likers/watchers. We’ll wire marketplace automation via extension recording.
+              Send bulk offers to likers/watchers. We'll wire marketplace automation via extension recording.
             </p>
           </div>
           <Button onClick={runSendOffers} className="bg-emerald-600 hover:bg-emerald-700">
@@ -190,6 +383,7 @@ export default function ProToolsSendOffers() {
               {MARKETPLACES.map((m) => {
                 const isActive = marketplace === m.id;
                 const count = Array.from(activeListingsByItemId.values()).filter((l) => l?.marketplace === m.id).length;
+                const sentCount = offersSentCount[m.id] || 0;
                 return (
                   <button
                     key={m.id}
@@ -208,7 +402,13 @@ export default function ProToolsSendOffers() {
                         <div className="text-xs text-muted-foreground truncate">{count} active</div>
                       </div>
                     </div>
-                    {isActive ? <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">On</Badge> : <Badge variant="secondary">Off</Badge>}
+                    {isActive ? (
+                      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">On</Badge>
+                    ) : sentCount > 0 ? (
+                      <Badge variant="secondary">{sentCount}</Badge>
+                    ) : (
+                      <Badge variant="secondary">Off</Badge>
+                    )}
                   </button>
                 );
               })}
@@ -217,37 +417,144 @@ export default function ProToolsSendOffers() {
 
           {/* Main */}
           <div className="lg:col-span-9 space-y-3 min-w-0">
+            {/* eBay connection error */}
+            {marketplace === "ebay" && ebayConnectionError && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  We had trouble accessing your eBay account. Please log into{" "}
+                  <a
+                    href="https://ebay.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium"
+                  >
+                    https://ebay.com
+                  </a>{" "}
+                  in a different tab or your settings. Then, click on "Connect" button, so we can try again.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Settings */}
             <Card className="border border-border/60 bg-card/60 min-w-0">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold">{MARKETPLACES.find((m) => m.id === marketplace)?.label || "Marketplace"}</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 min-w-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+                  {/* Offer field */}
                   <div className="min-w-0">
-                    <Label className="text-xs">Offer % off</Label>
-                    <Input
-                      value={offerPct}
-                      onChange={(e) => setOfferPct(e.target.value)}
-                      inputMode="decimal"
-                      placeholder="10"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="md:col-span-2 min-w-0">
-                    <Label className="text-xs">Notes</Label>
-                    <div className="mt-1 text-xs text-muted-foreground break-words">
-                      This UI is live now; automation will be wired via extension recording/replay per marketplace.
+                    <Label className="text-xs font-medium">Offer</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="relative flex-1">
+                        <Input
+                          value={offerPct}
+                          onChange={(e) => setOfferPct(e.target.value)}
+                          inputMode="decimal"
+                          placeholder="10"
+                          className="pr-8"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={saveDefaultOffer}
+                        title="Save as default"
+                        className="flex-shrink-0"
+                      >
+                        <Save className="h-4 w-4 text-foreground dark:text-foreground" />
+                      </Button>
                     </div>
                   </div>
+
+                  {/* Offer price based on */}
+                  <div className="min-w-0">
+                    <Label className="text-xs font-medium">Offer price based on</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Select value={offerPriceBasedOn} onValueChange={setOfferPriceBasedOn}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OFFER_PRICE_BASED_ON_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={saveDefaultOfferPriceBasedOn}
+                        title="Save as default"
+                        className="flex-shrink-0"
+                      >
+                        <Save className="h-4 w-4 text-foreground dark:text-foreground" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add Message */}
+                <div className="mt-4">
+                  <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
+                    <DialogTrigger asChild>
+                      <Button type="button" variant="link" className="text-blue-600 dark:text-blue-400 p-0 h-auto">
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Add Message
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Offer Message</DialogTitle>
+                        <DialogDescription>
+                          Add a personalized message to include with your offers. This will be sent to buyers when they receive the offer.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="offer-message">Message</Label>
+                          <Textarea
+                            id="offer-message"
+                            value={offerMessage}
+                            onChange={(e) => setOfferMessage(e.target.value)}
+                            placeholder="Example: Thank you for your interest! I'd love to make you a deal."
+                            className="mt-1"
+                            rows={4}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => setShowMessageDialog(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="button" onClick={() => setShowMessageDialog(false)}>
+                            Save Message
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  {offerMessage && (
+                    <div className="mt-2 p-2 bg-muted rounded text-xs">
+                      <strong>Message preview:</strong> {offerMessage}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Eligible Listings Table */}
             <Card className="border border-border/60 bg-card/60 min-w-0">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center justify-between gap-2">
                   <span>Eligible Listings</span>
-                  <span className="text-xs text-muted-foreground">{isLoading ? "Loading…" : `${rows.length} items`}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {isLoading || isLoadingEbayItems ? "Loading…" : `${rows.length} items`}
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0 min-w-0">
@@ -257,58 +564,119 @@ export default function ProToolsSendOffers() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[720px]">
+                  <table className="w-full text-sm min-w-[1200px]">
                     <thead>
                       <tr className="text-xs text-muted-foreground border-b">
                         <th className="py-2 text-left w-10"></th>
-                        <th className="py-2 text-left">Title</th>
-                        <th className="py-2 text-right">Price</th>
+                        <th className="py-2 text-left">Image & Title</th>
+                        <th className="py-2 text-center">Likes</th>
+                        <th className="py-2 text-right">Vendoo Price</th>
+                        <th className="py-2 text-right">Mktplace Price</th>
+                        <th className="py-2 text-right">Discount</th>
                         <th className="py-2 text-right">Offer</th>
-                        <th className="py-2 text-right">Listing</th>
+                        <th className="py-2 text-right">COG</th>
+                        <th className="py-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            Earnings
+                            <Info className="h-3 w-3" title="Offer Price - Cost of Goods" />
+                          </div>
+                        </th>
+                        <th className="py-2 text-center">View</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((r) => {
                         const checked = selectedSet.has(r.id);
+                        const isEditing = editingOfferId === r.id;
                         return (
                           <tr key={r.id} className="border-b last:border-b-0">
                             <td className="py-3">
                               <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(r.id, Boolean(v))} />
                             </td>
                             <td className="py-3 pr-3">
-                              <div className="font-medium text-foreground truncate max-w-[420px]">{r.title}</div>
-                              <div className="text-xs text-muted-foreground">{r.id}</div>
+                              <div className="flex items-center gap-2">
+                                {r.image && (
+                                  <img
+                                    src={r.image}
+                                    alt={r.title}
+                                    className="h-12 w-12 rounded object-cover flex-shrink-0"
+                                  />
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-medium text-foreground truncate max-w-[300px]">{r.title}</div>
+                                  <div className="text-xs text-muted-foreground">{r.id}</div>
+                                </div>
+                              </div>
                             </td>
-                            <td className="py-3 text-right tabular-nums">${r.basePrice.toFixed(2)}</td>
-                            <td className="py-3 text-right tabular-nums">${r.offerPrice.toFixed(2)}</td>
+                            <td className="py-3 text-center">
+                              {r.likes > 0 && (
+                                <div className="flex items-center justify-center gap-1 text-pink-600">
+                                  <Heart className="h-3 w-3 fill-current" />
+                                  <span className="text-xs">{r.likes}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 text-right tabular-nums font-medium">
+                              ${r.vendooPrice.toFixed(2)}
+                            </td>
+                            <td className="py-3 text-right tabular-nums">
+                              ${r.mktplacePrice.toFixed(2)}
+                            </td>
+                            <td className="py-3 text-right tabular-nums text-emerald-600">
+                              ${r.discount.toFixed(2)}
+                            </td>
                             <td className="py-3 text-right">
-                              {r.listingUrl ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-2"
-                                  onClick={() => window.open(r.listingUrl, "_blank", "noopener,noreferrer")}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                  View
-                                </Button>
+                              {isEditing ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={r.offerPrice.toFixed(2)}
+                                  onChange={(e) => updateCustomOffer(r.id, e.target.value)}
+                                  onBlur={() => setEditingOfferId(null)}
+                                  className="w-24 text-right"
+                                  autoFocus
+                                />
                               ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
+                                <button
+                                  onClick={() => setEditingOfferId(r.id)}
+                                  className="tabular-nums text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                                >
+                                  ${r.offerPrice.toFixed(2)}
+                                  <Edit className="h-3 w-3" />
+                                </button>
+                              )}
+                            </td>
+                            <td className="py-3 text-right tabular-nums text-muted-foreground">
+                              ${r.cog.toFixed(2)}
+                            </td>
+                            <td className="py-3 text-right tabular-nums font-semibold text-emerald-600">
+                              ${r.earnings.toFixed(2)}
+                            </td>
+                            <td className="py-3 text-center">
+                              {r.listingUrl && (
+                                <a
+                                  href={r.listingUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
                               )}
                             </td>
                           </tr>
                         );
                       })}
-                      {!isLoading && rows.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
-                            No active listings found for this marketplace yet.
-                          </td>
-                        </tr>
-                      ) : null}
                     </tbody>
                   </table>
+
+                  {rows.length === 0 && !isLoading && !isLoadingEbayItems && (
+                    <div className="py-12 text-center text-sm text-muted-foreground">
+                      No eligible listings found for {MARKETPLACES.find((m) => m.id === marketplace)?.label}.
+                      <br />
+                      Make sure you have active listings synced from this marketplace.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -318,4 +686,3 @@ export default function ProToolsSendOffers() {
     </div>
   );
 }
-
