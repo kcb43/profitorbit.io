@@ -750,7 +750,12 @@ export default function ProToolsSendOffers() {
                         <th className="py-2 px-2 text-left w-8"></th>
                         <th className="py-2 px-2 text-left">Item</th>
                         <th className="py-2 px-2 text-center w-16">Likes</th>
-                        <th className="py-2 px-2 text-right w-24">Orben Price</th>
+                        <th className="py-2 px-2 text-center w-20">
+                          <div className="flex items-center justify-center gap-1">
+                            Offers Sent
+                            <Info className="h-3 w-3" title="Number of offers sent for this item" />
+                          </div>
+                        </th>
                         <th className="py-2 px-2 text-right w-24">Mktplace Price</th>
                         <th className="py-2 px-2 text-right w-20">Discount</th>
                         <th className="py-2 px-2 text-right w-24">Offer</th>
@@ -841,8 +846,14 @@ export default function ProToolsSendOffers() {
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </td>
-                            <td className="py-2 px-2 text-right tabular-nums font-medium">
-                              ${r.vendooPrice.toFixed(2)}
+                            <td className="py-2 px-2 text-center">
+                              {r.offersSent > 0 ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  {r.offersSent}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
                             </td>
                             <td className="py-2 px-2 text-right tabular-nums">
                               ${r.mktplacePrice.toFixed(2)}
