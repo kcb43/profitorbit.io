@@ -402,6 +402,28 @@ export default function Import() {
       }, {});
       console.log('📊 Status breakdown:', statusCounts);
       
+      // Log view count data for debugging
+      const itemsWithViews = data.listings?.filter(item => item.hitCount > 0) || [];
+      console.log('👁️ Items with views:', itemsWithViews.length);
+      if (itemsWithViews.length > 0) {
+        console.log('👁️ Sample items with views:', itemsWithViews.slice(0, 3).map(item => ({
+          id: item.itemId,
+          title: item.title?.substring(0, 30) + '...',
+          watchCount: item.watchCount,
+          hitCount: item.hitCount,
+          totalImpressions: item.totalImpressions,
+        })));
+      } else {
+        console.log('⚠️ No items have hitCount data. Sample item:', data.listings?.[0] ? {
+          itemId: data.listings[0].itemId,
+          title: data.listings[0].title?.substring(0, 30),
+          status: data.listings[0].status,
+          watchCount: data.listings[0].watchCount,
+          hitCount: data.listings[0].hitCount,
+          hasHitCount: typeof data.listings[0].hitCount !== 'undefined',
+        } : 'No listings');
+      }
+      
       // Log first few items for debugging
       if (data.listings?.length > 0) {
         console.log('📦 Sample items:', data.listings.slice(0, 3).map(item => ({
