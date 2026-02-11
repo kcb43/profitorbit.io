@@ -33,7 +33,7 @@ const MARKETPLACES = [
 ];
 
 const OFFER_PRICE_BASED_ON_OPTIONS = [
-  { value: "vendoo_price", label: "Vendoo price" },
+  { value: "vendoo_price", label: "Orben price" },
   { value: "marketplace_price", label: "Marketplace price" },
 ];
 
@@ -172,6 +172,19 @@ export default function ProToolsSendOffers() {
     return map;
   }, [marketplace]);
 
+  // Count active listings per marketplace for the sidebar
+  const activeListingCountsByMarketplace = useMemo(() => {
+    const listings = readMarketplaceListings();
+    const counts = {};
+    for (const l of listings) {
+      if (!l?.inventory_item_id || !l?.marketplace) continue;
+      const s = String(l?.status || "").toLowerCase();
+      if (s !== "active") continue;
+      counts[l.marketplace] = (counts[l.marketplace] || 0) + 1;
+    }
+    return counts;
+  }, []);
+
   const rows = useMemo(() => {
     const pct = Number(offerPct);
     const safePct = Number.isFinite(pct) ? Math.max(0, Math.min(99, pct)) : 0;
@@ -182,7 +195,7 @@ export default function ProToolsSendOffers() {
         const id = String(it.id);
         const listing = activeListingsByItemId.get(id);
         
-        // Vendoo price = our listing price or purchase price
+        // Orben price = our listing price or purchase price
         const vendooPrice = Number(it?.listing_price) || Number(it?.price) || Number(it?.purchase_price) || 0;
         
         // Marketplace price = the price on the actual marketplace listing
@@ -382,7 +395,7 @@ export default function ProToolsSendOffers() {
             <CardContent className="pt-0 space-y-2">
               {MARKETPLACES.map((m) => {
                 const isActive = marketplace === m.id;
-                const count = Array.from(activeListingsByItemId.values()).filter((l) => l?.marketplace === m.id).length;
+                const count = activeListingCountsByMarketplace[m.id] || 0;
                 const sentCount = offersSentCount[m.id] || 0;
                 return (
                   <button
@@ -561,27 +574,27 @@ export default function ProToolsSendOffers() {
                 <div className="flex items-center gap-2 py-2">
                   <Checkbox checked={allSelected} onCheckedChange={(v) => toggleAll(Boolean(v))} />
                   <span className="text-sm">Select all on this page</span>
+                  <span className="text-xs text-muted-foreground">({rows.length} {rows.length === 1 ? 'item' : 'items'})</span>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[1200px]">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="text-xs text-muted-foreground border-b">
-                        <th className="py-2 text-left w-10"></th>
-                        <th className="py-2 text-left">Image & Title</th>
-                        <th className="py-2 text-center">Likes</th>
-                        <th className="py-2 text-right">Vendoo Price</th>
-                        <th className="py-2 text-right">Mktplace Price</th>
-                        <th className="py-2 text-right">Discount</th>
-                        <th className="py-2 text-right">Offer</th>
-                        <th className="py-2 text-right">COG</th>
-                        <th className="py-2 text-right">
+                        <th className="py-2 px-2 text-left w-8"></th>
+                        <th className="py-2 px-2 text-left">Title</th>
+                        <th className="py-2 px-2 text-center w-16">Likes</th>
+                        <th className="py-2 px-2 text-right w-24">Orben Price</th>
+                        <th className="py-2 px-2 text-right w-24">Mktplace Price</th>
+                        <th className="py-2 px-2 text-right w-20">Discount</th>
+                        <th className="py-2 px-2 text-right w-24">Offer</th>
+                        <th className="py-2 px-2 text-right w-20">COG</th>
+                        <th className="py-2 px-2 text-right w-24">
                           <div className="flex items-center justify-end gap-1">
                             Earnings
                             <Info className="h-3 w-3" title="Offer Price - Cost of Goods" />
                           </div>
                         </th>
-                        <th className="py-2 text-center">View</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -589,43 +602,36 @@ export default function ProToolsSendOffers() {
                         const checked = selectedSet.has(r.id);
                         const isEditing = editingOfferId === r.id;
                         return (
-                          <tr key={r.id} className="border-b last:border-b-0">
-                            <td className="py-3">
+                          <tr key={r.id} className="border-b last:border-b-0 hover:bg-muted/20">
+                            <td className="py-2 px-2">
                               <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(r.id, Boolean(v))} />
                             </td>
-                            <td className="py-3 pr-3">
-                              <div className="flex items-center gap-2">
-                                {r.image && (
-                                  <img
-                                    src={r.image}
-                                    alt={r.title}
-                                    className="h-12 w-12 rounded object-cover flex-shrink-0"
-                                  />
-                                )}
-                                <div className="min-w-0">
-                                  <div className="font-medium text-foreground truncate max-w-[300px]">{r.title}</div>
-                                  <div className="text-xs text-muted-foreground">{r.id}</div>
-                                </div>
+                            <td className="py-2 px-2">
+                              <div className="min-w-0">
+                                <div className="font-medium text-foreground truncate">{r.title}</div>
+                                <div className="text-xs text-muted-foreground">{r.id}</div>
                               </div>
                             </td>
-                            <td className="py-3 text-center">
-                              {r.likes > 0 && (
+                            <td className="py-2 px-2 text-center">
+                              {r.likes > 0 ? (
                                 <div className="flex items-center justify-center gap-1 text-pink-600">
                                   <Heart className="h-3 w-3 fill-current" />
                                   <span className="text-xs">{r.likes}</span>
                                 </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </td>
-                            <td className="py-3 text-right tabular-nums font-medium">
+                            <td className="py-2 px-2 text-right tabular-nums font-medium">
                               ${r.vendooPrice.toFixed(2)}
                             </td>
-                            <td className="py-3 text-right tabular-nums">
+                            <td className="py-2 px-2 text-right tabular-nums">
                               ${r.mktplacePrice.toFixed(2)}
                             </td>
-                            <td className="py-3 text-right tabular-nums text-emerald-600">
+                            <td className="py-2 px-2 text-right tabular-nums text-emerald-600">
                               ${r.discount.toFixed(2)}
                             </td>
-                            <td className="py-3 text-right">
+                            <td className="py-2 px-2 text-right">
                               {isEditing ? (
                                 <Input
                                   type="number"
@@ -633,7 +639,7 @@ export default function ProToolsSendOffers() {
                                   value={r.offerPrice.toFixed(2)}
                                   onChange={(e) => updateCustomOffer(r.id, e.target.value)}
                                   onBlur={() => setEditingOfferId(null)}
-                                  className="w-24 text-right"
+                                  className="w-20 text-right text-xs p-1"
                                   autoFocus
                                 />
                               ) : (
@@ -646,23 +652,11 @@ export default function ProToolsSendOffers() {
                                 </button>
                               )}
                             </td>
-                            <td className="py-3 text-right tabular-nums text-muted-foreground">
+                            <td className="py-2 px-2 text-right tabular-nums text-muted-foreground text-xs">
                               ${r.cog.toFixed(2)}
                             </td>
-                            <td className="py-3 text-right tabular-nums font-semibold text-emerald-600">
+                            <td className="py-2 px-2 text-right tabular-nums font-semibold text-emerald-600">
                               ${r.earnings.toFixed(2)}
-                            </td>
-                            <td className="py-3 text-center">
-                              {r.listingUrl && (
-                                <a
-                                  href={r.listingUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
-                              )}
                             </td>
                           </tr>
                         );
