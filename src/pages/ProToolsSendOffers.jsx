@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart, RefreshCw } from "lucide-react";
+import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart, RefreshCw, Settings, ExternalLinkIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -22,6 +22,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 
 const MARKETPLACES = [
@@ -382,6 +387,43 @@ export default function ProToolsSendOffers() {
     }
   };
 
+  const handleConnectMarketplace = () => {
+    // Open marketplace in a new window/tab for login
+    const marketplaceUrls = {
+      ebay: 'https://www.ebay.com',
+      mercari: 'https://www.mercari.com',
+      poshmark: 'https://poshmark.com',
+      facebook: 'https://www.facebook.com/marketplace',
+      depop: 'https://www.depop.com',
+      grailed: 'https://www.grailed.com',
+    };
+    
+    const url = marketplaceUrls[marketplace];
+    if (url) {
+      // Open in a popup window that will auto-close after login
+      const width = 800;
+      const height = 600;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+      
+      window.open(
+        url,
+        `${marketplace}_login`,
+        `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
+      );
+      
+      // After a delay, try to re-fetch items
+      setTimeout(() => {
+        fetchMarketplaceItems();
+      }, 3000);
+    }
+  };
+
+  const handleGoToSettings = () => {
+    // Navigate to settings page
+    window.location.href = createPageUrl("Settings");
+  };
+
   const runSendOffers = async () => {
     const targets = rows.filter((r) => selectedSet.has(r.id));
     if (!targets.length) {
@@ -524,16 +566,39 @@ export default function ProToolsSendOffers() {
             {/* Marketplace connection error */}
             {marketplaceConnectionError && (
               <Alert variant="destructive">
-                <AlertDescription>
-                  We had trouble accessing your {MARKETPLACES.find((m) => m.id === marketplace)?.label} account. Please log into the marketplace
-                  in a different tab or check your connection settings.{" "}
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-white underline"
-                    onClick={fetchMarketplaceItems}
-                  >
-                    Try again
-                  </Button>
+                <AlertDescription className="flex flex-col gap-3">
+                  <p>
+                    We had trouble accessing your {MARKETPLACES.find((m) => m.id === marketplace)?.label} account. 
+                    Please log into the marketplace or check your settings.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white text-red-600 hover:bg-red-50 border-white"
+                      onClick={handleGoToSettings}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white text-red-600 hover:bg-red-50 border-white"
+                      onClick={handleConnectMarketplace}
+                    >
+                      <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                      Connect
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-white underline h-auto p-0"
+                      onClick={fetchMarketplaceItems}
+                    >
+                      Try again
+                    </Button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
@@ -715,7 +780,23 @@ export default function ProToolsSendOffers() {
                             </td>
                             <td className="py-2 px-2">
                               <div className="min-w-0">
-                                <div className="font-medium text-foreground truncate">{r.title}</div>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      className="font-medium text-foreground hover:text-blue-600 hover:underline cursor-pointer text-left"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {r.title.length > 12 ? `${r.title.substring(0, 12)}...` : r.title}
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent 
+                                    className="w-80 p-3 text-sm" 
+                                    side="top"
+                                    align="start"
+                                  >
+                                    <p className="break-words">{r.title}</p>
+                                  </PopoverContent>
+                                </Popover>
                                 <div className="text-xs text-muted-foreground">{r.id}</div>
                               </div>
                             </td>
