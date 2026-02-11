@@ -353,6 +353,7 @@ export default async function handler(req, res) {
 
         if (activeItemIds.length > 0) {
           console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
+          console.log(`📋 Sample listing IDs:`, activeItemIds.slice(0, 3));
           
           const trafficUrl = `${req.headers.origin || 'http://localhost:5173'}/api/ebay/traffic-report`;
           const trafficParams = new URLSearchParams({
@@ -360,14 +361,23 @@ export default async function handler(req, res) {
             token: accessToken,
           });
 
+          console.log(`🌐 Calling traffic report: ${trafficUrl}`);
+
           const trafficResponse = await fetch(`${trafficUrl}?${trafficParams.toString()}`, {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
             },
           });
 
+          console.log(`📥 Traffic report response status: ${trafficResponse.status}`);
+
           if (trafficResponse.ok) {
             const trafficData = await trafficResponse.json();
+            console.log(`✅ Traffic data received:`, {
+              success: trafficData.success,
+              totalListings: Object.keys(trafficData.viewCounts || {}).length,
+              sample: Object.values(trafficData.viewCounts || {}).slice(0, 2),
+            });
             
             if (trafficData.success && trafficData.viewCounts) {
               listings = listings.map(listing => {
@@ -385,13 +395,15 @@ export default async function handler(req, res) {
               });
               
               console.log(`✅ Merged view counts for ${Object.keys(trafficData.viewCounts).length} listings`);
+              console.log(`📊 Sample merged listing:`, listings.find(l => l.hitCount > 0) || listings[0]);
             }
           } else {
-            console.warn(`⚠️ Failed to fetch view counts (${trafficResponse.status}), continuing without view data`);
+            const errorText = await trafficResponse.text();
+            console.warn(`⚠️ Failed to fetch view counts (${trafficResponse.status}):`, errorText);
           }
         }
       } catch (viewError) {
-        console.warn('⚠️ Error fetching view counts, continuing without view data:', viewError.message);
+        console.error('❌ Error fetching view counts:', viewError);
       }
 
       return res.status(200).json({
