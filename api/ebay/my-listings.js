@@ -459,6 +459,7 @@ export default async function handler(req, res) {
         console.error('❌ Error stack:', viewError.stack);
       }
 
+      // Return the final listings with Analytics data merged
       return res.status(200).json({
         listings,
         total: listings.length,
@@ -470,14 +471,15 @@ export default async function handler(req, res) {
           itemsWithViews: listings.filter(l => l.hitCount > 0).length,
         }
       });
-      }
-      
-      return res.status(200).json({ 
-        listings: allItems.map(item => ({ ...item, imported: false })),
-        total: allItems.length,
-        active: activeItems.length,
-        sold: soldItems.length,
-      });
+    } // END if (itemIds.length > 0)
+    
+    // If no items, return empty result
+    return res.status(200).json({ 
+      listings: allItems.map(item => ({ ...item, imported: false })),
+      total: allItems.length,
+      active: activeItems.length,
+      sold: soldItems.length,
+    });
       
     } else if (status === 'Ended' || status === 'Sold') {
       // For sold items, fetch both GetSellerList (for items with images) 
