@@ -748,14 +748,8 @@ export default function ProToolsSendOffers() {
                     <thead>
                       <tr className="text-xs text-muted-foreground border-b">
                         <th className="py-2 px-2 text-left w-8"></th>
-                        <th className="py-2 px-2 text-left">Title</th>
+                        <th className="py-2 px-2 text-left">Item</th>
                         <th className="py-2 px-2 text-center w-16">Likes</th>
-                        <th className="py-2 px-2 text-center w-20">
-                          <div className="flex items-center justify-center gap-1">
-                            Offers Sent
-                            <Info className="h-3 w-3" title="Number of offers sent for this item" />
-                          </div>
-                        </th>
                         <th className="py-2 px-2 text-right w-24">Orben Price</th>
                         <th className="py-2 px-2 text-right w-24">Mktplace Price</th>
                         <th className="py-2 px-2 text-right w-20">Discount</th>
@@ -779,25 +773,62 @@ export default function ProToolsSendOffers() {
                               <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(r.id, Boolean(v))} />
                             </td>
                             <td className="py-2 px-2">
-                              <div className="min-w-0">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <button
-                                      className="font-medium text-foreground hover:text-blue-600 hover:underline cursor-pointer text-left"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {r.title.length > 12 ? `${r.title.substring(0, 12)}...` : r.title}
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent 
-                                    className="w-80 p-3 text-sm" 
-                                    side="top"
-                                    align="start"
+                              <div className="flex items-center gap-3 min-w-0">
+                                {/* Product Image */}
+                                {r.image ? (
+                                  <div className="flex-shrink-0" style={{ width: '60px', height: '60px' }}>
+                                    <img 
+                                      src={r.image} 
+                                      alt={`Image of ${r.title}`}
+                                      loading="lazy"
+                                      style={{ 
+                                        objectFit: 'fill', 
+                                        width: '100%', 
+                                        height: '100%',
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '4px'
+                                      }}
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div 
+                                    className="flex-shrink-0 flex items-center justify-center bg-muted text-muted-foreground"
+                                    style={{ 
+                                      width: '60px', 
+                                      height: '60px',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '4px'
+                                    }}
                                   >
-                                    <p className="break-words">{r.title}</p>
-                                  </PopoverContent>
-                                </Popover>
-                                <div className="text-xs text-muted-foreground">{r.id}</div>
+                                    <span className="text-xs">No image</span>
+                                  </div>
+                                )}
+                                
+                                {/* Title and ID */}
+                                <div className="min-w-0 flex-1">
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        className="font-medium text-foreground hover:text-blue-600 hover:underline cursor-pointer text-left"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {r.title.length > 12 ? `${r.title.substring(0, 12)}...` : r.title}
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent 
+                                      className="w-80 p-3 text-sm" 
+                                      side="top"
+                                      align="start"
+                                    >
+                                      <p className="break-words">{r.title}</p>
+                                    </PopoverContent>
+                                  </Popover>
+                                  <div className="text-xs text-muted-foreground">{r.id}</div>
+                                </div>
                               </div>
                             </td>
                             <td className="py-2 px-2 text-center">
@@ -806,15 +837,6 @@ export default function ProToolsSendOffers() {
                                   <Heart className="h-3 w-3 fill-current" />
                                   <span className="text-xs">{r.likes}</span>
                                 </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {r.offersSent > 0 ? (
-                                <Badge variant="secondary" className="text-xs">
-                                  {r.offersSent}
-                                </Badge>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}

@@ -176,8 +176,28 @@ export default async function handler(req, res) {
     
     // Transform inventory items to match the expected response format
     const items = (inventoryItems || []).map((item) => {
-      const photos = item.photos || [];
-      const imageUrl = Array.isArray(photos) && photos.length > 0 ? photos[0] : null;
+      // Try multiple sources for images
+      let imageUrl = null;
+      
+      // Try photos array first
+      if (Array.isArray(item.photos) && item.photos.length > 0) {
+        // Handle if photos is array of strings or array of objects
+        imageUrl = typeof item.photos[0] === 'string' 
+          ? item.photos[0] 
+          : item.photos[0]?.url || item.photos[0]?.signedUrl || null;
+      }
+      
+      // Fallback to other possible image fields
+      if (!imageUrl) {
+        imageUrl = item.image_url || item.imageUrl || item.photo_url || item.photoUrl || null;
+      }
+      
+      // For eBay, try to construct image URL from item ID if we have one
+      if (!imageUrl && marketplaceId === 'ebay' && item.ebay_item_id) {
+        // eBay images are often available at a standard URL pattern
+        // We'll add this as a last resort fallback
+        console.log(`⚠️ No image found for eBay item ${item.ebay_item_id}, will use placeholder`);
+      }
       
       // Get marketplace-specific data
       const marketplaceItemId = item[marketplaceItemIdField];
