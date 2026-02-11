@@ -193,6 +193,18 @@ export default function ProToolsSendOffers() {
 
       const data = await response.json();
       console.log(`✅ Fetched ${data.items?.length || 0} eligible items for ${marketplace}`);
+      
+      // Debug: Log first item to see what data we're getting
+      if (data.items && data.items.length > 0) {
+        console.log('🔍 Sample item data:', {
+          id: data.items[0].id,
+          title: data.items[0].title,
+          img: data.items[0].img,
+          likes: data.items[0].likes,
+          price: data.items[0].price,
+        });
+      }
+      
       setMarketplaceItems(data.items || []);
     } catch (e) {
       console.error(`Error fetching ${marketplace} items:`, e);
@@ -388,34 +400,50 @@ export default function ProToolsSendOffers() {
   };
 
   const handleConnectMarketplace = () => {
-    // Open marketplace in a new window/tab for login
-    const marketplaceUrls = {
-      ebay: 'https://www.ebay.com',
-      mercari: 'https://www.mercari.com',
-      poshmark: 'https://poshmark.com',
-      facebook: 'https://www.facebook.com/marketplace',
-      depop: 'https://www.depop.com',
-      grailed: 'https://www.grailed.com',
-    };
-    
-    const url = marketplaceUrls[marketplace];
-    if (url) {
-      // Open in a popup window that will auto-close after login
-      const width = 800;
-      const height = 600;
+    // Handle marketplace connection using the same flow as Settings page
+    if (marketplace === 'ebay') {
+      // Trigger eBay OAuth flow
+      window.location.href = '/api/ebay/auth';
+    } else if (marketplace === 'mercari') {
+      // Open Mercari in popup for extension-based connection
+      const width = 1000;
+      const height = 700;
       const left = (window.screen.width - width) / 2;
       const top = (window.screen.height - height) / 2;
       
       window.open(
-        url,
-        `${marketplace}_login`,
+        'https://www.mercari.com',
+        'mercari_login',
         `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
       );
       
-      // After a delay, try to re-fetch items
+      // Wait for connection and refresh
       setTimeout(() => {
         fetchMarketplaceItems();
-      }, 3000);
+      }, 5000);
+    } else if (marketplace === 'facebook') {
+      // Open Facebook in popup for extension-based connection
+      const width = 1000;
+      const height = 700;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+      
+      window.open(
+        'https://www.facebook.com/marketplace',
+        'facebook_login',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=0,resizable=1,location=1,menuBar=0`
+      );
+      
+      // Wait for connection and refresh
+      setTimeout(() => {
+        fetchMarketplaceItems();
+      }, 5000);
+    } else {
+      // Generic marketplace connection
+      toast({
+        title: "Coming Soon",
+        description: `${MARKETPLACES.find(m => m.id === marketplace)?.label} connection is coming soon.`,
+      });
     }
   };
 
@@ -567,7 +595,7 @@ export default function ProToolsSendOffers() {
             {marketplaceConnectionError && (
               <Alert variant="destructive">
                 <AlertDescription className="flex flex-col gap-3">
-                  <p>
+                  <p className="text-white">
                     We had trouble accessing your {MARKETPLACES.find((m) => m.id === marketplace)?.label} account. 
                     Please log into the marketplace or check your settings.
                   </p>
@@ -575,7 +603,7 @@ export default function ProToolsSendOffers() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-white text-red-600 hover:bg-red-50 border-white"
+                      className="bg-white text-black hover:bg-gray-100 hover:text-black border-white"
                       onClick={handleGoToSettings}
                     >
                       <Settings className="h-4 w-4 mr-2" />
@@ -584,7 +612,7 @@ export default function ProToolsSendOffers() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-white text-red-600 hover:bg-red-50 border-white"
+                      className="bg-white text-black hover:bg-gray-100 hover:text-black border-white"
                       onClick={handleConnectMarketplace}
                     >
                       <ExternalLinkIcon className="h-4 w-4 mr-2" />

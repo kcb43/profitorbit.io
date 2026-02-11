@@ -19,7 +19,7 @@ function getMarketplaceToken(req, marketplace) {
   return req.headers[`x-${marketplace}-token`] || req.headers['x-user-token'] || null;
 }
 
-// Helper to fetch live eBay data with watchers/likes
+// Helper to fetch live eBay data with watchers/likes and images
 async function fetchEbayLiveData(accessToken, itemIds) {
   if (!itemIds || itemIds.length === 0) return {};
   
@@ -29,14 +29,11 @@ async function fetchEbayLiveData(accessToken, itemIds) {
 
   const liveData = {};
   
+  console.log(`🔍 Fetching live eBay data for ${itemIds.length} items...`);
+  
   // Fetch in batches of 20 to avoid overwhelming the API
   for (let i = 0; i < itemIds.length; i += 20) {
     const batch = itemIds.slice(i, i + 20);
-    
-    // Build XML request for GetItem with WatchCount
-    const itemRequests = batch.map(itemId => `
-      <ItemID>${itemId}</ItemID>
-    `).join('');
     
     const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
@@ -65,7 +62,7 @@ async function fetchEbayLiveData(accessToken, itemIds) {
       if (response.ok) {
         const xml = await response.text();
         
-        // Parse watch counts from response
+        // Parse watch counts and images from response
         const itemRegex = /<Item>([\s\S]*?)<\/Item>/g;
         let itemMatch;
         
@@ -75,12 +72,40 @@ async function fetchEbayLiveData(accessToken, itemIds) {
           const watchCountMatch = itemXml.match(/<WatchCount>([^<]*)<\/WatchCount>/);
           const viewCountMatch = itemXml.match(/<HitCount>([^<]*)<\/HitCount>/);
           
+          // Extract image URLs
+          const pictureURLs = [];
+          
+          // Try PictureDetails first
+          const pictureDetailsMatch = itemXml.match(/<PictureDetails>([\s\S]*?)<\/PictureDetails>/);
+          if (pictureDetailsMatch) {
+            const pictureRegex = /<PictureURL>([^<]*)<\/PictureURL>/g;
+            let pictureMatch;
+            while ((pictureMatch = pictureRegex.exec(pictureDetailsMatch[1])) !== null) {
+              const url = pictureMatch[1];
+              if (url && url.startsWith('http')) {
+                pictureURLs.push(url);
+              }
+            }
+          }
+          
+          // Fallback to GalleryURL
+          if (pictureURLs.length === 0) {
+            const galleryMatch = itemXml.match(/<GalleryURL>([^<]*)<\/GalleryURL>/);
+            if (galleryMatch && galleryMatch[1].startsWith('http')) {
+              pictureURLs.push(galleryMatch[1]);
+            }
+          }
+          
           if (itemIdMatch) {
             const itemId = itemIdMatch[1];
             liveData[itemId] = {
               likes: watchCountMatch ? parseInt(watchCountMatch[1]) : 0,
               views: viewCountMatch ? parseInt(viewCountMatch[1]) : 0,
+              imageUrl: pictureURLs[0] || null,
+              pictureURLs: pictureURLs,
             };
+            
+            console.log(`  📸 Item ${itemId}: ${pictureURLs.length} images, ${watchCountMatch?.[1] || 0} watchers`);
           }
         }
       }
@@ -89,6 +114,7 @@ async function fetchEbayLiveData(accessToken, itemIds) {
     }
   }
   
+  console.log(`✅ Fetched live data for ${Object.keys(liveData).length} items`);
   return liveData;
 }
 
@@ -179,23 +205,46 @@ export default async function handler(req, res) {
       // Try multiple sources for images
       let imageUrl = null;
       
+      // Debug: Log what we have for this item
+      if (marketplaceId === 'ebay') {
+        console.log(`🖼️ Image debug for item ${item.id}:`, {
+          photos: item.photos,
+          photo_urls: item.photo_urls,
+          image_url: item.image_url,
+          ebay_item_id: item.ebay_item_id,
+        });
+      }
+      
       // Try photos array first
       if (Array.isArray(item.photos) && item.photos.length > 0) {
         // Handle if photos is array of strings or array of objects
-        imageUrl = typeof item.photos[0] === 'string' 
-          ? item.photos[0] 
-          : item.photos[0]?.url || item.photos[0]?.signedUrl || null;
+        const firstPhoto = item.photos[0];
+        if (typeof firstPhoto === 'string') {
+          imageUrl = firstPhoto;
+        } else if (firstPhoto && typeof firstPhoto === 'object') {
+          imageUrl = firstPhoto.url || firstPhoto.signedUrl || firstPhoto.publicUrl || 
+                     firstPhoto.original || firstPhoto.src || null;
+        }
+        console.log(`✅ Found image in photos array: ${imageUrl?.substring(0, 50)}...`);
+      }
+      
+      // Try photo_urls array (alternative field name)
+      if (!imageUrl && Array.isArray(item.photo_urls) && item.photo_urls.length > 0) {
+        imageUrl = item.photo_urls[0];
+        console.log(`✅ Found image in photo_urls: ${imageUrl?.substring(0, 50)}...`);
       }
       
       // Fallback to other possible image fields
       if (!imageUrl) {
-        imageUrl = item.image_url || item.imageUrl || item.photo_url || item.photoUrl || null;
+        imageUrl = item.image_url || item.imageUrl || item.photo_url || 
+                   item.photoUrl || item.img || item.thumbnail || null;
+        if (imageUrl) {
+          console.log(`✅ Found image in fallback field: ${imageUrl?.substring(0, 50)}...`);
+        }
       }
       
       // For eBay, try to construct image URL from item ID if we have one
       if (!imageUrl && marketplaceId === 'ebay' && item.ebay_item_id) {
-        // eBay images are often available at a standard URL pattern
-        // We'll add this as a last resort fallback
         console.log(`⚠️ No image found for eBay item ${item.ebay_item_id}, will use placeholder`);
       }
       
@@ -203,6 +252,15 @@ export default async function handler(req, res) {
       const marketplaceItemId = item[marketplaceItemIdField];
       const marketplaceListingId = item[marketplaceListingIdField];
       const live = liveData[marketplaceItemId] || liveData[marketplaceListingId] || {};
+      
+      // Use live image data if available (from eBay API), otherwise use stored image
+      const finalImageUrl = live.imageUrl || imageUrl;
+      
+      if (finalImageUrl) {
+        console.log(`✅ Final image URL for item ${item.id}: ${finalImageUrl.substring(0, 60)}...`);
+      } else {
+        console.log(`⚠️ No image URL for item ${item.id} (${item.item_name})`);
+      }
       
       // Construct listing URL based on marketplace
       let listingUrl = null;
@@ -229,7 +287,7 @@ export default async function handler(req, res) {
         price: parseFloat(item.listing_price || item.price || item.purchase_price || 0),
         marketplacePrice: parseFloat(item.listing_price || item.price || item.purchase_price || 0),
         title: item.item_name || 'Untitled',
-        img: imageUrl,
+        img: finalImageUrl,
         costOfGoods: parseFloat(item.purchase_price || 0),
         offersTo: live.watchers || null,
         errors: null,
