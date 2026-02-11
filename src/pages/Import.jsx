@@ -1150,6 +1150,22 @@ export default function Import() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  
+  // Debug: Log first eBay item's watch and hit counts
+  useEffect(() => {
+    if (selectedSource === "ebay" && paginatedListings.length > 0) {
+      const firstItem = paginatedListings[0];
+      console.log('🔍 First eBay item data:', {
+        itemId: firstItem.itemId,
+        title: firstItem.title?.substring(0, 50),
+        status: firstItem.status,
+        watchCount: firstItem.watchCount,
+        hitCount: firstItem.hitCount,
+        hasWatchCount: typeof firstItem.watchCount !== 'undefined',
+        hasHitCount: typeof firstItem.hitCount !== 'undefined',
+      });
+    }
+  }, [paginatedListings, selectedSource]);
 
   const handleRefresh = () => {
     if (!canSync) {
@@ -2316,25 +2332,25 @@ export default function Import() {
                           {/* Show eBay watchers and views for Active items */}
                           {selectedSource === "ebay" && item.status === "Active" && (
                             <>
-                              {((item.watchCount && item.watchCount > 0) || (item.hitCount && item.hitCount > 0)) && (
+                              {(typeof item.watchCount !== 'undefined' || typeof item.hitCount !== 'undefined') && (
                                 <>
                                   {" · "}
                                   <span className="inline-flex items-center gap-2">
-                                    {item.watchCount > 0 && (
+                                    {typeof item.watchCount !== 'undefined' && (
                                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                           <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                                         </svg>
-                                        {item.watchCount}
+                                        {item.watchCount || 0}
                                       </span>
                                     )}
-                                    {item.hitCount > 0 && (
+                                    {typeof item.hitCount !== 'undefined' && (
                                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                           <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                           <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                                         </svg>
-                                        {item.hitCount}
+                                        {item.hitCount || 0}
                                       </span>
                                     )}
                                   </span>
