@@ -398,6 +398,7 @@ export default function ProToolsSendOffers() {
           const cog = Number(it?.costOfGoods) || 0;
           const earnings = Math.max(0, offerPrice - cog);
           const likes = Number(it?.likes) || 0;
+          const hitCount = Number(it?.hitCount) || 0;
           
           // Get offer count for this specific item
           const itemOfferCount = offersSentCount[id] || 0;
@@ -407,6 +408,7 @@ export default function ProToolsSendOffers() {
             title: it?.title || "Untitled item",
             image: it?.img || "",
             likes,
+            hitCount,
             vendooPrice,
             mktplacePrice,
             discount,
@@ -441,6 +443,7 @@ export default function ProToolsSendOffers() {
           title: it?.item_name || "Untitled item",
           image: it?.photos?.[0] || "",
           likes,
+          hitCount: Number(listing?.hitCount) || Number(it?.hitCount) || 0,
           vendooPrice,
           mktplacePrice,
           discount,
@@ -1084,10 +1087,23 @@ export default function ProToolsSendOffers() {
                               </div>
                             </td>
                             <td className="py-2 px-2 text-center">
-                              {r.likes > 0 ? (
-                                <div className="flex items-center justify-center gap-1 text-pink-600">
-                                  <Heart className="h-3 w-3 fill-current" />
-                                  <span className="text-xs">{r.likes}</span>
+                              {(r.likes > 0 || (marketplace === 'ebay' && r.hitCount > 0)) ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  {r.likes > 0 && (
+                                    <div className="flex items-center gap-1 text-pink-600">
+                                      <Heart className="h-3 w-3 fill-current" />
+                                      <span className="text-xs">{r.likes}</span>
+                                    </div>
+                                  )}
+                                  {marketplace === 'ebay' && r.hitCount > 0 && (
+                                    <div className="flex items-center gap-1 text-purple-600">
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                      </svg>
+                                      <span className="text-xs">{r.hitCount}</span>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">0</span>

@@ -336,20 +336,70 @@ export default async function handler(req, res) {
             }
           }
 
-          return {
-            ...item,
-            imported: isImported,
-            saleId: saleId,
-            inventoryId: inventoryId,
-          };
-        });
+        return {
+          ...item,
+          imported: isImported,
+          saleId: saleId,
+          inventoryId: inventoryId,
+        };
+      });
 
-        return res.status(200).json({
-          listings,
-          total: listings.length,
-          active: activeItems.length,
-          sold: soldItems.length,
-        });
+      // Fetch view counts from Analytics API for Active listings
+      try {
+        const activeItemIds = listings
+          .filter(item => item.status === 'Active')
+          .map(item => item.itemId)
+          .filter(Boolean);
+
+        if (activeItemIds.length > 0) {
+          console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
+          
+          const trafficUrl = `${req.headers.origin || 'http://localhost:5173'}/api/ebay/traffic-report`;
+          const trafficParams = new URLSearchParams({
+            listingIds: activeItemIds.join(','),
+            token: accessToken,
+          });
+
+          const trafficResponse = await fetch(`${trafficUrl}?${trafficParams.toString()}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+
+          if (trafficResponse.ok) {
+            const trafficData = await trafficResponse.json();
+            
+            if (trafficData.success && trafficData.viewCounts) {
+              listings = listings.map(listing => {
+                const viewData = trafficData.viewCounts[listing.itemId];
+                if (viewData) {
+                  return {
+                    ...listing,
+                    hitCount: viewData.totalViews,
+                    totalImpressions: viewData.totalImpressions,
+                    directViews: viewData.directViews,
+                    searchViews: viewData.searchViews,
+                  };
+                }
+                return listing;
+              });
+              
+              console.log(`✅ Merged view counts for ${Object.keys(trafficData.viewCounts).length} listings`);
+            }
+          } else {
+            console.warn(`⚠️ Failed to fetch view counts (${trafficResponse.status}), continuing without view data`);
+          }
+        }
+      } catch (viewError) {
+        console.warn('⚠️ Error fetching view counts, continuing without view data:', viewError.message);
+      }
+
+      return res.status(200).json({
+        listings,
+        total: listings.length,
+        active: activeItems.length,
+        sold: soldItems.length,
+      });
       }
       
       return res.status(200).json({ 
@@ -1011,16 +1061,70 @@ export default async function handler(req, res) {
           isImported = isImported && soldItemsMap.has(item.transactionId);
         }
 
-        return {
+      return {
         ...item,
-          imported: isImported,
-        };
-      });
+        imported: isImported,
+      };
+    });
 
-      return res.status(200).json({
-        listings,
-        total: listings.length,
-      });
+    // Fetch view counts from Analytics API for Active listings
+    if (status === 'Active' || status === 'All') {
+      try {
+        const activeItemIds = listings
+          .filter(item => item.status === 'Active')
+          .map(item => item.itemId)
+          .filter(Boolean);
+
+        if (activeItemIds.length > 0) {
+          console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
+          
+          // Call our traffic report API
+          const trafficUrl = `${req.headers.origin || 'http://localhost:5173'}/api/ebay/traffic-report`;
+          const trafficParams = new URLSearchParams({
+            listingIds: activeItemIds.join(','),
+            token: accessToken,
+          });
+
+          const trafficResponse = await fetch(`${trafficUrl}?${trafficParams.toString()}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+
+          if (trafficResponse.ok) {
+            const trafficData = await trafficResponse.json();
+            
+            if (trafficData.success && trafficData.viewCounts) {
+              // Merge view counts into listings
+              listings = listings.map(listing => {
+                const viewData = trafficData.viewCounts[listing.itemId];
+                if (viewData) {
+                  return {
+                    ...listing,
+                    hitCount: viewData.totalViews,
+                    totalImpressions: viewData.totalImpressions,
+                    directViews: viewData.directViews,
+                    searchViews: viewData.searchViews,
+                  };
+                }
+                return listing;
+              });
+              
+              console.log(`✅ Merged view counts for ${Object.keys(trafficData.viewCounts).length} listings`);
+            }
+          } else {
+            console.warn(`⚠️ Failed to fetch view counts (${trafficResponse.status}), continuing without view data`);
+          }
+        }
+      } catch (viewError) {
+        console.warn('⚠️ Error fetching view counts, continuing without view data:', viewError.message);
+      }
+    }
+
+    return res.status(200).json({
+      listings,
+      total: listings.length,
+    });
     }
 
     return res.status(200).json({
