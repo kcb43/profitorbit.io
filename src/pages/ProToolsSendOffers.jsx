@@ -346,6 +346,8 @@ export default function ProToolsSendOffers() {
             earnings,
             listingUrl: it?.listingUrl || "",
             offersSent: itemOfferCount,
+            isImported: it?.isImported !== false, // Pass through from API
+            ebayItemId: it?.ebayItemId || it?.listingId, // For import action
           };
         }
         
@@ -823,16 +825,22 @@ export default function ProToolsSendOffers() {
                             <Info className="h-3 w-3" title="Offer Price - Cost of Goods" />
                           </div>
                         </th>
+                        <th className="py-2 px-2 text-center w-28">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((r) => {
                         const checked = selectedSet.has(r.id);
                         const isEditing = editingOfferId === r.id;
+                        const isImported = r.isImported !== false; // Default to true if not specified
                         return (
-                          <tr key={r.id} className="border-b last:border-b-0 hover:bg-muted/20">
+                          <tr key={r.id} className={`border-b last:border-b-0 ${isImported ? 'hover:bg-muted/20' : 'opacity-50 bg-muted/10'}`}>
                             <td className="py-2 px-2">
-                              <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(r.id, Boolean(v))} />
+                              {isImported ? (
+                                <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(r.id, Boolean(v))} />
+                              ) : (
+                                <Checkbox disabled />
+                              )}
                             </td>
                             <td className="py-2 px-2">
                               <div className="flex items-center gap-3 min-w-0">
@@ -940,10 +948,41 @@ export default function ProToolsSendOffers() {
                               )}
                             </td>
                             <td className="py-2 px-2 text-right tabular-nums text-muted-foreground text-xs">
-                              ${r.cog.toFixed(2)}
+                              {isImported ? `$${r.cog.toFixed(2)}` : '-'}
                             </td>
                             <td className="py-2 px-2 text-right tabular-nums font-semibold text-emerald-600">
-                              ${r.earnings.toFixed(2)}
+                              {isImported ? `$${r.earnings.toFixed(2)}` : '-'}
+                            </td>
+                            <td className="py-2 px-2 text-center">
+                              {!isImported ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={async () => {
+                                    // Import this item
+                                    toast({
+                                      title: "Importing...",
+                                      description: `Importing "${r.title.substring(0, 30)}..." to inventory`,
+                                    });
+                                    
+                                    try {
+                                      // Navigate to Import page with this item pre-selected
+                                      window.location.href = `/import?marketplace=${marketplace}&itemId=${r.ebayItemId}`;
+                                    } catch (error) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to import item",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  Import
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">✓ In Inventory</span>
+                              )}
                             </td>
                           </tr>
                         );

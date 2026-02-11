@@ -150,10 +150,11 @@ export default async function handler(req, res) {
 
     const marketplaceId = req.query.marketplaceId || 'ebay';
     const nextPage = parseInt(req.query.nextPage || '0');
-    const limit = parseInt(req.query.limit || '50');
+    const limit = parseInt(req.query.limit || '200'); // Increase default to show all listings
     const includeLiveData = req.query.includeLiveData !== 'false'; // Default to true
+    const includeAllListings = req.query.includeAllListings !== 'false'; // Default to true for Send Offers
 
-    console.log(`🔍 Fetching eligible items for ${marketplaceId}, page ${nextPage}, includeLiveData: ${includeLiveData}`);
+    console.log(`🔍 Fetching eligible items for ${marketplaceId}, page ${nextPage}, includeLiveData: ${includeLiveData}, includeAllListings: ${includeAllListings}`);
 
     // Get inventory items that have active listings or are imported from this marketplace
     const marketplaceItemIdField = `${marketplaceId}_item_id`;
@@ -176,7 +177,37 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch inventory items' });
     }
 
-    console.log(`✅ Found ${inventoryItems?.length || 0} inventory items`);
+    console.log(`✅ Found ${inventoryItems?.length || 0} inventory items in database`);
+
+    // For eBay, fetch ALL live listings to show non-imported items
+    let allEbayListings = [];
+    if (marketplaceId === 'ebay' && includeAllListings) {
+      const accessToken = getMarketplaceToken(req, 'ebay');
+      if (accessToken) {
+        try {
+          console.log('🔍 Fetching ALL eBay listings from my-listings API...');
+          
+          // Call the my-listings API
+          const myListingsUrl = `${req.headers.host ? `https://${req.headers.host}` : 'http://localhost:3000'}/api/ebay/my-listings?status=Active&limit=200`;
+          const myListingsResponse = await fetch(myListingsUrl, {
+            headers: {
+              'x-user-id': userId,
+              'x-user-token': accessToken,
+            },
+          });
+
+          if (myListingsResponse.ok) {
+            const myListingsData = await myListingsResponse.json();
+            allEbayListings = myListingsData.listings || [];
+            console.log(`✅ Fetched ${allEbayListings.length} live eBay listings`);
+          } else {
+            console.error(`❌ Failed to fetch eBay listings: ${myListingsResponse.status}`);
+          }
+        } catch (error) {
+          console.error('❌ Error fetching eBay listings:', error);
+        }
+      }
+    }
 
     // Fetch live marketplace data if requested
     let liveData = {};
@@ -296,18 +327,61 @@ export default async function handler(req, res) {
         likedAt: null,
         listedAt: item.created_at,
         brand: item.brand || null,
+        isImported: true, // Mark as imported (in inventory)
       };
     });
 
-    const hasMoreItems = count ? (nextPage + 1) * limit < count : false;
+    // Add non-imported eBay listings
+    if (marketplaceId === 'ebay' && allEbayListings.length > 0) {
+      const importedEbayIds = new Set(inventoryItems.map(item => item.ebay_item_id).filter(Boolean));
+      
+      console.log(`🔍 Imported eBay IDs in inventory: ${Array.from(importedEbayIds).join(', ')}`);
+      
+      const nonImportedListings = allEbayListings
+        .filter(listing => !importedEbayIds.has(listing.itemId))
+        .map(listing => ({
+          id: `temp-${listing.itemId}`, // Temporary ID for non-imported items
+          itemId: listing.itemId,
+          userId: userId,
+          sku: listing.sku || null,
+          likes: listing.watchCount || 0,
+          views: listing.hitCount || 0,
+          listingId: listing.itemId,
+          listingUrl: `https://www.ebay.com/itm/${listing.itemId}`,
+          marketplaceId: 'ebay',
+          price: parseFloat(listing.currentPrice || listing.startPrice || 0),
+          marketplacePrice: parseFloat(listing.currentPrice || listing.startPrice || 0),
+          title: listing.title || 'Untitled',
+          img: listing.galleryURL || listing.pictureURL || null,
+          costOfGoods: 0,
+          offersTo: listing.watchCount || 0,
+          errors: null,
+          category: listing.primaryCategoryName || null,
+          condition: listing.conditionDisplayName || null,
+          likedAt: null,
+          listedAt: listing.listingStartTime,
+          brand: null,
+          isImported: false, // Mark as NOT imported
+          ebayItemId: listing.itemId, // Store for import
+        }));
+      
+      console.log(`✅ Adding ${nonImportedListings.length} non-imported eBay listings`);
+      items.push(...nonImportedListings);
+    }
+
+    const hasMoreItems = false; // Return all items at once
+    const totalItems = items.length;
+
+    console.log(`📦 Returning ${totalItems} total items (${items.filter(i => i.isImported).length} imported, ${items.filter(i => !i.isImported).length} not imported)`);
 
     return res.status(200).json({
       items,
       meta: {
         hasMoreItems,
-        total: count || 0,
+        total: totalItems,
         nextPage: nextPage + 1,
         liveDataFetched: includeLiveData && Object.keys(liveData).length > 0,
+        includedNonImported: marketplaceId === 'ebay' && allEbayListings.length > 0,
       },
     });
 
