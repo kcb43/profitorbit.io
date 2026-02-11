@@ -459,6 +459,11 @@ export default async function handler(req, res) {
         total: listings.length,
         active: activeItems.length,
         sold: soldItems.length,
+        _debug: {
+          analyticsAttempted: status === 'All',
+          analyticsSuccess: listings.some(l => l.hitCount > 0),
+          itemsWithViews: listings.filter(l => l.hitCount > 0).length,
+        }
       });
       }
       
@@ -1242,6 +1247,12 @@ export default async function handler(req, res) {
     return res.status(200).json({
       listings,
       total: listings.length,
+      _debug: {
+        analyticsAttempted: status === 'Active' || status === 'All',
+        analyticsSuccess: listings.some(l => l.hitCount > 0),
+        itemsWithViews: listings.filter(l => l.hitCount > 0).length,
+        totalActiveListings: listings.filter(l => l.status === 'Active').length,
+      }
     });
     }
 

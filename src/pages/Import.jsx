@@ -395,6 +395,11 @@ export default function Import() {
       const data = await response.json();
       console.log('✅ Fetched listings:', data.listings?.length || 0, 'items');
       
+      // Log Analytics API debug info
+      if (data._debug) {
+        console.log('🔧 Analytics Debug Info:', data._debug);
+      }
+      
       // Log status breakdown
       const statusCounts = data.listings?.reduce((acc, item) => {
         acc[item.status || 'unknown'] = (acc[item.status || 'unknown'] || 0) + 1;
