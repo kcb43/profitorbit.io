@@ -1109,6 +1109,8 @@ export default function Settings() {
       console.log('Calling handleFacebookConnect (extension-based)...');
       handleFacebookConnect();
     } else if (marketplaceId === 'ebay') {
+      // Store the return path so OAuth redirects back to Settings
+      sessionStorage.setItem('ebay_oauth_return', '/settings');
       window.location.href = '/api/ebay/auth';
     } else if (marketplaceId === 'mercari') {
       handleMercariConnect();
