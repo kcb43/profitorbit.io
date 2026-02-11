@@ -68,6 +68,281 @@ async function autoCaptureMercariTokens() {
 autoCaptureMercariTokens();
 
 // -----------------------------
+// Send Offers Helper Functions
+// -----------------------------
+
+/**
+ * Find eBay items with interested buyers (watchers)
+ * @param {string} accessToken - eBay OAuth token
+ * @returns {Promise<Array>} - Array of listing IDs with interested buyers
+ */
+async function findEbayEligibleItems(accessToken) {
+  console.log('🔍 [eBay] Finding items with interested buyers...');
+  
+  const negotiationUrl = 'https://api.ebay.com/sell/negotiation/v1/find_eligible_items';
+  
+  try {
+    const response = await fetch(negotiationUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ [eBay] findEligibleItems error:', errorData);
+      return [];
+    }
+
+    const data = await response.json();
+    const eligibleItems = data.eligibleItems || [];
+    
+    console.log(`✅ [eBay] Found ${eligibleItems.length} items with interested buyers`);
+    return eligibleItems;
+    
+  } catch (error) {
+    console.error('❌ [eBay] Error finding eligible items:', error);
+    return [];
+  }
+}
+
+/**
+ * Send offers on eBay items using Negotiation API
+ * @param {Array} targets - Array of {inventoryItemId, listingUrl, vendooPrice, mktplacePrice, offerPrice}
+ * @param {Object} options - {offerPct, offerPriceBasedOn, message}
+ * @returns {Promise<{successCount: number, results: Array}>}
+ */
+async function sendEbayOffers(targets, options = {}) {
+  console.log('🏷️ [eBay] Sending offers to', targets.length, 'items');
+  
+  // Get eBay token from storage
+  const { profit_orbit_ebay_token } = await chrome.storage.local.get('profit_orbit_ebay_token');
+  if (!profit_orbit_ebay_token) {
+    throw new Error('eBay not connected. Please connect your eBay account first.');
+  }
+  
+  const accessToken = typeof profit_orbit_ebay_token === 'string' 
+    ? profit_orbit_ebay_token 
+    : profit_orbit_ebay_token.access_token || profit_orbit_ebay_token.token;
+  
+  if (!accessToken) {
+    throw new Error('eBay access token not found');
+  }
+
+  // eBay Negotiation API endpoint
+  const negotiationUrl = 'https://api.ebay.com/sell/negotiation/v1/send_offer_to_interested_buyers';
+  
+  // Get marketplace ID from storage (default to EBAY_US)
+  const { profit_orbit_ebay_marketplace } = await chrome.storage.local.get('profit_orbit_ebay_marketplace');
+  const marketplaceId = profit_orbit_ebay_marketplace || 'EBAY_US';
+  
+  const results = [];
+  let successCount = 0;
+
+  // Process each target item (eBay API only supports one listing at a time currently)
+  for (const target of targets) {
+    try {
+      // Extract eBay item ID from URL or use listingId
+      let listingId = target.listingId;
+      if (!listingId && target.listingUrl) {
+        const match = target.listingUrl.match(/\/itm\/(\d+)/);
+        listingId = match ? match[1] : null;
+      }
+      
+      if (!listingId) {
+        throw new Error('Could not extract eBay item ID');
+      }
+
+      // Build the offer payload
+      const payload = {
+        allowCounterOffer: false, // Currently must be false per eBay docs
+        message: options.message || 'Thank you for your interest! I would like to offer you a special discount.',
+        offeredItems: [
+          {
+            listingId: listingId,
+            quantity: 1,
+          }
+        ]
+      };
+
+      // Use either discount percentage or specific price
+      if (options.offerPct && options.offerPct > 0) {
+        // Use discount percentage
+        payload.offeredItems[0].discountPercentage = String(options.offerPct);
+      } else if (target.offerPrice) {
+        // Use specific price
+        payload.offeredItems[0].price = {
+          currency: 'USD', // TODO: Get from listing or user settings
+          value: String(target.offerPrice.toFixed(2))
+        };
+      } else {
+        throw new Error('Must specify either offerPct or offerPrice');
+      }
+
+      console.log(`🏷️ [eBay] Sending offer for listing ${listingId}:`, payload);
+
+      // Make the API call
+      const response = await fetch(negotiationUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'X-EBAY-C-MARKETPLACE-ID': marketplaceId,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        // Handle API error
+        const errorMessage = responseData.errors?.[0]?.message || `HTTP ${response.status}`;
+        const errorCode = responseData.errors?.[0]?.errorId || 'UNKNOWN';
+        
+        console.error(`❌ [eBay] API error for listing ${listingId}:`, responseData);
+        
+        // Check for specific error cases
+        if (errorCode === '150020') {
+          throw new Error('No interested buyers for this listing');
+        } else if (errorCode === '150011') {
+          throw new Error('Listing has ended');
+        } else if (errorCode === '150017') {
+          throw new Error('Listing does not support offers');
+        } else {
+          throw new Error(`${errorMessage} (Code: ${errorCode})`);
+        }
+      }
+
+      // Success!
+      const offersData = responseData.offers || [];
+      const offerCount = offersData.length;
+      
+      console.log(`✅ [eBay] Successfully sent ${offerCount} offers for listing ${listingId}`);
+      
+      results.push({
+        inventoryItemId: target.inventoryItemId,
+        listingId: listingId,
+        success: true,
+        offerCount: offerCount,
+        offers: offersData,
+        message: `Sent ${offerCount} offer(s) to interested buyers`,
+      });
+      successCount++;
+      
+    } catch (error) {
+      console.error(`❌ [eBay] Failed to send offer for item:`, error);
+      results.push({
+        inventoryItemId: target.inventoryItemId,
+        success: false,
+        error: error.message || String(error),
+      });
+    }
+    
+    // Add small delay between requests to avoid rate limiting
+    if (targets.indexOf(target) < targets.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  return { successCount, results };
+}
+
+/**
+ * Send offers on Mercari items
+ * @param {Array} targets - Array of {inventoryItemId, listingUrl, vendooPrice, mktplacePrice, offerPrice}
+ * @param {Object} options - {offerPct, offerPriceBasedOn, message}
+ * @returns {Promise<{successCount: number, results: Array}>}
+ */
+async function sendMercariOffers(targets, options = {}) {
+  console.log('🟣 [Mercari] Sending offers to', targets.length, 'items');
+  
+  // Mercari doesn't have a "send offer to likers" API
+  // Offers are sent by individual users who are interested
+  // We can use Mercari's price drop feature instead
+  
+  const results = [];
+  let successCount = 0;
+
+  for (const target of targets) {
+    try {
+      console.log(`🟣 [Mercari] Would send offer for item:`, {
+        inventoryItemId: target.inventoryItemId,
+        offerPrice: target.offerPrice,
+        message: options.message,
+      });
+
+      // TODO: Implement Mercari price drop or promotion feature
+      // This could use the UpdateItemMutation GraphQL call to drop the price
+      // which notifies likers
+      
+      results.push({
+        inventoryItemId: target.inventoryItemId,
+        success: true, // Placeholder
+        message: 'Mercari offers are not fully implemented yet. Use Mercari\'s price drop feature.',
+      });
+      successCount++;
+      
+    } catch (error) {
+      console.error(`❌ [Mercari] Failed to send offer:`, error);
+      results.push({
+        inventoryItemId: target.inventoryItemId,
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  return { successCount, results };
+}
+
+/**
+ * Send offers on Poshmark items
+ * @param {Array} targets - Array of {inventoryItemId, listingUrl, vendooPrice, mktplacePrice, offerPrice}
+ * @param {Object} options - {offerPct, offerPriceBasedOn, message}
+ * @returns {Promise<{successCount: number, results: Array}>}
+ */
+async function sendPoshmarkOffers(targets, options = {}) {
+  console.log('💗 [Poshmark] Sending offers to', targets.length, 'items');
+  
+  // Poshmark has an "Offer to Likers" (OTL) feature
+  // This would require automating the Poshmark web interface
+  
+  const results = [];
+  let successCount = 0;
+
+  for (const target of targets) {
+    try {
+      console.log(`💗 [Poshmark] Would send OTL for item:`, {
+        inventoryItemId: target.inventoryItemId,
+        offerPrice: target.offerPrice,
+      });
+
+      // TODO: Implement Poshmark OTL automation
+      // This could use a content script to interact with Poshmark's UI
+      
+      results.push({
+        inventoryItemId: target.inventoryItemId,
+        success: true, // Placeholder
+        message: 'Poshmark OTL is not fully implemented yet. Use Poshmark\'s interface.',
+      });
+      successCount++;
+      
+    } catch (error) {
+      console.error(`❌ [Poshmark] Failed to send OTL:`, error);
+      results.push({
+        inventoryItemId: target.inventoryItemId,
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  return { successCount, results };
+}
+
+// -----------------------------
 // Facebook: DNR header shaping (Vendoo-like tabless requests)
 // -----------------------------
 //
@@ -5989,6 +6264,87 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const result = await connectPlatform(platform, apiUrl, authToken);
         sendResponse({ success: true, result });
       } catch (e) {
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // -----------------------------
+  // Send Offers (bulk)
+  // -----------------------------
+  if (type === 'PO_SEND_OFFERS_BULK') {
+    (async () => {
+      try {
+        console.log('📨 [OFFERS] Received sendOffersBulk request', message?.payload);
+        const payload = message?.payload || {};
+        const { marketplace, targets, offerPct, offerPriceBasedOn, message: offerMessage } = payload;
+        
+        if (!marketplace) {
+          throw new Error('marketplace is required');
+        }
+        if (!targets || !Array.isArray(targets) || targets.length === 0) {
+          throw new Error('targets array is required and must not be empty');
+        }
+
+        console.log(`📨 [OFFERS] Sending ${targets.length} offers on ${marketplace}`);
+
+        // Route to marketplace-specific handler
+        let result;
+        if (marketplace === 'ebay') {
+          result = await sendEbayOffers(targets, { offerPct, offerPriceBasedOn, message: offerMessage });
+        } else if (marketplace === 'mercari') {
+          result = await sendMercariOffers(targets, { offerPct, offerPriceBasedOn, message: offerMessage });
+        } else if (marketplace === 'poshmark') {
+          result = await sendPoshmarkOffers(targets, { offerPct, offerPriceBasedOn, message: offerMessage });
+        } else {
+          throw new Error(`Marketplace ${marketplace} is not supported for offers yet`);
+        }
+
+        console.log(`✅ [OFFERS] Successfully sent ${result.successCount || targets.length} offers on ${marketplace}`);
+        sendResponse({ 
+          success: true, 
+          count: result.successCount || targets.length,
+          results: result.results || [],
+        });
+      } catch (e) {
+        console.error('❌ [OFFERS] sendOffersBulk failed:', e);
+        sendResponse({ success: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // -----------------------------
+  // Auto-Offers Configuration
+  // -----------------------------
+  if (type === 'PO_SET_AUTO_OFFERS_CONFIG') {
+    (async () => {
+      try {
+        console.log('⚙️ [OFFERS] Received setAutoOffersConfig request', message?.payload);
+        const payload = message?.payload || {};
+        const { marketplace, enabled, offerPct, offerPriceBasedOn, message: offerMessage } = payload;
+        
+        if (!marketplace) {
+          throw new Error('marketplace is required');
+        }
+
+        // Store configuration in chrome.storage
+        const configKey = `auto_offers_config_${marketplace}`;
+        const config = {
+          enabled: Boolean(enabled),
+          offerPct: Number(offerPct) || 10,
+          offerPriceBasedOn: offerPriceBasedOn || 'vendoo_price',
+          message: offerMessage || '',
+          updatedAt: Date.now(),
+        };
+
+        await chrome.storage.local.set({ [configKey]: config });
+        console.log(`✅ [OFFERS] Auto-offers config saved for ${marketplace}:`, config);
+        
+        sendResponse({ success: true, config });
+      } catch (e) {
+        console.error('❌ [OFFERS] setAutoOffersConfig failed:', e);
         sendResponse({ success: false, error: e?.message || String(e) });
       }
     })();

@@ -116,6 +116,26 @@
       }, 500);
     },
 
+    // Get status for a specific marketplace (synchronous)
+    getMarketplaceStatus(marketplace) {
+      console.log('🟢 Page API: getMarketplaceStatus() called for', marketplace);
+      try {
+        const connected = localStorage.getItem(`profit_orbit_${marketplace}_connected`) === 'true';
+        const userData = localStorage.getItem(`profit_orbit_${marketplace}_user`);
+        const userName = userData ? JSON.parse(userData).userName : null;
+        const hasToken = Boolean(localStorage.getItem(`profit_orbit_${marketplace}_token`));
+        
+        return {
+          connected: connected && hasToken,
+          userName,
+          marketplace,
+        };
+      } catch (error) {
+        console.error('Error getting marketplace status:', error);
+        return { connected: false, marketplace };
+      }
+    },
+
     // Generic listing message (kept for compatibility)
     listItem(payload) {
       console.log('🟢 Page API: listItem() called', payload);

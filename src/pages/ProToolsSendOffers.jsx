@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { inventoryApi } from "@/api/inventoryApi";
+import newApiClient from "@/api/newApiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart } from "lucide-react";
+import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -71,7 +72,7 @@ function saveOfferDefaults(marketplace, data) {
 
 function loadOffersSentCount() {
   try {
-    const raw = localStorage.getItem("offers_sent_count");
+    const raw = localStorage.getItem("offers_sent_count_per_item");
     if (!raw) return {};
     return JSON.parse(raw);
   } catch (_) {
@@ -81,7 +82,7 @@ function loadOffersSentCount() {
 
 function saveOffersSentCount(counts) {
   try {
-    localStorage.setItem("offers_sent_count", JSON.stringify(counts));
+    localStorage.setItem("offers_sent_count_per_item", JSON.stringify(counts));
     return true;
   } catch (_) {
     return false;
@@ -102,10 +103,11 @@ export default function ProToolsSendOffers() {
   const [selectedIds, setSelectedIds] = useState(() => (initialItemId ? [initialItemId] : []));
   const [editingOfferId, setEditingOfferId] = useState(null);
   const [customOffers, setCustomOffers] = useState({});
-  const [isLoadingEbayItems, setIsLoadingEbayItems] = useState(false);
-  const [ebayConnectionError, setEbayConnectionError] = useState(false);
+  const [isLoadingMarketplaceItems, setIsLoadingMarketplaceItems] = useState(false);
+  const [marketplaceConnectionError, setMarketplaceConnectionError] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [offersSentCount, setOffersSentCount] = useState(() => loadOffersSentCount());
+  const [marketplaceItems, setMarketplaceItems] = useState([]);
 
   // Save offers sent count to localStorage whenever it changes
   useEffect(() => {
@@ -122,36 +124,76 @@ export default function ProToolsSendOffers() {
     }
   }, [marketplace]);
 
-  // Auto-fetch eBay items when marketplace is eBay
+  // Auto-fetch marketplace items when marketplace changes
   useEffect(() => {
-    if (marketplace === "ebay") {
-      fetchEbayItems();
-    }
+    fetchMarketplaceItems();
   }, [marketplace]);
 
-  const fetchEbayItems = async () => {
-    setIsLoadingEbayItems(true);
-    setEbayConnectionError(false);
+  const fetchMarketplaceItems = async () => {
+    setIsLoadingMarketplaceItems(true);
+    setMarketplaceConnectionError(false);
+    setMarketplaceItems([]);
+    
     try {
-      // Check if extension is available
+      // Check if extension is available for connection status
       const ext = window?.ProfitOrbitExtension;
       if (typeof ext?.getMarketplaceStatus === "function") {
-        const status = await ext.getMarketplaceStatus("ebay");
+        const status = await ext.getMarketplaceStatus(marketplace);
         if (!status?.connected) {
-          setEbayConnectionError(true);
-          setIsLoadingEbayItems(false);
+          setMarketplaceConnectionError(true);
+          setIsLoadingMarketplaceItems(false);
           return;
         }
       }
 
-      // Attempt to fetch eBay items that are eligible for offers
-      // This would typically call the extension to get active listings from eBay
-      // For now, we'll rely on the inventory items that have eBay connections
+      // Fetch eligible items from the API using newApiClient's auth pattern
+      const { getCurrentUserId } = await import('@/api/supabaseClient');
+      const { supabase } = await import('@/api/supabaseClient');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || await getCurrentUserId();
+      
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get marketplace token from localStorage (stored by extension)
+      let marketplaceToken = null;
+      try {
+        if (marketplace === 'ebay') {
+          const ebayTokenData = localStorage.getItem('profit_orbit_ebay_token');
+          if (ebayTokenData) {
+            const parsed = JSON.parse(ebayTokenData);
+            marketplaceToken = parsed.access_token || parsed.token || ebayTokenData;
+          }
+        } else if (marketplace === 'mercari') {
+          marketplaceToken = localStorage.getItem('profit_orbit_mercari_token');
+        }
+      } catch (e) {
+        console.warn('Could not get marketplace token:', e);
+      }
+
+      const response = await fetch(`/api/offers/eligible-items?marketplaceId=${marketplace}&nextPage=0&limit=100&includeLiveData=true`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId,
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+          ...(marketplaceToken && { [`x-${marketplace}-token`]: marketplaceToken }),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch items: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Fetched ${data.items?.length || 0} eligible items for ${marketplace}`);
+      setMarketplaceItems(data.items || []);
     } catch (e) {
-      console.error("Error fetching eBay items:", e);
-      setEbayConnectionError(true);
+      console.error(`Error fetching ${marketplace} items:`, e);
+      setMarketplaceConnectionError(true);
     } finally {
-      setIsLoadingEbayItems(false);
+      setIsLoadingMarketplaceItems(false);
     }
   };
 
@@ -185,54 +227,91 @@ export default function ProToolsSendOffers() {
     return counts;
   }, []);
 
+  // Count total offers sent per marketplace (sum of all item offers)
+  const offersSentByMarketplace = useMemo(() => {
+    const counts = {};
+    // Sum up all offer counts for items that belong to each marketplace
+    Object.entries(offersSentCount).forEach(([itemId, count]) => {
+      // For now, we'll assign the count to the current marketplace
+      // In a real implementation, you'd look up which marketplace each itemId belongs to
+      if (!counts[marketplace]) counts[marketplace] = 0;
+      counts[marketplace] += count;
+    });
+    return counts;
+  }, [offersSentCount, marketplace]);
+
   const rows = useMemo(() => {
     const pct = Number(offerPct);
     const safePct = Number.isFinite(pct) ? Math.max(0, Math.min(99, pct)) : 0;
-    const items = Array.isArray(inventoryItems) ? inventoryItems : [];
+    
+    // Use marketplace items from API if available, otherwise fall back to inventory items
+    const items = marketplaceItems.length > 0 
+      ? marketplaceItems 
+      : (Array.isArray(inventoryItems) ? inventoryItems : []);
     
     // Get the marketplace-specific item ID field name (e.g., "ebay_item_id", "mercari_item_id")
     const marketplaceItemIdField = `${marketplace}_item_id`;
     
     const eligible = items
       .filter((it) => {
-        // Include item if it has an active listing for this marketplace
-        if (activeListingsByItemId.has(String(it?.id))) return true;
+        // If using marketplace items from API, they're already filtered
+        if (marketplaceItems.length > 0) return true;
         
-        // Or if it was imported from this marketplace (has marketplace-specific ID)
+        // Otherwise, filter inventory items
+        if (activeListingsByItemId.has(String(it?.id))) return true;
         if (it?.[marketplaceItemIdField]) return true;
         
         return false;
       })
       .map((it) => {
-        const id = String(it.id);
+        const id = String(it.id || it.itemId);
         const listing = activeListingsByItemId.get(id);
         
-        // Orben price = our listing price or purchase price
+        // For API items, use the provided fields
+        if (marketplaceItems.length > 0) {
+          const vendooPrice = Number(it?.price) || 0;
+          const mktplacePrice = Number(it?.marketplacePrice) || vendooPrice;
+          const basePrice = offerPriceBasedOn === "marketplace_price" ? mktplacePrice : vendooPrice;
+          const defaultOfferPrice = Math.max(0, basePrice * (1 - safePct / 100));
+          const offerPrice = customOffers[id] !== undefined ? customOffers[id] : defaultOfferPrice;
+          const discount = Math.max(0, basePrice - offerPrice);
+          const cog = Number(it?.costOfGoods) || 0;
+          const earnings = Math.max(0, offerPrice - cog);
+          const likes = Number(it?.likes) || 0;
+          
+          // Get offer count for this specific item
+          const itemOfferCount = offersSentCount[id] || 0;
+          
+          return {
+            id,
+            title: it?.title || "Untitled item",
+            image: it?.img || "",
+            likes,
+            vendooPrice,
+            mktplacePrice,
+            discount,
+            offerPrice,
+            cog,
+            earnings,
+            listingUrl: it?.listingUrl || "",
+            offersSent: itemOfferCount,
+          };
+        }
+        
+        // For local inventory items
         const vendooPrice = Number(it?.listing_price) || Number(it?.price) || Number(it?.purchase_price) || 0;
-        
-        // Marketplace price = the price on the actual marketplace listing
         const mktplacePrice = Number(listing?.marketplace_price) || vendooPrice;
-        
-        // Base price depends on "offer price based on" selection
         const basePrice = offerPriceBasedOn === "marketplace_price" ? mktplacePrice : vendooPrice;
-        
-        // Calculate offer price (check if custom override exists)
         const defaultOfferPrice = Math.max(0, basePrice * (1 - safePct / 100));
         const offerPrice = customOffers[id] !== undefined ? customOffers[id] : defaultOfferPrice;
-        
-        // Discount = base price - offer price
         const discount = Math.max(0, basePrice - offerPrice);
-        
-        // COG = cost of goods
         const cog = Number(it?.purchase_price) || 0;
-        
-        // Earnings = offer price - cog
         const earnings = Math.max(0, offerPrice - cog);
-        
-        // Likes/watchers count (from listing data or Mercari metrics)
         const likes = Number(listing?.likes) || Number(it?.mercari_likes) || 0;
-        
         const url = String(listing?.marketplace_listing_url || "");
+        
+        // Get offer count for this specific item
+        const itemOfferCount = offersSentCount[id] || 0;
         
         return {
           id,
@@ -246,6 +325,7 @@ export default function ProToolsSendOffers() {
           cog,
           earnings,
           listingUrl: url && url.startsWith("http") ? url : "",
+          offersSent: itemOfferCount,
         };
       });
 
@@ -253,7 +333,7 @@ export default function ProToolsSendOffers() {
     const pinned = initialItemId ? eligible.filter((r) => r.id === String(initialItemId)) : [];
     const rest = initialItemId ? eligible.filter((r) => r.id !== String(initialItemId)) : eligible;
     return [...pinned, ...rest];
-  }, [inventoryItems, activeListingsByItemId, offerPct, offerPriceBasedOn, customOffers, initialItemId]);
+  }, [inventoryItems, marketplaceItems, activeListingsByItemId, offerPct, offerPriceBasedOn, customOffers, initialItemId, offersSentCount]);
 
   const selectedSet = useMemo(() => new Set(selectedIds.map(String)), [selectedIds]);
   const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(r.id));
@@ -349,11 +429,14 @@ export default function ProToolsSendOffers() {
           throw new Error(resp?.error || "Send Offers failed");
         }
         toast({ title: "Offers sent!", description: `${targets.length} offers have been sent.` });
-        // Update offers sent count for this marketplace
-        setOffersSentCount((prev) => ({
-          ...prev,
-          [marketplace]: (prev[marketplace] || 0) + targets.length,
-        }));
+        // Update offers sent count for each item
+        setOffersSentCount((prev) => {
+          const updated = { ...prev };
+          targets.forEach((t) => {
+            updated[t.id] = (updated[t.id] || 0) + 1;
+          });
+          return updated;
+        });
         // Clear selection
         setSelectedIds([]);
         return;
@@ -408,7 +491,7 @@ export default function ProToolsSendOffers() {
               {MARKETPLACES.map((m) => {
                 const isActive = marketplace === m.id;
                 const count = activeListingCountsByMarketplace[m.id] || 0;
-                const sentCount = offersSentCount[m.id] || 0;
+                const sentCount = offersSentByMarketplace[m.id] || 0;
                 return (
                   <button
                     key={m.id}
@@ -427,15 +510,9 @@ export default function ProToolsSendOffers() {
                         <div className="text-xs text-muted-foreground truncate">{count} active</div>
                       </div>
                     </div>
-                    {sentCount > 0 ? (
-                      <Badge className={isActive ? "bg-emerald-600 text-white hover:bg-emerald-600" : ""} variant={isActive ? undefined : "secondary"}>
-                        {sentCount}
-                      </Badge>
-                    ) : (
-                      <Badge className={isActive ? "bg-emerald-600 text-white hover:bg-emerald-600" : ""} variant={isActive ? undefined : "secondary"}>
-                        0
-                      </Badge>
-                    )}
+                    <Badge className={isActive ? "bg-emerald-600 text-white hover:bg-emerald-600" : ""} variant={isActive ? undefined : "secondary"}>
+                      {sentCount}
+                    </Badge>
                   </button>
                 );
               })}
@@ -444,20 +521,19 @@ export default function ProToolsSendOffers() {
 
           {/* Main */}
           <div className="lg:col-span-9 space-y-3 min-w-0">
-            {/* eBay connection error */}
-            {marketplace === "ebay" && ebayConnectionError && (
+            {/* Marketplace connection error */}
+            {marketplaceConnectionError && (
               <Alert variant="destructive">
                 <AlertDescription>
-                  We had trouble accessing your eBay account. Please log into{" "}
-                  <a
-                    href="https://ebay.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline font-medium"
+                  We had trouble accessing your {MARKETPLACES.find((m) => m.id === marketplace)?.label} account. Please log into the marketplace
+                  in a different tab or check your connection settings.{" "}
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto text-white underline"
+                    onClick={fetchMarketplaceItems}
                   >
-                    https://ebay.com
-                  </a>{" "}
-                  in a different tab or your settings. Then, click on "Connect" button, so we can try again.
+                    Try again
+                  </Button>
                 </AlertDescription>
               </Alert>
             )}
@@ -578,9 +654,20 @@ export default function ProToolsSendOffers() {
             <Card className="border border-border/60 bg-card/60 min-w-0">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center justify-between gap-2">
-                  <span>Eligible Listings</span>
+                  <div className="flex items-center gap-2">
+                    <span>Eligible Listings</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={fetchMarketplaceItems}
+                      disabled={isLoadingMarketplaceItems}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isLoadingMarketplaceItems ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
                   <span className="text-xs text-muted-foreground">
-                    {isLoading || isLoadingEbayItems ? "Loading…" : `${rows.length} items`}
+                    {isLoading || isLoadingMarketplaceItems ? "Loading…" : `${rows.length} items`}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -598,6 +685,12 @@ export default function ProToolsSendOffers() {
                         <th className="py-2 px-2 text-left w-8"></th>
                         <th className="py-2 px-2 text-left">Title</th>
                         <th className="py-2 px-2 text-center w-16">Likes</th>
+                        <th className="py-2 px-2 text-center w-20">
+                          <div className="flex items-center justify-center gap-1">
+                            Offers Sent
+                            <Info className="h-3 w-3" title="Number of offers sent for this item" />
+                          </div>
+                        </th>
                         <th className="py-2 px-2 text-right w-24">Orben Price</th>
                         <th className="py-2 px-2 text-right w-24">Mktplace Price</th>
                         <th className="py-2 px-2 text-right w-20">Discount</th>
@@ -632,6 +725,15 @@ export default function ProToolsSendOffers() {
                                   <Heart className="h-3 w-3 fill-current" />
                                   <span className="text-xs">{r.likes}</span>
                                 </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-2 text-center">
+                              {r.offersSent > 0 ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  {r.offersSent}
+                                </Badge>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
@@ -678,11 +780,15 @@ export default function ProToolsSendOffers() {
                     </tbody>
                   </table>
 
-                  {rows.length === 0 && !isLoading && !isLoadingEbayItems && (
+                  {rows.length === 0 && !isLoading && !isLoadingMarketplaceItems && (
                     <div className="py-12 text-center text-sm text-muted-foreground">
                       No eligible listings found for {MARKETPLACES.find((m) => m.id === marketplace)?.label}.
                       <br />
-                      Make sure you have active listings synced from this marketplace.
+                      {marketplaceConnectionError ? (
+                        <span>Please check your connection settings and try again.</span>
+                      ) : (
+                        <span>Make sure you have active listings synced from this marketplace.</span>
+                      )}
                     </div>
                   )}
                 </div>
