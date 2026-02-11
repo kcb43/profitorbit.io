@@ -123,7 +123,18 @@
         const connected = localStorage.getItem(`profit_orbit_${marketplace}_connected`) === 'true';
         const userData = localStorage.getItem(`profit_orbit_${marketplace}_user`);
         const userName = userData ? JSON.parse(userData).userName : null;
-        const hasToken = Boolean(localStorage.getItem(`profit_orbit_${marketplace}_token`));
+        
+        // Check for token in marketplace-specific locations
+        let hasToken = false;
+        if (marketplace === 'ebay') {
+          // eBay stores token in 'ebay_user_token' from OAuth
+          hasToken = Boolean(localStorage.getItem('ebay_user_token'));
+        } else {
+          // Other marketplaces use the standard pattern
+          hasToken = Boolean(localStorage.getItem(`profit_orbit_${marketplace}_token`));
+        }
+        
+        console.log(`🔍 Page API: ${marketplace} - connected: ${connected}, hasToken: ${hasToken}`);
         
         return {
           connected: connected && hasToken,
