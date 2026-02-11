@@ -28,12 +28,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import ebayLogo from "@/assets/ebay-logo.svg";
+import mercariLogo from "@/assets/mercari-logo.svg";
+import facebookLogo from "@/assets/facebook-logo.svg";
+import poshmarkLogo from "@/assets/poshmark-logo.svg";
 
 const MARKETPLACES = [
-  { id: "ebay", label: "eBay", color: "bg-blue-600" },
-  { id: "mercari", label: "Mercari", color: "bg-orange-600" },
-  { id: "facebook", label: "Facebook", color: "bg-sky-600" },
-  { id: "poshmark", label: "Poshmark", color: "bg-pink-600" },
+  { id: "ebay", label: "eBay", color: "bg-blue-600", logo: ebayLogo },
+  { id: "mercari", label: "Mercari", color: "bg-orange-600", logo: mercariLogo },
+  { id: "facebook", label: "Facebook", color: "bg-sky-600", logo: facebookLogo },
+  { id: "poshmark", label: "Poshmark", color: "bg-pink-600", logo: poshmarkLogo },
   { id: "depop", label: "Depop", color: "bg-red-600" },
   { id: "grailed", label: "Grailed", color: "bg-black" },
 ];
@@ -736,9 +740,19 @@ export default function ProToolsSendOffers() {
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`h-8 w-8 rounded-full ${m.color} flex items-center justify-center text-white text-xs font-bold`}>
-                        {m.label.slice(0, 1)}
-                      </div>
+                      {m.logo ? (
+                        <div className="h-8 w-8 flex items-center justify-center flex-shrink-0">
+                          <img 
+                            src={m.logo} 
+                            alt={`${m.label} logo`}
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`h-8 w-8 rounded-full ${m.color} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                          {m.label.slice(0, 1)}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-foreground">{m.label}</div>
                         <div className="text-xs text-muted-foreground truncate">{count} active</div>
