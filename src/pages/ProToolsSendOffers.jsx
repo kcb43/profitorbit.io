@@ -894,7 +894,22 @@ export default function ProToolsSendOffers() {
                                       side="top"
                                       align="start"
                                     >
-                                      <p className="break-words">{r.title}</p>
+                                      <div className="space-y-2">
+                                        <div className="text-xs text-muted-foreground">Full Title (click to copy)</div>
+                                        <div 
+                                          className="break-words bg-muted p-2 rounded cursor-pointer hover:bg-muted/80 select-all transition-colors"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(r.title);
+                                            toast({
+                                              title: "Copied!",
+                                              description: "Title copied to clipboard",
+                                            });
+                                          }}
+                                          title="Click to copy"
+                                        >
+                                          {r.title}
+                                        </div>
+                                      </div>
                                     </PopoverContent>
                                   </Popover>
                                   <Popover>
