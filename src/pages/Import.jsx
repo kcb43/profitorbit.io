@@ -117,6 +117,7 @@ export default function Import() {
   }, [selectedSource]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [visibleItemIds, setVisibleItemIds] = useState([]); // Track which item IDs are currently visible
+  const [searchQuery, setSearchQuery] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("newest");
@@ -1050,6 +1051,14 @@ export default function Import() {
     if (!sourceListings || sourceListings.length === 0) return [];
     
     let filtered = sourceListings.filter((item) => {
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const titleMatch = item.title?.toLowerCase().includes(query);
+        const idMatch = item.itemId?.toLowerCase().includes(query);
+        if (!titleMatch && !idMatch) return false;
+      }
+      
       // Filter by import status
       if (importingStatus === "not_imported") {
         if (item.imported) return false;
@@ -1101,7 +1110,7 @@ export default function Import() {
     });
 
     return filtered;
-  }, [ebayListings, importingStatus, listingStatus, sortBy, selectedSource, userId, queryClient, facebookListingsVersion]);
+  }, [ebayListings, importingStatus, listingStatus, sortBy, selectedSource, userId, queryClient, facebookListingsVersion, searchQuery]);
 
   // Calculate counts from ALL listings (not filtered)
   const { notImportedCount, importedCount } = React.useMemo(() => {
@@ -1189,6 +1198,7 @@ export default function Import() {
       return;
     }
     
+    // eBay sync
     localStorage.setItem('ebay_last_sync', new Date().toISOString());
     setLastSync(new Date());
     setCanSync(false);
@@ -1200,10 +1210,29 @@ export default function Import() {
       setNextSyncTime(null);
     }, 5 * 60 * 1000);
     
-    refetch();
-    toast({
-      title: "Refreshing...",
-      description: "Fetching latest items from eBay",
+    // Show loading toast
+    const loadingToast = toast({
+      title: "Syncing eBay...",
+      description: "Fetching latest items",
+      duration: Infinity,
+    });
+    
+    // Trigger refetch and handle completion
+    refetch().then((result) => {
+      loadingToast.dismiss();
+      const itemCount = result.data?.length || 0;
+      toast({
+        title: "Sync Complete",
+        description: `Fetched ${itemCount} eBay items`,
+        variant: "success",
+      });
+    }).catch((error) => {
+      loadingToast.dismiss();
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to fetch eBay items",
+        variant: "destructive",
+      });
     });
   };
 
@@ -1589,7 +1618,13 @@ export default function Import() {
                 <RefreshCw className={`h-4 w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
                 {!canSync && nextSyncTime 
                   ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
-                  : `Get Latest ${selectedSource === "facebook" ? "Facebook" : selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} Items`
+                  : selectedSource === "facebook" 
+                    ? "Sync Facebook"
+                    : selectedSource === "mercari"
+                      ? "Sync Mercari"
+                      : selectedSource === "ebay"
+                        ? "Sync eBay"
+                        : `Sync ${selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)}`
                 }
               </Button>
             </div>
@@ -1657,6 +1692,26 @@ export default function Import() {
                   </SelectContent>
                 </Select>
               </div>
+            </Card>
+
+            {/* Search Bar */}
+            <Card className="p-4">
+              <Label className="text-sm font-medium mb-2 block">Search Items</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search by title or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {searchQuery && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Showing {filteredListings.length} result{filteredListings.length !== 1 ? 's' : ''}
+                </p>
+              )}
             </Card>
 
             {/* Filters */}
@@ -2329,33 +2384,16 @@ export default function Import() {
                               )}
                             </>
                           )}
-                          {/* Show eBay watchers and views for Active items */}
-                          {selectedSource === "ebay" && item.status === "Active" && (
+                          {/* Show eBay watchers for Active items */}
+                          {selectedSource === "ebay" && item.status === "Active" && typeof item.watchCount !== 'undefined' && (
                             <>
-                              {(typeof item.watchCount !== 'undefined' || typeof item.hitCount !== 'undefined') && (
-                                <>
-                                  {" · "}
-                                  <span className="inline-flex items-center gap-2">
-                                    {typeof item.watchCount !== 'undefined' && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                                        </svg>
-                                        {item.watchCount || 0}
-                                      </span>
-                                    )}
-                                    {typeof item.hitCount !== 'undefined' && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                        </svg>
-                                        {item.hitCount || 0}
-                                      </span>
-                                    )}
-                                  </span>
-                                </>
-                              )}
+                              {" · "}
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                                </svg>
+                                {item.watchCount || 0} watchers
+                              </span>
                             </>
                           )}
                           {/* Show buyer badge for eBay sold items with transaction data */}

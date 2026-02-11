@@ -52,6 +52,11 @@ import SelectionBanner from "@/components/SelectionBanner";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
+  "eBay": "/ebay-logo.svg",
+  "Mercari": "/mercari-logo.svg",
+  "Facebook": "/facebook-logo.svg",
+  "Facebook Marketplace": "/facebook-logo.svg",
+  "Poshmark": "/poshmark-logo.svg",
 };
 
 const statusColors = {
@@ -2178,9 +2183,15 @@ export default function InventoryPage() {
                           <div className="text-sm font-semibold text-foreground line-clamp-2">
                             {item.item_name || "Untitled Item"}
                           </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            ${Number(item.purchase_price || 0).toFixed(2)}
-                            {item.purchase_date ? ` • ${format(parseISO(item.purchase_date), "MMM d, yyyy")}` : ""}
+                          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                            <span>${Number(item.purchase_price || 0).toFixed(2)}</span>
+                            {item.purchase_date && <span>• {format(parseISO(item.purchase_date), "MMM d, yyyy")}</span>}
+                            {item.source && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt={item.source} className="w-2.5 h-2.5" />}
+                                {item.source}
+                              </span>
+                            )}
                           </div>
                           {/* Show Mercari metrics for items from Mercari source (on_sale/available status only) */}
                           {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && (item.status === 'available' || item.status === 'listed' || item.status === 'on_sale') && (
@@ -3010,7 +3021,8 @@ export default function InventoryPage() {
                                   {item.source && (
                                     <div className="flex items-center justify-between gap-3">
                                       <span className="text-muted-foreground text-xs font-semibold">Source</span>
-                                      <span className="font-semibold text-foreground text-right truncate">
+                                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt={item.source} className="w-3 h-3" />}
                                         {item.source}
                                       </span>
                                     </div>
@@ -3345,6 +3357,15 @@ export default function InventoryPage() {
                           <span>Purchase Date:</span>
                           <span className="text-foreground">{item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}</span>
                         </div>
+                        {item.source && (
+                          <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                            <span>Source:</span>
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt={item.source} className="w-3 h-3" />}
+                              {item.source}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {itemTags.length > 0 && (

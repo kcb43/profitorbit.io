@@ -655,6 +655,7 @@ export default async function handler(req, res) {
               ebay_item_id: itemDetails.itemId,
               condition: itemDetails.condition,
               purchase_date: new Date().toISOString(),
+              quantity: itemDetails.quantity || 1,
               notes: null,
             })
             .select('id')
