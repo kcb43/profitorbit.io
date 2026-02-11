@@ -22,27 +22,29 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, onOpenChange, variant, ...props }) {
-        const toastVariant = variant || "success";
+      {toasts.map(function ({ id, title, description, action, onOpenChange, variant, icon, ...props }) {
+        const toastVariant = variant || "default";
         return (
           <Toast key={id} {...props} variant={toastVariant} onOpenChange={onOpenChange}>
-            <div className="relative" style={{ width: '100%', minHeight: '50px', position: 'relative' }}>
-              <ToastIcon variant={toastVariant} />
-              <div className="flex flex-col" style={{ marginLeft: '48px', paddingRight: '24px', paddingTop: '2px' }}>
+            <div className="flex items-center w-full gap-3">
+              {icon ? (
+                <div className="flex-shrink-0">{icon}</div>
+              ) : (
+                <ToastIcon variant={toastVariant} />
+              )}
+              <div className="flex-1 min-w-0">
                 {title && <ToastTitle>{title}</ToastTitle>}
-                {description && (
-                  <ToastDescription>{description}</ToastDescription>
-                )}
+                {description && <ToastDescription>{description}</ToastDescription>}
               </div>
+              <ToastClose 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClose(id, onOpenChange);
+                }} 
+              />
             </div>
             {action}
-            <ToastClose 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleClose(id, onOpenChange);
-              }} 
-            />
           </Toast>
         );
       })}

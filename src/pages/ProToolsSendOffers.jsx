@@ -345,6 +345,7 @@ export default function ProToolsSendOffers() {
             cog,
             earnings,
             listingUrl: it?.listingUrl || "",
+            listingId: it?.listingId, // eBay item ID for API calls
             offersSent: itemOfferCount,
             isImported: it?.isImported !== false, // Pass through from API
             ebayItemId: it?.ebayItemId || it?.listingId, // For import action
@@ -492,11 +493,28 @@ export default function ProToolsSendOffers() {
   };
 
   const runSendOffers = async () => {
-    const targets = rows.filter((r) => selectedSet.has(r.id));
+    // Filter to only imported items (non-imported can't have offers sent)
+    const allSelectedRows = rows.filter((r) => selectedSet.has(r.id));
+    const targets = allSelectedRows.filter((r) => r.isImported !== false);
+    const skippedCount = allSelectedRows.length - targets.length;
+    
     if (!targets.length) {
-      toast({ title: "No items selected", description: "Select at least one active listing to send offers.", variant: "destructive" });
+      toast({ 
+        title: "No items selected", 
+        description: skippedCount > 0 
+          ? `${skippedCount} non-imported item${skippedCount > 1 ? 's' : ''} cannot receive offers. Please import them first.`
+          : "Select at least one imported item to send offers.", 
+        variant: "destructive" 
+      });
       return;
     }
+
+    // Show loading toast
+    const loadingToast = toast({ 
+      title: "Sending offers...", 
+      description: `Processing ${targets.length} item${targets.length > 1 ? 's' : ''}`,
+      duration: Infinity,
+    });
 
     // Persist a draft "campaign" in localStorage for support/debug.
     try {
@@ -509,6 +527,7 @@ export default function ProToolsSendOffers() {
         targets: targets.map((t) => ({
           id: t.id,
           listingUrl: t.listingUrl,
+          listingId: t.ebayItemId || t.id,
           vendooPrice: t.vendooPrice,
           mktplacePrice: t.mktplacePrice,
           offerPrice: t.offerPrice,
@@ -517,7 +536,7 @@ export default function ProToolsSendOffers() {
       localStorage.setItem("po_send_offers_last_draft", JSON.stringify(draft));
     } catch (_) {}
 
-    // Attempt extension wiring (currently a stub that returns "not implemented").
+    // Attempt extension wiring
     try {
       const ext = window?.ProfitOrbitExtension;
       if (typeof ext?.sendOffersBulk === "function") {
@@ -528,16 +547,30 @@ export default function ProToolsSendOffers() {
           message: offerMessage || undefined,
           targets: targets.map((t) => ({
             inventoryItemId: t.id,
+            listingId: t.ebayItemId || t.id,
             listingUrl: t.listingUrl,
             vendooPrice: t.vendooPrice,
             mktplacePrice: t.mktplacePrice,
             offerPrice: t.offerPrice,
           })),
         });
+        
+        // Dismiss loading toast
+        loadingToast.dismiss();
+        
         if (!resp?.success) {
           throw new Error(resp?.error || "Send Offers failed");
         }
-        toast({ title: "Offers sent!", description: `${targets.length} offers have been sent.` });
+        
+        // Show modern success toast
+        const successCount = resp.count || targets.length;
+        toast({ 
+          title: "Sent Offers", 
+          description: `${successCount}/${targets.length} items completed`,
+          variant: "success",
+          duration: 5000,
+        });
+        
         // Update offers sent count for each item
         setOffersSentCount((prev) => {
           const updated = { ...prev };
@@ -551,18 +584,31 @@ export default function ProToolsSendOffers() {
         return;
       }
     } catch (e) {
+      // Dismiss loading toast
+      loadingToast.dismiss();
+      
       toast({
-        title: "Automation not wired yet",
-        description: e?.message || "We'll wire Send Offers to extension recording/replay next.",
+        title: "Error",
+        description: e?.message || "Failed to send offers",
+        variant: "destructive",
       });
       return;
     }
 
+    // Dismiss loading toast
+    loadingToast.dismiss();
+    
     toast({
       title: "Offer draft created",
-      description: "Automation is being added next. For now, use each listing URL to send offers in the marketplace, or we can hook this to the extension recording/replay.",
+      description: "Extension not available. Please reload the page.",
+      variant: "destructive",
     });
   };
+
+  // Count imported items that are selected (only these can receive offers)
+  const selectedImportedCount = useMemo(() => {
+    return rows.filter(r => selectedSet.has(r.id) && r.isImported !== false).length;
+  }, [rows, selectedSet]);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -589,6 +635,20 @@ export default function ProToolsSendOffers() {
             Send Offers
           </Button>
         </div>
+        
+        {/* Floating Action Button - appears when items are selected */}
+        {selectedImportedCount > 0 && (
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+            <Button 
+              onClick={runSendOffers} 
+              size="lg"
+              className="bg-emerald-600 hover:bg-emerald-700 shadow-2xl px-8 py-6 text-base font-semibold rounded-full"
+            >
+              <Send className="h-5 w-5 mr-2" />
+              Send {offerPct}% off Offers ({selectedImportedCount})
+            </Button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 min-w-0">
           {/* Marketplace selector */}
@@ -894,21 +954,18 @@ export default function ProToolsSendOffers() {
                                       side="top"
                                       align="start"
                                     >
-                                      <div className="space-y-2">
-                                        <div className="text-xs text-muted-foreground">Full Title (click to copy)</div>
-                                        <div 
-                                          className="break-words bg-muted p-2 rounded cursor-pointer hover:bg-muted/80 select-all transition-colors"
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(r.title);
-                                            toast({
-                                              title: "Copied!",
-                                              description: "Title copied to clipboard",
-                                            });
-                                          }}
-                                          title="Click to copy"
-                                        >
-                                          {r.title}
-                                        </div>
+                                      <div 
+                                        className="break-words bg-muted p-2 rounded cursor-pointer hover:bg-muted/80 select-all transition-colors"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(r.title);
+                                          toast({
+                                            title: "Copied!",
+                                            description: "Title copied to clipboard",
+                                          });
+                                        }}
+                                        title="Click to copy"
+                                      >
+                                        {r.title}
                                       </div>
                                     </PopoverContent>
                                   </Popover>
@@ -975,24 +1032,30 @@ export default function ProToolsSendOffers() {
                               ${r.discount.toFixed(2)}
                             </td>
                             <td className="py-2 px-2 text-right">
-                              {isEditing ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={r.offerPrice.toFixed(2)}
-                                  onChange={(e) => updateCustomOffer(r.id, e.target.value)}
-                                  onBlur={() => setEditingOfferId(null)}
-                                  className="w-20 text-right text-xs p-1"
-                                  autoFocus
-                                />
+                              {isImported ? (
+                                isEditing ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={r.offerPrice.toFixed(2)}
+                                    onChange={(e) => updateCustomOffer(r.id, e.target.value)}
+                                    onBlur={() => setEditingOfferId(null)}
+                                    className="w-20 text-right text-xs p-1"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <button
+                                    onClick={() => setEditingOfferId(r.id)}
+                                    className="tabular-nums text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                                  >
+                                    ${r.offerPrice.toFixed(2)}
+                                    <Edit className="h-3 w-3" />
+                                  </button>
+                                )
                               ) : (
-                                <button
-                                  onClick={() => setEditingOfferId(r.id)}
-                                  className="tabular-nums text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-                                >
+                                <span className="tabular-nums text-muted-foreground">
                                   ${r.offerPrice.toFixed(2)}
-                                  <Edit className="h-3 w-3" />
-                                </button>
+                                </span>
                               )}
                             </td>
                             <td className="py-2 px-2 text-right tabular-nums text-muted-foreground text-xs">

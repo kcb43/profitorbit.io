@@ -117,19 +117,23 @@ async function findEbayEligibleItems(accessToken) {
 async function sendEbayOffers(targets, options = {}) {
   console.log('🏷️ [eBay] Sending offers to', targets.length, 'items');
   
-  // Get eBay token from storage
-  const { profit_orbit_ebay_token } = await chrome.storage.local.get('profit_orbit_ebay_token');
-  if (!profit_orbit_ebay_token) {
+  // Get eBay token from storage (check both old and new keys)
+  const storage = await chrome.storage.local.get(['ebay_access_token', 'profit_orbit_ebay_token']);
+  const tokenData = storage.ebay_access_token || storage.profit_orbit_ebay_token;
+  
+  if (!tokenData) {
     throw new Error('eBay not connected. Please connect your eBay account first.');
   }
   
-  const accessToken = typeof profit_orbit_ebay_token === 'string' 
-    ? profit_orbit_ebay_token 
-    : profit_orbit_ebay_token.access_token || profit_orbit_ebay_token.token;
+  const accessToken = typeof tokenData === 'string' 
+    ? tokenData 
+    : tokenData.access_token || tokenData.token;
   
   if (!accessToken) {
     throw new Error('eBay access token not found');
   }
+  
+  console.log('🔑 [eBay] Using access token:', accessToken.substring(0, 20) + '...');
 
   // eBay Negotiation API endpoint
   const negotiationUrl = 'https://api.ebay.com/sell/negotiation/v1/send_offer_to_interested_buyers';

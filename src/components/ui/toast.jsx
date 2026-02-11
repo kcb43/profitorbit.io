@@ -1,18 +1,18 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
-import { X, Check } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ToastProvider = React.forwardRef(({ ...props }, ref) => (
   <div
     ref={ref}
-    className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col gap-4"
+    className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col gap-3"
     style={{
       position: 'fixed',
-      top: '24px',
-      right: '24px',
+      top: '16px',
+      right: '16px',
       zIndex: 1000,
-      maxWidth: '384px',
+      maxWidth: '420px',
     }}
     {...props}
   />
@@ -22,13 +22,13 @@ ToastProvider.displayName = "ToastProvider";
 const ToastViewport = React.forwardRef(({ ...props }, ref) => (
   <div
     ref={ref}
-    className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col gap-4"
+    className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col gap-3"
     style={{
       position: 'fixed',
-      top: '24px',
-      right: '24px',
+      top: '16px',
+      right: '16px',
       zIndex: 1000,
-      maxWidth: '384px',
+      maxWidth: '420px',
     }}
     {...props}
   />
@@ -36,14 +36,13 @@ const ToastViewport = React.forwardRef(({ ...props }, ref) => (
 ToastViewport.displayName = "ToastViewport";
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center overflow-hidden rounded-2xl shadow-xl transition-all duration-300 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
-        destructive:
-          "destructive group border-destructive/30 bg-destructive text-destructive-foreground",
-        success: "bg-background text-foreground",
+        default: "bg-background border border-border/40",
+        destructive: "bg-background border border-red-200/40",
+        success: "bg-background border border-green-200/40",
       },
     },
     defaultVariants: {
@@ -58,12 +57,11 @@ const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       style={{
-        padding: '16px 24px',
-        borderRadius: '8px',
-        fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+        padding: '16px 20px',
+        borderRadius: '16px',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         fontSize: '14px',
-        lineHeight: '22px',
-        marginBottom: '16px',
+        lineHeight: '20px',
       }}
       {...props}
     />
@@ -89,26 +87,23 @@ const ToastClose = React.forwardRef(({ className, onClick, ...props }, ref) => (
     type="button"
     onClick={onClick}
     className={cn(
-      "absolute right-6 top-4 cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus:outline-none",
+      "ml-auto flex-shrink-0 rounded-full p-1 transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring",
       className
     )}
     style={{
-      position: 'absolute',
-      right: '22px',
-      top: '16px',
-      width: '16px',
-      height: '16px',
-      display: 'block',
-      background: 'none',
+      width: '28px',
+      height: '28px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'transparent',
       border: 'none',
-      padding: 0,
+      cursor: 'pointer',
     }}
     aria-label="Close"
     {...props}
   >
-    <span className="inline-flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
-      <X className="h-4 w-4" />
-    </span>
+    <X className="h-4 w-4 text-muted-foreground" />
   </button>
 ));
 ToastClose.displayName = "ToastClose";
@@ -116,13 +111,11 @@ ToastClose.displayName = "ToastClose";
 const ToastTitle = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm font-medium text-foreground mb-1", className)}
+    className={cn("text-sm font-semibold", className)}
     style={{
       fontSize: '14px',
-      lineHeight: '24px',
-      marginBottom: '4px',
-      marginLeft: '48px',
-      paddingRight: '24px',
+      fontWeight: 600,
+      lineHeight: '20px',
     }}
     {...props}
   />
@@ -132,11 +125,11 @@ ToastTitle.displayName = "ToastTitle";
 const ToastDescription = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-xs text-muted-foreground mt-0.5", className)}
     style={{
-      fontSize: '14px',
-      lineHeight: '22px',
-      marginLeft: '48px',
+      fontSize: '12px',
+      lineHeight: '16px',
+      marginTop: '2px',
     }}
     {...props}
   />
@@ -144,32 +137,36 @@ const ToastDescription = React.forwardRef(({ className, ...props }, ref) => (
 ToastDescription.displayName = "ToastDescription";
 
 const ToastIcon = React.forwardRef(({ variant = "default", className, ...props }, ref) => {
+  let IconComponent = Info;
+  let iconBgColor = "bg-blue-100";
+  let iconColor = "text-blue-600";
+  
   if (variant === "success") {
-    return (
-      <span
-        ref={ref}
-        className={cn("absolute flex items-center justify-center", className)}
-        style={{
-          position: 'absolute',
-          left: '16px',
-          top: '16px',
-          width: '20px',
-          height: '20px',
-          color: 'rgb(82, 196, 26)',
-          zIndex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-        role="img"
-        aria-label="check"
-        {...props}
-      >
-        <Check className="w-5 h-5" style={{ strokeWidth: 3, width: '20px', height: '20px' }} />
-      </span>
-    );
+    IconComponent = CheckCircle2;
+    iconBgColor = "bg-green-100";
+    iconColor = "text-green-600";
+  } else if (variant === "destructive") {
+    IconComponent = AlertCircle;
+    iconBgColor = "bg-red-100";
+    iconColor = "text-red-600";
   }
-  return null;
+  
+  return (
+    <div
+      ref={ref}
+      className={cn("flex-shrink-0 flex items-center justify-center rounded-full", iconBgColor, iconColor, className)}
+      style={{
+        width: '40px',
+        height: '40px',
+        marginRight: '12px',
+      }}
+      role="img"
+      aria-label={variant}
+      {...props}
+    >
+      <IconComponent className="w-5 h-5" />
+    </div>
+  );
 });
 ToastIcon.displayName = "ToastIcon";
 
