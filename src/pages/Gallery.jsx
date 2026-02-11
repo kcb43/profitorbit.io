@@ -340,6 +340,19 @@ export default function GalleryPage() {
           {/* Premium Layout */}
           {renderPremiumLayout()}
 
+          {/* Mobile: Sticky Date Range Indicator above items */}
+          <div className="md:hidden sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border py-3 mb-4 -mx-4 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Viewing: {dateRangeBounds.label}</span>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {stats.salesCount} {stats.salesCount === 1 ? 'Sale' : 'Sales'}
+              </Badge>
+            </div>
+          </div>
+
           {/* Main Grid - Item Showcase */}
           {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full min-w-0" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
