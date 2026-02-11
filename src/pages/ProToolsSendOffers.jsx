@@ -169,7 +169,8 @@ export default function ProToolsSendOffers() {
   const fetchMarketplaceItems = async () => {
     setIsLoadingMarketplaceItems(true);
     setMarketplaceConnectionError(false);
-    setMarketplaceItems([]);
+    // Don't clear items on refresh - prevents "No Image" flash
+    // Items will be replaced when new data arrives
     
     try {
       // Check if extension is available for connection status
