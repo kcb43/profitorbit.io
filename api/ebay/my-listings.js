@@ -313,7 +313,7 @@ export default async function handler(req, res) {
         }
 
         // Mark items as imported or not
-        const listings = allItems.map(item => {
+        let listings = allItems.map(item => {
           // Extract original item ID if it's a transaction ID format
           const originalItemId = item.itemId.includes('-txn-') 
             ? item.itemId.split('-txn-')[0] 
@@ -910,7 +910,7 @@ export default async function handler(req, res) {
         }
 
         // Mark items as imported or not
-        const listings = items.map(item => {
+        let listings = items.map(item => {
           // Extract original item ID if it's a transaction ID format
           const originalItemId = item.itemId.includes('-txn-') 
             ? item.itemId.split('-txn-')[0] 
@@ -1117,7 +1117,7 @@ export default async function handler(req, res) {
       }
 
       // Mark items as imported or not
-      const listings = items.map(item => {
+      let listings = items.map(item => {
         // Extract original item ID if it's a transaction ID format
         const originalItemId = item.itemId.includes('-txn-') 
           ? item.itemId.split('-txn-')[0] 
