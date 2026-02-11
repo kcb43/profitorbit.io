@@ -339,31 +339,38 @@ export default async function handler(req, res) {
       
       const nonImportedListings = allEbayListings
         .filter(listing => !importedEbayIds.has(listing.itemId))
-        .map(listing => ({
-          id: `temp-${listing.itemId}`, // Temporary ID for non-imported items
-          itemId: listing.itemId,
-          userId: userId,
-          sku: listing.sku || null,
-          likes: listing.watchCount || 0,
-          views: listing.hitCount || 0,
-          listingId: listing.itemId,
-          listingUrl: `https://www.ebay.com/itm/${listing.itemId}`,
-          marketplaceId: 'ebay',
-          price: parseFloat(listing.currentPrice || listing.startPrice || listing.price || 0),
-          marketplacePrice: parseFloat(listing.currentPrice || listing.startPrice || listing.price || 0),
-          title: listing.title || 'Untitled',
-          img: listing.imageUrl || (listing.pictureURLs && listing.pictureURLs[0]) || null,
-          costOfGoods: 0,
-          offersTo: listing.watchCount || 0,
-          errors: null,
-          category: listing.primaryCategoryName || null,
-          condition: listing.conditionDisplayName || null,
-          likedAt: null,
-          listedAt: listing.listingStartTime || listing.startTime,
-          brand: null,
-          isImported: false, // Mark as NOT imported
-          ebayItemId: listing.itemId, // Store for import
-        }));
+        .map(listing => {
+          const watchCount = parseInt(listing.watchCount) || 0;
+          const hitCount = parseInt(listing.hitCount) || 0;
+          
+          console.log(`  📊 Non-imported item ${listing.itemId}: ${watchCount} watchers, ${hitCount} views`);
+          
+          return {
+            id: `temp-${listing.itemId}`, // Temporary ID for non-imported items
+            itemId: listing.itemId,
+            userId: userId,
+            sku: listing.sku || null,
+            likes: watchCount,
+            views: hitCount,
+            listingId: listing.itemId,
+            listingUrl: `https://www.ebay.com/itm/${listing.itemId}`,
+            marketplaceId: 'ebay',
+            price: parseFloat(listing.currentPrice || listing.startPrice || listing.price || 0),
+            marketplacePrice: parseFloat(listing.currentPrice || listing.startPrice || listing.price || 0),
+            title: listing.title || 'Untitled',
+            img: listing.imageUrl || (listing.pictureURLs && listing.pictureURLs[0]) || null,
+            costOfGoods: 0,
+            offersTo: watchCount,
+            errors: null,
+            category: listing.primaryCategoryName || null,
+            condition: listing.conditionDisplayName || listing.condition || null,
+            likedAt: null,
+            listedAt: listing.listingStartTime || listing.startTime,
+            brand: null,
+            isImported: false, // Mark as NOT imported
+            ebayItemId: listing.itemId, // Store for import
+          };
+        });
       
       console.log(`✅ Adding ${nonImportedListings.length} non-imported eBay listings`);
       items.push(...nonImportedListings);

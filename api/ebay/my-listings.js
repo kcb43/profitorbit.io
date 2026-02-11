@@ -186,7 +186,7 @@ export default async function handler(req, res) {
   </RequesterCredentials>
   <EndTimeFrom>${endTimeFrom}</EndTimeFrom>
   <EndTimeTo>${endTimeTo}</EndTimeTo>
-  <IncludeWatchCount>false</IncludeWatchCount>
+  <IncludeWatchCount>true</IncludeWatchCount>
   <Pagination>
     <EntriesPerPage>${limit}</EntriesPerPage>
     <PageNumber>1</PageNumber>
@@ -389,7 +389,7 @@ export default async function handler(req, res) {
   </RequesterCredentials>
   <EndTimeFrom>${endTimeFrom}</EndTimeFrom>
   <EndTimeTo>${endTimeTo}</EndTimeTo>
-  <IncludeWatchCount>false</IncludeWatchCount>
+  <IncludeWatchCount>true</IncludeWatchCount>
   <Pagination>
     <EntriesPerPage>${limit}</EntriesPerPage>
     <PageNumber>1</PageNumber>
@@ -1814,8 +1814,10 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
     const viewItemURL = getField('ViewItemURL');
     const startTime = getField('StartTime');
     const endTime = getField('EndTime');
+    const watchCount = getField('WatchCount');
+    const hitCount = getField('HitCount');
     
-      console.log(`📊 Item ${itemId} price: ${currentPrice}, status: ${itemStatus}`);
+    console.log(`📊 Item ${itemId} price: ${currentPrice}, status: ${itemStatus}, watchCount: ${watchCount}, hitCount: ${hitCount}`);
 
     if (itemId && title) {
       items.push({
@@ -1830,7 +1832,9 @@ function parseMyeBaySellingXML(xml, requestedStatus) {
         viewItemURL,
         startTime,
         endTime,
-          status: itemStatus,
+        status: itemStatus,
+        watchCount: parseInt(watchCount) || 0,
+        hitCount: parseInt(hitCount) || 0,
         description: '', // GetMyeBaySelling doesn't include full description
         condition: 'USED', // Default, would need GetItem for actual condition
       });

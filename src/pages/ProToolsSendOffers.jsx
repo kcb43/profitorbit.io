@@ -897,7 +897,38 @@ export default function ProToolsSendOffers() {
                                       <p className="break-words">{r.title}</p>
                                     </PopoverContent>
                                   </Popover>
-                                  <div className="text-xs text-muted-foreground">{r.id}</div>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <span className="font-mono">ID</span>
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent 
+                                      className="w-auto p-3 text-sm" 
+                                      side="top"
+                                      align="start"
+                                    >
+                                      <div className="space-y-2">
+                                        <div className="text-xs text-muted-foreground">Item ID</div>
+                                        <div 
+                                          className="font-mono text-xs bg-muted p-2 rounded cursor-pointer hover:bg-muted/80 select-all"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(r.id);
+                                            toast({
+                                              title: "Copied!",
+                                              description: "Item ID copied to clipboard",
+                                            });
+                                          }}
+                                          title="Click to copy"
+                                        >
+                                          {r.id}
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
                                 </div>
                               </div>
                             </td>
@@ -908,16 +939,18 @@ export default function ProToolsSendOffers() {
                                   <span className="text-xs">{r.likes}</span>
                                 </div>
                               ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
+                                <span className="text-xs text-muted-foreground">0</span>
                               )}
                             </td>
                             <td className="py-2 px-2 text-center">
-                              {r.offersSent > 0 ? (
+                              {!isImported ? (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              ) : r.offersSent > 0 ? (
                                 <Badge variant="secondary" className="text-xs">
                                   {r.offersSent}
                                 </Badge>
                               ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
+                                <span className="text-xs text-muted-foreground">0</span>
                               )}
                             </td>
                             <td className="py-2 px-2 text-right tabular-nums">
