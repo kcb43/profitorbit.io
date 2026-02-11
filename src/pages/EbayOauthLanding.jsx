@@ -49,6 +49,22 @@ export default function EbayOauthLanding() {
             token_type: tokenData.token_type,
           };
           localStorage.setItem("ebay_user_token", JSON.stringify(tokenToStore));
+          
+          // Also set connection flag for extension/bridge to recognize
+          localStorage.setItem("profit_orbit_ebay_connected", "true");
+          localStorage.setItem("profit_orbit_ebay_user", JSON.stringify({
+            userName: "eBay User",
+            marketplace: "ebay"
+          }));
+          
+          // Store token in chrome.storage.local for extension background script
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({
+              ebay_access_token: tokenData.access_token,
+              ebay_refresh_token: tokenData.refresh_token,
+              ebay_token_expires_at: expiresAt,
+            }).catch(err => console.warn('Could not store eBay token in chrome.storage:', err));
+          }
         } catch (e) {
           // If we can't parse/store, fall through to error redirect
           params.set("ebay_auth_error", "Failed to parse eBay token payload");

@@ -134,6 +134,38 @@ export default function ProToolsSendOffers() {
     fetchMarketplaceItems();
   }, [marketplace]);
 
+  // Check for OAuth callback on page load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.get('ebay_auth_success') === '1') {
+      // eBay OAuth successful - show success message
+      toast({
+        title: "eBay Connected",
+        description: "Your eBay account has been successfully connected.",
+      });
+      
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Re-fetch marketplace items
+      setTimeout(() => {
+        fetchMarketplaceItems();
+      }, 500);
+    } else if (params.get('ebay_auth_error')) {
+      // eBay OAuth error
+      const errorMsg = decodeURIComponent(params.get('ebay_auth_error'));
+      toast({
+        title: "eBay Connection Failed",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const fetchMarketplaceItems = async () => {
     setIsLoadingMarketplaceItems(true);
     setMarketplaceConnectionError(false);
@@ -162,15 +194,16 @@ export default function ProToolsSendOffers() {
         throw new Error('User not authenticated');
       }
 
-      // Get marketplace token from localStorage (stored by extension)
+      // Get marketplace token from localStorage (stored by OAuth or extension)
       let marketplaceToken = null;
       try {
         if (marketplace === 'ebay') {
-          const ebayTokenData = localStorage.getItem('profit_orbit_ebay_token');
+          const ebayTokenData = localStorage.getItem('ebay_user_token');
           if (ebayTokenData) {
             const parsed = JSON.parse(ebayTokenData);
             marketplaceToken = parsed.access_token || parsed.token || ebayTokenData;
           }
+          console.log(`🔑 eBay token ${marketplaceToken ? 'found' : 'not found'} in localStorage`);
         } else if (marketplace === 'mercari') {
           marketplaceToken = localStorage.getItem('profit_orbit_mercari_token');
         }
@@ -402,6 +435,9 @@ export default function ProToolsSendOffers() {
   const handleConnectMarketplace = () => {
     // Handle marketplace connection using the same flow as Settings page
     if (marketplace === 'ebay') {
+      // Store the current page path so we can return here after OAuth
+      sessionStorage.setItem('ebay_oauth_return', window.location.pathname);
+      
       // Trigger eBay OAuth flow
       window.location.href = '/api/ebay/auth';
     } else if (marketplace === 'mercari') {
@@ -617,14 +653,6 @@ export default function ProToolsSendOffers() {
                     >
                       <ExternalLinkIcon className="h-4 w-4 mr-2" />
                       Connect
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-white underline h-auto p-0"
-                      onClick={fetchMarketplaceItems}
-                    >
-                      Try again
                     </Button>
                   </div>
                 </AlertDescription>
