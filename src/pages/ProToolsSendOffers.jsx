@@ -94,6 +94,33 @@ function saveOffersSentCount(counts) {
   }
 }
 
+function loadCachedMarketplaceItems(marketplace) {
+  try {
+    const raw = localStorage.getItem(`marketplace_items_${marketplace}`);
+    if (!raw) return [];
+    const cached = JSON.parse(raw);
+    // Only use cache if it's less than 1 hour old
+    if (cached.timestamp && Date.now() - cached.timestamp < 3600000) {
+      return cached.items || [];
+    }
+    return [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveCachedMarketplaceItems(marketplace, items) {
+  try {
+    localStorage.setItem(`marketplace_items_${marketplace}`, JSON.stringify({
+      items,
+      timestamp: Date.now(),
+    }));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 export default function ProToolsSendOffers() {
   const { toast } = useToast();
   const location = useLocation();
@@ -112,7 +139,7 @@ export default function ProToolsSendOffers() {
   const [marketplaceConnectionError, setMarketplaceConnectionError] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [offersSentCount, setOffersSentCount] = useState(() => loadOffersSentCount());
-  const [marketplaceItems, setMarketplaceItems] = useState([]);
+  const [marketplaceItems, setMarketplaceItems] = useState(() => loadCachedMarketplaceItems(marketplace));
 
   // Save offers sent count to localStorage whenever it changes
   useEffect(() => {
@@ -131,6 +158,13 @@ export default function ProToolsSendOffers() {
 
   // Auto-fetch marketplace items when marketplace changes
   useEffect(() => {
+    // Load cached items immediately for the new marketplace
+    const cached = loadCachedMarketplaceItems(marketplace);
+    if (cached.length > 0) {
+      setMarketplaceItems(cached);
+    }
+    
+    // Then fetch fresh data
     fetchMarketplaceItems();
   }, [marketplace]);
 
@@ -239,7 +273,31 @@ export default function ProToolsSendOffers() {
         });
       }
       
-      setMarketplaceItems(data.items || []);
+      const newItems = data.items || [];
+      
+      // Merge with existing items to preserve images
+      setMarketplaceItems(prevItems => {
+        // Create a map of existing items by ID
+        const existingMap = new Map(prevItems.map(item => [item.id || item.itemId, item]));
+        
+        // Merge new items with existing, preserving images from cache
+        const merged = newItems.map(newItem => {
+          const itemId = newItem.id || newItem.itemId;
+          const existing = existingMap.get(itemId);
+          
+          // If we have an existing item with an image, but new item doesn't, preserve the image
+          if (existing && existing.img && !newItem.img) {
+            return { ...newItem, img: existing.img };
+          }
+          
+          return newItem;
+        });
+        
+        // Save merged items to cache
+        saveCachedMarketplaceItems(marketplace, merged);
+        
+        return merged;
+      });
     } catch (e) {
       console.error(`Error fetching ${marketplace} items:`, e);
       setMarketplaceConnectionError(true);
@@ -926,16 +984,16 @@ export default function ProToolsSendOffers() {
                                   </div>
                                 ) : (
                                   <div 
-                                    className="flex-shrink-0 flex items-center justify-center bg-muted text-muted-foreground"
+                                    className="flex-shrink-0"
                                     style={{ 
                                       width: '60px', 
                                       height: '60px',
+                                      backgroundColor: '#9ca3af',
                                       border: '1px solid #e5e7eb',
                                       borderRadius: '4px'
                                     }}
-                                  >
-                                    <span className="text-xs">No image</span>
-                                  </div>
+                                    aria-label="No image available"
+                                  />
                                 )}
                                 
                                 {/* Title and ID */}
