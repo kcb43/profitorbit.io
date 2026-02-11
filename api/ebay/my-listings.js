@@ -398,6 +398,7 @@ export default async function handler(req, res) {
           if (trafficResponse.ok) {
             const trafficData = await trafficResponse.json();
             console.log(`✅ Analytics API success! Records: ${trafficData.records?.length || 0}`);
+            console.log(`📊 Analytics response sample:`, JSON.stringify(trafficData).substring(0, 500));
             
             // Parse view counts from Analytics API response
             const viewCounts = {};
@@ -445,13 +446,17 @@ export default async function handler(req, res) {
             console.log(`✅ Final listings with view counts:`, listings.filter(l => l.hitCount > 0).length);
           } else {
             const errorText = await trafficResponse.text();
-            console.warn(`⚠️ Analytics API failed (${trafficResponse.status}):`, errorText.substring(0, 200));
+            console.warn(`⚠️ Analytics API failed (${trafficResponse.status}):`, errorText.substring(0, 500));
+            console.warn(`⚠️ Analytics API URL was:`, `${analyticsUrl}?${params.toString()}`);
           }
         } else if (activeItemIds.length > 200) {
           console.warn(`⚠️ Too many active listings (${activeItemIds.length}), skipping Analytics API (max 200)`);
+        } else {
+          console.warn(`⚠️ No active items to fetch analytics for`);
         }
       } catch (viewError) {
         console.error('❌ Error fetching view counts:', viewError);
+        console.error('❌ Error stack:', viewError.stack);
       }
 
       return res.status(200).json({
@@ -1187,6 +1192,7 @@ export default async function handler(req, res) {
           if (trafficResponse.ok) {
             const trafficData = await trafficResponse.json();
             console.log(`✅ Analytics API success! Records: ${trafficData.records?.length || 0}`);
+            console.log(`📊 Analytics response sample:`, JSON.stringify(trafficData).substring(0, 500));
             
             // Parse view counts from Analytics API response
             const viewCounts = {};
@@ -1234,13 +1240,17 @@ export default async function handler(req, res) {
             console.log(`✅ Final listings with view counts:`, listings.filter(l => l.hitCount > 0).length);
           } else {
             const errorText = await trafficResponse.text();
-            console.warn(`⚠️ Analytics API failed (${trafficResponse.status}):`, errorText.substring(0, 200));
+            console.warn(`⚠️ Analytics API failed (${trafficResponse.status}):`, errorText.substring(0, 500));
+            console.warn(`⚠️ Analytics API URL was:`, `${analyticsUrl}?${params.toString()}`);
           }
         } else if (activeItemIds.length > 200) {
           console.warn(`⚠️ Too many active listings (${activeItemIds.length}), skipping Analytics API (max 200)`);
+        } else {
+          console.warn(`⚠️ No active items to fetch analytics for`);
         }
       } catch (viewError) {
         console.error('❌ Error fetching view counts:', viewError);
+        console.error('❌ Error stack:', viewError.stack);
       }
     }
 
