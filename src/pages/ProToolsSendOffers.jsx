@@ -353,6 +353,9 @@ export default function ProToolsSendOffers() {
     const pct = Number(offerPct);
     const safePct = Number.isFinite(pct) ? Math.max(0, Math.min(99, pct)) : 0;
     
+    // Create a set of selected IDs for quick lookup
+    const selectedSet = new Set(selectedIds.map(String));
+    
     // Use marketplace items from API if available, otherwise fall back to inventory items
     const items = marketplaceItems.length > 0 
       ? marketplaceItems 
@@ -375,13 +378,17 @@ export default function ProToolsSendOffers() {
       .map((it) => {
         const id = String(it.id || it.itemId);
         const listing = activeListingsByItemId.get(id);
+        const isSelected = selectedSet.has(id);
+        
+        // Only apply the offer percentage if the item is selected
+        const appliedPct = isSelected ? safePct : 0;
         
         // For API items, use the provided fields
         if (marketplaceItems.length > 0) {
           const vendooPrice = Number(it?.price) || 0;
           const mktplacePrice = Number(it?.marketplacePrice) || vendooPrice;
           const basePrice = offerPriceBasedOn === "marketplace_price" ? mktplacePrice : vendooPrice;
-          const defaultOfferPrice = Math.max(0, basePrice * (1 - safePct / 100));
+          const defaultOfferPrice = Math.max(0, basePrice * (1 - appliedPct / 100));
           const offerPrice = customOffers[id] !== undefined ? customOffers[id] : defaultOfferPrice;
           const discount = Math.max(0, basePrice - offerPrice);
           const cog = Number(it?.costOfGoods) || 0;
@@ -414,7 +421,7 @@ export default function ProToolsSendOffers() {
         const vendooPrice = Number(it?.listing_price) || Number(it?.price) || Number(it?.purchase_price) || 0;
         const mktplacePrice = Number(listing?.marketplace_price) || vendooPrice;
         const basePrice = offerPriceBasedOn === "marketplace_price" ? mktplacePrice : vendooPrice;
-        const defaultOfferPrice = Math.max(0, basePrice * (1 - safePct / 100));
+        const defaultOfferPrice = Math.max(0, basePrice * (1 - appliedPct / 100));
         const offerPrice = customOffers[id] !== undefined ? customOffers[id] : defaultOfferPrice;
         const discount = Math.max(0, basePrice - offerPrice);
         const cog = Number(it?.purchase_price) || 0;
@@ -445,7 +452,7 @@ export default function ProToolsSendOffers() {
     const pinned = initialItemId ? eligible.filter((r) => r.id === String(initialItemId)) : [];
     const rest = initialItemId ? eligible.filter((r) => r.id !== String(initialItemId)) : eligible;
     return [...pinned, ...rest];
-  }, [inventoryItems, marketplaceItems, activeListingsByItemId, offerPct, offerPriceBasedOn, customOffers, initialItemId, offersSentCount]);
+  }, [inventoryItems, marketplaceItems, activeListingsByItemId, offerPct, offerPriceBasedOn, customOffers, initialItemId, offersSentCount, selectedIds]);
 
   const selectedSet = useMemo(() => new Set(selectedIds.map(String)), [selectedIds]);
   const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(r.id));
@@ -1086,7 +1093,7 @@ export default function ProToolsSendOffers() {
                             <td className="py-2 px-2 text-right tabular-nums">
                               ${r.mktplacePrice.toFixed(2)}
                             </td>
-                            <td className="py-2 px-2 text-right tabular-nums text-emerald-600">
+                            <td className={`py-2 px-2 text-right tabular-nums ${checked ? 'text-emerald-600 font-semibold' : 'text-emerald-600'}`}>
                               ${r.discount.toFixed(2)}
                             </td>
                             <td className="py-2 px-2 text-right">
@@ -1104,14 +1111,14 @@ export default function ProToolsSendOffers() {
                                 ) : (
                                   <button
                                     onClick={() => setEditingOfferId(r.id)}
-                                    className="tabular-nums text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                                    className={`tabular-nums text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 ${checked ? 'font-semibold' : ''}`}
                                   >
                                     ${r.offerPrice.toFixed(2)}
                                     <Edit className="h-3 w-3" />
                                   </button>
                                 )
                               ) : (
-                                <span className="tabular-nums text-muted-foreground">
+                                <span className={`tabular-nums text-muted-foreground ${checked ? 'font-semibold' : ''}`}>
                                   ${r.offerPrice.toFixed(2)}
                                 </span>
                               )}
