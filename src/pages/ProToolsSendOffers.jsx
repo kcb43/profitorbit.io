@@ -799,7 +799,7 @@ export default function ProToolsSendOffers() {
                       <DialogHeader>
                         <DialogTitle>Add Offer Message</DialogTitle>
                         <DialogDescription>
-                          Add a personalized message to include with your offers. This will be sent to buyers when they receive the offer.
+                          This will be sent to buyers when they receive the offer.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
