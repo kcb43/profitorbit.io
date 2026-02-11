@@ -189,8 +189,20 @@ export default function ProToolsSendOffers() {
     const pct = Number(offerPct);
     const safePct = Number.isFinite(pct) ? Math.max(0, Math.min(99, pct)) : 0;
     const items = Array.isArray(inventoryItems) ? inventoryItems : [];
+    
+    // Get the marketplace-specific item ID field name (e.g., "ebay_item_id", "mercari_item_id")
+    const marketplaceItemIdField = `${marketplace}_item_id`;
+    
     const eligible = items
-      .filter((it) => activeListingsByItemId.has(String(it?.id)))
+      .filter((it) => {
+        // Include item if it has an active listing for this marketplace
+        if (activeListingsByItemId.has(String(it?.id))) return true;
+        
+        // Or if it was imported from this marketplace (has marketplace-specific ID)
+        if (it?.[marketplaceItemIdField]) return true;
+        
+        return false;
+      })
       .map((it) => {
         const id = String(it.id);
         const listing = activeListingsByItemId.get(id);
@@ -415,12 +427,14 @@ export default function ProToolsSendOffers() {
                         <div className="text-xs text-muted-foreground truncate">{count} active</div>
                       </div>
                     </div>
-                    {isActive ? (
-                      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">On</Badge>
-                    ) : sentCount > 0 ? (
-                      <Badge variant="secondary">{sentCount}</Badge>
+                    {sentCount > 0 ? (
+                      <Badge className={isActive ? "bg-emerald-600 text-white hover:bg-emerald-600" : ""} variant={isActive ? undefined : "secondary"}>
+                        {sentCount}
+                      </Badge>
                     ) : (
-                      <Badge variant="secondary">Off</Badge>
+                      <Badge className={isActive ? "bg-emerald-600 text-white hover:bg-emerald-600" : ""} variant={isActive ? undefined : "secondary"}>
+                        0
+                      </Badge>
                     )}
                   </button>
                 );
