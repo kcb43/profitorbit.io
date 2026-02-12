@@ -11,10 +11,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft, Plus, History, Trash2 } from "lucide-react";
 
 const MARKETPLACES = [
-  { id: "ebay", label: "eBay", color: "bg-blue-600" },
-  { id: "mercari", label: "Mercari", color: "bg-orange-600" },
-  { id: "facebook", label: "Facebook", color: "bg-sky-600" },
-  { id: "poshmark", label: "Poshmark", color: "bg-pink-600" },
+  { id: "ebay", label: "eBay", color: "bg-blue-600", logo: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" },
+  { id: "mercari", label: "Mercari", color: "bg-orange-600", logo: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B" },
+  { id: "facebook", label: "Facebook", color: "bg-sky-600", logo: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg" },
+  { id: "poshmark", label: "Poshmark", color: "bg-pink-600", logo: "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B" },
   { id: "depop", label: "Depop", color: "bg-red-600" },
   { id: "grailed", label: "Grailed", color: "bg-black" },
 ];
@@ -125,9 +125,15 @@ export default function ProToolsAutoOffers() {
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`h-8 w-8 rounded-full ${m.color} flex items-center justify-center text-white text-xs font-bold`}>
-                        {m.label.slice(0, 1)}
-                      </div>
+                      {m.logo ? (
+                        <div className="h-8 w-8 flex items-center justify-center">
+                          <img src={m.logo} alt={m.label} className="w-6 h-6 object-contain" />
+                        </div>
+                      ) : (
+                        <div className={`h-8 w-8 rounded-full ${m.color} flex items-center justify-center text-white text-xs font-bold`}>
+                          {m.label.slice(0, 1)}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-foreground">{m.label}</div>
                         <div className="text-xs text-muted-foreground truncate">{enabled && isActive ? "Active" : "Off"}</div>
