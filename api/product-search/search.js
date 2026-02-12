@@ -1,5 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
-const { scrapeProducts } = require('./scraper');
+import { createClient } from '@supabase/supabase-js';
+import { scrapeProducts } from './scraper.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,

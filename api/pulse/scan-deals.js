@@ -1,5 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
-const { scrapeProducts } = require('../product-search/scraper');
+import { createClient } from '@supabase/supabase-js';
+import { scrapeProducts } from '../product-search/scraper.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -190,7 +190,7 @@ export default async function handler(req, res) {
 }
 
 // Allow manual execution for testing
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   console.log('🧪 Running deal scanner manually...');
   scanAllDeals()
     .then(result => {
@@ -203,4 +203,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { scanAllDeals, scanDealsForUser };
+export { scanAllDeals, scanDealsForUser };

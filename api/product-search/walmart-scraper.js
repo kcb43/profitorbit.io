@@ -1,5 +1,5 @@
-const chromium = require('@sparticuz/chromium');
-const puppeteer = require('puppeteer-core');
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 /**
  * Walmart Direct Scraper
@@ -234,7 +234,7 @@ async function getWalmartProductDetails(productUrl) {
   }
 }
 
-module.exports = {
+export {
   searchWalmart,
   getWalmartProductDetails,
   parseWalmartPrice

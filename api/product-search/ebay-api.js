@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 /**
  * eBay Browse API Integration
@@ -177,7 +177,7 @@ async function getEbayPriceHistory(itemId) {
   };
 }
 
-module.exports = {
+export {
   searchEbay,
   getEbayItemDetails,
   getEbayPriceHistory

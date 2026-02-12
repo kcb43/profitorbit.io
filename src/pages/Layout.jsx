@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
+import { ProductSearchDialog } from "@/components/ProductSearchDialog";
 import {
   Sidebar,
   SidebarContent,
@@ -138,6 +139,7 @@ export default function Layout({ children }) {
   const location = useLocation();
   const [theme, setTheme] = useState('stalkfun-dark');
   const [themeStyles, setThemeStyles] = useState('');
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'stalkfun-dark';
@@ -234,6 +236,16 @@ export default function Layout({ children }) {
             <div className="flex items-center justify-between">
               <UserProfile />
               
+              <Button
+                onClick={() => setProductSearchOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground h-9 w-9"
+                title="Search Products"
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+              
               <Link to={createPageUrl("Settings")} className="inline-flex">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9">
                   <Settings className="w-5 h-5" />
@@ -283,6 +295,15 @@ export default function Layout({ children }) {
               />
               <div className="flex items-center gap-2">
                 <UserProfile />
+                <Button
+                  onClick={() => setProductSearchOpen(true)}
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Search Products"
+                >
+                  <Search className="w-5 h-5" />
+                </Button>
                 <Link to={createPageUrl("Settings")} className="inline-flex">
                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                     <Settings className="w-5 h-5" />

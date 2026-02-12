@@ -1,7 +1,7 @@
-const chromium = require('@sparticuz/chromium');
-const puppeteer = require('puppeteer-core');
-const { searchEbay } = require('./ebay-api');
-const { searchWalmart } = require('./walmart-scraper');
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
+import { searchEbay } from './ebay-api.js';
+import { searchWalmart } from './walmart-scraper.js';
 
 /**
  * Multi-Source Product Scraper
@@ -440,7 +440,7 @@ function deduplicateProducts(products) {
   });
 }
 
-module.exports = {
+export {
   scrapeProducts,
   scrapeGoogleShopping,
   scrapeAmazon,
