@@ -1,11 +1,11 @@
 
-
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { ProductSearchDialog } from "@/components/ProductSearchDialog";
+import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
 import {
   Sidebar,
   SidebarContent,
@@ -140,6 +140,34 @@ export default function Layout({ children }) {
   const [theme, setTheme] = useState('stalkfun-dark');
   const [themeStyles, setThemeStyles] = useState('');
   const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Load user profile
+  useEffect(() => {
+    // Get current user from Supabase auth
+    const loadUser = async () => {
+      // Add your Supabase auth check here
+      // For now, using mock data
+      setCurrentUser({ id: '123', email: 'user@example.com' });
+    };
+    loadUser();
+  }, []);
+
+  // Load profile data
+  useEffect(() => {
+    if (currentUser) {
+      fetch('/api/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        }
+      })
+        .then(res => res.json())
+        .then(profile => setUserProfile(profile))
+        .catch(err => console.error('Failed to load profile:', err));
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'stalkfun-dark';
@@ -234,7 +262,13 @@ export default function Layout({ children }) {
           {/* Sidebar Footer */}
           <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <UserProfile />
+              {/* User Avatar - Click to open profile settings */}
+              <button 
+                onClick={() => setProfileSettingsOpen(true)}
+                className="hover:opacity-80 transition-opacity"
+              >
+                <UserAvatar profile={userProfile} size="md" />
+              </button>
               
               <Button
                 onClick={() => setProductSearchOpen(true)}
@@ -339,6 +373,13 @@ export default function Layout({ children }) {
           <ProductSearchDialog
             open={productSearchOpen}
             onOpenChange={setProductSearchOpen}
+          />
+
+          {/* Profile Settings Dialog */}
+          <ProfileSettings
+            open={profileSettingsOpen}
+            onOpenChange={setProfileSettingsOpen}
+            user={currentUser}
           />
 
           <MobileBottomNav />
