@@ -1854,7 +1854,7 @@ export default function InventoryPage() {
                       onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} 
                       className="pl-8"
                     />
-                    <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
                 </div>
                 <div>
