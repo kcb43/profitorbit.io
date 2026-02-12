@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2 } from "lucide-react";
+import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2, FolderPlus, Folders } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -43,6 +43,7 @@ import { ImageCarousel } from "@/components/ImageCarousel";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
 import { FacebookListingDialog } from "@/components/FacebookListingDialog";
 import { DuplicateDetectionDialog } from "@/components/DuplicateDetectionDialog";
+import { GroupDialog, ManageGroupsDialog } from "@/components/GroupDialog";
 import { isConnected } from "@/api/facebookClient";
 const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { supabase } from "@/api/supabaseClient";
@@ -221,6 +222,10 @@ export default function InventoryPage() {
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [selectedItemForDuplicates, setSelectedItemForDuplicates] = useState(null);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [manageGroupsDialogOpen, setManageGroupsDialogOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [itemGroups, setItemGroups] = useState({});
   const [dismissedDuplicates, setDismissedDuplicates] = useState(() => {
     try {
       const stored = localStorage.getItem('dismissedDuplicateAlerts');
@@ -1662,6 +1667,14 @@ export default function InventoryPage() {
                   </>
                 )}
               </Button>
+              <Button
+                onClick={() => setManageGroupsDialogOpen(true)}
+                variant="outline"
+                className="flex-shrink-0"
+              >
+                <Folders className="w-4 h-4 mr-2" />
+                Manage Groups
+              </Button>
               <Link
                 to={createPageUrl("Import")}
                 state={returnStateForInventory}
@@ -2142,6 +2155,15 @@ export default function InventoryPage() {
                 {selectedItems.length} item{selectedItems.length === 1 ? "" : "s"} selected
               </span>
               <div className="flex flex-wrap gap-2 min-w-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGroupDialogOpen(true)}
+                  className="min-w-0 max-w-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 border-purple-200 dark:border-purple-800"
+                >
+                  <FolderPlus className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Create Group</span>
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -4019,6 +4041,38 @@ export default function InventoryPage() {
           // Refresh duplicates check after merge
           queryClient.invalidateQueries(['inventoryItems']);
           handleCheckDuplicates();
+        }}
+      />
+
+      {/* Group Management Dialogs */}
+      <GroupDialog
+        isOpen={groupDialogOpen}
+        onClose={() => {
+          setGroupDialogOpen(false);
+          setEditingGroup(null);
+        }}
+        groupType="inventory"
+        selectedItemIds={selectedItems}
+        existingGroup={editingGroup}
+        onSuccess={(groupId) => {
+          // Refresh inventory and clear selection
+          queryClient.invalidateQueries(['inventoryItems']);
+          setSelectedItems([]);
+        }}
+      />
+
+      <ManageGroupsDialog
+        isOpen={manageGroupsDialogOpen}
+        onClose={() => setManageGroupsDialogOpen(false)}
+        groupType="inventory"
+        onEditGroup={(group) => {
+          setEditingGroup(group);
+          setManageGroupsDialogOpen(false);
+          setGroupDialogOpen(true);
+        }}
+        onDeleteGroup={(groupId) => {
+          // Refresh inventory
+          queryClient.invalidateQueries(['inventoryItems']);
         }}
       />
     </div>
