@@ -2,11 +2,16 @@ import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { searchEbay } from './ebay-api.js';
 import { searchWalmart } from './walmart-scraper.js';
+import { searchAllMarketplaces } from './free-api-search.js';
 
 /**
  * Multi-Source Product Scraper
- * Combines Google Shopping, eBay API, and Walmart direct scraping
- * Covers 100+ marketplaces with enhanced data quality
+ * Combines FREE APIs + direct scraping for 100+ marketplaces
+ * 
+ * Priority Order:
+ * 1. FREE APIs (RapidAPI, SerpAPI) - Fast, reliable, covers 100+ marketplaces
+ * 2. eBay Official API (if configured)
+ * 3. Direct scraping (Walmart, Amazon) - Slower, for specific marketplaces
  */
 
 // Marketplace logo mapping
@@ -333,23 +338,51 @@ async function scrapeAmazon(query, options = {}) {
 }
 
 /**
- * Main scraper function - combines multiple sources for comprehensive results
+ * Main scraper function - uses FREE APIs first, then falls back to scraping
+ * 
+ * FREE API Options (No payment needed):
+ * 1. RapidAPI Product Search - 500 requests/month FREE
+ * 2. SerpAPI Google Shopping - 100 searches/month FREE
+ * 3. eBay Official API - 5,000 requests/day FREE
+ * 
+ * If no API keys configured, falls back to direct scraping
  */
 async function scrapeProducts(query, options = {}) {
   const sources = [];
   
   try {
-    // Run multiple sources in parallel for faster results
+    console.log(`🔍 Starting search for: "${query}"`);
+    
+    // PRIORITY 1: Try FREE APIs first (fastest + covers 100+ marketplaces)
+    try {
+      const freeApiResults = await searchAllMarketplaces(query, options);
+      if (freeApiResults && freeApiResults.length > 0) {
+        console.log(`✅ FREE APIs returned ${freeApiResults.length} products`);
+        
+        // Enhance with marketplace logos
+        const enhanced = freeApiResults.map(p => ({
+          ...p,
+          marketplaceLogo: MARKETPLACE_LOGOS[p.marketplaceDomain] || MARKETPLACE_LOGOS[`${p.marketplace}.com`] || null,
+          discountPercentage: p.discountPercentage || calculateDiscount(p.price, p.originalPrice)
+        }));
+        
+        return {
+          success: true,
+          sources: ['free_apis'],
+          query,
+          totalResults: enhanced.length,
+          products: enhanced,
+          scrapedAt: new Date().toISOString()
+        };
+      }
+    } catch (apiError) {
+      console.log('⚠️ FREE APIs not available:', apiError.message);
+    }
+
+    // PRIORITY 2: eBay API (if configured)
+    console.log('⚠️ No FREE APIs, trying eBay API + direct scraping...');
     const promises = [];
 
-    // 1. Google Shopping (aggregates 100+ marketplaces)
-    promises.push(
-      scrapeGoogleShopping(query, options)
-        .then(results => ({ source: 'google_shopping', results }))
-        .catch(err => ({ source: 'google_shopping', results: [], error: err.message }))
-    );
-
-    // 2. eBay API (if credentials available)
     if (process.env.EBAY_APP_ID && process.env.EBAY_CERT_ID) {
       promises.push(
         searchEbay(query, options)
@@ -358,24 +391,28 @@ async function scrapeProducts(query, options = {}) {
       );
     }
 
-    // 3. Walmart Direct Scraping
+    // PRIORITY 3: Direct scraping (slower but works without any config)
     promises.push(
-      searchWalmart(query, options)
-        .then(results => ({ source: 'walmart_direct', results }))
-        .catch(err => ({ source: 'walmart_direct', results: [], error: err.message }))
+      searchWalmart(query, { ...options, maxResults: 20 })
+        .then(results => ({ source: 'walmart', results }))
+        .catch(err => ({ source: 'walmart', results: [], error: err.message }))
     );
 
-    // 4. Amazon Direct (as fallback if Google Shopping fails)
     promises.push(
-      scrapeAmazon(query, options)
-        .then(results => ({ source: 'amazon_direct', results }))
-        .catch(err => ({ source: 'amazon_direct', results: [], error: err.message }))
+      scrapeAmazon(query, { ...options, maxResults: 20 })
+        .then(results => ({ source: 'amazon', results }))
+        .catch(err => ({ source: 'amazon', results: [], error: err.message }))
     );
 
-    // Wait for all sources
-    const sourceResults = await Promise.all(promises);
+    // Wait for all sources (with 25s timeout)
+    const sourceResults = await Promise.race([
+      Promise.all(promises),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Scraping timeout')), 25000)
+      )
+    ]);
 
-    // Combine all results
+    // Combine results
     let allProducts = [];
     sourceResults.forEach(({ source, results, error }) => {
       if (results && results.length > 0) {
@@ -387,10 +424,17 @@ async function scrapeProducts(query, options = {}) {
       }
     });
 
-    // Remove duplicates based on title + price similarity
-    const uniqueProducts = deduplicateProducts(allProducts);
+    if (allProducts.length === 0) {
+      return {
+        success: false,
+        error: 'No results found from any source',
+        query,
+        products: [],
+        totalResults: 0
+      };
+    }
 
-    console.log(`✅ Total: ${uniqueProducts.length} unique products from ${sources.length} sources`);
+    const uniqueProducts = deduplicateProducts(allProducts);
 
     return {
       success: true,
@@ -402,7 +446,7 @@ async function scrapeProducts(query, options = {}) {
     };
     
   } catch (error) {
-    console.error('❌ All scraping methods failed:', error);
+    console.error('❌ Search failed:', error);
     return {
       success: false,
       error: error.message,

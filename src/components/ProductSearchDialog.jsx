@@ -7,24 +7,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Search,
-  Filter,
-  TrendingDown,
   Star,
   ExternalLink,
-  X,
   SlidersHorizontal,
-  ChevronDown,
-  ChevronUp,
   Heart,
-  TrendingUp,
-  BarChart3
+  BarChart3,
+  TrendingDown,
+  Filter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 /**
- * Universal Product Search Dialog
- * Searches products across all marketplaces using Google Shopping scraper
+ * Universal Product Search Dialog - Compact Table View
+ * Searches products across all marketplaces
  */
 export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -32,8 +27,6 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [priceHistory, setPriceHistory] = useState(null);
   const { toast } = useToast();
 
   // Filters
@@ -44,7 +37,7 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
     minRating: 0,
     condition: 'all',
     sortBy: 'relevance',
-    marketplaces: ['all']
+    marketplace: 'all'
   });
 
   // Search function
@@ -87,7 +80,7 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
 
       toast({
         title: '✅ Search complete',
-        description: `Found ${data.totalResults} products across ${Object.keys(data.stats?.marketplaceCounts || {}).length} marketplaces`
+        description: `Found ${data.totalResults} products${data.sources ? ` from ${data.sources.join(', ')}` : ''}`
       });
 
     } catch (error) {
@@ -102,6 +95,13 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
     }
   };
 
+  // Auto-search on mount if initialQuery provided
+  useEffect(() => {
+    if (open && initialQuery && !products.length) {
+      handleSearch();
+    }
+  }, [open, initialQuery]);
+
   // Add to watchlist
   const handleAddToWatchlist = async (product) => {
     try {
@@ -114,7 +114,7 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
           product_image_url: product.imageUrl,
           marketplace: product.marketplace,
           initial_price: product.price,
-          target_price: product.price * 0.85, // Alert at 15% discount
+          target_price: product.price * 0.85,
           notify_on_drop: true
         })
       });
@@ -123,7 +123,7 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
 
       toast({
         title: '⭐ Added to watchlist',
-        description: `You'll be notified when ${product.title} drops below $${(product.price * 0.85).toFixed(2)}`
+        description: `You'll be notified when price drops below $${(product.price * 0.85).toFixed(2)}`
       });
     } catch (error) {
       console.error('Watchlist error:', error);
@@ -135,42 +135,34 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
     }
   };
 
-  // View price history
-  const handleViewHistory = async (product) => {
-    setSelectedProduct(product);
-    
-    // For now, generate mock history data
-    // In production, this would fetch from price_history table
-    const mockHistory = Array.from({ length: 30 }, (_, i) => ({
-      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      price: product.price + (Math.random() - 0.5) * product.price * 0.2
-    }));
-    
-    setPriceHistory(mockHistory);
-  };
+  // Filtered products
+  const filteredProducts = useMemo(() => {
+    let filtered = products;
 
-  // Auto-search on mount if initialQuery provided
-  useEffect(() => {
-    if (open && initialQuery && !products.length) {
-      handleSearch();
+    if (filters.marketplace !== 'all') {
+      filtered = filtered.filter(p => p.marketplace === filters.marketplace);
     }
-  }, [open, initialQuery]);
 
-  // Grouped products by marketplace
-  const groupedProducts = useMemo(() => {
-    const groups = {};
-    products.forEach(product => {
-      if (!groups[product.marketplace]) {
-        groups[product.marketplace] = [];
-      }
-      groups[product.marketplace].push(product);
-    });
-    return groups;
+    if (filters.minDiscount > 0) {
+      filtered = filtered.filter(p => p.discountPercentage >= filters.minDiscount);
+    }
+
+    if (filters.minRating > 0) {
+      filtered = filtered.filter(p => p.rating && p.rating >= filters.minRating);
+    }
+
+    return filtered;
+  }, [products, filters]);
+
+  // Get unique marketplaces
+  const marketplaces = useMemo(() => {
+    const unique = [...new Set(products.map(p => p.marketplace))];
+    return unique.sort();
   }, [products]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
@@ -185,7 +177,7 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search any product (e.g., Nike Air Max 90, iPhone 15 Pro, KitchenAid Mixer...)"
+                placeholder="Search any product (e.g., Nike Air Max 90, iPhone 15 Pro...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -213,7 +205,7 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
 
           {/* Filters Panel */}
           {showFilters && (
-            <div className="mt-4 p-4 bg-background border rounded-lg grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-4 p-4 bg-background border rounded-lg grid grid-cols-2 md:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">Min Price</label>
                 <Input
@@ -246,6 +238,19 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
                 </select>
               </div>
               <div>
+                <label className="text-sm font-medium mb-1 block">Marketplace</label>
+                <select
+                  className="w-full h-10 px-3 rounded-md border bg-background"
+                  value={filters.marketplace}
+                  onChange={(e) => setFilters({ ...filters, marketplace: e.target.value })}
+                >
+                  <option value="all">All Marketplaces</option>
+                  {marketplaces.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="text-sm font-medium mb-1 block">Sort By</label>
                 <select
                   className="w-full h-10 px-3 rounded-md border bg-background"
@@ -265,307 +270,189 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
 
         {/* Stats Bar */}
         {stats && !loading && (
-          <div className="px-6 py-3 bg-muted/30 border-b">
-            <div className="flex items-center gap-6 text-sm">
-              <span className="font-semibold">{products.length} Results</span>
-              <span className="text-muted-foreground">
-                Price Range: ${stats.priceStats.lowest} - ${stats.priceStats.highest}
-              </span>
-              <span className="text-muted-foreground">
-                Avg: ${stats.priceStats.average}
-              </span>
-              {stats.averageDiscount > 0 && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Avg {stats.averageDiscount}% off
-                </Badge>
-              )}
-              <div className="ml-auto flex gap-2">
-                {Object.entries(stats.marketplaceCounts).map(([marketplace, count]) => (
-                  <Badge key={marketplace} variant="outline" className="text-xs">
-                    {marketplace}: {count}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+          <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6">
+            <span className="font-semibold">{filteredProducts.length} Results</span>
+            {stats.priceStats.lowest !== Infinity && (
+              <>
+                <span className="text-muted-foreground">
+                  ${stats.priceStats.lowest.toFixed(2)} - ${stats.priceStats.highest.toFixed(2)}
+                </span>
+                <span className="text-muted-foreground">
+                  Avg: ${stats.priceStats.average}
+                </span>
+              </>
+            )}
           </div>
         )}
 
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        {/* Results Table */}
+        <div className="flex-1 overflow-auto px-6 py-4">
           {loading ? (
             <LoadingState />
-          ) : products.length === 0 ? (
+          ) : filteredProducts.length === 0 ? (
             <EmptyState />
           ) : (
-            <div className="space-y-6">
-              {Object.entries(groupedProducts).map(([marketplace, items]) => (
-                <MarketplaceGroup
-                  key={marketplace}
-                  marketplace={marketplace}
-                  products={items}
-                  onAddToWatchlist={handleAddToWatchlist}
-                  onViewHistory={handleViewHistory}
-                />
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background z-10">
+                  <tr className="text-xs text-muted-foreground border-b">
+                    <th className="py-3 px-3 text-left w-16">Image</th>
+                    <th className="py-3 px-3 text-left">Product</th>
+                    <th className="py-3 px-3 text-center w-28">Marketplace</th>
+                    <th className="py-3 px-3 text-right w-24">Price</th>
+                    <th className="py-3 px-3 text-right w-24">Was</th>
+                    <th className="py-3 px-3 text-center w-20">Discount</th>
+                    <th className="py-3 px-3 text-center w-24">Rating</th>
+                    <th className="py-3 px-3 text-center w-32">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.map((product, idx) => (
+                    <ProductRow
+                      key={idx}
+                      product={product}
+                      onAddToWatchlist={handleAddToWatchlist}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-
-        {/* Price History Modal */}
-        {selectedProduct && priceHistory && (
-          <div className="absolute inset-0 bg-background z-50 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold">{selectedProduct.title}</h3>
-                  <p className="text-muted-foreground">30-day price history</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSelectedProduct(null);
-                    setPriceHistory(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Price Chart */}
-              <div className="bg-card border rounded-lg p-6 mb-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={priceHistory}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 12 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      domain={['dataMin - 5', 'dataMax + 5']}
-                    />
-                    <Tooltip 
-                      formatter={(value) => `$${value.toFixed(2)}`}
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))'
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-card border rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Current Price</p>
-                  <p className="text-2xl font-bold">${selectedProduct.price.toFixed(2)}</p>
-                </div>
-                <div className="bg-card border rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Lowest (30d)</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    ${Math.min(...priceHistory.map(h => h.price)).toFixed(2)}
-                  </p>
-                </div>
-                <div className="bg-card border rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Highest (30d)</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    ${Math.max(...priceHistory.map(h => h.price)).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button
-                  className="flex-1"
-                  onClick={() => handleAddToWatchlist(selectedProduct)}
-                >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Add to Watchlist
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(selectedProduct.productUrl, '_blank')}
-                >
-                  View Product <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-// Marketplace Group Component
-function MarketplaceGroup({ marketplace, products, onAddToWatchlist, onViewHistory }) {
-  const [expanded, setExpanded] = useState(true);
+// Product Row Component
+function ProductRow({ product, onAddToWatchlist }) {
+  const hasDiscount = product.originalPrice && product.originalPrice > product.price;
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      {/* Group Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 py-3 bg-muted/50 flex items-center justify-between hover:bg-muted transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          {products[0]?.marketplaceLogo && (
-            <img
-              src={products[0].marketplaceLogo}
-              alt={marketplace}
-              className="h-6 w-auto object-contain"
-            />
-          )}
-          <span className="font-semibold capitalize">{marketplace}</span>
-          <Badge variant="secondary">{products.length} items</Badge>
-        </div>
-        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </button>
-
-      {/* Products Grid */}
-      {expanded && (
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product, idx) => (
-            <ProductCard
-              key={idx}
-              product={product}
-              onAddToWatchlist={onAddToWatchlist}
-              onViewHistory={onViewHistory}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Product Card Component
-function ProductCard({ product, onAddToWatchlist, onViewHistory }) {
-  return (
-    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card">
+    <tr className="border-b last:border-b-0 hover:bg-muted/20">
       {/* Image */}
-      <div className="aspect-square bg-muted rounded-md mb-3 overflow-hidden">
-        {product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={product.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            No image
-          </div>
-        )}
-      </div>
+      <td className="py-2 px-3">
+        <div className="w-14 h-14 rounded-md bg-muted overflow-hidden flex-shrink-0">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+              No img
+            </div>
+          )}
+        </div>
+      </td>
 
-      {/* Title */}
-      <h4 className="font-medium text-sm line-clamp-2 mb-2 min-h-[2.5rem]">
-        {product.title}
-      </h4>
+      {/* Product Title */}
+      <td className="py-2 px-3">
+        <div className="max-w-md">
+          <div className="font-medium text-sm line-clamp-2 mb-1">{product.title}</div>
+          {product.seller && (
+            <div className="text-xs text-muted-foreground">by {product.seller}</div>
+          )}
+        </div>
+      </td>
 
-      {/* Price & Discount */}
-      <div className="flex items-baseline gap-2 mb-2">
-        <span className="text-2xl font-bold text-primary">
+      {/* Marketplace */}
+      <td className="py-2 px-3 text-center">
+        <div className="flex flex-col items-center gap-1">
+          {product.marketplaceLogo ? (
+            <img
+              src={product.marketplaceLogo}
+              alt={product.marketplace}
+              className="h-5 w-auto object-contain"
+            />
+          ) : (
+            <span className="text-xs font-medium capitalize">{product.marketplace}</span>
+          )}
+        </div>
+      </td>
+
+      {/* Current Price */}
+      <td className="py-2 px-3 text-right">
+        <span className="text-lg font-bold text-primary">
           ${product.price.toFixed(2)}
         </span>
-        {product.originalPrice && product.originalPrice > product.price && (
-          <>
-            <span className="text-sm text-muted-foreground line-through">
-              ${product.originalPrice.toFixed(2)}
-            </span>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              -{product.discountPercentage}%
-            </Badge>
-          </>
+      </td>
+
+      {/* Original Price */}
+      <td className="py-2 px-3 text-right">
+        {hasDiscount ? (
+          <span className="text-sm text-muted-foreground line-through">
+            ${product.originalPrice.toFixed(2)}
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
         )}
-      </div>
+      </td>
+
+      {/* Discount */}
+      <td className="py-2 px-3 text-center">
+        {product.discountPercentage > 0 ? (
+          <Badge variant="secondary" className="bg-green-100 text-green-800">
+            -{product.discountPercentage}%
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
 
       {/* Rating */}
-      {product.rating && (
-        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          <span className="font-medium text-foreground">{product.rating}</span>
-          {product.reviewCount && (
-            <span>({product.reviewCount.toLocaleString()})</span>
-          )}
-        </div>
-      )}
-
-      {/* Seller & Condition */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-        {product.seller && <span>by {product.seller}</span>}
-        {product.condition !== 'new' && (
-          <Badge variant="outline" className="text-xs">
-            {product.condition}
-          </Badge>
+      <td className="py-2 px-3 text-center">
+        {product.rating ? (
+          <div className="flex items-center justify-center gap-1">
+            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            <span className="text-sm font-medium">{product.rating}</span>
+            {product.reviewCount && (
+              <span className="text-xs text-muted-foreground">({product.reviewCount})</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
         )}
-      </div>
+      </td>
 
-      {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => onAddToWatchlist(product)}
-        >
-          <Heart className="h-3 w-3 mr-1" />
-          Watch
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => onViewHistory(product)}
-        >
-          <BarChart3 className="h-3 w-3 mr-1" />
-          History
-        </Button>
-      </div>
-
-      {/* Buy Button */}
-      <Button
-        variant="default"
-        size="sm"
-        className="w-full mt-2"
-        onClick={() => window.open(product.productUrl, '_blank')}
-      >
-        View Product <ExternalLink className="ml-2 h-3 w-3" />
-      </Button>
-    </div>
+      {/* Actions */}
+      <td className="py-2 px-3">
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0"
+            onClick={() => onAddToWatchlist(product)}
+            title="Add to Watchlist"
+          >
+            <Heart className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            className="h-8 px-3"
+            onClick={() => window.open(product.productUrl, '_blank')}
+          >
+            <ExternalLink className="h-3 w-3" />
+          </Button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
 // Loading State
 function LoadingState() {
   return (
-    <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="border rounded-lg p-4">
-          <Skeleton className="h-6 w-32 mb-4" />
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map((j) => (
-              <div key={j} className="space-y-3">
-                <Skeleton className="aspect-square rounded-md" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ))}
-          </div>
+    <div className="space-y-2">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex gap-3 items-center">
+          <Skeleton className="w-14 h-14 rounded-md" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-20" />
         </div>
       ))}
     </div>
@@ -580,7 +467,7 @@ function EmptyState() {
       <h3 className="text-xl font-semibold mb-2">Search Products Across the Web</h3>
       <p className="text-muted-foreground max-w-md">
         Enter any product name to search across Amazon, eBay, Walmart, Best Buy, Target,
-        and 100+ more marketplaces. Compare prices, find deals, and discover the best offers.
+        and 100+ more marketplaces. Compare prices instantly.
       </p>
     </div>
   );
