@@ -1117,6 +1117,11 @@ input[type="range"].modern-slider::-moz-range-thumb:active {
   background-color: #000000 !important; /* BLACK */
 }
 
+/* Hide mobile bottom navigation when image editor is open */
+body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
+  display: none !important;
+}
+
 /* Filerobot Image Editor - Mobile Optimization */
 .FIE_root,
 [class*="FIE_root"] {
