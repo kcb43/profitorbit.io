@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format, parseISO } from 'date-fns';
-import { DollarSign, Calendar, Package, Tag, Edit as EditIcon, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, Calendar, Package, Tag, Edit as EditIcon, Star, ChevronDown, ChevronUp, Heart } from 'lucide-react';
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ImageCarousel } from "@/components/ImageCarousel";
@@ -125,6 +125,29 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                   )}
                 </div>
               </div>
+
+              {/* Marketplace Metrics (for synced items like eBay) */}
+              {(item.ebay_item_id || item.mercari_item_id || item.facebook_item_id) && (item.hitCount > 0 || item.watchCount > 0 || item.likes > 0) && (
+                <div className="flex gap-3 pt-2 border-t">
+                  {item.hitCount > 0 && (
+                    <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm font-medium">{item.hitCount}</span>
+                      <span className="text-xs text-gray-500">views</span>
+                    </div>
+                  )}
+                  {(item.watchCount > 0 || item.likes > 0) && (
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                      <Heart className="w-4 h-4 fill-current" />
+                      <span className="text-sm font-medium">{item.watchCount || item.likes}</span>
+                      <span className="text-xs text-gray-500">{item.ebay_item_id ? 'watchers' : 'likes'}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Purchase Details */}
               <div className="pt-2 border-t space-y-2">

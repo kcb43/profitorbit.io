@@ -28,14 +28,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import ebayLogo from "@/assets/ebay-logo.svg";
-import mercariLogo from "@/assets/mercari-logo.svg";
 import facebookLogo from "@/assets/facebook-logo.svg";
 import poshmarkLogo from "@/assets/poshmark-logo.svg";
 
 const MARKETPLACES = [
-  { id: "ebay", label: "eBay", color: "bg-blue-600", logo: ebayLogo },
-  { id: "mercari", label: "Mercari", color: "bg-orange-600", logo: mercariLogo },
+  { id: "ebay", label: "eBay", color: "bg-blue-600", logo: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" },
+  { id: "mercari", label: "Mercari", color: "bg-orange-600", logo: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B" },
   { id: "facebook", label: "Facebook", color: "bg-sky-600", logo: facebookLogo },
   { id: "poshmark", label: "Poshmark", color: "bg-pink-600", logo: poshmarkLogo },
   { id: "depop", label: "Depop", color: "bg-red-600" },
@@ -420,6 +418,7 @@ export default function ProToolsSendOffers() {
             offersSent: itemOfferCount,
             isImported: it?.isImported !== false, // Pass through from API
             ebayItemId: it?.ebayItemId || it?.listingId, // For import action
+            inventoryId: it?.inventoryId, // For linking to item details
           };
         }
         
@@ -1187,7 +1186,16 @@ export default function ProToolsSendOffers() {
                                   Import
                                 </Button>
                               ) : (
-                                <span className="text-xs text-muted-foreground">✓ In Inventory</span>
+                                r.inventoryId ? (
+                                  <Link
+                                    to={createPageUrl(`AddInventoryItem?id=${r.inventoryId}`)}
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                                  >
+                                    ✓ In Inventory
+                                  </Link>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">✓ In Inventory</span>
+                                )
                               )}
                             </td>
                           </tr>

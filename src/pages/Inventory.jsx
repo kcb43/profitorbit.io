@@ -304,6 +304,12 @@ export default function InventoryPage() {
     'category',
     'notes',
     'created_at',
+    'ebay_item_id',
+    'mercari_item_id',
+    'facebook_item_id',
+    'hitCount',
+    'watchCount',
+    'likes',
   ].join(',')), []);
 
   const favoriteIdsCsv = React.useMemo(() => {
