@@ -335,6 +335,12 @@ export default function Layout({ children }) {
             {children}
           </div>
 
+          {/* Product Search Dialog */}
+          <ProductSearchDialog
+            open={productSearchOpen}
+            onOpenChange={setProductSearchOpen}
+          />
+
           <MobileBottomNav />
         </main>
       </div>
