@@ -460,23 +460,26 @@ export default function ProToolsSendOffers() {
       
       const newItems = data.items || [];
       
-      // Merge with existing items to preserve images, imported status, and inventory IDs
+      // Merge with existing items to preserve images
+      // IMPORTANT: API response is source of truth for isImported/inventoryId
       setMarketplaceItems(prevItems => {
         // Create a map of existing items by ID
         const existingMap = new Map(prevItems.map(item => [item.id || item.itemId, item]));
         
-        // Merge new items with existing, preserving important fields from cache
+        // Merge new items with existing, preserving only UI fields (images)
         const merged = newItems.map(newItem => {
           const itemId = newItem.id || newItem.itemId;
           const existing = existingMap.get(itemId);
           
           if (existing) {
-            // Preserve image, imported status, and inventoryId from existing cache
+            // CRITICAL: Trust API response for isImported/inventoryId (deleted items won't have these)
+            // Only preserve UI-specific fields like images from cache
             return { 
               ...newItem, 
               img: existing.img || newItem.img,
-              isImported: existing.isImported ?? newItem.isImported,
-              inventoryId: existing.inventoryId || newItem.inventoryId,
+              // API is source of truth for these:
+              isImported: newItem.isImported ?? false,
+              inventoryId: newItem.inventoryId || null,
             };
           }
           
@@ -485,7 +488,7 @@ export default function ProToolsSendOffers() {
         
         // Save merged items to cache
         saveCachedMarketplaceItems(marketplace, merged);
-        console.log('💾 Merged and cached marketplace items, preserving imported states');
+        console.log('💾 Merged and cached marketplace items (API is source of truth for import status)');
         
         return merged;
       });
