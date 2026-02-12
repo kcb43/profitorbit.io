@@ -2,18 +2,15 @@
   "crons": [
     {
       "path": "/api/pulse/comprehensive-scanner?type=all",
-      "schedule": "0 */6 * * *",
-      "description": "Comprehensive deal scan every 6 hours (warehouse, coupons, price drops)"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/pulse/comprehensive-scanner?type=lightning",
-      "schedule": "*/15 * * * *",
-      "description": "Lightning deal scan every 15 minutes (time-sensitive)"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/pulse/comprehensive-scanner?type=warehouse",
-      "schedule": "0 */12 * * *",
-      "description": "Warehouse deal scan every 12 hours (slower inventory changes)"
+      "schedule": "0 */12 * * *"
     }
   ],
   "rewrites": [
