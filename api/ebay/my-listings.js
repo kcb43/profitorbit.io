@@ -1583,9 +1583,14 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
     
     console.log(`📊 Sold Item ${itemId} price: ${currentPrice}, qty sold: ${quantitySold}, ended: ${endTime}, images: ${pictureURLs.length}`);
 
+    try {
+      console.log(`  🔍 Checking transactions for item ${itemId}, title exists: ${!!title}`);
+      
     if (itemId && title) {
       // Check if we have transaction-level data for this item
+      console.log(`  🔍 Looking up transactions in map...`);
       const transactions = transactionsByItemId[itemId] || [];
+      console.log(`  🔍 Found ${transactions.length} transactions for item ${itemId}`);
       
       if (transactions.length > 0) {
         // Create separate entries for each transaction with accurate sale dates
@@ -1667,6 +1672,10 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
           condition: 'USED',
         });
       }
+    }
+    } catch (itemError) {
+      console.error(`❌ CRASH processing sold item ${itemId}:`, itemError.message);
+      console.error(`❌ Stack:`, itemError.stack);
     }
   }
   
