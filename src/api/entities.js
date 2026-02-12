@@ -1,16 +1,16 @@
-import { base44 } from './base44Client';
+import { apiClient } from './base44Client';
 
 
-export const Sale = base44.entities.Sale;
+export const Sale = apiClient.entities.Sale;
 
-export const InventoryItem = base44.entities.InventoryItem;
+export const InventoryItem = apiClient.entities.InventoryItem;
 
-export const ImageEditorTemplate = base44.entities.ImageEditorTemplate;
+export const ImageEditorTemplate = apiClient.entities.ImageEditorTemplate;
 
 // Crosslisting entity - for Chrome extension integration
-export const Crosslisting = base44.entities.Crosslisting || null;
+export const Crosslisting = apiClient.entities.Crosslisting || null;
 
 
 
 // auth sdk:
-export const User = base44.auth;
+export const User = apiClient.auth;

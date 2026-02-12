@@ -1,13 +1,14 @@
 import newApiClient from './newApiClient';
 
 /**
- * Data client compatibility layer.
+ * API Client for making authenticated requests to backend.
  *
- * Historically the codebase referenced `base44.entities.*`. We now route all entity operations
- * through our Supabase-backed Vercel API routes via `newApiClient`.
- *
- * IMPORTANT: the legacy `@base44/sdk` path has been removed.
+ * This client routes all operations through our Supabase-backed Vercel API routes.
+ * Previously named `base44` for legacy compatibility - now renamed to `apiClient` for clarity.
  */
+export const apiClient = newApiClient;
+
+// Legacy export for backwards compatibility (will be removed in future)
 export const base44 = newApiClient;
 
 try {

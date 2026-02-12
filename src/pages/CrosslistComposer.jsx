@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { apiClient } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
 import { uploadApi } from "@/api/uploadApi";
 import { useQuery } from "@tanstack/react-query";

@@ -2,7 +2,7 @@
 import React from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { apiClient } from "@/api/base44Client";
 import { salesApi } from "@/api/salesApi";
 import { inventoryApi } from "@/api/inventoryApi";
 import { createPageUrl } from "@/utils";

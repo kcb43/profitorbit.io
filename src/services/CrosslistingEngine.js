@@ -9,7 +9,7 @@ import { FacebookIntegration } from '@/integrations/facebook/FacebookIntegration
 import { EbayIntegration } from '@/integrations/ebay/EbayIntegration';
 import { MercariIntegration } from '@/integrations/mercari/MercariIntegration';
 import { PoshmarkIntegration } from '@/integrations/poshmark/PoshmarkIntegration';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 
 class CrosslistingEngine {
   constructor() {
@@ -81,7 +81,7 @@ class CrosslistingEngine {
       const integration = this.getIntegration(marketplace);
       
       // Get inventory item data
-      const inventoryItem = await base44.entities.InventoryItem.get(inventoryItemId);
+      const inventoryItem = await apiClient.entities.InventoryItem.get(inventoryItemId);
       if (!inventoryItem) {
         throw new Error(`Inventory item ${inventoryItemId} not found`);
       }
@@ -115,7 +115,7 @@ class CrosslistingEngine {
       });
 
       // Update inventory item
-      await base44.entities.InventoryItem.update(inventoryItemId, {
+      await apiClient.entities.InventoryItem.update(inventoryItemId, {
         status: 'listed',
         marketplace_listings: [
           ...(inventoryItem.marketplace_listings || []),
@@ -235,7 +235,7 @@ class CrosslistingEngine {
     }
 
     // Update inventory item status
-    await base44.entities.InventoryItem.update(inventoryItemId, {
+    await apiClient.entities.InventoryItem.update(inventoryItemId, {
       status: 'available',
     });
 
@@ -518,12 +518,12 @@ class CrosslistingEngine {
         
         if (listing) {
           // Update inventory item status
-          await base44.entities.InventoryItem.update(listing.inventory_item_id, {
+          await apiClient.entities.InventoryItem.update(listing.inventory_item_id, {
             status: 'sold',
           });
 
           // Auto-delist from other marketplaces if enabled
-          const inventoryItem = await base44.entities.InventoryItem.get(listing.inventory_item_id);
+          const inventoryItem = await apiClient.entities.InventoryItem.get(listing.inventory_item_id);
           if (inventoryItem?.auto_delist_on_sale) {
             await this.delistItemEverywhere(listing.inventory_item_id, userTokens);
           }

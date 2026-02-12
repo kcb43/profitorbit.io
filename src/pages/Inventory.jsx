@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { apiClient } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
 import { uploadApi } from "@/api/uploadApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1082,7 +1082,6 @@ export default function InventoryPage() {
   const handleCheckDuplicates = async (itemId = null) => {
     setCheckingDuplicates(true);
     try {
-      const apiClient = base44;
       const response = await apiClient.post('/api/inventory/check-duplicates', {
         itemIds: itemId ? [itemId] : null,
         checkAll: !itemId

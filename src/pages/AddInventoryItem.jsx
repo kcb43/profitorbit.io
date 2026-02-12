@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { apiClient } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
 import { uploadApi } from "@/api/uploadApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
