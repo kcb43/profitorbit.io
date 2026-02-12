@@ -293,23 +293,35 @@ export default async function handler(req, res) {
             console.log(`📊 Sample response:`, JSON.stringify(analyticsData).substring(0, 500));
 
             // Extract view counts from the response
+            // The metrics are in the same order as header.metrics array
+            const metricKeys = analyticsData.header?.metrics || [];
+            const viewsIndex = metricKeys.findIndex(m => m.key === 'LISTING_VIEWS_TOTAL');
+            const impressionsIndex = metricKeys.findIndex(m => m.key === 'LISTING_IMPRESSION_TOTAL');
+            
+            console.log(`📊 Metric indices: views=${viewsIndex}, impressions=${impressionsIndex}`);
+            
             const viewCounts = {};
             if (analyticsData.records && Array.isArray(analyticsData.records)) {
               analyticsData.records.forEach(record => {
                 const listingId = record.dimensionValues?.[0]?.value;
-                const metrics = record.metricValues;
-                if (listingId && metrics) {
-                  const viewCount = metrics.find(m => m.name === 'LISTING_VIEWS_TOTAL')?.value || 0;
-                  const impressions = metrics.find(m => m.name === 'LISTING_IMPRESSION_TOTAL')?.value || 0;
+                const metricValues = record.metricValues;
+                if (listingId && metricValues) {
+                  const viewCount = (viewsIndex >= 0 && metricValues[viewsIndex]?.applicable) 
+                    ? metricValues[viewsIndex].value 
+                    : 0;
+                  const impressions = (impressionsIndex >= 0 && metricValues[impressionsIndex]?.applicable) 
+                    ? metricValues[impressionsIndex].value 
+                    : 0;
                   viewCounts[listingId] = {
-                    hitCount: parseInt(viewCount),
-                    totalImpressions: parseInt(impressions)
+                    hitCount: parseInt(viewCount) || 0,
+                    totalImpressions: parseInt(impressions) || 0
                   };
                 }
               });
             }
 
             console.log(`📊 Extracted view counts for ${Object.keys(viewCounts).length} listings`);
+            console.log(`📊 Sample view counts:`, JSON.stringify(Object.values(viewCounts).slice(0, 3)));
 
             // Merge view counts into activeItems
             activeItems = activeItems.map(item => ({
