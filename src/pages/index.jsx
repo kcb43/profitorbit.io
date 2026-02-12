@@ -307,19 +307,6 @@ function PagesContent() {
               />
               
               <Route
-                path="/Pulse"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Pulse">
-                        {withSuspense(<MarketIntelligence />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
-              />
-              
-              <Route
                 path="/pulse/:marketplaceId"
                 element={
                   <AuthGuard>
