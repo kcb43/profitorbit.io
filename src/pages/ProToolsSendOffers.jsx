@@ -296,8 +296,9 @@ export default function ProToolsSendOffers() {
         return updated;
       });
       
-      // Invalidate queries
+      // Invalidate queries to refresh both Import page and inventory
       queryClient.invalidateQueries(['inventoryItems']);
+      queryClient.invalidateQueries(['ebay-listings']); // Refresh Import page counter
       
       // Check for potential duplicates
       if (data.potentialDuplicates && Object.keys(data.potentialDuplicates).length > 0) {

@@ -766,70 +766,98 @@ export default async function handler(req, res) {
       // Only check for duplicates if this was a new import (not existing)
       if (!importedItem.isExistingItem && importedItem.inventoryId) {
         try {
-          const { data: inventoryItem } = await supabase
+          console.log(`  🔍 Fetching imported item ${importedItem.inventoryId} for duplicate check...`);
+          const { data: inventoryItem, error: fetchError } = await supabase
             .from('inventory_items')
             .select('item_name, ebay_item_id, purchase_price, purchase_date, image_url, images')
             .eq('id', importedItem.inventoryId)
             .single();
           
-          if (inventoryItem) {
-            // Check for duplicates
-            const { data: potentialDuplicates } = await supabase
-              .from('inventory_items')
-              .select('id, item_name, purchase_price, purchase_date, status, source, image_url, images, ebay_item_id, mercari_item_id, facebook_item_id, quantity, created_at, description, brand, size, condition')
-              .eq('user_id', userId)
-              .neq('id', importedItem.inventoryId)
-              .is('deleted_at', null);
+          if (fetchError) {
+            console.error(`  ❌ Error fetching imported item:`, fetchError);
+            continue;
+          }
+          
+          if (!inventoryItem) {
+            console.warn(`  ⚠️ Imported item not found in database: ${importedItem.inventoryId}`);
+            continue;
+          }
+          
+          console.log(`  ✅ Found imported item: "${inventoryItem.item_name}"`);
+          
+          // Check for duplicates
+          const { data: potentialDuplicates, error: dupQueryError } = await supabase
+            .from('inventory_items')
+            .select('id, item_name, purchase_price, purchase_date, status, source, image_url, images, ebay_item_id, mercari_item_id, facebook_item_id, quantity, created_at, description, brand, size, condition')
+            .eq('user_id', userId)
+            .neq('id', importedItem.inventoryId)
+            .is('deleted_at', null);
+          
+          if (dupQueryError) {
+            console.error(`  ❌ Error querying for duplicates:`, dupQueryError);
+            continue;
+          }
+          
+          console.log(`  🔍 Found ${potentialDuplicates?.length || 0} existing items to compare against`);
+          
+          if (potentialDuplicates && potentialDuplicates.length > 0) {
+            const importedTitle = inventoryItem.item_name.toLowerCase();
+            const importedWords = importedTitle.split(/\s+/).filter(w => w.length > 2);
             
-            if (potentialDuplicates && potentialDuplicates.length > 0) {
-              const importedTitle = inventoryItem.item_name.toLowerCase();
-              const importedWords = importedTitle.split(/\s+/).filter(w => w.length > 2);
-              
-              const matches = potentialDuplicates
-                .map(dup => {
-                  const dupTitle = dup.item_name.toLowerCase();
-                  const dupWords = dupTitle.split(/\s+/).filter(w => w.length > 2);
-                  
-                  // Calculate word overlap (key words that match)
-                  const importedSet = new Set(importedWords);
-                  const dupSet = new Set(dupWords);
-                  const commonWords = [...importedSet].filter(w => dupSet.has(w));
-                  
-                  // Calculate similarity percentage
-                  const maxWords = Math.max(importedSet.size, dupSet.size);
-                  const similarity = maxWords > 0 ? (commonWords.length / maxWords) * 100 : 0;
-                  
-                  console.log(`  📊 Comparing "${inventoryItem.item_name}" vs "${dup.item_name}": ${similarity.toFixed(1)}% similarity (${commonWords.length}/${maxWords} words match)`);
-                  
-                  return { ...dup, similarity };
-                })
-                .filter(dup => dup.similarity >= 40) // Lower threshold: 40% similarity
-                .sort((a, b) => b.similarity - a.similarity)
-                .slice(0, 5); // Top 5 matches
-              
-              if (matches.length > 0) {
-                // Include the imported item details for the dialog
-                duplicateMatches[importedItem.inventoryId] = {
-                  importedItem: {
-                    id: importedItem.inventoryId,
-                    item_name: inventoryItem.item_name,
-                    purchase_price: inventoryItem.purchase_price,
-                    purchase_date: inventoryItem.purchase_date,
-                    image_url: inventoryItem.image_url,
-                    images: inventoryItem.images,
-                    source: 'eBay',
-                    ebay_item_id: inventoryItem.ebay_item_id,
-                  },
-                  matches: matches,
-                };
-                console.log(`  ✅ Found ${matches.length} potential duplicates for "${inventoryItem.item_name}"`);
-                console.log(`     Top match: "${matches[0].item_name}" (${matches[0].similarity.toFixed(1)}% similar)`);
-              }
+            console.log(`  📝 Imported title: "${inventoryItem.item_name}" (${importedWords.length} words: ${importedWords.join(', ')})`);
+            
+            const matches = potentialDuplicates
+              .map(dup => {
+                const dupTitle = dup.item_name.toLowerCase();
+                const dupWords = dupTitle.split(/\s+/).filter(w => w.length > 2);
+                
+                // Calculate word overlap (key words that match)
+                const importedSet = new Set(importedWords);
+                const dupSet = new Set(dupWords);
+                const commonWords = [...importedSet].filter(w => dupSet.has(w));
+                
+                // Calculate similarity percentage
+                const maxWords = Math.max(importedSet.size, dupSet.size);
+                const similarity = maxWords > 0 ? (commonWords.length / maxWords) * 100 : 0;
+                
+                console.log(`  📊 Comparing vs "${dup.item_name}": ${similarity.toFixed(1)}% similarity (${commonWords.length}/${maxWords} words: [${commonWords.join(', ')}])`);
+                
+                return { ...dup, similarity };
+              })
+              .filter(dup => dup.similarity >= 40) // Lower threshold: 40% similarity
+              .sort((a, b) => b.similarity - a.similarity)
+              .slice(0, 5); // Top 5 matches
+            
+            console.log(`  🎯 Matches above 40% threshold: ${matches.length}`);
+            
+            if (matches.length > 0) {
+              // Include the imported item details for the dialog
+              duplicateMatches[importedItem.inventoryId] = {
+                importedItem: {
+                  id: importedItem.inventoryId,
+                  item_name: inventoryItem.item_name,
+                  purchase_price: inventoryItem.purchase_price,
+                  purchase_date: inventoryItem.purchase_date,
+                  image_url: inventoryItem.image_url,
+                  images: inventoryItem.images,
+                  source: 'eBay',
+                  ebay_item_id: inventoryItem.ebay_item_id,
+                },
+                matches: matches,
+              };
+              console.log(`  ✅ Found ${matches.length} potential duplicates for "${inventoryItem.item_name}"`);
+              console.log(`     Top match: "${matches[0].item_name}" (${matches[0].similarity.toFixed(1)}% similar)`);
+            } else {
+              console.log(`  ℹ️ No duplicates found above 40% threshold for "${inventoryItem.item_name}"`);
             }
+          } else {
+            console.log(`  ℹ️ No existing items in inventory to compare against`);
           }
         } catch (dupError) {
-          console.warn(`⚠️ Error checking duplicates for item ${importedItem.inventoryId}:`, dupError);
+          console.error(`⚠️ Error checking duplicates for item ${importedItem.inventoryId}:`, dupError);
         }
+      } else {
+        console.log(`  ⏭️ Skipping duplicate check for item ${importedItem.itemId} (isExisting: ${importedItem.isExistingItem})`);
       }
     }
 
