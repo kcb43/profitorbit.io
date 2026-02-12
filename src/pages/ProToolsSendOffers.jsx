@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
 import { inventoryApi } from "@/api/inventoryApi";
 import newApiClient from "@/api/newApiClient";
@@ -126,6 +126,8 @@ function saveCachedMarketplaceItems(marketplace, items) {
 export default function ProToolsSendOffers() {
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const qs = new URLSearchParams(location.search || "");
   const initialMkt = qs.get("marketplace") || "ebay";
   const initialItemId = qs.get("itemId") || "";
@@ -201,6 +203,95 @@ export default function ProToolsSendOffers() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // Import mutation for eBay items
+  const importMutation = useMutation({
+    mutationFn: async ({ itemId, ebayItemId }) => {
+      console.log(`📥 Importing eBay item: ${ebayItemId}`);
+      
+      const { supabase, getCurrentUserId } = await import('@/api/supabaseClient');
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || await getCurrentUserId();
+      
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get eBay token
+      let ebayToken = null;
+      try {
+        const ebayTokenData = localStorage.getItem('ebay_user_token');
+        if (ebayTokenData) {
+          const parsed = JSON.parse(ebayTokenData);
+          ebayToken = parsed.access_token || parsed.token || ebayTokenData;
+        }
+      } catch (e) {
+        console.warn('Could not get eBay token:', e);
+      }
+
+      if (!ebayToken) {
+        throw new Error('eBay not connected. Please connect your eBay account first.');
+      }
+
+      // Call import API
+      const response = await fetch('/api/ebay/import-items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': userId,
+          'X-User-Token': ebayToken,
+        },
+        body: JSON.stringify({
+          itemIds: [ebayItemId],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to import item');
+      }
+
+      const data = await response.json();
+      console.log('✅ Import response:', data);
+      
+      if (data.importedItems && data.importedItems.length > 0) {
+        return {
+          itemId,
+          inventoryId: data.importedItems[0].inventoryId,
+        };
+      }
+      
+      throw new Error('Import succeeded but no inventory ID returned');
+    },
+    onSuccess: (data) => {
+      console.log('✅ Import successful:', data);
+      
+      // Update the local state to mark item as imported
+      setMarketplaceItems(prevItems => 
+        prevItems.map(item => 
+          item.id === data.itemId || item.itemId === data.itemId
+            ? { ...item, isImported: true, inventoryId: data.inventoryId }
+            : item
+        )
+      );
+      
+      // Invalidate queries
+      queryClient.invalidateQueries(['inventoryItems']);
+      
+      toast({
+        title: "Import Successful",
+        description: "Item has been imported to your inventory",
+      });
+    },
+    onError: (error) => {
+      console.error('❌ Import error:', error);
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const fetchMarketplaceItems = async () => {
     setIsLoadingMarketplaceItems(true);
@@ -1164,35 +1255,24 @@ export default function ProToolsSendOffers() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 text-xs"
-                                  onClick={async () => {
-                                    // Import this item
-                                    toast({
-                                      title: "Importing...",
-                                      description: `Importing "${r.title.substring(0, 30)}..." to inventory`,
+                                  disabled={importMutation.isPending}
+                                  onClick={() => {
+                                    importMutation.mutate({ 
+                                      itemId: r.id, 
+                                      ebayItemId: r.ebayItemId || r.listingId 
                                     });
-                                    
-                                    try {
-                                      // Navigate to Import page with this item pre-selected
-                                      window.location.href = `/import?marketplace=${marketplace}&itemId=${r.ebayItemId}`;
-                                    } catch (error) {
-                                      toast({
-                                        title: "Error",
-                                        description: "Failed to import item",
-                                        variant: "destructive",
-                                      });
-                                    }
                                   }}
                                 >
-                                  Import
+                                  {importMutation.isPending ? 'Importing...' : 'Import'}
                                 </Button>
                               ) : (
                                 r.inventoryId ? (
-                                  <Link
-                                    to={createPageUrl(`AddInventoryItem?id=${r.inventoryId}`)}
+                                  <button
+                                    onClick={() => navigate(`/Inventory?highlight=${r.inventoryId}`)}
                                     className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
                                   >
                                     ✓ In Inventory
-                                  </Link>
+                                  </button>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">✓ In Inventory</span>
                                 )
