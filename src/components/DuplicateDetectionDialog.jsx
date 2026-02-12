@@ -8,7 +8,7 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { format, parseISO } from 'date-fns';
 import { AlertTriangle, Link as LinkIcon, ExternalLink, X, Loader2 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
-import { newApiClient } from "@/lib/base44-client";
+import { base44 } from "@/api/base44Client";
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
@@ -56,8 +56,7 @@ export function DuplicateDetectionDialog({
     setIsMerging(true);
 
     try {
-      const apiClient = newApiClient();
-      const response = await apiClient.post('/api/inventory/merge-duplicates', {
+      const response = await base44.post('/api/inventory/merge-duplicates', {
         primaryItemId: importedItemId,
         duplicateItemIds: Array.from(selectedDuplicates),
         action: 'merge_and_delete'

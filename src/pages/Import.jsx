@@ -2555,12 +2555,12 @@ export default function Import() {
                               
                               {item.salesTax > 0 && (
                                 <>
-                                  <div className="text-muted-foreground ml-3">• Sales tax:</div>
+                                  <div className="text-muted-foreground ml-3">• Sales tax (buyer paid):</div>
                                   <div className="text-right">${item.salesTax.toFixed(2)}</div>
                                 </>
                               )}
                               
-                              <div className="text-muted-foreground font-medium mt-1">Your Earnings:</div>
+                              <div className="text-muted-foreground font-medium mt-1">Selling Costs:</div>
                               <div className="text-right"></div>
                               
                               {item.finalValueFee > 0 && (
