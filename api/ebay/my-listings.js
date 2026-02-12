@@ -362,6 +362,118 @@ export default async function handler(req, res) {
         console.log(`✅ Fetched transactions for ${Object.keys(transactionsByItemId).length} unique items`);
       }
       
+      // NOW fetch GetItemTransactions for each transaction to get FinalValueFee
+      console.log(`💰 Fetching FinalValueFee for ${Object.keys(transactionsByItemId).length} items with transactions...`);
+      
+      const allTransactions = [];
+      for (const itemId in transactionsByItemId) {
+        transactionsByItemId[itemId].forEach(txn => {
+          allTransactions.push({
+            itemId,
+            transactionId: txn.transactionId
+          });
+        });
+      }
+      
+      const feesByItemId = {};
+      const batchSize = 20;
+      
+      for (let i = 0; i < allTransactions.length; i += batchSize) {
+        const batch = allTransactions.slice(i, i + batchSize);
+        console.log(`📦 Fetching fees batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allTransactions.length / batchSize)}...`);
+        
+        const batchPromises = batch.map(async ({ itemId, transactionId }) => {
+          const getItemTransactionsRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GetItemTransactionsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${accessToken}</eBayAuthToken>
+  </RequesterCredentials>
+  <ItemID>${itemId}</ItemID>
+  <TransactionID>${transactionId}</TransactionID>
+  <IncludeFinalValueFee>true</IncludeFinalValueFee>
+</GetItemTransactionsRequest>`;
+
+          try {
+            const response = await fetch(tradingUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'text/xml',
+                'X-EBAY-API-SITEID': '0',
+                'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+                'X-EBAY-API-CALL-NAME': 'GetItemTransactions',
+              },
+              body: getItemTransactionsRequest,
+            });
+            
+            if (response.ok) {
+              const xml = await response.text();
+              return { itemId, transactionId, xml };
+            }
+          } catch (error) {
+            console.error(`⚠️ Error fetching transaction ${transactionId}:`, error.message);
+          }
+          return { itemId, transactionId, xml: null };
+        });
+        
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Parse FinalValueFee from each transaction
+        for (const { itemId, transactionId, xml } of batchResults) {
+          if (!xml) continue;
+          
+          const transactionsMatch = xml.match(/<TransactionArray>([\s\S]*?)<\/TransactionArray>/);
+          if (!transactionsMatch) continue;
+          
+          const txnXml = transactionsMatch[1];
+          
+          // Extract FinalValueFee
+          const fvfMatch = txnXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
+          const finalValueFee = fvfMatch ? parseFloat(fvfMatch[1]) : 0;
+          
+          // Extract ActualShippingCost
+          const actualShippingMatch = txnXml.match(/<ActualShippingCost[^>]*>([^<]+)<\/ActualShippingCost>/);
+          const shippingCost = actualShippingMatch ? parseFloat(actualShippingMatch[1]) : 0;
+          
+          // Extract sales tax
+          let salesTax = 0;
+          const taxMatch1 = txnXml.match(/<SalesTax>[\s\S]*?<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
+          const taxMatch2 = txnXml.match(/<Taxes>[\s\S]*?<TotalTaxAmount[^>]*>([^<]+)<\/TotalTaxAmount>/);
+          if (taxMatch1) salesTax = parseFloat(taxMatch1[1]);
+          else if (taxMatch2) salesTax = parseFloat(taxMatch2[1]);
+          
+          if (!feesByItemId[itemId]) {
+            feesByItemId[itemId] = {};
+          }
+          feesByItemId[itemId][transactionId] = {
+            finalValueFee,
+            shippingCost,
+            salesTax,
+          };
+          
+          console.log(`  ✅ Item ${itemId} txn ${transactionId}: Fee=$${finalValueFee}, Ship=$${shippingCost}, Tax=$${salesTax}`);
+        }
+      }
+      
+      console.log(`✅ Fetched fees for ${Object.keys(feesByItemId).length} items`);
+      
+      // Merge fees back into transactions
+      for (const itemId in feesByItemId) {
+        if (transactionsByItemId[itemId]) {
+          transactionsByItemId[itemId].forEach(txn => {
+            const fees = feesByItemId[itemId][txn.transactionId];
+            if (fees) {
+              txn.finalValueFee = fees.finalValueFee;
+              txn.shippingCost = fees.shippingCost;
+              txn.salesTax = fees.salesTax;
+              txn.totalSale = txn.price + fees.shippingCost + fees.salesTax;
+              txn.netPayout = txn.price + fees.shippingCost - fees.finalValueFee;
+              
+              console.log(`  💰 Updated item ${itemId} txn ${txn.transactionId}: OrderTotal=$${txn.totalSale.toFixed(2)}, Net=$${txn.netPayout.toFixed(2)}`);
+            }
+          });
+        }
+      }
+      
       // Parse sold items with transaction data
       if (!sellerListResponse.ok) {
         throw new Error(`eBay API error: ${sellerListResponse.status}`);
