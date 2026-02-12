@@ -312,6 +312,7 @@ export default async function handler(req, res) {
         sku: item.sku || null,
         likes: live.likes || item.mercari_likes || 0, // Use live data if available, fallback to stored data
         views: live.views || 0,
+        hitCount: live.views || item.hitCount || 0, // Add hitCount field
         listingId: marketplaceListingId || marketplaceItemId,
         listingUrl: listingUrl,
         marketplaceId: marketplaceId,
@@ -328,6 +329,8 @@ export default async function handler(req, res) {
         listedAt: item.created_at,
         brand: item.brand || null,
         isImported: true, // Mark as imported (in inventory)
+        inventoryId: item.id, // Include inventory ID for navigation
+        ebayItemId: marketplaceItemId, // Include eBay item ID for reference
       };
     });
 
