@@ -143,7 +143,8 @@ export default async function handler(req, res) {
       // 3. GetSellerList for sold item details and images
       // Then merge them together
       
-      console.log('📋 Fetching Active and Sold items in parallel...');
+      try {
+        console.log('📋 Fetching Active and Sold items in parallel...');
       
       const createTimeFrom = getDateDaysAgo(90);
       const endTimeFrom = getDateDaysAgo(90);
@@ -251,6 +252,7 @@ export default async function handler(req, res) {
       const sellerListXml = await sellerListResponse.text();
       const soldItems = parseGetSellerListXML(sellerListXml, transactionsByItemId);
       console.log(`✅ Fetched ${soldItems.length} sold items`);
+      console.log(`🔍 About to combine items...`);
       
       // Debug: Log sample sold items to verify unique IDs
       if (soldItems.length > 0) {
@@ -460,6 +462,7 @@ export default async function handler(req, res) {
       }
 
       // Return the final listings with Analytics data merged
+      console.log(`🎯 Returning ${listings.length} listings with view counts`);
       return res.status(200).json({
         listings,
         total: listings.length,
@@ -480,6 +483,17 @@ export default async function handler(req, res) {
       active: activeItems.length,
       sold: soldItems.length,
     });
+      
+      } catch (allError) {
+        console.error('❌ CRITICAL ERROR in status=All path:', allError);
+        console.error('❌ Error stack:', allError.stack);
+        console.error('❌ Error message:', allError.message);
+        return res.status(500).json({ 
+          error: 'Failed to fetch listings',
+          details: allError.message,
+          stack: allError.stack
+        });
+      }
       
     } else if (status === 'Ended' || status === 'Sold') {
       // For sold items, fetch both GetSellerList (for items with images) 
@@ -1460,7 +1474,8 @@ function parseOrdersToTransactions(xml) {
 function parseGetSellerListXML(xml, transactionsByItemId = {}) {
   const items = [];
   
-  console.log('🔍 Parser: Parsing GetSellerList response for sold items...');
+  try {
+    console.log('🔍 Parser: Parsing GetSellerList response for sold items...');
   
   // Extract ItemArray section
   const itemArrayMatch = xml.match(/<ItemArray>([\s\S]*?)<\/ItemArray>/);
@@ -1651,6 +1666,13 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
   
   console.log(`✅ Parsed ${items.length} sold items from GetSellerList (${itemCount} items processed)`);
   return items;
+  
+  } catch (parseError) {
+    console.error('❌ CRASH in parseGetSellerListXML:', parseError);
+    console.error('❌ Stack:', parseError.stack);
+    console.error('❌ Returning empty items array due to parse error');
+    return items; // Return whatever we parsed so far
+  }
 }
 
 // Helper function to parse GetOrders XML response (for sold items)
