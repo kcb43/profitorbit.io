@@ -297,6 +297,11 @@ export default async function handler(req, res) {
                 const txnXml = txnMatch[1];
                 console.log(`🔍 Found Transaction block, length: ${txnXml.length} chars`);
                 
+                // Parse quantity purchased
+                const quantityMatch = txnXml.match(/<QuantityPurchased>([^<]*)<\/QuantityPurchased>/);
+                fullItemData.quantitySold = quantityMatch ? parseInt(quantityMatch[1]) : (fullItemData.quantitySold || 1);
+                console.log(`📊 Quantity Sold: ${fullItemData.quantitySold}`);
+                
                 // Shipping/Tracking Info
                 const shippingDetailsMatch = txnXml.match(/<ShippingDetails>([\s\S]*?)<\/ShippingDetails>/);
                 if (shippingDetailsMatch) {
@@ -694,7 +699,45 @@ export default async function handler(req, res) {
               paymentMethod: fullItemData.paymentMethod,
               orderId: fullItemData.orderId,
               transactionId: fullItemData.transactionId,
+              quantitySold: fullItemData.quantitySold,
             });
+            
+            // Check for existing sales of this inventory item to create/use sale group
+            let saleGroupId = null;
+            if (inventoryId) {
+              const { data: existingSales } = await supabase
+                .from('sales')
+                .select('sale_group_id')
+                .eq('inventory_id', inventoryId)
+                .not('sale_group_id', 'is', null)
+                .limit(1);
+              
+              if (existingSales && existingSales.length > 0) {
+                saleGroupId = existingSales[0].sale_group_id;
+                console.log(`🔗 Linking sale to existing group: ${saleGroupId}`);
+              } else {
+                // Check if there are any sales for this inventory item (to create a new group)
+                const { data: allSales } = await supabase
+                  .from('sales')
+                  .select('id')
+                  .eq('inventory_id', inventoryId);
+                
+                if (allSales && allSales.length > 0) {
+                  // Generate a new group ID for all sales of this item
+                  const { data: newGroup } = await supabase.rpc('gen_random_uuid');
+                  saleGroupId = newGroup;
+                  console.log(`🆕 Creating new sale group: ${saleGroupId} (${allSales.length} existing sales)`);
+                  
+                  // Update existing sales to use this group
+                  await supabase
+                    .from('sales')
+                    .update({ sale_group_id: saleGroupId })
+                    .eq('inventory_id', inventoryId);
+                  
+                  console.log(`✅ Updated ${allSales.length} existing sales with group ID`);
+                }
+              }
+            }
             
             const { data: saleData, error: saleError } = await supabase
               .from('sales')
@@ -710,6 +753,8 @@ export default async function handler(req, res) {
                 vat_fees: fullItemData.salesTax || 0,
                 profit: fullItemData.netPayout || (fullItemData.price - (fullItemData.finalValueFee || 0)),
                 image_url: fullItemData.images?.[0] || itemDetails.images?.[0] || null,
+                quantity_sold: fullItemData.quantitySold || 1,
+                sale_group_id: saleGroupId,
                 // Fully displayed fields
                 tracking_number: fullItemData.trackingNumber,
                 shipping_carrier: fullItemData.shippingCarrier,

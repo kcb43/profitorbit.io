@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical } from "lucide-react";
+import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
@@ -42,6 +42,7 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
 import { FacebookListingDialog } from "@/components/FacebookListingDialog";
+import { DuplicateDetectionDialog } from "@/components/DuplicateDetectionDialog";
 import { isConnected } from "@/api/facebookClient";
 const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { supabase } from "@/api/supabaseClient";
@@ -216,6 +217,10 @@ export default function InventoryPage() {
   const [itemForFacebookListing, setItemForFacebookListing] = useState(null);
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
   const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
+  const [itemDuplicates, setItemDuplicates] = useState({});
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [selectedItemForDuplicates, setSelectedItemForDuplicates] = useState(null);
   const [dismissedDuplicates, setDismissedDuplicates] = useState(() => {
     try {
       const stored = localStorage.getItem('dismissedDuplicateAlerts');
@@ -1073,6 +1078,50 @@ export default function InventoryPage() {
     },
   });
 
+  // Function to check for duplicates
+  const handleCheckDuplicates = async (itemId = null) => {
+    setCheckingDuplicates(true);
+    try {
+      const apiClient = base44;
+      const response = await apiClient.post('/api/inventory/check-duplicates', {
+        itemIds: itemId ? [itemId] : null,
+        checkAll: !itemId
+      });
+
+      if (response.success) {
+        setItemDuplicates(response.duplicates || {});
+        toast({
+          title: "Duplicate Check Complete",
+          description: `Found ${response.duplicatesFound} item${response.duplicatesFound !== 1 ? 's' : ''} with potential duplicates`,
+        });
+        
+        // If checking a single item and duplicates found, open dialog
+        if (itemId && response.duplicates[itemId]) {
+          const item = inventoryItems.find(i => i.id === itemId);
+          setSelectedItemForDuplicates({
+            id: itemId,
+            item_name: item.item_name,
+            purchase_price: item.purchase_price,
+            purchase_date: item.purchase_date,
+            image_url: item.image_url,
+            images: item.images,
+            source: item.source,
+          });
+          setDuplicateDialogOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking duplicates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check for duplicates. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  };
+
   const handleEditImage = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1595,6 +1644,24 @@ export default function InventoryPage() {
               >
                 <GalleryHorizontal className="w-4 h-4 mr-2" />
                 {viewMode === "gallery" ? "Exit Gallery" : "Gallery Mode"}
+              </Button>
+              <Button
+                onClick={() => handleCheckDuplicates()}
+                disabled={checkingDuplicates}
+                variant="outline"
+                className="flex-shrink-0"
+              >
+                {checkingDuplicates ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Check Duplicates
+                  </>
+                )}
               </Button>
               <Link
                 to={createPageUrl("Import")}
@@ -3263,6 +3330,32 @@ export default function InventoryPage() {
                       {statusLabels[item.status] || statusLabels.available}
                     </Badge>
                   </div>
+                  {itemDuplicates[item.id] && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedItemForDuplicates({
+                          id: item.id,
+                          item_name: item.item_name,
+                          purchase_price: item.purchase_price,
+                          purchase_date: item.purchase_date,
+                          image_url: item.image_url,
+                          images: item.images,
+                          source: item.source,
+                        });
+                        setDuplicateDialogOpen(true);
+                      }}
+                      className="absolute bottom-2 left-2 z-10"
+                    >
+                      <Badge 
+                        variant="outline" 
+                        className="bg-amber-500/90 text-white border-amber-600 backdrop-blur-sm hover:bg-amber-600 cursor-pointer transition-colors"
+                      >
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        {itemDuplicates[item.id].duplicate_count} Duplicate{itemDuplicates[item.id].duplicate_count > 1 ? 's' : ''}
+                      </Badge>
+                    </button>
+                  )}
                 </div>
 
                     <CardContent className={gridVariations[viewVariation].paddingClass}>
@@ -3896,6 +3989,37 @@ export default function InventoryPage() {
             title: "Success",
             description: "Item listed on Facebook Marketplace successfully.",
           });
+        }}
+      />
+
+      {/* Duplicate Detection Dialog */}
+      <DuplicateDetectionDialog
+        isOpen={duplicateDialogOpen}
+        onClose={() => {
+          setDuplicateDialogOpen(false);
+          setSelectedItemForDuplicates(null);
+        }}
+        duplicates={selectedItemForDuplicates ? {
+          [selectedItemForDuplicates.id]: {
+            importedItem: selectedItemForDuplicates,
+            matches: itemDuplicates[selectedItemForDuplicates.id]?.duplicates || []
+          }
+        } : {}}
+        onViewInventory={(inventoryId) => {
+          // Highlight the item (already on inventory page)
+          const element = document.querySelector(`[data-item-id="${inventoryId}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('ring-4', 'ring-blue-500');
+            setTimeout(() => {
+              element.classList.remove('ring-4', 'ring-blue-500');
+            }, 2000);
+          }
+        }}
+        onMergeComplete={(primaryItemId) => {
+          // Refresh duplicates check after merge
+          queryClient.invalidateQueries(['inventoryItems']);
+          handleCheckDuplicates();
         }}
       />
     </div>
