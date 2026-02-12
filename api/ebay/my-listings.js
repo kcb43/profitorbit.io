@@ -234,8 +234,106 @@ export default async function handler(req, res) {
         throw new Error(`eBay API error: ${activeResponse.status}`);
       }
       const activeXml = await activeResponse.text();
-      const activeItems = parseMyeBaySellingXML(activeXml, 'Active');
+      let activeItems = parseMyeBaySellingXML(activeXml, 'Active');
       console.log(`✅ Fetched ${activeItems.length} active items`);
+      
+      // ===== FETCH VIEW COUNTS FROM ANALYTICS API (DO THIS EARLY) =====
+      // Doing this immediately after getting active items ensures we get view counts
+      // even if sold items parsing crashes later
+      try {
+        const activeItemIds = activeItems
+          .map(item => item.itemId)
+          .filter(Boolean);
+
+        if (activeItemIds.length > 0 && activeItemIds.length <= 200) {
+          console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
+          console.log(`📋 Sample listing IDs:`, activeItemIds.slice(0, 3));
+          
+          // Calculate date range (last 90 days)
+          const now = new Date();
+          const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+          
+          const formatDate = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+          };
+
+          const startDate = formatDate(ninetyDaysAgo);
+          const endDate = formatDate(now);
+
+          // Build filter parameter
+          const listingIdsFilter = `{${activeItemIds.join('|')}}`;
+          const filter = `marketplace_ids:{EBAY_US},date_range:[${startDate}..${endDate}],listing_ids:${listingIdsFilter}`;
+
+          // Build the Analytics API request URL
+          const analyticsUrl = `${apiUrl}/sell/analytics/v1/traffic_report`;
+          const params = new URLSearchParams({
+            dimension: 'LISTING',
+            metric: 'LISTING_VIEWS_TOTAL,LISTING_IMPRESSION_TOTAL',
+            filter: filter,
+          });
+
+          console.log(`🌐 Calling Analytics API: ${analyticsUrl}`);
+          console.log(`📅 Date range: ${startDate} to ${endDate}`);
+
+          const analyticsResponse = await fetch(`${analyticsUrl}?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/json',
+            },
+          });
+
+          if (analyticsResponse.ok) {
+            const analyticsData = await analyticsResponse.json();
+            console.log(`✅ Analytics API response received`);
+            console.log(`📊 Sample response:`, JSON.stringify(analyticsData).substring(0, 500));
+
+            // Extract view counts from the response
+            const viewCounts = {};
+            if (analyticsData.records && Array.isArray(analyticsData.records)) {
+              analyticsData.records.forEach(record => {
+                const listingId = record.dimensionValues?.[0]?.value;
+                const metrics = record.metricValues;
+                if (listingId && metrics) {
+                  const viewCount = metrics.find(m => m.name === 'LISTING_VIEWS_TOTAL')?.value || 0;
+                  const impressions = metrics.find(m => m.name === 'LISTING_IMPRESSION_TOTAL')?.value || 0;
+                  viewCounts[listingId] = {
+                    hitCount: parseInt(viewCount),
+                    totalImpressions: parseInt(impressions)
+                  };
+                }
+              });
+            }
+
+            console.log(`📊 Extracted view counts for ${Object.keys(viewCounts).length} listings`);
+
+            // Merge view counts into activeItems
+            activeItems = activeItems.map(item => ({
+              ...item,
+              hitCount: viewCounts[item.itemId]?.hitCount || 0,
+              totalImpressions: viewCounts[item.itemId]?.totalImpressions || 0,
+            }));
+
+            const itemsWithViews = activeItems.filter(i => i.hitCount > 0).length;
+            console.log(`✅ Merged Analytics data: ${itemsWithViews} items have views > 0`);
+          } else {
+            const errorText = await analyticsResponse.text();
+            console.error(`❌ Analytics API failed: ${analyticsResponse.status}`);
+            console.error(`❌ Analytics API URL: ${analyticsUrl}?${params.toString()}`);
+            console.error(`❌ Error response:`, errorText.substring(0, 500));
+          }
+        } else if (activeItemIds.length > 200) {
+          console.log(`⚠️ Too many active items (${activeItemIds.length}), skipping Analytics API (max 200)`);
+        } else {
+          console.log(`⚠️ No active items to fetch Analytics data for`);
+        }
+      } catch (analyticsError) {
+        console.error(`❌ Analytics API error:`, analyticsError.message);
+        console.error(`❌ Stack:`, analyticsError.stack);
+      }
       
       // Parse orders for transaction data
       let transactionsByItemId = {};
@@ -346,123 +444,8 @@ export default async function handler(req, res) {
         };
       });
 
-      // Fetch view counts from Analytics API for Active listings
-      try {
-        const activeItemIds = listings
-          .filter(item => item.status === 'Active')
-          .map(item => item.itemId)
-          .filter(Boolean);
-
-        if (activeItemIds.length > 0 && activeItemIds.length <= 200) {
-          console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
-          console.log(`📋 Sample listing IDs:`, activeItemIds.slice(0, 3));
-          
-          // Calculate date range (last 90 days)
-          const now = new Date();
-          const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-          
-          const formatDate = (date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}${month}${day}`;
-          };
-
-          const startDate = formatDate(ninetyDaysAgo);
-          const endDate = formatDate(now);
-
-          // Build filter parameter
-          const listingIdsFilter = `{${activeItemIds.join('|')}}`;
-          const filter = `marketplace_ids:{EBAY_US},date_range:[${startDate}..${endDate}],listing_ids:${listingIdsFilter}`;
-
-          // Build the Analytics API request URL
-          const analyticsUrl = `${apiUrl}/sell/analytics/v1/traffic_report`;
-          const params = new URLSearchParams({
-            dimension: 'LISTING',
-            metric: 'LISTING_VIEWS_TOTAL,LISTING_IMPRESSION_TOTAL',
-            filter: filter,
-          });
-
-          console.log(`🌐 Calling Analytics API: ${analyticsUrl}`);
-          console.log(`📅 Date range: ${startDate} to ${endDate}`);
-
-          const trafficResponse = await fetch(`${analyticsUrl}?${params.toString()}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          });
-
-          console.log(`📥 Analytics API response status: ${trafficResponse.status}`);
-
-          if (trafficResponse.ok) {
-            const trafficData = await trafficResponse.json();
-            console.log(`✅ Analytics API success! Records: ${trafficData.records?.length || 0}`);
-            console.log(`📊 Analytics response sample:`, JSON.stringify(trafficData).substring(0, 500));
-            
-            // Parse view counts from Analytics API response
-            const viewCounts = {};
-            
-            if (trafficData.records && Array.isArray(trafficData.records)) {
-              for (const record of trafficData.records) {
-                const listingId = record.dimensionValues?.[0]?.value;
-                
-                if (listingId) {
-                  const metrics = {};
-                  const metricKeys = trafficData.header?.metrics || [];
-                  
-                  record.metricValues?.forEach((metricValue, index) => {
-                    const metricKey = metricKeys[index]?.key;
-                    if (metricKey && metricValue.applicable) {
-                      metrics[metricKey] = metricValue.value || 0;
-                    }
-                  });
-
-                  viewCounts[listingId] = {
-                    totalViews: metrics.LISTING_VIEWS_TOTAL || 0,
-                    totalImpressions: metrics.LISTING_IMPRESSION_TOTAL || 0,
-                  };
-                }
-              }
-            }
-            
-            console.log(`📊 Parsed view counts for ${Object.keys(viewCounts).length} listings`);
-            console.log(`📊 Sample view data:`, Object.values(viewCounts).slice(0, 3));
-            
-            // Merge view counts into listings
-            listings = listings.map(listing => {
-              const viewData = viewCounts[listing.itemId];
-              if (viewData) {
-                console.log(`✅ Merging views for ${listing.itemId}: ${viewData.totalViews} views`);
-                return {
-                  ...listing,
-                  hitCount: viewData.totalViews,
-                  totalImpressions: viewData.totalImpressions,
-                };
-              }
-              return listing;
-            });
-            
-            console.log(`✅ Final listings with view counts:`, listings.filter(l => l.hitCount > 0).length);
-          } else {
-            const errorText = await trafficResponse.text();
-            console.warn(`⚠️ Analytics API failed (${trafficResponse.status}):`, errorText.substring(0, 500));
-            console.warn(`⚠️ Analytics API URL was:`, `${analyticsUrl}?${params.toString()}`);
-          }
-        } else if (activeItemIds.length > 200) {
-          console.warn(`⚠️ Too many active listings (${activeItemIds.length}), skipping Analytics API (max 200)`);
-        } else {
-          console.warn(`⚠️ No active items to fetch analytics for`);
-        }
-      } catch (viewError) {
-        console.error('❌ Error fetching view counts:', viewError);
-        console.error('❌ Error stack:', viewError.stack);
-      }
-
-      // Return the final listings with Analytics data merged
-      console.log(`🎯 Returning ${listings.length} listings with view counts`);
+      // Return the final listings (Analytics data already merged into activeItems earlier)
+      console.log(`🎯 Returning ${listings.length} listings total`);
       return res.status(200).json({
         listings,
         total: listings.length,
@@ -470,8 +453,8 @@ export default async function handler(req, res) {
         sold: soldItems.length,
         _debug: {
           analyticsAttempted: status === 'All',
-          analyticsSuccess: listings.some(l => l.hitCount > 0),
-          itemsWithViews: listings.filter(l => l.hitCount > 0).length,
+          analyticsSuccess: activeItems.some(l => l.hitCount > 0),
+          itemsWithViews: activeItems.filter(l => l.hitCount > 0).length,
         }
       });
     } // END if (itemIds.length > 0)
