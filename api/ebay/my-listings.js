@@ -249,10 +249,11 @@ export default async function handler(req, res) {
           console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
           console.log(`📋 Sample listing IDs:`, activeItemIds.slice(0, 3));
           
-          // Calculate date range (last 90 days, ending YESTERDAY to avoid "future date" error)
+          // Calculate date range (last 30 days, ending YESTERDAY to avoid "future date" error)
+          // Using 30 days to match eBay's Seller Hub default view period
           const now = new Date();
           const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000)); // Subtract 1 day
-          const ninetyDaysAgo = new Date(yesterday.getTime() - (89 * 24 * 60 * 60 * 1000)); // 90 days total
+          const thirtyDaysAgo = new Date(yesterday.getTime() - (29 * 24 * 60 * 60 * 1000)); // 30 days total
           
           const formatDate = (date) => {
             const year = date.getFullYear();
@@ -261,7 +262,7 @@ export default async function handler(req, res) {
             return `${year}${month}${day}`;
           };
 
-          const startDate = formatDate(ninetyDaysAgo);
+          const startDate = formatDate(thirtyDaysAgo);
           const endDate = formatDate(yesterday);
 
           // Build filter parameter
@@ -322,6 +323,11 @@ export default async function handler(req, res) {
 
             console.log(`📊 Extracted view counts for ${Object.keys(viewCounts).length} listings`);
             console.log(`📊 Sample view counts:`, JSON.stringify(Object.values(viewCounts).slice(0, 3)));
+            
+            // Debug: Check specific item 257237891530
+            if (viewCounts['257237891530']) {
+              console.log(`🔍 DEBUG Item 257237891530 views:`, viewCounts['257237891530']);
+            }
 
             // Merge view counts into activeItems
             activeItems = activeItems.map(item => ({
