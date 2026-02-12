@@ -1421,11 +1421,13 @@ function parseOrdersToTransactions(xml) {
         fundsStatus = 'Available';
       }
       
-      // Calculate net payout (price + shipping - fees)
-      const totalSale = transactionPrice + shippingCost;
-      const netPayout = totalSale - finalValueFee;
+      // Calculate totals correctly:
+      // Order Total = Item Price + Shipping + Sales Tax (what buyer paid)
+      // Net Payout/Earnings = Item Price + Shipping - Final Value Fee (what seller receives)
+      const totalSale = transactionPrice + shippingCost + salesTax;
+      const netPayout = transactionPrice + shippingCost - finalValueFee;
       
-      console.log(`  💰 Financial: Shipping=$${shippingCost}, Tax=$${salesTax}, Fee=$${finalValueFee}, Net=$${netPayout}, Paid=${paidTime ? 'Yes' : 'No'}, Funds=${fundsStatus}`);
+      console.log(`  💰 Financial: Price=$${transactionPrice}, Shipping=$${shippingCost}, Tax=$${salesTax}, Fee=$${finalValueFee}, OrderTotal=$${totalSale}, Net=$${netPayout}, Paid=${paidTime ? 'Yes' : 'No'}, Funds=${fundsStatus}`);
       
       // Get buyer info - try transaction level first, then fall back to order level
       const buyerMatch = transactionXml.match(/<Buyer>([\s\S]*?)<\/Buyer>/);

@@ -52,11 +52,11 @@ import SelectionBanner from "@/components/SelectionBanner";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
-  "eBay": "/ebay-logo.svg",
-  "Mercari": "/mercari-logo.svg",
-  "Facebook": "/facebook-logo.svg",
-  "Facebook Marketplace": "/facebook-logo.svg",
-  "Poshmark": "/poshmark-logo.svg",
+  "eBay": "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
+  "Mercari": "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
+  "Facebook": "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+  "Facebook Marketplace": "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
+  "Poshmark": "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B",
 };
 
 const statusColors = {

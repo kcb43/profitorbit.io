@@ -29,13 +29,12 @@ import {
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import facebookLogo from "@/assets/facebook-logo.svg";
-import poshmarkLogo from "@/assets/poshmark-logo.svg";
 
 const MARKETPLACES = [
   { id: "ebay", label: "eBay", color: "bg-blue-600", logo: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" },
   { id: "mercari", label: "Mercari", color: "bg-orange-600", logo: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B" },
   { id: "facebook", label: "Facebook", color: "bg-sky-600", logo: facebookLogo },
-  { id: "poshmark", label: "Poshmark", color: "bg-pink-600", logo: poshmarkLogo },
+  { id: "poshmark", label: "Poshmark", color: "bg-pink-600", logo: "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B" },
   { id: "depop", label: "Depop", color: "bg-red-600" },
   { id: "grailed", label: "Grailed", color: "bg-black" },
 ];

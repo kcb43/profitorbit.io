@@ -619,6 +619,20 @@ export default function AddSale() {
     setCalculatedProfit(profit);
   };
 
+  // Auto-calculate profit whenever cost or price fields change
+  useEffect(() => {
+    calculateProfit();
+  }, [
+    formData.purchase_price,
+    formData.selling_price,
+    formData.shipping_cost,
+    formData.platform_fees,
+    formData.other_costs,
+    formData.vat_fees,
+    formData.platform,
+    customFees
+  ]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     saleMutation.mutate(formData);
