@@ -226,37 +226,40 @@ export default function Pulse() {
   const hotDeals = categorizedAlerts.hotDeals.length;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-background">
+    <div className="p-2 sm:p-4 md:p-6 lg:p-8 min-h-screen bg-background">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Zap className="h-8 w-8 text-yellow-500" />
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 flex-wrap">
+              <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500" />
               Pulse
-              <Badge variant="secondary" className="ml-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800">
+              <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 text-xs">
                 v2.0
               </Badge>
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Deal monitoring with warehouse deals, lightning deals, coupons & smart alerts
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <Button
               onClick={() => setShowFilters(!showFilters)}
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
             >
               <Filter className="w-4 h-4 mr-2" />
               {showFilters ? 'Hide' : 'Show'} Filters
             </Button>
             <Button
               onClick={() => setProductSearchOpen(true)}
-              className="bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white"
+              className="bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white w-full sm:w-auto"
+              size="sm"
             >
               <Search className="w-4 h-4 mr-2" />
-              Search Products
+              <span className="hidden sm:inline">Search Products</span>
+              <span className="sm:hidden">Search</span>
             </Button>
           </div>
         </div>
@@ -328,7 +331,7 @@ export default function Pulse() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 {/* Deal Type */}
                 <div>
                   <Label className="text-xs">Deal Type</Label>
@@ -436,28 +439,28 @@ export default function Pulse() {
           <CardContent className="pt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-                <TabsTrigger value="all" className="text-xs">
-                  All Deals ({categorizedAlerts.all.length})
+                <TabsTrigger value="all" className="text-[10px] sm:text-xs px-2 py-1.5">
+                  All ({categorizedAlerts.all.length})
                 </TabsTrigger>
-                <TabsTrigger value="warehouse" className="text-xs">
+                <TabsTrigger value="warehouse" className="text-[10px] sm:text-xs px-2 py-1.5">
                   📦 Warehouse ({categorizedAlerts.warehouse.length})
                 </TabsTrigger>
-                <TabsTrigger value="lightning" className="text-xs">
+                <TabsTrigger value="lightning" className="text-[10px] sm:text-xs px-2 py-1.5">
                   ⚡ Lightning ({categorizedAlerts.lightning.length})
                 </TabsTrigger>
-                <TabsTrigger value="coupon" className="text-xs">
+                <TabsTrigger value="coupon" className="text-[10px] sm:text-xs px-2 py-1.5">
                   🎫 Coupons ({categorizedAlerts.coupon.length})
                 </TabsTrigger>
-                <TabsTrigger value="hotDeals" className="text-xs">
+                <TabsTrigger value="hotDeals" className="text-[10px] sm:text-xs px-2 py-1.5">
                   🔥 Hot 70%+ ({categorizedAlerts.hotDeals.length})
                 </TabsTrigger>
-                <TabsTrigger value="electronics" className="text-xs">
+                <TabsTrigger value="electronics" className="text-[10px] sm:text-xs px-2 py-1.5 hidden sm:inline-flex">
                   📱 Electronics ({categorizedAlerts.electronics.length})
                 </TabsTrigger>
-                <TabsTrigger value="home" className="text-xs">
+                <TabsTrigger value="home" className="text-[10px] sm:text-xs px-2 py-1.5 hidden sm:inline-flex">
                   🏠 Home ({categorizedAlerts.home.length})
                 </TabsTrigger>
-                <TabsTrigger value="toys" className="text-xs">
+                <TabsTrigger value="toys" className="text-[10px] sm:text-xs px-2 py-1.5 hidden sm:inline-flex">
                   🎮 Toys ({categorizedAlerts.toys.length})
                 </TabsTrigger>
               </TabsList>
@@ -587,9 +590,9 @@ function EnhancedDealCard({ alert, onDelete, onMarkRead }) {
         alert.deal_type === 'lightning' && "border-yellow-500/50"
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-2 sm:gap-4">
         {/* Product Image */}
-        <div className="w-24 h-24 rounded-md bg-muted flex-shrink-0 overflow-hidden relative">
+        <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-md bg-muted flex-shrink-0 overflow-hidden relative">
           {alert.product_image_url ? (
             <img
               src={alert.product_image_url}
@@ -598,11 +601,11 @@ function EnhancedDealCard({ alert, onDelete, onMarkRead }) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <DollarSign className="h-10 w-10" />
+              <DollarSign className="h-6 w-6 sm:h-10 sm:w-10" />
             </div>
           )}
           {dealBadge && (
-            <div className={cn("absolute top-1 right-1 px-2 py-0.5 rounded-full text-[10px] font-bold", dealBadge.class)}>
+            <div className={cn("absolute top-0.5 right-0.5 sm:top-1 sm:right-1 px-1 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold", dealBadge.class)}>
               {dealBadge.icon}
             </div>
           )}
@@ -612,27 +615,27 @@ function EnhancedDealCard({ alert, onDelete, onMarkRead }) {
         <div className="flex-1 min-w-0">
           {/* Header with Badges */}
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm line-clamp-2 mb-2">{alert.product_name}</h4>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-1 sm:mb-2">{alert.product_name}</h4>
               <div className="flex flex-wrap items-center gap-1">
                 {!alert.is_read && (
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-[10px]">
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-[8px] sm:text-[10px]">
                     NEW
                   </Badge>
                 )}
                 {typeBadge && (
-                  <Badge className={cn("text-[10px] border", typeBadge.class)}>
+                  <Badge className={cn("text-[8px] sm:text-[10px] border", typeBadge.class)}>
                     {typeBadge.icon} {typeBadge.text}
                   </Badge>
                 )}
                 {alert.condition && (
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[8px] sm:text-[10px]">
                     {alert.condition}
                   </Badge>
                 )}
                 {alert.time_remaining && (
-                  <Badge className="text-[10px] bg-red-100 text-red-800 border-red-300 animate-pulse">
-                    <Clock className="h-3 w-3 mr-1" />
+                  <Badge className="text-[8px] sm:text-[10px] bg-red-100 text-red-800 border-red-300 animate-pulse">
+                    <Clock className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
                     {alert.time_remaining}
                   </Badge>
                 )}
@@ -641,22 +644,22 @@ function EnhancedDealCard({ alert, onDelete, onMarkRead }) {
           </div>
 
           {/* Pricing */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-2xl font-bold text-primary">
+          <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-wrap">
+            <span className="text-lg sm:text-2xl font-bold text-primary">
               ${alert.current_price?.toFixed(2)}
             </span>
             {alert.original_price && (
-              <span className="text-sm text-muted-foreground line-through">
+              <span className="text-xs sm:text-sm text-muted-foreground line-through">
                 ${alert.original_price.toFixed(2)}
               </span>
             )}
             {alert.discount_percentage > 0 && (
-              <Badge className={cn("text-xs font-bold border", discountClass)}>
+              <Badge className={cn("text-[10px] sm:text-xs font-bold border", discountClass)}>
                 -{alert.discount_percentage}% OFF
               </Badge>
             )}
             {alert.savings_amount && (
-              <span className="text-xs text-green-600 font-semibold">
+              <span className="text-[10px] sm:text-xs text-green-600 font-semibold">
                 Save ${alert.savings_amount.toFixed(2)}
               </span>
             )}
@@ -683,11 +686,14 @@ function EnhancedDealCard({ alert, onDelete, onMarkRead }) {
               size="sm"
               variant="default"
               onClick={() => window.open(alert.product_url, '_blank')}
+              className="text-xs"
             >
-              View Deal <ExternalLink className="ml-1 h-3 w-3" />
+              <span className="hidden sm:inline">View Deal</span>
+              <span className="sm:hidden">View</span>
+              <ExternalLink className="ml-1 h-3 w-3" />
             </Button>
             {!alert.is_read && (
-              <Button size="sm" variant="outline" onClick={onMarkRead}>
+              <Button size="sm" variant="outline" onClick={onMarkRead} className="text-xs hidden sm:inline-flex">
                 Mark Read
               </Button>
             )}
@@ -695,7 +701,7 @@ function EnhancedDealCard({ alert, onDelete, onMarkRead }) {
               size="sm"
               variant="ghost"
               onClick={onDelete}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

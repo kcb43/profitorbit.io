@@ -1615,11 +1615,12 @@ export default function Import() {
 
       {/* Header */}
       <div className="bg-card border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <Button
                 variant="ghost"
+                size="sm"
                 onClick={() => {
                   console.log('🔍 Import Back Button - location.state:', location.state);
                   console.log('🔍 Import Back Button - savedLocationState:', savedLocationState);
@@ -1639,33 +1640,36 @@ export default function Import() {
                     navigate(createPageUrl("Crosslist"));
                   }
                 }}
-                className="gap-2"
+                className="flex-shrink-0"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Back</span>
               </Button>
-              <h1 className="text-2xl font-bold">Import</h1>
+              <h1 className="text-lg sm:text-2xl font-bold">Import</h1>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {lastSync && <span>Last sync: {format(lastSync, "h:mm a")}</span>}
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-shrink-0">
+              {lastSync && <span className="hidden md:inline">Last sync: {format(lastSync, "h:mm a")}</span>}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isLoading || isSyncingFacebook || isSyncingMercari || !canSync}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm"
               >
-                <RefreshCw className={`h-4 w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
-                {!canSync && nextSyncTime 
-                  ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
-                  : selectedSource === "facebook" 
-                    ? "Sync Facebook"
-                    : selectedSource === "mercari"
-                      ? "Sync Mercari"
-                      : selectedSource === "ebay"
-                        ? "Sync eBay"
-                        : `Sync ${selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)}`
-                }
+                <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">
+                  {!canSync && nextSyncTime 
+                    ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
+                    : selectedSource === "facebook" 
+                      ? "Sync Facebook"
+                      : selectedSource === "mercari"
+                        ? "Sync Mercari"
+                        : selectedSource === "ebay"
+                          ? "Sync eBay"
+                          : `Sync ${selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)}`
+                  }
+                </span>
+                <span className="sm:hidden">Sync</span>
               </Button>
             </div>
           </div>
@@ -1697,7 +1701,7 @@ export default function Import() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-[280px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
           {/* Left Sidebar - Source Selection */}
           <div className="space-y-6">
             {/* Source Selector */}
