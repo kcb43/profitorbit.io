@@ -758,12 +758,61 @@ export default async function handler(req, res) {
     // Count duplicates
     const duplicateCount = importedItems.filter(item => item.isExistingItem).length;
 
+    // Check for potential duplicates for newly imported items
+    console.log(`🔍 Checking for potential duplicates across ${importedItems.length} imported items...`);
+    const duplicateMatches = {};
+    
+    for (const importedItem of importedItems) {
+      // Only check for duplicates if this was a new import (not existing)
+      if (!importedItem.isExistingItem && importedItem.inventoryId) {
+        try {
+          const { data: inventoryItem } = await supabase
+            .from('inventory_items')
+            .select('item_name, ebay_item_id')
+            .eq('id', importedItem.inventoryId)
+            .single();
+          
+          if (inventoryItem) {
+            // Check for duplicates by calling our duplicate detection logic inline
+            const { data: potentialDuplicates } = await supabase
+              .from('inventory_items')
+              .select('id, item_name, purchase_price, status, source, image_url, ebay_item_id, mercari_item_id, facebook_item_id, created_at')
+              .eq('user_id', userId)
+              .neq('id', importedItem.inventoryId)
+              .is('deleted_at', null);
+            
+            if (potentialDuplicates && potentialDuplicates.length > 0) {
+              // Simple similarity check - match if title is very similar (contains most words)
+              const importedTitle = inventoryItem.item_name.toLowerCase();
+              const matches = potentialDuplicates.filter(dup => {
+                const dupTitle = dup.item_name.toLowerCase();
+                // Calculate word overlap
+                const importedWords = new Set(importedTitle.split(/\s+/).filter(w => w.length > 3));
+                const dupWords = new Set(dupTitle.split(/\s+/).filter(w => w.length > 3));
+                const commonWords = [...importedWords].filter(w => dupWords.has(w));
+                const similarity = (commonWords.length / Math.max(importedWords.size, dupWords.size)) * 100;
+                return similarity >= 60; // 60% word overlap
+              });
+              
+              if (matches.length > 0) {
+                duplicateMatches[importedItem.inventoryId] = matches.slice(0, 5); // Top 5 matches
+                console.log(`  ✅ Found ${matches.length} potential duplicates for "${inventoryItem.item_name}"`);
+              }
+            }
+          }
+        } catch (dupError) {
+          console.warn(`⚠️ Error checking duplicates for item ${importedItem.inventoryId}:`, dupError);
+        }
+      }
+    }
+
     return res.status(200).json({
       imported,
       failed,
       duplicates: duplicateCount,
       errors: failed > 0 ? errors : undefined,
       importedItems, // Return the mapping of itemId to inventoryId (includes isExistingItem flag)
+      potentialDuplicates: Object.keys(duplicateMatches).length > 0 ? duplicateMatches : undefined,
     });
 
   } catch (error) {
