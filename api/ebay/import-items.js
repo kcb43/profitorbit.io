@@ -768,35 +768,62 @@ export default async function handler(req, res) {
         try {
           const { data: inventoryItem } = await supabase
             .from('inventory_items')
-            .select('item_name, ebay_item_id')
+            .select('item_name, ebay_item_id, purchase_price, purchase_date, image_url, images')
             .eq('id', importedItem.inventoryId)
             .single();
           
           if (inventoryItem) {
-            // Check for duplicates by calling our duplicate detection logic inline
+            // Check for duplicates
             const { data: potentialDuplicates } = await supabase
               .from('inventory_items')
-              .select('id, item_name, purchase_price, status, source, image_url, ebay_item_id, mercari_item_id, facebook_item_id, created_at')
+              .select('id, item_name, purchase_price, purchase_date, status, source, image_url, images, ebay_item_id, mercari_item_id, facebook_item_id, quantity, created_at, description, brand, size, condition')
               .eq('user_id', userId)
               .neq('id', importedItem.inventoryId)
               .is('deleted_at', null);
             
             if (potentialDuplicates && potentialDuplicates.length > 0) {
-              // Simple similarity check - match if title is very similar (contains most words)
               const importedTitle = inventoryItem.item_name.toLowerCase();
-              const matches = potentialDuplicates.filter(dup => {
-                const dupTitle = dup.item_name.toLowerCase();
-                // Calculate word overlap
-                const importedWords = new Set(importedTitle.split(/\s+/).filter(w => w.length > 3));
-                const dupWords = new Set(dupTitle.split(/\s+/).filter(w => w.length > 3));
-                const commonWords = [...importedWords].filter(w => dupWords.has(w));
-                const similarity = (commonWords.length / Math.max(importedWords.size, dupWords.size)) * 100;
-                return similarity >= 60; // 60% word overlap
-              });
+              const importedWords = importedTitle.split(/\s+/).filter(w => w.length > 2);
+              
+              const matches = potentialDuplicates
+                .map(dup => {
+                  const dupTitle = dup.item_name.toLowerCase();
+                  const dupWords = dupTitle.split(/\s+/).filter(w => w.length > 2);
+                  
+                  // Calculate word overlap (key words that match)
+                  const importedSet = new Set(importedWords);
+                  const dupSet = new Set(dupWords);
+                  const commonWords = [...importedSet].filter(w => dupSet.has(w));
+                  
+                  // Calculate similarity percentage
+                  const maxWords = Math.max(importedSet.size, dupSet.size);
+                  const similarity = maxWords > 0 ? (commonWords.length / maxWords) * 100 : 0;
+                  
+                  console.log(`  📊 Comparing "${inventoryItem.item_name}" vs "${dup.item_name}": ${similarity.toFixed(1)}% similarity (${commonWords.length}/${maxWords} words match)`);
+                  
+                  return { ...dup, similarity };
+                })
+                .filter(dup => dup.similarity >= 40) // Lower threshold: 40% similarity
+                .sort((a, b) => b.similarity - a.similarity)
+                .slice(0, 5); // Top 5 matches
               
               if (matches.length > 0) {
-                duplicateMatches[importedItem.inventoryId] = matches.slice(0, 5); // Top 5 matches
+                // Include the imported item details for the dialog
+                duplicateMatches[importedItem.inventoryId] = {
+                  importedItem: {
+                    id: importedItem.inventoryId,
+                    item_name: inventoryItem.item_name,
+                    purchase_price: inventoryItem.purchase_price,
+                    purchase_date: inventoryItem.purchase_date,
+                    image_url: inventoryItem.image_url,
+                    images: inventoryItem.images,
+                    source: 'eBay',
+                    ebay_item_id: inventoryItem.ebay_item_id,
+                  },
+                  matches: matches,
+                };
                 console.log(`  ✅ Found ${matches.length} potential duplicates for "${inventoryItem.item_name}"`);
+                console.log(`     Top match: "${matches[0].item_name}" (${matches[0].similarity.toFixed(1)}% similar)`);
               }
             }
           }

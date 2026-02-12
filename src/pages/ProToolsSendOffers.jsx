@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import facebookLogo from "@/assets/facebook-logo.svg";
+import { DuplicateDetectionDialog } from "@/components/DuplicateDetectionDialog";
 
 const MARKETPLACES = [
   { id: "ebay", label: "eBay", color: "bg-blue-600", logo: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" },
@@ -143,6 +144,8 @@ export default function ProToolsSendOffers() {
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [offersSentCount, setOffersSentCount] = useState(() => loadOffersSentCount());
   const [marketplaceItems, setMarketplaceItems] = useState(() => loadCachedMarketplaceItems(marketplace));
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [detectedDuplicates, setDetectedDuplicates] = useState(null);
 
   // Save offers sent count to localStorage whenever it changes
   useEffect(() => {
@@ -277,10 +280,23 @@ export default function ProToolsSendOffers() {
       // Invalidate queries
       queryClient.invalidateQueries(['inventoryItems']);
       
-      toast({
-        title: "Import Successful",
-        description: "Item has been imported to your inventory",
-      });
+      // Check for potential duplicates
+      if (data.potentialDuplicates && Object.keys(data.potentialDuplicates).length > 0) {
+        console.log('🔍 Potential duplicates detected:', data.potentialDuplicates);
+        setDetectedDuplicates(data.potentialDuplicates);
+        setDuplicateDialogOpen(true);
+        
+        toast({
+          title: "Import Successful",
+          description: "Potential duplicates detected - please review",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Import Successful",
+          description: "Item has been imported to your inventory",
+        });
+      }
     },
     onError: (error) => {
       console.error('❌ Import error:', error);
@@ -1300,6 +1316,16 @@ export default function ProToolsSendOffers() {
           </div>
         </div>
       </div>
+      
+      {/* Duplicate Detection Dialog */}
+      <DuplicateDetectionDialog
+        isOpen={duplicateDialogOpen}
+        onClose={() => setDuplicateDialogOpen(false)}
+        duplicates={detectedDuplicates}
+        onViewInventory={(inventoryId) => {
+          navigate(`/Inventory?highlight=${inventoryId}`);
+        }}
+      />
     </div>
   );
 }

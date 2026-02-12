@@ -13,8 +13,8 @@ export function DuplicateDetectionDialog({
   isOpen, 
   onClose, 
   duplicates, 
-  importedItem,
-  onViewInventory 
+  onViewInventory,
+  onLinkItems
 }) {
   const [selectedDuplicates, setSelectedDuplicates] = useState(new Set());
 
@@ -24,7 +24,9 @@ export function DuplicateDetectionDialog({
 
   // Get the first imported item's duplicates for now
   const importedItemId = Object.keys(duplicates)[0];
-  const matches = duplicates[importedItemId] || [];
+  const duplicateData = duplicates[importedItemId] || {};
+  const importedItem = duplicateData.importedItem;
+  const matches = duplicateData.matches || [];
 
   const toggleSelect = (id) => {
     const newSelected = new Set(selectedDuplicates);
@@ -114,7 +116,14 @@ export function DuplicateDetectionDialog({
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-medium text-foreground">{match.item_name}</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-foreground">{match.item_name}</h3>
+                          {match.similarity && (
+                            <Badge variant="outline" className="mt-1 text-xs">
+                              {match.similarity.toFixed(0)}% match
+                            </Badge>
+                          )}
+                        </div>
                         {match.source && (
                           <Badge variant="outline" className="flex-shrink-0">{match.source}</Badge>
                         )}
@@ -126,6 +135,9 @@ export function DuplicateDetectionDialog({
                           )}
                           {match.status && (
                             <Badge variant="secondary" className="text-xs">{match.status}</Badge>
+                          )}
+                          {match.quantity > 1 && (
+                            <span className="text-xs">Qty: {match.quantity}</span>
                           )}
                         </div>
                         {(match.ebay_item_id || match.mercari_item_id || match.facebook_item_id) && (
@@ -139,6 +151,19 @@ export function DuplicateDetectionDialog({
                           <div className="text-xs">Added: {format(parseISO(match.created_at), 'MMM dd, yyyy')}</div>
                         )}
                       </div>
+                      
+                      {/* Show differences that user may want to merge */}
+                      {(match.description || match.brand || match.size || match.condition) && (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="text-xs text-muted-foreground">
+                            <strong>Additional data in this item:</strong>
+                            {match.description && <div>• Has description</div>}
+                            {match.brand && <div>• Brand: {match.brand}</div>}
+                            {match.size && <div>• Size: {match.size}</div>}
+                            {match.condition && <div>• Condition: {match.condition}</div>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
