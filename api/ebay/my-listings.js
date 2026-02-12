@@ -1330,6 +1330,23 @@ function parseOrdersToTransactions(xml) {
     const orderId = getField('OrderID');
     const createdTime = getField('CreatedTime');
     
+    // DEBUG: Log order-level totals
+    if (totalOrders <= 2) {
+      console.log(`🔍 DEBUG Order ${orderId} XML sample (first 2000 chars):`, orderXml.substring(0, 2000));
+      
+      // Check for order-level monetary fields
+      const orderTotal = getField('Total');
+      const subtotal = getField('Subtotal');
+      const shippingServiceCostOrder = getField('ShippingServiceCost');
+      
+      console.log(`💰 DEBUG Order-level fields:`, {
+        orderId,
+        Total: orderTotal,
+        Subtotal: subtotal,
+        ShippingServiceCost: shippingServiceCostOrder,
+      });
+    }
+    
     // Get buyer info at order level (applies to all transactions in this order)
     const orderBuyerMatch = orderXml.match(/<BuyerUserID>([^<]*)<\/BuyerUserID>/);
     const orderBuyerUsername = orderBuyerMatch ? orderBuyerMatch[1] : null;
@@ -1382,21 +1399,65 @@ function parseOrdersToTransactions(xml) {
         return match ? match[1] : null;
       };
       
-      // Get shipping cost
-      const shippingServiceMatch = transactionXml.match(/<ShippingServiceCost[^>]*>([^<]+)<\/ShippingServiceCost>/);
-      const shippingCost = shippingServiceMatch ? parseFloat(shippingServiceMatch[1]) : 0;
+      // DEBUG: Log a sample of the transaction XML to see what's available
+      if (totalOrders <= 2) {
+        console.log(`🔍 DEBUG Transaction XML sample (first 1000 chars):`, transactionXml.substring(0, 1000));
+      }
       
-      // Get sales tax
-      const salesTaxMatch = transactionXml.match(/<SalesTax>([\s\S]*?)<\/SalesTax>/);
+      // Get shipping cost - try multiple locations
+      let shippingCost = 0;
+      const shippingServiceMatch = transactionXml.match(/<ShippingServiceCost[^>]*>([^<]+)<\/ShippingServiceCost>/);
+      const actualShippingMatch = transactionXml.match(/<ActualShippingCost[^>]*>([^<]+)<\/ActualShippingCost>/);
+      const shippingDetailsMatch = transactionXml.match(/<ShippingDetails>([\s\S]*?)<\/ShippingDetails>/);
+      
+      if (actualShippingMatch) {
+        shippingCost = parseFloat(actualShippingMatch[1]);
+      } else if (shippingServiceMatch) {
+        shippingCost = parseFloat(shippingServiceMatch[1]);
+      } else if (shippingDetailsMatch) {
+        const shipCostMatch = shippingDetailsMatch[1].match(/<ShippingServiceCost[^>]*>([^<]+)<\/ShippingServiceCost>/);
+        shippingCost = shipCostMatch ? parseFloat(shipCostMatch[1]) : 0;
+      }
+      
+      // Get sales tax - try multiple patterns
       let salesTax = 0;
+      const salesTaxMatch = transactionXml.match(/<SalesTax>([\s\S]*?)<\/SalesTax>/);
+      const taxesMatch = transactionXml.match(/<Taxes>([\s\S]*?)<\/Taxes>/);
+      
       if (salesTaxMatch) {
         const taxAmountMatch = salesTaxMatch[1].match(/<SalesTaxAmount[^>]*>([^<]+)<\/SalesTaxAmount>/);
         salesTax = taxAmountMatch ? parseFloat(taxAmountMatch[1]) : 0;
+      } else if (taxesMatch) {
+        const totalTaxMatch = taxesMatch[1].match(/<TotalTaxAmount[^>]*>([^<]+)<\/TotalTaxAmount>/);
+        salesTax = totalTaxMatch ? parseFloat(totalTaxMatch[1]) : 0;
       }
       
-      // Get fees from FinalValueFee
+      // Get fees from FinalValueFee - try at transaction and order level
+      let finalValueFee = 0;
       const feeMatch = transactionXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
-      const finalValueFee = feeMatch ? parseFloat(feeMatch[1]) : 0;
+      const orderFeeMatch = orderXml.match(/<FinalValueFee[^>]*>([^<]+)<\/FinalValueFee>/);
+      
+      if (feeMatch) {
+        finalValueFee = parseFloat(feeMatch[1]);
+      } else if (orderFeeMatch) {
+        finalValueFee = parseFloat(orderFeeMatch[1]);
+      }
+      
+      // Log what we found
+      if (totalOrders <= 3) {
+        console.log(`🔍 DEBUG Extracted for item ${itemId}:`, {
+          shippingServiceMatch: !!shippingServiceMatch,
+          actualShippingMatch: !!actualShippingMatch,
+          shippingDetailsMatch: !!shippingDetailsMatch,
+          shippingCost,
+          salesTaxMatch: !!salesTaxMatch,
+          taxesMatch: !!taxesMatch,
+          salesTax,
+          feeMatch: !!feeMatch,
+          orderFeeMatch: !!orderFeeMatch,
+          finalValueFee,
+        });
+      }
       
       // Get payment status
       const paidTimeMatch = transactionXml.match(/<PaidTime>([^<]*)<\/PaidTime>/);
