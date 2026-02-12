@@ -171,11 +171,11 @@ export default function Pulse() {
               <Zap className="h-8 w-8 text-yellow-500" />
               Pulse
               <Badge variant="secondary" className="ml-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800">
-                Enhanced
+                v2.0
               </Badge>
             </h1>
             <p className="text-muted-foreground mt-1">
-              Advanced deal monitoring with warehouse deals, lightning deals & smart alerts
+              Deal monitoring with warehouse deals, lightning deals, coupons & smart alerts
             </p>
           </div>
           <div className="flex items-center gap-3">
