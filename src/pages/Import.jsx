@@ -360,14 +360,14 @@ export default function Import() {
   const { data: ebayListings, isLoading, refetch, error } = useQuery({
     queryKey: ["ebay-listings", "All", userId], // Always fetch "All" status
     queryFn: async () => {
-      console.log('📡 Fetching eBay listings (Active only with views)...', { userId, hasToken: !!ebayToken?.access_token });
+      console.log('📡 Fetching eBay listings (Active + Sold)...', { userId, hasToken: !!ebayToken?.access_token });
       
       if (!userId) {
         throw new Error('User ID not available');
       }
       
       // Always fetch ALL listings (both Active and Sold) in one go
-      const response = await fetch(`/api/ebay/my-listings?status=Active&limit=200`, {
+      const response = await fetch(`/api/ebay/my-listings?status=All&limit=200`, {
         headers: {
           'x-user-id': userId,  // lowercase to match API
           'x-user-token': ebayToken?.access_token || '',
@@ -375,7 +375,7 @@ export default function Import() {
       });
       
       console.log('📡 Response status:', response.status);
-      console.log('📊 Request params: Fetching ACTIVE listings only (with view counts)');
+      console.log('📊 Request params: Fetching ALL listings (Active + Sold)');
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -465,7 +465,7 @@ export default function Import() {
         const cacheKey = `ebay_listings_All_${userId}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          console.log('📦 Loading cached eBay listings from localStorage (Active only)');
+          console.log('📦 Loading cached eBay listings from localStorage (All statuses)');
           return JSON.parse(cached);
         }
       }
