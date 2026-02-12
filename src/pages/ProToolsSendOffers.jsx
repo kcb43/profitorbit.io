@@ -174,6 +174,48 @@ export default function ProToolsSendOffers() {
     fetchMarketplaceItems();
   }, [marketplace]);
 
+  // Refetch when page becomes visible (e.g., returning from Inventory page after delete)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 Page visible again, refetching marketplace items to sync with inventory changes...');
+        fetchMarketplaceItems();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also refetch when window regains focus
+    const handleFocus = () => {
+      console.log('🔄 Window focused, refetching marketplace items...');
+      fetchMarketplaceItems();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [marketplace]);
+
+  // Subscribe to inventory changes (when items are deleted/updated)
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      // Listen for inventory query invalidations
+      if (event.type === 'updated' && event.query.queryKey[0] === 'inventoryItems') {
+        console.log('📢 Inventory updated, refetching marketplace items...');
+        // Debounce to avoid multiple refetches
+        const timer = setTimeout(() => {
+          fetchMarketplaceItems();
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    });
+    
+    return unsubscribe;
+  }, [marketplace, queryClient]);
+
   // Check for OAuth callback on page load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
