@@ -61,15 +61,79 @@ export default function Pulse() {
     condition: 'all'
   });
 
-  // Fetch deal alerts
-  const { data: dealAlerts = [], isLoading: loadingAlerts } = useQuery({
-    queryKey: ['dealAlerts'],
+  // Fetch deal alerts from LIVE Amazon deals
+  const { data: dealAlertsResponse, isLoading: loadingAlerts } = useQuery({
+    queryKey: ['dealAlerts', activeTab, filters],
     queryFn: async () => {
-      const res = await fetch('/api/pulse/deal-alerts');
-      if (!res.ok) throw new Error('Failed to fetch alerts');
-      return res.json();
-    }
+      const params = new URLSearchParams({
+        type: activeTab === 'all' ? 'all' : activeTab,
+        category: filters.category || 'all',
+        minDiscount: filters.minDiscount || 0,
+        maxPrice: filters.maxPrice || '',
+        limit: 100
+      });
+      
+      const res = await fetch(`/api/pulse/amazon-deals-live?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch deals');
+      const data = await res.json();
+      
+      // Transform API response to match expected format
+      return data.deals?.map(deal => ({
+        id: deal.asin,
+        product_name: deal.title,
+        product_url: deal.productUrl,
+        product_image_url: deal.imageUrl,
+        current_price: deal.currentPrice,
+        original_price: deal.originalPrice,
+        discount_percentage: deal.discount,
+        deal_type: deal.dealType,
+        category: deal.category,
+        alert_reason: generateAlertReason(deal),
+        is_read: false,
+        time_remaining: deal.endsAt ? calculateTimeRemaining(deal.endsAt) : null,
+        savings_amount: deal.originalPrice - deal.currentPrice,
+        condition: deal.condition || null,
+        condition_note: deal.conditionNote || null,
+        coupon_code: deal.couponCode || null,
+        deal_quality_score: deal.qualityScore || 0
+      })) || [];
+    },
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    staleTime: 4 * 60 * 1000 // Consider data stale after 4 minutes
   });
+
+  const dealAlerts = dealAlertsResponse || [];
+
+  // Helper function to generate alert reason
+  function generateAlertReason(deal) {
+    if (deal.dealType === 'lightning') {
+      return `⚡ Lightning Deal! ${deal.discount}% off - Limited time!`;
+    } else if (deal.dealType === 'warehouse') {
+      return `📦 Warehouse Deal! ${deal.discount}% off - ${deal.condition}`;
+    } else if (deal.discount >= 70) {
+      return `🔥 MEGA DEAL! ${deal.discount}% off - Historic low!`;
+    } else if (deal.discount >= 50) {
+      return `💎 Great Deal! ${deal.discount}% off`;
+    } else {
+      return `💰 Price Drop! ${deal.discount}% off`;
+    }
+  }
+
+  // Helper function to calculate time remaining
+  function calculateTimeRemaining(endsAt) {
+    const now = new Date();
+    const end = new Date(endsAt);
+    const diffMs = end - now;
+    
+    if (diffMs <= 0) return 'Expired';
+    
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours === 0) return `${minutes}m`;
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+  }
 
   // Fetch price watchlist
   const { data: watchlist = [], isLoading: loadingWatchlist } = useQuery({
