@@ -136,7 +136,6 @@ export default async function handler(req, res) {
       response_type: 'code',
       scope: scope,
       state: state,
-      prompt: 'login', // Force eBay to show consent screen even if previously authorized
     });
 
     const fullAuthUrl = `${authUrl}?${authParams.toString()}`;

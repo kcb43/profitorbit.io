@@ -249,9 +249,10 @@ export default async function handler(req, res) {
           console.log(`📊 Fetching view counts for ${activeItemIds.length} active listings...`);
           console.log(`📋 Sample listing IDs:`, activeItemIds.slice(0, 3));
           
-          // Calculate date range (last 90 days)
+          // Calculate date range (last 90 days, ending YESTERDAY to avoid "future date" error)
           const now = new Date();
-          const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+          const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000)); // Subtract 1 day
+          const ninetyDaysAgo = new Date(yesterday.getTime() - (89 * 24 * 60 * 60 * 1000)); // 90 days total
           
           const formatDate = (date) => {
             const year = date.getFullYear();
@@ -261,7 +262,7 @@ export default async function handler(req, res) {
           };
 
           const startDate = formatDate(ninetyDaysAgo);
-          const endDate = formatDate(now);
+          const endDate = formatDate(yesterday);
 
           // Build filter parameter
           const listingIdsFilter = `{${activeItemIds.join('|')}}`;
