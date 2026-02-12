@@ -209,7 +209,7 @@ export default function ProToolsSendOffers() {
   // Import mutation for eBay items
   const importMutation = useMutation({
     mutationFn: async ({ itemId, ebayItemId }) => {
-      console.log(`📥 Importing eBay item: ${ebayItemId}`);
+      console.log(`📥 Importing eBay item: ${ebayItemId} (local ID: ${itemId})`);
       
       const { supabase, getCurrentUserId } = await import('@/api/supabaseClient');
       const { data: { session } } = await supabase.auth.getSession();
@@ -258,8 +258,10 @@ export default function ProToolsSendOffers() {
       
       if (data.importedItems && data.importedItems.length > 0) {
         return {
-          itemId,
+          localItemId: itemId, // The local item ID used in the UI
+          ebayItemId: ebayItemId, // The actual eBay item ID
           inventoryId: data.importedItems[0].inventoryId,
+          potentialDuplicates: data.potentialDuplicates,
         };
       }
       
@@ -267,15 +269,32 @@ export default function ProToolsSendOffers() {
     },
     onSuccess: (data) => {
       console.log('✅ Import successful:', data);
+      console.log('🔍 Updating marketplace items. Looking for localItemId:', data.localItemId);
       
       // Update the local state to mark item as imported
-      setMarketplaceItems(prevItems => 
-        prevItems.map(item => 
-          item.id === data.itemId || item.itemId === data.itemId
-            ? { ...item, isImported: true, inventoryId: data.inventoryId }
-            : item
-        )
-      );
+      setMarketplaceItems(prevItems => {
+        console.log('📦 Current marketplace items count:', prevItems.length);
+        console.log('🔍 Sample IDs:', prevItems.slice(0, 3).map(i => ({ id: i.id, itemId: i.itemId, ebayItemId: i.ebayItemId })));
+        
+        const updated = prevItems.map(item => {
+          // Match by local ID
+          if (item.id === data.localItemId || item.itemId === data.localItemId) {
+            console.log(`✅ MATCH FOUND! Marking item ${item.id} as imported with inventory ID ${data.inventoryId}`);
+            return { ...item, isImported: true, inventoryId: data.inventoryId };
+          }
+          return item;
+        });
+        
+        // Check if any items were updated
+        const updatedCount = updated.filter((item, idx) => item !== prevItems[idx]).length;
+        console.log(`📊 Updated ${updatedCount} items in state`);
+        
+        // Save to cache for persistence
+        saveCachedMarketplaceItems(marketplace, updated);
+        console.log('💾 Updated marketplace items cache');
+        
+        return updated;
+      });
       
       // Invalidate queries
       queryClient.invalidateQueries(['inventoryItems']);
@@ -383,19 +402,24 @@ export default function ProToolsSendOffers() {
       
       const newItems = data.items || [];
       
-      // Merge with existing items to preserve images
+      // Merge with existing items to preserve images, imported status, and inventory IDs
       setMarketplaceItems(prevItems => {
         // Create a map of existing items by ID
         const existingMap = new Map(prevItems.map(item => [item.id || item.itemId, item]));
         
-        // Merge new items with existing, preserving images from cache
+        // Merge new items with existing, preserving important fields from cache
         const merged = newItems.map(newItem => {
           const itemId = newItem.id || newItem.itemId;
           const existing = existingMap.get(itemId);
           
-          // If we have an existing item with an image, but new item doesn't, preserve the image
-          if (existing && existing.img && !newItem.img) {
-            return { ...newItem, img: existing.img };
+          if (existing) {
+            // Preserve image, imported status, and inventoryId from existing cache
+            return { 
+              ...newItem, 
+              img: existing.img || newItem.img,
+              isImported: existing.isImported ?? newItem.isImported,
+              inventoryId: existing.inventoryId || newItem.inventoryId,
+            };
           }
           
           return newItem;
@@ -403,6 +427,7 @@ export default function ProToolsSendOffers() {
         
         // Save merged items to cache
         saveCachedMarketplaceItems(marketplace, merged);
+        console.log('💾 Merged and cached marketplace items, preserving imported states');
         
         return merged;
       });
@@ -507,6 +532,8 @@ export default function ProToolsSendOffers() {
           // Get offer count for this specific item
           const itemOfferCount = offersSentCount[id] || 0;
           
+          const isImported = it?.isImported !== false; // Pass through from API
+          
           return {
             id,
             title: it?.title || "Untitled item",
@@ -522,9 +549,9 @@ export default function ProToolsSendOffers() {
             listingUrl: it?.listingUrl || "",
             listingId: it?.listingId, // eBay item ID for API calls
             offersSent: itemOfferCount,
-            isImported: it?.isImported !== false, // Pass through from API
+            isImported: isImported,
             ebayItemId: it?.ebayItemId || it?.listingId, // For import action
-            inventoryId: it?.inventoryId, // For linking to item details
+            inventoryId: it?.inventoryId || null, // For linking to item details
           };
         }
         

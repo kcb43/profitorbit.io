@@ -824,9 +824,21 @@ export default function Import() {
         const ebayListings = queryClient.getQueryData(['ebay-listings', listingStatus, userId]) || [];
         const updatedListings = ebayListings.map(item => {
           // Check if this item was successfully imported
-          const importedItem = data.importedItems?.find(i => i.itemId === item.itemId);
+          // For sold items, itemId format is "originalItemId-txn-transactionId"
+          // For active items, itemId is just the eBay item ID
+          const importedItem = data.importedItems?.find(i => {
+            // Match by itemId (exact match)
+            if (i.itemId === item.itemId) return true;
+            // For sold items, also try matching by originalItemId
+            if (item.originalItemId && i.itemId === item.originalItemId) return true;
+            // Try matching without transaction suffix
+            const baseItemId = item.itemId?.split('-txn-')[0];
+            if (baseItemId && i.itemId === baseItemId) return true;
+            return false;
+          });
           
           if (importedItem) {
+            console.log(`✅ Marking eBay item ${item.itemId} as imported with inventory ID ${importedItem.inventoryId}`);
             return { 
               ...item, 
               imported: true, 
@@ -2509,7 +2521,7 @@ export default function Import() {
                           <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                               <div className="text-muted-foreground">Order Total:</div>
-                              <div className="text-right font-medium">${((item.price || 0) + (item.shippingCost || 0) + (item.salesTax || 0)).toFixed(2)}</div>
+                              <div className="text-right font-medium">${(item.totalSale || ((item.price || 0) + (item.shippingCost || 0) + (item.salesTax || 0))).toFixed(2)}</div>
                               
                               {item.shippingCost > 0 && (
                                 <>
