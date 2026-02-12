@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { scrapeProducts } from './scraper.js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+// Optional Supabase client for caching (works without it)
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
+}
 
 /**
  * Product Search API Endpoint
@@ -32,7 +36,7 @@ export default async function handler(req, res) {
     const cacheKey = JSON.stringify({ query: query.toLowerCase().trim(), filters });
 
     // Check cache first (if enabled)
-    if (useCache) {
+    if (useCache && supabase) {
       const { data: cachedResult } = await supabase
         .from('product_search_cache')
         .select('*')
@@ -148,19 +152,23 @@ export default async function handler(req, res) {
       fromCache: false
     };
 
-    // Cache the results (1 hour TTL)
-    try {
-      await supabase.from('product_search_cache').insert({
-        search_query: query.toLowerCase().trim(),
-        search_filters: filters,
-        results: response,
-        api_source: scrapedData.source,
-        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
-      });
-      console.log('💾 Cached search results');
-    } catch (cacheError) {
-      console.error('⚠️ Failed to cache results:', cacheError);
-      // Don't fail the request if caching fails
+    // Cache the results (1 hour TTL) - only if Supabase is configured
+    if (supabase) {
+      try {
+        await supabase.from('product_search_cache').insert({
+          search_query: query.toLowerCase().trim(),
+          search_filters: filters,
+          results: response,
+          api_source: scrapedData.source,
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
+        });
+        console.log('💾 Cached search results');
+      } catch (cacheError) {
+        console.error('⚠️ Failed to cache results:', cacheError);
+        // Don't fail the request if caching fails
+      }
+    } else {
+      console.log('⚠️ Caching disabled (Supabase not configured)');
     }
 
     return res.status(200).json(response);
