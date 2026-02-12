@@ -786,9 +786,11 @@ export default async function handler(req, res) {
           console.log(`  ✅ Found imported item: "${inventoryItem.item_name}"`);
           
           // Check for duplicates
+          // NOTE: facebook_item_id and mercari_item_id might not exist if migration hasn't run
+          // Use basic fields that always exist for duplicate detection
           const { data: potentialDuplicates, error: dupQueryError } = await supabase
             .from('inventory_items')
-            .select('id, item_name, purchase_price, purchase_date, status, source, image_url, images, ebay_item_id, mercari_item_id, facebook_item_id, quantity, created_at, description, brand, size, condition')
+            .select('id, item_name, purchase_price, purchase_date, status, source, image_url, images, ebay_item_id, quantity, created_at, description, brand, size, condition')
             .eq('user_id', userId)
             .neq('id', importedItem.inventoryId)
             .is('deleted_at', null);
