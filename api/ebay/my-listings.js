@@ -1589,9 +1589,11 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
       
       if (transactions.length > 0) {
         // Create separate entries for each transaction with accurate sale dates
-        console.log(`  🔄 Expanding item ${itemId} into ${transactions.length} individual sales`);
-        transactions.forEach((txn, idx) => {
-          console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}, OrderID = ${txn.orderId}, TransactionID = ${txn.transactionId}`);
+        console.log(`  🔄 Expanding item ${itemId} into ${transactions.length} individual sales (qty sold: ${quantitySold})`);
+        
+        try {
+          transactions.forEach((txn, idx) => {
+            console.log(`    Sale ${idx + 1}: Buyer = ${txn.buyerUsername || 'NOT FOUND'}, Date = ${txn.dateSold}, Price = ${txn.price}, OrderID = ${txn.orderId}, TransactionID = ${txn.transactionId}`);
           
           // Create a unique itemId for each transaction to prevent duplicates
           // Format: {itemId}-txn-{transactionId} or {itemId}-order-{orderId}-{idx}
@@ -1642,6 +1644,10 @@ function parseGetSellerListXML(xml, transactionsByItemId = {}) {
             paidTime: txn.paidTime,
           });
         });
+        } catch (txnError) {
+          console.error(`    ❌ Error expanding item ${itemId}:`, txnError.message);
+          console.error(`    ❌ Stack:`, txnError.stack);
+        }
       } else {
         // Fallback: No transaction data, use item-level data
         items.push({
