@@ -338,26 +338,28 @@ async function scrapeAmazon(query, options = {}) {
 }
 
 /**
- * Main scraper function - uses FREE APIs first, then falls back to scraping
+ * Main scraper function - OPTIMIZED FOR SPEED
  * 
- * FREE API Options (No payment needed):
- * 1. RapidAPI Product Search - 500 requests/month FREE
- * 2. SerpAPI Google Shopping - 100 searches/month FREE
- * 3. eBay Official API - 5,000 requests/day FREE
+ * Strategy:
+ * 1. FREE APIs (RapidAPI/SerpAPI) - 2-3s, 100+ marketplaces ✅
+ * 2. eBay API ONLY - 2-3s, fast fallback ✅
+ * 3. Skip slow Puppeteer scraping (30s+) ❌
  * 
- * If no API keys configured, falls back to direct scraping
+ * Result: 2-3 second searches instead of 30+ seconds!
  */
 async function scrapeProducts(query, options = {}) {
   const sources = [];
+  const startTime = Date.now();
   
   try {
-    console.log(`🔍 Starting search for: "${query}"`);
+    console.log(`🔍 Starting FAST search for: "${query}"`);
     
-    // PRIORITY 1: Try FREE APIs first (fastest + covers 100+ marketplaces)
+    // PRIORITY 1: Try FREE APIs first (fastest - 2-3s for 100+ marketplaces)
     try {
       const freeApiResults = await searchAllMarketplaces(query, options);
       if (freeApiResults && freeApiResults.length > 0) {
-        console.log(`✅ FREE APIs returned ${freeApiResults.length} products`);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`✅ FREE APIs: ${freeApiResults.length} products in ${elapsed}s`);
         
         // Enhance with marketplace logos
         const enhanced = freeApiResults.map(p => ({
@@ -372,87 +374,79 @@ async function scrapeProducts(query, options = {}) {
           query,
           totalResults: enhanced.length,
           products: enhanced,
+          searchTime: elapsed + 's',
           scrapedAt: new Date().toISOString()
         };
       }
     } catch (apiError) {
-      console.log('⚠️ FREE APIs not available:', apiError.message);
+      console.log('⚠️ FREE APIs not configured:', apiError.message);
     }
 
-    // PRIORITY 2: eBay API (if configured)
-    console.log('⚠️ No FREE APIs, trying eBay API + direct scraping...');
-    const promises = [];
-
+    // PRIORITY 2: eBay API ONLY (fast 2-3s fallback)
+    console.log('⚠️ Using eBay API only (fast mode)...');
+    
     if (process.env.EBAY_APP_ID && process.env.EBAY_CERT_ID) {
-      promises.push(
-        searchEbay(query, options)
-          .then(results => ({ source: 'ebay_api', results }))
-          .catch(err => ({ source: 'ebay_api', results: [], error: err.message }))
-      );
-    }
-
-    // PRIORITY 3: Direct scraping (slower but works without any config)
-    promises.push(
-      searchWalmart(query, { ...options, maxResults: 20 })
-        .then(results => ({ source: 'walmart', results }))
-        .catch(err => ({ source: 'walmart', results: [], error: err.message }))
-    );
-
-    promises.push(
-      scrapeAmazon(query, { ...options, maxResults: 20 })
-        .then(results => ({ source: 'amazon', results }))
-        .catch(err => ({ source: 'amazon', results: [], error: err.message }))
-    );
-
-    // Wait for all sources (with 25s timeout)
-    const sourceResults = await Promise.race([
-      Promise.all(promises),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Scraping timeout')), 25000)
-      )
-    ]);
-
-    // Combine results
-    let allProducts = [];
-    sourceResults.forEach(({ source, results, error }) => {
-      if (results && results.length > 0) {
-        sources.push(source);
-        allProducts = allProducts.concat(results);
-        console.log(`✅ ${source}: ${results.length} products`);
-      } else if (error) {
-        console.log(`⚠️ ${source}: ${error}`);
+      try {
+        const ebayResults = await searchEbay(query, { ...options, maxResults: 50 });
+        
+        if (ebayResults && ebayResults.length > 0) {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          console.log(`✅ eBay API: ${ebayResults.length} products in ${elapsed}s`);
+          
+          return {
+            success: true,
+            sources: ['ebay'],
+            query,
+            totalResults: ebayResults.length,
+            products: ebayResults,
+            searchTime: elapsed + 's',
+            note: 'Add RAPIDAPI_KEY for 100+ marketplaces (same speed!)',
+            scrapedAt: new Date().toISOString()
+          };
+        }
+      } catch (ebayError) {
+        console.error('❌ eBay API error:', ebayError.message);
       }
-    });
-
-    if (allProducts.length === 0) {
-      return {
-        success: false,
-        error: 'No results found from any source',
-        query,
-        products: [],
-        totalResults: 0
-      };
     }
 
-    const uniqueProducts = deduplicateProducts(allProducts);
-
+    // NO SLOW SCRAPING - Tell user to add free API keys instead
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     return {
-      success: true,
-      sources,
+      success: false,
+      error: 'No API keys configured for fast search',
       query,
-      totalResults: uniqueProducts.length,
-      products: uniqueProducts,
-      scrapedAt: new Date().toISOString()
+      products: [],
+      totalResults: 0,
+      searchTime: elapsed + 's',
+      suggestion: {
+        message: 'Add FREE API keys for instant search across 100+ marketplaces',
+        options: [
+          {
+            name: 'RapidAPI',
+            speed: '2-3 seconds',
+            free: '500 searches/month',
+            setup: 'https://rapidapi.com/letscrape-6bRBa3QguO5/api/real-time-product-search'
+          },
+          {
+            name: 'SerpAPI',
+            speed: '2-3 seconds', 
+            free: '100 searches/month',
+            setup: 'https://serpapi.com'
+          }
+        ]
+      }
     };
     
   } catch (error) {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.error('❌ Search failed:', error);
     return {
       success: false,
       error: error.message,
       query,
       products: [],
-      totalResults: 0
+      totalResults: 0,
+      searchTime: elapsed + 's'
     };
   }
 }

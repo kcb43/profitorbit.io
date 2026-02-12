@@ -78,18 +78,38 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
       setProducts(data.products || []);
       setStats(data.stats || null);
 
-      toast({
-        title: '✅ Search complete',
-        description: `Found ${data.totalResults} products${data.sources ? ` from ${data.sources.join(', ')}` : ''}`
-      });
+      // Show helpful message based on search performance
+      if (data.note || data.suggestion) {
+        toast({
+          title: `✅ Found ${data.totalResults} products (${data.searchTime})`,
+          description: data.note || data.suggestion?.message,
+          duration: 5000
+        });
+      } else {
+        toast({
+          title: `✅ Search complete (${data.searchTime})`,
+          description: `Found ${data.totalResults} products${data.sources ? ` from ${data.sources.join(', ')}` : ''}`
+        });
+      }
 
     } catch (error) {
       console.error('Search error:', error);
-      toast({
-        title: '❌ Search failed',
-        description: error.message,
-        variant: 'destructive'
-      });
+      
+      // Show helpful setup message if it's a "no API keys" error
+      if (error.message.includes('No API keys')) {
+        toast({
+          title: '⚡ Speed Up Your Searches',
+          description: 'Add FREE API keys for 2-3 second searches across 100+ marketplaces. See setup guide.',
+          variant: 'default',
+          duration: 8000
+        });
+      } else {
+        toast({
+          title: '❌ Search failed',
+          description: error.message,
+          variant: 'destructive'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -462,13 +482,30 @@ function LoadingState() {
 // Empty State
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+    <div className="flex flex-col items-center justify-center h-full text-center py-12 px-6">
       <Search className="h-16 w-16 text-muted-foreground mb-4" />
       <h3 className="text-xl font-semibold mb-2">Search Products Across the Web</h3>
-      <p className="text-muted-foreground max-w-md">
+      <p className="text-muted-foreground max-w-md mb-6">
         Enter any product name to search across Amazon, eBay, Walmart, Best Buy, Target,
         and 100+ more marketplaces. Compare prices instantly.
       </p>
+      
+      {/* Quick Setup Tips */}
+      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg max-w-lg text-left">
+        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+          ⚡ Speed Tip: Add FREE API Keys
+        </h4>
+        <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+          For <strong>2-3 second searches</strong> across 100+ marketplaces:
+        </p>
+        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
+          <li><strong>RapidAPI:</strong> 500 FREE searches/month</li>
+          <li><strong>SerpAPI:</strong> 100 FREE searches/month</li>
+        </ul>
+        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+          See <code>docs/FREE_API_SETUP.md</code> for 5-minute setup
+        </p>
+      </div>
     </div>
   );
 }
