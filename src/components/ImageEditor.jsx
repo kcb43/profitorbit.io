@@ -125,11 +125,20 @@ function ImageEditorInner({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background">
+    <div 
+      className="fixed inset-0 z-50 bg-background overflow-hidden"
+      style={{
+        width: '100vw',
+        height: '100vh',
+        maxWidth: '100vw',
+        maxHeight: '100vh',
+      }}
+    >
       <FilerobotImageEditor
         source={imageSrc}
         onSave={handleSave}
         onClose={handleClose}
+        observePluginContainerSize={true}
         annotationsCommon={{
           fill: '#3b82f6',
           stroke: '#1d4ed8',

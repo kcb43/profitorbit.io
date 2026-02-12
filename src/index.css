@@ -1116,3 +1116,64 @@ input[type="range"].modern-slider::-moz-range-thumb:active {
 [data-theme="default-dark"] [style*="background-color: white"] {
   background-color: #000000 !important; /* BLACK */
 }
+
+/* Filerobot Image Editor - Mobile Optimization */
+.FIE_root,
+[class*="FIE_root"] {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Ensure editor container takes full space */
+.FIE_editor-container,
+[class*="FIE_editor-container"] {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  .FIE_root,
+  [class*="FIE_root"] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  /* Make canvas area take maximum available space on mobile */
+  .FIE_canvas-container,
+  [class*="FIE_canvas-container"] {
+    flex: 1 !important;
+    max-height: calc(100vh - 120px) !important;
+  }
+
+  /* Optimize toolbar for mobile */
+  .FIE_topbar,
+  [class*="FIE_topbar"] {
+    min-height: 50px !important;
+    padding: 8px !important;
+  }
+
+  /* Make tools panel more compact on mobile */
+  .FIE_tools-bar,
+  [class*="FIE_tools-bar"] {
+    min-height: 60px !important;
+  }
+
+  /* Ensure buttons are touch-friendly */
+  .FIE_button,
+  [class*="FIE_button"] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 8px !important;
+  }
+}
