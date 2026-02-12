@@ -1,10 +1,12 @@
 const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
+const { searchEbay } = require('./ebay-api');
+const { searchWalmart } = require('./walmart-scraper');
 
 /**
- * Google Shopping Scraper
- * Scrapes product data from Google Shopping search results
- * Covers 100+ marketplaces aggregated by Google
+ * Multi-Source Product Scraper
+ * Combines Google Shopping, eBay API, and Walmart direct scraping
+ * Covers 100+ marketplaces with enhanced data quality
  */
 
 // Marketplace logo mapping
@@ -331,34 +333,71 @@ async function scrapeAmazon(query, options = {}) {
 }
 
 /**
- * Main scraper function - tries Google Shopping first, falls back to direct scraping
+ * Main scraper function - combines multiple sources for comprehensive results
  */
 async function scrapeProducts(query, options = {}) {
+  const sources = [];
+  
   try {
-    // Try Google Shopping first (aggregates all marketplaces)
-    const results = await scrapeGoogleShopping(query, options);
-    
-    if (results && results.length > 0) {
-      return {
-        success: true,
-        source: 'google_shopping',
-        query,
-        totalResults: results.length,
-        products: results,
-        scrapedAt: new Date().toISOString()
-      };
+    // Run multiple sources in parallel for faster results
+    const promises = [];
+
+    // 1. Google Shopping (aggregates 100+ marketplaces)
+    promises.push(
+      scrapeGoogleShopping(query, options)
+        .then(results => ({ source: 'google_shopping', results }))
+        .catch(err => ({ source: 'google_shopping', results: [], error: err.message }))
+    );
+
+    // 2. eBay API (if credentials available)
+    if (process.env.EBAY_APP_ID && process.env.EBAY_CERT_ID) {
+      promises.push(
+        searchEbay(query, options)
+          .then(results => ({ source: 'ebay_api', results }))
+          .catch(err => ({ source: 'ebay_api', results: [], error: err.message }))
+      );
     }
-    
-    // Fallback to direct Amazon scraping
-    console.log('⚠️ Google Shopping returned no results, trying Amazon directly...');
-    const amazonResults = await scrapeAmazon(query, options);
-    
+
+    // 3. Walmart Direct Scraping
+    promises.push(
+      searchWalmart(query, options)
+        .then(results => ({ source: 'walmart_direct', results }))
+        .catch(err => ({ source: 'walmart_direct', results: [], error: err.message }))
+    );
+
+    // 4. Amazon Direct (as fallback if Google Shopping fails)
+    promises.push(
+      scrapeAmazon(query, options)
+        .then(results => ({ source: 'amazon_direct', results }))
+        .catch(err => ({ source: 'amazon_direct', results: [], error: err.message }))
+    );
+
+    // Wait for all sources
+    const sourceResults = await Promise.all(promises);
+
+    // Combine all results
+    let allProducts = [];
+    sourceResults.forEach(({ source, results, error }) => {
+      if (results && results.length > 0) {
+        sources.push(source);
+        allProducts = allProducts.concat(results);
+        console.log(`✅ ${source}: ${results.length} products`);
+      } else if (error) {
+        console.log(`⚠️ ${source}: ${error}`);
+      }
+    });
+
+    // Remove duplicates based on title + price similarity
+    const uniqueProducts = deduplicateProducts(allProducts);
+
+    console.log(`✅ Total: ${uniqueProducts.length} unique products from ${sources.length} sources`);
+
     return {
       success: true,
-      source: 'amazon_direct',
+      sources,
       query,
-      totalResults: amazonResults.length,
-      products: amazonResults,
+      totalResults: uniqueProducts.length,
+      products: uniqueProducts,
       scrapedAt: new Date().toISOString()
     };
     
@@ -374,9 +413,37 @@ async function scrapeProducts(query, options = {}) {
   }
 }
 
+/**
+ * Deduplicate products based on title and price similarity
+ */
+function deduplicateProducts(products) {
+  const seen = new Map();
+  
+  return products.filter(product => {
+    // Create a key based on normalized title and rounded price
+    const normalizedTitle = product.title.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 50);
+    const roundedPrice = Math.round(product.price);
+    const key = `${normalizedTitle}-${roundedPrice}`;
+    
+    if (seen.has(key)) {
+      // Duplicate found - keep the one with more data
+      const existing = seen.get(key);
+      if (product.rating && !existing.rating) {
+        seen.set(key, product);
+        return true;
+      }
+      return false;
+    }
+    
+    seen.set(key, product);
+    return true;
+  });
+}
+
 module.exports = {
   scrapeProducts,
   scrapeGoogleShopping,
   scrapeAmazon,
+  deduplicateProducts,
   MARKETPLACE_LOGOS
 };

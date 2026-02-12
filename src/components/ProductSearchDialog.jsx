@@ -14,9 +14,13 @@ import {
   X,
   SlidersHorizontal,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Heart,
+  TrendingUp,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 /**
  * Universal Product Search Dialog
@@ -28,6 +32,8 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [priceHistory, setPriceHistory] = useState(null);
   const { toast } = useToast();
 
   // Filters
@@ -94,6 +100,53 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add to watchlist
+  const handleAddToWatchlist = async (product) => {
+    try {
+      const response = await fetch('/api/pulse/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_name: product.title,
+          product_url: product.productUrl,
+          product_image_url: product.imageUrl,
+          marketplace: product.marketplace,
+          initial_price: product.price,
+          target_price: product.price * 0.85, // Alert at 15% discount
+          notify_on_drop: true
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to add to watchlist');
+
+      toast({
+        title: '⭐ Added to watchlist',
+        description: `You'll be notified when ${product.title} drops below $${(product.price * 0.85).toFixed(2)}`
+      });
+    } catch (error) {
+      console.error('Watchlist error:', error);
+      toast({
+        title: '❌ Failed to add to watchlist',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // View price history
+  const handleViewHistory = async (product) => {
+    setSelectedProduct(product);
+    
+    // For now, generate mock history data
+    // In production, this would fetch from price_history table
+    const mockHistory = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      price: product.price + (Math.random() - 0.5) * product.price * 0.2
+    }));
+    
+    setPriceHistory(mockHistory);
   };
 
   // Auto-search on mount if initialQuery provided
@@ -250,18 +303,115 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
                   key={marketplace}
                   marketplace={marketplace}
                   products={items}
+                  onAddToWatchlist={handleAddToWatchlist}
+                  onViewHistory={handleViewHistory}
                 />
               ))}
             </div>
           )}
         </div>
+
+        {/* Price History Modal */}
+        {selectedProduct && priceHistory && (
+          <div className="absolute inset-0 bg-background z-50 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold">{selectedProduct.title}</h3>
+                  <p className="text-muted-foreground">30-day price history</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setPriceHistory(null);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Price Chart */}
+              <div className="bg-card border rounded-lg p-6 mb-6">
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={priceHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      domain={['dataMin - 5', 'dataMax + 5']}
+                    />
+                    <Tooltip 
+                      formatter={(value) => `$${value.toFixed(2)}`}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))'
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-card border rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Current Price</p>
+                  <p className="text-2xl font-bold">${selectedProduct.price.toFixed(2)}</p>
+                </div>
+                <div className="bg-card border rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Lowest (30d)</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    ${Math.min(...priceHistory.map(h => h.price)).toFixed(2)}
+                  </p>
+                </div>
+                <div className="bg-card border rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">Highest (30d)</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    ${Math.max(...priceHistory.map(h => h.price)).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={() => handleAddToWatchlist(selectedProduct)}
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Add to Watchlist
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(selectedProduct.productUrl, '_blank')}
+                >
+                  View Product <ExternalLink className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
 // Marketplace Group Component
-function MarketplaceGroup({ marketplace, products }) {
+function MarketplaceGroup({ marketplace, products, onAddToWatchlist, onViewHistory }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -289,7 +439,12 @@ function MarketplaceGroup({ marketplace, products }) {
       {expanded && (
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map((product, idx) => (
-            <ProductCard key={idx} product={product} />
+            <ProductCard
+              key={idx}
+              product={product}
+              onAddToWatchlist={onAddToWatchlist}
+              onViewHistory={onViewHistory}
+            />
           ))}
         </div>
       )}
@@ -298,7 +453,7 @@ function MarketplaceGroup({ marketplace, products }) {
 }
 
 // Product Card Component
-function ProductCard({ product }) {
+function ProductCard({ product, onAddToWatchlist, onViewHistory }) {
   return (
     <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card">
       {/* Image */}
@@ -359,11 +514,33 @@ function ProductCard({ product }) {
         )}
       </div>
 
+      {/* Action Buttons */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => onAddToWatchlist(product)}
+        >
+          <Heart className="h-3 w-3 mr-1" />
+          Watch
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => onViewHistory(product)}
+        >
+          <BarChart3 className="h-3 w-3 mr-1" />
+          History
+        </Button>
+      </div>
+
       {/* Buy Button */}
       <Button
         variant="default"
         size="sm"
-        className="w-full"
+        className="w-full mt-2"
         onClick={() => window.open(product.productUrl, '_blank')}
       >
         View Product <ExternalLink className="ml-2 h-3 w-3" />
