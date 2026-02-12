@@ -785,6 +785,16 @@ export default async function handler(req, res) {
           
           console.log(`  ✅ Found imported item: "${inventoryItem.item_name}"`);
           
+          // Check for existing links to this item (to avoid duplicate detection on already-linked items)
+          const { data: existingLinks, error: linkError } = await supabase
+            .from('item_links')
+            .select('linked_item_id')
+            .eq('user_id', userId)
+            .eq('primary_item_id', importedItem.inventoryId);
+          
+          const linkedItemIds = new Set(existingLinks?.map(link => link.linked_item_id) || []);
+          console.log(`  🔗 Found ${linkedItemIds.size} already-linked items (will skip these in duplicate detection)`);
+          
           // Check for duplicates
           // NOTE: facebook_item_id and mercari_item_id might not exist if migration hasn't run
           // Use basic fields that always exist for duplicate detection
@@ -800,15 +810,18 @@ export default async function handler(req, res) {
             continue;
           }
           
-          console.log(`  🔍 Found ${potentialDuplicates?.length || 0} existing items to compare against`);
+          // Filter out already-linked items
+          const unlinkedDuplicates = potentialDuplicates?.filter(dup => !linkedItemIds.has(dup.id)) || [];
           
-          if (potentialDuplicates && potentialDuplicates.length > 0) {
+          console.log(`  🔍 Found ${potentialDuplicates?.length || 0} existing items (${unlinkedDuplicates.length} unlinked) to compare against`);
+          
+          if (unlinkedDuplicates && unlinkedDuplicates.length > 0) {
             const importedTitle = inventoryItem.item_name.toLowerCase();
             const importedWords = importedTitle.split(/\s+/).filter(w => w.length > 2);
             
             console.log(`  📝 Imported title: "${inventoryItem.item_name}" (${importedWords.length} words: ${importedWords.join(', ')})`);
             
-            const matches = potentialDuplicates
+            const matches = unlinkedDuplicates
               .map(dup => {
                 const dupTitle = dup.item_name.toLowerCase();
                 const dupWords = dupTitle.split(/\s+/).filter(w => w.length > 2);

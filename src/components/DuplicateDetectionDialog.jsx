@@ -3,9 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle, Link as LinkIcon, ExternalLink, X } from 'lucide-react';
+import { AlertTriangle, Link as LinkIcon, ExternalLink, X, Loader2 } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { newApiClient } from "@/lib/base44-client";
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
@@ -14,9 +17,11 @@ export function DuplicateDetectionDialog({
   onClose, 
   duplicates, 
   onViewInventory,
-  onLinkItems
+  onMergeComplete
 }) {
   const [selectedDuplicates, setSelectedDuplicates] = useState(new Set());
+  const [isMerging, setIsMerging] = useState(false);
+  const { toast } = useToast();
 
   if (!duplicates || Object.keys(duplicates).length === 0) {
     return null;
@@ -36,6 +41,53 @@ export function DuplicateDetectionDialog({
       newSelected.add(id);
     }
     setSelectedDuplicates(newSelected);
+  };
+
+  const handleMerge = async () => {
+    if (selectedDuplicates.size === 0) {
+      toast({
+        title: "No items selected",
+        description: "Please select at least one duplicate to merge",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsMerging(true);
+
+    try {
+      const apiClient = newApiClient();
+      const response = await apiClient.post('/api/inventory/merge-duplicates', {
+        primaryItemId: importedItemId,
+        duplicateItemIds: Array.from(selectedDuplicates),
+        action: 'merge_and_delete'
+      });
+
+      if (response.success) {
+        toast({
+          title: "Items merged successfully",
+          description: `Merged ${response.mergedCount} duplicate${response.mergedCount > 1 ? 's' : ''} into your item`,
+        });
+
+        // Call callback to refresh data
+        if (onMergeComplete) {
+          onMergeComplete(importedItemId);
+        }
+
+        onClose();
+      } else {
+        throw new Error(response.error || 'Failed to merge items');
+      }
+    } catch (error) {
+      console.error('❌ Error merging items:', error);
+      toast({
+        title: "Merge failed",
+        description: error.message || "Failed to merge duplicate items",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMerging(false);
+    }
   };
 
   const handleViewInInventory = () => {
@@ -100,20 +152,36 @@ export function DuplicateDetectionDialog({
 
           {/* Potential Duplicates */}
           <div>
-            <h4 className="font-semibold text-sm text-muted-foreground mb-2">Potential Duplicates in Your Inventory:</h4>
+            <h4 className="font-semibold text-sm text-muted-foreground mb-2">
+              Potential Duplicates in Your Inventory:
+              {selectedDuplicates.size > 0 && (
+                <span className="ml-2 text-blue-600">({selectedDuplicates.size} selected)</span>
+              )}
+            </h4>
             <div className="space-y-2">
               {matches.map((match) => (
                 <div 
                   key={match.id}
-                  className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                  className={`border rounded-lg p-4 transition-colors ${
+                    selectedDuplicates.has(match.id) 
+                      ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/20 dark:border-blue-700' 
+                      : 'hover:bg-muted/50'
+                  }`}
                 >
                   <div className="flex gap-4">
-                    <OptimizedImage
-                      src={match.image_url || DEFAULT_IMAGE_URL}
-                      alt={match.item_name}
-                      fallback={DEFAULT_IMAGE_URL}
-                      className="w-20 h-20 object-cover rounded-md flex-shrink-0"
-                    />
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedDuplicates.has(match.id)}
+                        onCheckedChange={() => toggleSelect(match.id)}
+                        className="mt-1"
+                      />
+                      <OptimizedImage
+                        src={match.image_url || DEFAULT_IMAGE_URL}
+                        alt={match.item_name}
+                        fallback={DEFAULT_IMAGE_URL}
+                        className="w-20 h-20 object-cover rounded-md flex-shrink-0"
+                      />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -177,11 +245,30 @@ export function DuplicateDetectionDialog({
             Found {matches.length} potential duplicate{matches.length > 1 ? 's' : ''}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={isMerging}>
               <X className="w-4 h-4 mr-2" />
               Dismiss
             </Button>
-            <Button onClick={handleViewInInventory}>
+            {selectedDuplicates.size > 0 && (
+              <Button 
+                onClick={handleMerge} 
+                disabled={isMerging}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isMerging ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Merging...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    Merge {selectedDuplicates.size} Item{selectedDuplicates.size > 1 ? 's' : ''}
+                  </>
+                )}
+              </Button>
+            )}
+            <Button onClick={handleViewInInventory} disabled={isMerging}>
               <ExternalLink className="w-4 h-4 mr-2" />
               View in Inventory
             </Button>

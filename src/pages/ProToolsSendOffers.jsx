@@ -1430,10 +1430,19 @@ export default function ProToolsSendOffers() {
       {/* Duplicate Detection Dialog */}
       <DuplicateDetectionDialog
         isOpen={duplicateDialogOpen}
-        onClose={() => setDuplicateDialogOpen(false)}
+        onClose={() => {
+          setDuplicateDialogOpen(false);
+          setSelectedDuplicates(new Set());
+        }}
         duplicates={detectedDuplicates}
         onViewInventory={(inventoryId) => {
           navigate(`/Inventory?highlight=${inventoryId}`);
+        }}
+        onMergeComplete={(primaryItemId) => {
+          // Refresh inventory and marketplace items after merge
+          queryClient.invalidateQueries(['inventoryItems']);
+          queryClient.invalidateQueries(['ebay-listings']);
+          fetchMarketplaceItems();
         }}
       />
     </div>
