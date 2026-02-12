@@ -125,6 +125,7 @@ export default async function handler(req, res) {
         'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
         'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
         'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
         'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly',
       ].join(' ');
 
