@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart, RefreshCw, Settings, ExternalLinkIcon } from "lucide-react";
+import { ArrowLeft, Send, ExternalLink, Info, Save, MessageSquare, Edit, Heart, RefreshCw, Settings, ExternalLinkIcon, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -146,6 +146,7 @@ export default function ProToolsSendOffers() {
   const [marketplaceItems, setMarketplaceItems] = useState(() => loadCachedMarketplaceItems(marketplace));
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [detectedDuplicates, setDetectedDuplicates] = useState(null);
+  const [ebayTokenExpired, setEbayTokenExpired] = useState(false);
 
   // Save offers sent count to localStorage whenever it changes
   useEffect(() => {
@@ -406,6 +407,20 @@ export default function ProToolsSendOffers() {
           const ebayTokenData = localStorage.getItem('ebay_user_token');
           if (ebayTokenData) {
             const parsed = JSON.parse(ebayTokenData);
+            
+            // Check if token is expired
+            const now = Date.now();
+            const expiresAt = parsed.expires_at;
+            
+            if (expiresAt && now >= expiresAt) {
+              console.log('❌ eBay token expired');
+              setEbayTokenExpired(true);
+              setMarketplaceConnectionError(true);
+              setIsLoadingMarketplaceItems(false);
+              return;
+            }
+            
+            setEbayTokenExpired(false);
             marketplaceToken = parsed.access_token || parsed.token || ebayTokenData;
           }
           console.log(`🔑 eBay token ${marketplaceToken ? 'found' : 'not found'} in localStorage`);
@@ -895,6 +910,28 @@ export default function ProToolsSendOffers() {
               Send {offerPct}% off Offers ({selectedImportedCount})
             </Button>
           </div>
+        )}
+
+        {/* Expired Token Banner */}
+        {marketplace === "ebay" && ebayTokenExpired && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                Your eBay connection has expired. Please reconnect to continue.
+              </span>
+              <Link to={createPageUrl("Settings")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-4 bg-white hover:bg-white/90 text-red-600 border-red-200"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Go to Settings
+                </Button>
+              </Link>
+            </AlertDescription>
+          </Alert>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 min-w-0">

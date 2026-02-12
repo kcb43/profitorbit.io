@@ -1672,6 +1672,29 @@ export default function Import() {
         </div>
       </div>
 
+      {/* Expired Token Banner */}
+      {selectedSource === "ebay" && !isConnected && userId && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                Your eBay connection has expired. Please reconnect to continue importing items.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(createPageUrl("Settings"))}
+                className="ml-4 bg-white hover:bg-white/90 text-red-600 border-red-200"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Go to Settings
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-[280px_1fr] gap-6">
