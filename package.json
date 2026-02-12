@@ -53,6 +53,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
     "express": "^5.1.0",
+    "formidable": "^3.5.4",
     "framer-motion": "^12.4.7",
     "heic2any": "^0.0.4",
     "input-otp": "^1.4.2",
