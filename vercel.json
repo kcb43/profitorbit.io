@@ -1,11 +1,8 @@
 {
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "^/api/(.*)$", "dest": "/api/$1" },
-    { "src": "^/auth/facebook/callback$", "dest": "/api/facebook/callback" },
-    { "src": "^/auth/facebook/auth$", "dest": "/api/facebook/auth" },
-    { "src": "^/auth/ebay/callback$", "dest": "/api/ebay/callback" },
-    { "src": "^/auth/ebay/auth$", "dest": "/api/ebay/auth" },
-    { "src": "^(.*)$", "dest": "/index.html" }
+  "crons": [
+    {
+      "path": "/api/pulse/scan-deals",
+      "schedule": "0 */6 * * *"
+    }
   ]
 }

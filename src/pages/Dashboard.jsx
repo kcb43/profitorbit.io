@@ -18,11 +18,12 @@ import {
   subYears,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock, Lightbulb, Timer, Star, Box, Bell, ChevronDown, Settings } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock, Lightbulb, Timer, Star, Box, Bell, ChevronDown, Settings, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/api/supabaseClient";
+import { ProductSearchDialog } from "@/components/ProductSearchDialog";
 
 import StatCard from "../components/dashboard/StatCard";
 import ProfitChart from "../components/dashboard/ProfitChart";
@@ -88,6 +89,7 @@ export default function Dashboard() {
   const [desktopProfitRange, setDesktopProfitRange] = useState('monthly');
   const [desktopCustomRange, setDesktopCustomRange] = useState(undefined);
   const [stockAlertsOpen, setStockAlertsOpen] = useState(false);
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
 
   // Handle OAuth callback - process hash fragment before AuthGuard redirects
   useEffect(() => {
@@ -606,6 +608,12 @@ export default function Dashboard() {
             <RecentSales sales={recentSales} />
           </div>
         </div>
+
+        {/* Product Search Dialog */}
+        <ProductSearchDialog
+          open={productSearchOpen}
+          onOpenChange={setProductSearchOpen}
+        />
       </div>
     </div>
   );

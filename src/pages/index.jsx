@@ -27,6 +27,7 @@ const Crosslisting = React.lazy(() => import("./Crosslisting"));
 const Import = React.lazy(() => import("./Import"));
 const MarketIntelligence = React.lazy(() => import("./MarketIntelligence"));
 const MarketIntelligenceDetail = React.lazy(() => import("./MarketIntelligenceDetail"));
+const Pulse = React.lazy(() => import("./Pulse"));
 const Settings = React.lazy(() => import("./Settings"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
@@ -351,6 +352,19 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Tools">
                         {withSuspense(<Tools />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              <Route
+                path="/Pulse"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Pulse">
+                        {withSuspense(<Pulse />)}
                       </Layout>
                     )}
                   </AuthGuard>

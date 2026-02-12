@@ -86,7 +86,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
-import SoldLookupDialog from "@/components/SoldLookupDialog";
+import { ProductSearchDialog } from "@/components/ProductSearchDialog";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -572,8 +572,8 @@ export default function Crosslist() {
   const [itemToView, setItemToView] = useState(null);
   const [showMoreMarketplaces, setShowMoreMarketplaces] = useState({});
   const [expandedDetails, setExpandedDetails] = useState({});
-  const [soldLookupOpen, setSoldLookupOpen] = useState(false);
-  const [soldLookupItemName, setSoldLookupItemName] = useState("");
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
   
   // Track mobile state but don't force grid view
@@ -2428,8 +2428,8 @@ export default function Crosslist() {
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSoldLookupItemName(it.item_name || "");
-                              setSoldLookupOpen(true);
+                              setProductSearchQuery(it.item_name || "");
+                              setProductSearchOpen(true);
                             }}
                             variant="outline"
                             className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
@@ -2850,8 +2850,8 @@ export default function Crosslist() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setSoldLookupItemName(it.item_name || "");
-                        setSoldLookupOpen(true);
+                        setProductSearchQuery(it.item_name || "");
+                        setProductSearchOpen(true);
                       }}
                       className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-card/80 border border-gray-200/70 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                     >
@@ -3172,11 +3172,11 @@ export default function Crosslist() {
         />
       )}
 
-      {/* Sold Lookup Dialog */}
-      <SoldLookupDialog
-        open={soldLookupOpen}
-        onOpenChange={setSoldLookupOpen}
-        itemName={soldLookupItemName}
+      {/* Product Search Dialog */}
+      <ProductSearchDialog
+        open={productSearchOpen}
+        onOpenChange={setProductSearchOpen}
+        initialQuery={productSearchQuery}
       />
     </div>
   );

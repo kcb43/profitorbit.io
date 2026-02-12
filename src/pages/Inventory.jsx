@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import SoldLookupDialog from "../components/SoldLookupDialog";
+import { ProductSearchDialog } from "@/components/ProductSearchDialog";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { ImageEditor } from "@/components/ImageEditor";
 import { OptimizedImage } from "@/components/OptimizedImage";
@@ -98,8 +98,8 @@ export default function InventoryPage() {
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [itemToSell, setItemToSell] = useState(null);
   const [quantityToSell, setQuantityToSell] = useState(1);
-  const [soldDialogOpen, setSoldDialogOpen] = useState(false);
-  const [soldDialogName, setSoldDialogName] = useState("");
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
   const [titlePreview, setTitlePreview] = useState(null);
   const [bulkUpdateForm, setBulkUpdateForm] = useState({
     status: "",
@@ -2444,8 +2444,8 @@ export default function InventoryPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSoldDialogName(item.item_name || "");
-                                setSoldDialogOpen(true);
+                                setProductSearchQuery(item.item_name || "");
+                                setProductSearchOpen(true);
                               }}
                               className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground transition-all shadow-md"
                             >
@@ -3233,8 +3233,8 @@ export default function InventoryPage() {
                                 <Button
                                   variant="outline"
                                   onClick={() => {
-                                    setSoldDialogName(item.item_name || "");
-                                    setSoldDialogOpen(true);
+                                    setProductSearchQuery(item.item_name || "");
+                                    setProductSearchOpen(true);
                                   }}
                                   className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                                 >
@@ -3398,8 +3398,8 @@ export default function InventoryPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSoldDialogName(item.item_name || "");
-                              setSoldDialogOpen(true);
+                              setProductSearchQuery(item.item_name || "");
+                              setProductSearchOpen(true);
                             }}
                             className={`inline-flex ${gridVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-600 hover:bg-blue-600/10`}
                             title="Search"
@@ -3980,14 +3980,11 @@ export default function InventoryPage() {
         />
       )}
 
-      <SoldLookupDialog
-        open={soldDialogOpen}
-        onOpenChange={setSoldDialogOpen}
-        itemName={soldDialogName}
-        onEbaySearch={() => {
-          setEbaySearchInitialQuery(soldDialogName || "");
-          setEbaySearchDialogOpen(true);
-        }}
+      {/* Product Search Dialog */}
+      <ProductSearchDialog
+        open={productSearchOpen}
+        onOpenChange={setProductSearchOpen}
+        initialQuery={productSearchQuery}
       />
 
       {ebaySearchDialogOpen ? (
