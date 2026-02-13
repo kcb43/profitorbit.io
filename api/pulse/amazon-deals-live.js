@@ -30,30 +30,63 @@ export default async function handler(req, res) {
     console.log(`🔍 Fetching ${type} deals from Amazon (category: ${category})`);
 
     let deals = [];
+    const fetchPromises = [];
+    const sources = [];
 
-    // Strategy 1: Try Keepa first (if API key configured)
+    // Strategy: Fetch from ALL configured sources in parallel for maximum coverage
+    
     if (process.env.KEEPA_API_KEY) {
       console.log('📊 Fetching from Keepa API...');
-      const keepaDeals = await fetchKeepaDeals({ type, category, minDiscount, maxPrice });
-      deals.push(...keepaDeals);
-      console.log(`✅ Keepa returned ${keepaDeals.length} deals`);
+      sources.push('keepa');
+      fetchPromises.push(
+        fetchKeepaDeals({ type, category, minDiscount, maxPrice })
+          .then(keepaDeals => {
+            console.log(`✅ Keepa returned ${keepaDeals.length} deals`);
+            return keepaDeals;
+          })
+          .catch(err => {
+            console.error('❌ Keepa error:', err.message);
+            return [];
+          })
+      );
     }
 
-    // Strategy 2: Try RapidAPI (free tier: 100 requests/mo)
-    if (deals.length < 20 && process.env.RAPIDAPI_KEY) {
+    if (process.env.RAPIDAPI_KEY) {
       console.log('⚡ Fetching from RapidAPI...');
-      const rapidDeals = await fetchRapidAPIDeals({ type, category, minDiscount, maxPrice });
-      deals.push(...rapidDeals);
-      console.log(`✅ RapidAPI returned ${rapidDeals.length} deals`);
+      sources.push('rapidapi');
+      fetchPromises.push(
+        fetchRapidAPIDeals({ type, category, minDiscount, maxPrice })
+          .then(rapidDeals => {
+            console.log(`✅ RapidAPI returned ${rapidDeals.length} deals`);
+            return rapidDeals;
+          })
+          .catch(err => {
+            console.error('❌ RapidAPI error:', err.message);
+            return [];
+          })
+      );
     }
 
-    // Strategy 3: Fallback to Amazon public deals (free, but limited)
-    if (deals.length < 10) {
-      console.log('🌐 Fetching from Amazon public deals...');
-      const publicDeals = await fetchAmazonPublicDeals({ category, minDiscount });
-      deals.push(...publicDeals);
-      console.log(`✅ Public deals returned ${publicDeals.length} deals`);
-    }
+    // Always include public deals as baseline
+    console.log('🌐 Fetching from Amazon public deals...');
+    sources.push('public');
+    fetchPromises.push(
+      fetchAmazonPublicDeals({ category, minDiscount })
+        .then(publicDeals => {
+          console.log(`✅ Public deals returned ${publicDeals.length} deals`);
+          return publicDeals;
+        })
+        .catch(err => {
+          console.error('❌ Public deals error:', err.message);
+          return [];
+        })
+    );
+
+    // Fetch from all sources in parallel
+    const results = await Promise.all(fetchPromises);
+    
+    // Flatten all results
+    deals = results.flat();
 
     // Deduplicate by ASIN
     const uniqueDeals = deduplicateByASIN(deals);
@@ -78,17 +111,39 @@ export default async function handler(req, res) {
     // Limit results
     const finalDeals = filteredDeals.slice(0, parseInt(limit));
 
-    console.log(`✅ Returning ${finalDeals.length} deals (from ${deals.length} total)`);
+    // Calculate source statistics
+    const sourceStats = {
+      keepa: {
+        total: deals.filter(d => d.source === 'keepa').length,
+        afterDedup: uniqueDeals.filter(d => d.source === 'keepa').length,
+        inResults: finalDeals.filter(d => d.source === 'keepa').length
+      },
+      rapidapi: {
+        total: deals.filter(d => d.source === 'rapidapi').length,
+        afterDedup: uniqueDeals.filter(d => d.source === 'rapidapi').length,
+        inResults: finalDeals.filter(d => d.source === 'rapidapi').length
+      },
+      public: {
+        total: deals.filter(d => d.source === 'public').length,
+        afterDedup: uniqueDeals.filter(d => d.source === 'public').length,
+        inResults: finalDeals.filter(d => d.source === 'public').length
+      }
+    };
+
+    console.log(`✅ Returning ${finalDeals.length} deals (from ${deals.length} total, ${uniqueDeals.length} unique)`);
+    console.log(`📊 Source breakdown:`, sourceStats);
 
     return res.status(200).json({
       success: true,
       count: finalDeals.length,
       totalFound: deals.length,
+      uniqueFound: uniqueDeals.length,
+      dealsRemoved: deals.length - uniqueDeals.length,
       deals: finalDeals,
-      sources: {
-        keepa: deals.filter(d => d.source === 'keepa').length,
-        rapidapi: deals.filter(d => d.source === 'rapidapi').length,
-        public: deals.filter(d => d.source === 'public').length
+      sources: sourceStats,
+      apiKeysConfigured: {
+        keepa: !!process.env.KEEPA_API_KEY,
+        rapidapi: !!process.env.RAPIDAPI_KEY
       }
     });
 

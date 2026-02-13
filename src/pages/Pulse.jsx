@@ -77,6 +77,11 @@ export default function Pulse() {
       if (!res.ok) throw new Error('Failed to fetch deals');
       const data = await res.json();
       
+      // Store source statistics for display
+      if (data.sources) {
+        setSourceStats(data.sources);
+      }
+      
       // Transform API response to match expected format
       return data.deals?.map(deal => ({
         id: deal.asin,
@@ -103,6 +108,9 @@ export default function Pulse() {
   });
 
   const dealAlerts = dealAlertsResponse || [];
+  
+  // Track API source statistics from the response
+  const [sourceStats, setSourceStats] = useState(null);
 
   // Helper function to generate alert reason
   function generateAlertReason(deal) {
@@ -320,6 +328,117 @@ export default function Pulse() {
             </CardContent>
           </Card>
         </div>
+
+        {/* API Source Statistics */}
+        {sourceStats && (
+          <Card className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-blue-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TrendingDown className="h-5 w-5 text-blue-600" />
+                API Source Performance
+                <Badge variant="secondary" className="ml-auto text-xs">Live Data</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Keepa */}
+                <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">Keepa API</span>
+                    {sourceStats.keepa.inResults > 0 ? (
+                      <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Active</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">Not Configured</Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fetched:</span>
+                      <span className="font-semibold">{sourceStats.keepa.total}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">After Dedup:</span>
+                      <span className="font-semibold">{sourceStats.keepa.afterDedup}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">In Results:</span>
+                      <span className="font-bold text-blue-600">{sourceStats.keepa.inResults}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RapidAPI */}
+                <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-purple-700 dark:text-purple-400">RapidAPI</span>
+                    {sourceStats.rapidapi.inResults > 0 ? (
+                      <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Active</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">Not Configured</Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fetched:</span>
+                      <span className="font-semibold">{sourceStats.rapidapi.total}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">After Dedup:</span>
+                      <span className="font-semibold">{sourceStats.rapidapi.afterDedup}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">In Results:</span>
+                      <span className="font-bold text-purple-600">{sourceStats.rapidapi.inResults}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Public/Fallback */}
+                <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-400">Public Deals</span>
+                    <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Always On</Badge>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fetched:</span>
+                      <span className="font-semibold">{sourceStats.public.total}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">After Dedup:</span>
+                      <span className="font-semibold">{sourceStats.public.afterDedup}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">In Results:</span>
+                      <span className="font-bold text-gray-600">{sourceStats.public.inResults}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total deals fetched:</span>
+                  <span className="font-bold">{sourceStats.keepa.total + sourceStats.rapidapi.total + sourceStats.public.total}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Duplicates removed:</span>
+                  <span className="font-bold text-orange-600">
+                    {(sourceStats.keepa.total + sourceStats.rapidapi.total + sourceStats.public.total) - 
+                     (sourceStats.keepa.afterDedup + sourceStats.rapidapi.afterDedup + sourceStats.public.afterDedup)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Showing after filters:</span>
+                  <span className="font-bold text-green-600">
+                    {sourceStats.keepa.inResults + sourceStats.rapidapi.inResults + sourceStats.public.inResults}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Advanced Filters Panel */}
         {showFilters && (
