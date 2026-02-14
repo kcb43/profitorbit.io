@@ -436,10 +436,10 @@ function normalizeQuery(q) {
   return q.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function getCacheKey(provider, country, query) {
-  const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}`).digest('hex');
-  // v5: Cache bust after RapidAPI key configured (2026-02-14)
-  return `search:v5:${provider}:${country}:${hash}`;
+function getCacheKey(provider, country, query, limit = 10) {
+  const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}`).digest('hex');
+  // v6: Include limit in cache key to support different result set sizes (2026-02-14)
+  return `search:v6:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
@@ -521,13 +521,14 @@ fastify.post('/search', async (request, reply) => {
       continue;
     }
 
-    const cacheKey = getCacheKey(providerName, country, query);
+    const cacheKey = getCacheKey(providerName, country, query, limit);
 
-    // Hypothesis C: Is the cache key v5?
+    // Hypothesis C: Is the cache key v6 with limit?
     console.log('[DEBUG-C] Cache key generated', JSON.stringify({
       cacheKey: cacheKey,
       providerName: providerName,
-      query: query
+      query: query,
+      limit: limit
     }));
 
     // Check cache first
@@ -624,9 +625,24 @@ fastify.post('/admin/flush-cache', async (request, reply) => {
   
   const flushed = [];
   for (const query of queries) {
-    const cacheKey = getCacheKey('google', 'US', query);
-    const result = await redis.del(cacheKey);
-    flushed.push({ query, cacheKey, deleted: result === 1 });
+    // Flush both v5 (old) and v6 (new) cache keys for all common limits
+    const limits = [10, 20, 50];
+    for (const limit of limits) {
+      // v6 with limit
+      const cacheKeyV6 = getCacheKey('google', 'US', query, limit);
+      const resultV6 = await redis.del(cacheKeyV6);
+      if (resultV6 === 1) {
+        flushed.push({ query, limit, cacheKey: cacheKeyV6, deleted: true });
+      }
+    }
+    
+    // Also flush old v5 cache (without limit) for backward compatibility
+    const hashV5 = crypto.createHash('md5').update(`google:US:${query.toLowerCase().trim()}`).digest('hex');
+    const cacheKeyV5 = `search:v5:google:US:${hashV5}`;
+    const resultV5 = await redis.del(cacheKeyV5);
+    if (resultV5 === 1) {
+      flushed.push({ query, limit: 'v5_any', cacheKey: cacheKeyV5, deleted: true });
+    }
   }
   
   return { ok: true, flushed };

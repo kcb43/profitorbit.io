@@ -101,7 +101,7 @@ export default function ProductSearch() {
         providers: providerList,
         country: 'US',
         limit: '10', // Pre-fetch 10 items only
-        cache_version: 'v5_rapidapi_configured'
+        cache_version: 'v6_limit_in_cache_key'
       });
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
@@ -168,7 +168,7 @@ export default function ProductSearch() {
         country: 'US',
         limit: String(requestedLimit), // Use dynamic limit: 20 for initial, 50 for "load more"
         // Force fresh results after RapidAPI key was added (cache v5)
-        cache_version: 'v5_rapidapi_configured'
+        cache_version: 'v6_limit_in_cache_key'
       });
 
       // #region agent log
