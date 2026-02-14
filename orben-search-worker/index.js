@@ -283,17 +283,28 @@ class OxylabsProvider extends SearchProvider {
       
       // Add organic results with product info
       organicResults.forEach(item => {
+        // Extract price from various fields
+        let price = null;
+        if (item.price) {
+          price = parseFloat(item.price.toString().replace(/[^0-9.]/g, ''));
+        } else if (item.price_lower) {
+          price = parseFloat(item.price_lower);
+        } else if (item.price_upper) {
+          price = parseFloat(item.price_upper);
+        }
+        
         // Only add if it looks like a product (has price indicators)
-        if (item.title && (item.price || /\$\d+/.test(item.title))) {
+        if (item.title && (price || item.price_lower || item.price_upper || /\$\d+/.test(item.title || ''))) {
           allResults.push({
             title: item.title,
             url: item.url,
-            price: parseFloat(item.price?.toString().replace(/[^0-9.]/g, '')) || null,
-            currency: 'USD',
-            merchant: item.domain || 'Google',
+            price: price,
+            currency: item.currency || 'USD',
+            merchant: item.favicon_text || item.domain || 'Unknown',
             image_url: item.thumbnail,
             source: this.name,
-            rating: item.rating
+            rating: item.rating,
+            condition: 'New'
           });
         }
       });
