@@ -154,18 +154,22 @@ export default function ProductSearch() {
     return () => observer.disconnect();
   }, [hasMore]);
 
-  // Check if we're waiting for debounce
-  const isTyping = query.length >= 3 && query.trim() !== debouncedQuery;
-
-  const groupedResults = {};
+  // Group by merchant instead of provider
+  const groupedByMerchant = {};
   if (displayedItems.length > 0) {
     displayedItems.forEach(item => {
-      if (!groupedResults[item.source]) {
-        groupedResults[item.source] = [];
+      const merchant = item.merchant || 'Unknown';
+      if (!groupedByMerchant[merchant]) {
+        groupedByMerchant[merchant] = [];
       }
-      groupedResults[item.source].push(item);
+      groupedByMerchant[merchant].push(item);
     });
   }
+
+  // Calculate average price
+  const avgPrice = searchResults?.items?.length > 0
+    ? searchResults.items.filter(i => i.price && i.price > 0).reduce((sum, i) => sum + i.price, 0) / searchResults.items.filter(i => i.price && i.price > 0).length
+    : 0;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -241,8 +245,8 @@ export default function ProductSearch() {
 
       {searchResults && searchResults.items?.length > 0 && (
         <>
-          {/* Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Summary - now with average price */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Results</CardTitle>
@@ -253,15 +257,11 @@ export default function ProductSearch() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Providers</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600">Average Price</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 flex-wrap">
-                  {searchResults.providers?.map((p, idx) => (
-                    <Badge key={idx} variant={p.cached ? 'secondary' : 'default'}>
-                      {p.provider} {p.cached && '(cached)'}
-                    </Badge>
-                  ))}
+                <div className="text-2xl font-bold text-green-600">
+                  {avgPrice > 0 ? `$${avgPrice.toFixed(2)}` : 'N/A'}
                 </div>
               </CardContent>
             </Card>
@@ -277,15 +277,23 @@ export default function ProductSearch() {
                 </div>
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Merchants</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{Object.keys(groupedByMerchant).length}</div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Results by provider */}
-          <Tabs defaultValue={Object.keys(groupedResults)[0] || 'all'} className="w-full">
-            <TabsList>
+          {/* Results by merchant */}
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="all">All ({searchResults.items?.length || 0})</TabsTrigger>
-              {Object.keys(groupedResults).map(source => (
-                <TabsTrigger key={source} value={source} className="capitalize">
-                  {source} ({groupedResults[source].length})
+              {Object.keys(groupedByMerchant).sort((a, b) => groupedByMerchant[b].length - groupedByMerchant[a].length).slice(0, 8).map(merchant => (
+                <TabsTrigger key={merchant} value={merchant}>
+                  {merchant} ({groupedByMerchant[merchant].length})
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -297,27 +305,20 @@ export default function ProductSearch() {
                 ))}
               </div>
               
-              {/* Load more trigger for infinite scroll */}
+              {/* Invisible load more trigger for infinite scroll */}
               {hasMore && (
-                <div ref={loadMoreRef} className="py-6 sm:py-8 text-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => setDisplayLimit(prev => prev + 12)}
-                    className="px-6 sm:px-8"
-                  >
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    <span className="text-sm sm:text-base">
-                      Load More ({searchResults.items.length - displayLimit} remaining)
-                    </span>
-                  </Button>
+                <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
+                  <p className="text-sm text-gray-500">
+                    Loading more... ({searchResults.items.length - displayLimit} remaining)
+                  </p>
                 </div>
               )}
             </TabsContent>
 
-            {Object.keys(groupedResults).map(source => (
-              <TabsContent key={source} value={source} className="mt-6">
+            {Object.keys(groupedByMerchant).map(merchant => (
+              <TabsContent key={merchant} value={merchant} className="mt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {groupedResults[source].map((item, idx) => (
+                  {groupedByMerchant[merchant].map((item, idx) => (
                     <ProductCard key={idx} item={item} />
                   ))}
                 </div>
@@ -368,6 +369,21 @@ export default function ProductSearch() {
 }
 
 function ProductCard({ item }) {
+  // Get merchant-specific badge color
+  const getMerchantColor = (merchant) => {
+    const colors = {
+      'Walmart': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Best Buy': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'Target': 'bg-red-100 text-red-800 border-red-200',
+      'Amazon': 'bg-orange-100 text-orange-800 border-orange-200',
+      'eBay': 'bg-purple-100 text-purple-800 border-purple-200',
+      'T-Mobile': 'bg-pink-100 text-pink-800 border-pink-200',
+      'Home Depot': 'bg-orange-100 text-orange-800 border-orange-200',
+      'Lowe\'s': 'bg-blue-100 text-blue-800 border-blue-200'
+    };
+    return colors[merchant] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       {/* Image */}
@@ -381,11 +397,6 @@ function ProductCard({ item }) {
               e.target.style.display = 'none';
             }}
           />
-          <div className="absolute top-2 right-2">
-            <Badge variant="secondary" className="capitalize text-xs">
-              {item.source}
-            </Badge>
-          </div>
         </div>
       )}
 
@@ -395,9 +406,13 @@ function ProductCard({ item }) {
           {item.title}
         </h3>
 
-        {/* Merchant */}
+        {/* Merchant Badge - Colorful and prominent */}
         {item.merchant && (
-          <p className="text-xs text-gray-600 mb-2">{item.merchant}</p>
+          <div className="mb-3">
+            <Badge className={`${getMerchantColor(item.merchant)} font-semibold border`}>
+              {item.merchant}
+            </Badge>
+          </div>
         )}
 
         {/* Price */}
