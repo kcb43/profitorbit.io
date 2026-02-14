@@ -228,7 +228,7 @@ export default function ProductSearch() {
             <Search className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
             <h3 className="text-xl font-medium mb-2 text-yellow-700">No Results Found</h3>
             <p className="text-yellow-600 mb-4">
-              No products found for "{searchQuery}". Try a different search term or check:
+              No products found for "{debouncedQuery}". Try a different search term or check:
             </p>
             <ul className="text-left max-w-md mx-auto text-sm text-yellow-700 space-y-2">
               <li>• Try more general search terms (e.g., "laptop" instead of specific model)</li>
