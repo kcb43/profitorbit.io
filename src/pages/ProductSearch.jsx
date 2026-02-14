@@ -14,7 +14,7 @@ const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.f
 export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [providers, setProviders] = useState(['ebay', 'oxylabs']);
+  const [providers, setProviders] = useState(['oxylabs']); // Removed 'ebay' - API deprecated
   const { toast } = useToast();
 
   const { data: searchResults, isLoading, refetch } = useQuery({
@@ -132,7 +132,7 @@ export default function ProductSearch() {
           <div className="mt-4 flex items-center gap-4">
             <span className="text-sm font-medium">Search providers:</span>
             <div className="flex gap-2">
-              {['ebay', 'oxylabs', 'google'].map(provider => (
+              {['oxylabs', 'google'].map(provider => (
                 <label key={provider} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, TrendingUp, Bookmark, ExternalLink, DollarSign, Percent, AlertCircle } from 'lucide-react';
+import { Search, TrendingUp, Bookmark, ExternalLink, DollarSign, Percent, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -18,11 +18,18 @@ export default function Deals() {
     minScore: 0
   });
   const { toast } = useToast();
+  const loadMoreRef = useRef(null);
 
-  // Fetch deals feed
-  const { data: dealsData, isLoading } = useQuery({
+  // Infinite query for deals feed with pagination
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = useInfiniteQuery({
     queryKey: ['deals', searchQuery, filters],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
@@ -31,7 +38,8 @@ export default function Deals() {
         ...(filters.merchant && { merchant: filters.merchant }),
         ...(filters.category && { category: filters.category }),
         min_score: filters.minScore.toString(),
-        limit: '50'
+        limit: '20', // Load 20 at a time for better UX
+        offset: pageParam.toString()
       });
 
       const response = await fetch(`${ORBEN_API_URL}/v1/deals/feed?${params}`, {
@@ -44,8 +52,39 @@ export default function Deals() {
 
       return response.json();
     },
+    getNextPageParam: (lastPage, allPages) => {
+      // If we got fewer items than requested, we've reached the end
+      if (!lastPage.items || lastPage.items.length < 20) {
+        return undefined;
+      }
+      // Calculate next offset
+      return allPages.reduce((acc, page) => acc + (page.items?.length || 0), 0);
+    },
     staleTime: 60_000
   });
+
+  // Flatten all pages into single array
+  const dealsData = {
+    items: data?.pages.flatMap(page => page.items || []) || [],
+    total: data?.pages[0]?.total || 0
+  };
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Fetch user's saved deals
   const { data: savedDeals, refetch: refetchSaved } = useQuery({
@@ -327,6 +366,26 @@ export default function Deals() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Infinite scroll trigger */}
+      {hasNextPage && (
+        <div ref={loadMoreRef} className="py-8 text-center">
+          {isFetchingNextPage ? (
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm text-gray-600">Loading more deals...</span>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+            >
+              Load More Deals
+            </Button>
+          )}
         </div>
       )}
 
