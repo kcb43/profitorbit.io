@@ -18,38 +18,53 @@ $headers = @{
 
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
+$uri1 = 'https://orben-api.fly.dev/v1/search?q=fluval&providers=auto&country=US&limit=20&cache_version=v5_rapidapi_configured'
+
 try {
-    $response = Invoke-RestMethod -Uri "https://orben-api.fly.dev/v1/search?q=fluval&providers=auto&country=US&limit=20&cache_version=v5_rapidapi_configured" -Method Get -Headers $headers -TimeoutSec 30
+    $response = Invoke-RestMethod -Uri $uri1 -Method Get -Headers $headers -TimeoutSec 30
     $stopwatch.Stop()
     
     Write-Host "✓ Request completed in $($stopwatch.Elapsed.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Green
     Write-Host "  Items returned: $($response.items.Count)" -ForegroundColor Yellow
-    Write-Host "  First 3 titles:" -ForegroundColor Cyan
-    $response.items[0..2] | ForEach-Object { Write-Host "    - $($_.title)" -ForegroundColor White }
+    if ($response.items -and $response.items.Count -gt 0) {
+        Write-Host "  First 3 titles:" -ForegroundColor Cyan
+        $response.items[0..2] | ForEach-Object { Write-Host "    - $($_.title)" -ForegroundColor White }
+    } else {
+        Write-Host "  WARNING: No items in response!" -ForegroundColor Red
+        Write-Host "  Response: $($response | ConvertTo-Json -Depth 2)" -ForegroundColor Gray
+    }
     
 } catch {
     $stopwatch.Stop()
     Write-Host "✗ Request failed after $($stopwatch.Elapsed.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Red
-    Write-Host "  Error: $_" -ForegroundColor Red
+    Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 Write-Host "`n=== Test 2: Load more (should return 50 items in ~15-20 seconds) ===" -ForegroundColor Cyan
 
 $stopwatch2 = [System.Diagnostics.Stopwatch]::StartNew()
 
+$uri2 = 'https://orben-api.fly.dev/v1/search?q=fluval&providers=auto&country=US&limit=50&cache_version=v5_rapidapi_configured'
+
 try {
-    $response2 = Invoke-RestMethod -Uri "https://orben-api.fly.dev/v1/search?q=fluval&providers=auto&country=US&limit=50&cache_version=v5_rapidapi_configured" -Method Get -Headers $headers -TimeoutSec 40
+    $response2 = Invoke-RestMethod -Uri $uri2 -Method Get -Headers $headers -TimeoutSec 40
     $stopwatch2.Stop()
     
     Write-Host "✓ Request completed in $($stopwatch2.Elapsed.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Green
     Write-Host "  Items returned: $($response2.items.Count)" -ForegroundColor Yellow
-    Write-Host "  First 3 titles:" -ForegroundColor Cyan
-    $response2.items[0..2] | ForEach-Object { Write-Host "    - $($_.title)" -ForegroundColor White }
+    if ($response2.items -and $response2.items.Count -gt 0) {
+        Write-Host "  First 3 titles:" -ForegroundColor Cyan
+        $response2.items[0..2] | ForEach-Object { Write-Host "    - $($_.title)" -ForegroundColor White }
+    } else {
+        Write-Host "  WARNING: No items in response!" -ForegroundColor Red
+        Write-Host "  Response: $($response2 | ConvertTo-Json -Depth 2)" -ForegroundColor Gray
+    }
     
 } catch {
     $stopwatch2.Stop()
     Write-Host "✗ Request failed after $($stopwatch2.Elapsed.TotalSeconds.ToString('F2')) seconds" -ForegroundColor Red
-    Write-Host "  Error: $_" -ForegroundColor Red
+    Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "  Full error: $_" -ForegroundColor Red
 }
 
 Write-Host "`n=== Summary ===" -ForegroundColor Cyan

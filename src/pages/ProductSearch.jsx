@@ -14,9 +14,9 @@ const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.f
 export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [displayLimit, setDisplayLimit] = useState(12); // Show 12 initially
+  const [displayLimit, setDisplayLimit] = useState(10); // Show 10 initially for instant results
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
-  const [requestedLimit, setRequestedLimit] = useState(20); // Start with 20 items for speed
+  const [requestedLimit, setRequestedLimit] = useState(10); // Start with 10 items for maximum speed (~3-4s)
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
@@ -34,8 +34,8 @@ export default function ProductSearch() {
       setIsTyping(true); // User is typing
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
-        setDisplayLimit(12); // Reset display limit on new search
-        setRequestedLimit(20); // Reset to 20 items for fast initial load
+        setDisplayLimit(10); // Reset display limit on new search
+        setRequestedLimit(10); // Reset to 10 items for super-fast initial load (~3-4s)
         setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
     } else {
@@ -192,15 +192,15 @@ export default function ProductSearch() {
     }
     // Immediately trigger search (bypass debounce)
     setDebouncedQuery(query.trim());
-    setDisplayLimit(12);
-    setRequestedLimit(20); // Start with 20 for fast initial load
+    setDisplayLimit(10);
+    setRequestedLimit(10); // Start with 10 for super-fast initial load
     setIsTyping(false); // Reset typing state
   };
 
   // Progressive loading: show more results as user scrolls
   const displayedItems = searchResults?.items?.slice(0, displayLimit) || [];
   const hasMore = searchResults?.items?.length > displayLimit;
-  const canLoadMore = requestedLimit === 20 && searchResults?.items?.length === 20; // Can fetch 30 more items
+  const canLoadMore = requestedLimit === 10 && searchResults?.items?.length === 10; // Can fetch 40 more items (10 → 50)
 
   // Intersection observer for auto-load more (display)
   useEffect(() => {
@@ -209,7 +209,7 @@ export default function ProductSearch() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setDisplayLimit(prev => prev + 12); // Show 12 more from already fetched
+          setDisplayLimit(prev => prev + 10); // Show 10 more from already fetched
         }
       },
       { threshold: 0.1 }
@@ -219,19 +219,19 @@ export default function ProductSearch() {
     return () => observer.disconnect();
   }, [hasMore]);
 
-  // Background loading: fetch 30 more items when user scrolls to 15th item
+  // Background loading: fetch more items when user scrolls to 8th item
   useEffect(() => {
     if (!canLoadMore || isLoadingMore) return;
-    if (displayLimit < 15) return; // Wait until user has scrolled a bit
+    if (displayLimit < 8) return; // Wait until user has scrolled a bit (80% through initial 10)
 
-    console.log('[ProductSearch] Auto-loading more results in background (20 → 50)');
+    console.log('[ProductSearch] Auto-loading more results in background (10 → 50)');
     setIsLoadingMore(true);
-    setRequestedLimit(50); // Trigger new fetch for 50 items
+    setRequestedLimit(50); // Trigger new fetch for 50 items total
   }, [displayLimit, canLoadMore, isLoadingMore]);
 
   // Reset loading state when data arrives
   useEffect(() => {
-    if (searchResults?.items?.length > 20) {
+    if (searchResults?.items?.length > 10) {
       setIsLoadingMore(false);
       console.log('[ProductSearch] Background loading complete:', searchResults.items.length, 'items total');
     }
@@ -342,7 +342,7 @@ export default function ProductSearch() {
               <CardContent>
                 <div className="text-2xl font-bold">
                   {searchResults.items?.length || 0}
-                  {requestedLimit === 20 && searchResults.items.length === 20 && (
+                  {requestedLimit === 10 && searchResults.items.length === 10 && (
                     <span className="text-sm text-gray-500 font-normal ml-1">of 50</span>
                   )}
                 </div>
