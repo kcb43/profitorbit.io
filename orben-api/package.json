@@ -1,0 +1,19 @@
+{
+  "name": "orben-api",
+  "version": "1.0.0",
+  "description": "Orben HTTP API - handles all client requests for deals & search",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.2.0",
+    "@fastify/cors": "^10.0.2",
+    "ioredis": "^5.4.2",
+    "axios": "^1.7.9"
+  }
+}

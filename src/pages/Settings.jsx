@@ -97,6 +97,9 @@ export default function Settings() {
   const [skipDeleteConfirmation, setSkipDeleteConfirmation] = useState(() => {
     return localStorage.getItem('skip_delete_confirmation') === 'true';
   });
+  const [disableSmartRouting, setDisableSmartRouting] = useState(() => {
+    return localStorage.getItem('orben_disable_smart_routing') === 'true';
+  });
   // Track if we've already shown the connection notification to prevent duplicates
   const mercariNotificationShown = useRef(false);
   const currentlyConnectingMarketplace = useRef(null);
@@ -1306,6 +1309,31 @@ export default function Settings() {
                     description: checked 
                       ? "You will only see one delete warning." 
                       : "You will see two delete warnings for safety.",
+                  });
+                }}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="smart-routing">Smart Search Routing</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically use premium search (Oxylabs) for high-value products
+                </p>
+              </div>
+              <Switch
+                id="smart-routing"
+                checked={!disableSmartRouting}
+                onCheckedChange={(checked) => {
+                  setDisableSmartRouting(!checked);
+                  localStorage.setItem('orben_disable_smart_routing', (!checked).toString());
+                  toast({
+                    title: checked ? "Smart Routing Enabled" : "Smart Routing Disabled",
+                    description: checked 
+                      ? "Will use premium search for high-value items (iPhone, MacBook, etc.)" 
+                      : "Will only use providers you explicitly select.",
                   });
                 }}
               />

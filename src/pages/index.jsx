@@ -40,6 +40,11 @@ const PrivacyPolicy = React.lazy(() => import("./PrivacyPolicy"));
 const FAQ = React.lazy(() => import("./FAQ"));
 const MigrateData = React.lazy(() => import("./MigrateData"));
 
+// Orben Deal Intelligence
+const Deals = React.lazy(() => import("./Deals"));
+const ProductSearch = React.lazy(() => import("./ProductSearch"));
+const SubmitDeal = React.lazy(() => import("./SubmitDeal"));
+
 const EbayOauthLanding = React.lazy(() => import("./EbayOauthLanding"));
 import DevErrorBoundary from "../components/DevErrorBoundary";
 import ScrollToTop from "../components/ScrollToTop";
@@ -442,6 +447,45 @@ function PagesContent() {
               <Route path="/oauth/ebay" element={withSuspense(<EbayOauthLanding />)} />
               <Route path="/PrivacyPolicy" element={withSuspense(<PrivacyPolicy />)} />
               <Route path="/FAQ" element={withSuspense(<FAQ />)} />
+              
+              {/* Orben Deal Intelligence Routes */}
+              <Route
+                path="/deals"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Deals">
+                        {withSuspense(<Deals />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/deals/submit"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Submit Deal">
+                        {withSuspense(<SubmitDeal />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/product-search"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Product Search">
+                        {withSuspense(<ProductSearch />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              
               <Route
                 path="/Rewards"
                 element={

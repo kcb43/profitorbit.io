@@ -481,8 +481,192 @@ export default function Dashboard() {
             <TipOfTheDay variant="banner" />
           </div>
 
-          {/* KPI Row */}
-          <div className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+          {/* KPI Row - Desktop: 4 cards with hover expansion */}
+          <div className="col-span-12 hidden md:grid text-black/[0.88] text-sm grid-cols-2 lg:grid-cols-4 gap-3 rounded-2xl p-3 bg-zinc-100">
+            {/* Total Profit Card */}
+            <div className="bg-white group relative border-2 border-zinc-200 border-solid rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-xl">
+              <h5 className="text-zinc-400 text-xs font-medium uppercase">Total Profit</h5>
+              <div className="items-baseline flex mt-2 gap-1">
+                <div className="text-zinc-950 text-xl font-medium">
+                  {isLoadingSalesSummary ? "…" : `$${Number(totalProfit || 0).toFixed(0)}`}
+                </div>
+                <div className="text-zinc-400 text-xs">all-time</div>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="mt-3">
+                <div className="bg-zinc-200 flex w-full h-1 rounded-full overflow-hidden">
+                  <div className="bg-emerald-500" style={{ width: `${Math.min((totalProfit / (totalProfit + 1000)) * 100, 100)}%` }}></div>
+                </div>
+                
+                {/* Expanded content on hover */}
+                <div className="overflow-hidden text-xs text-zinc-600 max-h-0 group-hover:max-h-40 transition-all duration-300">
+                  <div className="flex-col pb-1 pt-4 flex gap-3">
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Avg Profit/Sale</div>
+                      </div>
+                      <div className="font-medium">${avgProfit.toFixed(2)}</div>
+                    </div>
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-blue-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Profit Margin</div>
+                      </div>
+                      <div className="font-medium">{profitMargin.toFixed(1)}%</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action button */}
+                <Link 
+                  to={createPageUrl("Gallery")}
+                  className="text-blue-500 bg-zinc-50 items-center bottom-0 cursor-pointer left-0 px-5 absolute right-0 flex overflow-hidden h-0 group-hover:h-auto group-hover:py-2 transition-all duration-300"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  <span className="underline">View Profit Gallery →</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Total Sales Card */}
+            <div className="bg-white group relative border-2 border-zinc-200 border-solid rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-xl">
+              <h5 className="text-zinc-400 text-xs font-medium uppercase">Total Sales</h5>
+              <div className="items-baseline flex mt-2 gap-1">
+                <div className="text-zinc-950 text-xl font-medium">
+                  {isLoadingSalesSummary ? "…" : String(totalSales || 0)}
+                </div>
+                <div className="text-zinc-400 text-xs">items sold</div>
+              </div>
+              
+              <div className="mt-3">
+                <div className="bg-zinc-200 flex w-full h-1 rounded-full gap-[0.13rem] overflow-hidden">
+                  <div className="bg-blue-500" style={{ width: '60%' }}></div>
+                  <div className="bg-purple-500" style={{ width: '40%' }}></div>
+                </div>
+                
+                <div className="overflow-hidden text-xs text-zinc-600 max-h-0 group-hover:max-h-40 transition-all duration-300">
+                  <div className="flex-col pb-1 pt-4 flex gap-3">
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-blue-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Total Revenue</div>
+                      </div>
+                      <div className="font-medium">${Number(totalRevenue || 0).toFixed(0)}</div>
+                    </div>
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-purple-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Avg Sale Speed</div>
+                      </div>
+                      <div className="font-medium">{averageSaleSpeed.toFixed(0)} days</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link 
+                  to={createPageUrl("SalesHistory")}
+                  className="text-blue-500 bg-zinc-50 items-center bottom-0 cursor-pointer left-0 px-5 absolute right-0 flex overflow-hidden h-0 group-hover:h-auto group-hover:py-2 transition-all duration-300"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  <span className="underline">View Sales History →</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Items in Stock Card */}
+            <div className="bg-white group relative border-2 border-zinc-200 border-solid rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-xl">
+              <h5 className="text-zinc-400 text-xs font-medium uppercase">Items in Stock</h5>
+              <div className="items-baseline flex mt-2 gap-1">
+                <div className="text-zinc-950 text-xl font-medium">
+                  {isLoadingInventory ? "…" : String(inventoryStats.totalQuantity || 0)}
+                </div>
+                <div className="text-zinc-400 text-xs">available</div>
+              </div>
+              
+              <div className="mt-3">
+                <div className="bg-zinc-200 flex w-full h-1 rounded-full overflow-hidden">
+                  <div className="bg-purple-500" style={{ width: `${Math.min((inventoryStats.totalQuantity / (inventoryStats.totalQuantity + 10)) * 100, 100)}%` }}></div>
+                </div>
+                
+                <div className="overflow-hidden text-xs text-zinc-600 max-h-0 group-hover:max-h-40 transition-all duration-300">
+                  <div className="flex-col pb-1 pt-4 flex gap-3">
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-amber-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Return Deadlines</div>
+                      </div>
+                      <div className="font-medium">{itemsWithUpcomingReturns?.length || 0}</div>
+                    </div>
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Needs Listing</div>
+                      </div>
+                      <div className="font-medium">{staleItems?.length || 0}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link 
+                  to={createPageUrl("Inventory")}
+                  className="text-blue-500 bg-zinc-50 items-center bottom-0 cursor-pointer left-0 px-5 absolute right-0 flex overflow-hidden h-0 group-hover:h-auto group-hover:py-2 transition-all duration-300"
+                >
+                  <Box className="w-4 h-4 mr-2" />
+                  <span className="underline">Manage Inventory →</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Platform Performance Card */}
+            <div className="bg-white group relative border-2 border-zinc-200 border-solid rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-xl">
+              <h5 className="text-zinc-400 text-xs font-medium uppercase">Platform Mix</h5>
+              <div className="items-baseline flex mt-2 gap-1">
+                <div className="text-zinc-950 text-xl font-medium">
+                  {isLoadingPlatformSummary ? "…" : platformSummary.length}
+                </div>
+                <div className="text-zinc-400 text-xs">platforms</div>
+              </div>
+              
+              <div className="mt-3">
+                <div className="bg-zinc-200 flex w-full h-1 rounded-full gap-[0.13rem] overflow-hidden">
+                  <div className="bg-emerald-500" style={{ width: '40%' }}></div>
+                  <div className="bg-blue-500" style={{ width: '35%' }}></div>
+                  <div className="bg-purple-500" style={{ width: '25%' }}></div>
+                </div>
+                
+                <div className="overflow-hidden text-xs text-zinc-600 max-h-0 group-hover:max-h-40 transition-all duration-300">
+                  <div className="flex-col pb-1 pt-4 flex gap-3">
+                    {platformSummary.slice(0, 2).map((platform, idx) => (
+                      <div key={idx} className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div 
+                            className={`w-2 h-2 mr-1.5 rounded-full ${
+                              idx === 0 ? 'bg-emerald-500' : 'bg-blue-500'
+                            }`}
+                          ></div>
+                          <div className="capitalize">{platform.platform || 'Unknown'}</div>
+                        </div>
+                        <div className="font-medium">${Number(platform.total_profit || 0).toFixed(0)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <Link 
+                  to={createPageUrl("PlatformPerformance")}
+                  className="text-blue-500 bg-zinc-50 items-center bottom-0 cursor-pointer left-0 px-5 absolute right-0 flex overflow-hidden h-0 group-hover:h-auto group-hover:py-2 transition-all duration-300"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  <span className="underline">View All Platforms →</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI Row - Mobile: Original 3-card layout */}
+          <div className="col-span-12 md:hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             <KpiSparkCard
               title="Total Profit"
               value={isLoadingSalesSummary ? "…" : `$${Number(totalProfit || 0).toFixed(0)}`}
