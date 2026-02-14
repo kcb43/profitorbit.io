@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -12,13 +12,16 @@ const PO_BUILD_SHA = typeof __PO_BUILD_SHA__ !== 'undefined' ? __PO_BUILD_SHA__ 
 // eslint-disable-next-line no-undef
 const PO_BUILD_TIME = typeof __PO_BUILD_TIME__ !== 'undefined' ? __PO_BUILD_TIME__ : 'unknown';
 // eslint-disable-next-line no-console
-console.log(`🟢 WEB BUILD: ${PO_BUILD_SHA} @ ${PO_BUILD_TIME}`);
+console.log(`ðŸŸ¢ WEB BUILD: ${PO_BUILD_SHA} @ ${PO_BUILD_TIME}`);
 if (typeof window !== 'undefined') {
   window.__PO_WEB_BUILD__ = { sha: PO_BUILD_SHA, time: PO_BUILD_TIME };
 }
 
 // Global error handler for chunk loading failures
-// This catches module loading errors before they reach React
+// Includes retry tracking to prevent infinite reload loops
+const CHUNK_ERROR_RETRY_KEY = 'po_chunk_error_retries';
+const MAX_CHUNK_RETRIES = 2;
+
 window.addEventListener('error', (event) => {
   const isChunkError = 
     event.message?.includes('Failed to fetch dynamically imported module') ||
@@ -30,18 +33,30 @@ window.addEventListener('error', (event) => {
     ));
 
   if (isChunkError) {
-    console.warn('🔄 Chunk loading error detected globally - reloading to fetch new version...');
+    console.warn('ðŸ”„ Chunk loading error detected - checking retry count...');
     console.warn('Error:', event.message || event.error?.message);
-    
-    // Prevent the error from propagating
     event.preventDefault();
     
-    // Reload after a short delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    const retryCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_RETRY_KEY) || '0', 10);
+    
+    if (retryCount < MAX_CHUNK_RETRIES) {
+      sessionStorage.setItem(CHUNK_ERROR_RETRY_KEY, String(retryCount + 1));
+      console.warn(`ðŸ”„ Reloading (attempt ${retryCount + 1}/${MAX_CHUNK_RETRIES})...`);
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      console.error('âŒ Max retries exceeded. Not reloading to prevent infinite loop.');
+      sessionStorage.removeItem(CHUNK_ERROR_RETRY_KEY);
+    }
   }
 }, true);
+
+// Clear retry counter on successful page load
+window.addEventListener('load', () => {
+  if (sessionStorage.getItem(CHUNK_ERROR_RETRY_KEY)) {
+    console.log('âœ… Page loaded successfully, clearing retry counter');
+    sessionStorage.removeItem(CHUNK_ERROR_RETRY_KEY);
+  }
+});
 
 // Sensible defaults to reduce refetch churn and make the app feel faster.
 const queryClient = new QueryClient({
@@ -49,7 +64,6 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       refetchOnWindowFocus: false,
-      // Default: fetch on mount if data is stale. (We prefer `placeholderData` over `initialData` on pages.)
       refetchOnMount: true,
       retry: 1,
     },

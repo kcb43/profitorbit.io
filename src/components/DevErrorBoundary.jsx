@@ -3,7 +3,7 @@ import React from "react";
 export default class DevErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, err: null, isChunkError: false };
+    this.state = { hasError: false, err: null, isChunkError: false, maxRetriesExceeded: false };
   }
 
   static getDerivedStateFromError(err) {
@@ -19,20 +19,70 @@ export default class DevErrorBoundary extends React.Component {
   componentDidCatch(err, info) {
     console.error("DevErrorBoundary caught:", err, info);
     
-    // If it's a chunk loading error, automatically reload the page
+    // If it's a chunk loading error, check retry count before reloading
     if (this.state.isChunkError) {
-      console.warn("🔄 Chunk loading error detected - this usually means new code was deployed. Reloading page...");
-      // Small delay to show the message, then reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      const CHUNK_ERROR_RETRY_KEY = 'po_chunk_error_retries';
+      const MAX_CHUNK_RETRIES = 2;
+      const retryCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_RETRY_KEY) || '0', 10);
+      
+      if (retryCount < MAX_CHUNK_RETRIES) {
+        console.warn(`🔄 Chunk loading error detected - reloading (attempt ${retryCount + 1}/${MAX_CHUNK_RETRIES})...`);
+        sessionStorage.setItem(CHUNK_ERROR_RETRY_KEY, String(retryCount + 1));
+        
+        // Small delay to show the message, then reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        console.error('❌ Max chunk error retries exceeded in Error Boundary. Not reloading.');
+        sessionStorage.removeItem(CHUNK_ERROR_RETRY_KEY);
+        // Will show the error UI instead of reloading
+        this.setState({ maxRetriesExceeded: true });
+      }
     }
   }
 
   render() {
     if (this.state.hasError) {
-      // For chunk errors, show a friendly "reloading..." message
+      // For chunk errors, show different UI based on retry status
       if (this.state.isChunkError) {
+        // If max retries exceeded, show error with manual refresh option
+        if (this.state.maxRetriesExceeded) {
+          return (
+            <div className="flex items-center justify-center min-h-screen bg-background">
+              <div className="p-8 text-center space-y-4 max-w-md">
+                <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                <h2 className="font-bold text-xl text-foreground">Unable to Load Page</h2>
+                <p className="text-sm text-muted-foreground">
+                  We tried to reload the page multiple times but the error persists. 
+                  This might be a temporary issue with the server or network.
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      sessionStorage.removeItem('po_chunk_error_retries');
+                      window.location.reload();
+                    }}
+                    className="w-full px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 transition"
+                  >
+                    Go to Home
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  If this persists, please check your internet connection or try again later.
+                </p>
+              </div>
+            </div>
+          );
+        }
+        
+        // Normal chunk error - showing loading/reloading UI
         return (
           <div className="flex items-center justify-center min-h-screen bg-background">
             <div className="p-8 text-center space-y-4 max-w-md">
