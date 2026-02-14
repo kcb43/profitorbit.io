@@ -287,6 +287,7 @@ export default function Deals() {
       )}
 
       {filteredDeals?.length === 0 && !isLoading && <EmptyDealState />}
+      </div>
     </div>
   );
 }
