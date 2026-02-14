@@ -220,8 +220,22 @@ class RapidApiGoogleProvider extends SearchProvider {
         dataStatus: response.data?.status,
         hasData: !!response.data,
         hasProducts: !!(response.data?.data?.products),
-        productCount: response.data?.data?.products?.length || 0
+        productCount: response.data?.data?.products?.length || 0,
+        rawDataKeys: Object.keys(response.data || {}),
+        hypothesisId: 'D'
       }));
+      
+      // Hypothesis F: Log raw response structure for debugging
+      if (response.data?.data?.products?.length === 0) {
+        console.log('[DEBUG-F] RapidAPI returned 0 products', JSON.stringify({
+          query: query,
+          responseStatus: response.data?.status,
+          totalAvailable: response.data?.data?.total || 0,
+          hasError: !!response.data?.error,
+          errorMessage: response.data?.error || null,
+          hypothesisId: 'F'
+        }));
+      }
 
       console.log(`[Google/RapidAPI] Response status: ${response.data?.status}`);
       
@@ -584,6 +598,26 @@ fastify.post('/search', async (request, reply) => {
 // ==========================================
 fastify.get('/health', async () => {
   return { status: 'ok', service: 'orben-search-worker', ts: new Date().toISOString() };
+});
+
+// ==========================================
+// Admin: Flush cache
+// ==========================================
+fastify.post('/admin/flush-cache', async (request, reply) => {
+  const { queries } = request.body;
+  
+  if (!Array.isArray(queries) || queries.length === 0) {
+    return reply.code(400).send({ error: 'queries array required' });
+  }
+  
+  const flushed = [];
+  for (const query of queries) {
+    const cacheKey = getCacheKey('google', 'US', query);
+    const result = await redis.del(cacheKey);
+    flushed.push({ query, cacheKey, deleted: result === 1 });
+  }
+  
+  return { ok: true, flushed };
 });
 
 // ==========================================
