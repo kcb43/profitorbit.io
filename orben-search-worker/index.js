@@ -169,15 +169,18 @@ class RapidApiGoogleProvider extends SearchProvider {
   }
 
   async search(query, opts = {}) {
-    // #region agent log
-    const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:172',message:'RapidAPI search entry',data:{hasApiKey:!!this.apiKey,keyLength:this.apiKey?.length||0,query:query,opts:opts},timestamp:Date.now(),runId:'search',hypothesisId:'A'})+'\n'); } catch(e) {}
-    // #endregion
+    // Hypothesis A: Is the RAPIDAPI_KEY accessible?
+    console.log('[DEBUG-A] RapidAPI search entry', JSON.stringify({
+      hasApiKey: !!this.apiKey,
+      keyLength: this.apiKey?.length || 0,
+      query: query
+    }));
     
     if (!this.apiKey) {
       console.warn('[Google/RapidAPI] No API key configured');
-      // #region agent log
-      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:174',message:'No API key - returning empty',data:{env_key_exists:!!process.env.RAPIDAPI_KEY},timestamp:Date.now(),runId:'search',hypothesisId:'A'})+'\n'); } catch(e) {}
-      // #endregion
+      console.log('[DEBUG-A] No API key - returning empty', JSON.stringify({
+        env_key_exists: !!process.env.RAPIDAPI_KEY
+      }));
       return [];
     }
 
@@ -187,9 +190,12 @@ class RapidApiGoogleProvider extends SearchProvider {
       // Using Real-Time Product Search API v2 on RapidAPI
       console.log(`[Google/RapidAPI] Searching for: "${query}"`);
       
-      // #region agent log
-      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:183',message:'Making RapidAPI request',data:{query:query,country:country,limit:limit},timestamp:Date.now(),runId:'search',hypothesisId:'B'})+'\n'); } catch(e) {}
-      // #endregion
+      // Hypothesis B: Is RapidAPI request being made correctly?
+      console.log('[DEBUG-B] Making RapidAPI request', JSON.stringify({
+        query: query,
+        country: country,
+        limit: limit
+      }));
       
       const response = await axios.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
         params: {
@@ -208,17 +214,24 @@ class RapidApiGoogleProvider extends SearchProvider {
         timeout: 15000
       });
 
-      // #region agent log
-      const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:199',message:'RapidAPI response received',data:{statusCode:response.status,dataStatus:response.data?.status,hasData:!!response.data,hasProducts:!!(response.data?.data?.products),productCount:response.data?.data?.products?.length||0},timestamp:Date.now(),runId:'search',hypothesisId:'D'})+'\n'); } catch(e) {}
-      // #endregion
+      // Hypothesis D: Is RapidAPI returning products?
+      console.log('[DEBUG-D] RapidAPI response received', JSON.stringify({
+        statusCode: response.status,
+        dataStatus: response.data?.status,
+        hasData: !!response.data,
+        hasProducts: !!(response.data?.data?.products),
+        productCount: response.data?.data?.products?.length || 0
+      }));
 
       console.log(`[Google/RapidAPI] Response status: ${response.data?.status}`);
       
       const products = response.data?.data?.products || [];
       
-      // #region agent log
-      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:205',message:'Products extracted',data:{productCount:products.length,firstProductTitle:products[0]?.product_title||null},timestamp:Date.now(),runId:'search',hypothesisId:'D'})+'\n'); } catch(e) {}
-      // #endregion
+      // Hypothesis D continued: Log product extraction
+      console.log('[DEBUG-D] Products extracted', JSON.stringify({
+        productCount: products.length,
+        firstProductTitle: products[0]?.product_title || null
+      }));
       
       console.log(`[Google/RapidAPI] Found ${products.length} products`);
 
@@ -244,9 +257,13 @@ class RapidApiGoogleProvider extends SearchProvider {
         };
       }).filter(item => item.title && item.url);
     } catch (error) {
-      // #region agent log
-      const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:228',message:'RapidAPI error caught',data:{errorMessage:error.message,hasResponse:!!error.response,statusCode:error.response?.status||null,responseData:error.response?.data?JSON.stringify(error.response.data).slice(0,200):null},timestamp:Date.now(),runId:'search',hypothesisId:'B'})+'\n'); } catch(e) {}
-      // #endregion
+      // Hypothesis B: Log RapidAPI errors
+      console.log('[DEBUG-B] RapidAPI error caught', JSON.stringify({
+        errorMessage: error.message,
+        hasResponse: !!error.response,
+        statusCode: error.response?.status || null,
+        responseData: error.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : null
+      }));
       
       console.error(`[Google/RapidAPI] Search error:`, error.message);
       if (error.response) {
@@ -461,16 +478,22 @@ fastify.post('/search', async (request, reply) => {
 
     const cacheKey = getCacheKey(providerName, country, query);
 
-    // #region agent log
-    const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:463',message:'Cache key generated',data:{cacheKey:cacheKey,providerName:providerName,query:query},timestamp:Date.now(),runId:'search',hypothesisId:'C'})+'\n'); } catch(e) {}
-    // #endregion
+    // Hypothesis C: Is the cache key v5?
+    console.log('[DEBUG-C] Cache key generated', JSON.stringify({
+      cacheKey: cacheKey,
+      providerName: providerName,
+      query: query
+    }));
 
     // Check cache first
     const cached = await redis.get(cacheKey);
     
-    // #region agent log
-    try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:467',message:'Cache lookup result',data:{hasCached:!!cached,cacheKey:cacheKey,willUseCached:!!cached},timestamp:Date.now(),runId:'search',hypothesisId:'E'})+'\n'); } catch(e) {}
-    // #endregion
+    // Hypothesis E: Is old v4 cache being served?
+    console.log('[DEBUG-E] Cache lookup result', JSON.stringify({
+      hasCached: !!cached,
+      cacheKey: cacheKey,
+      willUseCached: !!cached
+    }));
     
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -491,9 +514,12 @@ fastify.post('/search', async (request, reply) => {
     try {
       const items = await provider.search(query, { country, limit });
       
-      // #region agent log
-      const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:484',message:'Provider search completed',data:{provider:providerName,itemCount:items.length,firstItem:items[0]?.title||null},timestamp:Date.now(),runId:'search',hypothesisId:'D'})+'\n'); } catch(e) {}
-      // #endregion
+      // Hypothesis D: Log provider search results
+      console.log('[DEBUG-D] Provider search completed', JSON.stringify({
+        provider: providerName,
+        itemCount: items.length,
+        firstItem: items[0]?.title || null
+      }));
       
       // Cache for 6 hours
       await redis.set(cacheKey, JSON.stringify(items), 'EX', 60 * 60 * 6);
@@ -501,9 +527,11 @@ fastify.post('/search', async (request, reply) => {
       results.providers.push({ provider: providerName, cached: false, count: items.length });
       results.items.push(...items);
     } catch (error) {
-      // #region agent log
-      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:491',message:'Provider search error',data:{provider:providerName,errorMsg:error.message},timestamp:Date.now(),runId:'search',hypothesisId:'B'})+'\n'); } catch(e) {}
-      // #endregion
+      // Hypothesis B: Log provider search errors
+      console.log('[DEBUG-B] Provider search error', JSON.stringify({
+        provider: providerName,
+        errorMsg: error.message
+      }));
       results.providers.push({ provider: providerName, error: error.message });
     }
   }
