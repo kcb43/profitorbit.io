@@ -34,56 +34,78 @@ This is a **code-splitting + deployment race condition**:
 
 ## The Solution ✅
 
-We implemented **dual-layer auto-reload** to catch these errors at two levels:
+We implemented **dual-layer auto-reload with retry tracking** to prevent infinite loops:
 
 ### 1. Global Error Handler (`main.jsx`)
-Catches chunk errors **before they reach React**:
+Catches chunk errors **before they reach React** with **retry limit**:
 
 ```javascript
-window.addEventListener('error', (event) => {
-  const isChunkError = 
-    event.message?.includes('Failed to fetch dynamically imported module') ||
-    event.message?.includes('Failed to load module script');
+const CHUNK_ERROR_RETRY_KEY = 'po_chunk_error_retries';
+const MAX_CHUNK_RETRIES = 2;
 
+window.addEventListener('error', (event) => {
   if (isChunkError) {
-    console.warn('🔄 Chunk loading error - reloading...');
-    event.preventDefault(); // Stop error propagation
-    setTimeout(() => window.location.reload(), 1000); // Reload after 1s
+    const retryCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_RETRY_KEY) || '0', 10);
+    
+    if (retryCount < MAX_CHUNK_RETRIES) {
+      // Increment and reload
+      sessionStorage.setItem(CHUNK_ERROR_RETRY_KEY, String(retryCount + 1));
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      // Stop reloading - prevent infinite loop!
+      console.error('❌ Max retries exceeded. Not reloading.');
+      sessionStorage.removeItem(CHUNK_ERROR_RETRY_KEY);
+    }
   }
 }, true);
+
+// Clear counter on successful load
+window.addEventListener('load', () => {
+  sessionStorage.removeItem(CHUNK_ERROR_RETRY_KEY);
+});
 ```
 
 **Benefits:**
-- Catches errors at the lowest level (DOM)
-- Prevents error from reaching React
-- Fast response (1 second delay)
+- ✅ Prevents infinite reload loops
+- ✅ Allows 2 retry attempts
+- ✅ Clears counter on success
+- ✅ Fast response (1 second delay)
 
 ### 2. Error Boundary (`DevErrorBoundary.jsx`)
-Catches chunk errors in **React component tree**:
+Catches chunk errors in **React component tree** with **retry limit**:
 
 ```javascript
 componentDidCatch(err, info) {
   if (this.state.isChunkError) {
-    console.warn('🔄 Chunk error in React - reloading...');
-    setTimeout(() => window.location.reload(), 1500);
+    const retryCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_RETRY_KEY) || '0', 10);
+    
+    if (retryCount < MAX_CHUNK_RETRIES) {
+      sessionStorage.setItem(CHUNK_ERROR_RETRY_KEY, String(retryCount + 1));
+      setTimeout(() => window.location.reload(), 1500);
+    } else {
+      // Show error UI instead of reloading
+      this.setState({ maxRetriesExceeded: true });
+    }
   }
 }
 ```
 
-**Shows friendly UI:**
+**Shows friendly UI after max retries:**
 ```
-🔄 Loading new version...
+⚠️ Unable to Load Page
 
-We detected a new deployment. The page will 
-reload automatically in a moment.
+We tried to reload the page multiple times but 
+the error persists. This might be a temporary 
+issue with the server or network.
 
-(If it doesn't reload, please refresh manually)
+[Try Again] [Go to Home]
 ```
 
 **Benefits:**
-- Catches errors that slip through global handler
-- Shows user-friendly message
-- Slightly longer delay (1.5s) to show message
+- ✅ Prevents infinite loops
+- ✅ Shows helpful error after retries exhausted  
+- ✅ Provides manual recovery options
+- ✅ Slightly longer delay (1.5s) to show message
 
 ---
 
@@ -219,9 +241,13 @@ Error: Failed to fetch dynamically imported module: .../Deals-ABC.js
 **Problem:** Real code bugs shouldn't trigger reload
 **Solution:** Only chunk loading errors trigger reload, other errors show debug info
 
-### Case 4: Infinite Reload Loop
-**Problem:** What if new version also has chunk errors?
-**Solution:** Each reload is user-initiated navigation, won't loop automatically
+### Case 4: Infinite Reload Loop ✅ **FIXED**
+**Problem:** What if new version also has chunk errors? Could reload forever!
+**Solution:** 
+- Track retry count in sessionStorage (persists across reloads)
+- Max 2 reload attempts
+- After 2 failed attempts → Show error UI with manual retry
+- Success → Clear counter automatically
 
 ---
 
