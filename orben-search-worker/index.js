@@ -186,7 +186,7 @@ class RapidApiGoogleProvider extends SearchProvider {
           country: country.toLowerCase(),
           language: 'en',
           page: 1,
-          limit: limit,
+          limit: Math.min(limit, 50), // Support up to 50 results
           sort_by: 'BEST_MATCH',
           product_condition: 'ANY'
         },
@@ -203,17 +203,27 @@ class RapidApiGoogleProvider extends SearchProvider {
       
       console.log(`[Google/RapidAPI] Found ${products.length} products`);
 
-      return products.map(item => ({
-        title: item.product_title,
-        url: item.product_link,
-        price: parseFloat(item.offer?.price),
-        currency: item.offer?.currency || 'USD',
-        merchant: item.offer?.store_name || 'Unknown',
-        image_url: item.product_photos?.[0],
-        source: this.name,
-        rating: item.product_rating,
-        reviews_count: item.product_num_reviews
-      }));
+      return products.map(item => {
+        // Extract price from string (e.g., "$429.00" -> 429.00)
+        let price = null;
+        if (item.offer?.price) {
+          const priceStr = item.offer.price.toString().replace(/[^0-9.]/g, '');
+          price = parseFloat(priceStr);
+        }
+
+        return {
+          title: item.product_title,
+          url: item.offer?.offer_page_url || item.product_page_url,
+          price: price,
+          currency: 'USD',
+          merchant: item.offer?.store_name || 'Google Shopping',
+          image_url: item.product_photos?.[0],
+          source: this.name,
+          rating: item.product_rating,
+          reviews_count: item.product_num_reviews,
+          condition: item.offer?.product_condition || 'New'
+        };
+      }).filter(item => item.title && item.url);
     } catch (error) {
       console.error(`[Google/RapidAPI] Search error:`, error.message);
       if (error.response) {
@@ -362,8 +372,8 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}`).digest('hex');
-  // v2: Added after fixing RapidAPI endpoint (2026-02-14)
-  return `search:v2:${provider}:${country}:${hash}`;
+  // v3: Fixed price/URL parsing for RapidAPI v2 response (2026-02-14)
+  return `search:v3:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
