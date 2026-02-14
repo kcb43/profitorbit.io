@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Wrench, Layers, Plus, TrendingUp, History, Settings, Sparkles } from "lucide-react";
+import { Wrench, Layers, Plus, TrendingUp, History, Settings, Sparkles, Search, TrendingDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function HubCard({ title, description, to, icon: Icon, gradient }) {
@@ -37,6 +37,20 @@ export default function Tools() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <HubCard
+            title="Deal Feed"
+            description="Find profitable deals"
+            to="/deals"
+            icon={TrendingDown}
+            gradient="from-orange-500 to-red-500"
+          />
+          <HubCard
+            title="Product Search"
+            description="Search products across platforms"
+            to="/product-search"
+            icon={Search}
+            gradient="from-purple-500 to-pink-500"
+          />
+          <HubCard
             title="Crosslist"
             description="List inventory across platforms"
             to={createPageUrl("Crosslist")}
@@ -56,13 +70,6 @@ export default function Tools() {
             to={createPageUrl("AddSale")}
             icon={Plus}
             gradient="from-emerald-500 to-green-500"
-          />
-          <HubCard
-            title="Pulse"
-            description="Research comps and trends"
-            to={createPageUrl("Pulse")}
-            icon={TrendingUp}
-            gradient="from-indigo-500 to-violet-600"
           />
         </div>
       </div>
