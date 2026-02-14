@@ -446,6 +446,17 @@ async function checkQuota(userId, provider) {
 // Search endpoint
 // ==========================================
 fastify.post('/search', async (request, reply) => {
+  // #region agent log
+  console.log('[DEBUG-C] Search worker: Request received', JSON.stringify({
+    hasQuery: !!request.body?.query,
+    hasUserId: !!request.body?.userId,
+    providers: request.body?.providers,
+    country: request.body?.country,
+    limit: request.body?.limit,
+    hypothesisId: 'C'
+  }));
+  // #endregion
+  
   const { query, providers: requestedProviders, country = 'US', userId, limit = 20 } = request.body;
 
   if (!query || !query.trim()) {
@@ -460,6 +471,14 @@ fastify.post('/search', async (request, reply) => {
   const selectedProviders = selectSmartProviders(query, requestedProviders);
   
   console.log(`[Search] Query: "${query}", Selected providers: ${selectedProviders.join(', ')}`);
+
+  // #region agent log
+  console.log('[DEBUG-C] Search worker: Providers selected', JSON.stringify({
+    selectedProviders: selectedProviders,
+    requestedProviders: requestedProviders,
+    hypothesisId: 'C'
+  }));
+  // #endregion
 
   const results = {
     query,
@@ -546,6 +565,16 @@ fastify.post('/search', async (request, reply) => {
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
     }]);
   }
+
+  // #region agent log
+  console.log('[DEBUG-D] Search worker: Final response', JSON.stringify({
+    totalItems: results.items.length,
+    providerCount: results.providers.length,
+    providers: results.providers,
+    firstItemTitle: results.items[0]?.title || null,
+    hypothesisId: 'D'
+  }));
+  // #endregion
 
   return results;
 });

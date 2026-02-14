@@ -57,6 +57,14 @@ export default function ProductSearch() {
     queryFn: async () => {
       if (!debouncedQuery) return null;
 
+      // #region agent log
+      console.log('[DEBUG-A] Frontend: Starting product search', JSON.stringify({
+        query: debouncedQuery,
+        orbenApiUrl: ORBEN_API_URL,
+        hypothesisId: 'A'
+      }));
+      // #endregion
+
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
@@ -65,6 +73,14 @@ export default function ProductSearch() {
         hasToken: !!token,
         tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
       });
+
+      // #region agent log
+      console.log('[DEBUG-A] Frontend: Auth token check', JSON.stringify({
+        hasToken: !!token,
+        tokenLength: token?.length || 0,
+        hypothesisId: 'A'
+      }));
+      // #endregion
 
       if (!token) {
         toast({
@@ -87,6 +103,14 @@ export default function ProductSearch() {
         cache_version: 'v5_rapidapi_configured'
       });
 
+      // #region agent log
+      console.log('[DEBUG-A] Frontend: Making API request', JSON.stringify({
+        url: `${ORBEN_API_URL}/v1/search`,
+        params: Object.fromEntries(params),
+        hypothesisId: 'A'
+      }));
+      // #endregion
+
       console.log('[ProductSearch] Fetching:', `${ORBEN_API_URL}/v1/search?${params}`);
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
@@ -95,9 +119,25 @@ export default function ProductSearch() {
 
       console.log('[ProductSearch] Response status:', response.status);
 
+      // #region agent log
+      console.log('[DEBUG-D] Frontend: API response received', JSON.stringify({
+        statusCode: response.status,
+        ok: response.ok,
+        hypothesisId: 'D'
+      }));
+      // #endregion
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[ProductSearch] Error response:', errorText);
+        
+        // #region agent log
+        console.log('[DEBUG-E] Frontend: API error response', JSON.stringify({
+          statusCode: response.status,
+          errorText: errorText.slice(0, 200),
+          hypothesisId: 'E'
+        }));
+        // #endregion
         
         if (response.status === 401) {
           toast({
@@ -116,6 +156,15 @@ export default function ProductSearch() {
         itemCount: data.items?.length || 0,
         providers: data.providers
       });
+
+      // #region agent log
+      console.log('[DEBUG-D] Frontend: Results parsed', JSON.stringify({
+        itemCount: data.items?.length || 0,
+        providers: data.providers,
+        firstItemTitle: data.items?.[0]?.title || null,
+        hypothesisId: 'D'
+      }));
+      // #endregion
 
       return data;
     },

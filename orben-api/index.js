@@ -299,12 +299,33 @@ fastify.post('/v1/deals/flag', async (request, reply) => {
  * Universal product search
  */
 fastify.get('/v1/search', async (request, reply) => {
+  // #region agent log
+  console.log('[DEBUG-A] orben-api: Search request received', JSON.stringify({
+    hasAuth: !!request.headers.authorization,
+    queryParams: request.query,
+    hypothesisId: 'A'
+  }));
+  // #endregion
+  
   let user;
   try {
     user = await requireUser(request);
   } catch (e) {
+    // #region agent log
+    console.log('[DEBUG-A] orben-api: Auth failed', JSON.stringify({
+      error: e.message,
+      hypothesisId: 'A'
+    }));
+    // #endregion
     return reply.code(401).send({ error: e.message });
   }
+
+  // #region agent log
+  console.log('[DEBUG-A] orben-api: User authenticated', JSON.stringify({
+    userId: user.id,
+    hypothesisId: 'A'
+  }));
+  // #endregion
 
   const { q, country = 'US', providers = 'ebay', limit = 20 } = request.query;
 
@@ -313,6 +334,18 @@ fastify.get('/v1/search', async (request, reply) => {
   }
 
   const providerList = providers.split(',');
+
+  // #region agent log
+  console.log('[DEBUG-B] orben-api: Calling search worker', JSON.stringify({
+    workerUrl: SEARCH_WORKER_URL,
+    query: q.trim(),
+    providers: providerList,
+    country,
+    userId: user.id,
+    limit: parseInt(limit, 10),
+    hypothesisId: 'B'
+  }));
+  // #endregion
 
   // Call search worker
   try {
@@ -326,8 +359,25 @@ fastify.get('/v1/search', async (request, reply) => {
       timeout: 45000 // Increased to 45 seconds for Oxylabs
     });
 
+    // #region agent log
+    console.log('[DEBUG-D] orben-api: Search worker response received', JSON.stringify({
+      statusCode: response.status,
+      itemCount: response.data?.items?.length || 0,
+      providers: response.data?.providers,
+      hypothesisId: 'D'
+    }));
+    // #endregion
+
     return response.data;
   } catch (error) {
+    // #region agent log
+    console.log('[DEBUG-E] orben-api: Search worker error', JSON.stringify({
+      errorMessage: error.message,
+      statusCode: error.response?.status,
+      responseData: error.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : null,
+      hypothesisId: 'E'
+    }));
+    // #endregion
     return reply.code(500).send({ error: error.message || 'Search worker error' });
   }
 });
