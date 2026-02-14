@@ -285,21 +285,37 @@ export default function ProductSearch() {
     return () => observer.disconnect();
   }, [hasMore]);
 
-  // Auto-fetch more items when user scrolls close to the end
+  // Auto-fetch more items when user scrolls close to the end OR after initial load
   useEffect(() => {
     if (!canLoadMore || isLoadingMore) return;
     
-    // Only trigger auto-fetch if:
-    // 1. User has scrolled past initial 10 items (displayLimit > 10)
-    // 2. User is within 3 items of the end of fetched items
-    if (displayLimit <= 10) return; // Wait for user to scroll first!
-    if (displayLimit < requestedLimit - 3) return; // Wait until near end
+    // Trigger if user has scrolled past 10 items, OR if we only have 10 items (no scroll needed yet)
+    // This handles the case where 10 items fit on one screen
+    const shouldFetch = displayLimit > 10 || (displayLimit === 10 && searchResults?.items?.length === 10);
+    if (!shouldFetch) return;
+    
+    // If user hasn't scrolled yet but we have exactly 10 items, wait 2 seconds before auto-fetching
+    // This gives them time to browse the initial results
+    if (displayLimit === 10 && searchResults?.items?.length === 10) {
+      const timer = setTimeout(() => {
+        if (canLoadMore && !isLoadingMore) {
+          console.log('[ProductSearch] Auto-loading next batch (no scroll needed - only 10 items)');
+          setIsLoadingMore(true);
+          setTotalFetched(requestedLimit);
+          setRequestedLimit(prev => prev + 10);
+        }
+      }, 2000); // Wait 2 seconds
+      return () => clearTimeout(timer);
+    }
+    
+    // For scrolled scenarios: wait until near end
+    if (displayLimit < requestedLimit - 3) return;
 
     console.log('[ProductSearch] Auto-loading next batch (10 more items)');
     setIsLoadingMore(true);
-    setTotalFetched(requestedLimit); // Track what we've fetched
-    setRequestedLimit(prev => prev + 10); // Fetch 10 more items
-  }, [displayLimit, canLoadMore, isLoadingMore, requestedLimit]);
+    setTotalFetched(requestedLimit);
+    setRequestedLimit(prev => prev + 10);
+  }, [displayLimit, canLoadMore, isLoadingMore, requestedLimit, searchResults?.items?.length]);
 
   // Reset loading state when new data arrives
   useEffect(() => {
