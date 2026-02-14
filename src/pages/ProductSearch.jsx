@@ -13,18 +13,45 @@ const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.f
 
 export default function ProductSearch() {
   const [query, setQuery] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [displayLimit, setDisplayLimit] = useState(12); // Show 12 initially
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
+  const debounceTimerRef = useRef(null);
+
+  // Debounce search query: wait 800ms after user stops typing
+  useEffect(() => {
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Only debounce if query is at least 3 characters
+    if (query.trim().length >= 3) {
+      debounceTimerRef.current = setTimeout(() => {
+        setDebouncedQuery(query.trim());
+        setDisplayLimit(12); // Reset display limit on new search
+      }, 800); // Wait 800ms after user stops typing
+    } else {
+      // Clear results if query is too short
+      setDebouncedQuery('');
+    }
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [query]);
 
   // Check if smart routing is enabled
   const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
 
-  const { data: searchResults, isLoading, refetch, error: queryError } = useQuery({
-    queryKey: ['productSearch', searchQuery],
+  const { data: searchResults, isLoading, error: queryError } = useQuery({
+    queryKey: ['productSearch', debouncedQuery],
     queryFn: async () => {
-      if (!searchQuery) return null;
+      if (!debouncedQuery) return null;
 
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
@@ -48,7 +75,7 @@ export default function ProductSearch() {
       const providerList = 'auto';
 
       const params = new URLSearchParams({
-        q: searchQuery,
+        q: debouncedQuery,
         providers: providerList,
         country: 'US',
         limit: '50' // Fetch 50 total, display progressively
@@ -86,9 +113,10 @@ export default function ProductSearch() {
 
       return data;
     },
-    enabled: false // Only run when explicitly triggered
+    enabled: !!debouncedQuery // Auto-run when debouncedQuery changes
   });
 
+  // Optional: Allow instant search on Enter key press
   const handleSearch = (e) => {
     e.preventDefault();
     if (!query.trim()) {
@@ -100,9 +128,9 @@ export default function ProductSearch() {
       toast({ title: 'Please enter at least 3 characters', variant: 'destructive' });
       return;
     }
-    setSearchQuery(query);
-    setDisplayLimit(12); // Reset display limit on new search
-    refetch();
+    // Immediately trigger search (bypass debounce)
+    setDebouncedQuery(query.trim());
+    setDisplayLimit(12);
   };
 
   // Progressive loading: show more results as user scrolls
@@ -125,6 +153,9 @@ export default function ProductSearch() {
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [hasMore]);
+
+  // Check if we're waiting for debounce
+  const isTyping = query.length >= 3 && query.trim() !== debouncedQuery;
 
   const groupedResults = {};
   if (displayedItems.length > 0) {
@@ -149,15 +180,21 @@ export default function ProductSearch() {
         <CardContent className="pt-4 sm:pt-6">
           <form onSubmit={handleSearch}>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <Input
-                  placeholder="Search for products..."
+                  placeholder="Start typing to search... (min 3 characters)"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="text-base sm:text-lg"
+                  className="text-base sm:text-lg pr-24"
                 />
+                {isTyping && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-600 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Searching...</span>
+                  </div>
+                )}
               </div>
-              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto px-6 sm:px-8">
+              <Button type="submit" disabled={isLoading || !query.trim() || query.trim().length < 3} className="w-full sm:w-auto px-6 sm:px-8">
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -166,7 +203,7 @@ export default function ProductSearch() {
                 ) : (
                   <>
                     <Search className="w-4 h-4 mr-2" />
-                    Search
+                    Search Now
                   </>
                 )}
               </Button>
@@ -178,7 +215,7 @@ export default function ProductSearch() {
             <ShoppingCart className="w-4 h-4" />
             <span>
               Searching <span className="font-semibold text-gray-900">Google Shopping</span> via RapidAPI • 
-              Real-time pricing from 100+ merchants
+              Real-time pricing from 100+ merchants • Auto-search as you type
             </span>
           </div>
         </CardContent>
@@ -294,9 +331,12 @@ export default function ProductSearch() {
         <Card className="p-12">
           <div className="text-center">
             <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium mb-2">Start Searching</h3>
-            <p className="text-gray-600">
-              Enter a product name to see live pricing and availability across multiple marketplaces
+            <h3 className="text-xl font-medium mb-2">Type to Start Searching</h3>
+            <p className="text-gray-600 mb-3">
+              Just start typing a product name above - results appear automatically
+            </p>
+            <p className="text-sm text-gray-500">
+              Try: "iPhone 15", "Nike shoes", "PS5", or "Samsung TV"
             </p>
           </div>
         </Card>
