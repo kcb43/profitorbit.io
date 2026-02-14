@@ -169,8 +169,15 @@ class RapidApiGoogleProvider extends SearchProvider {
   }
 
   async search(query, opts = {}) {
+    // #region agent log
+    const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:172',message:'RapidAPI search entry',data:{hasApiKey:!!this.apiKey,keyLength:this.apiKey?.length||0,query:query,opts:opts},timestamp:Date.now(),runId:'search',hypothesisId:'A'})+'\n'); } catch(e) {}
+    // #endregion
+    
     if (!this.apiKey) {
       console.warn('[Google/RapidAPI] No API key configured');
+      // #region agent log
+      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:174',message:'No API key - returning empty',data:{env_key_exists:!!process.env.RAPIDAPI_KEY},timestamp:Date.now(),runId:'search',hypothesisId:'A'})+'\n'); } catch(e) {}
+      // #endregion
       return [];
     }
 
@@ -179,6 +186,10 @@ class RapidApiGoogleProvider extends SearchProvider {
     try {
       // Using Real-Time Product Search API v2 on RapidAPI
       console.log(`[Google/RapidAPI] Searching for: "${query}"`);
+      
+      // #region agent log
+      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:183',message:'Making RapidAPI request',data:{query:query,country:country,limit:limit},timestamp:Date.now(),runId:'search',hypothesisId:'B'})+'\n'); } catch(e) {}
+      // #endregion
       
       const response = await axios.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
         params: {
@@ -197,9 +208,17 @@ class RapidApiGoogleProvider extends SearchProvider {
         timeout: 15000
       });
 
+      // #region agent log
+      const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:199',message:'RapidAPI response received',data:{statusCode:response.status,dataStatus:response.data?.status,hasData:!!response.data,hasProducts:!!(response.data?.data?.products),productCount:response.data?.data?.products?.length||0},timestamp:Date.now(),runId:'search',hypothesisId:'D'})+'\n'); } catch(e) {}
+      // #endregion
+
       console.log(`[Google/RapidAPI] Response status: ${response.data?.status}`);
       
       const products = response.data?.data?.products || [];
+      
+      // #region agent log
+      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:205',message:'Products extracted',data:{productCount:products.length,firstProductTitle:products[0]?.product_title||null},timestamp:Date.now(),runId:'search',hypothesisId:'D'})+'\n'); } catch(e) {}
+      // #endregion
       
       console.log(`[Google/RapidAPI] Found ${products.length} products`);
 
@@ -225,6 +244,10 @@ class RapidApiGoogleProvider extends SearchProvider {
         };
       }).filter(item => item.title && item.url);
     } catch (error) {
+      // #region agent log
+      const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:228',message:'RapidAPI error caught',data:{errorMessage:error.message,hasResponse:!!error.response,statusCode:error.response?.status||null,responseData:error.response?.data?JSON.stringify(error.response.data).slice(0,200):null},timestamp:Date.now(),runId:'search',hypothesisId:'B'})+'\n'); } catch(e) {}
+      // #endregion
+      
       console.error(`[Google/RapidAPI] Search error:`, error.message);
       if (error.response) {
         console.error(`[Google/RapidAPI] Status: ${error.response.status}`);
@@ -438,8 +461,17 @@ fastify.post('/search', async (request, reply) => {
 
     const cacheKey = getCacheKey(providerName, country, query);
 
+    // #region agent log
+    const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:463',message:'Cache key generated',data:{cacheKey:cacheKey,providerName:providerName,query:query},timestamp:Date.now(),runId:'search',hypothesisId:'C'})+'\n'); } catch(e) {}
+    // #endregion
+
     // Check cache first
     const cached = await redis.get(cacheKey);
+    
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:467',message:'Cache lookup result',data:{hasCached:!!cached,cacheKey:cacheKey,willUseCached:!!cached},timestamp:Date.now(),runId:'search',hypothesisId:'E'})+'\n'); } catch(e) {}
+    // #endregion
+    
     if (cached) {
       const parsed = JSON.parse(cached);
       results.providers.push({ provider: providerName, cached: true, count: parsed.length });
@@ -459,12 +491,19 @@ fastify.post('/search', async (request, reply) => {
     try {
       const items = await provider.search(query, { country, limit });
       
+      // #region agent log
+      const fs = require('fs'); const logPath = 'f:\\bareretail\\.cursor\\debug.log'; try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:484',message:'Provider search completed',data:{provider:providerName,itemCount:items.length,firstItem:items[0]?.title||null},timestamp:Date.now(),runId:'search',hypothesisId:'D'})+'\n'); } catch(e) {}
+      // #endregion
+      
       // Cache for 6 hours
       await redis.set(cacheKey, JSON.stringify(items), 'EX', 60 * 60 * 6);
 
       results.providers.push({ provider: providerName, cached: false, count: items.length });
       results.items.push(...items);
     } catch (error) {
+      // #region agent log
+      try { fs.appendFileSync(logPath, JSON.stringify({location:'index.js:491',message:'Provider search error',data:{provider:providerName,errorMsg:error.message},timestamp:Date.now(),runId:'search',hypothesisId:'B'})+'\n'); } catch(e) {}
+      // #endregion
       results.providers.push({ provider: providerName, error: error.message });
     }
   }
