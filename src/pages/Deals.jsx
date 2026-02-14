@@ -256,7 +256,7 @@ export default function Deals() {
           <p className="mt-4 text-gray-600">Loading deals...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {dealsData?.items?.map((deal) => {
             const isSaved = savedDealIds.has(deal.id);
             const discount = calculateDiscount(deal.price, deal.original_price);
