@@ -20,6 +20,7 @@ export default function ProductSearch() {
   const [requestedLimit, setRequestedLimit] = useState(20); // Start with 20 items
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
+  const [accumulatedItems, setAccumulatedItems] = useState([]); // Accumulate items across multiple fetches
   const { toast } = useToast();
   const debounceTimerRef = useRef(null);
   const prefetchTimerRef = useRef(null);
@@ -258,26 +259,56 @@ export default function ProductSearch() {
     // Immediately trigger search (bypass debounce)
     setDebouncedQuery(query.trim());
     setRequestedLimit(20); // Start with 20 items
+    setAccumulatedItems([]); // Clear accumulated items for new search
+    setTotalFetched(0); // Reset fetch tracking
     setIsTyping(false); // Reset typing state
   };
 
-  // Show all fetched results
-  const displayedItems = searchResults?.items || [];
-  const canLoadMore = searchResults?.items?.length >= requestedLimit && requestedLimit < 100; // Can fetch more if we got full results and haven't hit 100 total
+  // Accumulate items when new results arrive
+  useEffect(() => {
+    if (!searchResults?.items) return;
+    
+    const currentItemCount = searchResults.items.length;
+    
+    // If this is a new search (fewer items than before), replace everything
+    if (currentItemCount < accumulatedItems.length || currentItemCount === 20) {
+      setAccumulatedItems(searchResults.items);
+      setTotalFetched(currentItemCount);
+    } 
+    // If we got more items, it's a "load more" response - accumulate them
+    else if (currentItemCount > accumulatedItems.length) {
+      // Only add new items that aren't duplicates
+      const existingIds = new Set(accumulatedItems.map(item => item.link || item.title));
+      const newItems = searchResults.items.filter(item => !existingIds.has(item.link || item.title));
+      
+      if (newItems.length > 0) {
+        setAccumulatedItems(prev => [...prev, ...newItems]);
+        setTotalFetched(accumulatedItems.length + newItems.length);
+      }
+      setIsLoadingMore(false);
+    }
+    // If we got 0 items on a "load more" request, keep existing items and show error
+    else if (currentItemCount === 0 && isLoadingMore) {
+      toast({
+        title: 'No more results found',
+        description: 'The search timed out or no additional items are available',
+        variant: 'default'
+      });
+      setIsLoadingMore(false);
+    }
+  }, [searchResults?.items]);
+
+  // Show accumulated results
+  const displayedItems = accumulatedItems;
+  const canLoadMore = displayedItems.length >= requestedLimit && requestedLimit < 100 && displayedItems.length > 0; // Can fetch more if we got full results and haven't hit 100 total
 
   // Handle load more button click
   const handleLoadMore = () => {
     setIsLoadingMore(true);
-    setTotalFetched(requestedLimit);
     setRequestedLimit(prev => prev + 20);
   };
 
-  // Reset loading state when new data arrives
-  useEffect(() => {
-    if (isLoadingMore && searchResults?.items?.length >= requestedLimit) {
-      setIsLoadingMore(false);
-    }
-  }, [searchResults?.items?.length, requestedLimit, isLoadingMore]);
+  // No longer need this useEffect - handled in accumulation logic above
 
   // Group by merchant instead of provider
   const groupedByMerchant = {};
@@ -292,8 +323,8 @@ export default function ProductSearch() {
   }
 
   // Calculate average price
-  const avgPrice = searchResults?.items?.length > 0
-    ? searchResults.items.filter(i => i.price && i.price > 0).reduce((sum, i) => sum + i.price, 0) / searchResults.items.filter(i => i.price && i.price > 0).length
+  const avgPrice = displayedItems.length > 0
+    ? displayedItems.filter(i => i.price && i.price > 0).reduce((sum, i) => sum + i.price, 0) / displayedItems.filter(i => i.price && i.price > 0).length
     : 0;
 
   return (
@@ -342,7 +373,7 @@ export default function ProductSearch() {
       </Card>
 
       {/* Results */}
-      {searchResults && searchResults.items?.length === 0 && (
+      {searchResults && displayedItems.length === 0 && (
         <Card className="p-12 border-yellow-200 bg-yellow-50">
           <div className="text-center">
             <Search className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
@@ -359,7 +390,7 @@ export default function ProductSearch() {
         </Card>
       )}
 
-      {searchResults && searchResults.items?.length > 0 && (
+      {searchResults && displayedItems.length > 0 && (
         <>
           {/* Summary - now with average price */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -374,10 +405,7 @@ export default function ProductSearch() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {searchResults.items?.length || 0}
-                  {requestedLimit === 10 && searchResults.items.length === 10 && (
-                    <span className="text-sm text-gray-500 font-normal ml-1">of 50</span>
-                  )}
+                  {displayedItems.length}
                 </div>
               </CardContent>
             </Card>
@@ -397,8 +425,8 @@ export default function ProductSearch() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {searchResults.items?.length > 0
-                    ? `$${Math.min(...searchResults.items.filter(i => i.price).map(i => i.price)).toFixed(0)} - $${Math.max(...searchResults.items.filter(i => i.price).map(i => i.price)).toFixed(0)}`
+                  {displayedItems.length > 0
+                    ? `$${Math.min(...displayedItems.filter(i => i.price).map(i => i.price)).toFixed(0)} - $${Math.max(...displayedItems.filter(i => i.price).map(i => i.price)).toFixed(0)}`
                     : 'N/A'}
                 </div>
               </CardContent>
@@ -416,7 +444,7 @@ export default function ProductSearch() {
           {/* Results by merchant */}
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="all">All ({searchResults.items?.length || 0})</TabsTrigger>
+              <TabsTrigger value="all">All ({displayedItems.length})</TabsTrigger>
               {Object.keys(groupedByMerchant).sort((a, b) => groupedByMerchant[b].length - groupedByMerchant[a].length).slice(0, 8).map(merchant => (
                 <TabsTrigger key={merchant} value={merchant}>
                   {merchant} ({groupedByMerchant[merchant].length})
@@ -442,7 +470,7 @@ export default function ProductSearch() {
                     Load More Results
                   </Button>
                   <p className="text-sm text-gray-500 mt-2">
-                    Showing {searchResults.items.length} of {requestedLimit < 100 ? 'many' : '100 max'}
+                    Showing {displayedItems.length} {requestedLimit < 100 ? `• Load ${requestedLimit + 20} total` : '• Max 100'}
                   </p>
                 </div>
               )}
@@ -451,15 +479,15 @@ export default function ProductSearch() {
               {isLoadingMore && (
                 <div className="text-center py-8">
                   <LoaderCircle className="w-8 h-8 animate-spin mx-auto text-purple-500" />
-                  <p className="text-sm text-gray-500 mt-2">Loading more results...</p>
+                  <p className="text-sm text-gray-500 mt-2">Loading more results... (keeping {displayedItems.length} current items)</p>
                 </div>
               )}
               
               {/* Show message when all results are displayed */}
-              {!canLoadMore && searchResults?.items?.length >= 20 && (
+              {!canLoadMore && displayedItems.length >= 20 && (
                 <div className="text-center py-6">
                   <p className="text-sm text-gray-500">
-                    All {searchResults.items.length} results displayed
+                    All {displayedItems.length} results displayed
                   </p>
                 </div>
               )}
