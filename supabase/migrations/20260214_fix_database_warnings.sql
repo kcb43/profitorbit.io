@@ -328,6 +328,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS get_deal_feed(INT, INT, INT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION get_deal_feed(
   p_limit INT DEFAULT 20,
   p_offset INT DEFAULT 0,
@@ -379,6 +380,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS active_rss_sources();
 CREATE OR REPLACE FUNCTION active_rss_sources()
 RETURNS TABLE (
   id UUID,
