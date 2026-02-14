@@ -246,8 +246,8 @@ class RapidApiGoogleProvider extends SearchProvider {
       
       // Hypothesis H: Limit parameter directly impacts speed
       // Testing shows: 10 items = 3-4s, 20 items = 6-8s, 50 items = 23s
-      // Cap at 20 for optimal speed/quantity balance
-      const optimizedLimit = Math.min(limit, 20);
+      // Pass through the requested limit directly (no capping)
+      const optimizedLimit = Math.min(limit, 100); // Cap at 100 max to prevent abuse
       
       const requestParams = {
         q: query,
