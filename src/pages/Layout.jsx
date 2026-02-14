@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User, ShoppingBag, TrendingDown } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { ProductSearchDialog } from "@/components/ProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
@@ -49,6 +49,13 @@ const navigationCategories = [
       { title: "Import", url: createPageUrl("Import"), icon: Activity },
       { title: "Pulse", url: createPageUrl("Pulse"), icon: TrendingUp },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
+    ]
+  },
+  {
+    title: "Orben Intelligence",
+    items: [
+      { title: "Deal Feed", url: "/deals", icon: TrendingDown },
+      { title: "Product Search", url: "/product-search", icon: Search },
     ]
   },
   {
