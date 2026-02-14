@@ -17,7 +17,7 @@ export default function ProductSearch() {
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
   const [displayLimit, setDisplayLimit] = useState(10); // Show 10 initially for instant scroll
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
-  const [requestedLimit, setRequestedLimit] = useState(20); // 20 items = 6-8s (sweet spot for speed vs quantity)
+  const [requestedLimit, setRequestedLimit] = useState(10); // 10 items = 3-4s (FASTEST initial load!)
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const { toast } = useToast();
@@ -38,7 +38,7 @@ export default function ProductSearch() {
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
         setDisplayLimit(10); // Reset display limit on new search
-        setRequestedLimit(20); // 20 items = 6-8 seconds (optimal speed/quantity balance)
+        setRequestedLimit(10); // 10 items = 3-4 seconds (FASTEST!)
         setTotalFetched(0); // Reset total fetched on new search
         setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
@@ -266,7 +266,7 @@ export default function ProductSearch() {
   // Progressive loading: show more results as user scrolls
   const displayedItems = searchResults?.items?.slice(0, displayLimit) || [];
   const hasMore = searchResults?.items?.length > displayLimit;
-  const canLoadMore = searchResults?.items?.length >= requestedLimit && requestedLimit < 100; // Can fetch more if we got full 20 items and haven't hit 100 total
+  const canLoadMore = searchResults?.items?.length >= requestedLimit && requestedLimit < 100; // Can fetch more if we got full results and haven't hit 100 total
 
   // Intersection observer for auto-load more (display)
   useEffect(() => {
@@ -288,12 +288,12 @@ export default function ProductSearch() {
   // Auto-fetch more items when user scrolls close to the end
   useEffect(() => {
     if (!canLoadMore || isLoadingMore) return;
-    if (displayLimit < requestedLimit - 5) return; // Wait until user has scrolled near the end (5 items before end)
+    if (displayLimit < requestedLimit - 3) return; // Wait until user has scrolled near the end (3 items before end)
 
-    console.log('[ProductSearch] Auto-loading next batch (20 more items)');
+    console.log('[ProductSearch] Auto-loading next batch (10 more items)');
     setIsLoadingMore(true);
     setTotalFetched(requestedLimit); // Track what we've fetched
-    setRequestedLimit(prev => prev + 20); // Fetch 20 more items
+    setRequestedLimit(prev => prev + 10); // Fetch 10 more items
   }, [displayLimit, canLoadMore, isLoadingMore, requestedLimit]);
 
   // Reset loading state when new data arrives
