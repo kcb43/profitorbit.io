@@ -209,7 +209,7 @@ AS
 SELECT 
   dir.source_id,
   ds.name as source_name,
-  ds.source_type,
+  ds.type as source_type,
   dir.status,
   dir.deals_inserted,
   dir.deals_updated,
@@ -239,7 +239,7 @@ AS
 SELECT 
   ds.id,
   ds.name,
-  ds.source_type,
+  ds.type as source_type,
   ds.enabled,
   COUNT(DISTINCT dir.id) as total_runs,
   COUNT(DISTINCT dir.id) FILTER (WHERE dir.status = 'success') as successful_runs,
@@ -248,7 +248,7 @@ SELECT
 FROM deal_sources ds
 LEFT JOIN deal_ingestion_runs dir ON ds.id = dir.source_id
   AND dir.started_at > NOW() - INTERVAL '7 days'
-GROUP BY ds.id, ds.name, ds.source_type, ds.enabled;
+GROUP BY ds.id, ds.name, ds.type, ds.enabled;
 
 -- ============================================================================
 -- PART 4: Fix Function Search Paths
@@ -396,10 +396,10 @@ BEGIN
     ds.id,
     ds.name,
     ds.rss_url,
-    ds.source_type
+    ds.type as source_type
   FROM deal_sources ds
   WHERE ds.enabled = true
-    AND ds.source_type = 'rss'
+    AND ds.type = 'rss'
     AND ds.rss_url IS NOT NULL;
 END;
 $$;
