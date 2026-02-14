@@ -14,10 +14,12 @@ const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.f
 export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [providers, setProviders] = useState(['oxylabs']); // Removed 'ebay' - API deprecated
   const [displayLimit, setDisplayLimit] = useState(12); // Show 12 initially
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
+
+  // Check if smart routing is enabled
+  const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
 
   const { data: searchResults, isLoading, refetch, error: queryError } = useQuery({
     queryKey: ['productSearch', searchQuery],
@@ -42,22 +44,8 @@ export default function ProductSearch() {
         throw new Error('Please log in to search');
       }
 
-      // Check if smart routing is disabled
-      const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
-      
-      // If smart routing disabled, only use explicitly selected providers
-      // If smart routing enabled, pass 'auto' to let backend decide
-      let providerList;
-      if (disableSmartRouting) {
-        // Manual mode - use only what user selected
-        if (providers.length === 0) {
-          throw new Error('Please select at least one provider');
-        }
-        providerList = providers.join(',');
-      } else {
-        // Smart routing mode - backend decides based on query
-        providerList = 'auto';
-      }
+      // Smart routing is always enabled - backend chooses best provider
+      const providerList = 'auto';
 
       const params = new URLSearchParams({
         q: searchQuery,
@@ -185,42 +173,36 @@ export default function ProductSearch() {
             </div>
           </form>
 
-          {/* Provider selection */}
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-            <span className="text-sm font-medium">Search providers:</span>
-            <div className="flex flex-wrap gap-3">
-              {['oxylabs', 'google'].map(provider => (
-                <label key={provider} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={providers.includes(provider)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setProviders([...providers, provider]);
-                      } else {
-                        setProviders(providers.filter(p => p !== provider));
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <span className="text-sm capitalize">
-                    {provider}
-                    {provider === 'oxylabs' && ' (premium)'}
-                  </span>
-                </label>
-              ))}
-            </div>
-            {localStorage.getItem('orben_disable_smart_routing') === 'true' && (
-              <Badge variant="outline" className="ml-auto">
-                Manual Mode
-              </Badge>
-            )}
+          {/* Search Info */}
+          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+            <ShoppingCart className="w-4 h-4" />
+            <span>
+              Searching <span className="font-semibold text-gray-900">Google Shopping</span> via Oxylabs • 
+              Real-time pricing from 100+ merchants
+            </span>
           </div>
         </CardContent>
       </Card>
 
       {/* Results */}
-      {searchResults && (
+      {searchResults && searchResults.items?.length === 0 && (
+        <Card className="p-12 border-yellow-200 bg-yellow-50">
+          <div className="text-center">
+            <Search className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-xl font-medium mb-2 text-yellow-700">No Results Found</h3>
+            <p className="text-yellow-600 mb-4">
+              No products found for "{searchQuery}". Try a different search term or check:
+            </p>
+            <ul className="text-left max-w-md mx-auto text-sm text-yellow-700 space-y-2">
+              <li>• Try more general search terms (e.g., "laptop" instead of specific model)</li>
+              <li>• Check your spelling</li>
+              <li>• Try searching for popular products (iPhone, LEGO, etc.)</li>
+            </ul>
+          </div>
+        </Card>
+      )}
+
+      {searchResults && searchResults.items?.length > 0 && (
         <>
           {/* Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
