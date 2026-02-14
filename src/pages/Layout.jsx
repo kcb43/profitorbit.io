@@ -219,12 +219,8 @@ export default function Layout({ children }) {
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background hidden md:flex">
           <SidebarContent className="flex flex-col flex-grow px-2 pt-0 pb-4">
             {/* Logo/Branding */}
-            <div className="px-3 mb-0 flex justify-center pt-1">
-              <img 
-                src={themes[theme]?.isDark ? "/orben-logo-v3-dark.svg" : "/orben-logo-v3.svg"}
-                alt="Orben Logo" 
-                className="w-32 h-auto"
-              />
+            <div className="px-3 mb-6 flex justify-center pt-4">
+              <h1 className="text-2xl font-bold text-primary">Orben</h1>
             </div>
 
             {/* Navigation Sections */}
@@ -328,11 +324,7 @@ export default function Layout({ children }) {
           {/* Mobile Header */}
           <header className="bg-card border-b border-border px-6 py-4 md:hidden sticky top-0 z-40">
             <div className="flex items-center justify-between gap-4">
-              <img 
-                src={themes[theme]?.isDark ? "/orben-logo-v3-dark.svg" : "/orben-logo-v3.svg"}
-                alt="Orben Logo" 
-                className="h-12 w-auto"
-              />
+              <h1 className="text-2xl font-bold text-primary">Orben</h1>
               <div className="flex items-center gap-2">
                 <UserProfile />
                 <Button
