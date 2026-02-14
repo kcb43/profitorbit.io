@@ -141,7 +141,7 @@ export default function ProductSearch() {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold">Universal Product Search</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Search across Google Shopping and more</p>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">Search Google Shopping in real-time</p>
       </div>
 
       {/* Search Bar */}
@@ -177,7 +177,7 @@ export default function ProductSearch() {
           <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
             <ShoppingCart className="w-4 h-4" />
             <span>
-              Searching <span className="font-semibold text-gray-900">Google Shopping</span> via Oxylabs • 
+              Searching <span className="font-semibold text-gray-900">Google Shopping</span> via RapidAPI • 
               Real-time pricing from 100+ merchants
             </span>
           </div>

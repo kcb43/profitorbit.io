@@ -323,7 +323,7 @@ fastify.get('/v1/search', async (request, reply) => {
       userId: user.id,
       limit: parseInt(limit, 10)
     }, {
-      timeout: 20000
+      timeout: 45000 // Increased to 45 seconds for Oxylabs
     });
 
     return response.data;

@@ -230,21 +230,20 @@ class OxylabsProvider extends SearchProvider {
     const { country = 'US', limit = 20 } = opts;
 
     try {
-      console.log(`[Oxylabs] Searching Google Shopping for: "${query}"`);
+      console.log(`[Oxylabs] Searching Amazon via Oxylabs for: "${query}"`);
       
-      // Use google_shopping_search for ACTUAL product listings (not articles/info pages)
+      // Use amazon_search - more reliable and returns actual products with prices
       const response = await axios.post(
         'https://realtime.oxylabs.io/v1/queries',
         {
-          source: 'google_shopping_search',
+          source: 'amazon_search',
           query: query,
           domain: 'com',
           start_page: 1,
           pages: 1,
           parse: true,
           context: [
-            { key: 'results_language', value: 'en' },
-            { key: 'tbm', value: 'shop' }
+            { key: 'category_id', value: 'aps' } // All departments
           ]
         },
         {
@@ -262,48 +261,40 @@ class OxylabsProvider extends SearchProvider {
       console.log(`[Oxylabs] Response status: ${response.status}`);
       console.log(`[Oxylabs] Job status: ${response.data?.job?.status}`);
       
-      // Parse Google Shopping results (structured product data)
+      // Parse Amazon search results (structured product data)
       const content = response.data?.results?.[0]?.content || {};
       const organicResults = content.results?.organic || [];
       
-      console.log(`[Oxylabs] Found ${organicResults.length} Google Shopping results`);
+      console.log(`[Oxylabs] Found ${organicResults.length} Amazon results`);
 
-      // Map Google Shopping results to our format
+      // Map Amazon results to our format
       const items = organicResults.map(item => {
-        // Extract price from various fields
+        // Extract price from Amazon price field
         let price = null;
-        if (item.price_str) {
-          price = parseFloat(item.price_str.replace(/[^0-9.]/g, ''));
-        } else if (item.price) {
+        if (item.price) {
           price = parseFloat(item.price.toString().replace(/[^0-9.]/g, ''));
+        } else if (item.price_upper) {
+          price = parseFloat(item.price_upper.toString().replace(/[^0-9.]/g, ''));
         }
 
         return {
-          title: item.title || item.product_title,
-          url: item.url || item.product_link,
+          title: item.title,
+          url: item.url,
           price: price,
           currency: item.currency || 'USD',
-          merchant: item.merchant?.name || item.source || 'Unknown',
-          image_url: item.thumbnail,
+          merchant: 'Amazon',
+          image_url: item.thumbnail || item.image,
           source: this.name,
           rating: item.rating,
           reviews_count: item.reviews_count,
-          condition: 'New'
+          condition: 'New',
+          asin: item.asin
         };
       }).filter(item => item.title && item.url);
 
       console.log(`[Oxylabs] Returning ${items.length} product results`);
       
       return items.slice(0, limit);
-    } catch (error) {
-      console.error(`[Oxylabs] Search error:`, error.message);
-      if (error.response) {
-        console.error(`[Oxylabs] Status: ${error.response.status}`);
-        console.error(`[Oxylabs] Data:`, JSON.stringify(error.response.data).slice(0, 300));
-      }
-      return [];
-    }
-  }
     } catch (error) {
       console.error(`[Oxylabs] Search error:`, error.message);
       if (error.response) {
@@ -342,28 +333,10 @@ function selectSmartProviders(query, requestedProviders) {
     return providerArray;
   }
 
-  // Smart routing enabled - analyze query
-  const highValueKeywords = [
-    'iphone', 'macbook', 'ipad', 'airpods', 'apple watch',
-    'playstation', 'ps5', 'ps 5', 'xbox', 'nintendo switch',
-    'gpu', 'rtx', '4090', '4080', '3090',
-    'camera', 'sony a7', 'canon eos', 'nikon z',
-    'laptop', 'gaming pc', 'gaming laptop',
-    'rolex', 'omega', 'cartier'
-  ];
-
-  const queryLower = query.toLowerCase();
-  const isHighValue = highValueKeywords.some(keyword => queryLower.includes(keyword));
-
-  if (isHighValue) {
-    // Use Oxylabs (premium, reliable) for high-value items
-    console.log(`[SmartRouting] Auto mode - High-value detected: using Oxylabs`);
-    return ['oxylabs'];
-  } else {
-    // Use Oxylabs for all searches (eBay API is deprecated and unreliable)
-    console.log(`[SmartRouting] Auto mode - Regular query: using Oxylabs`);
-    return ['oxylabs'];
-  }
+  // Smart routing enabled - always use RapidAPI Google Shopping
+  // (Oxylabs google_shopping_search not in plan, amazon_search too slow)
+  console.log(`[SmartRouting] Auto mode - Using RapidAPI Google Shopping`);
+  return ['google'];
 }
 
 // ==========================================
