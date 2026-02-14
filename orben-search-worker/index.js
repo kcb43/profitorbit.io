@@ -211,7 +211,7 @@ class RapidApiGoogleProvider extends SearchProvider {
           'x-rapidapi-key': this.apiKey,
           'x-rapidapi-host': 'real-time-product-search.p.rapidapi.com'
         },
-        timeout: 15000
+        timeout: 30000 // Increased to 30 seconds for larger result sets
       });
 
       // Hypothesis D: Is RapidAPI returning products?
@@ -221,6 +221,8 @@ class RapidApiGoogleProvider extends SearchProvider {
         hasData: !!response.data,
         hasProducts: !!(response.data?.data?.products),
         productCount: response.data?.data?.products?.length || 0,
+        requestedLimit: limit,
+        actualLimit: Math.min(limit, 50),
         rawDataKeys: Object.keys(response.data || {}),
         hypothesisId: 'D'
       }));
@@ -234,6 +236,16 @@ class RapidApiGoogleProvider extends SearchProvider {
           hasError: !!response.data?.error,
           errorMessage: response.data?.error || null,
           hypothesisId: 'F'
+        }));
+      }
+      
+      // Log if we got fewer items than requested
+      if (response.data?.data?.products?.length < limit) {
+        console.log('[DEBUG-G] RapidAPI returned fewer items than requested', JSON.stringify({
+          requested: limit,
+          received: response.data?.data?.products?.length || 0,
+          query: query,
+          hypothesisId: 'G'
         }));
       }
 
