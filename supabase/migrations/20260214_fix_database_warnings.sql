@@ -211,10 +211,10 @@ SELECT
   ds.name as source_name,
   ds.type as source_type,
   dir.status,
-  dir.deals_inserted,
-  dir.deals_updated,
+  dir.items_created,
+  dir.items_updated,
   dir.started_at,
-  dir.completed_at
+  dir.finished_at as completed_at
 FROM deal_ingestion_runs dir
 JOIN deal_sources ds ON dir.source_id = ds.id
 WHERE dir.started_at > NOW() - INTERVAL '24 hours'
@@ -243,8 +243,8 @@ SELECT
   ds.enabled,
   COUNT(DISTINCT dir.id) as total_runs,
   COUNT(DISTINCT dir.id) FILTER (WHERE dir.status = 'success') as successful_runs,
-  MAX(dir.completed_at) as last_run,
-  SUM(dir.deals_inserted) as total_deals_inserted
+  MAX(dir.finished_at) as last_run,
+  SUM(dir.items_created) as total_deals_inserted
 FROM deal_sources ds
 LEFT JOIN deal_ingestion_runs dir ON ds.id = dir.source_id
   AND dir.started_at > NOW() - INTERVAL '7 days'
