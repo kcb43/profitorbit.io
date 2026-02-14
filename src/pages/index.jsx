@@ -27,7 +27,6 @@ const Crosslisting = React.lazy(() => import("./Crosslisting"));
 const Import = React.lazy(() => import("./Import"));
 const MarketIntelligence = React.lazy(() => import("./MarketIntelligence"));
 const MarketIntelligenceDetail = React.lazy(() => import("./MarketIntelligenceDetail"));
-const Pulse = React.lazy(() => import("./Pulse"));
 const Settings = React.lazy(() => import("./Settings"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
@@ -350,17 +349,10 @@ function PagesContent() {
                 }
               />
 
+              {/* Redirect old Pulse route to new Deal Feed */}
               <Route
                 path="/Pulse"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Pulse">
-                        {withSuspense(<Pulse />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
+                element={<Navigate to="/deals" replace />}
               />
 
               <Route

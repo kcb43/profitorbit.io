@@ -15,6 +15,7 @@ export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [displayLimit, setDisplayLimit] = useState(12); // Show 12 initially
+  const [isTyping, setIsTyping] = useState(false); // Track if user is typing
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
   const debounceTimerRef = useRef(null);
@@ -28,13 +29,16 @@ export default function ProductSearch() {
 
     // Only debounce if query is at least 3 characters
     if (query.trim().length >= 3) {
+      setIsTyping(true); // User is typing
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
         setDisplayLimit(12); // Reset display limit on new search
+        setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
     } else {
       // Clear results if query is too short
       setDebouncedQuery('');
+      setIsTyping(false);
     }
 
     // Cleanup
@@ -131,6 +135,7 @@ export default function ProductSearch() {
     // Immediately trigger search (bypass debounce)
     setDebouncedQuery(query.trim());
     setDisplayLimit(12);
+    setIsTyping(false); // Reset typing state
   };
 
   // Progressive loading: show more results as user scrolls

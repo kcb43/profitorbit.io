@@ -4,9 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, TrendingUp, Bookmark, ExternalLink, DollarSign, Percent, AlertCircle, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, TrendingUp, Bookmark, ExternalLink, DollarSign, Percent, AlertCircle, Loader2, Flame, Target, Package, Zap, Filter, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
 
@@ -68,6 +71,9 @@ export default function Deals() {
     items: data?.pages.flatMap(page => page.items || []) || [],
     total: data?.pages[0]?.total || 0
   };
+
+  // For the new layout, we use the flattened items directly
+  const filteredDeals = dealsData.items;
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -151,221 +157,112 @@ export default function Deals() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Deal Intelligence</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Curated deals for resellers</p>
+    <div className="p-2 sm:p-4 md:p-6 lg:p-8 min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto">
+        {/* Header - Pulse Style */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 flex-wrap">
+              <TrendingDown className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
+              Deal Feed
+              <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-xs">
+                Live
+              </Badge>
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Curated deals from Reddit, Slickdeals, and top deal sites
+            </p>
+          </div>
+          <Button 
+            onClick={() => window.location.href = '/deals/submit'}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white w-full lg:w-auto"
+            size="sm"
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Submit Deal
+          </Button>
         </div>
-        <Button onClick={() => window.location.href = '/deals/submit'} className="w-full sm:w-auto">
-          Submit Deal
-        </Button>
-      </div>
 
-      {/* Search & Filters */}
-      <Card>
-        <CardContent className="pt-4 sm:pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <div className="sm:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input
-                  placeholder="Search deals..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+        {/* Enhanced Stats Cards - Pulse Style */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Card className="border-2 border-green-500/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Active Deals</p>
+                  <p className="text-2xl font-bold text-green-600">{dealsData?.items?.length || 0}</p>
+                </div>
+                <TrendingDown className="h-10 w-10 text-green-500 opacity-20" />
               </div>
-            </div>
-            <Input
-              placeholder="Merchant"
-              value={filters.merchant}
-              onChange={(e) => setFilters({ ...filters, merchant: e.target.value })}
-            />
-            <Input
-              placeholder="Category"
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
-            <label className="text-sm font-medium">Min Score:</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="10"
-              value={filters.minScore}
-              onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) })}
-              className="flex-1"
-            />
-            <span className="text-sm font-medium w-12">{filters.minScore}</span>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Deals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dealsData?.items?.length || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Saved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{savedDeals?.items?.length || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Avg Score</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {dealsData?.items?.length
-                ? Math.round(
-                    dealsData.items.reduce((sum, d) => sum + (d.score || 0), 0) / dealsData.items.length
-                  )
-                : 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Hot Deals (70+)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {dealsData?.items?.filter(d => d.score >= 70).length || 0}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="border-2 border-blue-500/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Bookmark className="h-3 w-3" /> Saved
+                  </p>
+                  <p className="text-2xl font-bold text-blue-600">{savedDeals?.items?.length || 0}</p>
+                </div>
+                <Bookmark className="h-10 w-10 text-blue-500 opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Deals Grid */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading deals...</p>
+          <Card className="border-2 border-orange-500/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Target className="h-3 w-3" /> Avg Score
+                  </p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {dealsData?.items?.length
+                      ? Math.round(
+                          dealsData.items.reduce((sum, d) => sum + (d.score || 0), 0) / dealsData.items.length
+                        )
+                      : 0}
+                  </p>
+                </div>
+                <Target className="h-10 w-10 text-orange-500 opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-red-500/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Flame className="h-3 w-3" /> Hot Deals
+                  </p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {dealsData?.items?.filter(d => d.score >= 70).length || 0}
+                  </p>
+                </div>
+                <Flame className="h-10 w-10 text-red-500 opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+      {/* Deals Feed - Pulse-Style Layout */}
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : filteredDeals?.length === 0 ? (
+        <EmptyDealState />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {dealsData?.items?.map((deal) => {
-            const isSaved = savedDealIds.has(deal.id);
-            const discount = calculateDiscount(deal.price, deal.original_price);
-
-            return (
-              <Card key={deal.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {/* Image */}
-                {deal.image_url && (
-                  <div className="relative h-48 bg-gray-100">
-                    <img
-                      src={deal.image_url}
-                      alt={deal.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                    <div className="absolute top-2 right-2">
-                      <Badge className={`${getScoreColor(deal.score)} text-white`}>
-                        {deal.score}
-                      </Badge>
-                    </div>
-                    {discount && (
-                      <div className="absolute top-2 left-2">
-                        <Badge className="bg-red-500 text-white">
-                          <Percent className="w-3 h-3 mr-1" />
-                          {discount}% off
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <CardContent className="p-4">
-                  {/* Title */}
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">
-                    {deal.title}
-                  </h3>
-
-                  {/* Merchant & Category */}
-                  <div className="flex items-center gap-2 mb-3">
-                    {deal.merchant && (
-                      <Badge variant="outline" className="text-xs">
-                        {deal.merchant}
-                      </Badge>
-                    )}
-                    {deal.category && (
-                      <Badge variant="secondary" className="text-xs">
-                        {deal.category}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  <div className="flex items-center gap-2 mb-3">
-                    {deal.price && (
-                      <div className="flex items-center">
-                        <DollarSign className="w-4 h-4 text-green-600" />
-                        <span className="text-xl font-bold text-green-600">
-                          {deal.price.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    {deal.original_price && deal.original_price > deal.price && (
-                      <span className="text-sm text-gray-500 line-through">
-                        ${deal.original_price.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Coupon */}
-                  {deal.coupon_code && (
-                    <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                      <p className="text-xs text-yellow-800">
-                        Code: <span className="font-mono font-bold">{deal.coupon_code}</span>
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => window.open(deal.url, '_blank')}
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      View Deal
-                    </Button>
-                    <Button
-                      variant={isSaved ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleSaveDeal(deal.id, isSaved)}
-                    >
-                      <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                    </Button>
-                  </div>
-
-                  {/* Posted date */}
-                  {deal.posted_at && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      {new Date(deal.posted_at).toLocaleDateString()}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="space-y-3">
+          {filteredDeals.map((deal) => (
+            <EnhancedDealCard
+              key={deal.id}
+              deal={deal}
+              isSaved={savedDealIds.has(deal.id)}
+              onSave={() => handleSaveDeal(deal.id, savedDealIds.has(deal.id))}
+            />
+          ))}
         </div>
       )}
 
@@ -389,15 +286,205 @@ export default function Deals() {
         </div>
       )}
 
-      {dealsData?.items?.length === 0 && !isLoading && (
-        <Card className="p-12">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No deals found</h3>
-            <p className="text-gray-600">Try adjusting your filters or search query</p>
-          </div>
-        </Card>
+      {filteredDeals?.length === 0 && !isLoading && <EmptyDealState />}
+    </div>
+  );
+}
+
+// Enhanced Deal Card Component - Pulse Style
+function EnhancedDealCard({ deal, isSaved, onSave }) {
+  const discount = deal.original_price && deal.price 
+    ? Math.round(((deal.original_price - deal.price) / deal.original_price) * 100)
+    : 0;
+
+  // Determine deal quality badge
+  const getDealBadge = () => {
+    const score = deal.score || 0;
+    
+    if (score >= 90) {
+      return { icon: '🚨', text: 'MEGA DEAL', class: 'bg-red-600 text-white animate-pulse' };
+    } else if (score >= 70) {
+      return { icon: '⚡', text: 'HOT DEAL', class: 'bg-orange-600 text-white' };
+    } else if (score >= 50) {
+      return { icon: '🔥', text: 'GREAT DEAL', class: 'bg-yellow-600 text-white' };
+    }
+    return null;
+  };
+
+  const dealBadge = getDealBadge();
+
+  // Discount color coding
+  const discountClass = discount >= 70
+    ? 'text-red-600 bg-red-100 border-red-300'
+    : discount >= 50
+    ? 'text-orange-600 bg-orange-100 border-orange-300'
+    : discount >= 25
+    ? 'text-yellow-600 bg-yellow-100 border-yellow-300'
+    : 'text-green-600 bg-green-100 border-green-300';
+
+  return (
+    <div
+      className={cn(
+        "border rounded-lg p-4 transition-all hover:shadow-lg bg-card border-l-4",
+        deal.score >= 70 ? "border-l-green-500" : "border-l-blue-500"
       )}
+    >
+      <div className="flex items-start gap-2 sm:gap-4">
+        {/* Product Image */}
+        <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-md bg-muted flex-shrink-0 overflow-hidden relative">
+          {deal.image_url ? (
+            <img
+              src={deal.image_url}
+              alt={deal.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.classList.add('flex', 'items-center', 'justify-center');
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <Package className="h-6 w-6 sm:h-10 sm:w-10" />
+            </div>
+          )}
+          {dealBadge && (
+            <div className={cn("absolute top-0.5 right-0.5 sm:top-1 sm:right-1 px-1 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold", dealBadge.class)}>
+              {dealBadge.icon}
+            </div>
+          )}
+        </div>
+
+        {/* Deal Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header with Badges */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-xs sm:text-sm line-clamp-2 mb-1 sm:mb-2">{deal.title}</h4>
+              <div className="flex flex-wrap items-center gap-1">
+                {deal.score && (
+                  <Badge className={`${deal.score >= 70 ? 'bg-green-500' : deal.score >= 50 ? 'bg-yellow-500' : 'bg-gray-400'} text-white text-[8px] sm:text-[10px]`}>
+                    Score: {deal.score}
+                  </Badge>
+                )}
+                {deal.merchant && (
+                  <Badge variant="outline" className="text-[8px] sm:text-[10px]">
+                    {deal.merchant}
+                  </Badge>
+                )}
+                {deal.category && (
+                  <Badge variant="secondary" className="text-[8px] sm:text-[10px]">
+                    {deal.category}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-wrap">
+            {deal.price ? (
+              <>
+                <span className="text-lg sm:text-2xl font-bold text-primary">
+                  ${deal.price.toFixed(2)}
+                </span>
+                {deal.original_price && deal.original_price > deal.price && (
+                  <>
+                    <span className="text-xs sm:text-sm text-muted-foreground line-through">
+                      ${deal.original_price.toFixed(2)}
+                    </span>
+                    <Badge className={cn("text-[10px] sm:text-xs font-bold border", discountClass)}>
+                      <Percent className="w-2 h-2 sm:w-3 sm:h-3 mr-0.5" />
+                      {discount}% OFF
+                    </Badge>
+                    <span className="text-[10px] sm:text-xs text-green-600 font-semibold">
+                      Save ${(deal.original_price - deal.price).toFixed(2)}
+                    </span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">Price not available</span>
+            )}
+          </div>
+
+          {/* Coupon Code */}
+          {deal.coupon_code && (
+            <div className="mb-3 text-xs bg-purple-50 text-purple-800 px-2 py-1 rounded inline-block">
+              🎫 Coupon: <code className="font-mono font-bold">{deal.coupon_code}</code>
+            </div>
+          )}
+
+          {/* Source Info */}
+          {deal.source && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Source: {deal.source}
+            </p>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => window.open(deal.url, '_blank')}
+              className="text-xs"
+            >
+              <span className="hidden sm:inline">View Deal</span>
+              <span className="sm:hidden">View</span>
+              <ExternalLink className="ml-1 h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant={isSaved ? 'default' : 'outline'}
+              onClick={onSave}
+              className="text-xs"
+            >
+              <Bookmark className={`h-3 w-3 sm:h-4 sm:w-4 ${isSaved ? 'fill-current' : ''}`} />
+            </Button>
+            {deal.posted_at && (
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {new Date(deal.posted_at).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Loading Skeleton Component
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex gap-4 border rounded-lg p-4">
+          <Skeleton className="w-16 h-16 sm:w-24 sm:h-24 rounded-md" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Empty State Component
+function EmptyDealState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <Package className="h-16 w-16 text-muted-foreground mb-4" />
+      <h3 className="text-xl font-semibold mb-2">No deals found</h3>
+      <p className="text-muted-foreground max-w-md mb-4">
+        Check back soon for new deals from Reddit, Slickdeals, and top deal sites.
+      </p>
+      <Button onClick={() => window.location.reload()} variant="outline">
+        <TrendingDown className="w-4 h-4 mr-2" />
+        Refresh Deals
+      </Button>
     </div>
   );
 }
