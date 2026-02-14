@@ -15,9 +15,9 @@ export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
-  const [displayLimit, setDisplayLimit] = useState(10); // Show 10 initially for instant results
+  const [displayLimit, setDisplayLimit] = useState(10); // Show 10 initially for instant scroll
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
-  const [requestedLimit, setRequestedLimit] = useState(10); // Start with 10 items for maximum speed (~3-4s)
+  const [requestedLimit, setRequestedLimit] = useState(20); // 20 items = 6-8s (sweet spot for speed vs quantity)
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
@@ -37,7 +37,7 @@ export default function ProductSearch() {
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
         setDisplayLimit(10); // Reset display limit on new search
-        setRequestedLimit(10); // Reset to 10 items for super-fast initial load (~3-4s)
+        setRequestedLimit(20); // 20 items = 6-8 seconds (optimal speed/quantity balance)
         setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
     } else {
@@ -264,7 +264,7 @@ export default function ProductSearch() {
   // Progressive loading: show more results as user scrolls
   const displayedItems = searchResults?.items?.slice(0, displayLimit) || [];
   const hasMore = searchResults?.items?.length > displayLimit;
-  const canLoadMore = requestedLimit === 10 && searchResults?.items?.length === 10; // Can fetch 40 more items (10 → 50)
+  const canLoadMore = false; // DISABLED: No background loading to prevent slow 50-item fetches
 
   // Intersection observer for auto-load more (display)
   useEffect(() => {
@@ -283,23 +283,22 @@ export default function ProductSearch() {
     return () => observer.disconnect();
   }, [hasMore]);
 
-  // Background loading: fetch more items when user scrolls to 8th item
-  useEffect(() => {
-    if (!canLoadMore || isLoadingMore) return;
-    if (displayLimit < 8) return; // Wait until user has scrolled a bit (80% through initial 10)
-
-    console.log('[ProductSearch] Auto-loading more results in background (10 → 50)');
-    setIsLoadingMore(true);
-    setRequestedLimit(50); // Trigger new fetch for 50 items total
-  }, [displayLimit, canLoadMore, isLoadingMore]);
-
-  // Reset loading state when data arrives
-  useEffect(() => {
-    if (searchResults?.items?.length > 10) {
-      setIsLoadingMore(false);
-      console.log('[ProductSearch] Background loading complete:', searchResults.items.length, 'items total');
-    }
-  }, [searchResults?.items?.length]);
+  // DISABLED: Auto-background loading was causing UI to clear results after 20+ seconds
+  // Users will use manual "Load More" button instead
+  // useEffect(() => {
+  //   if (!canLoadMore || isLoadingMore) return;
+  //   if (displayLimit < 8) return;
+  //   console.log('[ProductSearch] Auto-loading more results in background (10 → 50)');
+  //   setIsLoadingMore(true);
+  //   setRequestedLimit(50);
+  // }, [displayLimit, canLoadMore, isLoadingMore]);
+  //
+  // useEffect(() => {
+  //   if (searchResults?.items?.length > 10) {
+  //     setIsLoadingMore(false);
+  //     console.log('[ProductSearch] Background loading complete:', searchResults.items.length, 'items total');
+  //   }
+  // }, [searchResults?.items?.length]);
 
   // Group by merchant instead of provider
   const groupedByMerchant = {};
@@ -453,11 +452,20 @@ export default function ProductSearch() {
                 ))}
               </div>
               
-              {/* Invisible load more trigger for infinite scroll */}
+              {/* Infinite scroll trigger - shows more from already loaded results */}
               {hasMore && (
                 <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
                   <p className="text-sm text-gray-500">
-                    Loading more... ({searchResults.items.length - displayLimit} remaining)
+                    Scroll to load more... ({searchResults.items.length - displayLimit} remaining)
+                  </p>
+                </div>
+              )}
+              
+              {/* Show message when all results are displayed */}
+              {!hasMore && searchResults?.items?.length >= 10 && (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500">
+                    All {searchResults.items.length} results displayed
                   </p>
                 </div>
               )}

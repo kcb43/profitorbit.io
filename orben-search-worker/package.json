@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.7.9",
+    "cacheable-lookup": "^7.0.0",
     "dotenv": "^16.4.5",
     "fastify": "^5.2.0",
-    "ioredis": "^5.4.2",
-    "axios": "^1.7.9"
+    "ioredis": "^5.4.2"
   }
 }

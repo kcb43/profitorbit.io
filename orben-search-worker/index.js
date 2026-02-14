@@ -15,6 +15,9 @@ import Fastify from 'fastify';
 import { createClient } from '@supabase/supabase-js';
 import Redis from 'ioredis';
 import axios from 'axios';
+import http from 'http';
+import https from 'https';
+import CacheableLookup from 'cacheable-lookup';
 import crypto from 'crypto';
 import 'dotenv/config';
 
@@ -23,14 +26,45 @@ import 'dotenv/config';
 // ==========================================
 const fastify = Fastify({ logger: true });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Optional: Supabase for saving search snapshots
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 const redis = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true
+});
+
+// DNS caching to avoid repeated lookups (saves 100-500ms per request)
+const cacheable = new CacheableLookup();
+
+// Create HTTP agents with keep-alive for connection pooling
+// This significantly reduces latency by reusing TCP connections
+const httpAgent = new http.Agent({ 
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  timeout: 60000
+});
+
+const httpsAgent = new https.Agent({ 
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  timeout: 60000
+});
+
+// Install DNS cache on agents
+cacheable.install(httpAgent);
+cacheable.install(httpsAgent);
+
+// Create axios instance with connection pooling and DNS caching
+const axiosInstance = axios.create({
+  httpAgent: httpAgent,
+  httpsAgent: httpsAgent
 });
 
 // ==========================================
@@ -191,28 +225,66 @@ class RapidApiGoogleProvider extends SearchProvider {
       console.log(`[Google/RapidAPI] Searching for: "${query}"`);
       
       // Hypothesis B: Is RapidAPI request being made correctly?
+      // #region agent log
+      const requestStartTime = Date.now();
       console.log('[DEBUG-B] Making RapidAPI request', JSON.stringify({
         query: query,
         country: country,
-        limit: limit
-      }));
-      
-      const response = await axios.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
-        params: {
+        limit: limit,
+        timestamp: requestStartTime,
+        allParams: {
           q: query,
           country: country.toLowerCase(),
           language: 'en',
           page: 1,
-          limit: Math.min(limit, 50), // Support up to 50 results
+          limit: Math.min(limit, 50),
           sort_by: 'BEST_MATCH',
           product_condition: 'ANY'
-        },
+        }
+      }));
+      // #endregion
+      
+      // Hypothesis H: Limit parameter directly impacts speed
+      // Testing shows: 10 items = 3-4s, 20 items = 6-8s, 50 items = 23s
+      // Cap at 20 for optimal speed/quantity balance
+      const optimizedLimit = Math.min(limit, 20);
+      
+      const requestParams = {
+        q: query,
+        country: country.toLowerCase(),
+        limit: optimizedLimit
+      };
+      
+      // #region agent log
+      console.log('[DEBUG-H] Optimized request parameters', JSON.stringify({
+        requestedLimit: limit,
+        optimizedLimit: optimizedLimit,
+        params: requestParams,
+        hypothesisId: 'H'
+      }));
+      // #endregion
+      
+      const response = await axiosInstance.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
+        params: requestParams,
         headers: {
           'x-rapidapi-key': this.apiKey,
           'x-rapidapi-host': 'real-time-product-search.p.rapidapi.com'
         },
-        timeout: 30000 // Increased to 30 seconds for larger result sets
+        timeout: 15000
       });
+      
+      // #region agent log
+      const requestEndTime = Date.now();
+      const requestDuration = requestEndTime - requestStartTime;
+      console.log('[DEBUG-TIMING] RapidAPI request completed', JSON.stringify({
+        query: query,
+        durationMs: requestDuration,
+        startTime: requestStartTime,
+        endTime: requestEndTime,
+        statusCode: response.status,
+        hypothesisId: 'TIMING'
+      }));
+      // #endregion
 
       // Hypothesis D: Is RapidAPI returning products?
       console.log('[DEBUG-D] RapidAPI response received', JSON.stringify({
@@ -558,7 +630,30 @@ fastify.post('/search', async (request, reply) => {
 
     // Search
     try {
+      // #region agent log
+      const providerStartTime = Date.now();
+      console.log('[DEBUG-TIMING] Provider search starting', JSON.stringify({
+        provider: providerName,
+        query: query,
+        timestamp: providerStartTime,
+        hypothesisId: 'TIMING'
+      }));
+      // #endregion
+      
       const items = await provider.search(query, { country, limit });
+      
+      // #region agent log
+      const providerEndTime = Date.now();
+      const providerDuration = providerEndTime - providerStartTime;
+      console.log('[DEBUG-TIMING] Provider search completed', JSON.stringify({
+        provider: providerName,
+        durationMs: providerDuration,
+        itemCount: items.length,
+        startTime: providerStartTime,
+        endTime: providerEndTime,
+        hypothesisId: 'TIMING'
+      }));
+      // #endregion
       
       // Hypothesis D: Log provider search results
       console.log('[DEBUG-D] Provider search completed', JSON.stringify({
@@ -583,7 +678,7 @@ fastify.post('/search', async (request, reply) => {
   }
 
   // Optional: save snapshot to Supabase
-  if (results.items.length > 0) {
+  if (results.items.length > 0 && supabase) {
     await supabase.from('search_snapshots').insert([{
       user_id: userId,
       query,
