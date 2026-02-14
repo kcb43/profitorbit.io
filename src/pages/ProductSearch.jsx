@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,9 @@ export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState(['oxylabs']); // Removed 'ebay' - API deprecated
+  const [displayLimit, setDisplayLimit] = useState(12); // Show 12 initially
   const { toast } = useToast();
+  const loadMoreRef = useRef(null);
 
   const { data: searchResults, isLoading, refetch } = useQuery({
     queryKey: ['productSearch', searchQuery],
@@ -50,7 +52,7 @@ export default function ProductSearch() {
         q: searchQuery,
         providers: providerList,
         country: 'US',
-        limit: '20'
+        limit: '50' // Fetch 50 total, display progressively
       });
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
@@ -78,12 +80,34 @@ export default function ProductSearch() {
       return;
     }
     setSearchQuery(query);
+    setDisplayLimit(12); // Reset display limit on new search
     refetch();
   };
 
+  // Progressive loading: show more results as user scrolls
+  const displayedItems = searchResults?.items?.slice(0, displayLimit) || [];
+  const hasMore = searchResults?.items?.length > displayLimit;
+
+  // Intersection observer for auto-load more
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setDisplayLimit(prev => prev + 12); // Load 12 more
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore]);
+
   const groupedResults = {};
-  if (searchResults?.items) {
-    searchResults.items.forEach(item => {
+  if (displayedItems.length > 0) {
+    displayedItems.forEach(item => {
       if (!groupedResults[item.source]) {
         groupedResults[item.source] = [];
       }
@@ -216,10 +240,24 @@ export default function ProductSearch() {
 
             <TabsContent value="all" className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {searchResults.items?.map((item, idx) => (
+                {displayedItems.map((item, idx) => (
                   <ProductCard key={idx} item={item} />
                 ))}
               </div>
+              
+              {/* Load more trigger for infinite scroll */}
+              {hasMore && (
+                <div ref={loadMoreRef} className="py-8 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setDisplayLimit(prev => prev + 12)}
+                    className="px-8"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Load More Results ({searchResults.items.length - displayLimit} remaining)
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             {Object.keys(groupedResults).map(source => (
