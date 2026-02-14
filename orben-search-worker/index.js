@@ -266,23 +266,27 @@ class OxylabsProvider extends SearchProvider {
       // Combine and map results
       const allResults = [];
       
-      // Add shopping results (prioritize these)
+      // Add shopping results (prioritize these - they have structured price data)
       shoppingResults.forEach(item => {
-        allResults.push({
-          title: item.title,
-          url: item.url,
-          price: parseFloat(item.price?.toString().replace(/[^0-9.]/g, '')) || null,
-          currency: 'USD',
-          merchant: item.seller || item.merchant || 'Google Shopping',
-          image_url: item.thumbnail,
-          source: this.name,
-          rating: item.rating,
-          condition: 'New'
-        });
+        if (item.title && item.url) {
+          allResults.push({
+            title: item.title,
+            url: item.url,
+            price: parseFloat(item.price?.toString().replace(/[^0-9.]/g, '')) || null,
+            currency: 'USD',
+            merchant: item.seller || item.merchant || 'Google Shopping',
+            image_url: item.thumbnail,
+            source: this.name,
+            rating: item.rating,
+            condition: 'New'
+          });
+        }
       });
       
-      // Add organic results with product info
+      // Add ALL organic results (don't filter by price - let frontend show all)
       organicResults.forEach(item => {
+        if (!item.title || !item.url) return; // Skip if missing essentials
+        
         // Extract price from various fields
         let price = null;
         if (item.price) {
@@ -293,23 +297,23 @@ class OxylabsProvider extends SearchProvider {
           price = parseFloat(item.price_upper);
         }
         
-        // Only add if it looks like a product (has price indicators)
-        if (item.title && (price || item.price_lower || item.price_upper || /\$\d+/.test(item.title || ''))) {
-          allResults.push({
-            title: item.title,
-            url: item.url,
-            price: price,
-            currency: item.currency || 'USD',
-            merchant: item.favicon_text || item.domain || 'Unknown',
-            image_url: item.thumbnail,
-            source: this.name,
-            rating: item.rating,
-            condition: 'New'
-          });
-        }
+        // Add ALL results - even without price (user pays for comprehensive search)
+        allResults.push({
+          title: item.title,
+          url: item.url,
+          price: price,
+          currency: item.currency || 'USD',
+          merchant: item.favicon_text || item.domain || 'Unknown',
+          image_url: item.thumbnail,
+          source: this.name,
+          rating: item.rating,
+          condition: 'New'
+        });
       });
 
-      return allResults.slice(0, limit).filter(item => item.title);
+      console.log(`[Oxylabs] Returning ${allResults.length} total results (${shoppingResults.length} shopping + ${organicResults.length} organic)`);
+      
+      return allResults.slice(0, limit).filter(item => item.title && item.url);
     } catch (error) {
       console.error(`[Oxylabs] Search error:`, error.message);
       if (error.response) {
