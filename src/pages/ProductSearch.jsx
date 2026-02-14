@@ -18,6 +18,7 @@ export default function ProductSearch() {
   const [displayLimit, setDisplayLimit] = useState(10); // Show 10 initially for instant scroll
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
   const [requestedLimit, setRequestedLimit] = useState(20); // 20 items = 6-8s (sweet spot for speed vs quantity)
+  const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
@@ -38,6 +39,7 @@ export default function ProductSearch() {
         setDebouncedQuery(query.trim());
         setDisplayLimit(10); // Reset display limit on new search
         setRequestedLimit(20); // 20 items = 6-8 seconds (optimal speed/quantity balance)
+        setTotalFetched(0); // Reset total fetched on new search
         setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
     } else {
@@ -264,7 +266,7 @@ export default function ProductSearch() {
   // Progressive loading: show more results as user scrolls
   const displayedItems = searchResults?.items?.slice(0, displayLimit) || [];
   const hasMore = searchResults?.items?.length > displayLimit;
-  const canLoadMore = false; // DISABLED: No background loading to prevent slow 50-item fetches
+  const canLoadMore = searchResults?.items?.length >= requestedLimit && requestedLimit < 100; // Can fetch more if we got full 20 items and haven't hit 100 total
 
   // Intersection observer for auto-load more (display)
   useEffect(() => {
@@ -283,22 +285,24 @@ export default function ProductSearch() {
     return () => observer.disconnect();
   }, [hasMore]);
 
-  // DISABLED: Auto-background loading was causing UI to clear results after 20+ seconds
-  // Users will use manual "Load More" button instead
-  // useEffect(() => {
-  //   if (!canLoadMore || isLoadingMore) return;
-  //   if (displayLimit < 8) return;
-  //   console.log('[ProductSearch] Auto-loading more results in background (10 → 50)');
-  //   setIsLoadingMore(true);
-  //   setRequestedLimit(50);
-  // }, [displayLimit, canLoadMore, isLoadingMore]);
-  //
-  // useEffect(() => {
-  //   if (searchResults?.items?.length > 10) {
-  //     setIsLoadingMore(false);
-  //     console.log('[ProductSearch] Background loading complete:', searchResults.items.length, 'items total');
-  //   }
-  // }, [searchResults?.items?.length]);
+  // Auto-fetch more items when user scrolls close to the end
+  useEffect(() => {
+    if (!canLoadMore || isLoadingMore) return;
+    if (displayLimit < requestedLimit - 5) return; // Wait until user has scrolled near the end (5 items before end)
+
+    console.log('[ProductSearch] Auto-loading next batch (20 more items)');
+    setIsLoadingMore(true);
+    setTotalFetched(requestedLimit); // Track what we've fetched
+    setRequestedLimit(prev => prev + 20); // Fetch 20 more items
+  }, [displayLimit, canLoadMore, isLoadingMore, requestedLimit]);
+
+  // Reset loading state when new data arrives
+  useEffect(() => {
+    if (searchResults?.items?.length > totalFetched && totalFetched > 0) {
+      setIsLoadingMore(false);
+      console.log('[ProductSearch] Loaded more results:', searchResults.items.length, 'items total');
+    }
+  }, [searchResults?.items?.length, totalFetched]);
 
   // Group by merchant instead of provider
   const groupedByMerchant = {};
