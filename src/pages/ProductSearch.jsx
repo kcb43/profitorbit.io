@@ -116,27 +116,27 @@ export default function ProductSearch() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Universal Product Search</h1>
-        <p className="text-gray-600 mt-1">Search across eBay, Google Shopping, and more</p>
+        <h1 className="text-2xl sm:text-3xl font-bold">Universal Product Search</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">Search across Google Shopping and more</p>
       </div>
 
       {/* Search Bar */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <form onSubmit={handleSearch}>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="flex-1">
                 <Input
-                  placeholder="Search for products... (e.g., 'iPhone 15 Pro', 'LEGO Star Wars')"
+                  placeholder="Search for products..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="text-lg"
+                  className="text-base sm:text-lg"
                 />
               </div>
-              <Button type="submit" disabled={isLoading} className="px-8">
+              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto px-6 sm:px-8">
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -153,9 +153,9 @@ export default function ProductSearch() {
           </form>
 
           {/* Provider selection */}
-          <div className="mt-4 flex items-center gap-4">
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <span className="text-sm font-medium">Search providers:</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-3">
               {['oxylabs', 'google'].map(provider => (
                 <label key={provider} className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -239,7 +239,7 @@ export default function ProductSearch() {
             </TabsList>
 
             <TabsContent value="all" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {displayedItems.map((item, idx) => (
                   <ProductCard key={idx} item={item} />
                 ))}
@@ -247,14 +247,16 @@ export default function ProductSearch() {
               
               {/* Load more trigger for infinite scroll */}
               {hasMore && (
-                <div ref={loadMoreRef} className="py-8 text-center">
+                <div ref={loadMoreRef} className="py-6 sm:py-8 text-center">
                   <Button
                     variant="outline"
                     onClick={() => setDisplayLimit(prev => prev + 12)}
-                    className="px-8"
+                    className="px-6 sm:px-8"
                   >
                     <TrendingUp className="w-4 h-4 mr-2" />
-                    Load More Results ({searchResults.items.length - displayLimit} remaining)
+                    <span className="text-sm sm:text-base">
+                      Load More ({searchResults.items.length - displayLimit} remaining)
+                    </span>
                   </Button>
                 </div>
               )}
@@ -262,7 +264,7 @@ export default function ProductSearch() {
 
             {Object.keys(groupedResults).map(source => (
               <TabsContent key={source} value={source} className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {groupedResults[source].map((item, idx) => (
                     <ProductCard key={idx} item={item} />
                   ))}

@@ -102,15 +102,15 @@ export default function SubmitDeal() {
 
   if (submitted) {
     return (
-      <div className="container mx-auto p-6 max-w-2xl">
-        <Card className="p-12">
+      <div className="container mx-auto p-4 sm:p-6 max-w-2xl">
+        <Card className="p-8 sm:p-12">
           <div className="text-center">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Deal Submitted!</h2>
-            <p className="text-gray-600 mb-6">
+            <CheckCircle2 className="w-12 h-12 sm:w-16 sm:h-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">Deal Submitted!</h2>
+            <p className="text-sm sm:text-base text-gray-600 mb-6">
               Thank you for contributing. Your deal is now pending review and will appear in the feed once approved.
             </p>
-            <Button onClick={() => navigate('/deals')}>View Deals Feed</Button>
+            <Button onClick={() => navigate('/deals')} className="w-full sm:w-auto">View Deals Feed</Button>
           </div>
         </Card>
       </div>
@@ -118,10 +118,10 @@ export default function SubmitDeal() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Submit a Deal</h1>
-        <p className="text-gray-600 mt-1">
+    <div className="container mx-auto p-4 sm:p-6 max-w-2xl">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Submit a Deal</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">
           Found a great deal? Share it with the community!
         </p>
       </div>

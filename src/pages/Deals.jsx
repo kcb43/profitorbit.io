@@ -151,23 +151,23 @@ export default function Deals() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Deal Intelligence</h1>
-          <p className="text-gray-600 mt-1">Curated deals for resellers</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Deal Intelligence</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Curated deals for resellers</p>
         </div>
-        <Button onClick={() => window.location.href = '/deals/submit'}>
+        <Button onClick={() => window.location.href = '/deals/submit'} className="w-full sm:w-auto">
           Submit Deal
         </Button>
       </div>
 
       {/* Search & Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="md:col-span-2">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="sm:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
@@ -179,17 +179,17 @@ export default function Deals() {
               </div>
             </div>
             <Input
-              placeholder="Filter by merchant"
+              placeholder="Merchant"
               value={filters.merchant}
               onChange={(e) => setFilters({ ...filters, merchant: e.target.value })}
             />
             <Input
-              placeholder="Filter by category"
+              placeholder="Category"
               value={filters.category}
               onChange={(e) => setFilters({ ...filters, category: e.target.value })}
             />
           </div>
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
             <label className="text-sm font-medium">Min Score:</label>
             <input
               type="range"
@@ -206,7 +206,7 @@ export default function Deals() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Active Deals</CardTitle>
@@ -256,7 +256,7 @@ export default function Deals() {
           <p className="mt-4 text-gray-600">Loading deals...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {dealsData?.items?.map((deal) => {
             const isSaved = savedDealIds.has(deal.id);
             const discount = calculateDiscount(deal.price, deal.original_price);
