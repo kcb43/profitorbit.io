@@ -288,7 +288,12 @@ export default function ProductSearch() {
   // Auto-fetch more items when user scrolls close to the end
   useEffect(() => {
     if (!canLoadMore || isLoadingMore) return;
-    if (displayLimit < requestedLimit - 3) return; // Wait until user has scrolled near the end (3 items before end)
+    
+    // Only trigger auto-fetch if:
+    // 1. User has scrolled past initial 10 items (displayLimit > 10)
+    // 2. User is within 3 items of the end of fetched items
+    if (displayLimit <= 10) return; // Wait for user to scroll first!
+    if (displayLimit < requestedLimit - 3) return; // Wait until near end
 
     console.log('[ProductSearch] Auto-loading next batch (10 more items)');
     setIsLoadingMore(true);
