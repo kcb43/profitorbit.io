@@ -362,13 +362,13 @@ function selectSmartProviders(query, requestedProviders) {
   const isHighValue = highValueKeywords.some(keyword => queryLower.includes(keyword));
 
   if (isHighValue) {
-    // Use both eBay (free) and Oxylabs (premium) for high-value items
-    console.log(`[SmartRouting] Auto mode - High-value detected: using eBay + Oxylabs`);
-    return ['ebay', 'oxylabs'];
+    // Use Oxylabs (premium, reliable) for high-value items
+    console.log(`[SmartRouting] Auto mode - High-value detected: using Oxylabs`);
+    return ['oxylabs'];
   } else {
-    // Use free eBay for regular searches
-    console.log(`[SmartRouting] Auto mode - Regular query: using eBay only`);
-    return ['ebay'];
+    // Use Oxylabs for all searches (eBay API is deprecated and unreliable)
+    console.log(`[SmartRouting] Auto mode - Regular query: using Oxylabs`);
+    return ['oxylabs'];
   }
 }
 
