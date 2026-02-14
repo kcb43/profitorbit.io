@@ -230,16 +230,22 @@ class OxylabsProvider extends SearchProvider {
     const { country = 'US', limit = 20 } = opts;
 
     try {
-      console.log(`[Oxylabs] Searching for: "${query}"`);
+      console.log(`[Oxylabs] Searching Google Shopping for: "${query}"`);
       
-      // Use Google Search with Web Scraper API (not E-Commerce API)
+      // Use google_shopping_search for ACTUAL product listings (not articles/info pages)
       const response = await axios.post(
         'https://realtime.oxylabs.io/v1/queries',
         {
-          source: 'google_search',
+          source: 'google_shopping_search',
           query: query,
-          geo_location: country === 'US' ? 'United States' : 'United Kingdom',
-          parse: true
+          domain: 'com',
+          start_page: 1,
+          pages: 1,
+          parse: true,
+          context: [
+            { key: 'results_language', value: 'en' },
+            { key: 'tbm', value: 'shop' }
+          ]
         },
         {
           auth: {
@@ -256,64 +262,48 @@ class OxylabsProvider extends SearchProvider {
       console.log(`[Oxylabs] Response status: ${response.status}`);
       console.log(`[Oxylabs] Job status: ${response.data?.job?.status}`);
       
-      // Parse Google Search results (organic + shopping)
+      // Parse Google Shopping results (structured product data)
       const content = response.data?.results?.[0]?.content || {};
       const organicResults = content.results?.organic || [];
-      const shoppingResults = content.results?.shopping || [];
       
-      console.log(`[Oxylabs] Found ${organicResults.length} organic results, ${shoppingResults.length} shopping results`);
+      console.log(`[Oxylabs] Found ${organicResults.length} Google Shopping results`);
 
-      // Combine and map results
-      const allResults = [];
-      
-      // Add shopping results (prioritize these - they have structured price data)
-      shoppingResults.forEach(item => {
-        if (item.title && item.url) {
-          allResults.push({
-            title: item.title,
-            url: item.url,
-            price: parseFloat(item.price?.toString().replace(/[^0-9.]/g, '')) || null,
-            currency: 'USD',
-            merchant: item.seller || item.merchant || 'Google Shopping',
-            image_url: item.thumbnail,
-            source: this.name,
-            rating: item.rating,
-            condition: 'New'
-          });
-        }
-      });
-      
-      // Add ALL organic results (don't filter by price - let frontend show all)
-      organicResults.forEach(item => {
-        if (!item.title || !item.url) return; // Skip if missing essentials
-        
+      // Map Google Shopping results to our format
+      const items = organicResults.map(item => {
         // Extract price from various fields
         let price = null;
-        if (item.price) {
+        if (item.price_str) {
+          price = parseFloat(item.price_str.replace(/[^0-9.]/g, ''));
+        } else if (item.price) {
           price = parseFloat(item.price.toString().replace(/[^0-9.]/g, ''));
-        } else if (item.price_lower) {
-          price = parseFloat(item.price_lower);
-        } else if (item.price_upper) {
-          price = parseFloat(item.price_upper);
         }
-        
-        // Add ALL results - even without price (user pays for comprehensive search)
-        allResults.push({
-          title: item.title,
-          url: item.url,
+
+        return {
+          title: item.title || item.product_title,
+          url: item.url || item.product_link,
           price: price,
           currency: item.currency || 'USD',
-          merchant: item.favicon_text || item.domain || 'Unknown',
+          merchant: item.merchant?.name || item.source || 'Unknown',
           image_url: item.thumbnail,
           source: this.name,
           rating: item.rating,
+          reviews_count: item.reviews_count,
           condition: 'New'
-        });
-      });
+        };
+      }).filter(item => item.title && item.url);
 
-      console.log(`[Oxylabs] Returning ${allResults.length} total results (${shoppingResults.length} shopping + ${organicResults.length} organic)`);
+      console.log(`[Oxylabs] Returning ${items.length} product results`);
       
-      return allResults.slice(0, limit).filter(item => item.title && item.url);
+      return items.slice(0, limit);
+    } catch (error) {
+      console.error(`[Oxylabs] Search error:`, error.message);
+      if (error.response) {
+        console.error(`[Oxylabs] Status: ${error.response.status}`);
+        console.error(`[Oxylabs] Data:`, JSON.stringify(error.response.data).slice(0, 300));
+      }
+      return [];
+    }
+  }
     } catch (error) {
       console.error(`[Oxylabs] Search error:`, error.message);
       if (error.response) {
