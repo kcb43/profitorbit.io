@@ -15,9 +15,9 @@ export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
-  const [displayLimit, setDisplayLimit] = useState(20); // No longer needed but keeping for compatibility
+  const [displayLimit, setDisplayLimit] = useState(10); // No longer needed but keeping for compatibility
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
-  const [requestedLimit, setRequestedLimit] = useState(20); // Start with 20 items
+  const [requestedLimit, setRequestedLimit] = useState(10); // Start with 10 items for fastest initial load
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const [accumulatedItems, setAccumulatedItems] = useState([]); // Accumulate items across multiple fetches
@@ -258,7 +258,7 @@ export default function ProductSearch() {
     }
     // Immediately trigger search (bypass debounce)
     setDebouncedQuery(query.trim());
-    setRequestedLimit(20); // Start with 20 items
+    setRequestedLimit(10); // Start with 10 items for fastest initial load
     setAccumulatedItems([]); // Clear accumulated items for new search
     setTotalFetched(0); // Reset fetch tracking
     setIsTyping(false); // Reset typing state
@@ -271,7 +271,7 @@ export default function ProductSearch() {
     const currentItemCount = searchResults.items.length;
     
     // If this is a new search (fewer items than before), replace everything
-    if (currentItemCount < accumulatedItems.length || currentItemCount === 20) {
+    if (currentItemCount < accumulatedItems.length || currentItemCount === 10) {
       setAccumulatedItems(searchResults.items);
       setTotalFetched(currentItemCount);
     } 
@@ -484,7 +484,7 @@ export default function ProductSearch() {
               )}
               
               {/* Show message when all results are displayed */}
-              {!canLoadMore && displayedItems.length >= 20 && (
+              {!canLoadMore && displayedItems.length >= 10 && (
                 <div className="text-center py-6">
                   <p className="text-sm text-gray-500">
                     All {displayedItems.length} results displayed
