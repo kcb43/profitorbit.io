@@ -177,35 +177,49 @@ class RapidApiGoogleProvider extends SearchProvider {
     const { country = 'US', limit = 20 } = opts;
 
     try {
-      // Using Real-Time Product Search API on RapidAPI
-      const response = await axios.get('https://real-time-product-search.p.rapidapi.com/search', {
+      // Using Real-Time Product Search API v2 on RapidAPI
+      console.log(`[Google/RapidAPI] Searching for: "${query}"`);
+      
+      const response = await axios.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
         params: {
           q: query,
           country: country.toLowerCase(),
           language: 'en',
-          limit
+          page: 1,
+          limit: limit,
+          sort_by: 'BEST_MATCH',
+          product_condition: 'ANY'
         },
         headers: {
-          'X-RapidAPI-Key': this.apiKey,
-          'X-RapidAPI-Host': 'real-time-product-search.p.rapidapi.com'
+          'x-rapidapi-key': this.apiKey,
+          'x-rapidapi-host': 'real-time-product-search.p.rapidapi.com'
         },
-        timeout: 10000
+        timeout: 15000
       });
 
-      const products = response.data?.data || [];
+      console.log(`[Google/RapidAPI] Response status: ${response.data?.status}`);
+      
+      const products = response.data?.data?.products || [];
+      
+      console.log(`[Google/RapidAPI] Found ${products.length} products`);
 
       return products.map(item => ({
         title: item.product_title,
         url: item.product_link,
         price: parseFloat(item.offer?.price),
-        currency: 'USD',
-        merchant: item.source || 'Google',
+        currency: item.offer?.currency || 'USD',
+        merchant: item.offer?.store_name || 'Unknown',
         image_url: item.product_photos?.[0],
         source: this.name,
-        rating: item.product_rating
+        rating: item.product_rating,
+        reviews_count: item.product_num_reviews
       }));
     } catch (error) {
       console.error(`[Google/RapidAPI] Search error:`, error.message);
+      if (error.response) {
+        console.error(`[Google/RapidAPI] Status: ${error.response.status}`);
+        console.error(`[Google/RapidAPI] Data:`, JSON.stringify(error.response.data).slice(0, 200));
+      }
       return [];
     }
   }
