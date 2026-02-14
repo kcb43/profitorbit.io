@@ -82,7 +82,9 @@ export default function ProductSearch() {
         q: debouncedQuery,
         providers: providerList,
         country: 'US',
-        limit: '50' // Fetch 50 total, display progressively
+        limit: '50', // Fetch 50 total, display progressively
+        // Force fresh results after RapidAPI key was added (cache v5)
+        cache_version: 'v5_rapidapi_configured'
       });
 
       console.log('[ProductSearch] Fetching:', `${ORBEN_API_URL}/v1/search?${params}`);

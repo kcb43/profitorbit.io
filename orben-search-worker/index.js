@@ -372,8 +372,8 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}`).digest('hex');
-  // v4: Forcing fresh results after verifying RapidAPI params are correct (2026-02-14)
-  return `search:v4:${provider}:${country}:${hash}`;
+  // v5: Cache bust after RapidAPI key configured (2026-02-14)
+  return `search:v5:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
