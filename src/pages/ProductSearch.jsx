@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Loader2, ExternalLink, TrendingUp, ShoppingCart } from 'lucide-react';
+import { Search, Loader2, ExternalLink, TrendingUp, ShoppingCart, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -19,7 +19,7 @@ export default function ProductSearch() {
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
 
-  const { data: searchResults, isLoading, refetch } = useQuery({
+  const { data: searchResults, isLoading, refetch, error: queryError } = useQuery({
     queryKey: ['productSearch', searchQuery],
     queryFn: async () => {
       if (!searchQuery) return null;
@@ -27,7 +27,18 @@ export default function ProductSearch() {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
+      console.log('[ProductSearch] Session check:', { 
+        hasSession: !!session.data.session, 
+        hasToken: !!token,
+        tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
+      });
+
       if (!token) {
+        toast({
+          title: 'Authentication required',
+          description: 'Please log in to use product search',
+          variant: 'destructive'
+        });
         throw new Error('Please log in to search');
       }
 
@@ -55,15 +66,37 @@ export default function ProductSearch() {
         limit: '50' // Fetch 50 total, display progressively
       });
 
+      console.log('[ProductSearch] Fetching:', `${ORBEN_API_URL}/v1/search?${params}`);
+
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      console.log('[ProductSearch] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Search failed');
+        const errorText = await response.text();
+        console.error('[ProductSearch] Error response:', errorText);
+        
+        if (response.status === 401) {
+          toast({
+            title: 'Session expired',
+            description: 'Please refresh the page and try again',
+            variant: 'destructive'
+          });
+          throw new Error('Authentication failed - please log in again');
+        }
+        
+        throw new Error(`Search failed: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('[ProductSearch] Results:', { 
+        itemCount: data.items?.length || 0,
+        providers: data.providers
+      });
+
+      return data;
     },
     enabled: false // Only run when explicitly triggered
   });
@@ -275,7 +308,7 @@ export default function ProductSearch() {
         </>
       )}
 
-      {!searchResults && !isLoading && (
+      {!searchResults && !isLoading && !queryError && (
         <Card className="p-12">
           <div className="text-center">
             <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -283,6 +316,28 @@ export default function ProductSearch() {
             <p className="text-gray-600">
               Enter a product name to see live pricing and availability across multiple marketplaces
             </p>
+          </div>
+        </Card>
+      )}
+
+      {queryError && (
+        <Card className="p-12 border-red-200 bg-red-50">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-medium mb-2 text-red-700">Search Error</h3>
+            <p className="text-red-600 mb-4">
+              {queryError.message || 'Failed to fetch search results'}
+            </p>
+            {queryError.message?.includes('log in') && (
+              <Button onClick={() => window.location.href = '/login'} variant="destructive">
+                Go to Login
+              </Button>
+            )}
+            {queryError.message?.includes('Session expired') && (
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Refresh Page
+              </Button>
+            )}
           </div>
         </Card>
       )}
