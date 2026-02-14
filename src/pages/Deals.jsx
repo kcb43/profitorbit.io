@@ -165,7 +165,11 @@ export default function Deals() {
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 flex-wrap">
               <TrendingDown className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
               Deal Feed
-              <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-xs">
+              <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-xs flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
+                </span>
                 Live
               </Badge>
             </h1>

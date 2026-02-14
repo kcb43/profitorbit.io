@@ -14,6 +14,7 @@ const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.f
 export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
   const [displayLimit, setDisplayLimit] = useState(10); // Show 10 initially for instant results
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
   const [requestedLimit, setRequestedLimit] = useState(10); // Start with 10 items for maximum speed (~3-4s)
@@ -21,6 +22,7 @@ export default function ProductSearch() {
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const prefetchTimerRef = useRef(null);
 
   // Debounce search query: wait 800ms after user stops typing
   useEffect(() => {
@@ -52,9 +54,71 @@ export default function ProductSearch() {
     };
   }, [query]);
 
+  // Predictive pre-fetching: Start loading at 2 characters with shorter debounce
+  useEffect(() => {
+    // Clear existing prefetch timer
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+
+    // Start pre-fetching at 2 characters (before the 3-char threshold)
+    if (query.trim().length === 2) {
+      prefetchTimerRef.current = setTimeout(() => {
+        console.log('[ProductSearch] Predictive pre-fetch triggered for:', query.trim());
+        setPrefetchQuery(query.trim());
+      }, 500); // Shorter delay (500ms) to get a head start
+    } else if (query.trim().length < 2) {
+      setPrefetchQuery('');
+    }
+
+    // Cleanup
+    return () => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current);
+      }
+    };
+  }, [query]);
+
   // Check if smart routing is enabled
   const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
 
+  // Predictive pre-fetch query (silently loads in background, won't show results yet)
+  useQuery({
+    queryKey: ['productSearchPrefetch', prefetchQuery, 10],
+    queryFn: async () => {
+      if (!prefetchQuery || prefetchQuery.length < 2) return null;
+
+      console.log('[ProductSearch] Pre-fetching results for:', prefetchQuery);
+
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      if (!token) return null; // Silently fail, don't show errors for prefetch
+
+      const providerList = 'auto';
+      const params = new URLSearchParams({
+        q: prefetchQuery,
+        providers: providerList,
+        country: 'US',
+        limit: '10', // Pre-fetch 10 items only
+        cache_version: 'v5_rapidapi_configured'
+      });
+
+      const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) return null; // Silently fail
+
+      return response.json();
+    },
+    enabled: !!prefetchQuery && prefetchQuery.length >= 2, // Only prefetch if 2+ chars
+    staleTime: 300000, // Cache for 5 minutes
+    cacheTime: 600000, // Keep in cache for 10 minutes
+    retry: false // Don't retry on failure
+  });
+
+  // Main search query (displays results)
   const { data: searchResults, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['productSearch', debouncedQuery, requestedLimit],
     queryFn: async () => {
@@ -269,7 +333,7 @@ export default function ProductSearch() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="flex-1 relative">
                 <Input
-                  placeholder="Start typing to search... (min 3 characters)"
+                  placeholder="Search products..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="text-base sm:text-lg pr-24"
@@ -290,21 +354,12 @@ export default function ProductSearch() {
                 ) : (
                   <>
                     <Search className="w-4 h-4 mr-2" />
-                    Search Now
+                    Search
                   </>
                 )}
               </Button>
             </div>
           </form>
-
-          {/* Search Info */}
-          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-            <ShoppingCart className="w-4 h-4" />
-            <span>
-              Searching <span className="font-semibold text-gray-900">Google Shopping</span> via RapidAPI • 
-              Real-time pricing from 100+ merchants • Auto-search as you type
-            </span>
-          </div>
         </CardContent>
       </Card>
 
@@ -425,10 +480,7 @@ export default function ProductSearch() {
         <Card className="p-12">
           <div className="text-center">
             <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium mb-2">Type to Start Searching</h3>
-            <p className="text-gray-600 mb-3">
-              Just start typing a product name above - results appear automatically
-            </p>
+            <h3 className="text-xl font-medium mb-2">Search for Products</h3>
             <p className="text-sm text-gray-500">
               Try: "iPhone 15", "Nike shoes", "PS5", or "Samsung TV"
             </p>
