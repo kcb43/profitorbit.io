@@ -17,6 +17,32 @@ if (typeof window !== 'undefined') {
   window.__PO_WEB_BUILD__ = { sha: PO_BUILD_SHA, time: PO_BUILD_TIME };
 }
 
+// Global error handler for chunk loading failures
+// This catches module loading errors before they reach React
+window.addEventListener('error', (event) => {
+  const isChunkError = 
+    event.message?.includes('Failed to fetch dynamically imported module') ||
+    event.message?.includes('Failed to load module script') ||
+    event.message?.includes('Importing a module script failed') ||
+    (event.error?.message && (
+      event.error.message.includes('Failed to fetch dynamically imported module') ||
+      event.error.message.includes('Failed to load module script')
+    ));
+
+  if (isChunkError) {
+    console.warn('🔄 Chunk loading error detected globally - reloading to fetch new version...');
+    console.warn('Error:', event.message || event.error?.message);
+    
+    // Prevent the error from propagating
+    event.preventDefault();
+    
+    // Reload after a short delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  }
+}, true);
+
 // Sensible defaults to reduce refetch churn and make the app feel faster.
 const queryClient = new QueryClient({
   defaultOptions: {
