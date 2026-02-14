@@ -16,6 +16,8 @@ export default function ProductSearch() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [displayLimit, setDisplayLimit] = useState(12); // Show 12 initially
   const [isTyping, setIsTyping] = useState(false); // Track if user is typing
+  const [requestedLimit, setRequestedLimit] = useState(20); // Start with 20 items for speed
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
   const debounceTimerRef = useRef(null);
@@ -33,6 +35,7 @@ export default function ProductSearch() {
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
         setDisplayLimit(12); // Reset display limit on new search
+        setRequestedLimit(20); // Reset to 20 items for fast initial load
         setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
     } else {
@@ -52,14 +55,15 @@ export default function ProductSearch() {
   // Check if smart routing is enabled
   const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
 
-  const { data: searchResults, isLoading, error: queryError } = useQuery({
-    queryKey: ['productSearch', debouncedQuery],
+  const { data: searchResults, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: ['productSearch', debouncedQuery, requestedLimit],
     queryFn: async () => {
       if (!debouncedQuery) return null;
 
       // #region agent log
       console.log('[DEBUG-A] Frontend: Starting product search', JSON.stringify({
         query: debouncedQuery,
+        requestedLimit: requestedLimit,
         orbenApiUrl: ORBEN_API_URL,
         hypothesisId: 'A'
       }));
@@ -98,7 +102,7 @@ export default function ProductSearch() {
         q: debouncedQuery,
         providers: providerList,
         country: 'US',
-        limit: '50', // Fetch 50 total, display progressively
+        limit: String(requestedLimit), // Use dynamic limit: 20 for initial, 50 for "load more"
         // Force fresh results after RapidAPI key was added (cache v5)
         cache_version: 'v5_rapidapi_configured'
       });
@@ -107,6 +111,7 @@ export default function ProductSearch() {
       console.log('[DEBUG-A] Frontend: Making API request', JSON.stringify({
         url: `${ORBEN_API_URL}/v1/search`,
         params: Object.fromEntries(params),
+        requestedLimit: requestedLimit,
         hypothesisId: 'A'
       }));
       // #endregion
@@ -160,6 +165,7 @@ export default function ProductSearch() {
       // #region agent log
       console.log('[DEBUG-D] Frontend: Results parsed', JSON.stringify({
         itemCount: data.items?.length || 0,
+        requestedLimit: requestedLimit,
         providers: data.providers,
         firstItemTitle: data.items?.[0]?.title || null,
         hypothesisId: 'D'
@@ -168,7 +174,8 @@ export default function ProductSearch() {
 
       return data;
     },
-    enabled: !!debouncedQuery // Auto-run when debouncedQuery changes
+    enabled: !!debouncedQuery, // Auto-run when debouncedQuery changes
+    keepPreviousData: true // Keep showing previous results while loading more
   });
 
   // Optional: Allow instant search on Enter key press
@@ -186,21 +193,23 @@ export default function ProductSearch() {
     // Immediately trigger search (bypass debounce)
     setDebouncedQuery(query.trim());
     setDisplayLimit(12);
+    setRequestedLimit(20); // Start with 20 for fast initial load
     setIsTyping(false); // Reset typing state
   };
 
   // Progressive loading: show more results as user scrolls
   const displayedItems = searchResults?.items?.slice(0, displayLimit) || [];
   const hasMore = searchResults?.items?.length > displayLimit;
+  const canLoadMore = requestedLimit === 20 && searchResults?.items?.length === 20; // Can fetch 30 more items
 
-  // Intersection observer for auto-load more
+  // Intersection observer for auto-load more (display)
   useEffect(() => {
     if (!loadMoreRef.current || !hasMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setDisplayLimit(prev => prev + 12); // Load 12 more
+          setDisplayLimit(prev => prev + 12); // Show 12 more from already fetched
         }
       },
       { threshold: 0.1 }
@@ -209,6 +218,24 @@ export default function ProductSearch() {
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [hasMore]);
+
+  // Background loading: fetch 30 more items when user scrolls to 15th item
+  useEffect(() => {
+    if (!canLoadMore || isLoadingMore) return;
+    if (displayLimit < 15) return; // Wait until user has scrolled a bit
+
+    console.log('[ProductSearch] Auto-loading more results in background (20 → 50)');
+    setIsLoadingMore(true);
+    setRequestedLimit(50); // Trigger new fetch for 50 items
+  }, [displayLimit, canLoadMore, isLoadingMore]);
+
+  // Reset loading state when data arrives
+  useEffect(() => {
+    if (searchResults?.items?.length > 20) {
+      setIsLoadingMore(false);
+      console.log('[ProductSearch] Background loading complete:', searchResults.items.length, 'items total');
+    }
+  }, [searchResults?.items?.length]);
 
   // Group by merchant instead of provider
   const groupedByMerchant = {};
@@ -305,10 +332,20 @@ export default function ProductSearch() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Results</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                  Total Results
+                  {isLoadingMore && (
+                    <Loader2 className="w-3 h-3 animate-spin text-blue-500" title="Loading more results..." />
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{searchResults.items?.length || 0}</div>
+                <div className="text-2xl font-bold">
+                  {searchResults.items?.length || 0}
+                  {requestedLimit === 20 && searchResults.items.length === 20 && (
+                    <span className="text-sm text-gray-500 font-normal ml-1">of 50</span>
+                  )}
+                </div>
               </CardContent>
             </Card>
             <Card>
