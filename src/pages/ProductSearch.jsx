@@ -266,23 +266,32 @@ export default function ProductSearch() {
 
   // Accumulate items when new results arrive
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:268',message:'Accumulation useEffect triggered',data:{hasSearchResults:!!searchResults?.items,currentItemCount:searchResults?.items?.length,accumulatedLength:accumulatedItems.length,requestedLimit,isLoadingMore},timestamp:Date.now(),hypothesisId:'ALL'})}).catch(()=>{});
-    // #endregion
+    console.log('[DEBUG-ACCUM] Accumulation useEffect triggered', {
+      hasSearchResults: !!searchResults?.items,
+      currentItemCount: searchResults?.items?.length,
+      accumulatedLength: accumulatedItems.length,
+      requestedLimit,
+      isLoadingMore
+    });
     
     if (!searchResults?.items) return;
     
     const currentItemCount = searchResults.items.length;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:274',message:'Checking replacement condition',data:{currentItemCount,accumulatedLength:accumulatedItems.length,equals10:currentItemCount===10,lessThan:currentItemCount<accumulatedItems.length,isLoadingMore:isLoadingMore,willReplace:(currentItemCount<accumulatedItems.length||currentItemCount===10)&&!isLoadingMore},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    console.log('[DEBUG-ACCUM] Checking replacement condition', {
+      currentItemCount,
+      accumulatedLength: accumulatedItems.length,
+      equals10: currentItemCount === 10,
+      lessThan: currentItemCount < accumulatedItems.length,
+      isLoadingMore: isLoadingMore,
+      willReplace: (currentItemCount < accumulatedItems.length || currentItemCount === 10) && !isLoadingMore
+    });
     
     // If we got 0 items on a "load more" request, keep existing items and show error
     if (currentItemCount === 0 && isLoadingMore) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:283',message:'Timeout - keeping existing items',data:{accumulatedLength:accumulatedItems.length},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      console.log('[DEBUG-ACCUM] Timeout - keeping existing items', {
+        accumulatedLength: accumulatedItems.length
+      });
       toast({
         title: 'Load more failed',
         description: 'The search timed out or no additional items are available',
@@ -294,24 +303,30 @@ export default function ProductSearch() {
     
     // If this is a new search (not a load more), replace everything
     if (!isLoadingMore && (currentItemCount < accumulatedItems.length || currentItemCount === 10)) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:301',message:'REPLACING all items (new search detected)',data:{oldCount:accumulatedItems.length,newCount:currentItemCount,firstItemTitle:searchResults.items[0]?.title},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
+      console.log('[DEBUG-ACCUM] REPLACING all items (new search detected)', {
+        oldCount: accumulatedItems.length,
+        newCount: currentItemCount,
+        firstItemTitle: searchResults.items[0]?.title
+      });
       setAccumulatedItems(searchResults.items);
       setTotalFetched(currentItemCount);
     } 
     // If we got more items, it's a "load more" response - accumulate them
     else if (currentItemCount > accumulatedItems.length) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:309',message:'ACCUMULATING items (load more detected)',data:{oldCount:accumulatedItems.length,newCount:currentItemCount,searchResultsLength:searchResults.items.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
+      console.log('[DEBUG-ACCUM] ACCUMULATING items (load more detected)', {
+        oldCount: accumulatedItems.length,
+        newCount: currentItemCount,
+        searchResultsLength: searchResults.items.length
+      });
       // Only add new items that aren't duplicates
       const existingIds = new Set(accumulatedItems.map(item => item.link || item.title));
       const newItems = searchResults.items.filter(item => !existingIds.has(item.link || item.title));
       
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:317',message:'After deduplication',data:{existingCount:accumulatedItems.length,totalInResponse:searchResults.items.length,newItemsFound:newItems.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
+      console.log('[DEBUG-ACCUM] After deduplication', {
+        existingCount: accumulatedItems.length,
+        totalInResponse: searchResults.items.length,
+        newItemsFound: newItems.length
+      });
       
       if (newItems.length > 0) {
         setAccumulatedItems(prev => [...prev, ...newItems]);
@@ -327,9 +342,11 @@ export default function ProductSearch() {
 
   // Handle load more button click
   const handleLoadMore = () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:327',message:'Load More clicked',data:{currentRequestedLimit:requestedLimit,willIncreaseTo:requestedLimit+20,currentAccumulatedItems:accumulatedItems.length},timestamp:Date.now(),hypothesisId:'O'})}).catch(()=>{});
-    // #endregion
+    console.log('[DEBUG-LOAD-MORE] Load More clicked', {
+      currentRequestedLimit: requestedLimit,
+      willIncreaseTo: requestedLimit + 20,
+      currentAccumulatedItems: accumulatedItems.length
+    });
     setIsLoadingMore(true);
     setRequestedLimit(prev => prev + 20);
   };
