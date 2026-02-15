@@ -179,7 +179,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         country: 'US',
         page: '1',
         limit: '50',
-        cache_version: 'v7_dialog' // Separate cache namespace for dialog searches
+        _t: Date.now().toString() // Cache buster - forces fresh results every time
       });
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
