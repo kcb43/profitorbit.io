@@ -15,6 +15,7 @@ export default function ProductSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
+  const [isPrefetching, setIsPrefetching] = useState(false); // Track prefetch state (for subtle UI hint)
   const [displayLimit, setDisplayLimit] = useState(10); // No longer needed but keeping for compatibility
   const [currentPage, setCurrentPage] = useState(1); // Track which page we're on for pagination
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
@@ -24,7 +25,7 @@ export default function ProductSearch() {
   const debounceTimerRef = useRef(null);
   const prefetchTimerRef = useRef(null);
 
-  // Debounce search query: wait 800ms after user stops typing
+  // Debounce search query: wait 500ms after user stops typing (REDUCED from 800ms for AGGRESSIVE mode)
   useEffect(() => {
     // Clear existing timer
     if (debounceTimerRef.current) {
@@ -38,7 +39,7 @@ export default function ProductSearch() {
         setDisplayLimit(10); // Reset display limit on new search
         setCurrentPage(1); // Reset to page 1 for new search
         setTotalFetched(0); // Reset total fetched on new search
-      }, 800); // Wait 800ms after user stops typing
+      }, 500); // AGGRESSIVE: Reduced to 500ms (was 800ms) - faster searches
     } else {
       // Clear results if query is too short
       setDebouncedQuery('');
@@ -52,19 +53,19 @@ export default function ProductSearch() {
     };
   }, [query]);
 
-  // Predictive pre-fetching: Start loading at 2 characters with shorter debounce
+  // AGGRESSIVE Predictive pre-fetching: Start loading at 2 characters with minimal delay
   useEffect(() => {
     // Clear existing prefetch timer
     if (prefetchTimerRef.current) {
       clearTimeout(prefetchTimerRef.current);
     }
 
-    // Start pre-fetching at 2 characters (before the 3-char threshold)
-    if (query.trim().length === 2) {
+    // Start AGGRESSIVE pre-fetching at 2 characters (before the 3-char threshold)
+    if (query.trim().length >= 2) {
       prefetchTimerRef.current = setTimeout(() => {
-        console.log('[ProductSearch] Predictive pre-fetch triggered for:', query.trim());
+        console.log('[ProductSearch] AGGRESSIVE pre-fetch triggered for:', query.trim());
         setPrefetchQuery(query.trim());
-      }, 500); // Shorter delay (500ms) to get a head start
+      }, 300); // AGGRESSIVE: Even shorter delay (300ms) for faster pre-loading
     } else if (query.trim().length < 2) {
       setPrefetchQuery('');
     }
@@ -80,41 +81,54 @@ export default function ProductSearch() {
   // Check if smart routing is enabled
   const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
 
-  // Predictive pre-fetch query (silently loads in background, won't show results yet)
-  useQuery({
+  // AGGRESSIVE Predictive pre-fetch query (silently loads in background, ZERO UI interference)
+  const { isFetching: isPrefetchFetching } = useQuery({
     queryKey: ['productSearchPrefetch', prefetchQuery, 10],
     queryFn: async () => {
       if (!prefetchQuery || prefetchQuery.length < 2) return null;
 
-      console.log('[ProductSearch] Pre-fetching results for:', prefetchQuery);
+      console.log('[ProductSearch] AGGRESSIVE Pre-fetching results for:', prefetchQuery);
+      setIsPrefetching(true); // Set prefetch indicator
 
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
-      if (!token) return null; // Silently fail, don't show errors for prefetch
+      if (!token) {
+        setIsPrefetching(false);
+        return null; // Silently fail, ZERO UI impact
+      }
 
       const providerList = 'auto';
       const params = new URLSearchParams({
         q: prefetchQuery,
         providers: providerList,
         country: 'US',
-        limit: '10', // Pre-fetch 10 items only
-        cache_version: 'v6_limit_in_cache_key'
+        limit: '20', // AGGRESSIVE: Pre-fetch 20 items (double previous)
+        cache_version: 'v7_pagination'
       });
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!response.ok) return null; // Silently fail
+      setIsPrefetching(false); // Clear prefetch indicator
+
+      if (!response.ok) return null; // Silently fail, ZERO UI impact
 
       return response.json();
     },
-    enabled: !!prefetchQuery && prefetchQuery.length >= 2, // Only prefetch if 2+ chars
+    enabled: !!prefetchQuery && prefetchQuery.length >= 2, // Prefetch at 2+ chars
     staleTime: 300000, // Cache for 5 minutes
     cacheTime: 600000, // Keep in cache for 10 minutes
-    retry: false // Don't retry on failure
+    retry: false, // Don't retry on failure - keeps it silent
+    refetchOnMount: false, // CRITICAL: Prevents duplicate fetches
+    refetchOnWindowFocus: false // CRITICAL: Prevents duplicate fetches
   });
+
+  // Sync isPrefetching state with query state
+  useEffect(() => {
+    setIsPrefetching(isPrefetchFetching);
+  }, [isPrefetchFetching]);
 
   // Main search query (displays results)
   const { data: searchResults, isLoading, error: queryError, refetch } = useQuery({
@@ -209,7 +223,7 @@ export default function ProductSearch() {
       // #region agent log
       console.log('[DEBUG-D] Frontend: Results parsed', JSON.stringify({
         itemCount: data.items?.length || 0,
-        requestedLimit: requestedLimit,
+        currentPage: currentPage,
         providers: data.providers,
         firstItemTitle: data.items?.[0]?.title || null,
         hypothesisId: 'D'
@@ -366,8 +380,14 @@ export default function ProductSearch() {
                   placeholder="Search products..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="text-base sm:text-lg"
+                  className={`text-base sm:text-lg ${isPrefetching ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}`}
                 />
+                {/* Subtle prefetch indicator - NO TEXT, just a small pulse */}
+                {isPrefetching && !isLoading && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" title="Pre-loading results..." />
+                  </div>
+                )}
               </div>
               <Button type="submit" disabled={isLoading || !query.trim() || query.trim().length < 3} className="w-full sm:w-auto px-6 sm:px-8">
                 {isLoading ? (
@@ -485,7 +505,7 @@ export default function ProductSearch() {
                     Load More Results
                   </Button>
                   <p className="text-sm text-gray-500 mt-2">
-                    Showing {displayedItems.length} {requestedLimit < 100 ? `• Load ${requestedLimit + 20} total` : '• Max 100'}
+                    Showing {displayedItems.length} results
                   </p>
                 </div>
               )}
