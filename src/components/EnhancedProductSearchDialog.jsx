@@ -41,6 +41,7 @@ import {
 } from '@/utils/ebayHelpers';
 import { supabase } from '@/integrations/supabase';
 import { ProductCardV1List } from '@/components/ProductCardVariations';
+import { getMerchantLogoOrColor } from '@/utils/merchantLogos';
 
 /**
  * Enhanced Product Search Dialog
@@ -166,9 +167,18 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   }, [open, initialQuery]);
 
+  // Auto-search for "All Marketplaces" mode when debouncedQuery changes
+  useEffect(() => {
+    if (searchMode === 'all' && debouncedQuery.trim().length >= 3 && open) {
+      handleUniversalSearch();
+    }
+  }, [debouncedQuery, searchMode, open]);
+
   // Universal Search function (SerpAPI - like ProductSearch page)
   const handleUniversalSearch = async () => {
-    if (!searchQuery.trim()) {
+    const queryToSearch = debouncedQuery.trim() || searchQuery.trim();
+    
+    if (!queryToSearch) {
       toast({
         title: 'Search query required',
         description: 'Please enter a product name to search',
@@ -197,7 +207,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       // The backend includes 'limit' in cache key, so this creates a different cache namespace
       // This avoids the corrupted cache entry that has 0 items with limit=50
       const params = new URLSearchParams({
-        q: searchQuery.trim(),
+        q: queryToSearch,
         providers: 'auto',
         country: 'US',
         page: '1',
@@ -428,10 +438,10 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             <div className="w-full sm:flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={searchMode === 'all' ? 'Search here...' : 'Search eBay listings...'}
+                placeholder={searchMode === 'all' ? 'Type to search all marketplaces...' : 'Search eBay listings...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === 'Enter' && searchMode === 'ebay' && handleSearch()}
                 className="pl-10 h-12 text-base"
                 disabled={isLoading}
                 autoFocus={false}
@@ -440,21 +450,24 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             
             {/* Buttons Row - Full width on mobile, auto width on desktop */}
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button
-                onClick={handleSearch}
-                disabled={isLoading || !searchQuery.trim() || searchQuery.trim().length < 2}
-                size="lg"
-                className="flex-1 sm:flex-none sm:px-8"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Searching...
-                  </>
-                ) : (
-                  'Search'
-                )}
-              </Button>
+              {/* Search button only shown for eBay mode, All Marketplaces is auto-search */}
+              {searchMode === 'ebay' && (
+                <Button
+                  onClick={handleSearch}
+                  disabled={isLoading || !searchQuery.trim() || searchQuery.trim().length < 2}
+                  size="lg"
+                  className="flex-1 sm:flex-none sm:px-8"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    'Search'
+                  )}
+                </Button>
+              )}
               {searchMode === 'all' && (
                 <Button
                   variant="outline"
@@ -707,8 +720,6 @@ function ProductRow({ product, onAddToWatchlist, onImageClick }) {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   
-  // Import merchant logo utility
-  const { getMerchantLogoOrColor } = require('@/utils/merchantLogos');
   const merchantInfo = getMerchantLogoOrColor(product.marketplace);
   
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
