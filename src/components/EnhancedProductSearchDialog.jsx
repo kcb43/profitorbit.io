@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Search,
   Star,
@@ -22,7 +23,11 @@ import {
   Package,
   Check,
   Globe,
-  Store
+  Store,
+  ChevronDown,
+  ChevronUp,
+  Truck,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEbaySearchInfinite } from '@/hooks/useEbaySearch';
@@ -55,6 +60,9 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
   // eBay Search State (using existing hook)
   const [selectedEbayItem, setSelectedEbayItem] = useState(null);
+  
+  // Image lightbox state
+  const [lightboxImage, setLightboxImage] = useState(null);
   
   // Filters
   const [filters, setFilters] = useState({
@@ -236,7 +244,8 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         seller: item.seller || null,
         delivery: item.delivery || null,
         condition: item.condition || null,
-        snippet: item.snippet || ''
+        snippet: item.snippet || '',
+        immersive_product_page_token: item.immersive_product_page_token || null
       }));
 
       setUniversalProducts(transformedProducts);
@@ -583,6 +592,29 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
           </div>
         )}
       </DialogContent>
+      
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 text-white hover:bg-white/20"
+            onClick={() => setLightboxImage(null)}
+          >
+            <X className="h-6 w-6" />
+          </Button>
+          <img 
+            src={lightboxImage} 
+            alt="Product" 
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </Dialog>
   );
 }
@@ -618,6 +650,7 @@ function UniversalResults({ loading, products, onAddToWatchlist }) {
               key={idx}
               product={product}
               onAddToWatchlist={onAddToWatchlist}
+              onImageClick={setLightboxImage}
             />
           ))}
         </tbody>
@@ -626,85 +659,203 @@ function UniversalResults({ loading, products, onAddToWatchlist }) {
   );
 }
 
-// Product Row (Universal)
-function ProductRow({ product, onAddToWatchlist }) {
+// Product Row (Universal) with merchant offers and image lightbox
+function ProductRow({ product, onAddToWatchlist, onImageClick }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [merchantOffers, setMerchantOffers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+  const hasToken = product.immersive_product_page_token;
+
+  // Fetch merchant offers when expanded
+  const fetchMerchantOffers = async () => {
+    if (loaded || !hasToken) return;
+    
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
+      const response = await fetch(`${ORBEN_API_URL}/v1/product/offers`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          immersive_product_page_token: product.immersive_product_page_token
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMerchantOffers(data.offers || []);
+      }
+    } catch (error) {
+      console.error('Error fetching merchant offers:', error);
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  };
+
+  // Fetch when opened
+  useEffect(() => {
+    if (isOpen && hasToken && !loaded) {
+      fetchMerchantOffers();
+    }
+  }, [isOpen]);
 
   return (
-    <tr className="border-b last:border-b-0 hover:bg-muted/20">
-      <td className="py-2 px-3">
-        <div className="w-14 h-14 rounded-md bg-muted overflow-hidden flex-shrink-0">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-              No img
-            </div>
-          )}
-        </div>
-      </td>
-      <td className="py-2 px-3">
-        <div className="max-w-md">
-          <div className="font-medium text-sm line-clamp-2 mb-1">{product.title}</div>
-          {product.seller && (
-            <div className="text-xs text-muted-foreground">by {product.seller}</div>
-          )}
-        </div>
-      </td>
-      <td className="py-2 px-3 text-center">
-        <span className="text-xs font-medium capitalize">{product.marketplace}</span>
-      </td>
-      <td className="py-2 px-3 text-right">
-        <span className="text-lg font-bold text-primary">${product.price.toFixed(2)}</span>
-      </td>
-      <td className="py-2 px-3 text-right">
-        {hasDiscount ? (
-          <span className="text-sm text-muted-foreground line-through">${product.originalPrice.toFixed(2)}</span>
-        ) : (
-          <span className="text-sm text-muted-foreground">—</span>
-        )}
-      </td>
-      <td className="py-2 px-3 text-center">
-        {product.discountPercentage > 0 ? (
-          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-            -{product.discountPercentage}%
-          </Badge>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        )}
-      </td>
-      <td className="py-2 px-3 text-center">
-        {product.rating ? (
-          <div className="flex items-center justify-center gap-1">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-medium">{product.rating}</span>
+    <>
+      <tr className="border-b last:border-b-0 hover:bg-muted/20">
+        <td className="py-2 px-3">
+          <div 
+            className="w-14 h-14 rounded-md bg-muted overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+            onClick={() => product.imageUrl && onImageClick(product.imageUrl)}
+          >
+            {product.imageUrl ? (
+              <img src={product.imageUrl} alt={product.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                No img
+              </div>
+            )}
           </div>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        )}
-      </td>
-      <td className="py-2 px-3">
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0"
-            onClick={() => onAddToWatchlist(product)}
-            title="Add to Watchlist"
-          >
-            <Heart className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="default"
-            className="h-8 px-3"
-            onClick={() => window.open(product.productUrl, '_blank')}
-          >
-            <ExternalLink className="h-3 w-3" />
-          </Button>
-        </div>
-      </td>
-    </tr>
+        </td>
+        <td className="py-2 px-3">
+          <div className="max-w-md">
+            <div className="font-medium text-sm line-clamp-2 mb-1">{product.title}</div>
+            {product.seller && (
+              <div className="text-xs text-muted-foreground">by {product.seller}</div>
+            )}
+            {product.delivery && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <Truck className="h-3 w-3" />
+                {product.delivery}
+              </div>
+            )}
+          </div>
+        </td>
+        <td className="py-2 px-3 text-center">
+          <span className="text-xs font-medium capitalize">{product.marketplace}</span>
+        </td>
+        <td className="py-2 px-3 text-right">
+          <span className="text-lg font-bold text-primary">${product.price.toFixed(2)}</span>
+        </td>
+        <td className="py-2 px-3 text-right">
+          {hasDiscount ? (
+            <span className="text-sm text-muted-foreground line-through">${product.originalPrice.toFixed(2)}</span>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          )}
+        </td>
+        <td className="py-2 px-3 text-center">
+          {product.discountPercentage > 0 ? (
+            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+              -{product.discountPercentage}%
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </td>
+        <td className="py-2 px-3 text-center">
+          {product.rating ? (
+            <div className="flex items-center justify-center gap-1">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm font-medium">{product.rating}</span>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </td>
+        <td className="py-2 px-3">
+          <div className="flex items-center justify-center gap-1">
+            {hasToken && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                onClick={() => setIsOpen(!isOpen)}
+                title="View other stores"
+              >
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              onClick={() => onAddToWatchlist(product)}
+              title="Add to Watchlist"
+            >
+              <Heart className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-8 px-3"
+              onClick={() => window.open(product.productUrl, '_blank')}
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+      {isOpen && hasToken && (
+        <tr className="border-b">
+          <td colSpan="8" className="py-2 px-3 bg-muted/10">
+            <div className="max-w-4xl">
+              <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                <Store className="h-3 w-3" />
+                Other Stores & Prices
+              </div>
+              {loading ? (
+                <div className="flex items-center gap-2 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-xs text-muted-foreground">Loading offers...</span>
+                </div>
+              ) : merchantOffers.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {merchantOffers.map((offer, idx) => (
+                    <Card key={idx} className="border shadow-sm hover:shadow-md transition-shadow">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-sm">{offer.merchant}</span>
+                          <span className="text-lg font-bold text-primary">${offer.price.toFixed(2)}</span>
+                        </div>
+                        {offer.delivery && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                            <Truck className="h-3 w-3" />
+                            {offer.delivery}
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => window.open(offer.link, '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Shop at {offer.merchant}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground py-2">
+                  No other merchant offers available for this product.
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

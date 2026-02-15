@@ -247,42 +247,6 @@ export default function Deals() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="border-2 border-orange-500/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Target className="h-3 w-3" /> Avg Score
-                  </p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {dealsData?.items?.length
-                      ? Math.round(
-                          dealsData.items.reduce((sum, d) => sum + (d.score || 0), 0) / dealsData.items.length
-                        )
-                      : 0}
-                  </p>
-                </div>
-                <Target className="h-10 w-10 text-orange-500 opacity-20" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 border-red-500/20">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Flame className="h-3 w-3" /> Hot Deals
-                  </p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {dealsData?.items?.filter(d => d.score >= 70).length || 0}
-                  </p>
-                </div>
-                <Flame className="h-10 w-10 text-red-500 opacity-20" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
       {/* Deals Feed - Pulse-Style Layout */}
