@@ -561,6 +561,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
               loading={universalLoading}
               products={filteredProducts}
               onAddToWatchlist={handleAddToWatchlist}
+              onImageClick={setLightboxImage}
             />
           ) : (
             <EbayResults
@@ -626,7 +627,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 }
 
 // Universal Results Component
-function UniversalResults({ loading, products, onAddToWatchlist }) {
+function UniversalResults({ loading, products, onAddToWatchlist, onImageClick }) {
   if (loading) {
     return <LoadingState />;
   }
@@ -656,7 +657,7 @@ function UniversalResults({ loading, products, onAddToWatchlist }) {
               key={idx}
               product={product}
               onAddToWatchlist={onAddToWatchlist}
-              onImageClick={setLightboxImage}
+              onImageClick={onImageClick}
             />
           ))}
         </tbody>
