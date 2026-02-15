@@ -423,6 +423,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-10 h-12 text-base"
                 disabled={isLoading}
+                autoFocus={false}
               />
             </div>
             
