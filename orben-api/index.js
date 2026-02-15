@@ -327,7 +327,7 @@ fastify.get('/v1/search', async (request, reply) => {
   }));
   // #endregion
 
-  const { q, country = 'US', providers = 'ebay', limit = 20, page = 1 } = request.query;
+  const { q, country = 'US', providers = 'ebay', limit = 20, page = 1, cache_bust } = request.query;
 
   if (!q || !q.trim()) {
     return reply.code(400).send({ error: 'Missing query parameter: q' });
@@ -344,20 +344,28 @@ fastify.get('/v1/search', async (request, reply) => {
     userId: user.id,
     limit: parseInt(limit, 10),
     page: parseInt(page, 10),
+    cacheBust: cache_bust,
     hypothesisId: 'B'
   }));
   // #endregion
 
   // Call search worker
   try {
-    const response = await axios.post(`${SEARCH_WORKER_URL}/search`, {
+    const requestBody = {
       query: q.trim(),
       providers: providerList,
       country,
       userId: user.id,
       limit: parseInt(limit, 10),
       page: parseInt(page, 10)
-    }, {
+    };
+    
+    // Add cache_bust if present
+    if (cache_bust) {
+      requestBody.cache_bust = cache_bust;
+    }
+    
+    const response = await axios.post(`${SEARCH_WORKER_URL}/search`, requestBody, {
       timeout: 45000 // Increased to 45 seconds for Oxylabs
     });
 
