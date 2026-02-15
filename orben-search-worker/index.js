@@ -234,6 +234,7 @@ class SerpApiGoogleProvider extends SearchProvider {
       const params = {
         engine: 'google',
         q: query,
+        tbm: 'shop', // CRITICAL: Tell Google to do a Shopping search
         location: country === 'US' ? 'United States' : country,
         hl: 'en',
         gl: country.toLowerCase(),
@@ -258,59 +259,53 @@ class SerpApiGoogleProvider extends SearchProvider {
       const requestDuration = Date.now() - requestStartTime;
       console.log('[SerpAPI] Request completed', JSON.stringify({
         duration: requestDuration,
-        hasImmersiveProducts: !!response.data?.immersive_products,
-        immersiveCount: response.data?.immersive_products?.length || 0,
-        hasOrganicResults: !!response.data?.organic_results,
-        organicCount: response.data?.organic_results?.length || 0
+        hasShoppingResults: !!response.data?.shopping_results,
+        shoppingCount: response.data?.shopping_results?.length || 0,
+        hasInlineShoppingResults: !!response.data?.inline_shopping_results,
+        inlineCount: response.data?.inline_shopping_results?.length || 0
       }));
 
       // Transform SerpAPI response to our standard format
       const items = [];
       
-      // Priority 1: immersive_products (best quality data)
-      if (response.data?.immersive_products) {
-        for (const product of response.data.immersive_products) {
+      // Priority 1: shopping_results (Google Shopping tab results)
+      if (response.data?.shopping_results) {
+        for (const product of response.data.shopping_results) {
           items.push({
             title: product.title || 'Untitled',
-            price: product.extracted_price || 0,
+            price: product.extracted_price || product.price || 0,
             original_price: product.extracted_original_price || null,
             currency: 'USD',
-            url: product.link || product.serpapi_link || '#',
+            url: product.link || product.product_link || '#',
             image_url: product.thumbnail || null,
-            merchant: product.source || 'Unknown',
+            merchant: product.source || product.seller || 'Unknown',
             condition: 'New',
             shipping: product.delivery?.toLowerCase().includes('free') ? 0 : null,
             rating: product.rating || null,
-            reviews: product.reviews || null,
-            location: product.location || null
+            reviews: product.reviews || product.reviews_count || null,
+            location: product.store || null
           });
         }
       }
       
-      // Priority 2: organic_results (if immersive_products not enough)
-      if (items.length < limit && response.data?.organic_results) {
-        for (const result of response.data.organic_results) {
+      // Priority 2: inline_shopping_results (if available)
+      if (items.length < limit && response.data?.inline_shopping_results) {
+        for (const product of response.data.inline_shopping_results) {
           if (items.length >= limit) break;
           
-          // Only add if it has shopping data (price info)
-          if (result.rich_snippet?.bottom?.detected_extensions) {
-            const ext = result.rich_snippet.bottom.detected_extensions;
-            items.push({
-              title: result.title || 'Untitled',
-              price: ext.price || ext.price_from || 0,
-              original_price: null,
-              currency: ext.currency || 'USD',
-              url: result.link || '#',
-              image_url: result.thumbnail || null,
-              merchant: result.source || 'Unknown',
-              condition: 'New',
-              shipping: result.rich_snippet?.bottom?.extensions?.some(e => 
-                e.toLowerCase().includes('free delivery') || e.toLowerCase().includes('free shipping')
-              ) ? 0 : null,
-              rating: ext.rating || null,
-              reviews: ext.reviews || null
-            });
-          }
+          items.push({
+            title: product.title || 'Untitled',
+            price: product.extracted_price || product.price || 0,
+            original_price: product.extracted_original_price || null,
+            currency: 'USD',
+            url: product.link || product.product_link || '#',
+            image_url: product.thumbnail || null,
+            merchant: product.source || product.seller || 'Unknown',
+            condition: 'New',
+            shipping: product.delivery?.toLowerCase().includes('free') ? 0 : null,
+            rating: product.rating || null,
+            reviews: product.reviews || product.reviews_count || null
+          });
         }
       }
 
