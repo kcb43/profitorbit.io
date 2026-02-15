@@ -46,15 +46,25 @@ export default function Deals() {
         offset: pageParam.toString()
       });
 
-      const response = await fetch(`${ORBEN_API_URL}/v1/deals/feed?${params}`, {
+      const url = `${ORBEN_API_URL}/v1/deals/feed?${params}`;
+      console.log('[Deals] Fetching from:', url);
+      console.log('[Deals] ORBEN_API_URL:', ORBEN_API_URL);
+
+      const response = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
+      console.log('[Deals] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch deals');
+        const errorText = await response.text();
+        console.error('[Deals] Error response:', errorText);
+        throw new Error(`Failed to fetch deals: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('[Deals] Received data:', { itemCount: data.items?.length, total: data.total });
+      return data;
     },
     getNextPageParam: (lastPage, allPages) => {
       // If we got fewer items than requested, we've reached the end
