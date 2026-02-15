@@ -203,16 +203,14 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       // Use same endpoint as ProductSearch page
       const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
       
-      // IMPORTANT: Use limit=10 instead of limit=50 to match ProductSearch page
-      // The backend includes 'limit' in cache key, so this creates a different cache namespace
-      // This avoids the corrupted cache entry that has 0 items with limit=50
+      // Use same parameters as ProductSearch page for consistent results
       const params = new URLSearchParams({
         q: queryToSearch,
         providers: 'auto',
         country: 'US',
         page: '1',
-        limit: '10', // Different limit = different cache key, avoids bad cache
-        cache_version: 'v7_dialog'
+        limit: '10',
+        cache_version: 'v7_pagination' // Use same cache version as ProductSearch page
       });
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
