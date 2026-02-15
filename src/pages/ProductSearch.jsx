@@ -27,8 +27,21 @@ export default function ProductSearch() {
   const [accumulatedItems, setAccumulatedItems] = useState([]); // Accumulate items across multiple fetches
   const [showDebugInfo, setShowDebugInfo] = useState(false); // Toggle debug mode
   
-  // View Mode State
+  // View Mode State - Default to list, hide grid option on mobile
   const [viewMode, setViewMode] = useState('list'); // 'grid', 'list' - Default to list
+  
+  // Force list view on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) { // md breakpoint
+        setViewMode('list');
+      }
+    };
+    
+    handleResize(); // Check on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Quota monitoring state
   const [quotaInfo, setQuotaInfo] = useState(null); // { current: 102, limit: 100, provider: 'google' }
@@ -883,8 +896,8 @@ export default function ProductSearch() {
                 ))}
               </TabsList>
               
-              {/* View Mode Buttons */}
-              <div className="flex gap-2 w-full sm:w-auto">
+              {/* View Mode Buttons - Hidden on mobile, always list view */}
+              <div className="hidden md:flex gap-2 w-full sm:w-auto">
                 <Button
                   onClick={() => setViewMode('grid')}
                   variant={viewMode === 'grid' ? 'default' : 'outline'}

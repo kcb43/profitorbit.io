@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award, ChevronDown, ChevronUp, Store } from 'lucide-react';
+import { getMerchantLogoOrColor } from '@/utils/merchantLogos';
 
 // Shared utility functions
 const getMerchantColor = (merchant) => {
@@ -22,6 +23,31 @@ const getMerchantColor = (merchant) => {
     'Petco': 'bg-blue-700 text-white'
   };
   return colors[merchant] || 'bg-gray-700 text-white';
+};
+
+// Merchant Badge Component - Shows logo if available, otherwise colored badge
+const MerchantBadge = ({ merchant, className = '' }) => {
+  const { logo, hasLogo, fallbackColor } = getMerchantLogoOrColor(merchant);
+  
+  if (hasLogo) {
+    return (
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md ${className}`}>
+        <img 
+          src={logo} 
+          alt={merchant} 
+          className="h-5 w-auto object-contain"
+          onError={(e) => e.target.style.display = 'none'}
+        />
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{merchant}</span>
+      </div>
+    );
+  }
+  
+  return (
+    <Badge className={`${fallbackColor} ${className}`}>
+      {merchant}
+    </Badge>
+  );
 };
 
 const extractItemData = (item) => ({
@@ -124,9 +150,7 @@ export function ProductCardV1Grid({ item }) {
 
         {/* Merchant */}
         <div className="flex items-center gap-2">
-          <Badge className={`${getMerchantColor(data.merchant)} px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm`}>
-            {data.merchant}
-          </Badge>
+          <MerchantBadge merchant={data.merchant} className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm" />
         </div>
 
         {/* Delivery Info */}
@@ -233,9 +257,7 @@ export function ProductCardV1List({ item }) {
           </h3>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <Badge className={`${getMerchantColor(data.merchant)} px-1.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-sm`}>
-              {data.merchant}
-            </Badge>
+            <MerchantBadge merchant={data.merchant} className="px-1.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-sm" />
           </div>
 
           {/* Price on mobile - compact inline */}

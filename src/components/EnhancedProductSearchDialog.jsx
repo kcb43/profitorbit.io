@@ -40,6 +40,7 @@ import {
   isEbayItemAvailable,
 } from '@/utils/ebayHelpers';
 import { supabase } from '@/integrations/supabase';
+import { ProductCardV1List } from '@/components/ProductCardVariations';
 
 /**
  * Enhanced Product Search Dialog
@@ -637,7 +638,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   );
 }
 
-// Universal Results Component
+// Universal Results Component - Table on Desktop, Cards on Mobile
 function UniversalResults({ loading, products, onAddToWatchlist, onImageClick }) {
   if (loading) {
     return <LoadingState />;
@@ -648,32 +649,54 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick })
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-background z-10">
-          <tr className="text-xs text-muted-foreground border-b">
-            <th className="py-3 px-3 text-left w-16">Image</th>
-            <th className="py-3 px-3 text-left">Product</th>
-            <th className="py-3 px-3 text-center w-28">Marketplace</th>
-            <th className="py-3 px-3 text-right w-24">Price</th>
-            <th className="py-3 px-3 text-right w-24">Was</th>
-            <th className="py-3 px-3 text-center w-20">Discount</th>
-            <th className="py-3 px-3 text-center w-24">Rating</th>
-            <th className="py-3 px-3 text-center w-32">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product, idx) => (
-            <ProductRow
-              key={idx}
-              product={product}
-              onAddToWatchlist={onAddToWatchlist}
-              onImageClick={onImageClick}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {/* Mobile View - Card Layout */}
+      <div className="md:hidden space-y-3">
+        {products.map((product, idx) => (
+          <ProductCardV1List 
+            key={idx} 
+            item={{
+              ...product,
+              image_url: product.imageUrl,
+              link: product.productUrl,
+              extracted_price: product.price,
+              old_price: product.originalPrice,
+              extracted_old_price: product.originalPrice,
+              source: product.marketplace,
+              reviews_count: product.reviewCount,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Desktop View - Table Layout */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-background z-10">
+            <tr className="text-xs text-muted-foreground border-b">
+              <th className="py-3 px-3 text-left w-16">Image</th>
+              <th className="py-3 px-3 text-left">Product</th>
+              <th className="py-3 px-3 text-center w-28">Marketplace</th>
+              <th className="py-3 px-3 text-right w-24">Price</th>
+              <th className="py-3 px-3 text-right w-24">Was</th>
+              <th className="py-3 px-3 text-center w-20">Discount</th>
+              <th className="py-3 px-3 text-center w-24">Rating</th>
+              <th className="py-3 px-3 text-center w-32">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((product, idx) => (
+              <ProductRow
+                key={idx}
+                product={product}
+                onAddToWatchlist={onAddToWatchlist}
+                onImageClick={onImageClick}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -683,6 +706,10 @@ function ProductRow({ product, onAddToWatchlist, onImageClick }) {
   const [merchantOffers, setMerchantOffers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  
+  // Import merchant logo utility
+  const { getMerchantLogoOrColor } = require('@/utils/merchantLogos');
+  const merchantInfo = getMerchantLogoOrColor(product.marketplace);
   
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const hasToken = product.immersive_product_page_token;
@@ -759,7 +786,21 @@ function ProductRow({ product, onAddToWatchlist, onImageClick }) {
           </div>
         </td>
         <td className="py-2 px-3 text-center">
-          <span className="text-xs font-medium capitalize">{product.marketplace}</span>
+          <div className="flex items-center justify-center gap-2">
+            {merchantInfo.hasLogo ? (
+              <>
+                <img 
+                  src={merchantInfo.logo} 
+                  alt={product.marketplace} 
+                  className="h-4 w-auto object-contain"
+                  onError={(e) => e.target.style.display = 'none'}
+                />
+                <span className="text-xs font-medium capitalize hidden lg:inline">{product.marketplace}</span>
+              </>
+            ) : (
+              <span className="text-xs font-medium capitalize">{product.marketplace}</span>
+            )}
+          </div>
         </td>
         <td className="py-2 px-3 text-right">
           <span className="text-lg font-bold text-primary">${product.price.toFixed(2)}</span>
