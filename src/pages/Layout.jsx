@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User, ShoppingBag, TrendingDown } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
-import { ProductSearchDialog } from "@/components/ProductSearchDialog";
+import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
 import {
   Sidebar,
@@ -368,7 +368,7 @@ export default function Layout({ children }) {
           </div>
 
           {/* Product Search Dialog */}
-          <ProductSearchDialog
+          <EnhancedProductSearchDialog
             open={productSearchOpen}
             onOpenChange={setProductSearchOpen}
           />
