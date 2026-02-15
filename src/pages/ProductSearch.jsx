@@ -35,6 +35,10 @@ export default function ProductSearch() {
   const [uiVariation, setUiVariation] = useState('v1'); // 'v1', 'v2', 'v3'
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
   
+  // Quota monitoring state
+  const [quotaInfo, setQuotaInfo] = useState(null); // { current: 102, limit: 100, provider: 'google' }
+  const [showQuotaWarning, setShowQuotaWarning] = useState(false);
+  
   const { toast } = useToast();
   const debounceTimerRef = useRef(null);
   const prefetchTimerRef = useRef(null);
@@ -240,6 +244,35 @@ export default function ProductSearch() {
         providers: data.providers,
         firstThreeItems: data.items?.slice(0, 3)
       });
+
+      // Extract quota information from providers
+      if (data.providers && Array.isArray(data.providers)) {
+        data.providers.forEach(provider => {
+          if (provider.error && provider.error.includes('quota exceeded')) {
+            // Parse quota info: "User quota exceeded: 102/100"
+            const match = provider.error.match(/(\d+)\/(\d+)/);
+            if (match) {
+              const current = parseInt(match[1]);
+              const limit = parseInt(match[2]);
+              setQuotaInfo({ current, limit, provider: provider.provider });
+              setShowQuotaWarning(true);
+              
+              toast({
+                title: '⚠️ API Quota Exceeded',
+                description: `${provider.provider} quota: ${current}/${limit}. Results may be limited.`,
+                variant: 'destructive',
+                duration: 10000
+              });
+            }
+          } else if (provider.quota) {
+            // If backend provides explicit quota info
+            setQuotaInfo(provider.quota);
+            if (provider.quota.current >= provider.quota.limit * 0.9) {
+              setShowQuotaWarning(true);
+            }
+          }
+        });
+      }
 
       // #region agent log
       console.log('[DEBUG-D] Frontend: Results parsed', JSON.stringify({
@@ -654,15 +687,77 @@ export default function ProductSearch() {
             Search Google Shopping in real-time · Compare prices · Read reviews
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowDebugInfo(!showDebugInfo)}
-          className="text-xs"
-        >
-          {showDebugInfo ? '🐛 Debug ON' : '🔍 Debug OFF'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Quota Monitor */}
+          {quotaInfo && (
+            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+              quotaInfo.current >= quotaInfo.limit 
+                ? 'bg-red-100 text-red-800 border border-red-300' 
+                : quotaInfo.current >= quotaInfo.limit * 0.9
+                ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                : 'bg-green-100 text-green-800 border border-green-300'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                quotaInfo.current >= quotaInfo.limit 
+                  ? 'bg-red-500 animate-pulse' 
+                  : quotaInfo.current >= quotaInfo.limit * 0.9
+                  ? 'bg-yellow-500 animate-pulse'
+                  : 'bg-green-500'
+              }`}></span>
+              API: {quotaInfo.current}/{quotaInfo.limit}
+              {quotaInfo.current >= quotaInfo.limit && ' (Exceeded)'}
+              {quotaInfo.current >= quotaInfo.limit * 0.9 && quotaInfo.current < quotaInfo.limit && ' (Warning)'}
+            </div>
+          )}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDebugInfo(!showDebugInfo)}
+            className="text-xs"
+          >
+            {showDebugInfo ? '🐛 Debug ON' : '🔍 Debug OFF'}
+          </Button>
+        </div>
       </div>
+
+      {/* Quota Warning Banner */}
+      {showQuotaWarning && quotaInfo && (
+        <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-bold text-red-900 mb-1">⚠️ API Quota Exceeded</h3>
+                <p className="text-sm text-red-800 mb-2">
+                  Your SerpAPI quota has been exceeded ({quotaInfo.current}/{quotaInfo.limit} searches used). 
+                  Search results may be limited or unavailable until your quota resets.
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setShowQuotaWarning(false)}
+                    className="text-xs border-red-300 text-red-700 hover:bg-red-100"
+                  >
+                    Dismiss
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-xs border-red-300 text-red-700 hover:bg-red-100"
+                    asChild
+                  >
+                    <a href="https://serpapi.com/manage-api-key" target="_blank" rel="noopener noreferrer">
+                      Check Quota
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search Bar */}
       <Card>
