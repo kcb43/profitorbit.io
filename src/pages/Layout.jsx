@@ -7,6 +7,7 @@ import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
 import NotificationCenter from "@/components/NotificationCenter";
+import BannerNotifications from "@/components/BannerNotifications";
 import {
   Sidebar,
   SidebarContent,
@@ -56,7 +57,7 @@ const navigationCategories = [
     items: [
       { title: "Deal Feed", url: "/deals", icon: TrendingDown },
       { title: "Product Search", url: "/product-search", icon: Search },
-      { title: "Rewards", url: "/rewards", icon: Gift },
+      // { title: "Rewards", url: "/rewards", icon: Gift }, // Benched for now
     ]
   },
   {
@@ -215,6 +216,7 @@ export default function Layout({ children }) {
 
   return (
     <SidebarProvider>
+      <BannerNotifications />
       <style>{themeStyles}</style>
       <div className="min-h-screen flex w-full bg-background">
         {/* Desktop Sidebar - StalkFun Inspired */}

@@ -15,6 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import facebookLogo from "@/assets/facebook-logo.svg";
+import NotificationRewardsSettings from "@/components/NotificationRewardsSettings";
 // Using official eBay logo from Wikimedia Commons
 const ebayLogo = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
 // Using official Mercari logo from brandfetch
@@ -1225,20 +1226,22 @@ export default function Settings() {
         <p className="text-gray-600 dark:text-muted-foreground">Customize your app appearance and preferences</p>
       </div>
 
-      {/* View Rewards Button */}
-      <div className="mb-6">
+      {/* View Rewards Button - Benched for now */}
+      {/* <div className="mb-6">
         <Button
           onClick={() => navigate(createPageUrl("Rewards"))}
           className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-900 dark:text-foreground font-semibold text-sm transition-all shadow-md hover:shadow-lg border border-gray-300 dark:border-gray-800 relative"
         >
-          {/* Green dot positioned on top left of button */}
           <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping-slow opacity-75 z-10" />
           <div className="absolute -top-2 -left-2 w-6 h-6 bg-emerald-500 rounded-full z-10" />
           View Rewards
         </Button>
-      </div>
+      </div> */}
 
       <div className="space-y-6">
+        {/* Notification Settings for site features (deals, returns, listing reminders) */}
+        <NotificationRewardsSettings />
+
         {/* Theme Selection */}
         <Card>
           <CardHeader>
