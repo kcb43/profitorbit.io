@@ -210,42 +210,54 @@ export function ProductCardV1List({ item }) {
 
   return (
     <Card className="group overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-900">
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 p-3 sm:p-5">
-        {/* Image Section - Left */}
-        <div className="relative w-full h-48 sm:w-32 sm:h-32 md:w-40 md:h-40 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden">
+      <div className="flex gap-2 sm:gap-5 p-2 sm:p-5">
+        {/* Image Section - Compact on mobile, larger on desktop */}
+        <div className="relative w-20 h-20 sm:w-32 sm:h-32 md:w-40 md:h-40 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-md sm:rounded-lg overflow-hidden">
           {data.tag && (
-            <div className="absolute top-2 right-2 z-10">
-              <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">{data.tag}</Badge>
+            <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-10">
+              <Badge className="bg-red-500 text-white text-[10px] sm:text-xs px-1 sm:px-2 py-0.5">{data.tag}</Badge>
             </div>
           )}
           <img
             src={data.imageUrl}
             alt={data.title}
-            className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-contain p-1 sm:p-2 group-hover:scale-110 transition-transform duration-500"
             onError={(e) => e.target.style.display = 'none'}
           />
         </div>
 
         {/* Content - Middle */}
-        <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base sm:text-lg line-clamp-2 leading-tight">
+        <div className="flex-1 min-w-0 space-y-1 sm:space-y-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-lg line-clamp-2 leading-tight">
             {data.title}
           </h3>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Badge className={`${getMerchantColor(data.merchant)} px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm`}>
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <Badge className={`${getMerchantColor(data.merchant)} px-1.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-sm`}>
               {data.merchant}
             </Badge>
           </div>
 
+          {/* Price on mobile - compact inline */}
+          <div className="sm:hidden flex items-baseline gap-2">
+            <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+              ${data.price.toFixed(2)}
+            </span>
+            {savings && (
+              <span className="text-xs text-green-600 dark:text-green-400 font-semibold">
+                Save ${savings.toFixed(2)}
+              </span>
+            )}
+          </div>
+
           {data.rating && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-amber-500">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-0.5 sm:gap-1 text-amber-500">
                 <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-current" />
                 <span className="font-semibold text-xs sm:text-sm dark:text-gray-100">{data.rating}</span>
               </div>
               {data.reviews && (
-                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()})</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">({data.reviews.toLocaleString()})</span>
               )}
             </div>
           )}
@@ -255,39 +267,22 @@ export function ProductCardV1List({ item }) {
           )}
 
           {data.delivery && (
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-              <Truck className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span>{data.delivery}</span>
+            <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">
+              <Truck className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate">{data.delivery}</span>
             </div>
           )}
 
-          {/* Price on mobile - show below content */}
-          <div className="sm:hidden space-y-1 pt-2">
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                ${data.price.toFixed(2)}
-              </span>
-              {savings && (
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</span>
-                  <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-            {data.installment && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">{data.installment}</p>
-            )}
-          </div>
-
-          {/* Button on mobile - full width below */}
-          <div className="sm:hidden pt-2">
+          {/* Button on mobile - compact inline */}
+          <div className="sm:hidden pt-1">
             <Button 
               asChild 
-              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold"
+              size="sm"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs py-1.5 h-auto"
             >
-              <a href={viewLink} target="_blank" rel="noopener noreferrer">
+              <a href={viewLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1">
                 View Item
-                <ExternalLink className="w-4 h-4 ml-2" />
+                <ExternalLink className="w-3 h-3" />
               </a>
             </Button>
           </div>
