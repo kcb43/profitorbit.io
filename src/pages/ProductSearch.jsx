@@ -234,9 +234,22 @@ export default function ProductSearch() {
       return data;
     },
     enabled: !!debouncedQuery, // Auto-run when debouncedQuery changes
-    placeholderData: (previousData) => previousData, // Keep showing previous results while loading more
-    staleTime: 0 // Always refetch when params change
+    keepPreviousData: true, // Keep showing previous results while loading more (React Query v5 syntax)
+    staleTime: 0, // Always refetch when params change
+    refetchOnMount: false,
+    refetchOnWindowFocus: false
   });
+
+  // Log when query is fetching
+  useEffect(() => {
+    console.log('[DEBUG-QUERY] Query state changed', {
+      isLoading,
+      isFetching: isLoading,
+      hasData: !!searchResults,
+      itemCount: searchResults?.items?.length,
+      currentPage
+    });
+  }, [isLoading, searchResults, currentPage]);
 
   // Optional: Allow instant search on Enter key press
   const handleSearch = (e) => {
@@ -315,21 +328,31 @@ export default function ProductSearch() {
       prefetchMerchantOffers(itemsWithLoadingState);
     } 
     // If this is page 2+, accumulate the new items
-    else if (currentPage > 1 || isLoadingMore) {
-      console.log('[DEBUG-ACCUM] ACCUMULATING items (load more detected)', {
+    else if (currentPage > 1) {
+      console.log('[DEBUG-ACCUM] ACCUMULATING items (page 2+)', {
         oldCount: accumulatedItems.length,
         newCount: currentItemCount,
         currentPage: currentPage,
         searchResultsLength: searchResults.items.length
       });
-      // Only add new items that aren't duplicates
-      const existingIds = new Set(accumulatedItems.map(item => item.link || item.title));
-      const newItems = searchResults.items.filter(item => !existingIds.has(item.link || item.title));
+      
+      // Use product_id or URL+title combo for deduplication
+      const existingIds = new Set(
+        accumulatedItems.map(item => 
+          item.product_id || `${item.product_link || item.url}:${item.title}`
+        )
+      );
+      
+      const newItems = searchResults.items.filter(item => {
+        const itemId = item.product_id || `${item.product_link || item.url}:${item.title}`;
+        return !existingIds.has(itemId);
+      });
       
       console.log('[DEBUG-ACCUM] After deduplication', {
         existingCount: accumulatedItems.length,
         totalInResponse: searchResults.items.length,
-        newItemsFound: newItems.length
+        newItemsFound: newItems.length,
+        firstNewItem: newItems[0]?.title
       });
       
       if (newItems.length > 0) {
@@ -340,15 +363,28 @@ export default function ProductSearch() {
           merchantOffers: []
         }));
         
-        setAccumulatedItems(prev => [...prev, ...newItemsWithLoadingState]);
-        setTotalFetched(accumulatedItems.length + newItemsWithLoadingState.length);
+        console.log('[DEBUG-ACCUM] Adding new items to accumulator', {
+          previousTotal: accumulatedItems.length,
+          adding: newItemsWithLoadingState.length,
+          willBe: accumulatedItems.length + newItemsWithLoadingState.length
+        });
+        
+        setAccumulatedItems(prev => {
+          const updated = [...prev, ...newItemsWithLoadingState];
+          console.log('[DEBUG-ACCUM] State updated, new total:', updated.length);
+          return updated;
+        });
+        setTotalFetched(prev => prev + newItemsWithLoadingState.length);
         
         // Pre-fetch merchant offers for new items
         prefetchMerchantOffers(newItemsWithLoadingState);
+      } else {
+        console.log('[DEBUG-ACCUM] No new items to add (all duplicates or empty)');
       }
+      
       setIsLoadingMore(false);
     }
-  }, [searchResults?.items]);
+  }, [searchResults?.items, currentPage]); // Add currentPage to dependencies
 
   // Pre-fetch direct merchant links for products with immersive tokens
   const prefetchMerchantOffers = async (items) => {
@@ -433,17 +469,43 @@ export default function ProductSearch() {
 
   // Show accumulated results
   const displayedItems = accumulatedItems;
-  const canLoadMore = searchResults?.items?.length === 10 && accumulatedItems.length < 100; // Can fetch more if last page had 10 items (full page) and haven't hit 100 total
+  
+  // Can load more if:
+  // 1. Last API response had 10 items (meaning there might be more)
+  // 2. Haven't hit our 100 item limit
+  // 3. Not currently loading
+  const lastFetchCount = searchResults?.items?.length || 0;
+  const canLoadMore = lastFetchCount === 10 && accumulatedItems.length < 100 && !isLoadingMore && !isLoading;
+  
+  console.log('[DEBUG-LOAD-MORE] Can load more check', {
+    lastFetchCount,
+    accumulatedLength: accumulatedItems.length,
+    canLoadMore,
+    isLoadingMore,
+    isLoading
+  });
 
   // Handle load more button click
   const handleLoadMore = () => {
     console.log('[DEBUG-LOAD-MORE] Load More clicked', {
       currentPage: currentPage,
       willIncreaseTo: currentPage + 1,
-      currentAccumulatedItems: accumulatedItems.length
+      currentAccumulatedItems: accumulatedItems.length,
+      lastFetchCount: searchResults?.items?.length
     });
+    
+    // Ensure we're not already loading
+    if (isLoadingMore || isLoading) {
+      console.log('[DEBUG-LOAD-MORE] Already loading, ignoring click');
+      return;
+    }
+    
     setIsLoadingMore(true);
-    setCurrentPage(prev => prev + 1); // Go to next page
+    setCurrentPage(prev => {
+      const newPage = prev + 1;
+      console.log('[DEBUG-LOAD-MORE] Page state updated:', { from: prev, to: newPage });
+      return newPage;
+    });
   };
 
   // No longer need this useEffect - handled in accumulation logic above
