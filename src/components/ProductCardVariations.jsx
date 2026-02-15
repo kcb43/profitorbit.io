@@ -169,12 +169,25 @@ export function ProductCardV1Grid({ item }) {
                   href={offer.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer"
                 >
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{offer.name}</span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {offer.name || offer.merchant || 'Store'}
+                  </span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                    ${(offer.extracted_price || offer.price || 0).toFixed(2)}
+                  </span>
                 </a>
               ))}
+              
+              {/* Close button at bottom */}
+              <button
+                onClick={() => setShowMoreStores(false)}
+                className="w-full mt-2 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 flex items-center justify-center gap-2 border-t border-gray-200 dark:border-gray-700 pt-3"
+              >
+                <ChevronUp className="w-4 h-4" />
+                Close
+              </button>
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -298,12 +311,25 @@ export function ProductCardV1List({ item }) {
                   href={offer.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer"
                 >
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{offer.name}</span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {offer.name || offer.merchant || 'Store'}
+                  </span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                    ${(offer.extracted_price || offer.price || 0).toFixed(2)}
+                  </span>
                 </a>
               ))}
+              
+              {/* Close button at bottom */}
+              <button
+                onClick={() => setShowMoreStores(false)}
+                className="w-full mt-2 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 flex items-center justify-center gap-2 border-t border-gray-200 dark:border-gray-700 pt-3"
+              >
+                <ChevronUp className="w-4 h-4" />
+                Close
+              </button>
             </div>
           </CollapsibleContent>
         </Collapsible>
