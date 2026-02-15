@@ -29,7 +29,8 @@ export default function Deals() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading
+    isLoading,
+    refetch
   } = useInfiniteQuery({
     queryKey: ['deals', searchQuery, filters],
     queryFn: async ({ pageParam = 0 }) => {
@@ -63,7 +64,8 @@ export default function Deals() {
       // Calculate next offset
       return allPages.reduce((acc, page) => acc + (page.items?.length || 0), 0);
     },
-    staleTime: 60_000
+    staleTime: 30_000, // Reduced to 30 seconds for fresher deals
+    refetchInterval: 60_000 // Auto-refresh every 60 seconds to catch new deals
   });
 
   // Flatten all pages into single array
@@ -177,14 +179,35 @@ export default function Deals() {
               Curated deals from Reddit, Slickdeals, and top deal sites
             </p>
           </div>
-          <Button 
-            onClick={() => window.location.href = '/deals/submit'}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white w-full lg:w-auto"
-            size="sm"
-          >
-            <Package className="w-4 h-4 mr-2" />
-            Submit Deal
-          </Button>
+          <div className="flex gap-2 w-full lg:w-auto">
+            <Button 
+              onClick={() => refetch()}
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+              className="flex-1 lg:flex-initial"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <TrendingDown className="w-4 h-4 mr-2" />
+                  Refresh
+                </>
+              )}
+            </Button>
+            <Button 
+              onClick={() => window.location.href = '/deals/submit'}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white flex-1 lg:flex-initial"
+              size="sm"
+            >
+              <Package className="w-4 h-4 mr-2" />
+              Submit Deal
+            </Button>
+          </div>
         </div>
 
         {/* Enhanced Stats Cards - Pulse Style */}
