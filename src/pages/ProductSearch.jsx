@@ -237,7 +237,8 @@ export default function ProductSearch() {
       return data;
     },
     enabled: !!debouncedQuery, // Auto-run when debouncedQuery changes
-    keepPreviousData: true // Keep showing previous results while loading more
+    placeholderData: (previousData) => previousData, // Keep showing previous results while loading more
+    staleTime: 0 // Always refetch when params change
   });
 
   // Optional: Allow instant search on Enter key press
