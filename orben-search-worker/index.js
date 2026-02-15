@@ -203,7 +203,137 @@ class EbayProvider extends SearchProvider {
 }
 
 // ==========================================
-// RapidAPI Google Shopping Provider
+// SerpAPI Google Shopping Provider
+// ==========================================
+class SerpApiGoogleProvider extends SearchProvider {
+  constructor() {
+    super('google');
+    this.apiKey = process.env.SERPAPI_KEY;
+    this.baseUrl = 'https://serpapi.com/search.json';
+  }
+
+  async search(query, opts = {}) {
+    console.log('[SerpAPI] Search entry', JSON.stringify({
+      hasApiKey: !!this.apiKey,
+      query: query
+    }));
+    
+    if (!this.apiKey) {
+      console.warn('[SerpAPI] No API key configured');
+      return [];
+    }
+
+    const { country = 'US', limit = 20, page = 1 } = opts;
+
+    try {
+      console.log(`[SerpAPI] Searching for: "${query}"`);
+      
+      const requestStartTime = Date.now();
+      
+      // SerpAPI parameters for Google Shopping
+      const params = {
+        engine: 'google',
+        q: query,
+        location: country === 'US' ? 'United States' : country,
+        hl: 'en',
+        gl: country.toLowerCase(),
+        google_domain: 'google.com',
+        api_key: this.apiKey,
+        num: Math.min(limit, 100), // SerpAPI supports up to 100 results
+        start: (page - 1) * limit // SerpAPI uses 'start' for pagination offset
+      };
+      
+      console.log('[SerpAPI] Request parameters', JSON.stringify({
+        query: query,
+        limit: limit,
+        page: page,
+        start: params.start
+      }));
+      
+      const response = await axiosInstance.get(this.baseUrl, {
+        params: params,
+        timeout: 10000 // SerpAPI is typically fast (~2 seconds)
+      });
+      
+      const requestDuration = Date.now() - requestStartTime;
+      console.log('[SerpAPI] Request completed', JSON.stringify({
+        duration: requestDuration,
+        hasImmersiveProducts: !!response.data?.immersive_products,
+        immersiveCount: response.data?.immersive_products?.length || 0,
+        hasOrganicResults: !!response.data?.organic_results,
+        organicCount: response.data?.organic_results?.length || 0
+      }));
+
+      // Transform SerpAPI response to our standard format
+      const items = [];
+      
+      // Priority 1: immersive_products (best quality data)
+      if (response.data?.immersive_products) {
+        for (const product of response.data.immersive_products) {
+          items.push({
+            title: product.title || 'Untitled',
+            price: product.extracted_price || 0,
+            original_price: product.extracted_original_price || null,
+            currency: 'USD',
+            url: product.link || product.serpapi_link || '#',
+            image_url: product.thumbnail || null,
+            merchant: product.source || 'Unknown',
+            condition: 'New',
+            shipping: product.delivery?.toLowerCase().includes('free') ? 0 : null,
+            rating: product.rating || null,
+            reviews: product.reviews || null,
+            location: product.location || null
+          });
+        }
+      }
+      
+      // Priority 2: organic_results (if immersive_products not enough)
+      if (items.length < limit && response.data?.organic_results) {
+        for (const result of response.data.organic_results) {
+          if (items.length >= limit) break;
+          
+          // Only add if it has shopping data (price info)
+          if (result.rich_snippet?.bottom?.detected_extensions) {
+            const ext = result.rich_snippet.bottom.detected_extensions;
+            items.push({
+              title: result.title || 'Untitled',
+              price: ext.price || ext.price_from || 0,
+              original_price: null,
+              currency: ext.currency || 'USD',
+              url: result.link || '#',
+              image_url: result.thumbnail || null,
+              merchant: result.source || 'Unknown',
+              condition: 'New',
+              shipping: result.rich_snippet?.bottom?.extensions?.some(e => 
+                e.toLowerCase().includes('free delivery') || e.toLowerCase().includes('free shipping')
+              ) ? 0 : null,
+              rating: ext.rating || null,
+              reviews: ext.reviews || null
+            });
+          }
+        }
+      }
+
+      console.log(`[SerpAPI] Transformed ${items.length} items`);
+      return items;
+
+    } catch (error) {
+      console.error('[SerpAPI] Search error:', error.message);
+      
+      if (error.response) {
+        console.error('[SerpAPI] Error response:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      return [];
+    }
+  }
+}
+
+// ==========================================
+// RapidAPI Google Shopping Provider (DEPRECATED - keeping for fallback)
 // ==========================================
 class RapidApiGoogleProvider extends SearchProvider {
   constructor() {
@@ -493,7 +623,8 @@ class OxylabsProvider extends SearchProvider {
 // ==========================================
 const providers = {
   ebay: new EbayProvider(),
-  google: new RapidApiGoogleProvider(),
+  google: new SerpApiGoogleProvider(), // UPDATED: Now using SerpAPI instead of RapidAPI
+  rapidapi_google: new RapidApiGoogleProvider(), // DEPRECATED: Keeping as fallback
   oxylabs: new OxylabsProvider()
 };
 
