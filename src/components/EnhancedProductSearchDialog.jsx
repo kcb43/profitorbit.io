@@ -227,8 +227,15 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:226',message:'Dialog fetch response status',data:{query:queryToSearch,status:response.status,ok:response.ok,forceFresh},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+
       if (!response.ok) {
         const errorText = await response.text();
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:232',message:'Dialog search error',data:{query:queryToSearch,status:response.status,errorText:errorText.slice(0,200),forceFresh},timestamp:Date.now(),hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
         throw new Error(`Search failed: ${response.status}`);
       }
 
@@ -310,6 +317,9 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
     } catch (error) {
       console.error('Universal search error:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:318',message:'Dialog search exception',data:{query:queryToSearch,errorMsg:error.message,errorName:error.name},timestamp:Date.now(),hypothesisId:'H'})}).catch(()=>{});
+      // #endregion
       toast({
         title: '❌ Search failed',
         description: error.message,
