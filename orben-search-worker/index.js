@@ -212,6 +212,57 @@ class SerpApiGoogleProvider extends SearchProvider {
     this.baseUrl = 'https://serpapi.com/search.json';
   }
 
+  /**
+   * Fetch merchant offers for a specific product using Immersive Product API
+   * @param {string} productPageToken - The immersive_product_page_token from search results
+   * @returns {Array} Array of merchant offers with direct links
+   */
+  async getProductOffers(productPageToken) {
+    if (!this.apiKey || !productPageToken) {
+      console.warn('[SerpAPI] Missing API key or page token for product offers');
+      return [];
+    }
+
+    try {
+      console.log(`[SerpAPI] Fetching product offers for token: ${productPageToken.substring(0, 20)}...`);
+      
+      const params = {
+        engine: 'google_immersive_product',
+        page_token: productPageToken,
+        api_key: this.apiKey
+      };
+      
+      const response = await axiosInstance.get(this.baseUrl, {
+        params: params,
+        timeout: 10000
+      });
+
+      console.log('[SerpAPI] Product offers response', JSON.stringify({
+        hasOffers: !!response.data?.sellers_results,
+        offerCount: response.data?.sellers_results?.length || 0
+      }));
+
+      // Extract merchant offers with REAL direct links
+      const offers = response.data?.sellers_results || [];
+      
+      return offers.map(offer => ({
+        merchant: offer.name || 'Unknown',
+        price: offer.extracted_price || offer.price || 0,
+        link: offer.link || offer.store_link || null, // This is the REAL merchant URL!
+        shipping: offer.shipping || null,
+        delivery: offer.delivery || null,
+        rating: offer.seller_rating || null,
+        reviews: offer.seller_reviews || null,
+        base_price: offer.base_price || null,
+        total_price: offer.total_price || null
+      })).filter(offer => offer.link); // Only return offers with valid links
+      
+    } catch (error) {
+      console.error('[SerpAPI] Error fetching product offers:', error.message);
+      return [];
+    }
+  }
+
   async search(query, opts = {}) {
     console.log('[SerpAPI] Search entry', JSON.stringify({
       hasApiKey: !!this.apiKey,
@@ -274,15 +325,26 @@ class SerpApiGoogleProvider extends SearchProvider {
           items.push({
             title: product.title || 'Untitled',
             price: product.extracted_price || product.price || 0,
-            original_price: product.extracted_original_price || null,
+            old_price: product.extracted_old_price || null,
             currency: 'USD',
             url: product.link || product.product_link || '#',
+            product_link: product.product_link || product.link || '#',
             image_url: product.thumbnail || null,
             merchant: product.source || product.seller || 'Unknown',
             condition: 'New',
             shipping: product.delivery?.toLowerCase().includes('free') ? 0 : null,
+            delivery: product.delivery || null,
             rating: product.rating || null,
             reviews: product.reviews || product.reviews_count || null,
+            snippet: product.snippet || null,
+            extensions: product.extensions || [],
+            tag: product.tag || null,
+            badge: product.badge || null,
+            position: product.position || null,
+            multiple_sources: product.multiple_sources || false,
+            // CRITICAL: Include the token to fetch direct merchant links
+            immersive_product_page_token: product.immersive_product_page_token || null,
+            product_id: product.product_id || null,
             location: product.store || null
           });
         }
@@ -890,6 +952,61 @@ fastify.post('/search', async (request, reply) => {
   // #endregion
 
   return results;
+});
+
+// ==========================================
+// Get product merchant offers endpoint
+// ==========================================
+fastify.post('/product-offers', async (request, reply) => {
+  console.log('[Product Offers] Request received');
+  
+  const { immersive_product_page_token, userId } = request.body;
+
+  if (!immersive_product_page_token) {
+    return reply.code(400).send({ error: 'Missing immersive_product_page_token' });
+  }
+
+  if (!userId) {
+    return reply.code(400).send({ error: 'Missing userId' });
+  }
+
+  // Check cache first
+  const cacheKey = `product:offers:${crypto.createHash('md5').update(immersive_product_page_token).digest('hex')}`;
+  const cached = await redis.get(cacheKey);
+  
+  if (cached) {
+    console.log('[Product Offers] Cache HIT');
+    return JSON.parse(cached);
+  }
+
+  console.log('[Product Offers] Cache MISS - fetching from API');
+
+  try {
+    // Use SerpAPI Google Shopping provider to get merchant offers
+    const googleProvider = providers.google;
+    
+    if (!googleProvider || !(googleProvider instanceof SerpApiGoogleProvider)) {
+      return reply.code(500).send({ error: 'Google provider not available' });
+    }
+
+    const offers = await googleProvider.getProductOffers(immersive_product_page_token);
+    
+    console.log(`[Product Offers] Fetched ${offers.length} merchant offers`);
+
+    const response = {
+      token: immersive_product_page_token,
+      offers: offers
+    };
+
+    // Cache for 24 hours
+    await redis.set(cacheKey, JSON.stringify(response), 'EX', 60 * 60 * 24);
+
+    return response;
+    
+  } catch (error) {
+    console.error('[Product Offers] Error:', error.message);
+    return reply.code(500).send({ error: error.message });
+  }
 });
 
 // ==========================================

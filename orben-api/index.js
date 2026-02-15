@@ -416,6 +416,40 @@ fastify.post('/v1/search/snapshot', async (request, reply) => {
 });
 
 /**
+ * POST /v1/product/offers
+ * Get direct merchant links for a product using immersive_product_page_token
+ */
+fastify.post('/v1/product/offers', async (request, reply) => {
+  let user;
+  try {
+    user = await requireUser(request);
+  } catch (e) {
+    return reply.code(401).send({ error: e.message });
+  }
+
+  const { immersive_product_page_token } = request.body || {};
+
+  if (!immersive_product_page_token) {
+    return reply.code(400).send({ error: 'Missing immersive_product_page_token' });
+  }
+
+  try {
+    // Call search worker to get merchant offers
+    const response = await axios.post(`${SEARCH_WORKER_URL}/product-offers`, {
+      immersive_product_page_token,
+      userId: user.id
+    }, {
+      timeout: 15000
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('[Product Offers] Error:', error.message);
+    return reply.code(500).send({ error: error.message || 'Failed to fetch product offers' });
+  }
+});
+
+/**
  * GET /v1/search/snapshot/:id
  * Get a saved search snapshot
  */

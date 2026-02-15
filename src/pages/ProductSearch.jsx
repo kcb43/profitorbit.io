@@ -300,8 +300,19 @@ export default function ProductSearch() {
         newCount: currentItemCount,
         firstItemTitle: searchResults.items[0]?.title
       });
-      setAccumulatedItems(searchResults.items);
+      
+      // Mark items as not loaded yet
+      const itemsWithLoadingState = searchResults.items.map(item => ({
+        ...item,
+        merchantOffersLoaded: false,
+        merchantOffers: []
+      }));
+      
+      setAccumulatedItems(itemsWithLoadingState);
       setTotalFetched(currentItemCount);
+      
+      // Pre-fetch merchant offers for items with immersive_product_page_token
+      prefetchMerchantOffers(itemsWithLoadingState);
     } 
     // If this is page 2+, accumulate the new items
     else if (currentPage > 1 || isLoadingMore) {
@@ -322,12 +333,103 @@ export default function ProductSearch() {
       });
       
       if (newItems.length > 0) {
-        setAccumulatedItems(prev => [...prev, ...newItems]);
-        setTotalFetched(accumulatedItems.length + newItems.length);
+        // Mark new items as not loaded yet
+        const newItemsWithLoadingState = newItems.map(item => ({
+          ...item,
+          merchantOffersLoaded: false,
+          merchantOffers: []
+        }));
+        
+        setAccumulatedItems(prev => [...prev, ...newItemsWithLoadingState]);
+        setTotalFetched(accumulatedItems.length + newItemsWithLoadingState.length);
+        
+        // Pre-fetch merchant offers for new items
+        prefetchMerchantOffers(newItemsWithLoadingState);
       }
       setIsLoadingMore(false);
     }
   }, [searchResults?.items]);
+
+  // Pre-fetch direct merchant links for products with immersive tokens
+  const prefetchMerchantOffers = async (items) => {
+    const itemsWithTokens = items.filter(item => item.immersive_product_page_token);
+    
+    if (itemsWithTokens.length === 0) {
+      console.log('[Prefetch] No items with immersive tokens');
+      return;
+    }
+
+    console.log(`[Prefetch] Fetching merchant offers for ${itemsWithTokens.length} items`);
+
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      console.warn('[Prefetch] No auth token available');
+      return;
+    }
+
+    // Fetch merchant offers for each item (in batches to avoid overwhelming the API)
+    const batchSize = 3; // Fetch 3 at a time
+    for (let i = 0; i < itemsWithTokens.length; i += batchSize) {
+      const batch = itemsWithTokens.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (item) => {
+        try {
+          const response = await fetch(`${ORBEN_API_URL}/v1/product/offers`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              immersive_product_page_token: item.immersive_product_page_token
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`[Prefetch] Got ${data.offers?.length || 0} offers for: ${item.title.substring(0, 30)}...`);
+            
+            // Store offers in the item (update accumulated items)
+            // Use product_id or title as unique identifier
+            const itemId = item.product_id || item.title;
+            
+            setAccumulatedItems(prev => prev.map(i => {
+              const iId = i.product_id || i.title;
+              return iId === itemId
+                ? { ...i, merchantOffers: data.offers, merchantOffersLoaded: true }
+                : i;
+            }));
+          } else {
+            // Mark as loaded but with no offers
+            const itemId = item.product_id || item.title;
+            setAccumulatedItems(prev => prev.map(i => {
+              const iId = i.product_id || i.title;
+              return iId === itemId
+                ? { ...i, merchantOffers: [], merchantOffersLoaded: true }
+                : i;
+            }));
+          }
+        } catch (error) {
+          console.error(`[Prefetch] Error fetching offers for item:`, error.message);
+          // Mark as loaded with error
+          const itemId = item.product_id || item.title;
+          setAccumulatedItems(prev => prev.map(i => {
+            const iId = i.product_id || i.title;
+            return iId === itemId
+              ? { ...i, merchantOffers: [], merchantOffersLoaded: true }
+              : i;
+          }));
+        }
+      }));
+      
+      // Small delay between batches
+      if (i + batchSize < itemsWithTokens.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  };
 
   // Show accumulated results
   const displayedItems = accumulatedItems;
@@ -637,13 +739,20 @@ function ProductCard({ item, showDebug = false }) {
   const position = item.position || null; // Product ranking position
   const sourceIcon = item.source_icon || ''; // Merchant logo/icon
   const productId = item.product_id || ''; // Unique product identifier
+  
+  // Additional metadata that might be available
+  const installment = item.installment || ''; // Installment payment info
+  const alternativePrice = item.alternative_price || ''; // Alternative pricing
+  const currency = item.currency || 'USD';
+  const secondHandCondition = item.second_hand_condition || '';
 
   // Log unused fields for debugging
   if (showDebug) {
     const usedFields = ['title', 'image_url', 'thumbnail', 'price', 'extracted_price', 
       'old_price', 'extracted_old_price', 'merchant', 'source', 'link', 'url', 'product_link',
       'rating', 'reviews', 'snippet', 'extensions', 'tag', 'badge', 'delivery', 'condition',
-      'second_hand_condition', 'position', 'source_icon'];
+      'second_hand_condition', 'position', 'source_icon', 'product_id', 'multiple_sources',
+      'installment', 'alternative_price', 'currency', 'shipping'];
     const allFields = Object.keys(item);
     const unusedFields = allFields.filter(f => !usedFields.includes(f));
     console.log('[ProductCard] UNUSED FIELDS:', unusedFields);
@@ -733,6 +842,12 @@ function ProductCard({ item, showDebug = false }) {
                 </div>
               )}
             </div>
+            {/* Installment pricing if available */}
+            {installment && (
+              <p className="text-xs text-gray-600 mt-1">
+                💳 {installment}
+              </p>
+            )}
           </div>
         )}
 
@@ -754,26 +869,26 @@ function ProductCard({ item, showDebug = false }) {
 
         {/* Snippet (e.g., "Tastes good (4,331 user reviews)") */}
         {snippet && (
-          <p className="text-xs text-gray-600 mb-2 line-clamp-1 italic">
+          <p className="text-xs text-gray-600 mb-2 line-clamp-2 italic bg-gray-50 px-2 py-1 rounded">
             💬 {snippet}
           </p>
         )}
 
-        {/* Extensions (e.g., "Nearby, 12 mi", "22% OFF") */}
+        {/* Delivery info - PROMINENT POSITION */}
+        {delivery && (
+          <div className="text-xs text-blue-700 bg-blue-50 px-2 py-1.5 rounded mb-2 font-medium border border-blue-200">
+            🚚 {delivery}
+          </div>
+        )}
+
+        {/* Extensions (e.g., "Nearby, 12 mi", "22% OFF") - SHOW ALL */}
         {extensions && extensions.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
-            {extensions.slice(0, 3).map((ext, idx) => (
+            {extensions.map((ext, idx) => (
               <Badge key={idx} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
                 {ext}
               </Badge>
             ))}
-          </div>
-        )}
-
-        {/* Delivery info */}
-        {delivery && (
-          <div className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded mb-2 font-medium">
-            🚚 {delivery}
           </div>
         )}
 
@@ -784,22 +899,69 @@ function ProductCard({ item, showDebug = false }) {
         </div>
 
         {/* Action */}
-        <Button
-          variant="default"
-          size="sm"
-          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
-          onClick={() => window.open(productLink, '_blank')}
-          disabled={!productLink}
-          title="View product details, reviews, and compare prices across all merchants"
-        >
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          Compare Prices
-        </Button>
+        {item.merchantOffersLoaded && item.merchantOffers?.length > 0 ? (
+          // Show direct merchant link if available
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+            onClick={() => window.open(item.merchantOffers[0].link, '_blank')}
+            title={`Buy from ${item.merchantOffers[0].merchant} - ${item.merchantOffers.length} store${item.merchantOffers.length > 1 ? 's' : ''} available`}
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            Buy at {item.merchantOffers[0].merchant}
+          </Button>
+        ) : item.merchantOffersLoaded === false && item.immersive_product_page_token ? (
+          // Loading merchant links
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled
+          >
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Finding stores...
+          </Button>
+        ) : (
+          // Fallback: Use Google Shopping comparison page
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+            onClick={() => window.open(productLink, '_blank')}
+            disabled={!productLink}
+            title="View full product details and all available merchant offers"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            View Item
+          </Button>
+        )}
         
-        {/* Optional: Show "Multiple stores" indicator */}
+        {/* Show alternate merchant options if available */}
+        {item.merchantOffers?.length > 1 && (
+          <details className="mt-2">
+            <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
+              +{item.merchantOffers.length - 1} more store{item.merchantOffers.length > 2 ? 's' : ''}
+            </summary>
+            <div className="mt-1 space-y-1">
+              {item.merchantOffers.slice(1, 4).map((offer, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => window.open(offer.link, '_blank')}
+                  className="w-full text-left text-xs p-1 hover:bg-gray-50 rounded flex justify-between items-center"
+                >
+                  <span className="font-medium">{offer.merchant}</span>
+                  <span className="text-green-600">${offer.price.toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
+        
+        {/* Show "Multiple stores" indicator */}
         {item.multiple_sources && (
-          <p className="text-xs text-gray-500 text-center mt-1">
-            Available at multiple stores
+          <p className="text-xs text-green-600 text-center mt-1 font-medium">
+            ✓ Multiple stores available
           </p>
         )}
         
