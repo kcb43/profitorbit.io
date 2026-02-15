@@ -229,7 +229,8 @@ class SerpApiGoogleProvider extends SearchProvider {
       const params = {
         engine: 'google_immersive_product',
         page_token: productPageToken,
-        api_key: this.apiKey
+        api_key: this.apiKey,
+        more_stores: true // Get up to 13 stores instead of default 3-5
       };
       
       const response = await axiosInstance.get(this.baseUrl, {
@@ -239,11 +240,18 @@ class SerpApiGoogleProvider extends SearchProvider {
 
       console.log('[SerpAPI] Product offers response', JSON.stringify({
         hasOffers: !!response.data?.sellers_results,
-        offerCount: response.data?.sellers_results?.length || 0
+        offerCount: response.data?.sellers_results?.length || 0,
+        allKeys: Object.keys(response.data || {}),
+        hasOnlineStores: !!response.data?.online_stores,
+        onlineStoresCount: response.data?.online_stores?.length || 0,
+        hasProductResults: !!response.data?.product_results,
+        hasStores: !!response.data?.product_results?.stores,
+        storesCount: response.data?.product_results?.stores?.length || 0
       }));
 
       // Extract merchant offers with REAL direct links
-      const offers = response.data?.sellers_results || [];
+      // The correct field is product_results.stores (not sellers_results)
+      const offers = response.data?.product_results?.stores || [];
       
       return offers.map(offer => ({
         merchant: offer.name || 'Unknown',
