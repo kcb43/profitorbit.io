@@ -227,7 +227,7 @@ class RapidApiGoogleProvider extends SearchProvider {
       return [];
     }
 
-    const { country = 'US', limit = 20 } = opts;
+    const { country = 'US', limit = 20, page = 1 } = opts;
 
     try {
       // Using Real-Time Product Search API v2 on RapidAPI
@@ -240,12 +240,13 @@ class RapidApiGoogleProvider extends SearchProvider {
         query: query,
         country: country,
         limit: limit,
+        page: page,
         timestamp: requestStartTime,
         allParams: {
           q: query,
           country: country.toLowerCase(),
           language: 'en',
-          page: 1,
+          page: page,
           limit: Math.min(limit, 50),
           sort_by: 'BEST_MATCH',
           product_condition: 'ANY'
@@ -261,6 +262,7 @@ class RapidApiGoogleProvider extends SearchProvider {
       const requestParams = {
         q: query,
         country: country.toLowerCase(),
+        page: page,
         limit: optimizedLimit
       };
       
@@ -268,6 +270,7 @@ class RapidApiGoogleProvider extends SearchProvider {
       console.log('[DEBUG-H] Optimized request parameters', JSON.stringify({
         requestedLimit: limit,
         optimizedLimit: optimizedLimit,
+        page: page,
         params: requestParams,
         hypothesisId: 'H'
       }));
@@ -525,10 +528,10 @@ function normalizeQuery(q) {
   return q.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function getCacheKey(provider, country, query, limit = 10) {
-  const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}`).digest('hex');
-  // v6: Include limit in cache key to support different result set sizes (2026-02-14)
-  return `search:v6:${provider}:${country}:${hash}`;
+function getCacheKey(provider, country, query, limit = 10, page = 1) {
+  const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}:${page}`).digest('hex');
+  // v7: Include page in cache key to support pagination (2026-02-15)
+  return `search:v7:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
@@ -568,11 +571,12 @@ fastify.post('/search', async (request, reply) => {
     providers: request.body?.providers,
     country: request.body?.country,
     limit: request.body?.limit,
+    page: request.body?.page,
     hypothesisId: 'C'
   }));
   // #endregion
   
-  const { query, providers: requestedProviders, country = 'US', userId, limit = 20 } = request.body;
+  const { query, providers: requestedProviders, country = 'US', userId, limit = 20, page = 1 } = request.body;
 
   if (!query || !query.trim()) {
     return reply.code(400).send({ error: 'Missing query' });
@@ -610,14 +614,15 @@ fastify.post('/search', async (request, reply) => {
       continue;
     }
 
-    const cacheKey = getCacheKey(providerName, country, query, limit);
+    const cacheKey = getCacheKey(providerName, country, query, limit, page);
 
-    // Hypothesis C: Is the cache key v6 with limit?
+    // Hypothesis C: Is the cache key v7 with page?
     console.log('[DEBUG-C] Cache key generated', JSON.stringify({
       cacheKey: cacheKey,
       providerName: providerName,
       query: query,
-      limit: limit
+      limit: limit,
+      page: page
     }));
 
     // Check cache first
@@ -657,7 +662,7 @@ fastify.post('/search', async (request, reply) => {
       }));
       // #endregion
       
-      const items = await provider.search(query, { country, limit });
+      const items = await provider.search(query, { country, limit, page });
       
       // #region agent log
       const providerEndTime = Date.now();

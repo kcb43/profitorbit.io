@@ -16,7 +16,7 @@ export default function ProductSearch() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
   const [displayLimit, setDisplayLimit] = useState(10); // No longer needed but keeping for compatibility
-  const [requestedLimit, setRequestedLimit] = useState(10); // Start with 10 items for fastest initial load
+  const [currentPage, setCurrentPage] = useState(1); // Track which page we're on for pagination
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const [accumulatedItems, setAccumulatedItems] = useState([]); // Accumulate items across multiple fetches
@@ -36,7 +36,7 @@ export default function ProductSearch() {
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
         setDisplayLimit(10); // Reset display limit on new search
-        setRequestedLimit(10); // 10 items = 3-4 seconds (FASTEST!)
+        setCurrentPage(1); // Reset to page 1 for new search
         setTotalFetched(0); // Reset total fetched on new search
       }, 800); // Wait 800ms after user stops typing
     } else {
@@ -118,18 +118,16 @@ export default function ProductSearch() {
 
   // Main search query (displays results)
   const { data: searchResults, isLoading, error: queryError, refetch } = useQuery({
-    queryKey: ['productSearch', debouncedQuery, requestedLimit],
+    queryKey: ['productSearch', debouncedQuery, currentPage],
     queryFn: async () => {
       if (!debouncedQuery) return null;
 
-      // #region agent log
-      console.log('[DEBUG-A] Frontend: Starting product search', JSON.stringify({
+      console.log('[DEBUG-PAGINATION] Frontend: Starting product search', {
         query: debouncedQuery,
-        requestedLimit: requestedLimit,
-        orbenApiUrl: ORBEN_API_URL,
-        hypothesisId: 'A'
-      }));
-      // #endregion
+        page: currentPage,
+        limit: 10,
+        orbenApiUrl: ORBEN_API_URL
+      });
 
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
@@ -139,14 +137,6 @@ export default function ProductSearch() {
         hasToken: !!token,
         tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
       });
-
-      // #region agent log
-      console.log('[DEBUG-A] Frontend: Auth token check', JSON.stringify({
-        hasToken: !!token,
-        tokenLength: token?.length || 0,
-        hypothesisId: 'A'
-      }));
-      // #endregion
 
       if (!token) {
         toast({
@@ -164,19 +154,11 @@ export default function ProductSearch() {
         q: debouncedQuery,
         providers: providerList,
         country: 'US',
-        limit: String(requestedLimit), // Use dynamic limit: 20 for initial, 50 for "load more"
+        page: String(currentPage), // Use pagination!
+        limit: '10', // Always fetch 10 items per page
         // Force fresh results after RapidAPI key was added (cache v5)
-        cache_version: 'v6_limit_in_cache_key'
+        cache_version: 'v7_pagination'
       });
-
-      // #region agent log
-      console.log('[DEBUG-A] Frontend: Making API request', JSON.stringify({
-        url: `${ORBEN_API_URL}/v1/search`,
-        params: Object.fromEntries(params),
-        requestedLimit: requestedLimit,
-        hypothesisId: 'A'
-      }));
-      // #endregion
 
       console.log('[ProductSearch] Fetching:', `${ORBEN_API_URL}/v1/search?${params}`);
 
@@ -255,7 +237,7 @@ export default function ProductSearch() {
     }
     // Immediately trigger search (bypass debounce)
     setDebouncedQuery(query.trim());
-    setRequestedLimit(10); // Start with 10 items for fastest initial load
+    setCurrentPage(1); // Start with page 1 for new search
     setAccumulatedItems([]); // Clear accumulated items for new search
     setTotalFetched(0); // Reset fetch tracking
   };
@@ -266,7 +248,7 @@ export default function ProductSearch() {
       hasSearchResults: !!searchResults?.items,
       currentItemCount: searchResults?.items?.length,
       accumulatedLength: accumulatedItems.length,
-      requestedLimit,
+      currentPage,
       isLoadingMore
     });
     
@@ -277,10 +259,9 @@ export default function ProductSearch() {
     console.log('[DEBUG-ACCUM] Checking replacement condition', {
       currentItemCount,
       accumulatedLength: accumulatedItems.length,
-      equals10: currentItemCount === 10,
-      lessThan: currentItemCount < accumulatedItems.length,
+      currentPage: currentPage,
       isLoadingMore: isLoadingMore,
-      willReplace: (currentItemCount < accumulatedItems.length || currentItemCount === 10) && !isLoadingMore
+      isNewSearch: currentPage === 1 && !isLoadingMore
     });
     
     // If we got 0 items on a "load more" request, keep existing items and show error
@@ -297,8 +278,8 @@ export default function ProductSearch() {
       return; // CRITICAL: Return early to prevent replacing items
     }
     
-    // If this is a new search (not a load more), replace everything
-    if (!isLoadingMore && (currentItemCount < accumulatedItems.length || currentItemCount === 10)) {
+    // If this is page 1 and not a load more, it's a new search - replace everything
+    if (currentPage === 1 && !isLoadingMore) {
       console.log('[DEBUG-ACCUM] REPLACING all items (new search detected)', {
         oldCount: accumulatedItems.length,
         newCount: currentItemCount,
@@ -307,11 +288,12 @@ export default function ProductSearch() {
       setAccumulatedItems(searchResults.items);
       setTotalFetched(currentItemCount);
     } 
-    // If we got more items, it's a "load more" response - accumulate them
-    else if (currentItemCount > accumulatedItems.length) {
+    // If this is page 2+, accumulate the new items
+    else if (currentPage > 1 || isLoadingMore) {
       console.log('[DEBUG-ACCUM] ACCUMULATING items (load more detected)', {
         oldCount: accumulatedItems.length,
         newCount: currentItemCount,
+        currentPage: currentPage,
         searchResultsLength: searchResults.items.length
       });
       // Only add new items that aren't duplicates
@@ -334,17 +316,17 @@ export default function ProductSearch() {
 
   // Show accumulated results
   const displayedItems = accumulatedItems;
-  const canLoadMore = displayedItems.length >= requestedLimit && requestedLimit < 100 && displayedItems.length > 0; // Can fetch more if we got full results and haven't hit 100 total
+  const canLoadMore = searchResults?.items?.length === 10 && accumulatedItems.length < 100; // Can fetch more if last page had 10 items (full page) and haven't hit 100 total
 
   // Handle load more button click
   const handleLoadMore = () => {
     console.log('[DEBUG-LOAD-MORE] Load More clicked', {
-      currentRequestedLimit: requestedLimit,
-      willIncreaseTo: requestedLimit + 20,
+      currentPage: currentPage,
+      willIncreaseTo: currentPage + 1,
       currentAccumulatedItems: accumulatedItems.length
     });
     setIsLoadingMore(true);
-    setRequestedLimit(prev => prev + 20);
+    setCurrentPage(prev => prev + 1); // Go to next page
   };
 
   // No longer need this useEffect - handled in accumulation logic above
