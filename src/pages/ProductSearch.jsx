@@ -790,21 +790,21 @@ function ProductCard({ item, showDebug = false }) {
     console.log('[ProductCard] Full Item Data:', item);
   }
 
-  // Extract relevant fields from Google Shopping API structure
-  // Handles both: normalized format (from backend) and raw SerpAPI format
+  // Extract relevant fields from API structure
+  // Handles multiple provider formats: RapidAPI, SerpAPI, Oxylabs
   const title = item.title || '';
   const imageUrl = item.image_url || item.thumbnail || '';
   const price = item.price || item.extracted_price || 0;
   const oldPrice = item.old_price || item.extracted_old_price || null;
   const merchant = item.merchant || item.source || 'Unknown';
   
-  // IMPORTANT: Use product_link (Google Shopping detail page with all merchant offers)
-  // This page shows reviews, ratings, price comparisons, and links to all merchants
-  // Direct merchant links are not available in the basic API response
-  const productLink = item.product_link || item.url || item.link || '';
+  // RapidAPI: item.url is DIRECT merchant link (e.g., walmart.com/product/123)
+  // SerpAPI: item.product_link is Google Shopping page, item.url might be merchant link
+  // Use merchantOffers if pre-fetched, otherwise use URL from API
+  const productLink = item.url || item.product_link || item.link || '';
   
   const rating = item.rating || null;
-  const reviews = item.reviews || null;
+  const reviews = item.reviews || item.reviews_count || null;
   const snippet = item.snippet || '';
   const extensions = item.extensions || [];
   const tag = item.tag || '';
@@ -820,6 +820,10 @@ function ProductCard({ item, showDebug = false }) {
   const alternativePrice = item.alternative_price || ''; // Alternative pricing
   const currency = item.currency || 'USD';
   const secondHandCondition = item.second_hand_condition || '';
+  
+  // Check if this is a RapidAPI result (has direct merchant link)
+  const hasDirectLink = item.url && !item.product_link;
+  const isRapidApiResult = item.source === 'google_rapidapi' || hasDirectLink;
 
   // Log unused fields for debugging
   if (showDebug) {
@@ -887,13 +891,18 @@ function ProductCard({ item, showDebug = false }) {
 
         {/* Merchant Badge - Colorful and prominent */}
         {merchant && (
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
             <Badge className={`${getMerchantColor(merchant)} font-semibold border shadow-sm`}>
               {merchant}
             </Badge>
             {item.multiple_sources && (
               <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
                 Multiple stores
+              </Badge>
+            )}
+            {isRapidApiResult && (
+              <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                ✓ Direct link
               </Badge>
             )}
           </div>
@@ -973,9 +982,21 @@ function ProductCard({ item, showDebug = false }) {
           {item.shipping === 0 && <Badge variant="outline">Free Shipping</Badge>}
         </div>
 
-        {/* Action */}
-        {item.merchantOffersLoaded && item.merchantOffers?.length > 0 ? (
-          // Show direct merchant link if available
+        {/* Action - Smart button based on data source */}
+        {isRapidApiResult && productLink ? (
+          // RapidAPI: Direct merchant link available
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+            onClick={() => window.open(productLink, '_blank')}
+            title={`Shop at ${merchant}`}
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            Buy at {merchant}
+          </Button>
+        ) : item.merchantOffersLoaded && item.merchantOffers?.length > 0 ? (
+          // SerpAPI: Pre-fetched merchant offers available
           <Button
             variant="default"
             size="sm"
@@ -987,7 +1008,7 @@ function ProductCard({ item, showDebug = false }) {
             Buy at {item.merchantOffers[0].merchant}
           </Button>
         ) : item.merchantOffersLoaded === false && item.immersive_product_page_token ? (
-          // Loading merchant links
+          // SerpAPI: Loading merchant links
           <Button
             variant="outline"
             size="sm"
@@ -998,17 +1019,17 @@ function ProductCard({ item, showDebug = false }) {
             Finding stores...
           </Button>
         ) : (
-          // Fallback: Use Google Shopping comparison page
+          // Fallback: Generic link (could be Google Shopping or direct)
           <Button
             variant="default"
             size="sm"
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
             onClick={() => window.open(productLink, '_blank')}
             disabled={!productLink}
-            title="View full product details and all available merchant offers"
+            title={hasDirectLink ? `Shop at ${merchant}` : "View full product details and all available merchant offers"}
           >
             <ExternalLink className="w-4 h-4 mr-2" />
-            View Item
+            {hasDirectLink ? `Shop Now` : 'View Item'}
           </Button>
         )}
         

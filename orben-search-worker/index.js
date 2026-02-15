@@ -703,9 +703,9 @@ function selectSmartProviders(query, requestedProviders) {
     return providerArray;
   }
 
-  // Smart routing enabled - always use RapidAPI Google Shopping
-  // (Oxylabs google_shopping_search not in plan, amazon_search too slow)
-  console.log(`[SmartRouting] Auto mode - Using RapidAPI Google Shopping`);
+  // Smart routing enabled - always use SerpAPI Google Shopping
+  // SerpAPI provides rich metadata AND immersive product page tokens for direct merchant links
+  console.log(`[SmartRouting] Auto mode - Using SerpAPI Google Shopping`);
   return ['google'];
 }
 
