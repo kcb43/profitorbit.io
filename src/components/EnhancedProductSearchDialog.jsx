@@ -411,8 +411,10 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
         {/* Search Bar */}
         <div className="px-6 pb-4 border-b bg-muted/20">
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
+          {/* Mobile: Stack search bar and buttons, Desktop: Single row */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Search Input - Full width on mobile, flex-1 on desktop */}
+            <div className="w-full sm:flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={searchMode === 'all' ? 'Search any product across 100+ stores...' : 'Search eBay listings...'}
@@ -423,31 +425,35 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 disabled={isLoading}
               />
             </div>
-            <Button
-              onClick={handleSearch}
-              disabled={isLoading || !searchQuery.trim() || searchQuery.trim().length < 2}
-              size="lg"
-              className="px-8"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                'Search'
-              )}
-            </Button>
-            {searchMode === 'all' && (
+            
+            {/* Buttons Row - Full width on mobile, auto width on desktop */}
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
-                variant="outline"
+                onClick={handleSearch}
+                disabled={isLoading || !searchQuery.trim() || searchQuery.trim().length < 2}
                 size="lg"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(showFilters && 'bg-muted')}
+                className="flex-1 sm:flex-none sm:px-8"
               >
-                <SlidersHorizontal className="h-4 w-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  'Search'
+                )}
               </Button>
-            )}
+              {searchMode === 'all' && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={cn(showFilters && 'bg-muted')}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* eBay View Sold Button */}
