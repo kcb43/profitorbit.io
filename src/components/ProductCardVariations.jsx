@@ -26,19 +26,19 @@ const getMerchantColor = (merchant) => {
 };
 
 // Merchant Badge Component - Shows logo if available, otherwise colored badge
-const MerchantBadge = ({ merchant, className = '' }) => {
+const MerchantBadge = ({ merchant, className = '', showText = false }) => {
   const { logo, hasLogo, fallbackColor } = getMerchantLogoOrColor(merchant);
   
   if (hasLogo) {
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md ${className}`}>
+      <div className={`inline-flex items-center gap-2 px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md ${className}`}>
         <img 
           src={logo} 
           alt={merchant} 
           className="h-5 w-auto object-contain"
           onError={(e) => e.target.style.display = 'none'}
         />
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{merchant}</span>
+        {showText && <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{merchant}</span>}
       </div>
     );
   }

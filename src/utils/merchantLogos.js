@@ -56,13 +56,14 @@ const merchantLogoMap = {
 
 /**
  * Normalize merchant name for lookup
- * Removes spaces, underscores, and converts to lowercase
+ * Removes spaces, underscores, dots, and ".com" suffix, converts to lowercase
  */
 function normalizeMerchantName(merchantName) {
   if (!merchantName) return '';
   return merchantName
     .toLowerCase()
-    .replace(/[_\s-]/g, '')
+    .replace(/\.com$/i, '') // Remove .com suffix
+    .replace(/[_\s.-]/g, '') // Remove spaces, underscores, dots, hyphens
     .trim();
 }
 

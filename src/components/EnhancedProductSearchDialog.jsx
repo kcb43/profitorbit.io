@@ -788,15 +788,13 @@ function ProductRow({ product, onAddToWatchlist, onImageClick }) {
         <td className="py-2 px-3 text-center">
           <div className="flex items-center justify-center gap-2">
             {merchantInfo.hasLogo ? (
-              <>
-                <img 
-                  src={merchantInfo.logo} 
-                  alt={product.marketplace} 
-                  className="h-4 w-auto object-contain"
-                  onError={(e) => e.target.style.display = 'none'}
-                />
-                <span className="text-xs font-medium capitalize hidden lg:inline">{product.marketplace}</span>
-              </>
+              <img 
+                src={merchantInfo.logo} 
+                alt={product.marketplace} 
+                className="h-5 w-auto object-contain"
+                onError={(e) => e.target.style.display = 'none'}
+                title={product.marketplace}
+              />
             ) : (
               <span className="text-xs font-medium capitalize">{product.marketplace}</span>
             )}
