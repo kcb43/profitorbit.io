@@ -193,6 +193,28 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       const data = await response.json();
       console.log('[Universal Search] Response:', data);
 
+      // Check for quota/provider errors
+      if (data.providers && Array.isArray(data.providers)) {
+        const providerErrors = data.providers.filter(p => p.error);
+        if (providerErrors.length > 0) {
+          console.warn('[Universal Search] Provider errors:', providerErrors);
+          
+          // Check for quota exceeded
+          const quotaError = providerErrors.find(p => 
+            p.error?.includes('quota') || p.error?.includes('exceeded') || p.error?.includes('limit')
+          );
+          
+          if (quotaError) {
+            toast({
+              title: '⚠️ Search Quota Exceeded',
+              description: quotaError.error || 'API quota limit reached. Results may be limited.',
+              variant: 'destructive',
+              duration: 8000
+            });
+          }
+        }
+      }
+
       // Transform SerpAPI results to match expected format
       const transformedProducts = (data.items || []).map(item => ({
         title: item.title || '',
@@ -226,10 +248,18 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         });
       }
 
-      toast({
-        title: `✅ Found ${transformedProducts.length} products`,
-        description: `Search complete from ${data.providers?.map(p => p.provider).join(', ') || 'multiple sources'}`
-      });
+      if (transformedProducts.length === 0) {
+        toast({
+          title: '⚠️ No results found',
+          description: data.providers?.[0]?.error || 'Try a different search term or check your API quota.',
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: `✅ Found ${transformedProducts.length} products`,
+          description: `Search complete from ${data.providers?.map(p => p.provider).join(', ') || 'multiple sources'}`
+        });
+      }
 
     } catch (error) {
       console.error('Universal search error:', error);
