@@ -9,6 +9,7 @@
  * 
  * Cache-first strategy with Redis
  * Budget/quota enforcement
+ * Updated: 2026-02-15 - New SerpAPI key deployment
  */
 
 import Fastify from 'fastify';
