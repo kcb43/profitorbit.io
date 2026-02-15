@@ -77,11 +77,11 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     marketplace: 'all'
   });
 
-  // Debounce search query
+  // Debounce search query - 800ms like ProductSearch page
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 500);
+    }, 800); // Increased to 800ms to match ProductSearch page behavior
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -424,7 +424,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
