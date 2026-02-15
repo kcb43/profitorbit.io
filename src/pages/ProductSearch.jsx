@@ -218,7 +218,8 @@ export default function ProductSearch() {
       const data = await response.json();
       console.log('[ProductSearch] Results:', { 
         itemCount: data.items?.length || 0,
-        providers: data.providers
+        providers: data.providers,
+        firstThreeItems: data.items?.slice(0, 3)
       });
 
       // #region agent log
@@ -227,9 +228,18 @@ export default function ProductSearch() {
         currentPage: currentPage,
         providers: data.providers,
         firstItemTitle: data.items?.[0]?.title || null,
+        hasItems: !!data.items,
+        isArray: Array.isArray(data.items),
         hypothesisId: 'D'
       }));
       // #endregion
+      
+      // CRITICAL: Slice to respect the requested limit for pagination
+      // Backend might return more items than requested
+      if (data.items && data.items.length > 10) {
+        console.log('[DEBUG-SLICE] Slicing items from', data.items.length, 'to 10');
+        data.items = data.items.slice(0, 10);
+      }
 
       return data;
     },
@@ -477,12 +487,15 @@ export default function ProductSearch() {
   const lastFetchCount = searchResults?.items?.length || 0;
   const canLoadMore = lastFetchCount === 10 && accumulatedItems.length < 100 && !isLoadingMore && !isLoading;
   
-  console.log('[DEBUG-LOAD-MORE] Can load more check', {
-    lastFetchCount,
+  console.log('[DEBUG-DISPLAY] Display state', {
+    displayedItemsLength: displayedItems.length,
     accumulatedLength: accumulatedItems.length,
+    lastFetchCount,
     canLoadMore,
     isLoadingMore,
-    isLoading
+    isLoading,
+    hasSearchResults: !!searchResults,
+    searchResultsItemCount: searchResults?.items?.length
   });
 
   // Handle load more button click
