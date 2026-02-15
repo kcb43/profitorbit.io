@@ -21,6 +21,7 @@ export default function ProductSearch() {
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
   const [accumulatedItems, setAccumulatedItems] = useState([]); // Accumulate items across multiple fetches
+  const [showDebugInfo, setShowDebugInfo] = useState(false); // Toggle debug mode
   const { toast } = useToast();
   const debounceTimerRef = useRef(null);
   const prefetchTimerRef = useRef(null);
@@ -365,9 +366,19 @@ export default function ProductSearch() {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Universal Product Search</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Search Google Shopping in real-time</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Universal Product Search</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Search Google Shopping in real-time</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowDebugInfo(!showDebugInfo)}
+          className="text-xs"
+        >
+          {showDebugInfo ? '🐛 Debug ON' : '🔍 Debug OFF'}
+        </Button>
       </div>
 
       {/* Search Bar */}
@@ -490,7 +501,7 @@ export default function ProductSearch() {
             <TabsContent value="all" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {displayedItems.map((item, idx) => (
-                  <ProductCard key={idx} item={item} />
+                  <ProductCard key={idx} item={item} showDebug={showDebugInfo} />
                 ))}
               </div>
               
@@ -532,7 +543,7 @@ export default function ProductSearch() {
               <TabsContent key={merchant} value={merchant} className="mt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {groupedByMerchant[merchant].map((item, idx) => (
-                    <ProductCard key={idx} item={item} />
+                    <ProductCard key={idx} item={item} showDebug={showDebugInfo} />
                   ))}
                 </div>
               </TabsContent>
@@ -578,7 +589,7 @@ export default function ProductSearch() {
   );
 }
 
-function ProductCard({ item }) {
+function ProductCard({ item, showDebug = false }) {
   // Get merchant-specific badge color
   const getMerchantColor = (merchant) => {
     const colors = {
@@ -594,6 +605,12 @@ function ProductCard({ item }) {
     return colors[merchant] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
+  // Debug: Log all available fields
+  if (showDebug) {
+    console.log('[ProductCard] Available Fields:', Object.keys(item));
+    console.log('[ProductCard] Full Item Data:', item);
+  }
+
   // Extract relevant fields from Google Shopping API structure
   // Handles both: normalized format (from backend) and raw SerpAPI format
   const title = item.title || '';
@@ -601,20 +618,50 @@ function ProductCard({ item }) {
   const price = item.price || item.extracted_price || 0;
   const oldPrice = item.old_price || item.extracted_old_price || null;
   const merchant = item.merchant || item.source || 'Unknown';
-  const productLink = item.url || item.product_link || '';
+  
+  // CRITICAL FIX: Use the direct merchant link, NOT the Google Shopping page
+  // The SerpAPI returns 'link' for direct merchant URLs
+  const productLink = item.link || item.url || item.product_link || '';
+  
   const rating = item.rating || null;
   const reviews = item.reviews || null;
   const snippet = item.snippet || '';
   const extensions = item.extensions || [];
   const tag = item.tag || '';
+  const badge = item.badge || '';
   const delivery = item.delivery || '';
   const condition = item.condition || item.second_hand_condition || '';
+  const position = item.position || null; // Product ranking position
+  const sourceIcon = item.source_icon || ''; // Merchant logo/icon
+
+  // Log unused fields for debugging
+  if (showDebug) {
+    const usedFields = ['title', 'image_url', 'thumbnail', 'price', 'extracted_price', 
+      'old_price', 'extracted_old_price', 'merchant', 'source', 'link', 'url', 'product_link',
+      'rating', 'reviews', 'snippet', 'extensions', 'tag', 'badge', 'delivery', 'condition',
+      'second_hand_condition', 'position', 'source_icon'];
+    const allFields = Object.keys(item);
+    const unusedFields = allFields.filter(f => !usedFields.includes(f));
+    console.log('[ProductCard] UNUSED FIELDS:', unusedFields);
+    console.log('[ProductCard] Unused field values:', 
+      Object.fromEntries(unusedFields.map(f => [f, item[f]]))
+    );
+  }
 
   return (
     <Card className="overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-200 border-2 hover:border-purple-200">
       {/* Image */}
       {imageUrl && (
         <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100">
+          {/* Position Badge - Top Left */}
+          {position && (
+            <div className="absolute top-2 left-2 z-10">
+              <Badge className="bg-gray-900 text-white font-bold shadow-lg">
+                #{position}
+              </Badge>
+            </div>
+          )}
+          
           {/* Show tag/badge overlay if available (e.g., "22% OFF") */}
           {tag && (
             <div className="absolute top-2 right-2 z-10 animate-pulse">
@@ -623,6 +670,16 @@ function ProductCard({ item }) {
               </Badge>
             </div>
           )}
+          
+          {/* Show badge if available (e.g., "Best Price") */}
+          {badge && !tag && (
+            <div className="absolute top-2 right-2 z-10">
+              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold shadow-lg">
+                {badge}
+              </Badge>
+            </div>
+          )}
+          
           <img
             src={imageUrl}
             alt={title}
@@ -733,6 +790,27 @@ function ProductCard({ item }) {
           <ShoppingCart className="w-4 h-4 mr-2" />
           View Deal
         </Button>
+        
+        {/* Debug Info Panel */}
+        {showDebug && (
+          <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+            <p className="font-bold text-yellow-800 mb-1">🐛 Debug Info:</p>
+            <p className="text-yellow-700 break-all">
+              <strong>Link:</strong> {productLink || 'MISSING'}
+            </p>
+            <p className="text-yellow-700">
+              <strong>Fields:</strong> {Object.keys(item).length} total
+            </p>
+            <details className="mt-1">
+              <summary className="cursor-pointer text-yellow-800 font-semibold">
+                View All Fields
+              </summary>
+              <pre className="mt-1 text-xs bg-white p-1 rounded overflow-auto max-h-40">
+                {JSON.stringify(item, null, 2)}
+              </pre>
+            </details>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
