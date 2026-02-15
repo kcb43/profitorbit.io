@@ -16,7 +16,6 @@ export default function ProductSearch() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
   const [displayLimit, setDisplayLimit] = useState(10); // No longer needed but keeping for compatibility
-  const [isTyping, setIsTyping] = useState(false); // Track if user is typing
   const [requestedLimit, setRequestedLimit] = useState(10); // Start with 10 items for fastest initial load
   const [totalFetched, setTotalFetched] = useState(0); // Track how many items we've fetched so far
   const [isLoadingMore, setIsLoadingMore] = useState(false); // Track background loading
@@ -34,18 +33,15 @@ export default function ProductSearch() {
 
     // Only debounce if query is at least 3 characters
     if (query.trim().length >= 3) {
-      setIsTyping(true); // User is typing
       debounceTimerRef.current = setTimeout(() => {
         setDebouncedQuery(query.trim());
         setDisplayLimit(10); // Reset display limit on new search
         setRequestedLimit(10); // 10 items = 3-4 seconds (FASTEST!)
         setTotalFetched(0); // Reset total fetched on new search
-        setIsTyping(false); // Done typing
       }, 800); // Wait 800ms after user stops typing
     } else {
       // Clear results if query is too short
       setDebouncedQuery('');
-      setIsTyping(false);
     }
 
     // Cleanup
@@ -261,7 +257,6 @@ export default function ProductSearch() {
     setRequestedLimit(10); // Start with 10 items for fastest initial load
     setAccumulatedItems([]); // Clear accumulated items for new search
     setTotalFetched(0); // Reset fetch tracking
-    setIsTyping(false); // Reset typing state
   };
 
   // Accumulate items when new results arrive
@@ -388,14 +383,8 @@ export default function ProductSearch() {
                   placeholder="Search products..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="text-base sm:text-lg pr-24"
+                  className="text-base sm:text-lg"
                 />
-                {isTyping && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-600 flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>Searching...</span>
-                  </div>
-                )}
               </div>
               <Button type="submit" disabled={isLoading || !query.trim() || query.trim().length < 3} className="w-full sm:w-auto px-6 sm:px-8">
                 {isLoading ? (
