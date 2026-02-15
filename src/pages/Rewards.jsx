@@ -1,84 +1,23 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { ArrowLeft, Gift, Trophy, Star, Award, Package, DollarSign, Truck, ShoppingBag, Zap, Coins, Sparkles } from "lucide-react";
+import { ArrowLeft, Gift, Trophy, Star, Award, Package, DollarSign, Truck, ShoppingBag, Zap, Coins, Sparkles, Flame, Calendar, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import Gamification from "@/components/dashboard/Gamification";
+import { getTierInfo, TIER_THRESHOLDS } from "@/config/rewardsRules";
+import { toast } from "sonner";
 
-// Mock points calculation - in production, this would come from actual sales/listings
-const calculatePoints = (stats) => {
-  // Points for listing items: 10 points per item
-  const listingPoints = (stats?.totalListings || 0) * 10;
-  // Points for sales: 1 point per dollar of profit
-  const salesPoints = Math.floor(stats?.totalProfit || 0);
-  // Bonus points for milestones
-  const milestoneBonus = (stats?.totalSales || 0) >= 100 ? 500 : (stats?.totalSales || 0) >= 50 ? 250 : (stats?.totalSales || 0) >= 10 ? 100 : 0;
-  
-  return listingPoints + salesPoints + milestoneBonus;
+// Reward icon mapping
+const rewardIconMap = {
+  pulse_mode_7d: Flame,
+  sub_credit_5: Gift,
+  sub_credit_10: Gift,
 };
-
-// Rewards tiers
-const rewardTiers = [
-  {
-    id: "shipping-label-5",
-    name: "$5 Shipping Label Voucher",
-    description: "Get a $5 credit towards shipping labels",
-    cost: 500,
-    icon: Truck,
-    color: "text-blue-500",
-    gradient: "from-blue-500 to-cyan-500",
-  },
-  {
-    id: "shipping-label-10",
-    name: "$10 Shipping Label Voucher",
-    description: "Get a $10 credit towards shipping labels",
-    cost: 1000,
-    icon: Truck,
-    color: "text-blue-600",
-    gradient: "from-blue-600 to-cyan-600",
-  },
-  {
-    id: "shipping-label-25",
-    name: "$25 Shipping Label Voucher",
-    description: "Get a $25 credit towards shipping labels",
-    cost: 2500,
-    icon: Truck,
-    color: "text-indigo-600",
-    gradient: "from-indigo-600 to-blue-600",
-  },
-  {
-    id: "gift-card-25",
-    name: "$25 Gift Card",
-    description: "Redeem for a $25 gift card to popular retailers",
-    cost: 3000,
-    icon: Gift,
-    color: "text-purple-500",
-    gradient: "from-purple-500 to-pink-500",
-  },
-  {
-    id: "gift-card-50",
-    name: "$50 Gift Card",
-    description: "Redeem for a $50 gift card to popular retailers",
-    cost: 6000,
-    icon: Gift,
-    color: "text-purple-600",
-    gradient: "from-purple-600 to-pink-600",
-  },
-  {
-    id: "gift-card-100",
-    name: "$100 Gift Card",
-    description: "Redeem for a $100 gift card to popular retailers",
-    cost: 12000,
-    icon: Gift,
-    color: "text-pink-600",
-    gradient: "from-pink-600 to-rose-600",
-  },
-];
 
 // Achievement definitions
 const achievementDefinitions = [

@@ -35,6 +35,7 @@ const ProToolsSendOffers = React.lazy(() => import("./ProToolsSendOffers"));
 const ProToolsAutoOffers = React.lazy(() => import("./ProToolsAutoOffers"));
 const ProToolsMarketplaceSharing = React.lazy(() => import("./ProToolsMarketplaceSharing"));
 const Rewards = React.lazy(() => import("./Rewards"));
+const RewardsNew = React.lazy(() => import("./RewardsNew"));
 const PrivacyPolicy = React.lazy(() => import("./PrivacyPolicy"));
 const FAQ = React.lazy(() => import("./FAQ"));
 const MigrateData = React.lazy(() => import("./MigrateData"));
@@ -484,7 +485,20 @@ function PagesContent() {
                   <AuthGuard>
                     {withSuspense(
                       <Layout currentPageName="Rewards">
-                        {withSuspense(<Rewards />)}
+                        {withSuspense(<RewardsNew />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              
+              <Route
+                path="/rewards"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Rewards">
+                        {withSuspense(<RewardsNew />)}
                       </Layout>
                     )}
                   </AuthGuard>

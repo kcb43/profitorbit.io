@@ -2,10 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User, ShoppingBag, TrendingDown } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User, ShoppingBag, TrendingDown, Gift } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
+import NotificationCenter from "@/components/NotificationCenter";
 import {
   Sidebar,
   SidebarContent,
@@ -55,6 +56,7 @@ const navigationCategories = [
     items: [
       { title: "Deal Feed", url: "/deals", icon: TrendingDown },
       { title: "Product Search", url: "/product-search", icon: Search },
+      { title: "Rewards", url: "/rewards", icon: Gift },
     ]
   },
   {
@@ -271,6 +273,8 @@ export default function Layout({ children }) {
               >
                 <UserAvatar profile={userProfile} size="md" />
               </button>
+              
+              <NotificationCenter />
               
               <Button
                 onClick={() => setProductSearchOpen(true)}
