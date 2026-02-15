@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award, ChevronDown, Store } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award, ChevronDown, ChevronUp, Store } from 'lucide-react';
 
 // Shared utility functions
 const getMerchantColor = (merchant) => {
@@ -134,36 +129,6 @@ export function ProductCardV1Grid({ item }) {
           </Badge>
         </div>
 
-        {/* Other Stores Dropdown */}
-        {sortedOffers.length > 1 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full justify-between dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <span className="flex items-center gap-2">
-                  <Store className="w-4 h-4" />
-                  +{sortedOffers.length - 1} other store{sortedOffers.length > 2 ? 's' : ''}
-                </span>
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[300px] dark:bg-gray-800 dark:border-gray-700">
-              {sortedOffers.map((offer, idx) => (
-                <DropdownMenuItem key={idx} asChild>
-                  <a 
-                    href={offer.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between py-2 dark:text-gray-200 dark:hover:bg-gray-700"
-                  >
-                    <span className="font-medium">{offer.name}</span>
-                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
-                  </a>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
         {/* Delivery Info */}
         {data.delivery && (
           <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
@@ -185,6 +150,35 @@ export function ProductCardV1Grid({ item }) {
           </Button>
         </div>
       </CardContent>
+
+      {/* Other Stores - Collapsible Section at Bottom */}
+      {sortedOffers.length > 1 && (
+        <Collapsible open={showMoreStores} onOpenChange={setShowMoreStores}>
+          <CollapsibleTrigger className="w-full border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Store className="w-4 h-4" />
+              +{sortedOffers.length - 1} other store{sortedOffers.length > 2 ? 's' : ''}
+            </span>
+            {showMoreStores ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="p-4 space-y-2">
+              {sortedOffers.map((offer, idx) => (
+                <a
+                  key={idx}
+                  href={offer.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                >
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{offer.name}</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
+                </a>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </Card>
   );
 }
@@ -194,6 +188,7 @@ export function ProductCardV1List({ item }) {
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
+  const [showMoreStores, setShowMoreStores] = useState(false);
 
   // Sort merchant offers by price (low to high)
   const sortedOffers = [...(data.merchantOffers || [])].sort((a, b) => 
@@ -229,36 +224,6 @@ export function ProductCardV1List({ item }) {
               {data.merchant}
             </Badge>
           </div>
-
-          {/* Other Stores Dropdown */}
-          {sortedOffers.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-fit justify-between dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  <span className="flex items-center gap-2">
-                    <Store className="w-4 h-4" />
-                    +{sortedOffers.length - 1} other store{sortedOffers.length > 2 ? 's' : ''}
-                  </span>
-                  <ChevronDown className="w-4 h-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[300px] dark:bg-gray-800 dark:border-gray-700">
-                {sortedOffers.map((offer, idx) => (
-                  <DropdownMenuItem key={idx} asChild>
-                    <a 
-                      href={offer.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between py-2 dark:text-gray-200 dark:hover:bg-gray-700"
-                    >
-                      <span className="font-medium">{offer.name}</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
-                    </a>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
 
           {data.rating && (
             <div className="flex items-center gap-2">
@@ -314,6 +279,35 @@ export function ProductCardV1List({ item }) {
           </Button>
         </div>
       </div>
+
+      {/* Other Stores - Collapsible Section at Bottom */}
+      {sortedOffers.length > 1 && (
+        <Collapsible open={showMoreStores} onOpenChange={setShowMoreStores}>
+          <CollapsibleTrigger className="w-full border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Store className="w-4 h-4" />
+              +{sortedOffers.length - 1} other store{sortedOffers.length > 2 ? 's' : ''}
+            </span>
+            {showMoreStores ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="p-4 space-y-2">
+              {sortedOffers.map((offer, idx) => (
+                <a
+                  key={idx}
+                  href={offer.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                >
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{offer.name}</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
+                </a>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </Card>
   );
 }

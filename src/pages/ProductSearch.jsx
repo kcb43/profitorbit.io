@@ -28,7 +28,7 @@ export default function ProductSearch() {
   const [showDebugInfo, setShowDebugInfo] = useState(false); // Toggle debug mode
   
   // View Mode State
-  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
+  const [viewMode, setViewMode] = useState('list'); // 'grid', 'list' - Default to list
   
   // Quota monitoring state
   const [quotaInfo, setQuotaInfo] = useState(null); // { current: 102, limit: 100, provider: 'google' }
@@ -860,50 +860,40 @@ export default function ProductSearch() {
             </Card>
           </div>
 
-          {/* UI Variation & View Mode Controls */}
-          <Card className="bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 border-2 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                {/* View Mode Selector */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    View Mode
-                  </label>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setViewMode('grid')}
-                      variant={viewMode === 'grid' ? 'default' : 'outline'}
-                      size="sm"
-                      className={viewMode === 'grid' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
-                    >
-                      <Grid3x3 className="w-4 h-4 mr-2" />
-                      Grid
-                    </Button>
-                    <Button
-                      onClick={() => setViewMode('list')}
-                      variant={viewMode === 'list' ? 'default' : 'outline'}
-                      size="sm"
-                      className={viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
-                    >
-                      <List className="w-4 h-4 mr-2" />
-                      List
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Results by merchant */}
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="all">All ({displayedItems.length})</TabsTrigger>
-              {Object.keys(groupedByMerchant).sort((a, b) => groupedByMerchant[b].length - groupedByMerchant[a].length).slice(0, 8).map(merchant => (
-                <TabsTrigger key={merchant} value={merchant}>
-                  {merchant} ({groupedByMerchant[merchant].length})
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="flex-wrap h-auto">
+                <TabsTrigger value="all">All ({displayedItems.length})</TabsTrigger>
+                {Object.keys(groupedByMerchant).sort((a, b) => groupedByMerchant[b].length - groupedByMerchant[a].length).slice(0, 8).map(merchant => (
+                  <TabsTrigger key={merchant} value={merchant}>
+                    {merchant} ({groupedByMerchant[merchant].length})
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              
+              {/* View Mode Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setViewMode('grid')}
+                  variant={viewMode === 'grid' ? 'default' : 'outline'}
+                  size="sm"
+                  className={viewMode === 'grid' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                >
+                  <Grid3x3 className="w-4 h-4 mr-2" />
+                  Grid
+                </Button>
+                <Button
+                  onClick={() => setViewMode('list')}
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  className={viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                >
+                  <List className="w-4 h-4 mr-2" />
+                  List
+                </Button>
+              </div>
+            </div>
 
             <TabsContent value="all" className="mt-6">
               {/* Dynamic Grid/List based on variation and view mode */}
