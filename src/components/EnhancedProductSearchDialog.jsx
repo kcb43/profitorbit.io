@@ -27,7 +27,8 @@ import {
   ChevronDown,
   ChevronUp,
   Truck,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEbaySearchInfinite } from '@/hooks/useEbaySearch';
@@ -175,7 +176,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   }, [debouncedQuery, searchMode, open]);
 
   // Universal Search function (SerpAPI - like ProductSearch page)
-  const handleUniversalSearch = async () => {
+  const handleUniversalSearch = async (forceFresh = false) => {
     const queryToSearch = debouncedQuery.trim() || searchQuery.trim();
     
     if (!queryToSearch) {
@@ -213,8 +214,13 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         cache_version: 'v7_pagination' // Use same cache version as ProductSearch page
       });
 
+      // Add cache_bust parameter if forcing fresh results
+      if (forceFresh) {
+        params.append('cache_bust', Date.now().toString());
+      }
+
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:215',message:'Dialog search params',data:{query:queryToSearch,paramsString:params.toString(),fullUrl:`${ORBEN_API_URL}/v1/search?${params}`,hasToken:!!token},timestamp:Date.now(),hypothesisId:'A,D,E'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:215',message:'Dialog search params',data:{query:queryToSearch,paramsString:params.toString(),fullUrl:`${ORBEN_API_URL}/v1/search?${params}`,hasToken:!!token,forceFresh},timestamp:Date.now(),hypothesisId:'A,D,E'})}).catch(()=>{});
       // #endregion
 
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
@@ -475,14 +481,26 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 </Button>
               )}
               {searchMode === 'all' && (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={cn(showFilters && 'bg-muted')}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handleUniversalSearch(true)}
+                    disabled={universalLoading || !searchQuery.trim()}
+                    className="px-3"
+                    title="Force refresh (bypass cache)"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={cn(showFilters && 'bg-muted')}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </div>
           </div>

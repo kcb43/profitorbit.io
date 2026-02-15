@@ -18,7 +18,7 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}`).digest('hex');
-  return `search:v5:${provider}:${country}:${hash}`;
+  return `search:v7:${provider}:${country}:${hash}`;
 }
 
 async function flushCache(queries) {

@@ -830,8 +830,11 @@ fastify.post('/search', async (request, reply) => {
       page: page
     }));
 
-    // Check cache first
-    const cached = await redis.get(cacheKey);
+    // Check for cache_bust parameter to force fresh search
+    const cacheBust = body.cache_bust;
+    
+    // Check cache first (skip if cache_bust is present)
+    const cached = !cacheBust ? await redis.get(cacheKey) : null;
     
     // Hypothesis E: Is old v4 cache being served?
     console.log('[DEBUG-E] Cache lookup result', JSON.stringify({
