@@ -39,7 +39,7 @@ export default function ProductSearch() {
   const debounceTimerRef = useRef(null);
   const prefetchTimerRef = useRef(null);
 
-  // Debounce search query: wait 500ms after user stops typing (REDUCED from 800ms for AGGRESSIVE mode)
+  // Debounce search query: wait 800ms after user stops typing
   useEffect(() => {
     // Clear existing timer
     if (debounceTimerRef.current) {
@@ -55,7 +55,7 @@ export default function ProductSearch() {
         setTotalFetched(0); // Reset total fetched on new search
         setAccumulatedItems([]); // Clear accumulated items for new search
         isAccumulatingRef.current = false; // Reset accumulation mode
-      }, 500); // AGGRESSIVE: Reduced to 500ms (was 800ms) - faster searches
+      }, 800); // 800ms delay to reduce API quota usage
     } else {
       // Clear results if query is too short
       setDebouncedQuery('');
@@ -71,82 +71,84 @@ export default function ProductSearch() {
     };
   }, [query]);
 
-  // AGGRESSIVE Predictive pre-fetching: Start loading at 2 characters with minimal delay
-  useEffect(() => {
-    // Clear existing prefetch timer
-    if (prefetchTimerRef.current) {
-      clearTimeout(prefetchTimerRef.current);
-    }
+  // DISABLED: Aggressive pre-fetching was burning through SerpAPI quota
+  // Pre-fetching has been disabled to conserve API quota
+  // Search only triggers when user presses Enter or stops typing for 500ms
+  // useEffect(() => {
+  //   // Clear existing prefetch timer
+  //   if (prefetchTimerRef.current) {
+  //     clearTimeout(prefetchTimerRef.current);
+  //   }
 
-    // Start AGGRESSIVE pre-fetching at 2 characters (before the 3-char threshold)
-    if (query.trim().length >= 2) {
-      prefetchTimerRef.current = setTimeout(() => {
-        console.log('[ProductSearch] AGGRESSIVE pre-fetch triggered for:', query.trim());
-        setPrefetchQuery(query.trim());
-      }, 300); // AGGRESSIVE: Even shorter delay (300ms) for faster pre-loading
-    } else if (query.trim().length < 2) {
-      setPrefetchQuery('');
-    }
+  //   // Start AGGRESSIVE pre-fetching at 2 characters (before the 3-char threshold)
+  //   if (query.trim().length >= 2) {
+  //     prefetchTimerRef.current = setTimeout(() => {
+  //       console.log('[ProductSearch] AGGRESSIVE pre-fetch triggered for:', query.trim());
+  //       setPrefetchQuery(query.trim());
+  //     }, 300); // AGGRESSIVE: Even shorter delay (300ms) for faster pre-loading
+  //   } else if (query.trim().length < 2) {
+  //     setPrefetchQuery('');
+  //   }
 
-    // Cleanup
-    return () => {
-      if (prefetchTimerRef.current) {
-        clearTimeout(prefetchTimerRef.current);
-      }
-    };
-  }, [query]);
+  //   // Cleanup
+  //   return () => {
+  //     if (prefetchTimerRef.current) {
+  //       clearTimeout(prefetchTimerRef.current);
+  //     }
+  //   };
+  // }, [query]);
 
   // Check if smart routing is enabled
   const disableSmartRouting = localStorage.getItem('orben_disable_smart_routing') === 'true';
 
-  // AGGRESSIVE Predictive pre-fetch query (silently loads in background, ZERO UI interference)
-  const { isFetching: isPrefetchFetching } = useQuery({
-    queryKey: ['productSearchPrefetch', prefetchQuery, 10],
-    queryFn: async () => {
-      if (!prefetchQuery || prefetchQuery.length < 2) return null;
+  // DISABLED: Predictive pre-fetch query (was burning through API quota)
+  // const { isFetching: isPrefetchFetching } = useQuery({
+  //   queryKey: ['productSearchPrefetch', prefetchQuery, 10],
+  //   queryFn: async () => {
+  //     if (!prefetchQuery || prefetchQuery.length < 2) return null;
 
-      console.log('[ProductSearch] AGGRESSIVE Pre-fetching results for:', prefetchQuery);
-      setIsPrefetching(true); // Set prefetch indicator
+  //     console.log('[ProductSearch] AGGRESSIVE Pre-fetching results for:', prefetchQuery);
+  //     setIsPrefetching(true); // Set prefetch indicator
 
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
+  //     const session = await supabase.auth.getSession();
+  //     const token = session.data.session?.access_token;
 
-      if (!token) {
-        setIsPrefetching(false);
-        return null; // Silently fail, ZERO UI impact
-      }
+  //     if (!token) {
+  //       setIsPrefetching(false);
+  //       return null; // Silently fail, ZERO UI impact
+  //     }
 
-      const providerList = 'auto';
-      const params = new URLSearchParams({
-        q: prefetchQuery,
-        providers: providerList,
-        country: 'US',
-        limit: '20', // AGGRESSIVE: Pre-fetch 20 items (double previous)
-        cache_version: 'v7_pagination'
-      });
+  //     const providerList = 'auto';
+  //     const params = new URLSearchParams({
+  //       q: prefetchQuery,
+  //       providers: providerList,
+  //       country: 'US',
+  //       limit: '20', // AGGRESSIVE: Pre-fetch 20 items (double previous)
+  //       cache_version: 'v7_pagination'
+  //     });
 
-      const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+  //     const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
 
-      setIsPrefetching(false); // Clear prefetch indicator
+  //     setIsPrefetching(false); // Clear prefetch indicator
 
-      if (!response.ok) return null; // Silently fail, ZERO UI impact
+  //     if (!response.ok) return null; // Silently fail, ZERO UI impact
 
-      return response.json();
-    },
-    enabled: !!prefetchQuery && prefetchQuery.length >= 2, // Prefetch at 2+ chars
-    staleTime: 300000, // Cache for 5 minutes
-    cacheTime: 600000, // Keep in cache for 10 minutes
-    retry: false, // Don't retry on failure - keeps it silent
-    refetchOnMount: false, // CRITICAL: Prevents duplicate fetches
-    refetchOnWindowFocus: false // CRITICAL: Prevents duplicate fetches
-  });
+  //     return response.json();
+  //   },
+  //   enabled: !!prefetchQuery && prefetchQuery.length >= 2, // Prefetch at 2+ chars
+  //   staleTime: 300000, // Cache for 5 minutes
+  //   cacheTime: 600000, // Keep in cache for 10 minutes
+  //   retry: false, // Don't retry on failure - keeps it silent
+  //   refetchOnMount: false, // CRITICAL: Prevents duplicate fetches
+  //   refetchOnWindowFocus: false // CRITICAL: Prevents duplicate fetches
+  // });
 
-  // Sync isPrefetching state with query state
-  useEffect(() => {
-    setIsPrefetching(isPrefetchFetching);
-  }, [isPrefetchFetching]);
+  // // Sync isPrefetching state with query state
+  // useEffect(() => {
+  //   setIsPrefetching(isPrefetchFetching);
+  // }, [isPrefetchFetching]);
 
   // Main search query (displays results)
   const { data: searchResults, isLoading, error: queryError, refetch } = useQuery({
