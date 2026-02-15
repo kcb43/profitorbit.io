@@ -327,7 +327,7 @@ fastify.get('/v1/search', async (request, reply) => {
   }));
   // #endregion
 
-  const { q, country = 'US', providers = 'ebay', limit = 20 } = request.query;
+  const { q, country = 'US', providers = 'ebay', limit = 20, page = 1 } = request.query;
 
   if (!q || !q.trim()) {
     return reply.code(400).send({ error: 'Missing query parameter: q' });
@@ -343,6 +343,7 @@ fastify.get('/v1/search', async (request, reply) => {
     country,
     userId: user.id,
     limit: parseInt(limit, 10),
+    page: parseInt(page, 10),
     hypothesisId: 'B'
   }));
   // #endregion
@@ -354,7 +355,8 @@ fastify.get('/v1/search', async (request, reply) => {
       providers: providerList,
       country,
       userId: user.id,
-      limit: parseInt(limit, 10)
+      limit: parseInt(limit, 10),
+      page: parseInt(page, 10)
     }, {
       timeout: 45000 // Increased to 45 seconds for Oxylabs
     });
