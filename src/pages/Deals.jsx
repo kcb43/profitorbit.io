@@ -286,44 +286,90 @@ export default function Deals() {
         </div>
 
       {/* Deals Feed - Pulse-Style Layout */}
-      {isLoading ? (
-        <LoadingSkeleton />
-      ) : filteredDeals?.length === 0 ? (
-        <EmptyDealState />
-      ) : (
-        <div className="space-y-3">
-          {filteredDeals.map((deal) => (
-            <EnhancedDealCard
-              key={deal.id}
-              deal={deal}
-              isSaved={savedDealIds.has(deal.id)}
-              onSave={() => handleSaveDeal(deal.id, savedDealIds.has(deal.id))}
-            />
-          ))}
-        </div>
-      )}
+      <Tabs defaultValue="all" className="w-full" onValueChange={(value) => {
+        if (value === 'saved') {
+          refetchSaved(); // Refresh saved deals when tab is clicked
+        }
+      }}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <TrendingDown className="w-4 h-4" />
+            All Deals ({dealsData?.items?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="saved" className="flex items-center gap-2">
+            <Bookmark className="w-4 h-4" />
+            Saved ({savedDeals?.items?.length || 0})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Infinite scroll trigger */}
-      {hasNextPage && (
-        <div ref={loadMoreRef} className="py-8 text-center">
-          {isFetchingNextPage ? (
-            <div className="flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm text-gray-600">Loading more deals...</span>
-            </div>
+        {/* All Deals Tab */}
+        <TabsContent value="all">
+          {isLoading ? (
+            <LoadingSkeleton />
+          ) : filteredDeals?.length === 0 ? (
+            <EmptyDealState />
           ) : (
-            <Button
-              variant="outline"
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-            >
-              Load More Deals
-            </Button>
+            <div className="space-y-3">
+              {filteredDeals.map((deal) => (
+                <EnhancedDealCard
+                  key={deal.id}
+                  deal={deal}
+                  isSaved={savedDealIds.has(deal.id)}
+                  onSave={() => handleSaveDeal(deal.id, savedDealIds.has(deal.id))}
+                />
+              ))}
+            </div>
           )}
-        </div>
-      )}
 
-      {filteredDeals?.length === 0 && !isLoading && <EmptyDealState />}
+          {/* Infinite scroll trigger */}
+          {hasNextPage && (
+            <div ref={loadMoreRef} className="py-8 text-center">
+              {isFetchingNextPage ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm text-gray-600">Loading more deals...</span>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  Load More Deals
+                </Button>
+              )}
+            </div>
+          )}
+
+          {filteredDeals?.length === 0 && !isLoading && <EmptyDealState />}
+        </TabsContent>
+
+        {/* Saved Deals Tab */}
+        <TabsContent value="saved">
+          {!savedDeals || savedDeals.items?.length === 0 ? (
+            <Card className="p-12">
+              <div className="text-center">
+                <Bookmark className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium mb-2">No Saved Deals</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Save deals by clicking the bookmark icon to view them here later.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {savedDeals.items.map((deal) => (
+                <EnhancedDealCard
+                  key={deal.id}
+                  deal={deal}
+                  isSaved={true}
+                  onSave={() => handleSaveDeal(deal.id, true)}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
       </div>
     </div>
   );
@@ -370,21 +416,14 @@ function EnhancedDealCard({ deal, isSaved, onSave }) {
       <div className="flex items-start gap-2 sm:gap-4">
         {/* Product Image */}
         <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-md bg-muted flex-shrink-0 overflow-hidden relative">
-          {deal.image_url ? (
-            <img
-              src={deal.image_url}
-              alt={deal.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.parentElement.classList.add('flex', 'items-center', 'justify-center');
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <Package className="h-6 w-6 sm:h-10 sm:w-10" />
-            </div>
-          )}
+          <img
+            src={deal.image_url || '/default-deal-image.png'}
+            alt={deal.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = '/default-deal-image.png';
+            }}
+          />
           {dealBadge && (
             <div className={cn("absolute top-0.5 right-0.5 sm:top-1 sm:right-1 px-1 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold", dealBadge.class)}>
               {dealBadge.icon}
