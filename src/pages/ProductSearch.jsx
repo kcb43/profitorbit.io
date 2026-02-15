@@ -41,11 +41,13 @@ export default function ProductSearch() {
         setCurrentPage(1); // Reset to page 1 for new search
         setTotalFetched(0); // Reset total fetched on new search
         setAccumulatedItems([]); // Clear accumulated items for new search
+        isAccumulatingRef.current = false; // Reset accumulation mode
       }, 500); // AGGRESSIVE: Reduced to 500ms (was 800ms) - faster searches
     } else {
       // Clear results if query is too short
       setDebouncedQuery('');
       setAccumulatedItems([]); // Also clear items when query is cleared
+      isAccumulatingRef.current = false; // Reset accumulation mode
     }
 
     // Cleanup
@@ -280,10 +282,12 @@ export default function ProductSearch() {
     setCurrentPage(1); // Start with page 1 for new search
     setAccumulatedItems([]); // Clear accumulated items for new search
     setTotalFetched(0); // Reset fetch tracking
+    isAccumulatingRef.current = false; // Reset accumulation mode
   };
 
   // Track last query to detect new searches
   const lastQueryRef = useRef('');
+  const isAccumulatingRef = useRef(false); // Track if we're in accumulation mode
   
   // Accumulate items when new results arrive
   useEffect(() => {
@@ -294,15 +298,17 @@ export default function ProductSearch() {
       currentPage,
       isLoadingMore,
       currentQuery: debouncedQuery,
-      lastQuery: lastQueryRef.current
+      lastQuery: lastQueryRef.current,
+      isAccumulating: isAccumulatingRef.current
     });
     
     if (!searchResults?.items) return;
     
     const currentItemCount = searchResults.items.length;
     
-    // Check if this is a NEW search (query changed)
-    const isNewSearch = debouncedQuery !== lastQueryRef.current && currentPage === 1;
+    // Check if this is a NEW search (query changed from last time)
+    const queryChanged = debouncedQuery !== lastQueryRef.current;
+    const isNewSearch = queryChanged && accumulatedItems.length === 0;
     
     console.log('[DEBUG-ACCUM] Checking replacement condition', {
       currentItemCount,
@@ -310,7 +316,9 @@ export default function ProductSearch() {
       currentPage: currentPage,
       isLoadingMore: isLoadingMore,
       isNewSearch,
-      queryChanged: debouncedQuery !== lastQueryRef.current
+      queryChanged,
+      lastQuery: lastQueryRef.current,
+      currentQuery: debouncedQuery
     });
     
     // If we got 0 items on a "load more" request, keep existing items and show error
@@ -327,7 +335,7 @@ export default function ProductSearch() {
       return; // CRITICAL: Return early to prevent replacing items
     }
     
-    // If this is a NEW search (query changed), replace everything
+    // If this is a NEW search (query changed AND no items accumulated), replace everything
     if (isNewSearch) {
       console.log('[DEBUG-ACCUM] REPLACING all items (NEW search detected)', {
         oldQuery: lastQueryRef.current,
@@ -338,6 +346,7 @@ export default function ProductSearch() {
       });
       
       lastQueryRef.current = debouncedQuery; // Update last query
+      isAccumulatingRef.current = true; // Now in accumulation mode
       
       // Mark items as not loaded yet
       const itemsWithLoadingState = searchResults.items.map(item => ({
@@ -352,9 +361,9 @@ export default function ProductSearch() {
       // Pre-fetch merchant offers for items with immersive_product_page_token
       prefetchMerchantOffers(itemsWithLoadingState);
     } 
-    // If this is the SAME query but page 2+, accumulate the new items
-    else if (currentPage > 1 && debouncedQuery === lastQueryRef.current) {
-      console.log('[DEBUG-ACCUM] ACCUMULATING items (same query, page 2+)', {
+    // If we're in accumulation mode (same query), ALWAYS accumulate new items
+    else if (isAccumulatingRef.current && debouncedQuery === lastQueryRef.current) {
+      console.log('[DEBUG-ACCUM] ACCUMULATING items (same query, accumulation mode)', {
         query: debouncedQuery,
         oldCount: accumulatedItems.length,
         newCount: currentItemCount,
@@ -410,13 +419,26 @@ export default function ProductSearch() {
       
       setIsLoadingMore(false);
     }
-    // If page 1 and query hasn't changed, it's just a refetch - keep existing items
-    else if (currentPage === 1 && debouncedQuery === lastQueryRef.current && accumulatedItems.length > 0) {
-      console.log('[DEBUG-ACCUM] KEEPING items (page 1 refetch, same query)', {
-        query: debouncedQuery,
-        itemCount: accumulatedItems.length
+    // Edge case: If we have items but query changed, it means debounce fired - replace
+    else if (queryChanged && accumulatedItems.length > 0) {
+      console.log('[DEBUG-ACCUM] Query changed while items exist - REPLACING', {
+        oldQuery: lastQueryRef.current,
+        newQuery: debouncedQuery,
+        hadItems: accumulatedItems.length
       });
-      // Don't replace items on refetch
+      
+      lastQueryRef.current = debouncedQuery;
+      isAccumulatingRef.current = true;
+      
+      const itemsWithLoadingState = searchResults.items.map(item => ({
+        ...item,
+        merchantOffersLoaded: false,
+        merchantOffers: []
+      }));
+      
+      setAccumulatedItems(itemsWithLoadingState);
+      setTotalFetched(currentItemCount);
+      prefetchMerchantOffers(itemsWithLoadingState);
     }
   }, [searchResults?.items, currentPage, debouncedQuery]); // Add debouncedQuery to dependencies
 
