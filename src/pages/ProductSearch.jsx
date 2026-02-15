@@ -673,33 +673,33 @@ export default function ProductSearch() {
     : 0;
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto p-2 sm:p-4 md:p-6 space-y-3 sm:space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Universal Product Search</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Search Google Shopping in real-time · Compare prices · Read reviews
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="w-full sm:w-auto">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Universal Product Search</h1>
+          <p className="text-xs sm:text-sm md:text-base text-gray-600 mt-1">
+            Search Google Shopping · Compare prices · Read reviews
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           {/* Quota Monitor */}
           {quotaInfo && (
-            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+            <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold flex items-center gap-1 sm:gap-2 ${
               quotaInfo.current >= quotaInfo.limit 
                 ? 'bg-red-100 text-red-800 border border-red-300' 
                 : quotaInfo.current >= quotaInfo.limit * 0.9
                 ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
                 : 'bg-green-100 text-green-800 border border-green-300'
             }`}>
-              <span className={`w-2 h-2 rounded-full ${
+              <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
                 quotaInfo.current >= quotaInfo.limit 
                   ? 'bg-red-500 animate-pulse' 
                   : quotaInfo.current >= quotaInfo.limit * 0.9
                   ? 'bg-yellow-500 animate-pulse'
                   : 'bg-green-500'
               }`}></span>
-              API: {quotaInfo.current}/{quotaInfo.limit}
+              <span className="hidden sm:inline">API:</span> {quotaInfo.current}/{quotaInfo.limit}
               {quotaInfo.current >= quotaInfo.limit && ' (Exceeded)'}
               {quotaInfo.current >= quotaInfo.limit * 0.9 && quotaInfo.current < quotaInfo.limit && ' (Warning)'}
             </div>
@@ -709,9 +709,10 @@ export default function ProductSearch() {
             variant="outline"
             size="sm"
             onClick={() => setShowDebugInfo(!showDebugInfo)}
-            className="text-xs"
+            className="text-[10px] sm:text-xs px-2 sm:px-3"
           >
-            {showDebugInfo ? '🐛 Debug ON' : '🔍 Debug OFF'}
+            {showDebugInfo ? '🐛' : '🔍'}
+            <span className="hidden sm:inline ml-1">{showDebugInfo ? 'Debug' : 'Debug'}</span>
           </Button>
         </div>
       </div>
@@ -756,32 +757,33 @@ export default function ProductSearch() {
 
       {/* Search Bar */}
       <Card>
-        <CardContent className="pt-4 sm:pt-6">
+        <CardContent className="pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6">
           <form onSubmit={handleSearch}>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4">
               <div className="flex-1 relative">
                 <Input
                   placeholder="Search products..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className={`text-base sm:text-lg ${isPrefetching ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}`}
+                  className={`text-sm sm:text-base md:text-lg ${isPrefetching ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}`}
                 />
                 {/* Subtle prefetch indicator - NO TEXT, just a small pulse */}
                 {isPrefetching && !isLoading && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" title="Pre-loading results..." />
+                  <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-pulse" title="Pre-loading results..." />
                   </div>
                 )}
               </div>
-              <Button type="submit" disabled={isLoading || !query.trim() || query.trim().length < 3} className="w-full sm:w-auto px-6 sm:px-8">
+              <Button type="submit" disabled={isLoading || !query.trim() || query.trim().length < 3} className="w-full sm:w-auto px-4 sm:px-6 md:px-8 text-sm sm:text-base">
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Searching...
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+                    <span className="hidden sm:inline">Searching...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <Search className="w-4 h-4 mr-2" />
+                    <Search className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Search
                   </>
                 )}
@@ -812,38 +814,45 @@ export default function ProductSearch() {
       {displayedItems.length > 0 && (
         <>
           {/* Summary - now with average price */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                  Total Results
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 pt-3 sm:pt-4">
+                <CardTitle className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 flex items-center gap-1 sm:gap-2">
+                  <span className="hidden sm:inline">Total Results</span>
+                  <span className="sm:hidden">Results</span>
                   {isLoadingMore && (
-                    <Loader2 className="w-3 h-3 animate-spin text-blue-500" title="Loading more results..." />
+                    <Loader2 className="w-2 h-2 sm:w-3 sm:h-3 animate-spin text-blue-500" title="Loading more results..." />
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="text-lg sm:text-xl md:text-2xl font-bold">
                   {displayedItems.length}
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Average Price</CardTitle>
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 pt-3 sm:pt-4">
+                <CardTitle className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600">
+                  <span className="hidden sm:inline">Average Price</span>
+                  <span className="sm:hidden">Avg</span>
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {avgPrice > 0 ? `$${avgPrice.toFixed(2)}` : 'N/A'}
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">
+                  {avgPrice > 0 ? `$${avgPrice.toFixed(0)}` : 'N/A'}
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Price Range</CardTitle>
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 pt-3 sm:pt-4">
+                <CardTitle className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600">
+                  <span className="hidden sm:inline">Price Range</span>
+                  <span className="sm:hidden">Range</span>
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="text-xs sm:text-base md:text-xl font-bold">
                   {displayedItems.length > 0
                     ? `$${Math.min(...displayedItems.filter(i => i.price).map(i => i.price)).toFixed(0)} - $${Math.max(...displayedItems.filter(i => i.price).map(i => i.price)).toFixed(0)}`
                     : 'N/A'}
@@ -851,56 +860,58 @@ export default function ProductSearch() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Merchants</CardTitle>
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 pt-3 sm:pt-4">
+                <CardTitle className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600">Merchants</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{Object.keys(groupedByMerchant).length}</div>
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="text-lg sm:text-xl md:text-2xl font-bold">{Object.keys(groupedByMerchant).length}</div>
               </CardContent>
             </Card>
           </div>
 
           {/* Results by merchant */}
           <Tabs defaultValue="all" className="w-full">
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="flex-wrap h-auto">
-                <TabsTrigger value="all">All ({displayedItems.length})</TabsTrigger>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3 sm:mb-4">
+              <TabsList className="flex-wrap h-auto w-full sm:w-auto justify-start overflow-x-auto">
+                <TabsTrigger value="all" className="text-xs sm:text-sm whitespace-nowrap">
+                  All ({displayedItems.length})
+                </TabsTrigger>
                 {Object.keys(groupedByMerchant).sort((a, b) => groupedByMerchant[b].length - groupedByMerchant[a].length).slice(0, 8).map(merchant => (
-                  <TabsTrigger key={merchant} value={merchant}>
+                  <TabsTrigger key={merchant} value={merchant} className="text-xs sm:text-sm whitespace-nowrap">
                     {merchant} ({groupedByMerchant[merchant].length})
                   </TabsTrigger>
                 ))}
               </TabsList>
               
               {/* View Mode Buttons */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   onClick={() => setViewMode('grid')}
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
                   size="sm"
-                  className={viewMode === 'grid' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                  className={`flex-1 sm:flex-initial text-xs sm:text-sm ${viewMode === 'grid' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}`}
                 >
-                  <Grid3x3 className="w-4 h-4 mr-2" />
+                  <Grid3x3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Grid
                 </Button>
                 <Button
                   onClick={() => setViewMode('list')}
                   variant={viewMode === 'list' ? 'default' : 'outline'}
                   size="sm"
-                  className={viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                  className={`flex-1 sm:flex-initial text-xs sm:text-sm ${viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}`}
                 >
-                  <List className="w-4 h-4 mr-2" />
+                  <List className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   List
                 </Button>
               </div>
             </div>
 
-            <TabsContent value="all" className="mt-6">
+            <TabsContent value="all" className="mt-3 sm:mt-4 md:mt-6">
               {/* Dynamic Grid/List based on variation and view mode */}
               <div className={
                 viewMode === 'grid'
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                  : 'flex flex-col gap-4'
+                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6'
+                  : 'flex flex-col gap-3 sm:gap-4'
               }>
                 {displayedItems.map((item, idx) => {
                   // Always use V1 - Modern Minimal
@@ -912,15 +923,15 @@ export default function ProductSearch() {
               
               {/* Load More Button */}
               {canLoadMore && !isLoadingMore && (
-                <div className="text-center py-8">
+                <div className="text-center py-6 sm:py-8">
                   <Button 
                     onClick={handleLoadMore}
                     size="lg"
-                    className="min-w-[200px]"
+                    className="min-w-[160px] sm:min-w-[200px] text-sm sm:text-base"
                   >
                     Load More Results
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-xs sm:text-sm text-gray-500 mt-2">
                     Showing {displayedItems.length} results
                   </p>
                 </div>
@@ -928,16 +939,16 @@ export default function ProductSearch() {
               
               {/* Loading indicator for background fetch */}
               {isLoadingMore && (
-                <div className="text-center py-8">
-                  <LoaderCircle className="w-8 h-8 animate-spin mx-auto text-purple-500" />
-                  <p className="text-sm text-gray-500 mt-2">Loading more results... (keeping {displayedItems.length} current items)</p>
+                <div className="text-center py-6 sm:py-8">
+                  <LoaderCircle className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mx-auto text-purple-500" />
+                  <p className="text-xs sm:text-sm text-gray-500 mt-2">Loading more... (keeping {displayedItems.length} items)</p>
                 </div>
               )}
               
               {/* Show message when all results are displayed */}
               {!canLoadMore && displayedItems.length >= 10 && (
-                <div className="text-center py-6">
-                  <p className="text-sm text-gray-500">
+                <div className="text-center py-4 sm:py-6">
+                  <p className="text-xs sm:text-sm text-gray-500">
                     All {displayedItems.length} results displayed
                   </p>
                 </div>
@@ -945,11 +956,11 @@ export default function ProductSearch() {
             </TabsContent>
 
             {Object.keys(groupedByMerchant).map(merchant => (
-              <TabsContent key={merchant} value={merchant} className="mt-6">
+              <TabsContent key={merchant} value={merchant} className="mt-3 sm:mt-4 md:mt-6">
                 <div className={
                   viewMode === 'grid'
-                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                    : 'flex flex-col gap-4'
+                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6'
+                    : 'flex flex-col gap-3 sm:gap-4'
                 }>
                   {groupedByMerchant[merchant].map((item, idx) => {
                     // Always use V1 - Modern Minimal
