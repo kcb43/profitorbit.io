@@ -679,7 +679,7 @@ export default function ProductSearch() {
         <div className="w-full sm:w-auto">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Universal Product Search</h1>
           <p className="text-xs sm:text-sm md:text-base text-gray-600 mt-1">
-            Search Google Shopping · Compare prices · Read reviews
+            Search Products Across 100+ Marketplaces
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
