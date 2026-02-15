@@ -417,7 +417,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             <div className="w-full sm:flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={searchMode === 'all' ? 'Search any product across 100+ stores...' : 'Search eBay listings...'}
+                placeholder={searchMode === 'all' ? 'Search here...' : 'Search eBay listings...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -1122,8 +1122,7 @@ function UniversalEmptyState() {
       <Globe className="h-16 w-16 text-muted-foreground mb-4" />
       <h3 className="text-xl font-semibold mb-2">Search Products Across 100+ Marketplaces</h3>
       <p className="text-muted-foreground max-w-md">
-        Enter any product name to search across Amazon, Walmart, Best Buy, Target, and more.
-        Compare prices instantly.
+        Enter any product name to search.
       </p>
     </div>
   );
