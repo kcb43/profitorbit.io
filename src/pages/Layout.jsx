@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User, ShoppingBag, TrendingDown, Gift } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
@@ -146,12 +146,23 @@ const themes = {
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [theme, setTheme] = useState('stalkfun-dark');
   const [themeStyles, setThemeStyles] = useState('');
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+
+  // Handle product search - navigate on mobile, dialog on desktop
+  const handleProductSearchClick = () => {
+    const isMobile = window.innerWidth < 768; // md breakpoint
+    if (isMobile) {
+      navigate('/product-search');
+    } else {
+      setProductSearchOpen(true);
+    }
+  };
 
   // Load user profile
   useEffect(() => {
@@ -279,7 +290,7 @@ export default function Layout({ children }) {
               <NotificationCenter />
               
               <Button
-                onClick={() => setProductSearchOpen(true)}
+                onClick={handleProductSearchClick}
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground hover:text-foreground h-9 w-9"
@@ -334,7 +345,7 @@ export default function Layout({ children }) {
               <div className="flex items-center gap-2">
                 <UserProfile />
                 <Button
-                  onClick={() => setProductSearchOpen(true)}
+                  onClick={handleProductSearchClick}
                   variant="ghost"
                   size="icon"
                   className="text-muted-foreground hover:text-foreground"
