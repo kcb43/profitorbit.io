@@ -687,7 +687,7 @@ export default function ProductSearch() {
       </Card>
 
       {/* Results */}
-      {searchResults && displayedItems.length === 0 && (
+      {searchResults && displayedItems.length === 0 && !isLoadingMore && (
         <Card className="p-12 border-yellow-200 bg-yellow-50">
           <div className="text-center">
             <Search className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
@@ -704,7 +704,7 @@ export default function ProductSearch() {
         </Card>
       )}
 
-      {searchResults && displayedItems.length > 0 && (
+      {displayedItems.length > 0 && (
         <>
           {/* Summary - now with average price */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
