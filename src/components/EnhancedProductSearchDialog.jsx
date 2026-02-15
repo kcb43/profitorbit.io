@@ -153,6 +153,16 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       setSearchQuery(initialQuery);
       setDebouncedQuery(initialQuery);
     }
+    
+    // Prevent auto-focus on search input when dialog opens
+    if (open) {
+      // Small delay to let Dialog's focus trap settle, then blur any focused input
+      setTimeout(() => {
+        if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+          document.activeElement.blur();
+        }
+      }, 50);
+    }
   }, [open, initialQuery]);
 
   // Universal Search function (SerpAPI - like ProductSearch page)
