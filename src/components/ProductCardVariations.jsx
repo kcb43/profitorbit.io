@@ -69,10 +69,10 @@ export function ProductCardV1Grid({ item }) {
   return (
     <Card className="group overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-2xl transition-all duration-300 bg-white dark:bg-gray-900">
       {/* Image Section */}
-      <div className="relative h-56 bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 overflow-hidden">
+      <div className="relative h-40 sm:h-48 md:h-56 bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 overflow-hidden">
         {data.tag && (
-          <div className="absolute top-3 right-3 z-10">
-            <Badge className="bg-red-500 text-white font-bold px-3 py-1 shadow-lg">
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10">
+            <Badge className="bg-red-500 text-white font-bold px-2 sm:px-3 py-0.5 sm:py-1 shadow-lg text-xs sm:text-sm">
               {data.tag}
             </Badge>
           </div>
@@ -80,26 +80,26 @@ export function ProductCardV1Grid({ item }) {
         <img
           src={data.imageUrl}
           alt={data.title}
-          className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+          className="w-full h-full object-contain p-3 sm:p-4 group-hover:scale-110 transition-transform duration-500"
           onError={(e) => e.target.style.display = 'none'}
         />
       </div>
 
-      <CardContent className="p-5 space-y-4">
+      <CardContent className="p-3 sm:p-4 md:p-5 space-y-2 sm:space-y-3 md:space-y-4">
         {/* Title */}
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base line-clamp-2 min-h-[3rem] leading-tight">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] leading-tight">
           {data.title}
         </h3>
 
         {/* Price Section */}
         <div className="space-y-1">
-          <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+          <div className="flex items-baseline gap-2 sm:gap-3">
+            <span className="text-2xl sm:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
               ${data.price.toFixed(2)}
             </span>
             {savings && (
               <div className="flex flex-col">
-                <span className="text-sm text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</span>
+                <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</span>
                 <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</span>
               </div>
             )}
@@ -111,41 +111,41 @@ export function ProductCardV1Grid({ item }) {
 
         {/* Rating & Reviews */}
         {data.rating && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <div className="flex items-center gap-1 text-amber-500">
-              <Star className="w-4 h-4 fill-current" />
-              <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{data.rating}</span>
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-current" />
+              <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">{data.rating}</span>
             </div>
             {data.reviews && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()} reviews)</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()})</span>
             )}
           </div>
         )}
 
         {/* Merchant */}
         <div className="flex items-center gap-2">
-          <Badge className={`${getMerchantColor(data.merchant)} px-3 py-1`}>
+          <Badge className={`${getMerchantColor(data.merchant)} px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm`}>
             {data.merchant}
           </Badge>
         </div>
 
         {/* Delivery Info */}
         {data.delivery && (
-          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-            <Truck className="w-4 h-4" />
-            <span>{data.delivery}</span>
+          <div className="flex items-center gap-1 sm:gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <Truck className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="truncate">{data.delivery}</span>
           </div>
         )}
 
         {/* Action Button - Fixed height container */}
-        <div className="pt-2">
+        <div className="pt-1 sm:pt-2">
           <Button 
             asChild 
-            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5"
           >
             <a href={viewLink} target="_blank" rel="noopener noreferrer">
               View Item
-              <ExternalLink className="w-4 h-4 ml-2" />
+              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
             </a>
           </Button>
         </div>
@@ -210,9 +210,9 @@ export function ProductCardV1List({ item }) {
 
   return (
     <Card className="group overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-900">
-      <div className="flex gap-5 p-5">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 p-3 sm:p-5">
         {/* Image Section - Left */}
-        <div className="relative w-40 h-40 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden">
+        <div className="relative w-full h-48 sm:w-32 sm:h-32 md:w-40 md:h-40 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden">
           {data.tag && (
             <div className="absolute top-2 right-2 z-10">
               <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">{data.tag}</Badge>
@@ -227,13 +227,13 @@ export function ProductCardV1List({ item }) {
         </div>
 
         {/* Content - Middle */}
-        <div className="flex-1 min-w-0 space-y-3">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg line-clamp-2 leading-tight">
+        <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base sm:text-lg line-clamp-2 leading-tight">
             {data.title}
           </h3>
 
-          <div className="flex items-center gap-3">
-            <Badge className={`${getMerchantColor(data.merchant)} px-3 py-1`}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Badge className={`${getMerchantColor(data.merchant)} px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm`}>
               {data.merchant}
             </Badge>
           </div>
@@ -241,31 +241,62 @@ export function ProductCardV1List({ item }) {
           {data.rating && (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-amber-500">
-                <Star className="w-4 h-4 fill-current" />
-                <span className="font-semibold text-sm dark:text-gray-100">{data.rating}</span>
+                <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-current" />
+                <span className="font-semibold text-xs sm:text-sm dark:text-gray-100">{data.rating}</span>
               </div>
               {data.reviews && (
-                <span className="text-sm text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()})</span>
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()})</span>
               )}
             </div>
           )}
 
           {data.snippet && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{data.snippet}</p>
+            <p className="hidden sm:block text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{data.snippet}</p>
           )}
 
           {data.delivery && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Truck className="w-4 h-4" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              <Truck className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>{data.delivery}</span>
             </div>
           )}
+
+          {/* Price on mobile - show below content */}
+          <div className="sm:hidden space-y-1 pt-2">
+            <div className="flex items-baseline gap-3">
+              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                ${data.price.toFixed(2)}
+              </span>
+              {savings && (
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</span>
+                  <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+            {data.installment && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">{data.installment}</p>
+            )}
+          </div>
+
+          {/* Button on mobile - full width below */}
+          <div className="sm:hidden pt-2">
+            <Button 
+              asChild 
+              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold"
+            >
+              <a href={viewLink} target="_blank" rel="noopener noreferrer">
+                View Item
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </a>
+            </Button>
+          </div>
         </div>
 
-        {/* Price & Action - Right */}
-        <div className="flex flex-col justify-between items-end w-48 flex-shrink-0">
+        {/* Price & Action - Right (Desktop only) */}
+        <div className="hidden sm:flex flex-col justify-between items-end w-40 md:w-48 flex-shrink-0">
           <div className="text-right space-y-1">
-            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+            <div className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
               ${data.price.toFixed(2)}
             </div>
             {savings ? (
