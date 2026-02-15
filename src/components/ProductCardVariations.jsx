@@ -35,7 +35,7 @@ const extractItemData = (item) => ({
   price: item.price || item.extracted_price || 0,
   oldPrice: item.old_price || item.extracted_old_price || null,
   merchant: item.merchant || item.source || 'Unknown',
-  productLink: item.url || item.product_link || item.link || '',
+  productLink: item.link || item.url || '', // Prioritize direct merchant link
   rating: item.rating || null,
   reviews: item.reviews || item.reviews_count || null,
   snippet: item.snippet || '',
@@ -52,7 +52,7 @@ const extractItemData = (item) => ({
   currency: item.currency || 'USD',
   merchantOffers: item.merchantOffers || [],
   merchantOffersLoaded: item.merchantOffersLoaded || false,
-  hasDirectLink: item.url && !item.product_link,
+  hasDirectLink: item.link && item.link.includes('http'), // Check if we have a real direct link
   multipleStores: item.multiple_sources || false
 });
 
