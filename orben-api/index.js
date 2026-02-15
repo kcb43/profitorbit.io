@@ -107,8 +107,8 @@ fastify.get('/v1/deals/feed', async (request, reply) => {
 
   const response = { items: data || [], count: data?.length || 0 };
 
-  // Cache for 60 seconds
-  await redis.set(cacheKey, JSON.stringify(response), 'EX', 60);
+  // Cache for 30 seconds (reduced for "Live" feed freshness)
+  await redis.set(cacheKey, JSON.stringify(response), 'EX', 30);
 
   return response;
 });
