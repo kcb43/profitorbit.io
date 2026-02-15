@@ -341,9 +341,43 @@ export default function Deals() {
 
 // Enhanced Deal Card Component - Pulse Style
 function EnhancedDealCard({ deal, isSaved, onSave }) {
+  const [timeAgo, setTimeAgo] = React.useState('');
+
   const discount = deal.original_price && deal.price 
     ? Math.round(((deal.original_price - deal.price) / deal.original_price) * 100)
     : 0;
+
+  // Calculate and update time ago (uses user's local timezone automatically)
+  React.useEffect(() => {
+    const updateTimeAgo = () => {
+      if (!deal.posted_at) return;
+      
+      const now = new Date();
+      const posted = new Date(deal.posted_at);
+      const diffMs = now - posted;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) {
+        setTimeAgo('Just now');
+      } else if (diffMins < 60) {
+        setTimeAgo(`${diffMins}m ago`);
+      } else if (diffHours < 24) {
+        setTimeAgo(`${diffHours}h ago`);
+      } else if (diffDays < 7) {
+        setTimeAgo(`${diffDays}d ago`);
+      } else {
+        // Show date for older deals (automatically formatted to user's locale/timezone)
+        setTimeAgo(posted.toLocaleDateString());
+      }
+    };
+
+    updateTimeAgo();
+    // Update every minute for live countdown
+    const interval = setInterval(updateTimeAgo, 60000);
+    return () => clearInterval(interval);
+  }, [deal.posted_at]);
 
   // Determine deal quality badge
   const getDealBadge = () => {
@@ -482,9 +516,10 @@ function EnhancedDealCard({ deal, isSaved, onSave }) {
             >
               <Bookmark className={`h-3 w-3 sm:h-4 sm:w-4 ${isSaved ? 'fill-current' : ''}`} />
             </Button>
-            {deal.posted_at && (
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {new Date(deal.posted_at).toLocaleDateString()}
+            {timeAgo && (
+              <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                <span className="hidden sm:inline">Posted</span>
+                <span className="font-medium">{timeAgo}</span>
               </span>
             )}
           </div>
