@@ -203,7 +203,7 @@ export default function ProductSearch() {
         page: String(currentPage), // Use pagination!
         limit: '10', // Always fetch 10 items per page
         // Force fresh results after RapidAPI key was added (cache v5)
-        cache_version: 'v7_pagination'
+        cache_version: 'v8_fresh'
       });
 
       console.log('[ProductSearch] Fetching:', `${ORBEN_API_URL}/v1/search?${params}`);

@@ -735,8 +735,8 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query, limit = 10, page = 1) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}:${page}`).digest('hex');
-  // v7: Include page in cache key to support pagination (2026-02-15)
-  return `search:v7:${provider}:${country}:${hash}`;
+  // v8: Bumped to invalidate stale caches with 0 results (2026-02-15)
+  return `search:v8:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {

@@ -36,6 +36,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProductSearchDialog } from "@/components/ProductSearchDialog";
+import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { useInventoryTags } from "@/hooks/useInventoryTags";
 import { ImageEditor } from "@/components/ImageEditor";
 import { OptimizedImage } from "@/components/OptimizedImage";
@@ -3981,7 +3982,7 @@ export default function InventoryPage() {
       )}
 
       {/* Product Search Dialog */}
-      <ProductSearchDialog
+      <EnhancedProductSearchDialog
         open={productSearchOpen}
         onOpenChange={setProductSearchOpen}
         initialQuery={productSearchQuery}

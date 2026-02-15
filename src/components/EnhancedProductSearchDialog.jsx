@@ -211,7 +211,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         country: 'US',
         page: '1',
         limit: '10',
-        cache_version: 'v7_pagination' // Use same cache version as ProductSearch page
+        cache_version: 'v8_fresh' // v8: Fresh cache, invalidated stale 0-result entries
       });
 
       // Add cache_bust parameter if forcing fresh results
