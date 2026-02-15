@@ -369,7 +369,9 @@ export default function ProductSearch() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Universal Product Search</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Search Google Shopping in real-time</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            Search Google Shopping in real-time · Compare prices · Read reviews
+          </p>
         </div>
         <Button
           variant="outline"
@@ -619,9 +621,10 @@ function ProductCard({ item, showDebug = false }) {
   const oldPrice = item.old_price || item.extracted_old_price || null;
   const merchant = item.merchant || item.source || 'Unknown';
   
-  // CRITICAL FIX: Use the direct merchant link, NOT the Google Shopping page
-  // The SerpAPI returns 'link' for direct merchant URLs
-  const productLink = item.link || item.url || item.product_link || '';
+  // IMPORTANT: Use product_link (Google Shopping detail page with all merchant offers)
+  // This page shows reviews, ratings, price comparisons, and links to all merchants
+  // Direct merchant links are not available in the basic API response
+  const productLink = item.product_link || item.url || item.link || '';
   
   const rating = item.rating || null;
   const reviews = item.reviews || null;
@@ -633,6 +636,7 @@ function ProductCard({ item, showDebug = false }) {
   const condition = item.condition || item.second_hand_condition || '';
   const position = item.position || null; // Product ranking position
   const sourceIcon = item.source_icon || ''; // Merchant logo/icon
+  const productId = item.product_id || ''; // Unique product identifier
 
   // Log unused fields for debugging
   if (showDebug) {
@@ -786,10 +790,18 @@ function ProductCard({ item, showDebug = false }) {
           className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
           onClick={() => window.open(productLink, '_blank')}
           disabled={!productLink}
+          title="View product details, reviews, and compare prices across all merchants"
         >
           <ShoppingCart className="w-4 h-4 mr-2" />
-          View Deal
+          Compare Prices
         </Button>
+        
+        {/* Optional: Show "Multiple stores" indicator */}
+        {item.multiple_sources && (
+          <p className="text-xs text-gray-500 text-center mt-1">
+            Available at multiple stores
+          </p>
+        )}
         
         {/* Debug Info Panel */}
         {showDebug && (
