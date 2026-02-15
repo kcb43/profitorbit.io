@@ -31,6 +31,15 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_K
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
   : null;
 
+// #region agent log
+// Log Supabase initialization status on startup
+if (supabase) {
+  console.log('[Search Worker] Supabase client initialized successfully');
+} else {
+  console.log('[Search Worker] Supabase client NOT initialized - missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
+// #endregion
+
 const redis = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true
@@ -264,13 +273,21 @@ class RapidApiGoogleProvider extends SearchProvider {
       }));
       // #endregion
       
+      console.log('[DEBUG-N] Before RapidAPI request', JSON.stringify({
+        query: query,
+        requestedLimit: limit,
+        optimizedLimit: optimizedLimit,
+        timeout: 30000,
+        hypothesisId: 'N'
+      }));
+      
       const response = await axiosInstance.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
         params: requestParams,
         headers: {
           'x-rapidapi-key': this.apiKey,
           'x-rapidapi-host': 'real-time-product-search.p.rapidapi.com'
         },
-        timeout: 15000
+        timeout: 30000 // Increased from 15s to 30s to handle larger result sets
       });
       
       // #region agent log
@@ -678,14 +695,57 @@ fastify.post('/search', async (request, reply) => {
   }
 
   // Optional: save snapshot to Supabase
+  console.log('[DEBUG-M] Before DB save check', JSON.stringify({
+    hasItems: results.items.length > 0,
+    itemCount: results.items.length,
+    hasSupabase: !!supabase,
+    userId: userId,
+    query: query,
+    hypothesisId: 'M'
+  }));
+  
   if (results.items.length > 0 && supabase) {
-    await supabase.from('search_snapshots').insert([{
-      user_id: userId,
-      query,
-      providers: requestedProviders,
-      result: results,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
-    }]);
+    try {
+      console.log('[DEBUG-M] Attempting DB insert', JSON.stringify({
+        userId: userId,
+        query: query,
+        itemCount: results.items.length,
+        providers: requestedProviders,
+        hypothesisId: 'M'
+      }));
+      
+      const insertResult = await supabase.from('search_snapshots').insert([{
+        user_id: userId,
+        query,
+        providers: requestedProviders,
+        result: results,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
+      }]);
+      
+      console.log('[DEBUG-M,Q] DB insert result', JSON.stringify({
+        hasError: !!insertResult.error,
+        errorMsg: insertResult.error?.message || null,
+        errorDetails: insertResult.error?.details || null,
+        status: insertResult.status,
+        statusText: insertResult.statusText,
+        hypothesisId: 'M,Q'
+      }));
+    } catch (error) {
+      console.error('[DEBUG-M,Q] DB insert exception', JSON.stringify({
+        errorMsg: error.message,
+        errorStack: error.stack?.slice(0, 200),
+        hypothesisId: 'M,Q'
+      }));
+      console.error('[Search Worker] Failed to save search snapshot:', error);
+    }
+  } else {
+    console.log('[DEBUG-M,P] DB save skipped', JSON.stringify({
+      hasItems: results.items.length > 0,
+      itemCount: results.items.length,
+      hasSupabase: !!supabase,
+      reason: results.items.length === 0 ? 'no_items' : 'no_supabase',
+      hypothesisId: 'M,P'
+    }));
   }
 
   // #region agent log
