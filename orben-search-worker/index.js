@@ -1069,6 +1069,21 @@ fastify.post('/admin/flush-cache', async (request, reply) => {
 });
 
 // ==========================================
+// Admin: Flush ALL cache (emergency use)
+// ==========================================
+fastify.post('/admin/flush-all-cache', async (request, reply) => {
+  try {
+    console.log('[Admin] Flushing ALL Redis cache keys...');
+    await redis.flushall();
+    console.log('[Admin] Redis cache flushed successfully');
+    return { ok: true, message: 'All cache keys flushed' };
+  } catch (error) {
+    console.error('[Admin] Error flushing cache:', error);
+    return reply.code(500).send({ error: error.message });
+  }
+});
+
+// ==========================================
 // Start server
 // ==========================================
 const PORT = process.env.PORT || 8081;

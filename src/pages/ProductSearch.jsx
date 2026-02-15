@@ -5,16 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Loader2, LoaderCircle, ExternalLink, TrendingUp, ShoppingCart, AlertCircle, Grid3x3, List, Palette } from 'lucide-react';
+import { Search, Loader2, LoaderCircle, ExternalLink, TrendingUp, ShoppingCart, AlertCircle, Grid3x3, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   ProductCardV1Grid, 
-  ProductCardV1List,
-  ProductCardV2Grid,
-  ProductCardV2List,
-  ProductCardV3Grid,
-  ProductCardV3List
+  ProductCardV1List
 } from '@/components/ProductCardVariations';
 
 const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
@@ -31,8 +27,7 @@ export default function ProductSearch() {
   const [accumulatedItems, setAccumulatedItems] = useState([]); // Accumulate items across multiple fetches
   const [showDebugInfo, setShowDebugInfo] = useState(false); // Toggle debug mode
   
-  // UI Variation & View Mode State
-  const [uiVariation, setUiVariation] = useState('v1'); // 'v1', 'v2', 'v3'
+  // View Mode State
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
   
   // Quota monitoring state
@@ -868,59 +863,30 @@ export default function ProductSearch() {
           {/* UI Variation & View Mode Controls */}
           <Card className="bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 border-2 border-purple-200">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                {/* UI Variation Selector */}
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Palette className="w-4 h-4" />
-                    Choose Your Style
-                  </label>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setUiVariation('v1')}
-                      variant={uiVariation === 'v1' ? 'default' : 'outline'}
-                      className={uiVariation === 'v1' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
-                    >
-                      V1: Modern Minimal
-                    </Button>
-                    <Button
-                      onClick={() => setUiVariation('v2')}
-                      variant={uiVariation === 'v2' ? 'default' : 'outline'}
-                      className={uiVariation === 'v2' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' : ''}
-                    >
-                      V2: Bold & Vibrant
-                    </Button>
-                    <Button
-                      onClick={() => setUiVariation('v3')}
-                      variant={uiVariation === 'v3' ? 'default' : 'outline'}
-                      className={uiVariation === 'v3' ? 'bg-slate-900 hover:bg-amber-600' : ''}
-                    >
-                      V3: Elegant Premium
-                    </Button>
-                  </div>
-                </div>
-
+              <div className="flex items-center justify-between">
                 {/* View Mode Selector */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     View Mode
                   </label>
                   <div className="flex gap-2">
                     <Button
                       onClick={() => setViewMode('grid')}
                       variant={viewMode === 'grid' ? 'default' : 'outline'}
-                      size="icon"
-                      className={viewMode === 'grid' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                      size="sm"
+                      className={viewMode === 'grid' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
                     >
-                      <Grid3x3 className="w-5 h-5" />
+                      <Grid3x3 className="w-4 h-4 mr-2" />
+                      Grid
                     </Button>
                     <Button
                       onClick={() => setViewMode('list')}
                       variant={viewMode === 'list' ? 'default' : 'outline'}
-                      size="icon"
-                      className={viewMode === 'list' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                      size="sm"
+                      className={viewMode === 'list' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
                     >
-                      <List className="w-5 h-5" />
+                      <List className="w-4 h-4 mr-2" />
+                      List
                     </Button>
                   </div>
                 </div>
@@ -947,20 +913,10 @@ export default function ProductSearch() {
                   : 'flex flex-col gap-4'
               }>
                 {displayedItems.map((item, idx) => {
-                  // Render appropriate card based on variation and view mode
-                  if (uiVariation === 'v1') {
-                    return viewMode === 'grid' 
-                      ? <ProductCardV1Grid key={idx} item={item} />
-                      : <ProductCardV1List key={idx} item={item} />;
-                  } else if (uiVariation === 'v2') {
-                    return viewMode === 'grid'
-                      ? <ProductCardV2Grid key={idx} item={item} />
-                      : <ProductCardV2List key={idx} item={item} />;
-                  } else {
-                    return viewMode === 'grid'
-                      ? <ProductCardV3Grid key={idx} item={item} />
-                      : <ProductCardV3List key={idx} item={item} />;
-                  }
+                  // Always use V1 - Modern Minimal
+                  return viewMode === 'grid' 
+                    ? <ProductCardV1Grid key={idx} item={item} />
+                    : <ProductCardV1List key={idx} item={item} />;
                 })}
               </div>
               
@@ -1006,20 +962,10 @@ export default function ProductSearch() {
                     : 'flex flex-col gap-4'
                 }>
                   {groupedByMerchant[merchant].map((item, idx) => {
-                    // Render appropriate card based on variation and view mode
-                    if (uiVariation === 'v1') {
-                      return viewMode === 'grid' 
-                        ? <ProductCardV1Grid key={idx} item={item} />
-                        : <ProductCardV1List key={idx} item={item} />;
-                    } else if (uiVariation === 'v2') {
-                      return viewMode === 'grid'
-                        ? <ProductCardV2Grid key={idx} item={item} />
-                        : <ProductCardV2List key={idx} item={item} />;
-                    } else {
-                      return viewMode === 'grid'
-                        ? <ProductCardV3Grid key={idx} item={item} />
-                        : <ProductCardV3List key={idx} item={item} />;
-                    }
+                    // Always use V1 - Modern Minimal
+                    return viewMode === 'grid' 
+                      ? <ProductCardV1Grid key={idx} item={item} />
+                      : <ProductCardV1List key={idx} item={item} />;
                   })}
                 </div>
               </TabsContent>

@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award, ChevronDown, Store } from 'lucide-react';
 
 // Shared utility functions
 const getMerchantColor = (merchant) => {
@@ -51,29 +57,28 @@ const extractItemData = (item) => ({
 });
 
 // ========================================
-// V1: MODERN MINIMAL - Clean, spacious, professional
+// V1: MODERN MINIMAL - Clean, spacious, professional (Dark mode compatible)
 // ========================================
 export function ProductCardV1Grid({ item }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
+  const [showMoreStores, setShowMoreStores] = useState(false);
+
+  // Sort merchant offers by price (low to high)
+  const sortedOffers = [...(data.merchantOffers || [])].sort((a, b) => 
+    (a.extracted_price || 0) - (b.extracted_price || 0)
+  );
 
   return (
-    <Card className="group overflow-hidden border border-gray-200 hover:border-indigo-400 hover:shadow-2xl transition-all duration-300 bg-white">
+    <Card className="group overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-2xl transition-all duration-300 bg-white dark:bg-gray-900">
       {/* Image Section */}
-      <div className="relative h-56 bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-hidden">
+      <div className="relative h-56 bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 overflow-hidden">
         {data.tag && (
           <div className="absolute top-3 right-3 z-10">
             <Badge className="bg-red-500 text-white font-bold px-3 py-1 shadow-lg">
               {data.tag}
-            </Badge>
-          </div>
-        )}
-        {data.position && (
-          <div className="absolute top-3 left-3 z-10">
-            <Badge className="bg-indigo-600 text-white font-semibold px-2 py-1">
-              #{data.position}
             </Badge>
           </div>
         )}
@@ -87,25 +92,25 @@ export function ProductCardV1Grid({ item }) {
 
       <CardContent className="p-5 space-y-4">
         {/* Title */}
-        <h3 className="font-semibold text-gray-900 text-base line-clamp-2 min-h-[3rem] leading-tight">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base line-clamp-2 min-h-[3rem] leading-tight">
           {data.title}
         </h3>
 
         {/* Price Section */}
         <div className="space-y-1">
           <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-indigo-600">
+            <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
               ${data.price.toFixed(2)}
             </span>
             {savings && (
               <div className="flex flex-col">
-                <span className="text-sm text-gray-400 line-through">${data.oldPrice.toFixed(2)}</span>
-                <span className="text-xs text-green-600 font-semibold">-${savings.toFixed(2)}</span>
+                <span className="text-sm text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</span>
+                <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</span>
               </div>
             )}
           </div>
           {data.installment && (
-            <p className="text-xs text-gray-500">or {data.installment}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">or {data.installment}</p>
           )}
         </div>
 
@@ -114,10 +119,10 @@ export function ProductCardV1Grid({ item }) {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-amber-500">
               <Star className="w-4 h-4 fill-current" />
-              <span className="font-semibold text-sm text-gray-900">{data.rating}</span>
+              <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{data.rating}</span>
             </div>
             {data.reviews && (
-              <span className="text-xs text-gray-500">({data.reviews.toLocaleString()} reviews)</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()} reviews)</span>
             )}
           </div>
         )}
@@ -127,29 +132,58 @@ export function ProductCardV1Grid({ item }) {
           <Badge className={`${getMerchantColor(data.merchant)} px-3 py-1`}>
             {data.merchant}
           </Badge>
-          {data.merchantOffers?.length > 1 && (
-            <span className="text-xs text-gray-500">+{data.merchantOffers.length - 1} more</span>
-          )}
         </div>
+
+        {/* Other Stores Dropdown */}
+        {sortedOffers.length > 1 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-between dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                <span className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  +{sortedOffers.length - 1} other store{sortedOffers.length > 2 ? 's' : ''}
+                </span>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[300px] dark:bg-gray-800 dark:border-gray-700">
+              {sortedOffers.map((offer, idx) => (
+                <DropdownMenuItem key={idx} asChild>
+                  <a 
+                    href={offer.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between py-2 dark:text-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <span className="font-medium">{offer.name}</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
+                  </a>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* Delivery Info */}
         {data.delivery && (
-          <div className="flex items-center gap-2 text-xs text-gray-600">
+          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
             <Truck className="w-4 h-4" />
             <span>{data.delivery}</span>
           </div>
         )}
 
-        {/* Action Button */}
-        <Button 
-          asChild 
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
-        >
-          <a href={viewLink} target="_blank" rel="noopener noreferrer">
-            {primaryOffer ? `Buy at ${primaryOffer.name}` : 'View Item'}
-            <ExternalLink className="w-4 h-4 ml-2" />
-          </a>
-        </Button>
+        {/* Action Button - Fixed height container */}
+        <div className="pt-2">
+          <Button 
+            asChild 
+            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold"
+          >
+            <a href={viewLink} target="_blank" rel="noopener noreferrer">
+              View Item
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </a>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -161,16 +195,16 @@ export function ProductCardV1List({ item }) {
   const viewLink = primaryOffer?.link || data.productLink;
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
 
+  // Sort merchant offers by price (low to high)
+  const sortedOffers = [...(data.merchantOffers || [])].sort((a, b) => 
+    (a.extracted_price || 0) - (b.extracted_price || 0)
+  );
+
   return (
-    <Card className="group overflow-hidden border border-gray-200 hover:border-indigo-400 hover:shadow-xl transition-all duration-300 bg-white">
+    <Card className="group overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-900">
       <div className="flex gap-5 p-5">
         {/* Image Section - Left */}
-        <div className="relative w-40 h-40 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white rounded-lg overflow-hidden">
-          {data.position && (
-            <div className="absolute top-2 left-2 z-10">
-              <Badge className="bg-indigo-600 text-white text-xs px-2 py-0.5">#{data.position}</Badge>
-            </div>
-          )}
+        <div className="relative w-40 h-40 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden">
           {data.tag && (
             <div className="absolute top-2 right-2 z-10">
               <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">{data.tag}</Badge>
@@ -186,7 +220,7 @@ export function ProductCardV1List({ item }) {
 
         {/* Content - Middle */}
         <div className="flex-1 min-w-0 space-y-3">
-          <h3 className="font-semibold text-gray-900 text-lg line-clamp-2 leading-tight">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg line-clamp-2 leading-tight">
             {data.title}
           </h3>
 
@@ -194,29 +228,56 @@ export function ProductCardV1List({ item }) {
             <Badge className={`${getMerchantColor(data.merchant)} px-3 py-1`}>
               {data.merchant}
             </Badge>
-            {data.merchantOffers?.length > 1 && (
-              <span className="text-sm text-gray-500">+{data.merchantOffers.length - 1} stores</span>
-            )}
           </div>
+
+          {/* Other Stores Dropdown */}
+          {sortedOffers.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-fit justify-between dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  <span className="flex items-center gap-2">
+                    <Store className="w-4 h-4" />
+                    +{sortedOffers.length - 1} other store{sortedOffers.length > 2 ? 's' : ''}
+                  </span>
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[300px] dark:bg-gray-800 dark:border-gray-700">
+                {sortedOffers.map((offer, idx) => (
+                  <DropdownMenuItem key={idx} asChild>
+                    <a 
+                      href={offer.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between py-2 dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                      <span className="font-medium">{offer.name}</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">${offer.extracted_price?.toFixed(2)}</span>
+                    </a>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {data.rating && (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-amber-500">
                 <Star className="w-4 h-4 fill-current" />
-                <span className="font-semibold text-sm">{data.rating}</span>
+                <span className="font-semibold text-sm dark:text-gray-100">{data.rating}</span>
               </div>
               {data.reviews && (
-                <span className="text-sm text-gray-500">({data.reviews.toLocaleString()})</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">({data.reviews.toLocaleString()})</span>
               )}
             </div>
           )}
 
           {data.snippet && (
-            <p className="text-sm text-gray-600 line-clamp-2">{data.snippet}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{data.snippet}</p>
           )}
 
           {data.delivery && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Truck className="w-4 h-4" />
               <span>{data.delivery}</span>
             </div>
@@ -226,26 +287,28 @@ export function ProductCardV1List({ item }) {
         {/* Price & Action - Right */}
         <div className="flex flex-col justify-between items-end w-48 flex-shrink-0">
           <div className="text-right space-y-1">
-            <div className="text-3xl font-bold text-indigo-600">
+            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
               ${data.price.toFixed(2)}
             </div>
-            {savings && (
+            {savings ? (
               <>
-                <div className="text-sm text-gray-400 line-through">${data.oldPrice.toFixed(2)}</div>
-                <div className="text-sm text-green-600 font-semibold">Save ${savings.toFixed(2)}</div>
+                <div className="text-sm text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</div>
+                <div className="text-sm text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</div>
               </>
+            ) : (
+              <div className="h-10"></div>
             )}
             {data.installment && (
-              <p className="text-xs text-gray-500 mt-1">{data.installment}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{data.installment}</p>
             )}
           </div>
 
           <Button 
             asChild 
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold mt-auto"
           >
             <a href={viewLink} target="_blank" rel="noopener noreferrer">
-              {primaryOffer ? 'Buy Now' : 'View Item'}
+              View Item
               <ExternalLink className="w-4 h-4 ml-2" />
             </a>
           </Button>
