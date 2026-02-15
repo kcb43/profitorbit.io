@@ -594,15 +594,39 @@ function ProductCard({ item }) {
     return colors[merchant] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
+  // Extract relevant fields from Google Shopping API structure
+  // Handles both: normalized format (from backend) and raw SerpAPI format
+  const title = item.title || '';
+  const imageUrl = item.image_url || item.thumbnail || '';
+  const price = item.price || item.extracted_price || 0;
+  const oldPrice = item.old_price || item.extracted_old_price || null;
+  const merchant = item.merchant || item.source || 'Unknown';
+  const productLink = item.url || item.product_link || '';
+  const rating = item.rating || null;
+  const reviews = item.reviews || null;
+  const snippet = item.snippet || '';
+  const extensions = item.extensions || [];
+  const tag = item.tag || '';
+  const delivery = item.delivery || '';
+  const condition = item.condition || item.second_hand_condition || '';
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-200 border-2 hover:border-purple-200">
       {/* Image */}
-      {item.image_url && (
-        <div className="relative h-48 bg-gray-100">
+      {imageUrl && (
+        <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100">
+          {/* Show tag/badge overlay if available (e.g., "22% OFF") */}
+          {tag && (
+            <div className="absolute top-2 right-2 z-10 animate-pulse">
+              <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold shadow-lg">
+                {tag}
+              </Badge>
+            </div>
+          )}
           <img
-            src={item.image_url}
-            alt={item.title}
-            className="w-full h-full object-contain p-2"
+            src={imageUrl}
+            alt={title}
+            className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               e.target.style.display = 'none';
             }}
@@ -613,50 +637,101 @@ function ProductCard({ item }) {
       <CardContent className="p-4">
         {/* Title */}
         <h3 className="font-medium text-sm mb-2 line-clamp-2 min-h-[2.5rem]">
-          {item.title}
+          {title}
         </h3>
 
         {/* Merchant Badge - Colorful and prominent */}
-        {item.merchant && (
-          <div className="mb-3">
-            <Badge className={`${getMerchantColor(item.merchant)} font-semibold border`}>
-              {item.merchant}
+        {merchant && (
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className={`${getMerchantColor(merchant)} font-semibold border shadow-sm`}>
+              {merchant}
             </Badge>
+            {item.multiple_sources && (
+              <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                Multiple stores
+              </Badge>
+            )}
           </div>
         )}
 
-        {/* Price */}
-        {item.price && (
+        {/* Price - Show old price if available */}
+        {price > 0 && (
           <div className="mb-3">
-            <span className="text-2xl font-bold text-green-600">
-              ${item.price.toFixed(2)}
-            </span>
-            {item.currency && item.currency !== 'USD' && (
-              <span className="text-xs text-gray-500 ml-1">{item.currency}</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-green-600 drop-shadow-sm">
+                ${price.toFixed(2)}
+              </span>
+              {oldPrice && oldPrice > price && (
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-400 line-through">
+                    ${oldPrice.toFixed(2)}
+                  </span>
+                  <span className="text-xs text-green-600 font-semibold">
+                    Save ${(oldPrice - price).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Reviews & Rating */}
+        {(rating || reviews) && (
+          <div className="flex items-center gap-2 mb-2 text-xs">
+            {rating && (
+              <span className="flex items-center font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                ⭐ {rating}
+              </span>
             )}
+            {reviews && (
+              <span className="text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                ({reviews.toLocaleString()})
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Snippet (e.g., "Tastes good (4,331 user reviews)") */}
+        {snippet && (
+          <p className="text-xs text-gray-600 mb-2 line-clamp-1 italic">
+            💬 {snippet}
+          </p>
+        )}
+
+        {/* Extensions (e.g., "Nearby, 12 mi", "22% OFF") */}
+        {extensions && extensions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {extensions.slice(0, 3).map((ext, idx) => (
+              <Badge key={idx} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                {ext}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Delivery info */}
+        {delivery && (
+          <div className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded mb-2 font-medium">
+            🚚 {delivery}
           </div>
         )}
 
         {/* Additional info */}
         <div className="flex items-center gap-2 mb-3 text-xs text-gray-600">
-          {item.condition && <Badge variant="outline">{item.condition}</Badge>}
+          {condition && <Badge variant="outline">{condition}</Badge>}
           {item.shipping === 0 && <Badge variant="outline">Free Shipping</Badge>}
-          {item.rating && (
-            <span className="flex items-center">
-              ⭐ {item.rating}
-            </span>
-          )}
         </div>
 
         {/* Action */}
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
-          className="w-full"
-          onClick={() => window.open(item.url, '_blank')}
+          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+          onClick={() => window.open(productLink, '_blank')}
+          disabled={!productLink}
         >
-          <ExternalLink className="w-4 h-4 mr-2" />
-          View Product
+          <ShoppingCart className="w-4 h-4 mr-2" />
+          View Deal
         </Button>
       </CardContent>
     </Card>
