@@ -34,6 +34,7 @@ import {
   getEbayItemUrl,
   isEbayItemAvailable,
 } from '@/utils/ebayHelpers';
+import { supabase } from '@/integrations/supabase';
 
 /**
  * Enhanced Product Search Dialog
@@ -146,7 +147,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   }, [open, initialQuery]);
 
-  // Universal Search function
+  // Universal Search function (SerpAPI - like ProductSearch page)
   const handleUniversalSearch = async () => {
     if (!searchQuery.trim()) {
       toast({
@@ -162,31 +163,72 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     setUniversalStats(null);
 
     try {
-      const response = await fetch('/api/product-search/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: searchQuery,
-          filters: {
-            ...filters,
-            minPrice: filters.minPrice ? parseFloat(filters.minPrice) : undefined,
-            maxPrice: filters.maxPrice ? parseFloat(filters.maxPrice) : undefined,
-          }
-        })
-      });
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Search failed');
+      if (!token) {
+        throw new Error('Please log in to search products');
       }
 
-      setUniversalProducts(data.products || []);
-      setUniversalStats(data.stats || null);
+      // Use same endpoint as ProductSearch page
+      const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
+      const params = new URLSearchParams({
+        q: searchQuery.trim(),
+        providers: 'auto',
+        country: 'US',
+        page: '1',
+        limit: '50'
+      });
+
+      const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Search failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[Universal Search] Response:', data);
+
+      // Transform SerpAPI results to match expected format
+      const transformedProducts = (data.items || []).map(item => ({
+        title: item.title || '',
+        price: item.price || item.extracted_price || 0,
+        originalPrice: item.old_price || item.extracted_old_price || null,
+        discountPercentage: item.old_price && item.price
+          ? Math.round(((item.old_price - item.price) / item.old_price) * 100)
+          : 0,
+        rating: item.rating || null,
+        reviewCount: item.reviews || item.reviews_count || null,
+        marketplace: item.merchant || item.source || 'Unknown',
+        productUrl: item.link || item.url || '',
+        imageUrl: item.image_url || item.thumbnail || '',
+        seller: item.seller || null,
+        delivery: item.delivery || null,
+        condition: item.condition || null,
+        snippet: item.snippet || ''
+      }));
+
+      setUniversalProducts(transformedProducts);
+
+      // Calculate stats
+      const prices = transformedProducts.filter(p => p.price > 0).map(p => p.price);
+      if (prices.length > 0) {
+        setUniversalStats({
+          priceStats: {
+            lowest: Math.min(...prices),
+            highest: Math.max(...prices),
+            average: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)
+          }
+        });
+      }
 
       toast({
-        title: `✅ Search complete (${data.searchTime || '0s'})`,
-        description: `Found ${data.totalResults || 0} products${data.sources ? ` from ${data.sources.join(', ')}` : ''}`
+        title: `✅ Found ${transformedProducts.length} products`,
+        description: `Search complete from ${data.providers?.map(p => p.provider).join(', ') || 'multiple sources'}`
       });
 
     } catch (error) {
@@ -631,7 +673,7 @@ function ProductRow({ product, onAddToWatchlist }) {
   );
 }
 
-// eBay Results Component
+// eBay Results Component - Table Format with All Details
 function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNextPage, isFetchingNextPage, searchQuery, scrollAreaRef, total }) {
   if (error) {
     return (
@@ -667,95 +709,38 @@ function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNex
 
   return (
     <ScrollArea ref={scrollAreaRef} className="h-full w-full">
-      <div className="pr-4 space-y-3">
-        {items.map((item) => {
-          const isSelected = selectedItem?.itemId === item.itemId;
-          const isAvailable = isEbayItemAvailable(item);
-          const imageUrl = item?.image?.imageUrl || null;
-
-          return (
-            <Card
-              key={item.itemId}
-              className={cn(
-                "cursor-pointer transition-all",
-                isSelected && "ring-2 ring-primary border-primary",
-                !isSelected && "hover:border-primary/50",
-                !isAvailable && "opacity-60"
-              )}
-              onClick={() => isAvailable && onSelectItem(item)}
-            >
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  {imageUrl && (
-                    <img
-                      src={imageUrl}
-                      alt={item.title}
-                      className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-                    />
-                  )}
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-semibold text-sm line-clamp-2">
-                        {item.title}
-                      </h3>
-                      {isSelected && (
-                        <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <Badge variant="default" className="font-semibold">
-                        {formatEbayPrice(item.price)}
-                      </Badge>
-                      {item.buyingOptions && item.buyingOptions.length > 0 && (() => {
-                        const buyingOption = formatEbayBuyingOption(item.buyingOptions);
-                        return (
-                          <Badge variant="outline" className="text-foreground">
-                            {buyingOption.text}
-                          </Badge>
-                        );
-                      })()}
-                      {item.condition && (
-                        <Badge variant="outline" className="text-foreground">
-                          {formatEbayCondition(item.condition)}
-                        </Badge>
-                      )}
-                      {!isAvailable && (
-                        <Badge variant="destructive" className="font-semibold">Sold</Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      {item.seller?.username && (
-                        <span>Seller: {item.seller.username}</span>
-                      )}
-                      {item.shippingOptions?.shippingCost?.value && (
-                        <span>Shipping: {formatEbayPrice(item.shippingOptions.shippingCost)}</span>
-                      )}
-                    </div>
-
-                    {item.itemId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 h-7 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const ebayUrl = getEbayItemUrl(item.itemId, item.itemWebUrl);
-                          window.open(ebayUrl, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        View on eBay
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-background z-10">
+            <tr className="text-xs text-muted-foreground border-b">
+              <th className="py-3 px-3 text-left w-16">Image</th>
+              <th className="py-3 px-3 text-left">Item Title</th>
+              <th className="py-3 px-3 text-center w-24">Condition</th>
+              <th className="py-3 px-3 text-right w-24">Price</th>
+              <th className="py-3 px-3 text-center w-28">Buying Option</th>
+              <th className="py-3 px-3 text-left w-32">Seller</th>
+              <th className="py-3 px-3 text-right w-24">Shipping</th>
+              <th className="py-3 px-3 text-left w-32">Location</th>
+              <th className="py-3 px-3 text-center w-32">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const isSelected = selectedItem?.itemId === item.itemId;
+              const isAvailable = isEbayItemAvailable(item);
+              
+              return (
+                <EbayTableRow
+                  key={item.itemId}
+                  item={item}
+                  isSelected={isSelected}
+                  isAvailable={isAvailable}
+                  onSelectItem={onSelectItem}
+                />
+              );
+            })}
+          </tbody>
+        </table>
 
         {isFetchingNextPage && (
           <div className="flex items-center justify-center py-4">
@@ -771,6 +756,153 @@ function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNex
         )}
       </div>
     </ScrollArea>
+  );
+}
+
+// eBay Table Row Component
+function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
+  const imageUrl = item?.image?.imageUrl || null;
+  const buyingOption = item.buyingOptions && item.buyingOptions.length > 0 
+    ? formatEbayBuyingOption(item.buyingOptions) 
+    : null;
+  const sellerFeedback = item.seller?.feedbackPercentage 
+    ? `${item.seller.feedbackPercentage}%`
+    : null;
+  const itemLocation = item.itemLocation 
+    ? `${item.itemLocation.city || ''}, ${item.itemLocation.stateOrProvince || ''}`.trim().replace(/^,\s*/, '')
+    : null;
+
+  return (
+    <tr 
+      className={cn(
+        "border-b last:border-b-0 cursor-pointer transition-all",
+        isSelected && "bg-primary/10 ring-2 ring-primary ring-inset",
+        !isSelected && "hover:bg-muted/20",
+        !isAvailable && "opacity-60"
+      )}
+      onClick={() => isAvailable && onSelectItem(item)}
+    >
+      {/* Image */}
+      <td className="py-2 px-3">
+        <div className="w-14 h-14 rounded-md bg-muted overflow-hidden flex-shrink-0 relative">
+          {imageUrl ? (
+            <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+              No img
+            </div>
+          )}
+          {isSelected && (
+            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+              <Check className="w-6 h-6 text-primary" />
+            </div>
+          )}
+        </div>
+      </td>
+
+      {/* Item Title */}
+      <td className="py-2 px-3">
+        <div className="max-w-md">
+          <div className="font-medium text-sm line-clamp-2 mb-1">{item.title}</div>
+          {!isAvailable && (
+            <Badge variant="destructive" className="text-xs">Sold Out</Badge>
+          )}
+          {item.quantityLimitPerBuyer && (
+            <div className="text-xs text-muted-foreground mt-1">Max Qty: {item.quantityLimitPerBuyer}</div>
+          )}
+        </div>
+      </td>
+
+      {/* Condition */}
+      <td className="py-2 px-3 text-center">
+        {item.condition ? (
+          <Badge variant="outline" className="text-xs">
+            {formatEbayCondition(item.condition)}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+
+      {/* Price */}
+      <td className="py-2 px-3 text-right">
+        <span className="text-lg font-bold text-primary">
+          {formatEbayPrice(item.price)}
+        </span>
+      </td>
+
+      {/* Buying Option */}
+      <td className="py-2 px-3 text-center">
+        {buyingOption ? (
+          <Badge variant="outline" className="text-xs">
+            {buyingOption.text}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+
+      {/* Seller Info */}
+      <td className="py-2 px-3">
+        <div className="text-sm">
+          {item.seller?.username && (
+            <div className="font-medium truncate">{item.seller.username}</div>
+          )}
+          {sellerFeedback && (
+            <div className="text-xs text-green-600 dark:text-green-400">
+              ⭐ {sellerFeedback}
+            </div>
+          )}
+        </div>
+      </td>
+
+      {/* Shipping Cost */}
+      <td className="py-2 px-3 text-right">
+        {item.shippingOptions?.shippingCost?.value ? (
+          <div className="text-sm">
+            {formatEbayPrice(item.shippingOptions.shippingCost)}
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+        {item.estimatedAvailabilities?.length > 0 && item.estimatedAvailabilities[0]?.estimatedAvailabilityDate && (
+          <div className="text-xs text-muted-foreground mt-1">
+            Est: {new Date(item.estimatedAvailabilities[0].estimatedAvailabilityDate).toLocaleDateString()}
+          </div>
+        )}
+      </td>
+
+      {/* Location */}
+      <td className="py-2 px-3">
+        <div className="text-xs text-muted-foreground truncate">
+          {itemLocation || '—'}
+        </div>
+        {item.itemId && (
+          <div className="text-xs text-muted-foreground mt-1">
+            ID: {item.itemId.slice(-8)}
+          </div>
+        )}
+      </td>
+
+      {/* Actions */}
+      <td className="py-2 px-3">
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-8 px-3"
+            onClick={(e) => {
+              e.stopPropagation();
+              const ebayUrl = getEbayItemUrl(item.itemId, item.itemWebUrl);
+              window.open(ebayUrl, "_blank", "noopener,noreferrer");
+            }}
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            View
+          </Button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
