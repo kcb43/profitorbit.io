@@ -208,6 +208,10 @@ export default function ProductSearch() {
 
       console.log('[ProductSearch] Fetching:', `${ORBEN_API_URL}/v1/search?${params}`);
 
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:209',message:'ProductSearch page params',data:{query:debouncedQuery,paramsString:params.toString(),fullUrl:`${ORBEN_API_URL}/v1/search?${params}`,hasToken:!!token,page:currentPage},timestamp:Date.now(),hypothesisId:'A,D,E'})}).catch(()=>{});
+      // #endregion
+
       const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -252,6 +256,10 @@ export default function ProductSearch() {
         providers: data.providers,
         firstThreeItems: data.items?.slice(0, 3)
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:254',message:'ProductSearch page response',data:{query:debouncedQuery,itemCount:data.items?.length||0,hasItems:!!(data.items?.length),providers:data.providers,cached:data.providers?.[0]?.cached,page:currentPage},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(()=>{});
+      // #endregion
 
       // Extract quota information from providers
       if (data.providers && Array.isArray(data.providers)) {
