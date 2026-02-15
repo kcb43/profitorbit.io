@@ -781,7 +781,7 @@ fastify.post('/search', async (request, reply) => {
   }));
   // #endregion
   
-  const { query, providers: requestedProviders, country = 'US', userId, limit = 20, page = 1 } = request.body;
+  const { query, providers: requestedProviders, country = 'US', userId, limit = 20, page = 1, cache_bust } = request.body;
 
   if (!query || !query.trim()) {
     return reply.code(400).send({ error: 'Missing query' });
@@ -831,7 +831,7 @@ fastify.post('/search', async (request, reply) => {
     }));
 
     // Check for cache_bust parameter to force fresh search
-    const cacheBust = body.cache_bust;
+    const cacheBust = cache_bust;
     
     // Check cache first (skip if cache_bust is present)
     const cached = !cacheBust ? await redis.get(cacheKey) : null;
