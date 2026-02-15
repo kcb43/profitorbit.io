@@ -142,6 +142,70 @@ async function scoreDeal(deal) {
 }
 
 // ==========================================
+// Create deal notification for users
+// ==========================================
+async function createDealNotification(deal) {
+  try {
+    // Only notify for high-scoring deals (70+)
+    if (deal.score < 70) {
+      return;
+    }
+
+    // Get all users who have deal notifications enabled
+    const { data: users, error: usersError } = await supabase
+      .from('notification_preferences')
+      .select('user_id, deals_enabled, deals_max_per_day')
+      .eq('deals_enabled', true)
+      .eq('in_app_enabled', true);
+
+    if (usersError || !users || users.length === 0) {
+      return;
+    }
+
+    console.log(`[Notifications] Creating deal alert for ${users.length} users (score: ${deal.score})`);
+
+    // Create notifications for each user
+    for (const user of users) {
+      // Check if user has hit their daily limit
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: todayNotifs } = await supabase
+        .from('user_notifications')
+        .select('id')
+        .eq('user_id', user.user_id)
+        .eq('type', 'deal_alert')
+        .gte('created_at', today.toISOString());
+
+      if (todayNotifs && todayNotifs.length >= user.deals_max_per_day) {
+        continue; // Skip this user, they've hit their limit
+      }
+
+      // Create the notification
+      await supabase
+        .from('user_notifications')
+        .insert([{
+          user_id: user.user_id,
+          type: 'deal_alert',
+          title: `🔥 Hot Deal Alert!`,
+          body: `${deal.title.slice(0, 80)}${deal.title.length > 80 ? '...' : ''}`,
+          deep_link: `orben://deals?dealId=${deal.id}`,
+          meta: {
+            deal_id: deal.id,
+            score: deal.score,
+            merchant: deal.merchant,
+            price: deal.price
+          }
+        }]);
+    }
+
+    console.log(`[Notifications] Deal notifications created successfully`);
+  } catch (error) {
+    console.error('[Notifications] Error creating deal notifications:', error);
+  }
+}
+
+// ==========================================
 // Extract image from RSS item
 // ==========================================
 function extractImage(item) {
@@ -293,6 +357,9 @@ async function ingestSource(source) {
             type: 'created',
             payload: { source: source.name, score }
           }]);
+
+          // Create banner notifications for high-scoring deals
+          await createDealNotification(newDeal);
 
           console.log(`[${source.name}] Created deal: ${title.slice(0, 50)}... (score: ${score})`);
         }
