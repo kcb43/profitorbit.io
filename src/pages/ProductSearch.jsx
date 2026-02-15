@@ -40,10 +40,12 @@ export default function ProductSearch() {
         setDisplayLimit(10); // Reset display limit on new search
         setCurrentPage(1); // Reset to page 1 for new search
         setTotalFetched(0); // Reset total fetched on new search
+        setAccumulatedItems([]); // Clear accumulated items for new search
       }, 500); // AGGRESSIVE: Reduced to 500ms (was 800ms) - faster searches
     } else {
       // Clear results if query is too short
       setDebouncedQuery('');
+      setAccumulatedItems([]); // Also clear items when query is cleared
     }
 
     // Cleanup
@@ -280,6 +282,9 @@ export default function ProductSearch() {
     setTotalFetched(0); // Reset fetch tracking
   };
 
+  // Track last query to detect new searches
+  const lastQueryRef = useRef('');
+  
   // Accumulate items when new results arrive
   useEffect(() => {
     console.log('[DEBUG-ACCUM] Accumulation useEffect triggered', {
@@ -287,23 +292,29 @@ export default function ProductSearch() {
       currentItemCount: searchResults?.items?.length,
       accumulatedLength: accumulatedItems.length,
       currentPage,
-      isLoadingMore
+      isLoadingMore,
+      currentQuery: debouncedQuery,
+      lastQuery: lastQueryRef.current
     });
     
     if (!searchResults?.items) return;
     
     const currentItemCount = searchResults.items.length;
     
+    // Check if this is a NEW search (query changed)
+    const isNewSearch = debouncedQuery !== lastQueryRef.current && currentPage === 1;
+    
     console.log('[DEBUG-ACCUM] Checking replacement condition', {
       currentItemCount,
       accumulatedLength: accumulatedItems.length,
       currentPage: currentPage,
       isLoadingMore: isLoadingMore,
-      isNewSearch: currentPage === 1 && !isLoadingMore
+      isNewSearch,
+      queryChanged: debouncedQuery !== lastQueryRef.current
     });
     
     // If we got 0 items on a "load more" request, keep existing items and show error
-    if (currentItemCount === 0 && isLoadingMore) {
+    if (currentItemCount === 0 && (isLoadingMore || currentPage > 1)) {
       console.log('[DEBUG-ACCUM] Timeout - keeping existing items', {
         accumulatedLength: accumulatedItems.length
       });
@@ -316,13 +327,17 @@ export default function ProductSearch() {
       return; // CRITICAL: Return early to prevent replacing items
     }
     
-    // If this is page 1 and not a load more, it's a new search - replace everything
-    if (currentPage === 1 && !isLoadingMore) {
-      console.log('[DEBUG-ACCUM] REPLACING all items (new search detected)', {
+    // If this is a NEW search (query changed), replace everything
+    if (isNewSearch) {
+      console.log('[DEBUG-ACCUM] REPLACING all items (NEW search detected)', {
+        oldQuery: lastQueryRef.current,
+        newQuery: debouncedQuery,
         oldCount: accumulatedItems.length,
         newCount: currentItemCount,
         firstItemTitle: searchResults.items[0]?.title
       });
+      
+      lastQueryRef.current = debouncedQuery; // Update last query
       
       // Mark items as not loaded yet
       const itemsWithLoadingState = searchResults.items.map(item => ({
@@ -337,9 +352,10 @@ export default function ProductSearch() {
       // Pre-fetch merchant offers for items with immersive_product_page_token
       prefetchMerchantOffers(itemsWithLoadingState);
     } 
-    // If this is page 2+, accumulate the new items
-    else if (currentPage > 1) {
-      console.log('[DEBUG-ACCUM] ACCUMULATING items (page 2+)', {
+    // If this is the SAME query but page 2+, accumulate the new items
+    else if (currentPage > 1 && debouncedQuery === lastQueryRef.current) {
+      console.log('[DEBUG-ACCUM] ACCUMULATING items (same query, page 2+)', {
+        query: debouncedQuery,
         oldCount: accumulatedItems.length,
         newCount: currentItemCount,
         currentPage: currentPage,
@@ -394,7 +410,15 @@ export default function ProductSearch() {
       
       setIsLoadingMore(false);
     }
-  }, [searchResults?.items, currentPage]); // Add currentPage to dependencies
+    // If page 1 and query hasn't changed, it's just a refetch - keep existing items
+    else if (currentPage === 1 && debouncedQuery === lastQueryRef.current && accumulatedItems.length > 0) {
+      console.log('[DEBUG-ACCUM] KEEPING items (page 1 refetch, same query)', {
+        query: debouncedQuery,
+        itemCount: accumulatedItems.length
+      });
+      // Don't replace items on refetch
+    }
+  }, [searchResults?.items, currentPage, debouncedQuery]); // Add debouncedQuery to dependencies
 
   // Pre-fetch direct merchant links for products with immersive tokens
   const prefetchMerchantOffers = async (items) => {
@@ -520,6 +544,49 @@ export default function ProductSearch() {
       return newPage;
     });
   };
+
+  // Infinite scroll: Auto-load more when near bottom of page
+  useEffect(() => {
+    if (!canLoadMore) return; // Don't set up listener if can't load more
+    
+    const handleScroll = () => {
+      // Check if user is near bottom (within 500px)
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const bottomPosition = document.documentElement.scrollHeight;
+      const distanceFromBottom = bottomPosition - scrollPosition;
+      
+      console.log('[INFINITE-SCROLL] Scroll check', {
+        distanceFromBottom,
+        canLoadMore,
+        isLoadingMore,
+        isLoading
+      });
+      
+      // If within 500px of bottom and can load more
+      if (distanceFromBottom < 500 && canLoadMore && !isLoadingMore && !isLoading) {
+        console.log('[INFINITE-SCROLL] Triggering auto-load');
+        handleLoadMore();
+      }
+    };
+    
+    // Throttle scroll events (check at most once per 200ms)
+    let throttleTimeout;
+    const throttledScroll = () => {
+      if (throttleTimeout) return;
+      throttleTimeout = setTimeout(() => {
+        handleScroll();
+        throttleTimeout = null;
+      }, 200);
+    };
+    
+    window.addEventListener('scroll', throttledScroll);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('scroll', throttledScroll);
+      if (throttleTimeout) clearTimeout(throttleTimeout);
+    };
+  }, [canLoadMore, isLoadingMore, isLoading, currentPage]); // Re-attach when these change
 
   // No longer need this useEffect - handled in accumulation logic above
 
