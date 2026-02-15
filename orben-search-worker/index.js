@@ -282,14 +282,13 @@ class SerpApiGoogleProvider extends SearchProvider {
       const requestStartTime = Date.now();
       
       // SerpAPI parameters for Google Shopping
+      // CRITICAL: Use engine=google_shopping (NOT engine=google with tbm=shop)
+      // The google_shopping engine returns immersive_product_page_token for each product
       const params = {
-        engine: 'google',
+        engine: 'google_shopping',
         q: query,
-        tbm: 'shop', // CRITICAL: Tell Google to do a Shopping search
-        location: country === 'US' ? 'United States' : country,
         hl: 'en',
         gl: country.toLowerCase(),
-        google_domain: 'google.com',
         api_key: this.apiKey,
         num: Math.min(limit, 100), // SerpAPI supports up to 100 results
         start: (page - 1) * limit // SerpAPI uses 'start' for pagination offset
@@ -315,6 +314,15 @@ class SerpApiGoogleProvider extends SearchProvider {
         hasInlineShoppingResults: !!response.data?.inline_shopping_results,
         inlineCount: response.data?.inline_shopping_results?.length || 0
       }));
+      
+      // DEBUG: Log first product to see all available fields
+      if (response.data?.shopping_results?.[0]) {
+        console.log('[SerpAPI] First product fields:', JSON.stringify({
+          availableFields: Object.keys(response.data.shopping_results[0]),
+          hasImmersiveToken: !!response.data.shopping_results[0].immersive_product_page_token,
+          immersiveTokenValue: response.data.shopping_results[0].immersive_product_page_token?.substring(0, 50)
+        }));
+      }
 
       // Transform SerpAPI response to our standard format
       const items = [];
