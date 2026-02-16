@@ -38394,22 +38394,23 @@ export default function CrosslistComposer() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden">
       {/* Mobile Layout - Keep existing structure */}
-      <div className="lg:hidden max-w-full mx-auto space-y-4 px-3 py-4 min-w-0">
+      <div className="lg:hidden max-w-full mx-auto space-y-3 px-2 py-3 min-w-0">
         {/* Header */}
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0 flex-1">
             <Button
               variant="ghost"
+              size="sm"
               onClick={() => navigate(createPageUrl("Crosslist"))}
-              className="mb-2 -ml-2"
+              className="mb-1 -ml-2 h-8 text-xs"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-3 h-3 mr-1" />
               Back to Crosslist
             </Button>
-            <h1 className="text-xl font-bold text-foreground truncate">
+            <h1 className="text-lg font-bold text-foreground truncate">
               {bulkSelectedItems.length > 1 ? "Bulk Crosslist" : "Compose Listing"}
             </h1>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
               {bulkSelectedItems.length > 1
                 ? `Editing ${bulkSelectedItems.length} items. Fill in the general details below.`
                 : "Fill in the general details. Use Smart Listing to list to multiple marketplaces."}
@@ -38419,11 +38420,11 @@ export default function CrosslistComposer() {
 
         {/* eBay Account Connection Section - At Top (Only show on eBay form) */}
         {activeForm === "ebay" && (
-        <div className="rounded-lg border border-muted-foreground/30 bg-card p-4 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="rounded-lg border border-muted-foreground/30 bg-card p-3 space-y-2">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div className="flex items-center gap-2">
-              <img src={EBAY_ICON_URL} alt="eBay" className="w-5 h-5" />
-              <Label className="text-base font-semibold">eBay Account</Label>
+              <img src={EBAY_ICON_URL} alt="eBay" className="w-4 h-4" />
+              <Label className="text-sm font-semibold">eBay Account</Label>
             </div>
             {ebayToken ? (
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -38444,20 +38445,20 @@ export default function CrosslistComposer() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
             {/* Status */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">Status</Label>
-              <div className="flex items-center gap-2">
+              <Label className="text-[10px] text-muted-foreground mb-0.5">Status</Label>
+              <div className="flex items-center gap-1.5">
                 {ebayToken ? (
                   <>
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400">Connected</span>
                   </>
                 ) : (
                   <>
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                    <span className="text-xs font-medium text-red-600 dark:text-red-400">Not Connected</span>
                   </>
                 )}
               </div>
@@ -38465,8 +38466,8 @@ export default function CrosslistComposer() {
 
             {/* Token Expires */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">Token Expires</Label>
-              <div className="text-sm">
+              <Label className="text-[10px] text-muted-foreground mb-0.5">Token Expires</Label>
+              <div className="text-xs">
                 {ebayToken?.expires_at ? (
                   <span>{new Date(ebayToken.expires_at).toLocaleDateString()}</span>
                 ) : (
@@ -38477,8 +38478,8 @@ export default function CrosslistComposer() {
 
             {/* eBay Account (Username) */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">eBay Account</Label>
-              <div className="text-sm">
+              <Label className="text-[10px] text-muted-foreground mb-0.5">eBay Account</Label>
+              <div className="text-xs">
                 {ebayUsername ? (
                   <span className="font-medium">{ebayUsername}</span>
                 ) : (
@@ -38492,11 +38493,11 @@ export default function CrosslistComposer() {
 
         {/* Facebook Account Connection Section - At Top (Only show on Facebook form) */}
         {activeForm === "facebook" && (
-        <div className="rounded-lg border border-muted-foreground/30 bg-card p-4 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="rounded-lg border border-muted-foreground/30 bg-card p-3 space-y-2">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div className="flex items-center gap-2">
-              <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-5 h-5" />
-              <Label className="text-base font-semibold">Facebook Account</Label>
+              <img src={FACEBOOK_ICON_URL} alt="Facebook" className="w-4 h-4" />
+              <Label className="text-sm font-semibold">Facebook Account</Label>
             </div>
             {facebookConnected ? (
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -38544,20 +38545,20 @@ export default function CrosslistComposer() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
             {/* Status */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">Status</Label>
-              <div className="flex items-center gap-2">
+              <Label className="text-[10px] text-muted-foreground mb-0.5">Status</Label>
+              <div className="flex items-center gap-1.5">
                 {facebookConnected ? (
                   <>
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400">Connected</span>
                   </>
                 ) : (
                   <>
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                    <span className="text-xs font-medium text-red-600 dark:text-red-400">Not Connected</span>
                   </>
                 )}
               </div>
@@ -38569,8 +38570,8 @@ export default function CrosslistComposer() {
             {/* Logged in as - only show when connected */}
             {facebookConnected && (
               <div className="text-right">
-                <Label className="text-xs text-muted-foreground mb-1">Logged in as</Label>
-                <div className="text-sm">
+                <Label className="text-[10px] text-muted-foreground mb-0.5">Logged in as</Label>
+                <div className="text-xs">
                   {facebookUsername ? (
                     <span className="font-medium">{cleanUsername(facebookUsername)}</span>
                   ) : (
@@ -38638,11 +38639,11 @@ export default function CrosslistComposer() {
 
         {/* Mercari Connection Status Bar - Only shown when Mercari form is active */}
         {activeForm === "mercari" && (
-          <div className="rounded-lg border border-muted-foreground/30 bg-card p-4 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="rounded-lg border border-muted-foreground/30 bg-card p-3 space-y-2">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
               <div className="flex items-center gap-2">
-                <img src={MERCARI_ICON_URL} alt="Mercari" className="w-5 h-5" />
-                <Label className="text-base font-semibold">Mercari Account</Label>
+                <img src={MERCARI_ICON_URL} alt="Mercari" className="w-4 h-4" />
+                <Label className="text-sm font-semibold">Mercari Account</Label>
               </div>
               {mercariConnected ? (
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -38679,20 +38680,20 @@ export default function CrosslistComposer() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
               {/* Status */}
               <div>
-                <Label className="text-xs text-muted-foreground mb-1">Connection Status</Label>
-                <div className="flex items-center gap-2">
+                <Label className="text-[10px] text-muted-foreground mb-0.5">Connection Status</Label>
+                <div className="flex items-center gap-1.5">
                   {mercariConnected ? (
                     <>
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                      <span className="text-xs font-medium text-green-600 dark:text-green-400">Connected</span>
                     </>
                   ) : (
                     <>
-                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                      <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400">Not Connected</span>
                     </>
                   )}
                 </div>
@@ -38720,10 +38721,10 @@ export default function CrosslistComposer() {
         {/* Smart Listing handles multi-marketplace logic */}
 
         {/* Form Content */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* General Form */}
           {activeForm === "general" && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
@@ -38918,14 +38919,14 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Item Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-3">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+              <div className="flex items-center justify-between pb-1.5 border-b mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Label className="text-xs font-medium">Item Details</Label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-3">
                 <div>
                   <Label htmlFor="general-title" className="text-xs mb-1 block">Title <span className="text-red-500">*</span></Label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
