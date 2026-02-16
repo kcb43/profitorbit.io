@@ -22,7 +22,7 @@ export function SmartListingSection({ onOpenModal }) {
         </span>
       </Button>
       <p className="text-[10px] sm:text-xs text-muted-foreground text-center mt-1 sm:mt-2">
-        AI-powered multi-marketplace listing with auto-fill & validation
+        Intelligent multi-marketplace listing with auto-fill & validation
       </p>
     </div>
   );

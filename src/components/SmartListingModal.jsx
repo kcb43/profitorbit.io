@@ -1,6 +1,6 @@
 /**
  * SmartListingModal - Unified modal for multi-marketplace listing workflow
- * Features: connection checks, marketplace selection, AI auto-fill toggle, fixes panel
+ * Features: connection checks, marketplace selection, auto-fill toggle, fixes panel
  */
 
 import React, { useState, useEffect } from 'react';
@@ -268,7 +268,7 @@ export default function SmartListingModal({
             <div className="flex-1 space-y-1">
               <Label htmlFor="auto-mode" className="cursor-pointer font-medium flex items-center gap-2">
                 <Zap className="w-4 h-4" />
-                AI Auto-fill Everything
+                Generate Auto-fill
               </Label>
               <p className="text-xs text-muted-foreground">
                 High confidence fields (≥85%) filled automatically. Low confidence shown for review.
@@ -289,7 +289,7 @@ export default function SmartListingModal({
                 Manual Review Mode
               </Label>
               <p className="text-xs text-muted-foreground">
-                Review and approve all AI suggestions before listing.
+                Review and approve all suggestions before listing.
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ export default function SmartListingModal({
       <div className="text-center space-y-1">
         <h3 className="text-base sm:text-lg font-semibold">Validating Listings</h3>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          Checking {selectedCount} marketplace{selectedCount !== 1 ? 's' : ''} and running AI suggestions...
+          Checking {selectedCount} marketplace{selectedCount !== 1 ? 's' : ''} and generating suggestions...
         </p>
       </div>
     </div>
@@ -504,7 +504,7 @@ export default function SmartListingModal({
   const getModalDescription = () => {
     switch (modalState) {
       case 'idle':
-        return 'List to multiple marketplaces with AI-powered auto-fill and validation';
+        return 'List to multiple marketplaces with intelligent auto-fill and validation';
       case 'validating':
         return 'Please wait while we validate your listings...';
       case 'ready':
