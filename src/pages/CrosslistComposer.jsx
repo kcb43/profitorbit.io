@@ -35642,11 +35642,6 @@ export default function CrosslistComposer() {
     console.log('🎯 Build Time:', new Date().toISOString());
   }, [smartListingEnabled]);
 
-  // Debug: Log smartListing object after it's initialized
-  useEffect(() => {
-    console.log('🎯 smartListing object:', smartListing);
-    console.log('🎯 selectedMarketplaces:', smartListing?.selectedMarketplaces);
-  }, [smartListing]);
 
   // Find similar items for description generation
   const similarItems = useMemo(() => {
@@ -37534,6 +37529,12 @@ export default function CrosslistComposer() {
     handleListOnMarketplace, // Pass existing submit handler
     smartListingEnabled // Pass feature flag to hook
   );
+
+  // Debug: Log smartListing object after it's initialized
+  useEffect(() => {
+    console.log('🎯 smartListing object:', smartListing);
+    console.log('🎯 selectedMarketplaces:', smartListing?.selectedMarketplaces);
+  }, [smartListing]);
 
   const getComposerItemIdsForSync = () => {
     try {
