@@ -89,6 +89,36 @@ export default function SmartListingModal({
     }
   }, [modalState, preflightResult]);
   
+  // Handle marketplace connection via popup
+  const handleMarketplaceConnect = (marketplaceId) => {
+    const width = 500;
+    const height = 650;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    const marketplaceUrls = {
+      ebay: 'https://www.ebay.com/',
+      mercari: 'https://www.mercari.com/',
+      facebook: 'https://www.facebook.com/marketplace/',
+    };
+    
+    const url = marketplaceUrls[marketplaceId];
+    if (!url) return;
+    
+    const windowName = `${marketplaceId}Login_${Date.now()}`;
+    
+    window.open(
+      url,
+      windowName,
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`
+    );
+    
+    // Call the onReconnect handler if provided (for status polling)
+    if (onReconnect) {
+      onReconnect(marketplaceId);
+    }
+  };
+  
   // Get marketplace data
   const marketplaces = [
     { id: 'ebay', name: 'eBay', connected: connectionStatus.ebay },
@@ -143,7 +173,7 @@ export default function SmartListingModal({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onReconnect?.(marketplace.id)}
+                onClick={() => handleMarketplaceConnect(marketplace.id)}
                 className="h-7 text-xs"
               >
                 Connect
