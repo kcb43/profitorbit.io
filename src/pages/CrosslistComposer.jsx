@@ -38392,12 +38392,12 @@ export default function CrosslistComposer() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden w-full">
       {/* Mobile Layout - Keep existing structure */}
-      <div className="lg:hidden max-w-full mx-auto space-y-3 px-2 py-3 min-w-0">
+      <div className="lg:hidden w-full max-w-full mx-auto space-y-3 px-2 py-3 min-w-0 overflow-x-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2 min-w-0 w-full">
+          <div className="min-w-0 flex-1 w-full overflow-hidden">
             <Button
               variant="ghost"
               size="sm"

@@ -32,6 +32,24 @@ body {
     overflow-x: hidden;
     max-width: 100vw;
   }
+  
+  /* Prevent all inputs and form elements from overflowing */
+  input, textarea, select, button {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Prevent all containers from overflowing */
+  div, section, article, main {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Specific fix for compose listing page */
+  .lg\:hidden {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
 }
 
 
