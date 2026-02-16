@@ -104,6 +104,10 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     if (!enabled) return;
     setSelectedMarketplaces(prev => {
       if (checked) {
+        // Ensure no duplicates
+        if (prev.includes(marketplace)) {
+          return prev;
+        }
         return [...prev, marketplace];
       } else {
         return prev.filter(mp => mp !== marketplace);

@@ -337,7 +337,7 @@ export default function SmartListingModal({
         </p>
       </div>
       <div className="flex flex-wrap gap-2 mt-4 justify-center">
-        {selectedMarketplaces.map(id => {
+        {[...new Set(selectedMarketplaces)].map(id => {
           const marketplace = marketplaces.find(m => m.id === id);
           return (
             <Badge key={id} variant="outline" className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
