@@ -199,7 +199,11 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
   }
   
   // Price validation
-  if (!ebayForm.buyItNowPrice && !generalForm.price) {
+  const ebayPrice = ebayForm.buyItNowPrice || generalForm.price;
+  const ebayPriceStr = String(ebayPrice || '').trim();
+  const ebayPriceNum = Number(ebayPriceStr);
+  
+  if (!ebayPriceStr || ebayPriceStr === '' || ebayPriceStr === '0') {
     issues.push({
       marketplace: 'ebay',
       field: 'buyItNowPrice',
@@ -208,18 +212,15 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       message: 'Buy It Now Price is required',
       patchTarget: 'ebay'
     });
-  } else {
-    const price = Number(ebayForm.buyItNowPrice || generalForm.price);
-    if (isNaN(price) || price <= 0) {
-      issues.push({
-        marketplace: 'ebay',
-        field: 'buyItNowPrice',
-        type: 'invalid',
-        severity: 'blocking',
-        message: 'Price must be a valid number greater than 0',
-        patchTarget: 'ebay'
-      });
-    }
+  } else if (isNaN(ebayPriceNum) || ebayPriceNum <= 0) {
+    issues.push({
+      marketplace: 'ebay',
+      field: 'buyItNowPrice',
+      type: 'invalid',
+      severity: 'blocking',
+      message: 'Price must be a valid number greater than 0',
+      patchTarget: 'ebay'
+    });
   }
   
   // Quantity validation
@@ -499,7 +500,10 @@ export function validateMercariForm(generalForm, mercariForm) {
   
   // Price validation
   const price = mercariForm.price || generalForm.price;
-  if (!price) {
+  const priceStr = String(price || '').trim();
+  const priceNum = Number(priceStr);
+  
+  if (!priceStr || priceStr === '' || priceStr === '0') {
     issues.push({
       marketplace: 'mercari',
       field: 'price',
@@ -508,7 +512,7 @@ export function validateMercariForm(generalForm, mercariForm) {
       message: 'Price is required',
       patchTarget: 'general'
     });
-  } else if (Number(price) <= 0 || isNaN(Number(price))) {
+  } else if (priceNum <= 0 || isNaN(priceNum)) {
     issues.push({
       marketplace: 'mercari',
       field: 'price',
@@ -613,7 +617,10 @@ export function validateFacebookForm(generalForm, facebookForm) {
   
   // Price validation
   const price = facebookForm.price || generalForm.price;
-  if (!price) {
+  const priceStr = String(price || '').trim();
+  const priceNum = Number(priceStr);
+  
+  if (!priceStr || priceStr === '' || priceStr === '0') {
     issues.push({
       marketplace: 'facebook',
       field: 'price',
@@ -622,7 +629,7 @@ export function validateFacebookForm(generalForm, facebookForm) {
       message: 'Price is required',
       patchTarget: 'general'
     });
-  } else if (Number(price) <= 0 || isNaN(Number(price))) {
+  } else if (priceNum <= 0 || isNaN(priceNum)) {
     issues.push({
       marketplace: 'facebook',
       field: 'price',
