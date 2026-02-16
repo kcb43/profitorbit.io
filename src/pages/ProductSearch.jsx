@@ -936,9 +936,10 @@ export default function ProductSearch() {
               }>
                 {displayedItems.map((item, idx) => {
                   // Always use V1 - Modern Minimal
+                  const cardProps = { item, showDebugData: showDebugInfo };
                   return viewMode === 'grid' 
-                    ? <ProductCardV1Grid key={idx} item={item} />
-                    : <ProductCardV1List key={idx} item={item} />;
+                    ? <ProductCardV1Grid key={idx} {...cardProps} />
+                    : <ProductCardV1List key={idx} {...cardProps} />;
                 })}
               </div>
               
@@ -985,9 +986,10 @@ export default function ProductSearch() {
                 }>
                   {groupedByMerchant[merchant].map((item, idx) => {
                     // Always use V1 - Modern Minimal
+                    const cardProps = { item, showDebugData: showDebugInfo };
                     return viewMode === 'grid' 
-                      ? <ProductCardV1Grid key={idx} item={item} />
-                      : <ProductCardV1List key={idx} item={item} />;
+                      ? <ProductCardV1Grid key={idx} {...cardProps} />
+                      : <ProductCardV1List key={idx} {...cardProps} />;
                   })}
                 </div>
               </TabsContent>

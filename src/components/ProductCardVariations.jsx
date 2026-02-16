@@ -80,12 +80,13 @@ const extractItemData = (item) => ({
 // ========================================
 // V1: MODERN MINIMAL - Clean, spacious, professional (Dark mode compatible)
 // ========================================
-export function ProductCardV1Grid({ item }) {
+export function ProductCardV1Grid({ item, showDebugData = false }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
 
   // Sort merchant offers by price (low to high)
   const sortedOffers = [...(data.merchantOffers || [])].sort((a, b) => 
@@ -175,6 +176,25 @@ export function ProductCardV1Grid({ item }) {
         </div>
       </CardContent>
 
+      {/* Raw Data - Collapsible Section (Debug Mode) */}
+      {showDebugData && (
+        <Collapsible open={showRawData} onOpenChange={setShowRawData}>
+          <CollapsibleTrigger className="w-full border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <span className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              🐛 Raw API Data
+            </span>
+            {showRawData ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t border-gray-200 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/20">
+            <div className="p-4 max-h-96 overflow-y-auto">
+              <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-mono">
+                {JSON.stringify(item, null, 2)}
+              </pre>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {/* Other Stores - Collapsible Section at Bottom */}
       {sortedOffers.length > 1 && (
         <Collapsible open={showMoreStores} onOpenChange={setShowMoreStores}>
@@ -220,12 +240,13 @@ export function ProductCardV1Grid({ item }) {
   );
 }
 
-export function ProductCardV1List({ item }) {
+export function ProductCardV1List({ item, showDebugData = false }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
 
   // Sort merchant offers by price (low to high)
   const sortedOffers = [...(data.merchantOffers || [])].sort((a, b) => 
@@ -340,6 +361,25 @@ export function ProductCardV1List({ item }) {
           </Button>
         </div>
       </div>
+
+      {/* Raw Data - Collapsible Section (Debug Mode) */}
+      {showDebugData && (
+        <Collapsible open={showRawData} onOpenChange={setShowRawData}>
+          <CollapsibleTrigger className="w-full border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <span className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              🐛 Raw API Data
+            </span>
+            {showRawData ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t border-gray-200 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/20">
+            <div className="p-4 max-h-96 overflow-y-auto">
+              <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-mono">
+                {JSON.stringify(item, null, 2)}
+              </pre>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {/* Other Stores - Collapsible Section at Bottom */}
       {sortedOffers.length > 1 && (

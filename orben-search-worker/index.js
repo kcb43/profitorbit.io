@@ -291,16 +291,20 @@ class SerpApiGoogleProvider extends SearchProvider {
       const requestStartTime = Date.now();
       
       // SerpAPI parameters for Google Shopping
-      // CRITICAL: Use engine=google_shopping (NOT engine=google with tbm=shop)
-      // The google_shopping engine returns immersive_product_page_token for each product
+      // Support BOTH engines:
+      // 1. engine=google - regular search that returns immersive_products
+      // 2. engine=google_shopping - dedicated shopping that returns shopping_results
+      // We'll use engine=google by default to match SerpAPI playground behavior
       const params = {
-        engine: 'google_shopping',
+        engine: 'google',  // Changed from 'google_shopping' to 'google'
         q: query,
         hl: 'en',
         gl: country.toLowerCase(),
         api_key: this.apiKey,
         num: Math.min(limit, 100), // SerpAPI supports up to 100 results
-        start: (page - 1) * limit // SerpAPI uses 'start' for pagination offset
+        start: (page - 1) * limit, // SerpAPI uses 'start' for pagination offset
+        location: 'Austin, Texas, United States', // Match your playground settings
+        uule: 'w+CAIQICIaQXVzdGluLFRleGFzLFVuaXRlZCBTdGF0ZXM' // Encoded location
       };
       
       console.log('[SerpAPI] Request parameters', JSON.stringify({
@@ -320,25 +324,75 @@ class SerpApiGoogleProvider extends SearchProvider {
         duration: requestDuration,
         hasShoppingResults: !!response.data?.shopping_results,
         shoppingCount: response.data?.shopping_results?.length || 0,
+        hasImmersiveProducts: !!response.data?.immersive_products,
+        immersiveCount: response.data?.immersive_products?.length || 0,
         hasInlineShoppingResults: !!response.data?.inline_shopping_results,
-        inlineCount: response.data?.inline_shopping_results?.length || 0
+        inlineCount: response.data?.inline_shopping_results?.length || 0,
+        hasOrganicResults: !!response.data?.organic_results,
+        organicCount: response.data?.organic_results?.length || 0,
+        allTopLevelKeys: Object.keys(response.data || {})
       }));
       
       // DEBUG: Log first product to see all available fields
-      if (response.data?.shopping_results?.[0]) {
-        console.log('[SerpAPI] First product fields:', JSON.stringify({
+      if (response.data?.immersive_products?.[0]) {
+        console.log('[SerpAPI] First immersive product fields:', JSON.stringify({
+          availableFields: Object.keys(response.data.immersive_products[0]),
+          hasImmersiveToken: !!response.data.immersive_products[0].immersive_product_page_token,
+          immersiveTokenValue: response.data.immersive_products[0].immersive_product_page_token?.substring(0, 50),
+          title: response.data.immersive_products[0].title,
+          price: response.data.immersive_products[0].price || response.data.immersive_products[0].extracted_price
+        }));
+      } else if (response.data?.shopping_results?.[0]) {
+        console.log('[SerpAPI] First shopping product fields:', JSON.stringify({
           availableFields: Object.keys(response.data.shopping_results[0]),
           hasImmersiveToken: !!response.data.shopping_results[0].immersive_product_page_token,
-          immersiveTokenValue: response.data.shopping_results[0].immersive_product_page_token?.substring(0, 50)
+          immersiveTokenValue: response.data.shopping_results[0].immersive_product_page_token?.substring(0, 50),
+          title: response.data.shopping_results[0].title,
+          price: response.data.shopping_results[0].price || response.data.shopping_results[0].extracted_price
         }));
       }
 
       // Transform SerpAPI response to our standard format
       const items = [];
       
-      // Priority 1: shopping_results (Google Shopping tab results)
-      if (response.data?.shopping_results) {
+      // Priority 1: immersive_products (NEW Google Shopping format)
+      if (response.data?.immersive_products) {
+        console.log(`[SerpAPI] Found immersive_products: ${response.data.immersive_products.length}`);
+        for (const product of response.data.immersive_products) {
+          items.push({
+            title: product.title || 'Untitled',
+            price: product.extracted_price || parseFloat(product.price?.replace(/[^0-9.]/g, '')) || 0,
+            old_price: product.extracted_original_price || null,
+            currency: 'USD',
+            url: product.link || product.serpapi_link || '#',
+            product_link: product.link || '#',
+            image_url: product.thumbnail || null,
+            merchant: product.source || 'Unknown',
+            condition: 'New',
+            shipping: product.delivery?.toLowerCase().includes('free') ? 0 : null,
+            delivery: product.delivery || null,
+            rating: product.rating || null,
+            reviews: product.reviews || null,
+            snippet: null,
+            extensions: product.extensions || [],
+            tag: product.tag || null,
+            badge: null,
+            position: null,
+            multiple_sources: false,
+            // CRITICAL: Include the token to fetch direct merchant links
+            immersive_product_page_token: product.immersive_product_page_token || null,
+            product_id: null,
+            location: product.location || null
+          });
+        }
+      }
+      
+      // Priority 2: shopping_results (Classic Google Shopping tab results)
+      if (items.length < limit && response.data?.shopping_results) {
+        console.log(`[SerpAPI] Found shopping_results: ${response.data.shopping_results.length}`);
         for (const product of response.data.shopping_results) {
+          if (items.length >= limit) break;
+          
           items.push({
             title: product.title || 'Untitled',
             price: product.extracted_price || product.price || 0,
@@ -367,8 +421,9 @@ class SerpApiGoogleProvider extends SearchProvider {
         }
       }
       
-      // Priority 2: inline_shopping_results (if available)
+      // Priority 3: inline_shopping_results (if available)
       if (items.length < limit && response.data?.inline_shopping_results) {
+        console.log(`[SerpAPI] Found inline_shopping_results: ${response.data.inline_shopping_results.length}`);
         for (const product of response.data.inline_shopping_results) {
           if (items.length >= limit) break;
           
@@ -385,6 +440,31 @@ class SerpApiGoogleProvider extends SearchProvider {
             rating: product.rating || null,
             reviews: product.reviews || product.reviews_count || null
           });
+        }
+      }
+      
+      // Priority 4: organic_results (if no shopping results found)
+      if (items.length < limit && response.data?.organic_results) {
+        console.log(`[SerpAPI] Found organic_results: ${response.data.organic_results.length}`);
+        for (const product of response.data.organic_results) {
+          if (items.length >= limit) break;
+          
+          // Only include organic results that look like shopping items
+          if (product.price || product.thumbnail) {
+            items.push({
+              title: product.title || 'Untitled',
+              price: product.extracted_price || parseFloat(product.price?.replace(/[^0-9.]/g, '')) || 0,
+              original_price: product.extracted_original_price || null,
+              currency: 'USD',
+              url: product.link || '#',
+              image_url: product.thumbnail || null,
+              merchant: product.source || new URL(product.link || '').hostname.replace('www.', '') || 'Unknown',
+              condition: 'New',
+              rating: product.rating || null,
+              reviews: product.reviews || null,
+              snippet: product.snippet || null
+            });
+          }
         }
       }
 
@@ -735,8 +815,8 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query, limit = 10, page = 1) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}:${page}`).digest('hex');
-  // v8: Bumped to invalidate stale caches with 0 results (2026-02-15)
-  return `search:v8:${provider}:${country}:${hash}`;
+  // v9: Fixed immersive_products parsing (2026-02-16)
+  return `search:v9:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
