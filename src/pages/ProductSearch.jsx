@@ -820,7 +820,7 @@ export default function ProductSearch() {
                   placeholder="Search products..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className={`text-sm sm:text-base md:text-lg ${isPrefetching ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}`}
+                  className={`text-base md:text-lg ${isPrefetching ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}`}
                 />
                 {/* Subtle prefetch indicator - NO TEXT, just a small pulse */}
                 {isPrefetching && !isLoading && (
