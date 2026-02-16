@@ -29,25 +29,11 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
   const [preflightResult, setPreflightResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // If disabled, return no-op handlers
-  if (!enabled) {
-    return {
-      selectedMarketplaces: [],
-      fixesDialogOpen: false,
-      preflightResult: null,
-      isSubmitting: false,
-      toggleMarketplace: () => {},
-      handleListToSelected: () => {},
-      handleApplyFix: () => {},
-      handleListNow: () => {},
-      closeFixesDialog: () => {},
-    };
-  }
-  
   /**
    * Toggle marketplace selection
    */
   const toggleMarketplace = useCallback((marketplace, checked) => {
+    if (!enabled) return;
     setSelectedMarketplaces(prev => {
       if (checked) {
         return [...prev, marketplace];
@@ -55,12 +41,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
         return prev.filter(mp => mp !== marketplace);
       }
     });
-  }, []);
+  }, [enabled]);
   
   /**
    * Run preflight validation
    */
   const runPreflight = useCallback(async () => {
+    if (!enabled) return null;
     if (selectedMarketplaces.length === 0) {
       toast({
         title: "No marketplaces selected",
@@ -84,12 +71,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     debugLog('Preflight result:', result);
     
     return result;
-  }, [selectedMarketplaces, forms, validationOptions, toast]);
+  }, [enabled, selectedMarketplaces, forms, validationOptions, toast]);
   
   /**
    * Handle "List to Selected" button click
    */
   const handleListToSelected = useCallback(async () => {
+    if (!enabled) return;
     const result = await runPreflight();
     
     if (!result) return;
@@ -118,12 +106,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       
       setFixesDialogOpen(true);
     }
-  }, [runPreflight, toast]);
+  }, [enabled, runPreflight, toast]);
   
   /**
    * Apply a fix to a form field
    */
   const handleApplyFix = useCallback(async (issue, newValue) => {
+    if (!enabled) return;
     debugLog('Applying fix:', { issue, newValue });
     
     const { marketplace, field, patchTarget } = issue;
@@ -147,12 +136,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     if (result) {
       setPreflightResult(result);
     }
-  }, [setMarketplaceForm, runPreflight, toast]);
+  }, [enabled, setMarketplaceForm, runPreflight, toast]);
   
   /**
    * List to all ready marketplaces
    */
   const handleListNow = useCallback(async (marketplacesToList) => {
+    if (!enabled) return;
     if (!marketplacesToList || marketplacesToList.length === 0) {
       toast({
         title: "No marketplaces ready",
@@ -208,7 +198,7 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     } finally {
       setIsSubmitting(false);
     }
-  }, [handleSubmit, toast]);
+  }, [enabled, handleSubmit, toast]);
   
   /**
    * Close fixes dialog
