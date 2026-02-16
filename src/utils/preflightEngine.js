@@ -30,6 +30,8 @@ import {
  * @param {Array} [options.ebayRequiredAspects] - eBay required aspects
  * @param {boolean} [options.isItemsIncludedRequired] - Whether Items Included is required for eBay
  * @param {boolean} [options.useAI] - Whether to use AI auto-fill (default: true if enabled)
+ * @param {boolean} [options.autoApplyHighConfidence] - Auto-apply high confidence (>=0.85) suggestions
+ * @param {Function} [options.onApplyPatch] - Callback to apply a fix: (issue, newValue) => void
  * @returns {PreflightResult} Validation results with AI suggestions
  */
 export async function preflightSelectedMarketplaces(
@@ -40,6 +42,12 @@ export async function preflightSelectedMarketplaces(
   facebookForm,
   options = {}
 ) {
+  const { 
+    autoApplyHighConfidence = false, 
+    onApplyPatch = null,
+    ...validationOptions 
+  } = options;
+  
   const ready = [];
   const fixesNeeded = [];
   
@@ -50,12 +58,12 @@ export async function preflightSelectedMarketplaces(
       switch (marketplace) {
         case 'ebay':
           issues = validateEbayForm(generalForm, ebayForm, {
-            categoryTreeId: options.categoryTreeId,
-            categoriesData: options.ebayCategoriesData,
-            ebayTypeAspect: options.ebayTypeAspect,
-            ebayTypeValues: options.ebayTypeValues,
-            ebayRequiredAspects: options.ebayRequiredAspects,
-            isItemsIncludedRequired: options.isItemsIncludedRequired,
+            categoryTreeId: validationOptions.categoryTreeId,
+            categoriesData: validationOptions.ebayCategoriesData,
+            ebayTypeAspect: validationOptions.ebayTypeAspect,
+            ebayTypeValues: validationOptions.ebayTypeValues,
+            ebayRequiredAspects: validationOptions.ebayRequiredAspects,
+            isItemsIncludedRequired: validationOptions.isItemsIncludedRequired,
           });
           break;
           
@@ -101,7 +109,7 @@ export async function preflightSelectedMarketplaces(
   }
   
   // If AI is enabled and there are issues, get AI suggestions
-  if (options.useAI !== false && fixesNeeded.length > 0) {
+  if (validationOptions.useAI !== false && fixesNeeded.length > 0) {
     try {
       const aiSuggestions = await getAISuggestions(
         selectedMarketplaces,
@@ -126,6 +134,64 @@ export async function preflightSelectedMarketplaces(
             };
           }
         }
+      }
+      
+      // Auto-apply high confidence suggestions if enabled
+      if (autoApplyHighConfidence && onApplyPatch) {
+        console.log('Auto-applying high confidence suggestions...');
+        
+        // Collect all high-confidence fixes to apply
+        const fixesToApply = [];
+        
+        for (const marketplaceData of fixesNeeded) {
+          const { marketplace, issues } = marketplaceData;
+          
+          for (const issue of issues) {
+            if (issue.suggested && issue.suggested.confidence >= 0.85) {
+              fixesToApply.push({
+                marketplace,
+                issue,
+                value: issue.suggested.label,
+              });
+            }
+          }
+        }
+        
+        // Apply fixes
+        for (const { issue, value } of fixesToApply) {
+          try {
+            console.log(`Auto-applying: ${issue.field} = ${value} (confidence: ${issue.suggested.confidence})`);
+            await onApplyPatch(issue, value);
+          } catch (error) {
+            console.error('Error auto-applying fix:', error);
+            // Continue with other fixes
+          }
+        }
+        
+        // Remove auto-applied issues from fixesNeeded
+        for (const marketplaceData of fixesNeeded) {
+          marketplaceData.issues = marketplaceData.issues.filter(
+            issue => !issue.suggested || issue.suggested.confidence < 0.85
+          );
+        }
+        
+        // Re-evaluate which marketplaces are ready after auto-applying fixes
+        const updatedFixesNeeded = [];
+        for (const marketplaceData of fixesNeeded) {
+          const { marketplace, issues } = marketplaceData;
+          const blockingIssues = issues.filter(issue => issue.severity === 'blocking');
+          
+          if (blockingIssues.length === 0) {
+            // Move to ready if no blocking issues remain
+            if (!ready.includes(marketplace)) {
+              ready.push(marketplace);
+            }
+          } else {
+            updatedFixesNeeded.push(marketplaceData);
+          }
+        }
+        
+        return { ready, fixesNeeded: updatedFixesNeeded };
       }
     } catch (error) {
       console.error('Error getting AI suggestions:', error);

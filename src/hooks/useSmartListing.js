@@ -20,14 +20,69 @@ import { debugLog } from '@/config/features';
  * @param {Function} setMarketplaceForm - Function to update marketplace form state
  * @param {Function} handleSubmit - Existing submit handler for individual marketplaces
  * @param {boolean} enabled - Whether Smart Listing is enabled
+ * @param {Object} connections - Marketplace connection status { ebayConnected, mercariConnected, facebookConnected }
  * @returns {Object} Smart listing state and handlers
  */
-export function useSmartListing(forms, validationOptions, setMarketplaceForm, handleSubmit, enabled = true) {
+export function useSmartListing(forms, validationOptions, setMarketplaceForm, handleSubmit, enabled = true, connections = {}) {
   const { toast } = useToast();
+  
+  // Modal state management
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalState, setModalState] = useState('idle'); // 'idle' | 'validating' | 'ready' | 'fixes' | 'listing'
+  const [autoFillMode, setAutoFillMode] = useState('manual'); // 'auto' | 'manual'
+  
+  // Connection status
+  const [connectionStatus, setConnectionStatus] = useState({
+    ebay: false,
+    mercari: false,
+    facebook: false,
+  });
+  
+  // Existing state
   const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
   const [fixesDialogOpen, setFixesDialogOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  /**
+   * Check marketplace connections
+   */
+  const checkConnections = useCallback(() => {
+    if (!enabled) return;
+    
+    debugLog('Checking marketplace connections...', connections);
+    
+    setConnectionStatus({
+      ebay: connections.ebayConnected || false,
+      mercari: connections.mercariConnected || false,
+      facebook: connections.facebookConnected || false,
+    });
+  }, [enabled, connections]);
+  
+  /**
+   * Open modal and check connections
+   */
+  const openModal = useCallback(() => {
+    if (!enabled) return;
+    
+    debugLog('Opening Smart Listing modal');
+    checkConnections();
+    setModalState('idle');
+    setModalOpen(true);
+  }, [enabled, checkConnections]);
+  
+  /**
+   * Close modal
+   */
+  const closeModal = useCallback(() => {
+    if (!enabled) return;
+    
+    debugLog('Closing Smart Listing modal');
+    setModalOpen(false);
+    setModalState('idle');
+    // Reset state when closing
+    setPreflightResult(null);
+  }, [enabled]);
   
   /**
    * Toggle marketplace selection
@@ -41,6 +96,15 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
         return prev.filter(mp => mp !== marketplace);
       }
     });
+  }, [enabled]);
+  
+  /**
+   * Toggle auto-fill mode
+   */
+  const toggleAutoFillMode = useCallback((mode) => {
+    if (!enabled) return;
+    debugLog('Setting auto-fill mode:', mode);
+    setAutoFillMode(mode);
   }, [enabled]);
   
   /**
@@ -58,6 +122,7 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     }
     
     debugLog('Running preflight for marketplaces:', selectedMarketplaces);
+    debugLog('Auto-fill mode:', autoFillMode);
     
     const result = await preflightSelectedMarketplaces(
       selectedMarketplaces,
@@ -65,16 +130,59 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       forms.ebayForm,
       forms.mercariForm,
       forms.facebookForm,
-      validationOptions
+      {
+        ...validationOptions,
+        autoApplyHighConfidence: autoFillMode === 'auto',
+        onApplyPatch: handleApplyFix, // Pass fix handler for auto-apply
+      }
     );
     
     debugLog('Preflight result:', result);
     
     return result;
-  }, [enabled, selectedMarketplaces, forms, validationOptions, toast]);
+  }, [enabled, selectedMarketplaces, forms, validationOptions, autoFillMode, toast]);
   
   /**
-   * Handle "List to Selected" button click
+   * Handle "Start Smart Listing" button click from modal
+   */
+  const handleStartListing = useCallback(async () => {
+    if (!enabled) return;
+    
+    // Transition to validating state
+    setModalState('validating');
+    
+    try {
+      const result = await runPreflight();
+      
+      if (!result) {
+        setModalState('idle');
+        return;
+      }
+      
+      setPreflightResult(result);
+      
+      // If no issues, show ready state
+      if (result.fixesNeeded.length === 0) {
+        debugLog('All marketplaces ready!');
+        setModalState('ready');
+      } else {
+        // Show fixes state
+        debugLog('Issues found, showing fixes panel');
+        setModalState('fixes');
+      }
+    } catch (error) {
+      console.error('Preflight error:', error);
+      toast({
+        title: "Validation error",
+        description: error.message || "Failed to validate listings",
+        variant: "destructive",
+      });
+      setModalState('idle');
+    }
+  }, [enabled, runPreflight, toast]);
+  
+  /**
+   * Handle "List to Selected" button click (legacy for old UI)
    */
   const handleListToSelected = useCallback(async () => {
     if (!enabled) return;
@@ -143,7 +251,11 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
    */
   const handleListNow = useCallback(async (marketplacesToList) => {
     if (!enabled) return;
-    if (!marketplacesToList || marketplacesToList.length === 0) {
+    
+    // Determine marketplaces to list
+    const marketsToList = marketplacesToList || preflightResult?.ready || selectedMarketplaces;
+    
+    if (!marketsToList || marketsToList.length === 0) {
       toast({
         title: "No marketplaces ready",
         description: "Please fix all blocking issues first",
@@ -153,13 +265,14 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     }
     
     setIsSubmitting(true);
-    debugLog('Listing to marketplaces:', marketplacesToList);
+    setModalState('listing');
+    debugLog('Listing to marketplaces:', marketsToList);
     
     const results = [];
     const errors = [];
     
     try {
-      for (const marketplace of marketplacesToList) {
+      for (const marketplace of marketsToList) {
         try {
           debugLog(`Listing to ${marketplace}...`);
           await handleSubmit(marketplace);
@@ -190,24 +303,65 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       }
       
       if (errors.length === 0) {
-        // Close dialog if all successful
+        // Close modal/dialog if all successful
+        setModalOpen(false);
         setFixesDialogOpen(false);
         setSelectedMarketplaces([]);
         setPreflightResult(null);
+        setModalState('idle');
       }
     } finally {
       setIsSubmitting(false);
+      if (errors.length > 0) {
+        // Stay in fixes state if there were errors
+        setModalState('fixes');
+      }
     }
-  }, [enabled, handleSubmit, toast]);
+  }, [enabled, handleSubmit, toast, preflightResult, selectedMarketplaces]);
   
   /**
-   * Close fixes dialog
+   * Close fixes dialog (legacy)
    */
   const closeFixesDialog = useCallback(() => {
     setFixesDialogOpen(false);
   }, []);
   
+  /**
+   * Handle marketplace reconnection
+   */
+  const handleReconnect = useCallback((marketplace) => {
+    if (!enabled) return;
+    
+    debugLog('Reconnect requested for:', marketplace);
+    
+    // Show instructions based on marketplace
+    const instructions = {
+      ebay: "Please connect your eBay account in Settings",
+      mercari: "Open Profit Orbit extension and sign in to Mercari",
+      facebook: "Open Profit Orbit extension and sign in to Facebook",
+    };
+    
+    toast({
+      title: `Connect ${marketplace}`,
+      description: instructions[marketplace] || "Please connect this marketplace",
+      duration: 5000,
+    });
+  }, [enabled, toast]);
+  
   return {
+    // Modal state
+    modalOpen,
+    modalState,
+    openModal,
+    closeModal,
+    
+    // Auto-fill mode
+    autoFillMode,
+    toggleAutoFillMode,
+    
+    // Connection status
+    connectionStatus,
+    
     // State
     selectedMarketplaces,
     fixesDialogOpen,
@@ -216,9 +370,11 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     
     // Handlers
     toggleMarketplace,
-    handleListToSelected,
+    handleStartListing,
+    handleListToSelected, // Keep for legacy
     handleApplyFix,
-    handleListNow: () => handleListNow(preflightResult?.ready || []),
+    handleListNow: () => handleListNow(),
     closeFixesDialog,
+    handleReconnect,
   };
 }

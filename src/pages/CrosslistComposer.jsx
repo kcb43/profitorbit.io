@@ -92,6 +92,7 @@ import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 import { useSmartListing } from '@/hooks/useSmartListing';
 import FixesDialog from '@/components/FixesDialog';
 import { SmartListingSection } from '@/components/SmartListingSection';
+import SmartListingModal from '@/components/SmartListingModal';
 import { useSmartListing as checkSmartListingEnabled } from '@/config/features';
 import { Checkbox } from '@/components/ui/checkbox';
 import { setMercariCategories } from '@/utils/listingValidation';
@@ -37527,7 +37528,13 @@ export default function CrosslistComposer() {
       }
     },
     handleListOnMarketplace, // Pass existing submit handler
-    smartListingEnabled // Pass feature flag to hook
+    smartListingEnabled, // Pass feature flag to hook
+    {
+      // Pass marketplace connection status
+      ebayConnected: !!user, // User logged in means eBay connected
+      mercariConnected,
+      facebookConnected,
+    }
   );
 
   // Debug: Log smartListing object after it's initialized
@@ -41156,18 +41163,25 @@ export default function CrosslistComposer() {
 
               {/* Smart Listing Section - List to Multiple Marketplaces */}
               {smartListingEnabled && (
-                <div style={{backgroundColor: 'red', padding: '20px', margin: '20px 0', color: 'white', fontSize: '24px', fontWeight: 'bold'}}>
-                  ⚠️ SMART LISTING ENABLED - YOU SHOULD SEE THIS
-                </div>
-              )}
-              {smartListingEnabled && (
-                <SmartListingSection
-                  selectedMarketplaces={smartListing.selectedMarketplaces}
-                  toggleMarketplace={smartListing.toggleMarketplace}
-                  handleListToSelected={smartListing.handleListToSelected}
-                  isSubmitting={smartListing.isSubmitting}
-                  isSaving={isSaving}
-                />
+                <>
+                  <SmartListingSection onOpenModal={smartListing.openModal} />
+                  <SmartListingModal
+                    open={smartListing.modalOpen}
+                    onClose={smartListing.closeModal}
+                    connectionStatus={smartListing.connectionStatus}
+                    selectedMarketplaces={smartListing.selectedMarketplaces}
+                    toggleMarketplace={smartListing.toggleMarketplace}
+                    autoFillMode={smartListing.autoFillMode}
+                    toggleAutoFillMode={smartListing.toggleAutoFillMode}
+                    onStartListing={smartListing.handleStartListing}
+                    preflightResult={smartListing.preflightResult}
+                    onApplyFix={smartListing.handleApplyFix}
+                    onListNow={smartListing.handleListNow}
+                    isSubmitting={smartListing.isSubmitting}
+                    modalState={smartListing.modalState}
+                    onReconnect={smartListing.handleReconnect}
+                  />
+                </>
               )}
 
               <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
@@ -45625,18 +45639,25 @@ export default function CrosslistComposer() {
 
                       {/* Smart Listing Section - Desktop General Form - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
-                        <div style={{backgroundColor: 'red', padding: '20px', margin: '20px 0', color: 'white', fontSize: '24px', fontWeight: 'bold', border: '5px solid yellow'}}>
-                          ⚠️ GENERAL FORM: SMART LISTING ENABLED - YOU SHOULD SEE THIS BIG RED BOX
-                        </div>
-                      )}
-                      {smartListingEnabled && (
-                        <SmartListingSection
-                          selectedMarketplaces={smartListing.selectedMarketplaces}
-                          toggleMarketplace={smartListing.toggleMarketplace}
-                          handleListToSelected={smartListing.handleListToSelected}
-                          isSubmitting={smartListing.isSubmitting}
-                          isSaving={isSaving}
-                        />
+                        <>
+                          <SmartListingSection onOpenModal={smartListing.openModal} />
+                          <SmartListingModal
+                            open={smartListing.modalOpen}
+                            onClose={smartListing.closeModal}
+                            connectionStatus={smartListing.connectionStatus}
+                            selectedMarketplaces={smartListing.selectedMarketplaces}
+                            toggleMarketplace={smartListing.toggleMarketplace}
+                            autoFillMode={smartListing.autoFillMode}
+                            toggleAutoFillMode={smartListing.toggleAutoFillMode}
+                            onStartListing={smartListing.handleStartListing}
+                            preflightResult={smartListing.preflightResult}
+                            onApplyFix={smartListing.handleApplyFix}
+                            onListNow={smartListing.handleListNow}
+                            isSubmitting={smartListing.isSubmitting}
+                            modalState={smartListing.modalState}
+                            onReconnect={smartListing.handleReconnect}
+                          />
+                        </>
                       )}
 
                       <div className="flex justify-end gap-2">
