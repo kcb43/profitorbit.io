@@ -18,7 +18,7 @@ export function SmartListingSection({ onOpenModal }) {
       >
         <Rocket className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 shrink-0" />
         <span className="text-xs sm:text-base leading-tight">
-          Smart Listing - List to Multiple Marketplaces
+          Smart Listing
         </span>
       </Button>
       <p className="text-[9px] sm:text-xs text-muted-foreground text-center mt-0.5 sm:mt-2 leading-tight">
