@@ -88,6 +88,14 @@ import { listingJobsApi } from "@/api/listingApiClient";
 import { crosslistingEngine } from "@/services/CrosslistingEngine";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 
+// Smart Listing imports
+import { useSmartListing } from '@/hooks/useSmartListing';
+import FixesDialog from '@/components/FixesDialog';
+import { SmartListingSection } from '@/components/SmartListingSection';
+import { useSmartListing as useSmartListingFeature } from '@/config/features';
+import { Checkbox } from '@/components/ui/checkbox';
+import { setMercariCategories } from '@/utils/listingValidation';
+
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
 const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
@@ -4645,6 +4653,9 @@ const MERCARI_CATEGORIES = {
     }
   }
 };
+
+// Initialize MERCARI_CATEGORIES for validation
+setMercariCategories(MERCARI_CATEGORIES);
 
 const MARKETPLACES = [
   { id: "ebay",     label: "eBay",     icon: EBAY_ICON_URL },
@@ -35618,6 +35629,62 @@ export default function CrosslistComposer() {
   const mercariForm = templateForms.mercari;
   const facebookForm = templateForms.facebook;
 
+  // Smart Listing: Initialize feature and hook
+  const smartListingEnabled = useSmartListingFeature();
+  
+  const smartListing = smartListingEnabled ? useSmartListing(
+    {
+      generalForm,
+      ebayForm,
+      mercariForm,
+      facebookForm,
+    },
+    {
+      categoryTreeId,
+      ebayCategoriesData: undefined, // Will be available later in render
+      ebayTypeAspect: undefined, // Will be available later in render
+      ebayTypeValues: [], // Will be available later in render
+      ebayRequiredAspects: [], // Will be available later in render
+      isItemsIncludedRequired: false, // Will be calculated later
+      useAI: true, // Enable AI auto-fill
+    },
+    (marketplace, field, value) => {
+      // Update form field handler
+      if (marketplace === 'general') {
+        setTemplateForms(prev => ({
+          ...prev,
+          general: { ...prev.general, [field]: value }
+        }));
+      } else if (marketplace === 'ebay') {
+        setTemplateForms(prev => ({
+          ...prev,
+          ebay: { ...prev.ebay, [field]: value }
+        }));
+      } else if (marketplace === 'mercari') {
+        setTemplateForms(prev => ({
+          ...prev,
+          mercari: { ...prev.mercari, [field]: value }
+        }));
+      } else if (marketplace === 'facebook') {
+        setTemplateForms(prev => ({
+          ...prev,
+          facebook: { ...prev.facebook, [field]: value }
+        }));
+      }
+    },
+    handleListOnMarketplace // Pass existing submit handler
+  ) : {
+    selectedMarketplaces: [],
+    fixesDialogOpen: false,
+    preflightResult: null,
+    isSubmitting: false,
+    toggleMarketplace: () => {},
+    handleListToSelected: () => {},
+    handleApplyFix: () => {},
+    handleListNow: () => {},
+    closeFixesDialog: () => {},
+  };
+
   // Find similar items for description generation
   const similarItems = useMemo(() => {
     if (!generalForm.title && !generalForm.brand && !generalForm.category) {
@@ -41077,6 +41144,17 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Vendoo-style listing info is shown at the bottom of the form (see action area). */}
+
+              {/* Smart Listing Section - List to Multiple Marketplaces */}
+              {smartListingEnabled && (
+                <SmartListingSection
+                  selectedMarketplaces={smartListing.selectedMarketplaces}
+                  toggleMarketplace={smartListing.toggleMarketplace}
+                  handleListToSelected={smartListing.handleListToSelected}
+                  isSubmitting={smartListing.isSubmitting}
+                  isSaving={isSaving}
+                />
+              )}
 
               <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("ebay")}>
@@ -49995,6 +50073,18 @@ export default function CrosslistComposer() {
           />
         </React.Suspense>
       ) : null}
+
+      {/* Smart Listing: Fixes Dialog */}
+      {smartListingEnabled && (
+        <FixesDialog
+          open={smartListing.fixesDialogOpen}
+          onClose={smartListing.closeFixesDialog}
+          preflightResult={smartListing.preflightResult}
+          onApplyFix={smartListing.handleApplyFix}
+          onListNow={smartListing.handleListNow}
+          isSubmitting={smartListing.isSubmitting}
+        />
+      )}
     </div>
   );
 }
