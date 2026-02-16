@@ -44156,6 +44156,29 @@ export default function CrosslistComposer() {
           )}
         </div>
 
+        {/* Smart Listing Section - Mobile - List to Multiple Marketplaces */}
+        {smartListingEnabled && (
+          <>
+            <SmartListingSection onOpenModal={smartListing.openModal} />
+            <SmartListingModal
+              open={smartListing.modalOpen}
+              onClose={smartListing.closeModal}
+              connectionStatus={smartListing.connectionStatus}
+              selectedMarketplaces={smartListing.selectedMarketplaces}
+              toggleMarketplace={smartListing.toggleMarketplace}
+              autoFillMode={smartListing.autoFillMode}
+              toggleAutoFillMode={smartListing.toggleAutoFillMode}
+              onStartListing={smartListing.handleStartListing}
+              preflightResult={smartListing.preflightResult}
+              onApplyFix={smartListing.handleApplyFix}
+              onListNow={smartListing.handleListNow}
+              isSubmitting={smartListing.isSubmitting}
+              modalState={smartListing.modalState}
+              onReconnect={smartListing.handleReconnect}
+            />
+          </>
+        )}
+
         {/* Footer */}
         <div className="flex justify-end items-center gap-4 pt-6 border-t">
           <Button
