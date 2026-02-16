@@ -38741,16 +38741,16 @@ export default function CrosslistComposer() {
                     </Button>
                   )}
                 </div>
-                <div className="mt-2 space-y-3">
+                <div className="mt-1.5 space-y-2">
                   {/* Main preview (not sortable): prevents layout jumping while dragging */}
                   {(generalForm.photos?.length || 0) > 0 && (() => {
                     const src = generalForm.photos[0]?.preview || generalForm.photos[0]?.imageUrl || generalForm.photos[0]?.url;
                     const photo = generalForm.photos[0];
                     if (!src) return null;
                     return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
+                      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg border-2 border-primary bg-muted po-main-drop">
                         <img src={src} alt={photo?.fileName || "Main photo"} className="h-full w-full object-cover" />
-                        <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[10px] font-semibold uppercase">
+                        <div className="absolute top-1 left-1 inline-flex items-center justify-center rounded px-1.5 py-0.5 bg-primary text-primary-foreground text-[9px] font-semibold uppercase">
                           Main
                         </div>
                         <div className="absolute top-1 right-1 flex gap-1 z-10">
@@ -38766,10 +38766,10 @@ export default function CrosslistComposer() {
                               });
                               setEditorOpen(true);
                             }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
                             title="Edit photo"
                           >
-                            <ImageIcon className="h-3.5 w-3.5" />
+                            <ImageIcon className="h-3 w-3" />
                             <span className="sr-only">Edit photo</span>
                           </button>
                           <button
@@ -38778,10 +38778,10 @@ export default function CrosslistComposer() {
                               e.stopPropagation();
                               handlePhotoRemove(photo?.id);
                             }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                             title="Remove photo"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3.5 w-3.5" />
                             <span className="sr-only">Remove photo</span>
                           </button>
                         </div>
@@ -38790,7 +38790,7 @@ export default function CrosslistComposer() {
                   })()}
 
                   {/* Thumbnails (sortable) */}
-                  <div className="grid grid-cols-4 gap-2 auto-rows-fr">
+                  <div className="grid grid-cols-4 gap-1.5 auto-rows-fr">
                     <ReactSortable
                       list={(generalForm.photos || []).slice(1)}
                       setList={(nextThumbs) => {
@@ -38848,10 +38848,10 @@ export default function CrosslistComposer() {
 
                             <button
                               type="button"
-                              className="po-thumb-handle absolute bottom-1 left-1 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-7 w-7 cursor-grab active:cursor-grabbing"
+                              className="po-thumb-handle absolute bottom-0.5 left-0.5 inline-flex items-center justify-center rounded-full bg-black/55 text-white h-6 w-6 cursor-grab active:cursor-grabbing"
                               title="Drag to reorder"
                             >
-                              <GripVertical className="h-4 w-4" />
+                              <GripVertical className="h-3.5 w-3.5" />
                               <span className="sr-only">Drag to reorder</span>
                             </button>
 
@@ -38867,10 +38867,10 @@ export default function CrosslistComposer() {
                                 });
                                 setEditorOpen(true);
                               }}
-                              className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
+                              className="absolute top-0.5 left-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600/80 text-white hover:bg-blue-700/90"
                               title="Edit photo"
                             >
-                              <ImageIcon className="h-3 w-3" />
+                              <ImageIcon className="h-2.5 w-2.5" />
                               <span className="sr-only">Edit photo</span>
                             </button>
                             <button
@@ -38879,10 +38879,10 @@ export default function CrosslistComposer() {
                                 e.stopPropagation();
                                 handlePhotoRemove(photo.id);
                               }}
-                              className="absolute top-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                              className="absolute top-0.5 right-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                               title="Remove photo"
                             >
-                              <X className="h-3.5 w-3.5" />
+                              <X className="h-3 w-3" />
                               <span className="sr-only">Remove photo</span>
                             </button>
                           </div>
@@ -38912,9 +38912,9 @@ export default function CrosslistComposer() {
                     onChange={handlePhotoUpload}
                   />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB per photo. {generalForm.photos?.length || 0}/{MAX_PHOTOS} used.
-                  {isUploadingPhotos && <span className="ml-2 text-amber-600 dark:text-amber-400">Processing photos...</span>}
+                <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                  Up to {MAX_PHOTOS} photos, {MAX_FILE_SIZE_MB}MB each. {generalForm.photos?.length || 0}/{MAX_PHOTOS} used.
+                  {isUploadingPhotos && <span className="ml-1 text-amber-600 dark:text-amber-400">Processing...</span>}
                 </p>
               </div>
 
@@ -39035,7 +39035,7 @@ export default function CrosslistComposer() {
                     placeholder="Enter a detailed description of your item..."
                     value={generalForm.description || ""}
                     onChange={(e) => handleGeneralChange("description", e.target.value)}
-                    className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                    className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                       collapsedDescriptions.general ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                     }`}
                   />
@@ -40071,7 +40071,7 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.description ? `Inherited from General` : "Enter eBay-specific description..."}
                     value={ebayForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("ebay", "description", e.target.value)}
-                    className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                    className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                       collapsedDescriptions.ebay ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                     }`}
                   />
@@ -41453,7 +41453,7 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.description ? `Inherited from General` : "Enter Etsy-specific description..."}
                     value={etsyForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("etsy", "description", e.target.value)}
-                    className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                    className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                       collapsedDescriptions.etsy ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                     }`}
                   />
@@ -42039,7 +42039,7 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.description ? `Inherited from General` : "Describe your item (5+ words)"}
                     value={mercariForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("mercari", "description", e.target.value)}
-                    className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                    className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                       collapsedDescriptions.mercari ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                     }`}
                   />
@@ -43082,7 +43082,7 @@ export default function CrosslistComposer() {
                     placeholder={generalForm.description ? `Inherited from General` : "Enter Facebook-specific description..."}
                     value={facebookForm.description || ""}
                     onChange={(e) => handleMarketplaceChange("facebook", "description", e.target.value)}
-                    className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                    className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                       collapsedDescriptions.facebook ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                     }`}
                   />
@@ -44825,7 +44825,7 @@ export default function CrosslistComposer() {
                             placeholder="Enter a detailed description of your item..."
                             value={generalForm.description || ""}
                             onChange={(e) => handleGeneralChange("description", e.target.value)}
-                            className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                            className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                               collapsedDescriptions.general ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                             }`}
                           />
@@ -45863,7 +45863,7 @@ export default function CrosslistComposer() {
                             placeholder={generalForm.description ? `Inherited from General` : "Enter eBay-specific description..."}
                             value={ebayForm.description || ""}
                             onChange={(e) => handleMarketplaceChange("ebay", "description", e.target.value)}
-                            className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                            className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                               collapsedDescriptions.ebay ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                             }`}
                           />
@@ -47207,7 +47207,7 @@ export default function CrosslistComposer() {
                             placeholder={generalForm.description ? `Inherited from General` : "Enter Etsy-specific description..."}
                             value={etsyForm.description || ""}
                             onChange={(e) => handleMarketplaceChange("etsy", "description", e.target.value)}
-                            className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                            className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                               collapsedDescriptions.etsy ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                             }`}
                           />
@@ -47779,7 +47779,7 @@ export default function CrosslistComposer() {
                             placeholder={generalForm.description ? `Inherited from General` : "Describe your item (5+ words)"}
                             value={mercariForm.description || ""}
                             onChange={(e) => handleMarketplaceChange("mercari", "description", e.target.value)}
-                            className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                            className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                               collapsedDescriptions.mercari ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                             }`}
                           />
@@ -48750,7 +48750,7 @@ export default function CrosslistComposer() {
                             placeholder={generalForm.description ? `Inherited from General` : "Enter Facebook-specific description..."}
                             value={facebookForm.description || ""}
                             onChange={(e) => handleMarketplaceChange("facebook", "description", e.target.value)}
-                            className={`min-h-[120px] md:min-h-[120px] transition-all duration-200 ${
+                            className={`min-h-[80px] md:min-h-[120px] transition-all duration-200 ${
                               collapsedDescriptions.facebook ? 'md:max-h-none max-h-[60px] overflow-hidden' : 'max-h-none'
                             }`}
                           />
