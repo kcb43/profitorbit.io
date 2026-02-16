@@ -35629,7 +35629,7 @@ export default function CrosslistComposer() {
   const mercariForm = templateForms.mercari;
   const facebookForm = templateForms.facebook;
 
-  // Smart Listing: Initialize feature and hook
+  // Smart Listing: Feature flag check (hook call moved after handleListOnMarketplace definition)
   const smartListingEnabled = checkSmartListingEnabled();
   
   // Debug: Log feature flag status - REBUILD TRIGGER
@@ -35641,51 +35641,6 @@ export default function CrosslistComposer() {
     });
     console.log('🎯 Build Time:', new Date().toISOString());
   }, [smartListingEnabled]);
-  
-  // Always call the hook (Rules of Hooks), but only use it when enabled
-  const smartListing = useSmartListing(
-    {
-      generalForm,
-      ebayForm,
-      mercariForm,
-      facebookForm,
-    },
-    {
-      categoryTreeId,
-      ebayCategoriesData: undefined, // Will be available later in render
-      ebayTypeAspect: undefined, // Will be available later in render
-      ebayTypeValues: [], // Will be available later in render
-      ebayRequiredAspects: [], // Will be available later in render
-      isItemsIncludedRequired: false, // Will be calculated later
-      useAI: true, // Enable AI auto-fill
-    },
-    (marketplace, field, value) => {
-      // Update form field handler
-      if (marketplace === 'general') {
-        setTemplateForms(prev => ({
-          ...prev,
-          general: { ...prev.general, [field]: value }
-        }));
-      } else if (marketplace === 'ebay') {
-        setTemplateForms(prev => ({
-          ...prev,
-          ebay: { ...prev.ebay, [field]: value }
-        }));
-      } else if (marketplace === 'mercari') {
-        setTemplateForms(prev => ({
-          ...prev,
-          mercari: { ...prev.mercari, [field]: value }
-        }));
-      } else if (marketplace === 'facebook') {
-        setTemplateForms(prev => ({
-          ...prev,
-          facebook: { ...prev.facebook, [field]: value }
-        }));
-      }
-    },
-    handleListOnMarketplace, // Pass existing submit handler
-    smartListingEnabled // Pass feature flag to hook
-  );
 
   // Find similar items for description generation
   const similarItems = useMemo(() => {
@@ -37528,6 +37483,51 @@ export default function CrosslistComposer() {
       description: "Listing functionality coming soon!",
     });
   };
+
+  // Smart Listing: Initialize hook (must be after handleListOnMarketplace is defined)
+  const smartListing = useSmartListing(
+    {
+      generalForm,
+      ebayForm,
+      mercariForm,
+      facebookForm,
+    },
+    {
+      categoryTreeId,
+      ebayCategoriesData: undefined, // Will be available later in render
+      ebayTypeAspect: undefined, // Will be available later in render
+      ebayTypeValues: [], // Will be available later in render
+      ebayRequiredAspects: [], // Will be available later in render
+      isItemsIncludedRequired: false, // Will be calculated later
+      useAI: true, // Enable AI auto-fill
+    },
+    (marketplace, field, value) => {
+      // Update form field handler
+      if (marketplace === 'general') {
+        setTemplateForms(prev => ({
+          ...prev,
+          general: { ...prev.general, [field]: value }
+        }));
+      } else if (marketplace === 'ebay') {
+        setTemplateForms(prev => ({
+          ...prev,
+          ebay: { ...prev.ebay, [field]: value }
+        }));
+      } else if (marketplace === 'mercari') {
+        setTemplateForms(prev => ({
+          ...prev,
+          mercari: { ...prev.mercari, [field]: value }
+        }));
+      } else if (marketplace === 'facebook') {
+        setTemplateForms(prev => ({
+          ...prev,
+          facebook: { ...prev.facebook, [field]: value }
+        }));
+      }
+    },
+    handleListOnMarketplace, // Pass existing submit handler
+    smartListingEnabled // Pass feature flag to hook
+  );
 
   const getComposerItemIdsForSync = () => {
     try {
