@@ -9,19 +9,19 @@ import { Rocket } from 'lucide-react';
 
 export function SmartListingSection({ onOpenModal }) {
   return (
-    <div className="border-t pt-3 sm:pt-6 mt-3 sm:mt-6">
+    <div className="border-t pt-2 sm:pt-6 mt-2 sm:mt-6">
       <Button
         onClick={onOpenModal}
         size="lg"
-        className="w-full h-auto py-2 sm:py-3"
+        className="w-full h-auto py-1.5 sm:py-3"
         variant="default"
       >
-        <Rocket className="w-4 h-4 sm:w-5 sm:h-5 mr-2 shrink-0" />
-        <span className="text-sm sm:text-base leading-tight">
+        <Rocket className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 shrink-0" />
+        <span className="text-xs sm:text-base leading-tight">
           Smart Listing - List to Multiple Marketplaces
         </span>
       </Button>
-      <p className="text-[10px] sm:text-xs text-muted-foreground text-center mt-1 sm:mt-2">
+      <p className="text-[9px] sm:text-xs text-muted-foreground text-center mt-0.5 sm:mt-2 leading-tight">
         Intelligent multi-marketplace listing with auto-fill & validation
       </p>
     </div>

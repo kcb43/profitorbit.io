@@ -38588,9 +38588,9 @@ export default function CrosslistComposer() {
 
         {/* Bulk item selector */}
         {bulkSelectedItems.length > 1 && (
-          <div className="space-y-3">
-            <Label className="text-xs mb-1.5 block">Select Item to Edit</Label>
-            <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
+            <Label className="text-[10px] mb-1 block">Select Item to Edit</Label>
+            <div className="flex flex-wrap gap-1.5">
               {bulkSelectedItems.map((item) => {
                 const isCurrent = currentEditingItemId === item.id;
                 return (
@@ -38598,7 +38598,7 @@ export default function CrosslistComposer() {
                     key={item.id}
                     type="button"
                     onClick={() => switchToItem(item.id)}
-                    className={`relative flex flex-col items-center gap-1 p-2 rounded-lg border transition-all ${
+                    className={`relative flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all ${
                       isCurrent
                         ? "border-primary bg-primary/10 ring-2 ring-primary"
                         : "border-muted-foreground/40 hover:border-primary/50 bg-muted/30"
@@ -38607,16 +38607,16 @@ export default function CrosslistComposer() {
                     <img
                       src={item.image_url || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png"}
                       alt={item.item_name}
-                      className="w-16 h-16 rounded-md object-cover"
+                      className="w-12 h-12 rounded-md object-cover"
                     />
-                    <span className={`text-xs text-center max-w-[80px] truncate ${
+                    <span className={`text-[10px] text-center max-w-[60px] truncate ${
                       isCurrent ? "font-semibold text-primary" : "text-muted-foreground"
                     }`}>
                       {item.item_name}
                     </span>
                     {isCurrent && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="w-3 h-3 text-primary-foreground" />
+                      <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-primary-foreground" />
                       </div>
                     )}
                   </button>
@@ -38625,11 +38625,11 @@ export default function CrosslistComposer() {
             </div>
 
             {currentEditingItemId && (
-              <Alert className="bg-primary/10 border-primary/20">
-                <AlertDescription className="flex items-center gap-2">
-                  <Package className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-primary">
-                    You are currently editing: {bulkSelectedItems.find(item => item.id === currentEditingItemId)?.item_name || "Unknown Item"}
+              <Alert className="bg-primary/10 border-primary/20 py-2">
+                <AlertDescription className="flex items-center gap-1.5 text-xs">
+                  <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="font-semibold text-primary leading-tight">
+                    Editing: {bulkSelectedItems.find(item => item.id === currentEditingItemId)?.item_name || "Unknown Item"}
                   </span>
                 </AlertDescription>
               </Alert>
@@ -39786,13 +39786,13 @@ export default function CrosslistComposer() {
                 <SmartListingSection onOpenModal={smartListing.openModal} />
               )}
 
-              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("general")}>
-                  <Save className="h-4 w-4" />
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-1.5">
+                <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto h-8 text-xs" onClick={() => handleTemplateSave("general")}>
+                  <Save className="h-3.5 w-3.5" />
                   Save
                 </Button>
-                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleSyncSales} disabled={isSaving}>
-                  <RefreshCw className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto h-8 text-xs" onClick={handleSyncSales} disabled={isSaving}>
+                  <RefreshCw className="h-3.5 w-3.5" />
                   Sync Sales
                 </Button>
               </div>
