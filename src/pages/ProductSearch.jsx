@@ -38,6 +38,13 @@ export default function ProductSearch() {
   // View Mode State - Default to list, hide grid option on mobile
   const [viewMode, setViewMode] = useState('list'); // 'grid', 'list' - Default to list
   
+  // Initialize search with query parameter on mount
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim().length >= 3) {
+      setDebouncedQuery(initialQuery.trim());
+    }
+  }, []); // Only run on mount
+  
   // Force list view on mobile
   useEffect(() => {
     const handleResize = () => {
