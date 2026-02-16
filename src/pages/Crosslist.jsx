@@ -2431,7 +2431,7 @@ export default function Crosslist() {
                               const query = it.item_name || "";
                               if (isMobile) {
                                 // On mobile, navigate to ProductSearch page
-                                navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=crosslist`));
+                                navigate(`/product-search?q=${encodeURIComponent(query)}&from=crosslist`);
                               } else {
                                 // On desktop, open dialog
                                 setProductSearchQuery(query);
@@ -2860,7 +2860,7 @@ export default function Crosslist() {
                         const query = it.item_name || "";
                         if (isMobile) {
                           // On mobile, navigate to ProductSearch page
-                          navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=crosslist`));
+                          navigate(`/product-search?q=${encodeURIComponent(query)}&from=crosslist`);
                         } else {
                           // On desktop, open dialog
                           setProductSearchQuery(query);

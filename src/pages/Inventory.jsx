@@ -2448,7 +2448,7 @@ export default function InventoryPage() {
                                 const query = item.item_name || "";
                                 if (isMobile) {
                                   // On mobile, navigate to ProductSearch page with query and return path
-                                  navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=inventory`));
+                                  navigate(`/product-search?q=${encodeURIComponent(query)}&from=inventory`);
                                 } else {
                                   // On desktop, open dialog
                                   setProductSearchQuery(query);
@@ -3244,7 +3244,7 @@ export default function InventoryPage() {
                                     const query = item.item_name || "";
                                     if (isMobile) {
                                       // On mobile, navigate to ProductSearch page
-                                      navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=inventory`));
+                                      navigate(`/product-search?q=${encodeURIComponent(query)}&from=inventory`);
                                     } else {
                                       // On desktop, open dialog
                                       setProductSearchQuery(query);
@@ -3416,7 +3416,7 @@ export default function InventoryPage() {
                               const query = item.item_name || "";
                               if (isMobile) {
                                 // On mobile, navigate to ProductSearch page
-                                navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=inventory`));
+                                navigate(`/product-search?q=${encodeURIComponent(query)}&from=inventory`);
                               } else {
                                 // On desktop, open dialog
                                 setProductSearchQuery(query);
