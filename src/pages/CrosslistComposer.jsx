@@ -35642,6 +35642,12 @@ export default function CrosslistComposer() {
     console.log('🎯 Build Time:', new Date().toISOString());
   }, [smartListingEnabled]);
 
+  // Debug: Log smartListing object after it's initialized
+  useEffect(() => {
+    console.log('🎯 smartListing object:', smartListing);
+    console.log('🎯 selectedMarketplaces:', smartListing?.selectedMarketplaces);
+  }, [smartListing]);
+
   // Find similar items for description generation
   const similarItems = useMemo(() => {
     if (!generalForm.title && !generalForm.brand && !generalForm.category) {
