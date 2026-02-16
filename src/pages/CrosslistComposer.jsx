@@ -92,7 +92,7 @@ import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 import { useSmartListing } from '@/hooks/useSmartListing';
 import FixesDialog from '@/components/FixesDialog';
 import { SmartListingSection } from '@/components/SmartListingSection';
-import { useSmartListing as useSmartListingFeature } from '@/config/features';
+import { useSmartListing as checkSmartListingEnabled } from '@/config/features';
 import { Checkbox } from '@/components/ui/checkbox';
 import { setMercariCategories } from '@/utils/listingValidation';
 
@@ -35630,7 +35630,17 @@ export default function CrosslistComposer() {
   const facebookForm = templateForms.facebook;
 
   // Smart Listing: Initialize feature and hook
-  const smartListingEnabled = useSmartListingFeature();
+  const smartListingEnabled = checkSmartListingEnabled();
+  
+  // Debug: Log feature flag status - REBUILD TRIGGER
+  useEffect(() => {
+    console.log('🎯 Smart Listing Feature Flag:', smartListingEnabled);
+    console.log('🎯 Environment:', {
+      VITE_SMART_LISTING_ENABLED: import.meta.env.VITE_SMART_LISTING_ENABLED,
+      VITE_AI_SUGGESTIONS_ENABLED: import.meta.env.VITE_AI_SUGGESTIONS_ENABLED,
+    });
+    console.log('🎯 Build Time:', new Date().toISOString());
+  }, [smartListingEnabled]);
   
   const smartListing = smartListingEnabled ? useSmartListing(
     {

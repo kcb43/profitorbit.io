@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Listing Feature Flag Test</title>
+</head>
+<body>
+    <h1>Feature Flag Test</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        // Test if env vars are being loaded
+        const results = document.getElementById('results');
+        
+        const flags = {
+            VITE_SMART_LISTING_ENABLED: import.meta.env.VITE_SMART_LISTING_ENABLED,
+            VITE_AI_SUGGESTIONS_ENABLED: import.meta.env.VITE_AI_SUGGESTIONS_ENABLED,
+            VITE_DEBUG_SMART_LISTING: import.meta.env.VITE_DEBUG_SMART_LISTING,
+        };
+        
+        results.innerHTML = `
+            <h2>Environment Variables:</h2>
+            <pre>${JSON.stringify(flags, null, 2)}</pre>
+            
+            <h2>Expected Values:</h2>
+            <p>All should be 'true'</p>
+        `;
+        
+        console.log('Feature Flags:', flags);
+    </script>
+</body>
+</html>
