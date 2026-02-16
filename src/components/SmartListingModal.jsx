@@ -121,9 +121,24 @@ export default function SmartListingModal({
   
   // Get marketplace data
   const marketplaces = [
-    { id: 'ebay', name: 'eBay', connected: connectionStatus.ebay },
-    { id: 'mercari', name: 'Mercari', connected: connectionStatus.mercari },
-    { id: 'facebook', name: 'Facebook', connected: connectionStatus.facebook },
+    { 
+      id: 'ebay', 
+      name: 'eBay', 
+      connected: connectionStatus.ebay,
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg'
+    },
+    { 
+      id: 'mercari', 
+      name: 'Mercari', 
+      connected: connectionStatus.mercari,
+      logo: 'https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B'
+    },
+    { 
+      id: 'facebook', 
+      name: 'Facebook', 
+      connected: connectionStatus.facebook,
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg'
+    },
   ];
   
   const connectedCount = marketplaces.filter(m => m.connected).length;
@@ -160,6 +175,11 @@ export default function SmartListingModal({
               ) : (
                 <XCircle className="w-4 h-4 text-muted-foreground shrink-0" />
               )}
+              <img 
+                src={marketplace.logo} 
+                alt={marketplace.name}
+                className="w-5 h-5 object-contain shrink-0"
+              />
               <span className={cn(
                 "text-sm font-medium",
                 marketplace.connected
@@ -206,6 +226,11 @@ export default function SmartListingModal({
               checked={selectedMarketplaces.includes(marketplace.id)}
               disabled={!marketplace.connected}
               onCheckedChange={(checked) => toggleMarketplace(marketplace.id, checked)}
+            />
+            <img 
+              src={marketplace.logo} 
+              alt={marketplace.name}
+              className="w-5 h-5 object-contain shrink-0"
             />
             <Label
               htmlFor={`select-${marketplace.id}`}
