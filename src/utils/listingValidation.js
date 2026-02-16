@@ -539,8 +539,8 @@ export function validateMercariForm(generalForm, mercariForm) {
       marketplace: 'mercari',
       field: 'brand',
       type: 'missing',
-      severity: 'warning',
-      message: 'Brand is recommended (or check "No Brand")',
+      severity: 'blocking',
+      message: 'Brand is required (or check "No Brand")',
       patchTarget: 'mercari'
     });
   }
