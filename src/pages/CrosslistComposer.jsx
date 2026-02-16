@@ -46947,6 +46947,22 @@ export default function CrosslistComposer() {
                       {/* Vendoo-style listing info (bottom of form) */}
                       {renderListingInfoPanel('ebay', 'eBay Listing')}
 
+                      {/* Smart Listing Section - Desktop - List to Multiple Marketplaces */}
+                      {smartListingEnabled && (
+                        <div style={{backgroundColor: 'red', padding: '20px', margin: '20px 0', color: 'white', fontSize: '24px', fontWeight: 'bold'}}>
+                          ⚠️ DESKTOP: SMART LISTING ENABLED - YOU SHOULD SEE THIS
+                        </div>
+                      )}
+                      {smartListingEnabled && (
+                        <SmartListingSection
+                          selectedMarketplaces={smartListing.selectedMarketplaces}
+                          toggleMarketplace={smartListing.toggleMarketplace}
+                          handleListToSelected={smartListing.handleListToSelected}
+                          isSubmitting={smartListing.isSubmitting}
+                          isSaving={isSaving}
+                        />
+                      )}
+
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("ebay")}>
                           <Save className="h-4 w-4" />
