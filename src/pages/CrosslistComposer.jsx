@@ -44161,24 +44161,26 @@ export default function CrosslistComposer() {
       {/* Desktop Layout - Top Nav, Left Sidebar, Main Content */}
       <div className="hidden lg:flex flex-col min-h-screen">
         {/* Top Navigation Bar */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-card border-b border-gray-200 dark:border-gray-800 shadow-sm">
-          <div className="max-w-7xl mx-auto px-5 py-4 w-full">
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-background via-background/95 to-background border-b border-border/40 backdrop-blur-sm shadow-md">
+          <div className="max-w-7xl mx-auto px-5 py-3 w-full">
             <div className="flex items-center justify-between gap-4">
               <Button
                 variant="ghost"
                 onClick={() => navigate(createPageUrl("Crosslist"))}
-                className="text-sm"
+                className="text-sm hover:bg-primary/10 transition-all hover:scale-105"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to my items
               </Button>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">Import from:</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
+                  <span className="text-xs font-medium text-muted-foreground">Import from</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
                     onClick={() => navigate(createPageUrl("Import") + "?source=ebay")}
                   >
                     eBay
@@ -44186,7 +44188,7 @@ export default function CrosslistComposer() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
                     onClick={() => navigate(createPageUrl("Import") + "?source=mercari")}
                   >
                     Mercari
@@ -44194,7 +44196,7 @@ export default function CrosslistComposer() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
                     onClick={() => navigate(createPageUrl("Import") + "?source=facebook")}
                   >
                     Facebook
@@ -44202,7 +44204,7 @@ export default function CrosslistComposer() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
                     onClick={() => navigate(createPageUrl("Import") + "?source=etsy")}
                   >
                     Etsy
@@ -44210,7 +44212,7 @@ export default function CrosslistComposer() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
                     onClick={() => navigate(createPageUrl("Import") + "?source=poshmark")}
                   >
                     Poshmark
@@ -44218,7 +44220,7 @@ export default function CrosslistComposer() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
                     onClick={() => navigate(createPageUrl("Import") + "?source=depop")}
                   >
                     Depop
