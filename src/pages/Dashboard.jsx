@@ -436,42 +436,23 @@ export default function Dashboard() {
         </div>
 
         {/* Desktop-only: attention cards at top */}
-        {hasStockAlerts && (
-          <div className="hidden lg:grid grid-cols-2 gap-4 mb-6">
-            {(itemsWithUpcomingReturns?.length || 0) > 0 && (
-              <Link to={createPageUrl("Inventory?filter=returnDeadline")} className="block">
-                <div className="relative rounded-2xl p-5 backdrop-blur bg-card border border-red-500/40 hover:border-red-500/60 transition shadow-sm overflow-hidden">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-500/15 to-rose-500/10 rounded-full blur-2xl" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-red-500 via-red-600 to-rose-500 shadow-lg shadow-red-500/30 flex-shrink-0">
-                      <AlarmClock className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground">Return Deadlines</div>
-                      <div className="text-3xl font-bold text-foreground">{itemsWithUpcomingReturns.length}</div>
-                      <div className="text-xs text-muted-foreground mt-1">View items to return</div>
-                    </div>
+        {(itemsWithUpcomingReturns?.length || 0) > 0 && (
+          <div className="hidden lg:block mb-6">
+            <Link to={createPageUrl("Inventory?filter=returnDeadline")} className="block">
+              <div className="relative rounded-2xl p-5 backdrop-blur bg-card border border-red-500/40 hover:border-red-500/60 transition shadow-sm overflow-hidden">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-500/15 to-rose-500/10 rounded-full blur-2xl" />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-red-500 via-red-600 to-rose-500 shadow-lg shadow-red-500/30 flex-shrink-0">
+                    <AlarmClock className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Return Deadlines</div>
+                    <div className="text-3xl font-bold text-foreground">{itemsWithUpcomingReturns.length}</div>
+                    <div className="text-xs text-muted-foreground mt-1">View items to return</div>
                   </div>
                 </div>
-              </Link>
-            )}
-            {(staleItems?.length || 0) > 0 && (
-              <Link to={createPageUrl("Inventory?filter=stale")} className="block">
-                <div className="relative rounded-2xl p-5 backdrop-blur bg-card border border-emerald-500/35 hover:border-emerald-500/55 transition shadow-sm overflow-hidden">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 rounded-full blur-2xl" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/30 flex-shrink-0">
-                      <Lightbulb className="w-7 h-7 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground">Smart Reminder</div>
-                      <div className="text-3xl font-bold text-foreground">{staleItems.length}</div>
-                      <div className="text-xs text-muted-foreground mt-1">Items need listing</div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            )}
+              </div>
+            </Link>
           </div>
         )}
 
@@ -581,13 +562,6 @@ export default function Dashboard() {
                         <div>Return Deadlines</div>
                       </div>
                       <div className="font-medium text-foreground">{itemsWithUpcomingReturns?.length || 0}</div>
-                    </div>
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Needs Listing</div>
-                      </div>
-                      <div className="font-medium text-foreground">{staleItems?.length || 0}</div>
                     </div>
                   </div>
                 </div>
