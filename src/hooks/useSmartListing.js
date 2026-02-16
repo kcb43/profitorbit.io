@@ -4,7 +4,7 @@
  * To be integrated into CrosslistComposer
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { preflightSelectedMarketplaces, getPreflightSummary } from '@/utils/preflightEngine';
 import { debugLog } from '@/config/features';
@@ -58,6 +58,19 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       facebook: connections.facebookConnected || false,
     });
   }, [enabled, connections]);
+  
+  /**
+   * Update connection status whenever connections prop changes
+   */
+  useEffect(() => {
+    if (!enabled) return;
+    
+    setConnectionStatus({
+      ebay: connections.ebayConnected || false,
+      mercari: connections.mercariConnected || false,
+      facebook: connections.facebookConnected || false,
+    });
+  }, [enabled, connections.ebayConnected, connections.mercariConnected, connections.facebookConnected]);
   
   /**
    * Open modal and check connections
