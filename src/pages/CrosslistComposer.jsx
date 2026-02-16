@@ -39813,6 +39813,11 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
+              {/* Smart Listing Section - Mobile General Form - List to Multiple Marketplaces */}
+              {smartListingEnabled && (
+                <SmartListingSection onOpenModal={smartListing.openModal} />
+              )}
+
               <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
                 <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => handleTemplateSave("general")}>
                   <Save className="h-4 w-4" />
@@ -44156,27 +44161,24 @@ export default function CrosslistComposer() {
           )}
         </div>
 
-        {/* Smart Listing Section - Mobile - List to Multiple Marketplaces */}
+        {/* Smart Listing Modal - Mobile - Available globally for all forms */}
         {smartListingEnabled && (
-          <>
-            <SmartListingSection onOpenModal={smartListing.openModal} />
-            <SmartListingModal
-              open={smartListing.modalOpen}
-              onClose={smartListing.closeModal}
-              connectionStatus={smartListing.connectionStatus}
-              selectedMarketplaces={smartListing.selectedMarketplaces}
-              toggleMarketplace={smartListing.toggleMarketplace}
-              autoFillMode={smartListing.autoFillMode}
-              toggleAutoFillMode={smartListing.toggleAutoFillMode}
-              onStartListing={smartListing.handleStartListing}
-              preflightResult={smartListing.preflightResult}
-              onApplyFix={smartListing.handleApplyFix}
-              onListNow={smartListing.handleListNow}
-              isSubmitting={smartListing.isSubmitting}
-              modalState={smartListing.modalState}
-              onReconnect={smartListing.handleReconnect}
-            />
-          </>
+          <SmartListingModal
+            open={smartListing.modalOpen}
+            onClose={smartListing.closeModal}
+            connectionStatus={smartListing.connectionStatus}
+            selectedMarketplaces={smartListing.selectedMarketplaces}
+            toggleMarketplace={smartListing.toggleMarketplace}
+            autoFillMode={smartListing.autoFillMode}
+            toggleAutoFillMode={smartListing.toggleAutoFillMode}
+            onStartListing={smartListing.handleStartListing}
+            preflightResult={smartListing.preflightResult}
+            onApplyFix={smartListing.handleApplyFix}
+            onListNow={smartListing.handleListNow}
+            isSubmitting={smartListing.isSubmitting}
+            modalState={smartListing.modalState}
+            onReconnect={smartListing.handleReconnect}
+          />
         )}
 
         {/* Footer */}
