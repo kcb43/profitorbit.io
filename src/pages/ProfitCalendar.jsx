@@ -338,11 +338,11 @@ export default function ProfitCalendar() {
   };
 
   const heatStyles = {
-    none: 'md:bg-[#1b2534] md:text-[#6b7280]',
-    low: 'md:bg-[#10271b] md:text-[#22c55e] md:border md:border-[#1e5534]',
-    mid: 'md:bg-[#124227] md:text-[#34d399] md:border md:border-[#1f7547]',
-    high: 'md:bg-[#0f6131] md:text-[#6ee7b7] md:border md:border-[#2ca56b]',
-    hot: 'md:bg-[#0f7a3c] md:text-[#bbf7d0] md:border md:border-[#34d399] md:shadow-[0_0_0_1px_rgba(74,222,128,0.35)]'
+    none: 'md:bg-muted md:text-muted-foreground',
+    low: 'md:bg-green-50 md:text-green-700 md:border md:border-green-200 dark:md:bg-green-950/40 dark:md:text-green-400 dark:md:border-green-900',
+    mid: 'md:bg-green-100 md:text-green-800 md:border md:border-green-300 dark:md:bg-green-900/50 dark:md:text-green-300 dark:md:border-green-800',
+    high: 'md:bg-green-200 md:text-green-900 md:border md:border-green-400 dark:md:bg-green-800/60 dark:md:text-green-200 dark:md:border-green-700',
+    hot: 'md:bg-green-300 md:text-green-950 md:border md:border-green-500 md:shadow-lg dark:md:bg-green-700/70 dark:md:text-green-100 dark:md:border-green-600 dark:md:shadow-green-500/20'
   };
 
   if (isLoading) {
@@ -350,7 +350,7 @@ export default function ProfitCalendar() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background md:bg-background">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background">
       <div className="max-w-5xl mx-auto md:max-w-6xl lg:max-w-7xl">
         {error ? (
           <div className="mb-4">
@@ -362,18 +362,18 @@ export default function ProfitCalendar() {
           </div>
         ) : null}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground md:text-white">Profit Calendar</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 md:text-slate-300">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Profit Calendar</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Track your daily profits at a glance
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
           {/* Calendar */}
-          <Card className="border-0 shadow-lg mb-4 lg:mb-0 lg:col-span-8 md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl overflow-hidden">
-            <CardHeader className="border-b bg-card p-4 md:bg-card/50 md:border-b md:border-white/5 md:px-6 md:py-5">
+          <Card className="border-0 shadow-lg mb-4 lg:mb-0 lg:col-span-8">
+            <CardHeader className="border-b bg-card p-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <CardTitle className="text-lg sm:text-xl text-white">
+                <CardTitle className="text-lg sm:text-xl text-foreground">
                   {format(currentMonth, 'MMMM yyyy')}
                 </CardTitle>
                 <div className="flex gap-2">
@@ -381,7 +381,6 @@ export default function ProfitCalendar() {
                     variant="outline"
                     size="sm"
                     onClick={handlePreviousMonth}
-                    className="md:border-white/20 md:text-white md:hover:bg-white/10"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
@@ -389,7 +388,6 @@ export default function ProfitCalendar() {
                     variant="outline"
                     size="sm"
                     onClick={handleToday}
-                    className="md:border-white/20 md:text-white md:hover:bg-white/10"
                   >
                     Today
                   </Button>
@@ -397,7 +395,6 @@ export default function ProfitCalendar() {
                     variant="outline"
                     size="sm"
                     onClick={handleNextMonth}
-                    className="md:border-white/20 md:text-white md:hover:bg-white/10"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -405,19 +402,19 @@ export default function ProfitCalendar() {
               </div>
             </CardHeader>
 
-            <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-white/5 bg-card">
+            <div className="hidden md:flex items-center justify-between px-6 py-4 border-b bg-card/50">
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <span className="uppercase tracking-wide text-xs text-muted-foreground">Month Total</span>
-                <span className="text-lg font-semibold text-emerald-300">${monthlyProfit.toFixed(2)}</span>
+                <span className="text-lg font-semibold text-green-600 dark:text-green-400">${monthlyProfit.toFixed(2)}</span>
                 <span className="text-xs text-muted-foreground">Avg / Day</span>
-                <span className="text-lg font-semibold text-emerald-200">${avgDailyProfit.toFixed(2)}</span>
+                <span className="text-lg font-semibold text-green-600 dark:text-green-400">${avgDailyProfit.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 {[
-                  { label: 'Low', color: 'bg-emerald-700/40 border border-emerald-500/40' },
-                  { label: 'Mid', color: 'bg-emerald-500/40 border border-emerald-400/60' },
-                  { label: 'High', color: 'bg-emerald-400/60 border border-emerald-300/60' },
-                  { label: 'Hot', color: 'bg-emerald-300/70 border border-emerald-200/70' }
+                  { label: 'Low', color: 'bg-green-200 border border-green-400 dark:bg-green-900/50 dark:border-green-700' },
+                  { label: 'Mid', color: 'bg-green-300 border border-green-500 dark:bg-green-800/60 dark:border-green-600' },
+                  { label: 'High', color: 'bg-green-400 border border-green-600 dark:bg-green-700/70 dark:border-green-500' },
+                  { label: 'Hot', color: 'bg-green-500 border border-green-700 dark:bg-green-600/80 dark:border-green-400' }
                 ].map((item) => (
                   <span key={item.label} className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
@@ -427,7 +424,7 @@ export default function ProfitCalendar() {
               </div>
             </div>
 
-            <CardContent className="p-2 sm:p-3 md:px-6 md:py-5 md:bg-card/50">
+            <CardContent className="p-2 sm:p-3 md:px-6 md:py-5">
               <div
                 className="select-none touch-pan-y"
                 style={{ touchAction: 'pan-y' }}
@@ -440,7 +437,7 @@ export default function ProfitCalendar() {
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div
                       key={day}
-                      className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-1 md:text-slate-400 md:uppercase md:text-[11px]"
+                      className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground py-1 uppercase"
                     >
                       {day}
                     </div>
@@ -474,14 +471,14 @@ export default function ProfitCalendar() {
                         <div
                           className={`text-[10px] sm:text-xs font-medium md:text-sm ${
                             dayData
-                              ? 'text-foreground md:text-inherit'
-                              : 'text-muted-foreground md:text-inherit'
+                              ? 'text-foreground'
+                              : 'text-muted-foreground'
                           }`}
                         >
                           {format(day, 'd')}
                         </div>
                         {dayData && (
-                          <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm md:text-inherit">
+                          <div className="text-[9px] sm:text-[10px] font-bold text-green-600 dark:text-green-400 md:text-sm">
                             ${profit.toFixed(0)}
                           </div>
                         )}
@@ -495,7 +492,7 @@ export default function ProfitCalendar() {
 
           {/* Desktop KPIs (use horizontal space; avoid vertical scrolling) */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="profit-calendar-this-month rounded-2xl border border-white/5 bg-card p-4 shadow-lg">
+            <div className="profit-calendar-this-month rounded-2xl border bg-card p-4 shadow-lg">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">This Month</div>
 
               <div className="mt-3">
@@ -510,7 +507,7 @@ export default function ProfitCalendar() {
                       <button
                         key={s.id}
                         type="button"
-                        className="profit-calendar-item-btn group relative overflow-hidden rounded-xl border border-white/10 bg-card"
+                        className="profit-calendar-item-btn group relative overflow-hidden rounded-xl border bg-card hover:border-primary/50 transition-colors"
                         onClick={() => {
                           window.location.href = `/SoldItemDetail?id=${encodeURIComponent(s.id)}&expandFees=true`;
                         }}
@@ -523,7 +520,7 @@ export default function ProfitCalendar() {
                           loading="lazy"
                         />
                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1">
-                          <div className="truncate text-[11px] font-medium text-white/95">
+                          <div className="truncate text-[11px] font-medium text-white">
                             {s?.item_name || 'Sold item'}
                           </div>
                         </div>
@@ -531,45 +528,45 @@ export default function ProfitCalendar() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-2 text-xs text-muted-foreground">
                     No sold items with photos yet.
                   </div>
                 )}
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="profit-calendar-stat-card rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <DollarSign className="h-4 w-4 text-emerald-300" />
+                <div className="profit-calendar-stat-card rounded-xl border bg-muted/50 p-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                     Profit
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">${monthlyProfit.toFixed(2)}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">${monthlyProfit.toFixed(2)}</div>
                 </div>
-                <div className="profit-calendar-stat-card rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <ShoppingBag className="h-4 w-4 text-blue-300" />
+                <div className="profit-calendar-stat-card rounded-xl border bg-muted/50 p-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShoppingBag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     Sales
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">{monthlySalesCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">{monthlySalesCount}</div>
                 </div>
-                <div className="profit-calendar-stat-card rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <TrendingUp className="h-4 w-4 text-purple-300" />
+                <div className="profit-calendar-stat-card rounded-xl border bg-muted/50 p-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     Avg / Day
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">${avgDailyProfit.toFixed(2)}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">${avgDailyProfit.toFixed(2)}</div>
                 </div>
-                <div className="profit-calendar-stat-card rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="text-xs text-slate-400">Revenue</div>
-                  <div className="mt-1 text-lg font-semibold text-white">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
+                <div className="profit-calendar-stat-card rounded-xl border bg-muted/50 p-3">
+                  <div className="text-xs text-muted-foreground">Revenue</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
                 </div>
-                <div className="profit-calendar-stat-card rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="text-xs text-slate-400">Costs</div>
-                  <div className="mt-1 text-lg font-semibold text-white">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
+                <div className="profit-calendar-stat-card rounded-xl border bg-muted/50 p-3">
+                  <div className="text-xs text-muted-foreground">Costs</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
                 </div>
-                <div className="profit-calendar-stat-card rounded-xl border border-white/5 bg-[#0d1728] p-3">
-                  <div className="text-xs text-slate-400">Margin</div>
-                  <div className="mt-1 text-lg font-semibold text-white">
+                <div className="profit-calendar-stat-card rounded-xl border bg-muted/50 p-3">
+                  <div className="text-xs text-muted-foreground">Margin</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
                     {monthlyRevenue ? `${Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10}%` : '0%'}
                   </div>
                 </div>
@@ -580,59 +577,59 @@ export default function ProfitCalendar() {
 
         {/* Mobile/tablet KPIs remain below calendar */}
         <div className="lg:hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4 md:px-6 md:pb-4">
-            <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
-              <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
-                <div className="p-2 sm:p-3 bg-green-100 dark:bg-emerald-900/30 rounded-lg md:bg-emerald-500/10 md:border md:border-emerald-400/40">
-                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 md:text-emerald-300" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-4">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground md:text-slate-400">This Month</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">${monthlyProfit.toFixed(2)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">This Month</p>
+                  <p className="text-lg sm:text-xl font-bold text-foreground">${monthlyProfit.toFixed(2)}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
-              <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
-                <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg md:bg-blue-500/10 md:border md:border-blue-400/40">
-                  <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 md:text-blue-300" />
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground md:text-slate-400">Sales Count</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">{monthlySalesCount}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Sales Count</p>
+                  <p className="text-lg sm:text-xl font-bold text-foreground">{monthlySalesCount}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm md:bg-[#111b2d] md:border md:border-white/5 md:rounded-2xl">
-              <CardContent className="p-4 flex items-center gap-3 md:px-6 md:py-5">
-                <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg md:bg-purple-500/10 md:border md:border-purple-400/40">
-                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 md:text-purple-300" />
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-muted-foreground md:text-slate-400">Avg Daily</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900 [.dark_&]:!text-white md:text-white">${avgDailyProfit.toFixed(2)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Avg Daily</p>
+                  <p className="text-lg sm:text-xl font-bold text-foreground">${avgDailyProfit.toFixed(2)}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 md:px-6 md:pb-4">
-            <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-lg dark:border-white/10 dark:bg-zinc-950">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4">
+            <div className="rounded-2xl border bg-card p-4 shadow-lg">
               <div className="text-sm text-muted-foreground">Revenue</div>
-              <div className="mt-1 text-2xl font-semibold text-foreground dark:text-white">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
-              <div className="mt-2 text-xs text-blue-600/80 dark:text-blue-400/80">This month</div>
+              <div className="mt-1 text-2xl font-semibold text-foreground">${Math.round(monthlyRevenue || 0).toLocaleString()}</div>
+              <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">This month</div>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-lg dark:border-white/10 dark:bg-zinc-950">
+            <div className="rounded-2xl border bg-card p-4 shadow-lg">
               <div className="text-sm text-muted-foreground">Costs</div>
-              <div className="mt-1 text-2xl font-semibold text-foreground dark:text-white">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
-              <div className="mt-2 text-xs text-orange-600/80 dark:text-orange-400/80">This month</div>
+              <div className="mt-1 text-2xl font-semibold text-foreground">${Math.round(monthlyCosts || 0).toLocaleString()}</div>
+              <div className="mt-2 text-xs text-orange-600 dark:text-orange-400">This month</div>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-lg dark:border-white/10 dark:bg-zinc-950">
+            <div className="rounded-2xl border bg-card p-4 shadow-lg">
               <div className="text-sm text-muted-foreground">Profit Margin</div>
-              <div className="mt-1 text-2xl font-semibold text-foreground dark:text-white">
+              <div className="mt-1 text-2xl font-semibold text-foreground">
                 {monthlyRevenue ? `${Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10}%` : '0%'}
               </div>
-              <div className="mt-2 text-xs text-emerald-600/80 dark:text-green-400/80">This month</div>
+              <div className="mt-2 text-xs text-green-600 dark:text-green-400">This month</div>
             </div>
           </div>
         </div>
