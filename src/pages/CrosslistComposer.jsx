@@ -44264,87 +44264,15 @@ export default function CrosslistComposer() {
           </div>
         </div>
 
-        {/* Main Container: Left Sidebar + Main Content */}
+        {/* Main Container: Content Only (Sidebar Hidden) */}
         <div className="flex flex-1 max-w-7xl mx-auto w-full">
-          {/* Left Sidebar - Form Selector */}
-          <div className="sticky top-[73px] h-[calc(100vh-73px)] w-[350px] bg-white dark:bg-card border-r border-gray-200 dark:border-gray-800 overflow-y-auto">
-            <div className="p-5">
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveForm("general")}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all cursor-pointer ${
-                    activeForm === "general"
-                      ? "text-primary-foreground shadow-md"
-                      : "bg-gray-50 dark:bg-gray-800 text-foreground"
-                  }`}
-                  style={activeForm === "general" ? { backgroundColor: "rgba(34, 197, 94, 1)" } : undefined}
-                  onMouseEnter={(e) => {
-                    if (activeForm !== "general") {
-                      e.currentTarget.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeForm !== "general") {
-                      e.currentTarget.style.backgroundColor = "";
-                    }
-                  }}
-                >
-                  <span className="font-medium">General</span>
-                </button>
-                {MARKETPLACES.map((m) => {
-                  const active = activeForm === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setActiveForm(m.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all cursor-pointer ${
-                        active
-                          ? "text-primary-foreground shadow-md"
-                          : "bg-gray-50 dark:bg-gray-800 text-foreground"
-                      }`}
-                      style={active ? { backgroundColor: "rgba(34, 197, 94, 1)" } : undefined}
-                      onMouseEnter={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.backgroundColor = "";
-                        }
-                      }}
-                    >
-                      <img src={m.icon} alt={m.label} className="w-5 h-5" />
-                      <span className="font-medium">{m.label}</span>
-                    </button>
-                  );
-                })}
-                {/* Additional marketplace placeholders */}
-                <button
-                  type="button"
-                  disabled
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left bg-gray-50 dark:bg-gray-800 text-muted-foreground opacity-60 cursor-not-allowed"
-                >
-                  <span className="font-medium">Depop</span>
-                  <Badge variant="outline" className="ml-auto text-xs">Coming soon</Badge>
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left bg-gray-50 dark:bg-gray-800 text-muted-foreground opacity-60 cursor-not-allowed"
-                >
-                  <span className="font-medium">Shopify</span>
-                  <Badge variant="outline" className="ml-auto text-xs">Coming soon</Badge>
-                </button>
-              </div>
-            </div>
-          </div>
-
+          {/* Left Sidebar - HIDDEN for Smart Listing workflow */}
+          {/* All marketplace forms are maintained in state but not accessible via UI */}
+          {/* Smart Listing handles multi-marketplace logic */}
+          
           {/* Main Content Area */}
           <div className="flex-1 bg-gray-50 dark:bg-background">
-            <div className="p-5 max-w-[800px] mx-auto w-full">
+            <div className="p-5 max-w-[900px] mx-auto w-full">{/* Increased max-width since no sidebar */}
               <div className="space-y-6">
                 {/* Header */}
                 <div>
@@ -44353,8 +44281,8 @@ export default function CrosslistComposer() {
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1">
                     {bulkSelectedItems.length > 1
-                      ? `Editing ${bulkSelectedItems.length} items. Select an item to configure its listing.`
-                      : "Choose marketplaces and set the base fields. Full per-market fine-tuning can follow."}
+                      ? `Editing ${bulkSelectedItems.length} items. Fill in the general details below.`
+                      : "Fill in the general details. Use Smart Listing to list to multiple marketplaces."}
                   </p>
                 </div>
 
