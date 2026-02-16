@@ -598,10 +598,6 @@ export function validateFacebookForm(generalForm, facebookForm) {
       patchTarget: 'facebook'
     });
   }
-      message: 'Please select a category',
-      patchTarget: 'facebook'
-    });
-  }
   
   // Title validation
   if (!facebookForm.title && !generalForm.title) {
