@@ -32,6 +32,61 @@ function getMercariCategories() {
  * @property {'general'|'ebay'|'mercari'|'facebook'} patchTarget - Which form to patch
  */
 
+// Dropdown options for common fields
+const CONDITION_OPTIONS = {
+  ebay: [
+    { id: 'New', label: 'New' },
+    { id: 'Open Box', label: 'Open Box' },
+    { id: 'Used', label: 'Used' },
+    { id: 'For parts or not working', label: 'For parts or not working' }
+  ],
+  mercari: [
+    { id: 'New', label: 'New' },
+    { id: 'Like New', label: 'Like New' },
+    { id: 'Good', label: 'Good' },
+    { id: 'Fair', label: 'Fair' },
+    { id: 'Poor', label: 'Poor' }
+  ],
+  facebook: [
+    { id: 'new', label: 'New' },
+    { id: 'used_like_new', label: 'Used - Like New' },
+    { id: 'used_good', label: 'Used - Good' },
+    { id: 'used_fair', label: 'Used - Fair' }
+  ],
+  general: [
+    { id: 'New With Tags/Box', label: 'New With Tags/Box' },
+    { id: 'New Without Tags/Box', label: 'New Without Tags/Box' },
+    { id: 'New With Imperfections', label: 'New With Imperfections' },
+    { id: 'Pre - Owned - Excellent', label: 'Pre - Owned - Excellent' },
+    { id: 'Pre - Owned - Good', label: 'Pre - Owned - Good' },
+    { id: 'Pre - Owned - Fair', label: 'Pre - Owned - Fair' }
+  ]
+};
+
+const SHIPPING_METHOD_OPTIONS = [
+  { id: 'Flat', label: 'Flat' },
+  { id: 'Calculated', label: 'Calculated' },
+  { id: 'FreightFlat', label: 'Freight Flat' },
+  { id: 'Free', label: 'Free' }
+];
+
+const HANDLING_TIME_OPTIONS = [
+  { id: '1', label: '1 business day' },
+  { id: '2', label: '2 business days' },
+  { id: '3', label: '3 business days' },
+  { id: '4', label: '4 business days' },
+  { id: '5', label: '5 business days' }
+];
+
+const SHIPPING_SERVICE_OPTIONS = [
+  { id: 'USPSPriority', label: 'USPS Priority Mail' },
+  { id: 'USPSFirstClass', label: 'USPS First Class' },
+  { id: 'USPSParcelSelect', label: 'USPS Parcel Select' },
+  { id: 'USPSMedia', label: 'USPS Media Mail' },
+  { id: 'UPSGround', label: 'UPS Ground' },
+  { id: 'FedExHomeDelivery', label: 'FedEx Home Delivery' }
+];
+
 /**
  * Helper: Check if Mercari category is a complete leaf node
  */
@@ -187,6 +242,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Condition is required',
+      options: CONDITION_OPTIONS.ebay,
       patchTarget: 'ebay'
     });
   }
@@ -223,6 +279,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Handling Time is required',
+      options: HANDLING_TIME_OPTIONS,
       patchTarget: 'ebay'
     });
   }
@@ -234,6 +291,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Shipping Service is required',
+      options: SHIPPING_SERVICE_OPTIONS,
       patchTarget: 'ebay'
     });
   }
@@ -256,6 +314,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Shipping Method is required',
+      options: SHIPPING_METHOD_OPTIONS,
       patchTarget: 'ebay'
     });
   }
@@ -468,6 +527,7 @@ export function validateMercariForm(generalForm, mercariForm) {
       type: 'missing',
       severity: 'blocking',
       message: 'Condition is required',
+      options: CONDITION_OPTIONS.mercari,
       patchTarget: 'mercari'
     });
   }
@@ -593,6 +653,7 @@ export function validateFacebookForm(generalForm, facebookForm) {
       type: 'missing',
       severity: 'blocking',
       message: 'Condition is required',
+      options: CONDITION_OPTIONS.facebook,
       patchTarget: 'facebook'
     });
   }
