@@ -314,7 +314,7 @@ class SerpApiGoogleProvider extends SearchProvider {
       
       const response = await axiosInstance.get(this.baseUrl, {
         params: params,
-        timeout: 10000 // SerpAPI is typically fast (~2 seconds)
+        timeout: 30000 // Increased from 10s to 30s - SerpAPI can be slow for some queries
       });
       
       const requestDuration = Date.now() - requestStartTime;
@@ -813,8 +813,8 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query, limit = 10, page = 1) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}:${page}`).digest('hex');
-  // v9: Fixed immersive_products parsing (2026-02-16)
-  return `search:v9:${provider}:${country}:${hash}`;
+  // v10: Don't cache empty results, increased timeout to 30s (2026-02-16)
+  return `search:v10:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
@@ -970,8 +970,14 @@ fastify.post('/search', async (request, reply) => {
         firstItem: items[0]?.title || null
       }));
       
-      // Cache for 6 hours
-      await redis.set(cacheKey, JSON.stringify(items), 'EX', 60 * 60 * 6);
+      // Cache for 6 hours - but ONLY cache successful results with items
+      // Don't cache empty results (timeouts, errors) to allow retry
+      if (items.length > 0) {
+        await redis.set(cacheKey, JSON.stringify(items), 'EX', 60 * 60 * 6);
+        console.log(`[Cache] Cached ${items.length} items for query: "${query}"`);
+      } else {
+        console.log(`[Cache] Skipping cache for empty result: "${query}"`);
+      }
 
       results.providers.push({ provider: providerName, cached: false, count: items.length });
       results.items.push(...items);
