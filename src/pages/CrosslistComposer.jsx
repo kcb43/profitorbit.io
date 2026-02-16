@@ -38411,8 +38411,8 @@ export default function CrosslistComposer() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {bulkSelectedItems.length > 1
-                ? `Editing ${bulkSelectedItems.length} items. Select an item to configure its listing.`
-                : "Choose marketplaces and set the base fields. Full per-market fine-tuning can follow."}
+                ? `Editing ${bulkSelectedItems.length} items. Fill in the general details below.`
+                : "Fill in the general details. Use Smart Listing to list to multiple marketplaces."}
             </p>
           </div>
         </div>
@@ -38715,47 +38715,12 @@ export default function CrosslistComposer() {
           </div>
         )}
 
-        {/* Form selector - Mobile only */}
-        <div className="lg:hidden">
-          <Label className="text-sm mb-2 block font-semibold">Select Form</Label>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveForm("general")}
-              className={`inline-flex items-center gap-2 px-5 py-3 rounded-lg border-2 text-base font-medium transition-all
-                ${activeForm === "general"
-                  ? "bg-foreground text-background dark:bg-foreground dark:text-background shadow-md ring-2 ring-foreground/30"
-                  : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
-                }`}
-            >
-              General
-            </button>
-            {MARKETPLACES.map((m) => {
-              const active = activeForm === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setActiveForm(m.id)}
-                  className={`inline-flex items-center gap-2 px-5 py-3 rounded-lg border-2 text-base font-medium transition-all
-                    ${active
-                      ? "bg-foreground text-background dark:bg-foreground dark:text-background shadow-md ring-2 ring-foreground/30"
-                      : "bg-muted/70 hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted/60 text-foreground"
-                    }`}
-                >
-                  {renderMarketplaceIcon(m)}
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Select a form to configure. General form data syncs to all marketplace-specific forms.
-          </p>
-        </div>
+        {/* Form selector - HIDDEN for Smart Listing workflow */}
+        {/* Marketplace forms are maintained in state but not accessible via UI */}
+        {/* Smart Listing handles multi-marketplace logic */}
 
         {/* Form Content */}
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           {/* General Form */}
           {activeForm === "general" && (
             <div className="space-y-6">
