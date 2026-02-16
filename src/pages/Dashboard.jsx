@@ -563,6 +563,13 @@ export default function Dashboard() {
                       </div>
                       <div className="font-medium text-foreground">{itemsWithUpcomingReturns?.length || 0}</div>
                     </div>
+                    <div className="items-center flex w-full justify-between">
+                      <div className="flex items-center">
+                        <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                        <div>Needs Listing</div>
+                      </div>
+                      <div className="font-medium text-foreground">{staleItems?.length || 0}</div>
+                    </div>
                   </div>
                 </div>
               </div>
