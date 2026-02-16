@@ -197,9 +197,18 @@ function IssueItem({ issue, onApplyFix }) {
         
         {/* Special note for category fields */}
         {(issue.field === 'categoryId' || issue.field === 'mercariCategory' || issue.field === 'category') && (
-          <p className="text-xs text-muted-foreground">
-            Tip: Close this dialog and select a category in the main form, then try again
-          </p>
+          <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-xs text-blue-900 dark:text-blue-100">
+              <strong>Note:</strong> Categories require hierarchical navigation. Please:
+              <ol className="list-decimal ml-4 mt-1 space-y-0.5">
+                <li>Close this Smart Listing dialog</li>
+                <li>Select the category in the marketplace form</li>
+                <li>Navigate through all subcategories to a final category</li>
+                <li>Then open Smart Listing again</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
         )}
       </div>
     </div>
