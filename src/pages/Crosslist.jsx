@@ -87,7 +87,6 @@ import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 

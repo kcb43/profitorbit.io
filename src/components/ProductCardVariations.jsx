@@ -121,13 +121,13 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
         {/* Price Section */}
         <div className="space-y-1">
           <div className="flex items-baseline gap-2 sm:gap-3">
-            <span className="text-2xl sm:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+            <span className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
               ${data.price.toFixed(2)}
             </span>
             {savings && (
               <div className="flex flex-col">
                 <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</span>
-                <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Save ${savings.toFixed(2)}</span>
               </div>
             )}
           </div>
