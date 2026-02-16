@@ -1614,8 +1614,8 @@ export default function Import() {
       </SelectionBanner>
 
       {/* Header */}
-      <div className="bg-card border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
+      <div className="bg-gradient-to-r from-background via-background/95 to-background border-b border-border/40 backdrop-blur-sm shadow-md sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <Button
@@ -1640,7 +1640,7 @@ export default function Import() {
                     navigate(createPageUrl("Crosslist"));
                   }
                 }}
-                className="flex-shrink-0"
+                className="flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105"
               >
                 <ArrowLeft className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Back</span>
@@ -1654,7 +1654,7 @@ export default function Import() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isLoading || isSyncingFacebook || isSyncingMercari || !canSync}
-                className="gap-1 sm:gap-2 text-xs sm:text-sm"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
               >
                 <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">
