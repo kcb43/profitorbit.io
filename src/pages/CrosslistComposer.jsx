@@ -37531,7 +37531,7 @@ export default function CrosslistComposer() {
     smartListingEnabled, // Pass feature flag to hook
     {
       // Pass marketplace connection status
-      ebayConnected: !!user, // User logged in means eBay connected
+      ebayConnected: !!ebayToken, // eBay connected if token exists
       mercariConnected,
       facebookConnected,
     }
