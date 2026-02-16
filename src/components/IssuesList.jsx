@@ -195,18 +195,13 @@ function IssueItem({ issue, onApplyFix }) {
           </div>
         )}
         
-        {/* Special note for category fields */}
+        {/* Note: Categories should be set before opening Smart Listing */}
         {(issue.field === 'categoryId' || issue.field === 'mercariCategory' || issue.field === 'category') && (
-          <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertDescription className="text-xs text-blue-900 dark:text-blue-100">
-              <strong>Note:</strong> Categories require hierarchical navigation. Please:
-              <ol className="list-decimal ml-4 mt-1 space-y-0.5">
-                <li>Close this Smart Listing dialog</li>
-                <li>Select the category in the marketplace form</li>
-                <li>Navigate through all subcategories to a final category</li>
-                <li>Then open Smart Listing again</li>
-              </ol>
+          <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-xs text-amber-900 dark:text-amber-100">
+              <strong>Category Required:</strong> This should have been caught before Smart Listing opened. 
+              Please close this dialog and select the category in the General form first.
             </AlertDescription>
           </Alert>
         )}

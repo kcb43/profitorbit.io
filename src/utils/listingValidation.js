@@ -168,7 +168,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       field: 'categoryId',
       type: 'missing',
       severity: 'blocking',
-      message: 'Category is required. Please close this dialog and select a category from the eBay form, then try Smart Listing again.',
+      message: 'Category is required for eBay listings',
       patchTarget: 'ebay'
     });
   } else if (categoriesData) {
@@ -180,7 +180,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
         field: 'categoryId',
         type: 'incomplete_path',
         severity: 'blocking',
-        message: 'Please select a final category (this category has subcategories). Close this dialog and complete the category selection in the eBay form.',
+        message: 'Please select a final category (this category has subcategories)',
         patchTarget: 'ebay'
       });
     }
@@ -464,7 +464,7 @@ export function validateMercariForm(generalForm, mercariForm) {
       field: 'mercariCategory',
       type: 'missing',
       severity: 'blocking',
-      message: 'Mercari category is required. Please close this dialog and select a complete category path from the Mercari form, then try Smart Listing again.',
+      message: 'Mercari category is required',
       patchTarget: 'mercari'
     });
   } else {
@@ -479,7 +479,7 @@ export function validateMercariForm(generalForm, mercariForm) {
         field: 'mercariCategory',
         type: 'incomplete_path',
         severity: 'blocking',
-        message: 'Please select all subcategories until you reach a final category. Close this dialog and complete the category selection in the Mercari form.',
+        message: 'Please select all subcategories until you reach a final category',
         patchTarget: 'mercari'
       });
     }
@@ -594,7 +594,7 @@ export function validateFacebookForm(generalForm, facebookForm) {
       field: 'category',
       type: 'missing',
       severity: 'blocking',
-      message: 'Facebook category is required. Please close this dialog and select a category from the General or Facebook form, then try Smart Listing again.',
+      message: 'Facebook category is required',
       patchTarget: 'facebook'
     });
   }

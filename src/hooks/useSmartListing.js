@@ -79,10 +79,43 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     if (!enabled) return;
     
     debugLog('Opening Smart Listing modal');
+    
+    // Pre-validate: Check if categories are set for selected marketplaces
+    const missingCategories = [];
+    
+    selectedMarketplaces.forEach(marketplace => {
+      if (marketplace === 'ebay') {
+        const finalCategoryId = forms.ebayForm?.categoryId || forms.generalForm?.categoryId;
+        if (!finalCategoryId || finalCategoryId === '0' || finalCategoryId === 0) {
+          missingCategories.push('eBay');
+        }
+      } else if (marketplace === 'mercari') {
+        if (!forms.mercariForm?.mercariCategory || !forms.mercariForm?.mercariCategoryId) {
+          missingCategories.push('Mercari');
+        }
+      } else if (marketplace === 'facebook') {
+        const category = forms.facebookForm?.category || forms.generalForm?.category;
+        const categoryId = forms.facebookForm?.categoryId || forms.generalForm?.categoryId;
+        if (!category || !categoryId) {
+          missingCategories.push('Facebook');
+        }
+      }
+    });
+    
+    // If categories are missing, show error and don't open modal
+    if (missingCategories.length > 0) {
+      toast({
+        title: "Categories Required",
+        description: `Please select categories for ${missingCategories.join(', ')} in the General form before using Smart Listing.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     checkConnections();
     setModalState('idle');
     setModalOpen(true);
-  }, [enabled, checkConnections]);
+  }, [enabled, checkConnections, selectedMarketplaces, forms, toast]);
   
   /**
    * Close modal
