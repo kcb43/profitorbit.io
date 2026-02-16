@@ -35642,7 +35642,8 @@ export default function CrosslistComposer() {
     console.log('🎯 Build Time:', new Date().toISOString());
   }, [smartListingEnabled]);
   
-  const smartListing = smartListingEnabled ? useSmartListing(
+  // Always call the hook (Rules of Hooks), but only use it when enabled
+  const smartListing = useSmartListing(
     {
       generalForm,
       ebayForm,
@@ -35682,18 +35683,9 @@ export default function CrosslistComposer() {
         }));
       }
     },
-    handleListOnMarketplace // Pass existing submit handler
-  ) : {
-    selectedMarketplaces: [],
-    fixesDialogOpen: false,
-    preflightResult: null,
-    isSubmitting: false,
-    toggleMarketplace: () => {},
-    handleListToSelected: () => {},
-    handleApplyFix: () => {},
-    handleListNow: () => {},
-    closeFixesDialog: () => {},
-  };
+    handleListOnMarketplace, // Pass existing submit handler
+    smartListingEnabled // Pass feature flag to hook
+  );
 
   // Find similar items for description generation
   const similarItems = useMemo(() => {

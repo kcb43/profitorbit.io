@@ -19,14 +19,30 @@ import { debugLog } from '@/config/features';
  * @param {Object} validationOptions - Options needed for validation
  * @param {Function} setMarketplaceForm - Function to update marketplace form state
  * @param {Function} handleSubmit - Existing submit handler for individual marketplaces
+ * @param {boolean} enabled - Whether Smart Listing is enabled
  * @returns {Object} Smart listing state and handlers
  */
-export function useSmartListing(forms, validationOptions, setMarketplaceForm, handleSubmit) {
+export function useSmartListing(forms, validationOptions, setMarketplaceForm, handleSubmit, enabled = true) {
   const { toast } = useToast();
   const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
   const [fixesDialogOpen, setFixesDialogOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // If disabled, return no-op handlers
+  if (!enabled) {
+    return {
+      selectedMarketplaces: [],
+      fixesDialogOpen: false,
+      preflightResult: null,
+      isSubmitting: false,
+      toggleMarketplace: () => {},
+      handleListToSelected: () => {},
+      handleApplyFix: () => {},
+      handleListNow: () => {},
+      closeFixesDialog: () => {},
+    };
+  }
   
   /**
    * Toggle marketplace selection
