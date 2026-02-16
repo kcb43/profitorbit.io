@@ -45623,6 +45623,22 @@ export default function CrosslistComposer() {
                         </div>
                       </div>
 
+                      {/* Smart Listing Section - Desktop General Form - List to Multiple Marketplaces */}
+                      {smartListingEnabled && (
+                        <div style={{backgroundColor: 'red', padding: '20px', margin: '20px 0', color: 'white', fontSize: '24px', fontWeight: 'bold', border: '5px solid yellow'}}>
+                          ⚠️ GENERAL FORM: SMART LISTING ENABLED - YOU SHOULD SEE THIS BIG RED BOX
+                        </div>
+                      )}
+                      {smartListingEnabled && (
+                        <SmartListingSection
+                          selectedMarketplaces={smartListing.selectedMarketplaces}
+                          toggleMarketplace={smartListing.toggleMarketplace}
+                          handleListToSelected={smartListing.handleListToSelected}
+                          isSubmitting={smartListing.isSubmitting}
+                          isSaving={isSaving}
+                        />
+                      )}
+
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("general")}>
                           <Save className="h-4 w-4" />
