@@ -218,7 +218,7 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
                   <span className="font-medium text-gray-900 dark:text-gray-100">
                     {offer.name || offer.merchant || 'Store'}
                   </span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                  <span className="text-green-600 dark:text-green-400 font-bold">
                     ${(offer.extracted_price || offer.price || 0).toFixed(2)}
                   </span>
                 </a>
@@ -283,11 +283,11 @@ export function ProductCardV1List({ item, showDebugData = false }) {
 
           {/* Price on mobile - compact inline */}
           <div className="sm:hidden flex items-baseline gap-2">
-            <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+            <span className="text-lg font-bold text-green-600 dark:text-green-400">
               ${data.price.toFixed(2)}
             </span>
             {savings && (
-              <span className="text-xs text-green-600 dark:text-green-400 font-semibold">
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
                 Save ${savings.toFixed(2)}
               </span>
             )}
@@ -334,13 +334,13 @@ export function ProductCardV1List({ item, showDebugData = false }) {
         {/* Price & Action - Right (Desktop only) */}
         <div className="hidden sm:flex flex-col justify-between items-end w-40 md:w-48 flex-shrink-0">
           <div className="text-right space-y-1">
-            <div className="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+            <div className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
               ${data.price.toFixed(2)}
             </div>
             {savings ? (
               <>
                 <div className="text-sm text-gray-400 dark:text-gray-500 line-through">${data.oldPrice.toFixed(2)}</div>
-                <div className="text-sm text-green-600 dark:text-green-400 font-semibold">Save ${savings.toFixed(2)}</div>
+                <div className="text-sm text-amber-600 dark:text-amber-400 font-semibold">Save ${savings.toFixed(2)}</div>
               </>
             ) : (
               <div className="h-10"></div>
@@ -404,7 +404,7 @@ export function ProductCardV1List({ item, showDebugData = false }) {
                   <span className="font-medium text-gray-900 dark:text-gray-100">
                     {offer.name || offer.merchant || 'Store'}
                   </span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                  <span className="text-green-600 dark:text-green-400 font-bold">
                     ${(offer.extracted_price || offer.price || 0).toFixed(2)}
                   </span>
                 </a>
