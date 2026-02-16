@@ -302,9 +302,7 @@ class SerpApiGoogleProvider extends SearchProvider {
         gl: country.toLowerCase(),
         api_key: this.apiKey,
         num: Math.min(limit, 100), // SerpAPI supports up to 100 results
-        start: (page - 1) * limit, // SerpAPI uses 'start' for pagination offset
-        location: 'Austin, Texas, United States', // Match your playground settings
-        uule: 'w+CAIQICIaQXVzdGluLFRleGFzLFVuaXRlZCBTdGF0ZXM' // Encoded location
+        start: (page - 1) * limit // SerpAPI uses 'start' for pagination offset
       };
       
       console.log('[SerpAPI] Request parameters', JSON.stringify({
