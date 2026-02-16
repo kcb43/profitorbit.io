@@ -189,7 +189,7 @@ export default function SmartListingModal({
   const renderMarketplaceSelection = () => (
     <div className="space-y-3">
       <h4 className="text-sm font-semibold text-foreground">Step 2: Select Marketplaces</h4>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {marketplaces.map(marketplace => (
           <div
             key={marketplace.id}
@@ -275,12 +275,12 @@ export default function SmartListingModal({
   
   // Render idle state (initial setup)
   const renderIdleState = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {renderConnectionStatus()}
-      <div className="border-t pt-6">
+      <div className="border-t pt-4 sm:pt-6">
         {renderMarketplaceSelection()}
       </div>
-      <div className="border-t pt-6">
+      <div className="border-t pt-4 sm:pt-6">
         {renderAutoFillMode()}
       </div>
     </div>
@@ -288,11 +288,11 @@ export default function SmartListingModal({
   
   // Render validating state
   const renderValidatingState = () => (
-    <div className="flex flex-col items-center justify-center py-12 space-y-4">
-      <Loader2 className="w-12 h-12 animate-spin text-primary" />
+    <div className="flex flex-col items-center justify-center py-8 sm:py-12 space-y-4 px-4">
+      <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 animate-spin text-primary" />
       <div className="text-center space-y-1">
-        <h3 className="text-lg font-semibold">Validating Listings</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-base sm:text-lg font-semibold">Validating Listings</h3>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Checking {selectedCount} marketplace{selectedCount !== 1 ? 's' : ''} and running AI suggestions...
         </p>
       </div>
@@ -301,17 +301,17 @@ export default function SmartListingModal({
   
   // Render ready state
   const renderReadyState = () => (
-    <div className="flex flex-col items-center justify-center py-12 space-y-4">
-      <CheckCircle className="w-16 h-16 text-green-500" />
+    <div className="flex flex-col items-center justify-center py-8 sm:py-12 space-y-4 px-4">
+      <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-500" />
       <div className="text-center space-y-2">
-        <h3 className="text-xl font-bold text-green-600 dark:text-green-400">All Ready!</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">All Ready!</h3>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           All {selectedCount} marketplace{selectedCount !== 1 ? 's' : ''} passed validation.
           <br />
           Click "List Now" to create your listings.
         </p>
       </div>
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4 justify-center">
         {selectedMarketplaces.map(id => {
           const marketplace = marketplaces.find(m => m.id === id);
           return (
@@ -342,9 +342,9 @@ export default function SmartListingModal({
     const canListNow = fixesNeeded.every(mp => isMarketplaceReady(mp.issues));
     
     return (
-      <div className="grid grid-cols-[250px_1fr] min-h-[400px]">
+      <div className="flex flex-col md:grid md:grid-cols-[250px_1fr] min-h-[400px] max-h-[60vh] md:max-h-none">
         {/* Left: Marketplaces list */}
-        <ScrollArea className="border-r">
+        <ScrollArea className="border-b md:border-b-0 md:border-r max-h-[200px] md:max-h-none">
           <div className="p-4 space-y-1">
             {/* Ready marketplaces */}
             {ready.map(marketplace => (
@@ -412,15 +412,15 @@ export default function SmartListingModal({
         </ScrollArea>
         
         {/* Right: Issues panel */}
-        <div className="flex flex-col min-h-0">
+        <div className="flex flex-col min-h-0 flex-1">
           {activeMarketplace ? (
             <>
-              <div className="px-6 py-4 border-b">
-                <div className="flex items-center justify-between">
+              <div className="px-4 md:px-6 py-4 border-b">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <h3 className="text-lg font-semibold">
                     {getMarketplaceName(activeMarketplace)}
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {blockingIssues.length > 0 && (
                       <Badge variant="destructive">
                         {blockingIssues.length} Blocking
@@ -436,7 +436,7 @@ export default function SmartListingModal({
               </div>
               
               <ScrollArea className="flex-1">
-                <div className="p-6">
+                <div className="p-4 md:p-6">
                   <IssuesList
                     marketplace={activeMarketplace}
                     issues={activeIssues}
@@ -446,7 +446,7 @@ export default function SmartListingModal({
               </ScrollArea>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
+            <div className="flex items-center justify-center h-full text-muted-foreground py-8">
               <div className="text-center">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
                 <p className="text-lg font-medium">All Clear!</p>
@@ -499,14 +499,14 @@ export default function SmartListingModal({
   const renderFooter = () => {
     if (modalState === 'idle') {
       return (
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="px-6 py-4 border-t">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button
             onClick={onStartListing}
             disabled={!canStartListing}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             <Rocket className="w-4 h-4" />
             Start Smart Listing
@@ -524,18 +524,19 @@ export default function SmartListingModal({
         (preflightResult && preflightResult.fixesNeeded.every(mp => isMarketplaceReady(mp.issues)));
       
       return (
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
           <Button
             onClick={onListNow}
             disabled={!canList || isSubmitting}
-            className="min-w-[120px] gap-2"
+            className="min-w-[120px] gap-2 w-full sm:w-auto"
           >
             {isSubmitting ? (
               <>
@@ -545,7 +546,8 @@ export default function SmartListingModal({
             ) : (
               <>
                 <Rocket className="w-4 h-4" />
-                List to {selectedCount} Marketplace{selectedCount !== 1 ? 's' : ''}
+                <span className="hidden sm:inline">List to {selectedCount} Marketplace{selectedCount !== 1 ? 's' : ''}</span>
+                <span className="sm:hidden">List Now</span>
               </>
             )}
           </Button>
@@ -559,25 +561,27 @@ export default function SmartListingModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className={cn(
-        "p-0",
-        modalState === 'fixes' ? "max-w-5xl max-h-[85vh]" : "max-w-2xl"
+        "p-0 w-[95vw] max-w-[95vw] sm:w-full sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col",
+        modalState === 'fixes' && "sm:max-w-5xl"
       )}>
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b shrink-0">
           <DialogTitle>{getModalTitle()}</DialogTitle>
           <DialogDescription>
             {getModalDescription()}
           </DialogDescription>
         </DialogHeader>
         
-        <div className={cn(
-          modalState === 'idle' ? "px-6 py-4" : "",
-          modalState === 'fixes' ? "" : "px-6"
-        )}>
-          {modalState === 'idle' && renderIdleState()}
-          {modalState === 'validating' && renderValidatingState()}
-          {modalState === 'ready' && renderReadyState()}
-          {modalState === 'fixes' && renderFixesState()}
-        </div>
+        <ScrollArea className="flex-1 overflow-auto">
+          <div className={cn(
+            modalState === 'idle' ? "px-4 sm:px-6 py-4" : "",
+            modalState === 'fixes' ? "" : "px-4 sm:px-6"
+          )}>
+            {modalState === 'idle' && renderIdleState()}
+            {modalState === 'validating' && renderValidatingState()}
+            {modalState === 'ready' && renderReadyState()}
+            {modalState === 'fixes' && renderFixesState()}
+          </div>
+        </ScrollArea>
         
         {renderFooter()}
       </DialogContent>
