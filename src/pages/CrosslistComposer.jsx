@@ -38392,24 +38392,24 @@ export default function CrosslistComposer() {
   };
   
   return (
-    <div className="p-4 md:p-6 lg:p-8 min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden">
       {/* Mobile Layout - Keep existing structure */}
-      <div className="lg:hidden max-w-7xl mx-auto space-y-6 min-w-0">
+      <div className="lg:hidden max-w-full mx-auto space-y-4 px-3 py-4 min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
             <Button
               variant="ghost"
               onClick={() => navigate(createPageUrl("Crosslist"))}
-              className="mb-2"
+              className="mb-2 -ml-2"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Crosslist
             </Button>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+            <h1 className="text-xl font-bold text-foreground truncate">
               {bulkSelectedItems.length > 1 ? "Bulk Crosslist" : "Compose Listing"}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {bulkSelectedItems.length > 1
                 ? `Editing ${bulkSelectedItems.length} items. Fill in the general details below.`
                 : "Fill in the general details. Use Smart Listing to list to multiple marketplaces."}
@@ -38720,10 +38720,10 @@ export default function CrosslistComposer() {
         {/* Smart Listing handles multi-marketplace logic */}
 
         {/* Form Content */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* General Form */}
           {activeForm === "general" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
@@ -38918,16 +38918,16 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Item Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-4">
+              <div className="flex items-center justify-between pb-2 border-b mb-3">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Item Details</Label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                 <div>
-                  <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-title" className="text-xs mb-1 block">Title <span className="text-red-500">*</span></Label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       id="general-title"
@@ -38935,16 +38935,17 @@ export default function CrosslistComposer() {
                       placeholder=""
                       value={generalForm.title || ""}
                       onChange={(e) => handleGeneralChange("title", e.target.value)}
-                      className="w-full"
+                      className="w-full h-9"
                     />
                     {generalForm.title?.trim() && (
                       <Button
                         type="button"
                         variant="outline"
+                        size="sm"
                         onClick={() => {
                           setSoldDialogOpen(true);
                         }}
-                        className="whitespace-nowrap w-full sm:w-auto"
+                        className="whitespace-nowrap w-full sm:w-auto h-9"
                       >
                         <BarChart className="w-4 h-4 mr-2" />
                         Search
@@ -38953,7 +38954,7 @@ export default function CrosslistComposer() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-price" className="text-xs mb-1 block">Listing Price <span className="text-red-500">*</span></Label>
                   <Input
                     id="general-price"
                     name="general-price"
@@ -38963,8 +38964,9 @@ export default function CrosslistComposer() {
                     placeholder="0.00"
                     value={generalForm.price || ""}
                     onChange={(e) => handleGeneralChange("price", e.target.value)}
+                    className="h-9"
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">Price you'll list this item for</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Price you'll list this item for</p>
                 </div>
                 <div>
                   <Label htmlFor="general-cost" className="text-xs mb-1.5 block">Purchase Price <span className="text-red-500">*</span></Label>
