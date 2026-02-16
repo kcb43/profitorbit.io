@@ -41155,7 +41155,11 @@ export default function CrosslistComposer() {
               {/* Vendoo-style listing info is shown at the bottom of the form (see action area). */}
 
               {/* Smart Listing Section - List to Multiple Marketplaces */}
-              {console.log('🎯 Rendering Smart Listing Section. Enabled:', smartListingEnabled, 'SmartListing object:', smartListing)}
+              {smartListingEnabled && (
+                <div style={{backgroundColor: 'red', padding: '20px', margin: '20px 0', color: 'white', fontSize: '24px', fontWeight: 'bold'}}>
+                  ⚠️ SMART LISTING ENABLED - YOU SHOULD SEE THIS
+                </div>
+              )}
               {smartListingEnabled && (
                 <SmartListingSection
                   selectedMarketplaces={smartListing.selectedMarketplaces}
