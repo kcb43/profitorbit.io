@@ -86,7 +86,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
-import { ProductSearchDialog } from "@/components/ProductSearchDialog";
+import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -2428,8 +2429,15 @@ export default function Crosslist() {
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setProductSearchQuery(it.item_name || "");
-                              setProductSearchOpen(true);
+                              const query = it.item_name || "";
+                              if (isMobile) {
+                                // On mobile, navigate to ProductSearch page
+                                navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=crosslist`));
+                              } else {
+                                // On desktop, open dialog
+                                setProductSearchQuery(query);
+                                setProductSearchOpen(true);
+                              }
                             }}
                             variant="outline"
                             className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
@@ -2850,8 +2858,15 @@ export default function Crosslist() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setProductSearchQuery(it.item_name || "");
-                        setProductSearchOpen(true);
+                        const query = it.item_name || "";
+                        if (isMobile) {
+                          // On mobile, navigate to ProductSearch page
+                          navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=crosslist`));
+                        } else {
+                          // On desktop, open dialog
+                          setProductSearchQuery(query);
+                          setProductSearchOpen(true);
+                        }
                       }}
                       className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-card/80 border border-gray-200/70 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                     >
@@ -3173,7 +3188,7 @@ export default function Crosslist() {
       )}
 
       {/* Product Search Dialog */}
-      <ProductSearchDialog
+      <EnhancedProductSearchDialog
         open={productSearchOpen}
         onOpenChange={setProductSearchOpen}
         initialQuery={productSearchQuery}

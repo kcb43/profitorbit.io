@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Loader2, LoaderCircle, ExternalLink, TrendingUp, ShoppingCart, AlertCircle, Grid3x3, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase';
 import { useToast } from '@/components/ui/use-toast';
+import { createPageUrl } from '@/utils';
 import { 
   ProductCardV1Grid, 
   ProductCardV1List
@@ -16,7 +19,12 @@ import {
 const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
 
 export default function ProductSearch() {
-  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  const fromPage = searchParams.get('from') || ''; // 'inventory' or 'crosslist'
+  
+  const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [prefetchQuery, setPrefetchQuery] = useState(''); // For predictive pre-fetching
   const [isPrefetching, setIsPrefetching] = useState(false); // Track prefetch state (for subtle UI hint)
@@ -698,6 +706,25 @@ export default function ProductSearch() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="w-full sm:w-auto">
+          {/* Back button for mobile */}
+          {fromPage && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (fromPage === 'inventory') {
+                  navigate(createPageUrl('Inventory'));
+                } else if (fromPage === 'crosslist') {
+                  navigate(createPageUrl('Crosslist'));
+                } else {
+                  navigate(-1);
+                }
+              }}
+              className="mb-2 -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to {fromPage === 'inventory' ? 'Inventory' : fromPage === 'crosslist' ? 'Crosslist' : 'Previous Page'}
+            </Button>
+          )}
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Universal Product Search</h1>
           <p className="text-xs sm:text-sm md:text-base text-gray-600 mt-1">
             Search Products Across 100+ Marketplaces

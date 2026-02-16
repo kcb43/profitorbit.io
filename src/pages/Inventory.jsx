@@ -2445,8 +2445,15 @@ export default function InventoryPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setProductSearchQuery(item.item_name || "");
-                                setProductSearchOpen(true);
+                                const query = item.item_name || "";
+                                if (isMobile) {
+                                  // On mobile, navigate to ProductSearch page with query and return path
+                                  navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=inventory`));
+                                } else {
+                                  // On desktop, open dialog
+                                  setProductSearchQuery(query);
+                                  setProductSearchOpen(true);
+                                }
                               }}
                               className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground transition-all shadow-md"
                             >
@@ -3234,8 +3241,15 @@ export default function InventoryPage() {
                                 <Button
                                   variant="outline"
                                   onClick={() => {
-                                    setProductSearchQuery(item.item_name || "");
-                                    setProductSearchOpen(true);
+                                    const query = item.item_name || "";
+                                    if (isMobile) {
+                                      // On mobile, navigate to ProductSearch page
+                                      navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=inventory`));
+                                    } else {
+                                      // On desktop, open dialog
+                                      setProductSearchQuery(query);
+                                      setProductSearchOpen(true);
+                                    }
                                   }}
                                   className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                                 >
@@ -3399,8 +3413,15 @@ export default function InventoryPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setProductSearchQuery(item.item_name || "");
-                              setProductSearchOpen(true);
+                              const query = item.item_name || "";
+                              if (isMobile) {
+                                // On mobile, navigate to ProductSearch page
+                                navigate(createPageUrl(`ProductSearch?q=${encodeURIComponent(query)}&from=inventory`));
+                              } else {
+                                // On desktop, open dialog
+                                setProductSearchQuery(query);
+                                setProductSearchOpen(true);
+                              }
                             }}
                             className={`inline-flex ${gridVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-600 hover:bg-blue-600/10`}
                             title="Search"
