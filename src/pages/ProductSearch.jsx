@@ -547,7 +547,7 @@ export default function ProductSearch() {
       
       await Promise.all(batch.map(async (item) => {
         try {
-          const response = await fetch(`${ORBEN_API_URL}/v1/product/offers`, {
+          const response = await fetch(`${ORBEN_API_URL}/product-offers`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
