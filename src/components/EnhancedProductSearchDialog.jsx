@@ -270,10 +270,6 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
       // Transform SerpAPI results to match expected format
       const transformedProducts = (data.items || []).map(item => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:282',message:'Transforming product',data:{hasLink:!!item.link,hasUrl:!!item.url,linkValue:item.link||null,urlValue:item.url||null,isSerpApi:item.link?.includes('serpapi.com')||false,hasImmersiveToken:!!item.immersive_product_page_token,title:item.title?.substring(0,50)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
         return {
           title: item.title || '',
           price: item.price || item.extracted_price || 0,
@@ -791,27 +787,21 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick })
     <>
       {/* Mobile View - Card Layout */}
       <div className="md:hidden space-y-3">
-        {products.map((product, idx) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:716',message:'Rendering product card',data:{productUrl:product.productUrl,hasImmersiveToken:!!product.immersive_product_page_token,hasMerchantOffers:!!product.merchantOffers?.length,merchantOffersLoaded:product.merchantOffersLoaded,isSerpApi:product.productUrl?.includes('serpapi.com')||false},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          
-          return (
-            <ProductCardV1List 
-              key={idx} 
-              item={{
-                ...product,
-                image_url: product.imageUrl,
-                link: product.productUrl,
-                extracted_price: product.price,
-                old_price: product.originalPrice,
-                extracted_old_price: product.originalPrice,
-                source: product.marketplace,
-                reviews_count: product.reviewCount,
-              }}
-            />
-          );
-        })}
+        {products.map((product, idx) => (
+          <ProductCardV1List 
+            key={idx} 
+            item={{
+              ...product,
+              image_url: product.imageUrl,
+              link: product.productUrl,
+              extracted_price: product.price,
+              old_price: product.originalPrice,
+              extracted_old_price: product.originalPrice,
+              source: product.marketplace,
+              reviews_count: product.reviewCount,
+            }}
+          />
+        ))}
       </div>
 
       {/* Desktop View - Table Layout */}

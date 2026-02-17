@@ -547,10 +547,6 @@ export default function ProductSearch() {
       
       await Promise.all(batch.map(async (item) => {
         try {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:550',message:'Fetching merchant offers',data:{url:`${ORBEN_API_URL}/v1/product/offers`,hasToken:!!item.immersive_product_page_token,tokenPreview:item.immersive_product_page_token?.substring(0,30)},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
-          
           const response = await fetch(`${ORBEN_API_URL}/v1/product/offers`, {
             method: 'POST',
             headers: {
@@ -561,10 +557,6 @@ export default function ProductSearch() {
               immersive_product_page_token: item.immersive_product_page_token
             })
           });
-
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductSearch.jsx:563',message:'Merchant offers response',data:{ok:response.ok,status:response.status,statusText:response.statusText,hasOffersField:response.ok?true:null},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
 
           if (response.ok) {
             const data = await response.json();

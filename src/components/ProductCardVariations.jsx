@@ -50,38 +50,32 @@ const MerchantBadge = ({ merchant, className = '', showText = false }) => {
   );
 };
 
-const extractItemData = (item) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:53',message:'extractItemData called',data:{hasLink:!!item.link,hasUrl:!!item.url,hasSerpApiLink:!!item.serpapi_link,linkValue:item.link,urlValue:item.url,serpapiLinkValue:item.serpapi_link,hasStores:!!item.stores,storesCount:item.stores?.length||0,firstStoreLink:item.stores?.[0]?.link||null},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  
-  return {
-    title: item.title || '',
-    imageUrl: item.image_url || item.thumbnail || '',
-    price: item.price || item.extracted_price || 0,
-    oldPrice: item.old_price || item.extracted_old_price || null,
-    merchant: item.merchant || item.source || 'Unknown',
-    productLink: item.link || item.url || '', // Prioritize direct merchant link
-    rating: item.rating || null,
-    reviews: item.reviews || item.reviews_count || null,
-    snippet: item.snippet || '',
-    extensions: item.extensions || [],
-    tag: item.tag || '',
-    badge: item.badge || '',
-    delivery: item.delivery || '',
-    condition: item.condition || item.second_hand_condition || '',
-    position: item.position || null,
-    sourceIcon: item.source_icon || '',
-    productId: item.product_id || '',
-    installment: item.installment || '',
-    alternativePrice: item.alternative_price || '',
-    currency: item.currency || 'USD',
-    merchantOffers: item.merchantOffers || [],
-    merchantOffersLoaded: item.merchantOffersLoaded || false,
-    hasDirectLink: item.link && item.link.includes('http'), // Check if we have a real direct link
-    multipleStores: item.multiple_sources || false
-  };
-};
+const extractItemData = (item) => ({
+  title: item.title || '',
+  imageUrl: item.image_url || item.thumbnail || '',
+  price: item.price || item.extracted_price || 0,
+  oldPrice: item.old_price || item.extracted_old_price || null,
+  merchant: item.merchant || item.source || 'Unknown',
+  productLink: item.link || item.url || '', // Prioritize direct merchant link
+  rating: item.rating || null,
+  reviews: item.reviews || item.reviews_count || null,
+  snippet: item.snippet || '',
+  extensions: item.extensions || [],
+  tag: item.tag || '',
+  badge: item.badge || '',
+  delivery: item.delivery || '',
+  condition: item.condition || item.second_hand_condition || '',
+  position: item.position || null,
+  sourceIcon: item.source_icon || '',
+  productId: item.product_id || '',
+  installment: item.installment || '',
+  alternativePrice: item.alternative_price || '',
+  currency: item.currency || 'USD',
+  merchantOffers: item.merchantOffers || [],
+  merchantOffersLoaded: item.merchantOffersLoaded || false,
+  hasDirectLink: item.link && item.link.includes('http'), // Check if we have a real direct link
+  multipleStores: item.multiple_sources || false
+});
 
 // ========================================
 // V1: MODERN MINIMAL - Clean, spacious, professional (Dark mode compatible)
@@ -90,11 +84,6 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:86',message:'V1Grid viewLink decision',data:{hasPrimaryOffer:!!primaryOffer,primaryOfferLink:primaryOffer?.link||null,productLink:data.productLink,finalViewLink:viewLink,isSerpApi:viewLink?.includes('serpapi.com')||false},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-  
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
   const [showRawData, setShowRawData] = useState(false);

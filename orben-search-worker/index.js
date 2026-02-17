@@ -239,10 +239,6 @@ class SerpApiGoogleProvider extends SearchProvider {
         timeout: 10000
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orben-search-worker/index.js:260',message:'getProductOffers response',data:{hasStores:!!response.data?.product_results?.stores,storesCount:response.data?.product_results?.stores?.length||0,firstStoreLink:response.data?.product_results?.stores?.[0]?.link||null,firstStoreName:response.data?.product_results?.stores?.[0]?.name||null},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-
       console.log('[SerpAPI] Product offers response', JSON.stringify({
         hasOffers: !!response.data?.sellers_results,
         offerCount: response.data?.sellers_results?.length || 0,
@@ -361,10 +357,6 @@ class SerpApiGoogleProvider extends SearchProvider {
       if (response.data?.immersive_products) {
         console.log(`[SerpAPI] Found immersive_products: ${response.data.immersive_products.length}`);
         for (const product of response.data.immersive_products) {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orben-search-worker/index.js:360',message:'Processing immersive_product',data:{hasLink:!!product.link,hasSerpApiLink:!!product.serpapi_link,hasStores:!!product.stores,storesCount:product.stores?.length||0,linkValue:product.link||null,serpapiLinkValue:product.serpapi_link||null,firstStoreLink:product.stores?.[0]?.link||null,productTitle:product.title?.substring(0,50)},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
-          
           items.push({
             title: product.title || 'Untitled',
             price: product.extracted_price || parseFloat(product.price?.replace(/[^0-9.]/g, '')) || 0,
