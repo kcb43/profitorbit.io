@@ -269,26 +269,37 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       }
 
       // Transform SerpAPI results to match expected format
-      const transformedProducts = (data.items || []).map(item => ({
-        title: item.title || '',
-        price: item.price || item.extracted_price || 0,
-        originalPrice: item.old_price || item.extracted_old_price || null,
-        discountPercentage: item.old_price && item.price
-          ? Math.round(((item.old_price - item.price) / item.old_price) * 100)
-          : 0,
-        rating: item.rating || null,
-        reviewCount: item.reviews || item.reviews_count || null,
-        marketplace: item.merchant || item.source || 'Unknown',
-        productUrl: item.link || item.url || '',
-        imageUrl: item.image_url || item.thumbnail || '',
-        seller: item.seller || null,
-        delivery: item.delivery || null,
-        condition: item.condition || null,
-        snippet: item.snippet || '',
-        immersive_product_page_token: item.immersive_product_page_token || null
-      }));
+      const transformedProducts = (data.items || []).map(item => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:282',message:'Transforming product',data:{hasLink:!!item.link,hasUrl:!!item.url,linkValue:item.link||null,urlValue:item.url||null,isSerpApi:item.link?.includes('serpapi.com')||false,hasImmersiveToken:!!item.immersive_product_page_token,title:item.title?.substring(0,50)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
+        return {
+          title: item.title || '',
+          price: item.price || item.extracted_price || 0,
+          originalPrice: item.old_price || item.extracted_old_price || null,
+          discountPercentage: item.old_price && item.price
+            ? Math.round(((item.old_price - item.price) / item.old_price) * 100)
+            : 0,
+          rating: item.rating || null,
+          reviewCount: item.reviews || item.reviews_count || null,
+          marketplace: item.merchant || item.source || 'Unknown',
+          productUrl: item.link || item.url || '',
+          imageUrl: item.image_url || item.thumbnail || '',
+          seller: item.seller || null,
+          delivery: item.delivery || null,
+          condition: item.condition || null,
+          snippet: item.snippet || '',
+          immersive_product_page_token: item.immersive_product_page_token || null,
+          merchantOffers: [], // Will be populated by prefetch
+          merchantOffersLoaded: false
+        };
+      });
 
       setUniversalProducts(transformedProducts);
+
+      // Prefetch merchant offers for products with immersive tokens
+      prefetchMerchantOffers(transformedProducts);
 
       // Calculate stats
       const prices = transformedProducts.filter(p => p.price > 0).map(p => p.price);
@@ -327,6 +338,87 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       });
     } finally {
       setUniversalLoading(false);
+    }
+  };
+
+  // Prefetch merchant offers for products with immersive tokens
+  const prefetchMerchantOffers = async (products) => {
+    const productsWithTokens = products.filter(p => p.immersive_product_page_token);
+    
+    if (productsWithTokens.length === 0) {
+      console.log('[Dialog Prefetch] No products with immersive tokens');
+      return;
+    }
+
+    console.log(`[Dialog Prefetch] Fetching merchant offers for ${productsWithTokens.length} products`);
+
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      console.warn('[Dialog Prefetch] No auth token available');
+      return;
+    }
+
+    const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
+
+    // Fetch merchant offers for each product (in batches)
+    const batchSize = 3;
+    for (let i = 0; i < productsWithTokens.length; i += batchSize) {
+      const batch = productsWithTokens.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (product) => {
+        try {
+          const response = await fetch(`${ORBEN_API_URL}/product-offers`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              immersive_product_page_token: product.immersive_product_page_token,
+              userId: session.data.session?.user?.id
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`[Dialog Prefetch] Got ${data.offers?.length || 0} offers for: ${product.title.substring(0, 30)}...`);
+            
+            // Update the product with merchant offers
+            setUniversalProducts(prev => prev.map(p => 
+              p.title === product.title && p.immersive_product_page_token === product.immersive_product_page_token
+                ? { 
+                    ...p, 
+                    merchantOffers: data.offers || [], 
+                    merchantOffersLoaded: true,
+                    // Update productUrl to first offer's link if available
+                    productUrl: data.offers?.[0]?.link || p.productUrl
+                  }
+                : p
+            ));
+          } else {
+            console.warn(`[Dialog Prefetch] Failed to fetch offers: ${response.status}`);
+            setUniversalProducts(prev => prev.map(p =>
+              p.title === product.title && p.immersive_product_page_token === product.immersive_product_page_token
+                ? { ...p, merchantOffersLoaded: true }
+                : p
+            ));
+          }
+        } catch (error) {
+          console.error(`[Dialog Prefetch] Error:`, error.message);
+          setUniversalProducts(prev => prev.map(p =>
+            p.title === product.title && p.immersive_product_page_token === product.immersive_product_page_token
+              ? { ...p, merchantOffersLoaded: true }
+              : p
+          ));
+        }
+      }));
+      
+      // Small delay between batches
+      if (i + batchSize < productsWithTokens.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
   };
 
@@ -699,21 +791,27 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick })
     <>
       {/* Mobile View - Card Layout */}
       <div className="md:hidden space-y-3">
-        {products.map((product, idx) => (
-          <ProductCardV1List 
-            key={idx} 
-            item={{
-              ...product,
-              image_url: product.imageUrl,
-              link: product.productUrl,
-              extracted_price: product.price,
-              old_price: product.originalPrice,
-              extracted_old_price: product.originalPrice,
-              source: product.marketplace,
-              reviews_count: product.reviewCount,
-            }}
-          />
-        ))}
+        {products.map((product, idx) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:716',message:'Rendering product card',data:{productUrl:product.productUrl,hasImmersiveToken:!!product.immersive_product_page_token,hasMerchantOffers:!!product.merchantOffers?.length,merchantOffersLoaded:product.merchantOffersLoaded,isSerpApi:product.productUrl?.includes('serpapi.com')||false},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          
+          return (
+            <ProductCardV1List 
+              key={idx} 
+              item={{
+                ...product,
+                image_url: product.imageUrl,
+                link: product.productUrl,
+                extracted_price: product.price,
+                old_price: product.originalPrice,
+                extracted_old_price: product.originalPrice,
+                source: product.marketplace,
+                reviews_count: product.reviewCount,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Desktop View - Table Layout */}
