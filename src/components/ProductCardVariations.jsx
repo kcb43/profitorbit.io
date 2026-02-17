@@ -50,32 +50,38 @@ const MerchantBadge = ({ merchant, className = '', showText = false }) => {
   );
 };
 
-const extractItemData = (item) => ({
-  title: item.title || '',
-  imageUrl: item.image_url || item.thumbnail || '',
-  price: item.price || item.extracted_price || 0,
-  oldPrice: item.old_price || item.extracted_old_price || null,
-  merchant: item.merchant || item.source || 'Unknown',
-  productLink: item.link || item.url || '', // Prioritize direct merchant link
-  rating: item.rating || null,
-  reviews: item.reviews || item.reviews_count || null,
-  snippet: item.snippet || '',
-  extensions: item.extensions || [],
-  tag: item.tag || '',
-  badge: item.badge || '',
-  delivery: item.delivery || '',
-  condition: item.condition || item.second_hand_condition || '',
-  position: item.position || null,
-  sourceIcon: item.source_icon || '',
-  productId: item.product_id || '',
-  installment: item.installment || '',
-  alternativePrice: item.alternative_price || '',
-  currency: item.currency || 'USD',
-  merchantOffers: item.merchantOffers || [],
-  merchantOffersLoaded: item.merchantOffersLoaded || false,
-  hasDirectLink: item.link && item.link.includes('http'), // Check if we have a real direct link
-  multipleStores: item.multiple_sources || false
-});
+const extractItemData = (item) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:53',message:'extractItemData',data:{itemLink:item.link,itemUrl:item.url,hasMerchantOffers:!!item.merchantOffers?.length,merchantOffersLoaded:item.merchantOffersLoaded,title:item.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'N'})}).catch(()=>{});
+  // #endregion
+  
+  return {
+    title: item.title || '',
+    imageUrl: item.image_url || item.thumbnail || '',
+    price: item.price || item.extracted_price || 0,
+    oldPrice: item.old_price || item.extracted_old_price || null,
+    merchant: item.merchant || item.source || 'Unknown',
+    productLink: item.link || item.url || '', // Prioritize direct merchant link
+    rating: item.rating || null,
+    reviews: item.reviews || item.reviews_count || null,
+    snippet: item.snippet || '',
+    extensions: item.extensions || [],
+    tag: item.tag || '',
+    badge: item.badge || '',
+    delivery: item.delivery || '',
+    condition: item.condition || item.second_hand_condition || '',
+    position: item.position || null,
+    sourceIcon: item.source_icon || '',
+    productId: item.product_id || '',
+    installment: item.installment || '',
+    alternativePrice: item.alternative_price || '',
+    currency: item.currency || 'USD',
+    merchantOffers: item.merchantOffers || [],
+    merchantOffersLoaded: item.merchantOffersLoaded || false,
+    hasDirectLink: item.link && item.link.includes('http'), // Check if we have a real direct link
+    multipleStores: item.multiple_sources || false
+  };
+};
 
 // ========================================
 // V1: MODERN MINIMAL - Clean, spacious, professional (Dark mode compatible)
@@ -85,8 +91,16 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
   
-  // Don't allow navigation to serpapi links
-  const isValidLink = viewLink && !viewLink.includes('serpapi.com') && viewLink !== '#';
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:86',message:'V1Grid link check',data:{hasPrimaryOffer:!!primaryOffer,primaryOfferLink:primaryOffer?.link||null,productLink:data.productLink,viewLink:viewLink,hasMerchantOffers:!!data.merchantOffers?.length,merchantOffersLoaded:data.merchantOffersLoaded,itemLink:item.link,itemUrl:item.url},timestamp:Date.now(),hypothesisId:'L'})}).catch(()=>{});
+  // #endregion
+  
+  // Only block serpapi.com links - allow everything else (including null/empty which won't navigate)
+  const isSerpApiLink = viewLink && viewLink.includes('serpapi.com');
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:96',message:'V1Grid validation result',data:{viewLink:viewLink,isSerpApiLink:isSerpApiLink,willDisable:isSerpApiLink||!viewLink},timestamp:Date.now(),hypothesisId:'M'})}).catch(()=>{});
+  // #endregion
   
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
@@ -168,7 +182,7 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
 
         {/* Action Button - Fixed height container */}
         <div className="pt-1 sm:pt-2">
-          {isValidLink ? (
+          {!isSerpApiLink && viewLink ? (
             <Button 
               asChild 
               className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5"
@@ -183,7 +197,7 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
               disabled
               className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5 cursor-not-allowed"
             >
-              Link Unavailable
+              {isSerpApiLink ? 'Fetching Store Link...' : 'Link Unavailable'}
             </Button>
           )}
         </div>
@@ -258,8 +272,8 @@ export function ProductCardV1List({ item, showDebugData = false }) {
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
   
-  // Don't allow navigation to serpapi links
-  const isValidLink = viewLink && !viewLink.includes('serpapi.com') && viewLink !== '#';
+  // Only block serpapi.com links - allow everything else
+  const isSerpApiLink = viewLink && viewLink.includes('serpapi.com');
   
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
@@ -335,7 +349,7 @@ export function ProductCardV1List({ item, showDebugData = false }) {
 
           {/* Button on mobile - compact inline */}
           <div className="sm:hidden pt-1">
-            {isValidLink ? (
+            {!isSerpApiLink && viewLink ? (
               <Button 
                 asChild 
                 size="sm"
@@ -352,7 +366,7 @@ export function ProductCardV1List({ item, showDebugData = false }) {
                 size="sm"
                 className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold text-xs py-1.5 h-auto cursor-not-allowed"
               >
-                Link Unavailable
+                {isSerpApiLink ? 'Fetching...' : 'No Link'}
               </Button>
             )}
           </div>
@@ -377,7 +391,7 @@ export function ProductCardV1List({ item, showDebugData = false }) {
             )}
           </div>
 
-          {isValidLink ? (
+          {!isSerpApiLink && viewLink ? (
             <Button 
               asChild 
               className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold mt-auto"
@@ -392,7 +406,7 @@ export function ProductCardV1List({ item, showDebugData = false }) {
               disabled
               className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold mt-auto cursor-not-allowed"
             >
-              Link Unavailable
+              {isSerpApiLink ? 'Fetching Store Link...' : 'Link Unavailable'}
             </Button>
           )}
         </div>
