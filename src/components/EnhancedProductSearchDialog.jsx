@@ -211,7 +211,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         country: 'US',
         page: '1',
         limit: '10',
-        cache_version: 'v8_fresh' // v8: Fresh cache, invalidated stale 0-result entries
+        cache_version: 'v9_fix_links' // v9: Fixed serpapi links issue
       });
 
       // Add cache_bust parameter if forcing fresh results
