@@ -270,6 +270,10 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
       // Transform SerpAPI results to match expected format
       const transformedProducts = (data.items || []).map(item => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:282',message:'Dialog transform',data:{itemUrl:item.url,itemLink:item.link,hasImmersiveToken:!!item.immersive_product_page_token,tokenPreview:item.immersive_product_page_token?.substring(0,30),title:item.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
+        
         return {
           title: item.title || '',
           price: item.price || item.extracted_price || 0,
@@ -341,6 +345,10 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const prefetchMerchantOffers = async (products) => {
     const productsWithTokens = products.filter(p => p.immersive_product_page_token);
     
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:347',message:'Dialog prefetch start',data:{totalProducts:products.length,productsWithTokens:productsWithTokens.length,firstProductUrl:products[0]?.productUrl,firstToken:productsWithTokens[0]?.immersive_product_page_token?.substring(0,30)},timestamp:Date.now(),hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
     if (productsWithTokens.length === 0) {
       console.log('[Dialog Prefetch] No products with immersive tokens');
       return;
@@ -365,6 +373,10 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       
       await Promise.all(batch.map(async (product) => {
         try {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:374',message:'Dialog fetching offers',data:{url:`${ORBEN_API_URL}/product-offers`,hasToken:!!product.immersive_product_page_token,productTitle:product.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
+          
           const response = await fetch(`${ORBEN_API_URL}/product-offers`, {
             method: 'POST',
             headers: {
@@ -377,8 +389,17 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             })
           });
 
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:391',message:'Dialog offers response',data:{ok:response.ok,status:response.status,statusText:response.statusText},timestamp:Date.now(),hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
+
           if (response.ok) {
             const data = await response.json();
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:399',message:'Dialog offers data',data:{offerCount:data.offers?.length||0,firstOfferLink:data.offers?.[0]?.link||null,firstOfferMerchant:data.offers?.[0]?.merchant||null},timestamp:Date.now(),hypothesisId:'J'})}).catch(()=>{});
+            // #endregion
+            
             console.log(`[Dialog Prefetch] Got ${data.offers?.length || 0} offers for: ${product.title.substring(0, 30)}...`);
             
             // Update the product with merchant offers
@@ -787,21 +808,27 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick })
     <>
       {/* Mobile View - Card Layout */}
       <div className="md:hidden space-y-3">
-        {products.map((product, idx) => (
-          <ProductCardV1List 
-            key={idx} 
-            item={{
-              ...product,
-              image_url: product.imageUrl,
-              link: product.productUrl,
-              extracted_price: product.price,
-              old_price: product.originalPrice,
-              extracted_old_price: product.originalPrice,
-              source: product.marketplace,
-              reviews_count: product.reviewCount,
-            }}
-          />
-        ))}
+        {products.map((product, idx) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:804',message:'Dialog render card',data:{productUrl:product.productUrl,hasMerchantOffers:!!product.merchantOffers?.length,merchantOffersLoaded:product.merchantOffersLoaded,isSerpApi:product.productUrl?.includes('serpapi.com'),title:product.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'K'})}).catch(()=>{});
+          // #endregion
+          
+          return (
+            <ProductCardV1List 
+              key={idx} 
+              item={{
+                ...product,
+                image_url: product.imageUrl,
+                link: product.productUrl,
+                extracted_price: product.price,
+                old_price: product.originalPrice,
+                extracted_old_price: product.originalPrice,
+                source: product.marketplace,
+                reviews_count: product.reviewCount,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Desktop View - Table Layout */}

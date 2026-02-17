@@ -84,6 +84,10 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
+  
+  // Don't allow navigation to serpapi links
+  const isValidLink = viewLink && !viewLink.includes('serpapi.com') && viewLink !== '#';
+  
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
@@ -164,15 +168,24 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
 
         {/* Action Button - Fixed height container */}
         <div className="pt-1 sm:pt-2">
-          <Button 
-            asChild 
-            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5"
-          >
-            <a href={viewLink} target="_blank" rel="noopener noreferrer">
-              View Item
-              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-            </a>
-          </Button>
+          {isValidLink ? (
+            <Button 
+              asChild 
+              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5"
+            >
+              <a href={viewLink} target="_blank" rel="noopener noreferrer">
+                View Item
+                <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+              </a>
+            </Button>
+          ) : (
+            <Button 
+              disabled
+              className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5 cursor-not-allowed"
+            >
+              Link Unavailable
+            </Button>
+          )}
         </div>
       </CardContent>
 
@@ -244,6 +257,10 @@ export function ProductCardV1List({ item, showDebugData = false }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
+  
+  // Don't allow navigation to serpapi links
+  const isValidLink = viewLink && !viewLink.includes('serpapi.com') && viewLink !== '#';
+  
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
@@ -318,16 +335,26 @@ export function ProductCardV1List({ item, showDebugData = false }) {
 
           {/* Button on mobile - compact inline */}
           <div className="sm:hidden pt-1">
-            <Button 
-              asChild 
-              size="sm"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs py-1.5 h-auto"
-            >
-              <a href={viewLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1">
-                View Item
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </Button>
+            {isValidLink ? (
+              <Button 
+                asChild 
+                size="sm"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-xs py-1.5 h-auto"
+              >
+                <a href={viewLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1">
+                  View Item
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Button>
+            ) : (
+              <Button 
+                disabled
+                size="sm"
+                className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold text-xs py-1.5 h-auto cursor-not-allowed"
+              >
+                Link Unavailable
+              </Button>
+            )}
           </div>
         </div>
 
@@ -350,15 +377,24 @@ export function ProductCardV1List({ item, showDebugData = false }) {
             )}
           </div>
 
-          <Button 
-            asChild 
-            className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold mt-auto"
-          >
-            <a href={viewLink} target="_blank" rel="noopener noreferrer">
-              View Item
-              <ExternalLink className="w-4 h-4 ml-2" />
-            </a>
-          </Button>
+          {isValidLink ? (
+            <Button 
+              asChild 
+              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold mt-auto"
+            >
+              <a href={viewLink} target="_blank" rel="noopener noreferrer">
+                View Item
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </a>
+            </Button>
+          ) : (
+            <Button 
+              disabled
+              className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold mt-auto cursor-not-allowed"
+            >
+              Link Unavailable
+            </Button>
+          )}
         </div>
       </div>
 
