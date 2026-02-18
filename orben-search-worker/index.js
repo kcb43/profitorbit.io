@@ -23,14 +23,6 @@ import crypto from 'crypto';
 import 'dotenv/config';
 
 // ==========================================
-// Debug ingest (for agent log analysis - .cursor/debug.log)
-// ==========================================
-const DEBUG_INGEST_URL = 'http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1';
-const debugLog = (payload) => {
-  fetch(DEBUG_INGEST_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, timestamp: Date.now() }) }).catch(() => {});
-};
-
-// ==========================================
 // Initialize
 // ==========================================
 const fastify = Fastify({ logger: true });
@@ -39,15 +31,6 @@ const fastify = Fastify({ logger: true });
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
   : null;
-
-// #region agent log
-// Log Supabase initialization status on startup
-if (supabase) {
-  console.log('[Search Worker] Supabase client initialized successfully');
-} else {
-  console.log('[Search Worker] Supabase client NOT initialized - missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-}
-// #endregion
 
 // Redis: stub for local dev; real client when REDIS_URL is set and connectable. On connection failure, fall back to stub so local dev works without editing .env.
 const redisStub = {
@@ -256,29 +239,7 @@ class SerpApiGoogleProvider extends SearchProvider {
    * @returns {Array} Array of merchant offers with direct links
    */
   async getProductOffers(productPageToken) {
-    // #region agent log
-    debugLog({
-      location: 'orben-search-worker/index.js:getProductOffers:entry',
-      message: 'getProductOffers entry',
-      data: {
-        hasApiKey: !!this.apiKey,
-        hasToken: !!productPageToken,
-        tokenLength: productPageToken?.length || 0,
-        tokenPreview: productPageToken?.substring(0, 30)
-      },
-      hypothesisId: 'H2,H3'
-    });
-    // #endregion
-
     if (!this.apiKey || !productPageToken) {
-      // #region agent log
-      debugLog({
-        location: 'orben-search-worker/index.js:getProductOffers:earlyReturn',
-        message: 'getProductOffers early return - missing params',
-        data: { hasApiKey: !!this.apiKey, hasToken: !!productPageToken },
-        hypothesisId: 'H2,H3'
-      });
-      // #endregion
       console.warn('[SerpAPI] Missing API key or page token for product offers');
       return [];
     }
@@ -293,47 +254,10 @@ class SerpApiGoogleProvider extends SearchProvider {
         more_stores: true // Get up to 13 stores instead of default 3-5
       };
       
-      // #region agent log
-      debugLog({
-        location: 'orben-search-worker/index.js:getProductOffers:beforeApi',
-        message: 'getProductOffers before API call',
-        data: {
-          baseUrl: this.baseUrl,
-          engine: params.engine,
-          hasPageToken: !!params.page_token,
-          hasApiKey: !!params.api_key,
-          moreStores: params.more_stores
-        },
-        hypothesisId: 'H2'
-      });
-      // #endregion
-
       const response = await axiosInstance.get(this.baseUrl, {
         params: params,
         timeout: 10000
       });
-
-      // #region agent log
-      const pr = response.data?.product_results;
-      const stores = pr?.stores;
-      debugLog({
-        location: 'orben-search-worker/index.js:getProductOffers:response',
-        message: 'getProductOffers API response received',
-        data: {
-          statusCode: response.status,
-          hasData: !!response.data,
-          allKeys: Object.keys(response.data || {}),
-          hasProductResults: !!pr,
-          productResultsKeys: pr ? Object.keys(pr) : null,
-          hasStores: !!stores,
-          storesCount: stores?.length || 0,
-          firstStoreKeys: stores?.[0] ? Object.keys(stores[0]) : null,
-          firstStoreLink: stores?.[0]?.link ?? stores?.[0]?.store_link ?? null,
-          firstStore: stores?.[0] ? { link: stores[0].link, store_link: stores[0].store_link, name: stores[0].name, extracted_price: stores[0].extracted_price, price: stores[0].price } : null
-        },
-        hypothesisId: 'H2'
-      });
-      // #endregion
 
       console.log('[SerpAPI] Product offers response', JSON.stringify({
         hasOffers: !!response.data?.sellers_results,
@@ -362,37 +286,9 @@ class SerpApiGoogleProvider extends SearchProvider {
         total_price: offer.total_price || null
       })).filter(offer => offer.link); // Only return offers with valid links
       
-      // #region agent log
-      debugLog({
-        location: 'orben-search-worker/index.js:getProductOffers:return',
-        message: 'getProductOffers returning offers',
-        data: {
-          rawOffersCount: offers.length,
-          filteredOffersCount: mappedOffers.length,
-          firstMappedOfferLink: mappedOffers[0]?.link ?? null,
-          firstMappedOfferPrice: mappedOffers[0]?.price ?? null
-        },
-        hypothesisId: 'H2'
-      });
-      // #endregion
-
       return mappedOffers;
 
     } catch (error) {
-      // #region agent log
-      debugLog({
-        location: 'orben-search-worker/index.js:getProductOffers:error',
-        message: 'getProductOffers error caught',
-        data: {
-          errorMessage: error.message,
-          errorName: error.name,
-          hasResponse: !!error.response,
-          statusCode: error.response?.status,
-          responseData: error.response?.data ? JSON.stringify(error.response.data).slice(0, 500) : null
-        },
-        hypothesisId: 'H2,H3'
-      });
-      // #endregion
       console.error('[SerpAPI] Error fetching product offers:', error.message);
       return [];
     }
@@ -483,24 +379,6 @@ class SerpApiGoogleProvider extends SearchProvider {
       // Priority 1: immersive_products (NEW Google Shopping format)
       if (response.data?.immersive_products) {
         console.log(`[SerpAPI] Found immersive_products: ${response.data.immersive_products.length}`);
-        const firstProduct = response.data.immersive_products[0];
-        // #region agent log
-        debugLog({
-          location: 'orben-search-worker/index.js:search:immersiveFirst',
-          message: 'First immersive product raw fields (price/link/token)',
-          data: {
-            immersiveCount: response.data.immersive_products.length,
-            firstTitle: firstProduct?.title?.substring(0, 40),
-            firstExtractedPrice: firstProduct?.extracted_price,
-            firstPriceRaw: firstProduct?.price,
-            firstLink: firstProduct?.link ? (firstProduct.link.includes('serpapi') ? 'serpapi' : firstProduct.link.substring(0, 50)) : null,
-            firstHasToken: !!firstProduct?.immersive_product_page_token,
-            firstTokenPreview: firstProduct?.immersive_product_page_token?.substring(0, 30),
-            firstProductKeys: firstProduct ? Object.keys(firstProduct) : null
-          },
-          hypothesisId: 'H1,H3'
-        });
-        // #endregion
         for (const product of response.data.immersive_products) {
           items.push({
             title: product.title || 'Untitled',
@@ -638,18 +516,8 @@ class RapidApiGoogleProvider extends SearchProvider {
   }
 
   async search(query, opts = {}) {
-    // Hypothesis A: Is the RAPIDAPI_KEY accessible?
-    console.log('[DEBUG-A] RapidAPI search entry', JSON.stringify({
-      hasApiKey: !!this.apiKey,
-      keyLength: this.apiKey?.length || 0,
-      query: query
-    }));
-    
     if (!this.apiKey) {
       console.warn('[Google/RapidAPI] No API key configured');
-      console.log('[DEBUG-A] No API key - returning empty', JSON.stringify({
-        env_key_exists: !!process.env.RAPIDAPI_KEY
-      }));
       return [];
     }
 
@@ -658,27 +526,6 @@ class RapidApiGoogleProvider extends SearchProvider {
     try {
       // Using Real-Time Product Search API v2 on RapidAPI
       console.log(`[Google/RapidAPI] Searching for: "${query}"`);
-      
-      // Hypothesis B: Is RapidAPI request being made correctly?
-      // #region agent log
-      const requestStartTime = Date.now();
-      console.log('[DEBUG-B] Making RapidAPI request', JSON.stringify({
-        query: query,
-        country: country,
-        limit: limit,
-        page: page,
-        timestamp: requestStartTime,
-        allParams: {
-          q: query,
-          country: country.toLowerCase(),
-          language: 'en',
-          page: page,
-          limit: Math.min(limit, 50),
-          sort_by: 'BEST_MATCH',
-          product_condition: 'ANY'
-        }
-      }));
-      // #endregion
       
       // Hypothesis H: Limit parameter directly impacts speed
       // Testing shows: 10 items = 3-4s, 20 items = 6-8s, 50 items = 23s
@@ -692,24 +539,6 @@ class RapidApiGoogleProvider extends SearchProvider {
         limit: optimizedLimit
       };
       
-      // #region agent log
-      console.log('[DEBUG-H] Optimized request parameters', JSON.stringify({
-        requestedLimit: limit,
-        optimizedLimit: optimizedLimit,
-        page: page,
-        params: requestParams,
-        hypothesisId: 'H'
-      }));
-      // #endregion
-      
-      console.log('[DEBUG-N] Before RapidAPI request', JSON.stringify({
-        query: query,
-        requestedLimit: limit,
-        optimizedLimit: optimizedLimit,
-        timeout: 30000,
-        hypothesisId: 'N'
-      }));
-      
       const response = await axiosInstance.get('https://real-time-product-search.p.rapidapi.com/search-v2', {
         params: requestParams,
         headers: {
@@ -719,63 +548,9 @@ class RapidApiGoogleProvider extends SearchProvider {
         timeout: 30000 // Increased from 15s to 30s to handle larger result sets
       });
       
-      // #region agent log
-      const requestEndTime = Date.now();
-      const requestDuration = requestEndTime - requestStartTime;
-      console.log('[DEBUG-TIMING] RapidAPI request completed', JSON.stringify({
-        query: query,
-        durationMs: requestDuration,
-        startTime: requestStartTime,
-        endTime: requestEndTime,
-        statusCode: response.status,
-        hypothesisId: 'TIMING'
-      }));
-      // #endregion
-
-      // Hypothesis D: Is RapidAPI returning products?
-      console.log('[DEBUG-D] RapidAPI response received', JSON.stringify({
-        statusCode: response.status,
-        dataStatus: response.data?.status,
-        hasData: !!response.data,
-        hasProducts: !!(response.data?.data?.products),
-        productCount: response.data?.data?.products?.length || 0,
-        requestedLimit: limit,
-        actualLimit: Math.min(limit, 50),
-        rawDataKeys: Object.keys(response.data || {}),
-        hypothesisId: 'D'
-      }));
-      
-      // Hypothesis F: Log raw response structure for debugging
-      if (response.data?.data?.products?.length === 0) {
-        console.log('[DEBUG-F] RapidAPI returned 0 products', JSON.stringify({
-          query: query,
-          responseStatus: response.data?.status,
-          totalAvailable: response.data?.data?.total || 0,
-          hasError: !!response.data?.error,
-          errorMessage: response.data?.error || null,
-          hypothesisId: 'F'
-        }));
-      }
-      
-      // Log if we got fewer items than requested
-      if (response.data?.data?.products?.length < limit) {
-        console.log('[DEBUG-G] RapidAPI returned fewer items than requested', JSON.stringify({
-          requested: limit,
-          received: response.data?.data?.products?.length || 0,
-          query: query,
-          hypothesisId: 'G'
-        }));
-      }
-
       console.log(`[Google/RapidAPI] Response status: ${response.data?.status}`);
       
       const products = response.data?.data?.products || [];
-      
-      // Hypothesis D continued: Log product extraction
-      console.log('[DEBUG-D] Products extracted', JSON.stringify({
-        productCount: products.length,
-        firstProductTitle: products[0]?.product_title || null
-      }));
       
       console.log(`[Google/RapidAPI] Found ${products.length} products`);
 
@@ -801,14 +576,6 @@ class RapidApiGoogleProvider extends SearchProvider {
         };
       }).filter(item => item.title && item.url);
     } catch (error) {
-      // Hypothesis B: Log RapidAPI errors
-      console.log('[DEBUG-B] RapidAPI error caught', JSON.stringify({
-        errorMessage: error.message,
-        hasResponse: !!error.response,
-        statusCode: error.response?.status || null,
-        responseData: error.response?.data ? JSON.stringify(error.response.data).slice(0, 200) : null
-      }));
-      
       console.error(`[Google/RapidAPI] Search error:`, error.message);
       if (error.response) {
         console.error(`[Google/RapidAPI] Status: ${error.response.status}`);
@@ -991,18 +758,6 @@ async function checkQuota(userId, provider) {
 // Search endpoint
 // ==========================================
 fastify.post('/search', async (request, reply) => {
-  // #region agent log
-  console.log('[DEBUG-C] Search worker: Request received', JSON.stringify({
-    hasQuery: !!request.body?.query,
-    hasUserId: !!request.body?.userId,
-    providers: request.body?.providers,
-    country: request.body?.country,
-    limit: request.body?.limit,
-    page: request.body?.page,
-    hypothesisId: 'C'
-  }));
-  // #endregion
-  
   const { query, providers: requestedProviders, country = 'US', userId, limit = 20, page = 1, cache_bust } = request.body;
 
   if (!query || !query.trim()) {
@@ -1017,14 +772,6 @@ fastify.post('/search', async (request, reply) => {
   const selectedProviders = selectSmartProviders(query, requestedProviders);
   
   console.log(`[Search] Query: "${query}", Selected providers: ${selectedProviders.join(', ')}`);
-
-  // #region agent log
-  console.log('[DEBUG-C] Search worker: Providers selected', JSON.stringify({
-    selectedProviders: selectedProviders,
-    requestedProviders: requestedProviders,
-    hypothesisId: 'C'
-  }));
-  // #endregion
 
   const results = {
     query,
@@ -1043,27 +790,11 @@ fastify.post('/search', async (request, reply) => {
 
     const cacheKey = getCacheKey(providerName, country, query, limit, page);
 
-    // Hypothesis C: Is the cache key v7 with page?
-    console.log('[DEBUG-C] Cache key generated', JSON.stringify({
-      cacheKey: cacheKey,
-      providerName: providerName,
-      query: query,
-      limit: limit,
-      page: page
-    }));
-
     // Check for cache_bust parameter to force fresh search
     const cacheBust = cache_bust;
     
     // Check cache first (skip if cache_bust is present)
     const cached = !cacheBust ? await redis.get(cacheKey) : null;
-    
-    // Hypothesis E: Is old v4 cache being served?
-    console.log('[DEBUG-E] Cache lookup result', JSON.stringify({
-      hasCached: !!cached,
-      cacheKey: cacheKey,
-      willUseCached: !!cached
-    }));
     
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -1082,37 +813,7 @@ fastify.post('/search', async (request, reply) => {
 
     // Search
     try {
-      // #region agent log
-      const providerStartTime = Date.now();
-      console.log('[DEBUG-TIMING] Provider search starting', JSON.stringify({
-        provider: providerName,
-        query: query,
-        timestamp: providerStartTime,
-        hypothesisId: 'TIMING'
-      }));
-      // #endregion
-      
       const items = await provider.search(query, { country, limit, page });
-      
-      // #region agent log
-      const providerEndTime = Date.now();
-      const providerDuration = providerEndTime - providerStartTime;
-      console.log('[DEBUG-TIMING] Provider search completed', JSON.stringify({
-        provider: providerName,
-        durationMs: providerDuration,
-        itemCount: items.length,
-        startTime: providerStartTime,
-        endTime: providerEndTime,
-        hypothesisId: 'TIMING'
-      }));
-      // #endregion
-      
-      // Hypothesis D: Log provider search results
-      console.log('[DEBUG-D] Provider search completed', JSON.stringify({
-        provider: providerName,
-        itemCount: items.length,
-        firstItem: items[0]?.title || null
-      }));
       
       // Server-side offer resolution: resolve merchant links for items with tokens
       // so the frontend doesn't need a separate round-trip per product
@@ -1155,89 +856,24 @@ fastify.post('/search', async (request, reply) => {
       results.providers.push({ provider: providerName, cached: false, count: items.length });
       results.items.push(...items);
     } catch (error) {
-      // Hypothesis B: Log provider search errors
-      console.log('[DEBUG-B] Provider search error', JSON.stringify({
-        provider: providerName,
-        errorMsg: error.message
-      }));
       results.providers.push({ provider: providerName, error: error.message });
     }
   }
 
   // Optional: save snapshot to Supabase
-  console.log('[DEBUG-M] Before DB save check', JSON.stringify({
-    hasItems: results.items.length > 0,
-    itemCount: results.items.length,
-    hasSupabase: !!supabase,
-    userId: userId,
-    query: query,
-    hypothesisId: 'M'
-  }));
-  
   if (results.items.length > 0 && supabase) {
     try {
-      console.log('[DEBUG-M] Attempting DB insert', JSON.stringify({
-        userId: userId,
-        query: query,
-        itemCount: results.items.length,
-        providers: requestedProviders,
-        hypothesisId: 'M'
-      }));
-      
-      const insertResult = await supabase.from('search_snapshots').insert([{
+      await supabase.from('search_snapshots').insert([{
         user_id: userId,
         query,
         providers: requestedProviders,
         result: results,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
       }]);
-      
-      console.log('[DEBUG-M,Q] DB insert result', JSON.stringify({
-        hasError: !!insertResult.error,
-        errorMsg: insertResult.error?.message || null,
-        errorDetails: insertResult.error?.details || null,
-        status: insertResult.status,
-        statusText: insertResult.statusText,
-        hypothesisId: 'M,Q'
-      }));
     } catch (error) {
-      console.error('[DEBUG-M,Q] DB insert exception', JSON.stringify({
-        errorMsg: error.message,
-        errorStack: error.stack?.slice(0, 200),
-        hypothesisId: 'M,Q'
-      }));
       console.error('[Search Worker] Failed to save search snapshot:', error);
     }
-  } else {
-    console.log('[DEBUG-M,P] DB save skipped', JSON.stringify({
-      hasItems: results.items.length > 0,
-      itemCount: results.items.length,
-      hasSupabase: !!supabase,
-      reason: results.items.length === 0 ? 'no_items' : 'no_supabase',
-      hypothesisId: 'M,P'
-    }));
   }
-
-  // #region agent log
-  const itemsWithOffers = results.items.filter(i => i.merchantOffers?.length > 0);
-  const itemsWithUrl = results.items.filter(i => i.url && !i.url.includes('serpapi.com'));
-  console.log('[DEBUG-D] Search worker: Final response', JSON.stringify({
-    totalItems: results.items.length,
-    providerCount: results.providers.length,
-    providers: results.providers,
-    firstItemTitle: results.items[0]?.title || null,
-    itemsWithMerchantOffers: itemsWithOffers.length,
-    itemsWithRealUrl: itemsWithUrl.length,
-    first3Items: results.items.slice(0, 3).map(i => ({
-      title: i.title?.substring(0, 30),
-      url: i.url?.substring(0, 50) || null,
-      hasMerchantOffers: !!i.merchantOffers?.length,
-      merchantOffersCount: i.merchantOffers?.length || 0,
-      merchantOffersLoaded: i.merchantOffersLoaded || false
-    })),
-    hypothesisId: 'D'
-  }));
-  // #endregion
 
   return results;
 });

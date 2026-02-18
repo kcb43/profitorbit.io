@@ -569,10 +569,6 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick, l
       {/* Mobile View - Card Layout */}
       <div className="md:hidden space-y-3">
         {products.map((product, idx) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:804',message:'Dialog render card',data:{productUrl:product.productUrl,hasMerchantOffers:!!product.merchantOffers?.length,merchantOffersLoaded:product.merchantOffersLoaded,isSerpApi:product.productUrl?.includes('serpapi.com'),title:product.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'K'})}).catch(()=>{});
-          // #endregion
-          
           return (
             <ProductCardV1List 
               key={idx} 

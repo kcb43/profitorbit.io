@@ -51,10 +51,6 @@ const MerchantBadge = ({ merchant, className = '', showText = false }) => {
 };
 
 const extractItemData = (item) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:53',message:'extractItemData',data:{itemLink:item.link,itemUrl:item.url,hasMerchantOffers:!!item.merchantOffers?.length,merchantOffersLoaded:item.merchantOffersLoaded,title:item.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'N'})}).catch(()=>{});
-  // #endregion
-  
   return {
     title: item.title || '',
     imageUrl: item.image_url || item.thumbnail || '',
@@ -90,17 +86,7 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
   const data = extractItemData(item);
   const primaryOffer = data.merchantOffers?.[0];
   const viewLink = primaryOffer?.link || data.productLink;
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:86',message:'V1Grid link check',data:{hasPrimaryOffer:!!primaryOffer,primaryOfferLink:primaryOffer?.link||null,productLink:data.productLink,viewLink:viewLink,hasMerchantOffers:!!data.merchantOffers?.length,merchantOffersLoaded:data.merchantOffersLoaded,itemLink:item.link,itemUrl:item.url},timestamp:Date.now(),hypothesisId:'L'})}).catch(()=>{});
-  // #endregion
-  
-  // Only block serpapi.com links - allow everything else (including null/empty which won't navigate)
   const isSerpApiLink = viewLink && viewLink.includes('serpapi.com');
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCardVariations.jsx:96',message:'V1Grid validation result',data:{viewLink:viewLink,isSerpApiLink:isSerpApiLink,willDisable:isSerpApiLink||!viewLink},timestamp:Date.now(),hypothesisId:'M'})}).catch(()=>{});
-  // #endregion
   
   const savings = data.oldPrice && data.oldPrice > data.price ? data.oldPrice - data.price : null;
   const [showMoreStores, setShowMoreStores] = useState(false);
