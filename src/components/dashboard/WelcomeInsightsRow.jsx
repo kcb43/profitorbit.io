@@ -196,12 +196,12 @@ export function InsightsCard({ salesMetrics, inventoryStats, platformSummary }) 
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
-        const res = await fetch(`${ORBEN_API_URL}/v1/deals/feed?limit=6&offset=0`, {
+        const res = await fetch(`${ORBEN_API_URL}/v1/deals/feed?limit=3&offset=0`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (!res.ok) throw new Error('Failed');
         const json = await res.json();
-        setDeals(json.items?.slice(0, 6) || []);
+        setDeals(json.items?.slice(0, 3) || []);
       } catch {
         setDeals([]);
       } finally {
@@ -307,7 +307,7 @@ export function InsightsCard({ salesMetrics, inventoryStats, platformSummary }) 
             <div className="flex-1 overflow-hidden">
               {dealsLoading ? (
                 <div className="space-y-2 mt-1">
-                  {[...Array(4)].map((_, i) => (
+                  {[...Array(3)].map((_, i) => (
                     <div key={i} className="flex items-center gap-2.5 py-1.5">
                       <div className="w-9 h-9 rounded-md bg-muted animate-pulse shrink-0" />
                       <div className="flex-1 space-y-1.5">
