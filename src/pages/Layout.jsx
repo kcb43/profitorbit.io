@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, Check, CalendarDays, Settings, FileText, TrendingUp, Shield, Sparkles, Activity, Zap, Search, User, ShoppingBag, TrendingDown, Gift } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
@@ -11,19 +11,13 @@ import BannerNotifications from "@/components/BannerNotifications";
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
   SidebarFooter,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -31,10 +25,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { UserProfile } from "@/components/UserProfile";
 import MobileBottomNav from "@/components/mobile/MobileBottomNav";
+import { supabase } from "@/api/supabaseClient";
 
-// Navigation categories matching stalk.fun design
+// Navigation categories
 const navigationCategories = [
   {
     title: "Core",
@@ -57,7 +51,6 @@ const navigationCategories = [
     items: [
       { title: "Deal Feed", url: "/deals", icon: TrendingDown },
       { title: "Product Search", url: "/product-search", icon: Search },
-      // { title: "Rewards", url: "/rewards", icon: Gift }, // Benched for now
     ]
   },
   {
@@ -144,9 +137,84 @@ const themes = {
   }
 };
 
+// Top bar user profile dropdown (desktop + mobile)
+function TopBarUserProfile({ user, profile, onOpenProfileSettings }) {
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+  const displayName = profile?.display_name
+    || user?.user_metadata?.full_name
+    || user?.user_metadata?.name
+    || user?.email?.split('@')[0]
+    || 'User';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <UserAvatar profile={profile} size="sm" />
+          <span className="text-sm font-medium hidden lg:block max-w-[120px] truncate text-foreground">
+            {displayName}
+          </span>
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground hidden lg:block" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-0.5">
+            <p className="text-sm font-medium">{displayName}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onOpenProfileSettings}>
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/Settings')}>
+          <Settings className="mr-2 h-4 w-4" />
+          <span>Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Sign Out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// Theme selector dropdown (shared between desktop/mobile)
+function ThemeSelector({ theme, setTheme, align = "end" }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9" title="Theme">
+          <Palette className="w-5 h-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-44" align={align}>
+        <DropdownMenuLabel>Theme</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+          {Object.entries(themes).map(([id, { name }]) => (
+            <DropdownMenuRadioItem key={id} value={id}>
+              {name}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function Layout({ children }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const [theme, setTheme] = useState('stalkfun-dark');
   const [themeStyles, setThemeStyles] = useState('');
   const [productSearchOpen, setProductSearchOpen] = useState(false);
@@ -154,44 +222,71 @@ export default function Layout({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
-  // Handle product search - navigate on mobile, dialog on desktop
   const handleProductSearchClick = () => {
-    const isMobile = window.innerWidth < 768; // md breakpoint
+    const isMobile = window.innerWidth < 768;
     if (isMobile) {
-      navigate('/product-search');
+      window.location.href = '/product-search';
     } else {
       setProductSearchOpen(true);
     }
   };
 
-  // Load user profile
+  // Keyboard shortcut: Cmd/Ctrl+K opens search
   useEffect(() => {
-    // Get current user from Supabase auth
-    const loadUser = async () => {
-      // Add your Supabase auth check here
-      // For now, using mock data
-      setCurrentUser({ id: '123', email: 'user@example.com' });
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setProductSearchOpen(true);
+      }
     };
-    loadUser();
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Load profile data
+  // Load user from Supabase auth
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setCurrentUser(session.user);
+      }
+    };
+    loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load profile data from Supabase user metadata
   useEffect(() => {
     if (currentUser) {
-      fetch('/api/profile', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
-        }
-      })
-        .then(res => res.json())
-        .then(profile => setUserProfile(profile))
-        .catch(err => console.error('Failed to load profile:', err));
+      const meta = currentUser.user_metadata || {};
+      setUserProfile({
+        display_name: meta.display_name || meta.full_name || meta.name || currentUser.email?.split('@')[0],
+        avatar_seed: meta.avatar_seed || 'Felix',
+        avatar_style: meta.avatar_style || 'avataaars',
+        avatar_type: meta.avatar_type || 'dicebear',
+        avatar_url: meta.avatar_url || null,
+      });
     }
   }, [currentUser]);
 
+  // Refresh profile after settings dialog closes
+  const handleProfileSettingsClose = async (open) => {
+    setProfileSettingsOpen(open);
+    if (!open && currentUser) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUser(user);
+      }
+    }
+  };
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'stalkfun-dark';
-    // Migrate old themes to new stalkfun themes
     const themeMap = {
       'default-light': 'stalkfun-light',
       'default-dark': 'stalkfun-dark',
@@ -209,19 +304,11 @@ export default function Layout({ children }) {
     const root = window.document.documentElement;
     const themeConfig = themes[theme];
     if (!themeConfig) return;
-
-    // Remove old theme class, add new one
     root.classList.remove('light', 'dark');
     root.classList.add(themeConfig.isDark ? 'dark' : 'light');
-    
-    // Add data-theme attribute for specific theme targeting
     root.setAttribute('data-theme', theme);
-    
-    // Set CSS variables
     const cssString = themeConfig.isDark ? `.dark { ${themeConfig.css} }` : `:root { ${themeConfig.css} }`;
     setThemeStyles(cssString);
-
-    // Save to localStorage
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -230,24 +317,22 @@ export default function Layout({ children }) {
       <BannerNotifications />
       <style>{themeStyles}</style>
       <div className="min-h-screen flex w-full bg-background">
-        {/* Desktop Sidebar - StalkFun Inspired */}
+
+        {/* Desktop Sidebar */}
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background hidden md:flex">
           <SidebarContent className="flex flex-col flex-grow px-2 pt-0 pb-4">
-            {/* Logo/Branding */}
+            {/* Logo */}
             <div className="px-3 mb-6 flex justify-center pt-4">
               <h1 className="text-2xl font-bold text-primary">Orben</h1>
             </div>
 
-            {/* Navigation Sections */}
-            <div className="flex-grow overflow-auto pb-24 -mt-3 po-scrollbar-hide">
-              {navigationCategories.map((category, categoryIndex) => (
+            {/* Navigation */}
+            <div className="flex-grow overflow-auto pb-4 -mt-3 po-scrollbar-hide">
+              {navigationCategories.map((category) => (
                 <div key={category.title} className="mb-4">
-                  {/* Section Header */}
                   <h4 className="text-muted-foreground text-xs font-semibold px-2 mb-2 uppercase tracking-wider">
                     {category.title}
                   </h4>
-
-                  {/* Section Items */}
                   <ul className="flex flex-col list-none gap-1 text-sm">
                     {category.items.map((item) => {
                       const isActive = location.pathname === item.url;
@@ -276,74 +361,64 @@ export default function Layout({ children }) {
             </div>
           </SidebarContent>
 
-          {/* Sidebar Footer */}
-          <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              {/* User Avatar - Click to open profile settings */}
-              <button 
-                onClick={() => setProfileSettingsOpen(true)}
-                className="hover:opacity-80 transition-opacity"
-              >
-                <UserAvatar profile={userProfile} size="md" />
-              </button>
-              
-              <NotificationCenter />
-              
-              <Button
-                onClick={handleProductSearchClick}
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground h-9 w-9"
-                title="Search Products"
-              >
-                <Search className="w-5 h-5" />
-              </Button>
-              
-              <Link to={createPageUrl("Settings")} className="inline-flex">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9">
-                  <Settings className="w-5 h-5" />
-                </Button>
-              </Link>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9">
-                    <Palette className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 mb-2">
-                  <DropdownMenuLabel>Theme</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-                    {Object.entries(themes).map(([id, { name }]) => (
-                      <DropdownMenuRadioItem key={id} value={id}>
-                        {name}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="pt-2 border-t border-sidebar-border">
-              <Link
-                to={createPageUrl("PrivacyPolicy")}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Shield className="w-3 h-3" />
-                <span>Privacy Policy</span>
-              </Link>
-            </div>
+          {/* Minimal sidebar footer - just privacy policy */}
+          <SidebarFooter className="border-t border-sidebar-border p-4">
+            <Link
+              to={createPageUrl("PrivacyPolicy")}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Shield className="w-3 h-3" />
+              <span>Privacy Policy</span>
+            </Link>
           </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-h-screen">
-          {/* Mobile Header */}
-          <header className="bg-card border-b border-border px-6 py-4 md:hidden sticky top-0 z-40">
-            <div className="flex items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold text-primary">Orben</h1>
-              <div className="flex items-center gap-2">
-                <UserProfile />
+
+          {/* ── Desktop Top Header ── */}
+          <header className="hidden md:flex items-center justify-end gap-2 bg-gradient-to-r from-background via-background/95 to-background border-b border-border/40 backdrop-blur-sm shadow-md sticky top-0 z-10 px-6 py-3">
+
+            {/* Search bar */}
+            <button
+              onClick={handleProductSearchClick}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground text-sm border border-border/50 w-52 transition-colors mr-2"
+              title="Search products (⌘K)"
+            >
+              <Search className="w-4 h-4 flex-shrink-0" />
+              <span className="flex-1 text-left">Search...</span>
+              <kbd className="text-xs bg-background border border-border rounded px-1.5 py-0.5 font-mono leading-none">⌘K</kbd>
+            </button>
+
+            {/* Notifications */}
+            <NotificationCenter />
+
+            {/* Settings */}
+            <Link to={createPageUrl("Settings")} className="inline-flex">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9" title="Settings">
+                <Settings className="w-5 h-5" />
+              </Button>
+            </Link>
+
+            {/* Theme */}
+            <ThemeSelector theme={theme} setTheme={setTheme} align="end" />
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-border/60 mx-1" />
+
+            {/* User profile dropdown */}
+            <TopBarUserProfile
+              user={currentUser}
+              profile={userProfile}
+              onOpenProfileSettings={() => setProfileSettingsOpen(true)}
+            />
+          </header>
+
+          {/* ── Mobile Header ── */}
+          <header className="bg-card border-b border-border px-4 py-3 md:hidden sticky top-0 z-40">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-xl font-bold text-primary">Orben</h1>
+              <div className="flex items-center gap-1">
+                {/* Mobile search */}
                 <Button
                   onClick={handleProductSearchClick}
                   variant="ghost"
@@ -353,29 +428,26 @@ export default function Layout({ children }) {
                 >
                   <Search className="w-5 h-5" />
                 </Button>
+
+                {/* Mobile notifications */}
+                <NotificationCenter />
+
+                {/* Mobile settings */}
                 <Link to={createPageUrl("Settings")} className="inline-flex">
                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                     <Settings className="w-5 h-5" />
                   </Button>
                 </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                      <Palette className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 mb-2" align="end">
-                    <DropdownMenuLabel>Theme</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-                      {Object.entries(themes).map(([id, { name }]) => (
-                        <DropdownMenuRadioItem key={id} value={id}>
-                          {name}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
+                {/* Mobile theme */}
+                <ThemeSelector theme={theme} setTheme={setTheme} align="end" />
+
+                {/* Mobile user profile */}
+                <TopBarUserProfile
+                  user={currentUser}
+                  profile={userProfile}
+                  onOpenProfileSettings={() => setProfileSettingsOpen(true)}
+                />
               </div>
             </div>
           </header>
@@ -393,7 +465,7 @@ export default function Layout({ children }) {
           {/* Profile Settings Dialog */}
           <ProfileSettings
             open={profileSettingsOpen}
-            onOpenChange={setProfileSettingsOpen}
+            onOpenChange={handleProfileSettingsClose}
             user={currentUser}
           />
 
@@ -403,4 +475,3 @@ export default function Layout({ children }) {
     </SidebarProvider>
   );
 }
-

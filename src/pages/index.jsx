@@ -7,7 +7,7 @@ const Dashboard = React.lazy(() => import("./Dashboard"));
 const Landing = React.lazy(() => import("./Landing"));
 const Login = React.lazy(() => import("./Login"));
 const SignUp = React.lazy(() => import("./SignUp"));
-const ProfileSettings = React.lazy(() => import("./ProfileSettings"));
+// ProfileSettings page is removed - profile editing is handled via the dialog in Layout
 
 const AddSale = React.lazy(() => import("./AddSale"));
 const SalesHistory = React.lazy(() => import("./SalesHistory"));
@@ -109,19 +109,8 @@ function PagesContent() {
                 }
               />
               
-              {/* Profile Settings */}
-              <Route
-                path="/ProfileSettings"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="ProfileSettings">
-                        {withSuspense(<ProfileSettings />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
-              />
+              {/* Profile Settings - redirect to dashboard; profile editing is via the top-bar dialog */}
+              <Route path="/ProfileSettings" element={<Navigate to="/dashboard" replace />} />
               
               {/* Other Protected Routes */}
               <Route
