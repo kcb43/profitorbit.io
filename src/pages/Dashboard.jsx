@@ -36,6 +36,7 @@ import LiveChat from "../components/dashboard/LiveChat";
 import KpiSparkCard from "../components/dashboard/mosaic/KpiSparkCard";
 import ProfitTrendCard from "../components/dashboard/mosaic/ProfitTrendCard";
 import PlatformRevenueTableCard from "../components/dashboard/mosaic/PlatformRevenueTableCard";
+import WelcomeInsightsRow from "../components/dashboard/WelcomeInsightsRow";
 
 const SUPPORTED_MARKETPLACES = [
   {
@@ -90,6 +91,20 @@ export default function Dashboard() {
   const [desktopCustomRange, setDesktopCustomRange] = useState(undefined);
   const [stockAlertsOpen, setStockAlertsOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+
+  // Load user display name for the welcome card
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const meta = session.user.user_metadata || {};
+        setDisplayName(
+          meta.display_name || meta.full_name || meta.name ||
+          session.user.email?.split('@')[0] || ''
+        );
+      }
+    });
+  }, []);
 
   // Handle OAuth callback - process hash fragment before AuthGuard redirects
   useEffect(() => {
@@ -434,6 +449,14 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Welcome + Insights row */}
+        <WelcomeInsightsRow
+          displayName={displayName}
+          salesMetrics={{ totalProfit, totalRevenue, totalSales, avgProfit, profitMargin, averageSaleSpeed }}
+          inventoryStats={inventoryStats}
+          platformSummary={platformSummary}
+        />
 
         {/* Desktop-only: attention cards at top */}
         {(itemsWithUpcomingReturns?.length || 0) > 0 && (

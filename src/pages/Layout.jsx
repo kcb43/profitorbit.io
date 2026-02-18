@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Palette, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
@@ -191,11 +191,12 @@ function TopBarUserProfile({ user, profile, onOpenProfileSettings }) {
 
 // Theme selector dropdown (shared between desktop/mobile)
 function ThemeSelector({ theme, setTheme, align = "end" }) {
+  const isDark = themes[theme]?.isDark ?? true;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9" title="Theme">
-          <Palette className="w-5 h-5" />
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9" title="Toggle theme">
+          {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-44" align={align}>
@@ -386,7 +387,6 @@ export default function Layout({ children }) {
             >
               <Search className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1 text-left">Search...</span>
-              <kbd className="text-xs bg-background border border-border rounded px-1.5 py-0.5 font-mono leading-none">⌘K</kbd>
             </button>
 
             {/* Notifications */}

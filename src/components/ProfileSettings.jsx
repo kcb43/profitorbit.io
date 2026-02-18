@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { X, Check, Upload } from 'lucide-react';
+import { Check, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/api/supabaseClient';
 
@@ -135,17 +135,7 @@ export function ProfileSettings({ open, onOpenChange, user }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold">Profile Settings</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-xl font-bold">Profile Settings</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-2">
