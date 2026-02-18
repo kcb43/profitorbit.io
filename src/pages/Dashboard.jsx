@@ -488,7 +488,7 @@ export default function Dashboard() {
           {/* KPI Row - Desktop: 4 cards with hover expansion */}
           <div className="col-span-12 hidden md:grid text-sm grid-cols-2 lg:grid-cols-4 gap-3 rounded-2xl p-3 bg-card/50 border border-border">
             {/* Total Profit Card */}
-            <div className="bg-card group relative border border-border rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-lg hover:border-emerald-500/50">
+            <div className="bg-card group relative border border-border rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-500/50">
               <h5 className="text-muted-foreground text-xs font-medium uppercase">Total Profit</h5>
               <div className="items-baseline flex mt-2 gap-1">
                 <div className="text-foreground text-xl font-medium">
@@ -504,21 +504,23 @@ export default function Dashboard() {
                 </div>
                 
                 {/* Expanded content on hover */}
-                <div className="overflow-hidden text-xs text-muted-foreground max-h-0 group-hover:max-h-40 transition-all duration-300">
-                  <div className="flex-col pb-1 pt-4 flex gap-3">
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Avg Profit/Sale</div>
+                <div className="grid [grid-template-rows:0fr] group-hover:[grid-template-rows:1fr] transition-all duration-500 ease-in-out text-xs text-muted-foreground">
+                  <div className="overflow-hidden min-h-0">
+                    <div className="flex-col pb-1 pt-4 flex gap-3 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-150">
+                      <div className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                          <div>Avg Profit/Sale</div>
+                        </div>
+                        <div className="font-medium text-foreground">${avgProfit.toFixed(2)}</div>
                       </div>
-                      <div className="font-medium text-foreground">${avgProfit.toFixed(2)}</div>
-                    </div>
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-blue-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Profit Margin</div>
+                      <div className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-blue-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                          <div>Profit Margin</div>
+                        </div>
+                        <div className="font-medium text-foreground">{profitMargin.toFixed(1)}%</div>
                       </div>
-                      <div className="font-medium text-foreground">{profitMargin.toFixed(1)}%</div>
                     </div>
                   </div>
                 </div>
@@ -526,7 +528,7 @@ export default function Dashboard() {
             </div>
 
             {/* Total Sales Card */}
-            <div className="bg-card group relative border border-border rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-lg hover:border-blue-500/50">
+            <div className="bg-card group relative border border-border rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-500/50">
               <h5 className="text-muted-foreground text-xs font-medium uppercase">Total Sales</h5>
               <div className="items-baseline flex mt-2 gap-1">
                 <div className="text-foreground text-xl font-medium">
@@ -541,21 +543,23 @@ export default function Dashboard() {
                   <div className="bg-purple-500" style={{ width: '40%' }}></div>
                 </div>
                 
-                <div className="overflow-hidden text-xs text-muted-foreground max-h-0 group-hover:max-h-40 transition-all duration-300">
-                  <div className="flex-col pb-1 pt-4 flex gap-3">
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-blue-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Total Revenue</div>
+                <div className="grid [grid-template-rows:0fr] group-hover:[grid-template-rows:1fr] transition-all duration-500 ease-in-out text-xs text-muted-foreground">
+                  <div className="overflow-hidden min-h-0">
+                    <div className="flex-col pb-1 pt-4 flex gap-3 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-150">
+                      <div className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-blue-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                          <div>Total Revenue</div>
+                        </div>
+                        <div className="font-medium text-foreground">${Number(totalRevenue || 0).toFixed(0)}</div>
                       </div>
-                      <div className="font-medium text-foreground">${Number(totalRevenue || 0).toFixed(0)}</div>
-                    </div>
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-purple-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Avg Sale Speed</div>
+                      <div className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-purple-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                          <div>Avg Sale Speed</div>
+                        </div>
+                        <div className="font-medium text-foreground">{averageSaleSpeed.toFixed(0)} days</div>
                       </div>
-                      <div className="font-medium text-foreground">{averageSaleSpeed.toFixed(0)} days</div>
                     </div>
                   </div>
                 </div>
@@ -563,7 +567,7 @@ export default function Dashboard() {
             </div>
 
             {/* Items in Stock Card */}
-            <div className="bg-card group relative border border-border rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-lg hover:border-purple-500/50">
+            <div className="bg-card group relative border border-border rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:border-purple-500/50">
               <h5 className="text-muted-foreground text-xs font-medium uppercase">Items in Stock</h5>
               <div className="items-baseline flex mt-2 gap-1">
                 <div className="text-foreground text-xl font-medium">
@@ -577,21 +581,23 @@ export default function Dashboard() {
                   <div className="bg-purple-500" style={{ width: `${Math.min((inventoryStats.totalQuantity / (inventoryStats.totalQuantity + 10)) * 100, 100)}%` }}></div>
                 </div>
                 
-                <div className="overflow-hidden text-xs text-muted-foreground max-h-0 group-hover:max-h-40 transition-all duration-300">
-                  <div className="flex-col pb-1 pt-4 flex gap-3">
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-amber-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Return Deadlines</div>
+                <div className="grid [grid-template-rows:0fr] group-hover:[grid-template-rows:1fr] transition-all duration-500 ease-in-out text-xs text-muted-foreground">
+                  <div className="overflow-hidden min-h-0">
+                    <div className="flex-col pb-1 pt-4 flex gap-3 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-150">
+                      <div className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-amber-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                          <div>Return Deadlines</div>
+                        </div>
+                        <div className="font-medium text-foreground">{itemsWithUpcomingReturns?.length || 0}</div>
                       </div>
-                      <div className="font-medium text-foreground">{itemsWithUpcomingReturns?.length || 0}</div>
-                    </div>
-                    <div className="items-center flex w-full justify-between">
-                      <div className="flex items-center">
-                        <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
-                        <div>Needs Listing</div>
+                      <div className="items-center flex w-full justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-emerald-500 w-2 h-2 mr-1.5 rounded-full"></div>
+                          <div>Needs Listing</div>
+                        </div>
+                        <div className="font-medium text-foreground">{staleItems?.length || 0}</div>
                       </div>
-                      <div className="font-medium text-foreground">{staleItems?.length || 0}</div>
                     </div>
                   </div>
                 </div>
@@ -599,7 +605,7 @@ export default function Dashboard() {
             </div>
 
             {/* Platform Performance Card */}
-            <div className="bg-card group relative border border-border rounded-xl overflow-hidden p-4 transition-all duration-300 hover:shadow-lg hover:border-teal-500/50">
+            <div className="bg-card group relative border border-border rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/10 hover:border-teal-500/50">
               <h5 className="text-muted-foreground text-xs font-medium uppercase">Platform Mix</h5>
               <div className="items-baseline flex mt-2 gap-1">
                 <div className="text-foreground text-xl font-medium">
@@ -615,8 +621,9 @@ export default function Dashboard() {
                   <div className="bg-purple-500" style={{ width: '25%' }}></div>
                 </div>
                 
-                <div className="overflow-hidden text-xs text-muted-foreground max-h-0 group-hover:max-h-40 transition-all duration-300">
-                  <div className="flex-col pb-1 pt-4 flex gap-3">
+                <div className="grid [grid-template-rows:0fr] group-hover:[grid-template-rows:1fr] transition-all duration-500 ease-in-out text-xs text-muted-foreground">
+                  <div className="overflow-hidden min-h-0">
+                    <div className="flex-col pb-1 pt-4 flex gap-3 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-150">
                     {platformSummary.slice(0, 2).map((platform, idx) => (
                       <div key={idx} className="items-center flex w-full justify-between">
                         <div className="flex items-center">
@@ -630,6 +637,7 @@ export default function Dashboard() {
                         <div className="font-medium text-foreground">${Number(platform.total_profit || 0).toFixed(0)}</div>
                       </div>
                     ))}
+                    </div>
                   </div>
                 </div>
               </div>
