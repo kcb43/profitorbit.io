@@ -23,6 +23,14 @@ import crypto from 'crypto';
 import 'dotenv/config';
 
 // ==========================================
+// Debug ingest (for agent log analysis - .cursor/debug.log)
+// ==========================================
+const DEBUG_INGEST_URL = 'http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1';
+const debugLog = (payload) => {
+  fetch(DEBUG_INGEST_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, timestamp: Date.now() }) }).catch(() => {});
+};
+
+// ==========================================
 // Initialize
 // ==========================================
 const fastify = Fastify({ logger: true });
@@ -41,10 +49,39 @@ if (supabase) {
 }
 // #endregion
 
-const redis = new Redis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true
-});
+// Redis: stub for local dev; real client when REDIS_URL is set and connectable. On connection failure, fall back to stub so local dev works without editing .env.
+const redisStub = {
+  get: async () => null,
+  set: async () => 'OK',
+  incr: async () => 1,
+  expire: async () => 1,
+  del: async () => 0,
+  flushall: async () => 'OK'
+};
+const hasRedisUrl = process.env.REDIS_URL && process.env.REDIS_URL.trim().length > 0;
+let redisBackend = hasRedisUrl
+  ? new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true
+    })
+  : redisStub;
+if (hasRedisUrl) {
+  redisBackend.once('error', (err) => {
+    console.warn('[Search Worker] Redis connection failed – using no-op cache for this process. (Local dev is fine without Redis.)', err?.message || err);
+    redisBackend.disconnect?.();
+    redisBackend = redisStub;
+  });
+} else {
+  console.log('[Search Worker] REDIS_URL not set – using no-op cache. Set REDIS_URL for cache + quota.');
+}
+const redis = {
+  get: (...a) => redisBackend.get(...a),
+  set: (...a) => redisBackend.set(...a),
+  incr: (...a) => redisBackend.incr(...a),
+  expire: (...a) => redisBackend.expire(...a),
+  del: (...a) => redisBackend.del(...a),
+  flushall: (...a) => redisBackend.flushall(...a)
+};
 
 // DNS caching to avoid repeated lookups (saves 100-500ms per request)
 const cacheable = new CacheableLookup();
@@ -219,7 +256,29 @@ class SerpApiGoogleProvider extends SearchProvider {
    * @returns {Array} Array of merchant offers with direct links
    */
   async getProductOffers(productPageToken) {
+    // #region agent log
+    debugLog({
+      location: 'orben-search-worker/index.js:getProductOffers:entry',
+      message: 'getProductOffers entry',
+      data: {
+        hasApiKey: !!this.apiKey,
+        hasToken: !!productPageToken,
+        tokenLength: productPageToken?.length || 0,
+        tokenPreview: productPageToken?.substring(0, 30)
+      },
+      hypothesisId: 'H2,H3'
+    });
+    // #endregion
+
     if (!this.apiKey || !productPageToken) {
+      // #region agent log
+      debugLog({
+        location: 'orben-search-worker/index.js:getProductOffers:earlyReturn',
+        message: 'getProductOffers early return - missing params',
+        data: { hasApiKey: !!this.apiKey, hasToken: !!productPageToken },
+        hypothesisId: 'H2,H3'
+      });
+      // #endregion
       console.warn('[SerpAPI] Missing API key or page token for product offers');
       return [];
     }
@@ -234,10 +293,47 @@ class SerpApiGoogleProvider extends SearchProvider {
         more_stores: true // Get up to 13 stores instead of default 3-5
       };
       
+      // #region agent log
+      debugLog({
+        location: 'orben-search-worker/index.js:getProductOffers:beforeApi',
+        message: 'getProductOffers before API call',
+        data: {
+          baseUrl: this.baseUrl,
+          engine: params.engine,
+          hasPageToken: !!params.page_token,
+          hasApiKey: !!params.api_key,
+          moreStores: params.more_stores
+        },
+        hypothesisId: 'H2'
+      });
+      // #endregion
+
       const response = await axiosInstance.get(this.baseUrl, {
         params: params,
         timeout: 10000
       });
+
+      // #region agent log
+      const pr = response.data?.product_results;
+      const stores = pr?.stores;
+      debugLog({
+        location: 'orben-search-worker/index.js:getProductOffers:response',
+        message: 'getProductOffers API response received',
+        data: {
+          statusCode: response.status,
+          hasData: !!response.data,
+          allKeys: Object.keys(response.data || {}),
+          hasProductResults: !!pr,
+          productResultsKeys: pr ? Object.keys(pr) : null,
+          hasStores: !!stores,
+          storesCount: stores?.length || 0,
+          firstStoreKeys: stores?.[0] ? Object.keys(stores[0]) : null,
+          firstStoreLink: stores?.[0]?.link ?? stores?.[0]?.store_link ?? null,
+          firstStore: stores?.[0] ? { link: stores[0].link, store_link: stores[0].store_link, name: stores[0].name, extracted_price: stores[0].extracted_price, price: stores[0].price } : null
+        },
+        hypothesisId: 'H2'
+      });
+      // #endregion
 
       console.log('[SerpAPI] Product offers response', JSON.stringify({
         hasOffers: !!response.data?.sellers_results,
@@ -254,7 +350,7 @@ class SerpApiGoogleProvider extends SearchProvider {
       // The correct field is product_results.stores (not sellers_results)
       const offers = response.data?.product_results?.stores || [];
       
-      return offers.map(offer => ({
+      const mappedOffers = offers.map(offer => ({
         merchant: offer.name || 'Unknown',
         price: offer.extracted_price || offer.price || 0,
         link: offer.link || offer.store_link || null, // This is the REAL merchant URL!
@@ -266,7 +362,37 @@ class SerpApiGoogleProvider extends SearchProvider {
         total_price: offer.total_price || null
       })).filter(offer => offer.link); // Only return offers with valid links
       
+      // #region agent log
+      debugLog({
+        location: 'orben-search-worker/index.js:getProductOffers:return',
+        message: 'getProductOffers returning offers',
+        data: {
+          rawOffersCount: offers.length,
+          filteredOffersCount: mappedOffers.length,
+          firstMappedOfferLink: mappedOffers[0]?.link ?? null,
+          firstMappedOfferPrice: mappedOffers[0]?.price ?? null
+        },
+        hypothesisId: 'H2'
+      });
+      // #endregion
+
+      return mappedOffers;
+
     } catch (error) {
+      // #region agent log
+      debugLog({
+        location: 'orben-search-worker/index.js:getProductOffers:error',
+        message: 'getProductOffers error caught',
+        data: {
+          errorMessage: error.message,
+          errorName: error.name,
+          hasResponse: !!error.response,
+          statusCode: error.response?.status,
+          responseData: error.response?.data ? JSON.stringify(error.response.data).slice(0, 500) : null
+        },
+        hypothesisId: 'H2,H3'
+      });
+      // #endregion
       console.error('[SerpAPI] Error fetching product offers:', error.message);
       return [];
     }
@@ -291,18 +417,18 @@ class SerpApiGoogleProvider extends SearchProvider {
       const requestStartTime = Date.now();
       
       // SerpAPI parameters for Google Shopping
-      // Support BOTH engines:
-      // 1. engine=google - regular search that returns immersive_products
-      // 2. engine=google_shopping - dedicated shopping that returns shopping_results
-      // We'll use engine=google by default to match SerpAPI playground behavior
+      // Hybrid engine strategy:
+      // Page 1: engine=google returns rich immersive_products (~30 items)
+      // Page 2+: engine=google_shopping returns paginated shopping_results (different items each page)
+      const useShoppingEngine = page > 1;
       const params = {
-        engine: 'google',  // Changed from 'google_shopping' to 'google'
+        engine: useShoppingEngine ? 'google_shopping' : 'google',
         q: query,
         hl: 'en',
         gl: country.toLowerCase(),
         api_key: this.apiKey,
-        num: Math.min(limit, 100), // SerpAPI supports up to 100 results
-        start: (page - 1) * limit // SerpAPI uses 'start' for pagination offset
+        num: 100,
+        start: useShoppingEngine ? (page - 2) * 60 : 0
       };
       
       console.log('[SerpAPI] Request parameters', JSON.stringify({
@@ -328,7 +454,8 @@ class SerpApiGoogleProvider extends SearchProvider {
         inlineCount: response.data?.inline_shopping_results?.length || 0,
         hasOrganicResults: !!response.data?.organic_results,
         organicCount: response.data?.organic_results?.length || 0,
-        allTopLevelKeys: Object.keys(response.data || {})
+        allTopLevelKeys: Object.keys(response.data || {}),
+        serpApiError: response.data?.error || null
       }));
       
       // DEBUG: Log first product to see all available fields
@@ -356,6 +483,24 @@ class SerpApiGoogleProvider extends SearchProvider {
       // Priority 1: immersive_products (NEW Google Shopping format)
       if (response.data?.immersive_products) {
         console.log(`[SerpAPI] Found immersive_products: ${response.data.immersive_products.length}`);
+        const firstProduct = response.data.immersive_products[0];
+        // #region agent log
+        debugLog({
+          location: 'orben-search-worker/index.js:search:immersiveFirst',
+          message: 'First immersive product raw fields (price/link/token)',
+          data: {
+            immersiveCount: response.data.immersive_products.length,
+            firstTitle: firstProduct?.title?.substring(0, 40),
+            firstExtractedPrice: firstProduct?.extracted_price,
+            firstPriceRaw: firstProduct?.price,
+            firstLink: firstProduct?.link ? (firstProduct.link.includes('serpapi') ? 'serpapi' : firstProduct.link.substring(0, 50)) : null,
+            firstHasToken: !!firstProduct?.immersive_product_page_token,
+            firstTokenPreview: firstProduct?.immersive_product_page_token?.substring(0, 30),
+            firstProductKeys: firstProduct ? Object.keys(firstProduct) : null
+          },
+          hypothesisId: 'H1,H3'
+        });
+        // #endregion
         for (const product of response.data.immersive_products) {
           items.push({
             title: product.title || 'Untitled',
@@ -388,10 +533,9 @@ class SerpApiGoogleProvider extends SearchProvider {
       }
       
       // Priority 2: shopping_results (Classic Google Shopping tab results)
-      if (items.length < limit && response.data?.shopping_results) {
+      if (response.data?.shopping_results) {
         console.log(`[SerpAPI] Found shopping_results: ${response.data.shopping_results.length}`);
         for (const product of response.data.shopping_results) {
-          if (items.length >= limit) break;
           
           items.push({
             title: product.title || 'Untitled',
@@ -422,10 +566,9 @@ class SerpApiGoogleProvider extends SearchProvider {
       }
       
       // Priority 3: inline_shopping_results (if available)
-      if (items.length < limit && response.data?.inline_shopping_results) {
+      if (response.data?.inline_shopping_results) {
         console.log(`[SerpAPI] Found inline_shopping_results: ${response.data.inline_shopping_results.length}`);
         for (const product of response.data.inline_shopping_results) {
-          if (items.length >= limit) break;
           
           items.push({
             title: product.title || 'Untitled',
@@ -444,10 +587,9 @@ class SerpApiGoogleProvider extends SearchProvider {
       }
       
       // Priority 4: organic_results (if no shopping results found)
-      if (items.length < limit && response.data?.organic_results) {
+      if (response.data?.organic_results) {
         console.log(`[SerpAPI] Found organic_results: ${response.data.organic_results.length}`);
         for (const product of response.data.organic_results) {
-          if (items.length >= limit) break;
           
           // Only include organic results that look like shopping items
           if (product.price || product.thumbnail) {
@@ -972,6 +1114,35 @@ fastify.post('/search', async (request, reply) => {
         firstItem: items[0]?.title || null
       }));
       
+      // Server-side offer resolution: resolve merchant links for items with tokens
+      // so the frontend doesn't need a separate round-trip per product
+      if (providerName === 'google' && provider instanceof SerpApiGoogleProvider) {
+        const itemsWithTokens = items.filter(i => i.immersive_product_page_token && !i.url);
+        if (itemsWithTokens.length > 0) {
+          console.log(`[OfferResolve] Resolving offers for ${itemsWithTokens.length} items server-side`);
+          const BATCH = 10;
+          const toResolve = itemsWithTokens.slice(0, BATCH);
+          const offerResults = await Promise.allSettled(
+            toResolve.map(item => provider.getProductOffers(item.immersive_product_page_token))
+          );
+          offerResults.forEach((result, idx) => {
+            if (result.status === 'fulfilled' && result.value.length > 0) {
+              const bestOffer = result.value[0];
+              toResolve[idx].url = bestOffer.link;
+              toResolve[idx].product_link = bestOffer.link;
+              toResolve[idx].merchant = bestOffer.merchant || toResolve[idx].merchant;
+              toResolve[idx].merchantOffers = result.value;
+              toResolve[idx].merchantOffersLoaded = true;
+              if (!toResolve[idx].price && bestOffer.price) {
+                toResolve[idx].price = bestOffer.price;
+              }
+            }
+          });
+          const resolved = offerResults.filter(r => r.status === 'fulfilled' && r.value.length > 0).length;
+          console.log(`[OfferResolve] Resolved ${resolved}/${toResolve.length} items with merchant links`);
+        }
+      }
+
       // Cache for 6 hours - but ONLY cache successful results with items
       // Don't cache empty results (timeouts, errors) to allow retry
       if (items.length > 0) {
@@ -1048,11 +1219,22 @@ fastify.post('/search', async (request, reply) => {
   }
 
   // #region agent log
+  const itemsWithOffers = results.items.filter(i => i.merchantOffers?.length > 0);
+  const itemsWithUrl = results.items.filter(i => i.url && !i.url.includes('serpapi.com'));
   console.log('[DEBUG-D] Search worker: Final response', JSON.stringify({
     totalItems: results.items.length,
     providerCount: results.providers.length,
     providers: results.providers,
     firstItemTitle: results.items[0]?.title || null,
+    itemsWithMerchantOffers: itemsWithOffers.length,
+    itemsWithRealUrl: itemsWithUrl.length,
+    first3Items: results.items.slice(0, 3).map(i => ({
+      title: i.title?.substring(0, 30),
+      url: i.url?.substring(0, 50) || null,
+      hasMerchantOffers: !!i.merchantOffers?.length,
+      merchantOffersCount: i.merchantOffers?.length || 0,
+      merchantOffersLoaded: i.merchantOffersLoaded || false
+    })),
     hypothesisId: 'D'
   }));
   // #endregion

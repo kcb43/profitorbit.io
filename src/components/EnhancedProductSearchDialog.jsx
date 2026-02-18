@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEbaySearchInfinite } from '@/hooks/useEbaySearch';
+import { useProductSearch } from '@/hooks/useProductSearch';
 import {
   ebayItemToInventory,
   formatEbayPrice,
@@ -55,11 +56,19 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef(null);
+  const universalScrollRef = useRef(null);
 
-  // Universal Search State
-  const [universalProducts, setUniversalProducts] = useState([]);
-  const [universalLoading, setUniversalLoading] = useState(false);
-  const [universalStats, setUniversalStats] = useState(null);
+  // Universal Search (shared hook)
+  const {
+    products: universalProducts,
+    loading: universalLoading,
+    loadingMore: universalLoadingMore,
+    hasMore: universalHasMore,
+    stats: universalStats,
+    search: universalSearch,
+    loadMore: universalLoadMore,
+    reset: universalReset,
+  } = useProductSearch();
 
   // eBay Search State (using existing hook)
   const [selectedEbayItem, setSelectedEbayItem] = useState(null);
@@ -144,307 +153,56 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     return () => viewport.removeEventListener('scroll', handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchMode]);
 
+  // Set up infinite scroll for universal/all search
+  useEffect(() => {
+    if (!universalScrollRef.current || !universalHasMore || universalLoadingMore || searchMode !== 'all') return;
+
+    const container = universalScrollRef.current;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollHeight - scrollTop - clientHeight < 300 && universalHasMore && !universalLoadingMore) {
+        universalLoadMore();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [universalHasMore, universalLoadingMore, searchMode, universalProducts.length, universalLoadMore]);
+
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
       setSearchQuery('');
       setDebouncedQuery('');
-      setUniversalProducts([]);
+      universalReset();
       setSelectedEbayItem(null);
-      setUniversalStats(null);
     } else if (initialQuery) {
       setSearchQuery(initialQuery);
       setDebouncedQuery(initialQuery);
     }
     
-    // Prevent auto-focus on search input when dialog opens
     if (open) {
-      // Small delay to let Dialog's focus trap settle, then blur any focused input
       setTimeout(() => {
         if (document.activeElement && document.activeElement.tagName === 'INPUT') {
           document.activeElement.blur();
         }
       }, 50);
     }
-  }, [open, initialQuery]);
+  }, [open, initialQuery, universalReset]);
 
   // Auto-search for "All Marketplaces" mode when debouncedQuery changes
   useEffect(() => {
     if (searchMode === 'all' && debouncedQuery.trim().length >= 3 && open) {
-      handleUniversalSearch();
+      universalSearch(debouncedQuery);
     }
-  }, [debouncedQuery, searchMode, open]);
-
-  // Universal Search function (SerpAPI - like ProductSearch page)
-  const handleUniversalSearch = async (forceFresh = false) => {
-    const queryToSearch = debouncedQuery.trim() || searchQuery.trim();
-    
-    if (!queryToSearch) {
-      toast({
-        title: 'Search query required',
-        description: 'Please enter a product name to search',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setUniversalLoading(true);
-    setUniversalProducts([]);
-    setUniversalStats(null);
-
-    try {
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        throw new Error('Please log in to search products');
-      }
-
-      // Use same endpoint as ProductSearch page
-      const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
-      
-      // Use same parameters as ProductSearch page for consistent results
-      const params = new URLSearchParams({
-        q: queryToSearch,
-        providers: 'auto',
-        country: 'US',
-        page: '1',
-        limit: '10',
-        cache_version: 'v9_fix_links' // v9: Fixed serpapi links issue
-      });
-
-      // Add cache_bust parameter if forcing fresh results
-      if (forceFresh) {
-        params.append('cache_bust', Date.now().toString());
-      }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:215',message:'Dialog search params',data:{query:queryToSearch,paramsString:params.toString(),fullUrl:`${ORBEN_API_URL}/v1/search?${params}`,hasToken:!!token,forceFresh},timestamp:Date.now(),hypothesisId:'A,D,E'})}).catch(()=>{});
-      // #endregion
-
-      const response = await fetch(`${ORBEN_API_URL}/v1/search?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:226',message:'Dialog fetch response status',data:{query:queryToSearch,status:response.status,ok:response.ok,forceFresh},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:232',message:'Dialog search error',data:{query:queryToSearch,status:response.status,errorText:errorText.slice(0,200),forceFresh},timestamp:Date.now(),hypothesisId:'G'})}).catch(()=>{});
-        // #endregion
-        throw new Error(`Search failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('[Universal Search] Response:', data);
-
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:228',message:'Dialog search response',data:{query:queryToSearch,itemCount:data.items?.length||0,hasItems:!!(data.items?.length),providers:data.providers,cached:data.providers?.[0]?.cached},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(()=>{});
-      // #endregion
-
-      // Check for quota/provider errors
-      if (data.providers && Array.isArray(data.providers)) {
-        const providerErrors = data.providers.filter(p => p.error);
-        if (providerErrors.length > 0) {
-          console.warn('[Universal Search] Provider errors:', providerErrors);
-          
-          // Check for quota exceeded
-          const quotaError = providerErrors.find(p => 
-            p.error?.includes('quota') || p.error?.includes('exceeded') || p.error?.includes('limit')
-          );
-          
-          if (quotaError) {
-            toast({
-              title: '⚠️ Search Quota Exceeded',
-              description: quotaError.error || 'API quota limit reached. Results may be limited.',
-              variant: 'destructive',
-              duration: 8000
-            });
-          }
-        }
-      }
-
-      // Transform SerpAPI results to match expected format
-      const transformedProducts = (data.items || []).map(item => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:282',message:'Dialog transform',data:{itemUrl:item.url,itemLink:item.link,hasImmersiveToken:!!item.immersive_product_page_token,tokenPreview:item.immersive_product_page_token?.substring(0,30),title:item.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
-        
-        return {
-          title: item.title || '',
-          price: item.price || item.extracted_price || 0,
-          originalPrice: item.old_price || item.extracted_old_price || null,
-          discountPercentage: item.old_price && item.price
-            ? Math.round(((item.old_price - item.price) / item.old_price) * 100)
-            : 0,
-          rating: item.rating || null,
-          reviewCount: item.reviews || item.reviews_count || null,
-          marketplace: item.merchant || item.source || 'Unknown',
-          productUrl: item.link || item.url || '',
-          imageUrl: item.image_url || item.thumbnail || '',
-          seller: item.seller || null,
-          delivery: item.delivery || null,
-          condition: item.condition || null,
-          snippet: item.snippet || '',
-          immersive_product_page_token: item.immersive_product_page_token || null,
-          merchantOffers: [], // Will be populated by prefetch
-          merchantOffersLoaded: false
-        };
-      });
-
-      setUniversalProducts(transformedProducts);
-
-      // Prefetch merchant offers for products with immersive tokens
-      prefetchMerchantOffers(transformedProducts);
-
-      // Calculate stats
-      const prices = transformedProducts.filter(p => p.price > 0).map(p => p.price);
-      if (prices.length > 0) {
-        setUniversalStats({
-          priceStats: {
-            lowest: Math.min(...prices),
-            highest: Math.max(...prices),
-            average: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)
-          }
-        });
-      }
-
-      if (transformedProducts.length === 0) {
-        toast({
-          title: '⚠️ No results found',
-          description: data.providers?.[0]?.error || 'Try a different search term or check your API quota.',
-          variant: 'destructive'
-        });
-      } else {
-        toast({
-          title: `✅ Found ${transformedProducts.length} products`,
-          description: `Search complete from ${data.providers?.map(p => p.provider).join(', ') || 'multiple sources'}`
-        });
-      }
-
-    } catch (error) {
-      console.error('Universal search error:', error);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:318',message:'Dialog search exception',data:{query:queryToSearch,errorMsg:error.message,errorName:error.name},timestamp:Date.now(),hypothesisId:'H'})}).catch(()=>{});
-      // #endregion
-      toast({
-        title: '❌ Search failed',
-        description: error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setUniversalLoading(false);
-    }
-  };
-
-  // Prefetch merchant offers for products with immersive tokens
-  const prefetchMerchantOffers = async (products) => {
-    const productsWithTokens = products.filter(p => p.immersive_product_page_token);
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:347',message:'Dialog prefetch start',data:{totalProducts:products.length,productsWithTokens:productsWithTokens.length,firstProductUrl:products[0]?.productUrl,firstToken:productsWithTokens[0]?.immersive_product_page_token?.substring(0,30)},timestamp:Date.now(),hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
-    
-    if (productsWithTokens.length === 0) {
-      console.log('[Dialog Prefetch] No products with immersive tokens');
-      return;
-    }
-
-    console.log(`[Dialog Prefetch] Fetching merchant offers for ${productsWithTokens.length} products`);
-
-    const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token;
-
-    if (!token) {
-      console.warn('[Dialog Prefetch] No auth token available');
-      return;
-    }
-
-    const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
-
-    // Fetch merchant offers for each product (in batches)
-    const batchSize = 3;
-    for (let i = 0; i < productsWithTokens.length; i += batchSize) {
-      const batch = productsWithTokens.slice(i, i + batchSize);
-      
-      await Promise.all(batch.map(async (product) => {
-        try {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:374',message:'Dialog fetching offers',data:{url:`${ORBEN_API_URL}/product-offers`,hasToken:!!product.immersive_product_page_token,productTitle:product.title?.substring(0,40)},timestamp:Date.now(),hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
-          
-          const response = await fetch(`${ORBEN_API_URL}/product-offers`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              immersive_product_page_token: product.immersive_product_page_token,
-              userId: session.data.session?.user?.id
-            })
-          });
-
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:391',message:'Dialog offers response',data:{ok:response.ok,status:response.status,statusText:response.statusText},timestamp:Date.now(),hypothesisId:'I'})}).catch(()=>{});
-          // #endregion
-
-          if (response.ok) {
-            const data = await response.json();
-            
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/27e41dcb-2d20-4818-a02b-7116067c6ef1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EnhancedProductSearchDialog.jsx:399',message:'Dialog offers data',data:{offerCount:data.offers?.length||0,firstOfferLink:data.offers?.[0]?.link||null,firstOfferMerchant:data.offers?.[0]?.merchant||null},timestamp:Date.now(),hypothesisId:'J'})}).catch(()=>{});
-            // #endregion
-            
-            console.log(`[Dialog Prefetch] Got ${data.offers?.length || 0} offers for: ${product.title.substring(0, 30)}...`);
-            
-            // Update the product with merchant offers
-            setUniversalProducts(prev => prev.map(p => 
-              p.title === product.title && p.immersive_product_page_token === product.immersive_product_page_token
-                ? { 
-                    ...p, 
-                    merchantOffers: data.offers || [], 
-                    merchantOffersLoaded: true,
-                    // Update productUrl to first offer's link if available
-                    productUrl: data.offers?.[0]?.link || p.productUrl
-                  }
-                : p
-            ));
-          } else {
-            console.warn(`[Dialog Prefetch] Failed to fetch offers: ${response.status}`);
-            setUniversalProducts(prev => prev.map(p =>
-              p.title === product.title && p.immersive_product_page_token === product.immersive_product_page_token
-                ? { ...p, merchantOffersLoaded: true }
-                : p
-            ));
-          }
-        } catch (error) {
-          console.error(`[Dialog Prefetch] Error:`, error.message);
-          setUniversalProducts(prev => prev.map(p =>
-            p.title === product.title && p.immersive_product_page_token === product.immersive_product_page_token
-              ? { ...p, merchantOffersLoaded: true }
-              : p
-          ));
-        }
-      }));
-      
-      // Small delay between batches
-      if (i + batchSize < productsWithTokens.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
-  };
+  }, [debouncedQuery, searchMode, open, universalSearch]);
 
   // Handle search based on mode
   const handleSearch = () => {
     if (searchMode === 'all') {
-      handleUniversalSearch();
+      universalSearch(searchQuery.trim());
     } else {
-      // eBay search is automatic via useEbaySearchInfinite hook
       setDebouncedQuery(searchQuery.trim());
     }
   };
@@ -604,7 +362,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                   <Button
                     variant="outline"
                     size="lg"
-                    onClick={() => handleUniversalSearch(true)}
+                    onClick={() => universalSearch(searchQuery.trim())}
                     disabled={universalLoading || !searchQuery.trim()}
                     className="px-3"
                     title="Force refresh (bypass cache)"
@@ -723,13 +481,15 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         )}
 
         {/* Results */}
-        <div className="flex-1 overflow-auto px-6 py-4 min-h-0">
+        <div ref={searchMode === 'all' ? universalScrollRef : undefined} className="flex-1 overflow-auto px-6 py-4 min-h-0">
           {searchMode === 'all' ? (
             <UniversalResults
               loading={universalLoading}
               products={filteredProducts}
               onAddToWatchlist={handleAddToWatchlist}
               onImageClick={setLightboxImage}
+              loadingMore={universalLoadingMore}
+              hasMore={universalHasMore}
             />
           ) : (
             <EbayResults
@@ -795,7 +555,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 }
 
 // Universal Results Component - Table on Desktop, Cards on Mobile
-function UniversalResults({ loading, products, onAddToWatchlist, onImageClick }) {
+function UniversalResults({ loading, products, onAddToWatchlist, onImageClick, loadingMore, hasMore }) {
   if (loading) {
     return <LoadingState />;
   }
@@ -858,6 +618,19 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick })
           </tbody>
         </table>
       </div>
+
+      {loadingMore && (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
+          <span className="text-sm text-muted-foreground">Loading more products...</span>
+        </div>
+      )}
+
+      {!hasMore && products.length > 0 && !loadingMore && (
+        <div className="text-center py-3 text-xs text-muted-foreground">
+          Showing all {products.length} results
+        </div>
+      )}
     </>
   );
 }
