@@ -19,8 +19,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -279,27 +277,34 @@ function TopBarUserProfile({ user, profile, onOpenProfileSettings }) {
 }
 
 // Theme selector dropdown (shared between desktop/mobile)
-function ThemeSelector({ theme, setTheme, align = "end" }) {
+function ThemeSelector({ theme, setTheme }) {
   const isDark = themes[theme]?.isDark ?? true;
+
+  const toggle = () => {
+    setTheme(isDark ? 'stalkfun-light' : 'stalkfun-dark');
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9" title="Toggle theme">
-          {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-44" align={align}>
-        <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-          {Object.entries(themes).map(([id, { name }]) => (
-            <DropdownMenuRadioItem key={id} value={id}>
-              {name}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggle}
+      title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
+      className="relative text-muted-foreground hover:text-foreground h-9 w-9 overflow-hidden"
+    >
+      {/* Moon icon — visible in dark mode, slides out in light */}
+      <Moon
+        className={`absolute w-5 h-5 transition-all duration-300 ease-in-out ${
+          isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'
+        }`}
+      />
+      {/* Sun icon — visible in light mode, slides out in dark */}
+      <Sun
+        className={`absolute w-5 h-5 transition-all duration-300 ease-in-out ${
+          isDark ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'
+        }`}
+      />
+    </Button>
   );
 }
 
