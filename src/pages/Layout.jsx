@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
@@ -63,6 +63,95 @@ const navigationCategories = [
     ]
   }
 ];
+
+// ─── Page breadcrumb ─────────────────────────────────────────────────────────
+
+const ROUTE_MAP = [
+  // Exact matches first, then prefix matches
+  { path: '/dashboard',                    label: 'Dashboard',           icon: LayoutDashboard },
+  { path: '/Dashboard',                    label: 'Dashboard',           icon: LayoutDashboard },
+  { path: '/Inventory',                    label: 'Inventory',           icon: Package },
+  { path: '/AddInventoryItem',             label: 'Add Inventory',       icon: Package },
+  { path: '/AddSale',                      label: 'Add Sale',            icon: Plus },
+  { path: '/SalesHistory',                 label: 'Sales History',       icon: History },
+  { path: '/ProfitCalendar',               label: 'Profit Calendar',     icon: CalendarDays },
+  { path: '/Gallery',                      label: 'Showcase',            icon: GalleryHorizontal },
+  { path: '/Reports',                      label: 'Reports',             icon: BarChart3 },
+  { path: '/platformperformance',          label: 'Platform Performance',icon: BarChart3 },
+  { path: '/CrosslistComposer',            label: 'Crosslist Composer',  icon: Sparkles },
+  { path: '/Crosslisting',                 label: 'Crosslisting',        icon: Sparkles },
+  { path: '/crosslisting',                 label: 'Crosslisting',        icon: Sparkles },
+  { path: '/Crosslist',                    label: 'Crosslist',           icon: Sparkles },
+  { path: '/Import',                       label: 'Import',              icon: Activity },
+  { path: '/Settings',                     label: 'Settings',            icon: Settings },
+  { path: '/Analytics',                    label: 'Analytics',           icon: BarChart3 },
+  { path: '/deals/submit',                 label: 'Submit Deal',         icon: TrendingDown, parent: { label: 'Deal Feed', path: '/deals', icon: TrendingDown } },
+  { path: '/deals',                        label: 'Deal Feed',           icon: TrendingDown },
+  { path: '/product-search',               label: 'Product Search',      icon: Search },
+  { path: '/pro-tools/send-offers',        label: 'Send Offers',         icon: Sparkles, parent: { label: 'Pro Tools', path: '/pro-tools', icon: Sparkles } },
+  { path: '/pro-tools/auto-offers',        label: 'Auto Offers',         icon: Sparkles, parent: { label: 'Pro Tools', path: '/pro-tools', icon: Sparkles } },
+  { path: '/pro-tools/marketplace-sharing',label: 'Marketplace Sharing', icon: Sparkles, parent: { label: 'Pro Tools', path: '/pro-tools', icon: Sparkles } },
+  { path: '/Pro%20Tools',                  label: 'Pro Tools',           icon: Sparkles },
+  { path: '/pro-tools',                    label: 'Pro Tools',           icon: Sparkles },
+  { path: '/PrivacyPolicy',                label: 'Privacy Policy',      icon: Shield },
+  { path: '/FAQ',                          label: 'FAQ',                 icon: HelpCircle },
+  { path: '/Rewards',                      label: 'Rewards',             icon: Gift },
+  { path: '/rewards',                      label: 'Rewards',             icon: Gift },
+  { path: '/MigrateData',                  label: 'Migrate Data',        icon: FileText },
+];
+
+function PageBreadcrumb({ pathname }) {
+  const entry = ROUTE_MAP.find(r => pathname === r.path || pathname.startsWith(r.path + '/'));
+  if (!entry) return null;
+
+  const segments = [];
+  if (entry.parent) {
+    segments.push(entry.parent);
+  }
+  segments.push(entry);
+
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex items-center gap-1 px-4 md:px-6 lg:px-8 pt-4 pb-0 text-xs text-muted-foreground select-none"
+    >
+      {/* Home */}
+      <Link
+        to="/dashboard"
+        className="flex items-center hover:text-foreground transition-colors rounded p-0.5"
+        title="Dashboard"
+      >
+        <Home className="w-3.5 h-3.5" />
+      </Link>
+
+      {segments.map((seg, i) => {
+        const Icon = seg.icon;
+        const isLast = i === segments.length - 1;
+        return (
+          <React.Fragment key={seg.label}>
+            <ChevronRight className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
+            {isLast ? (
+              <span className="flex items-center gap-1 font-medium text-foreground/80">
+                {Icon && <Icon className="w-3 h-3" />}
+                {seg.label}
+              </span>
+            ) : (
+              <Link
+                to={seg.path}
+                className="flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                {Icon && <Icon className="w-3 h-3" />}
+                {seg.label}
+              </Link>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </nav>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const themes = {
   'stalkfun-dark': {
@@ -453,6 +542,7 @@ export default function Layout({ children }) {
           </header>
 
           <div className="flex-1 overflow-auto pb-24 md:pb-0">
+            <PageBreadcrumb pathname={location.pathname} />
             {children}
           </div>
 
