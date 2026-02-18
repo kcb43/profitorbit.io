@@ -16,7 +16,23 @@ import { createClient } from '@supabase/supabase-js';
 import Redis from 'ioredis';
 import axios from 'axios';
 import crypto from 'crypto';
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Load .env from orben-api dir, then repo root .env.local (so one file works for frontend + API when running locally)
+dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+
+// Use VITE_ prefixed vars from .env.local when SUPABASE_* not set (e.g. no orben-api/.env)
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Supabase config required. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in orben-api/.env or repo root .env.local (use VITE_SUPABASE_URL for URL).');
+}
 
 // ==========================================
 // Initialize
@@ -28,15 +44,20 @@ await fastify.register(cors, {
   credentials: true
 });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const redis = new Redis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true
-});
+// Redis optional for local dev: stub when REDIS_URL unset or connection fails
+const redisStub = { get: async () => null, set: async () => 'OK' };
+const hasRedisUrl = process.env.REDIS_URL && process.env.REDIS_URL.trim().length > 0;
+let redisBackend = hasRedisUrl ? new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: 3, enableReadyCheck: true }) : redisStub;
+if (hasRedisUrl) {
+  redisBackend.once('error', (err) => {
+    console.warn('[Orben API] Redis connection failed – using no-op cache.', err?.message || err);
+    redisBackend.disconnect?.();
+    redisBackend = redisStub;
+  });
+}
+const redis = { get: (...a) => redisBackend.get(...a), set: (...a) => redisBackend.set(...a) };
 
 const SEARCH_WORKER_URL = process.env.ORBEN_SEARCH_WORKER_URL;
 
@@ -51,8 +72,9 @@ async function requireUser(request) {
     throw new Error('Missing bearer token');
   }
 
-  // Verify JWT via Supabase
-  const anonClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  // Verify JWT via Supabase (SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY)
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const anonClient = createClient(SUPABASE_URL, anonKey);
   const { data, error } = await anonClient.auth.getUser(token);
 
   if (error || !data.user) {
@@ -423,11 +445,7 @@ fastify.post('/v1/search/snapshot', async (request, reply) => {
   return { ok: true, snapshot: response.data };
 });
 
-/**
- * POST /v1/product/offers
- * Get direct merchant links for a product using immersive_product_page_token
- */
-fastify.post('/v1/product/offers', async (request, reply) => {
+async function handleProductOffers(request, reply) {
   let user;
   try {
     user = await requireUser(request);
@@ -442,7 +460,6 @@ fastify.post('/v1/product/offers', async (request, reply) => {
   }
 
   try {
-    // Call search worker to get merchant offers
     const response = await axios.post(`${SEARCH_WORKER_URL}/product-offers`, {
       immersive_product_page_token,
       userId: user.id
@@ -455,7 +472,15 @@ fastify.post('/v1/product/offers', async (request, reply) => {
     console.error('[Product Offers] Error:', error.message);
     return reply.code(500).send({ error: error.message || 'Failed to fetch product offers' });
   }
-});
+}
+
+/**
+ * POST /v1/product/offers
+ * POST /product-offers (legacy alias)
+ * Get direct merchant links for a product using immersive_product_page_token
+ */
+fastify.post('/v1/product/offers', handleProductOffers);
+fastify.post('/product-offers', handleProductOffers);
 
 /**
  * GET /v1/search/snapshot/:id

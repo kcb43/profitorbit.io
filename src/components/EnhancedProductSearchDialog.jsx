@@ -253,20 +253,39 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   };
 
-  // Filtered universal products
+  // Filtered + sorted universal products
   const filteredProducts = useMemo(() => {
-    let filtered = universalProducts;
+    let filtered = universalProducts.map(p => ({
+      ...p,
+      discountPercentage: (p.originalPrice && p.originalPrice > p.price)
+        ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100)
+        : 0
+    }));
 
     if (filters.marketplace !== 'all') {
       filtered = filtered.filter(p => p.marketplace === filters.marketplace);
     }
-
+    if (filters.minPrice !== '' && !isNaN(Number(filters.minPrice))) {
+      filtered = filtered.filter(p => p.price >= Number(filters.minPrice));
+    }
+    if (filters.maxPrice !== '' && !isNaN(Number(filters.maxPrice))) {
+      filtered = filtered.filter(p => p.price <= Number(filters.maxPrice));
+    }
     if (filters.minDiscount > 0) {
       filtered = filtered.filter(p => p.discountPercentage >= filters.minDiscount);
     }
-
     if (filters.minRating > 0) {
       filtered = filtered.filter(p => p.rating && p.rating >= filters.minRating);
+    }
+
+    if (filters.sortBy === 'price_low') {
+      filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (filters.sortBy === 'price_high') {
+      filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+    } else if (filters.sortBy === 'discount') {
+      filtered = [...filtered].sort((a, b) => (b.discountPercentage || 0) - (a.discountPercentage || 0));
+    } else if (filters.sortBy === 'rating') {
+      filtered = [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
     return filtered;

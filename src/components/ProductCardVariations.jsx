@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award, ChevronDown, ChevronUp, Store } from 'lucide-react';
+import { Star, TrendingUp, ShoppingCart, ExternalLink, Package, Truck, Award, ChevronDown, ChevronUp, Store, Loader2 } from 'lucide-react';
 import { getMerchantLogoOrColor } from '@/utils/merchantLogos';
 
 // Shared utility functions
@@ -74,7 +74,8 @@ const extractItemData = (item) => {
     currency: item.currency || 'USD',
     merchantOffers: item.merchantOffers || [],
     merchantOffersLoaded: item.merchantOffersLoaded || false,
-    hasDirectLink: item.link && item.link.includes('http'), // Check if we have a real direct link
+    immersiveToken: item.immersive_product_page_token || null,
+    hasDirectLink: item.link && item.link.includes('http'),
     multipleStores: item.multiple_sources || false
   };
 };
@@ -178,12 +179,20 @@ export function ProductCardV1Grid({ item, showDebugData = false }) {
                 <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
               </a>
             </Button>
+          ) : !data.merchantOffersLoaded && data.immersiveToken ? (
+            <Button 
+              disabled
+              className="w-full bg-blue-400 dark:bg-blue-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5 cursor-not-allowed"
+            >
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+              Fetching Link...
+            </Button>
           ) : (
             <Button 
               disabled
               className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold text-xs sm:text-sm py-2 sm:py-2.5 cursor-not-allowed"
             >
-              {isSerpApiLink ? 'Fetching Store Link...' : 'Link Unavailable'}
+              Link Unavailable
             </Button>
           )}
         </div>
@@ -346,13 +355,22 @@ export function ProductCardV1List({ item, showDebugData = false }) {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </Button>
+            ) : !data.merchantOffersLoaded && data.immersiveToken ? (
+              <Button 
+                disabled
+                size="sm"
+                className="w-full bg-blue-400 dark:bg-blue-600 text-white font-semibold text-xs py-1.5 h-auto cursor-not-allowed"
+              >
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Fetching...
+              </Button>
             ) : (
               <Button 
                 disabled
                 size="sm"
                 className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold text-xs py-1.5 h-auto cursor-not-allowed"
               >
-                {isSerpApiLink ? 'Fetching...' : 'No Link'}
+                No Link
               </Button>
             )}
           </div>
@@ -387,12 +405,20 @@ export function ProductCardV1List({ item, showDebugData = false }) {
                 <ExternalLink className="w-4 h-4 ml-2" />
               </a>
             </Button>
+          ) : !data.merchantOffersLoaded && data.immersiveToken ? (
+            <Button 
+              disabled
+              className="w-full bg-blue-400 dark:bg-blue-600 text-white font-semibold mt-auto cursor-not-allowed"
+            >
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Fetching Link...
+            </Button>
           ) : (
             <Button 
               disabled
               className="w-full bg-gray-400 dark:bg-gray-600 text-white font-semibold mt-auto cursor-not-allowed"
             >
-              {isSerpApiLink ? 'Fetching Store Link...' : 'Link Unavailable'}
+              Link Unavailable
             </Button>
           )}
         </div>
@@ -932,5 +958,122 @@ export function ProductCardV3List({ item }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+
+// ========================================
+// TABLE VIEW - Compact spreadsheet-style row
+// ========================================
+function ProductTableRow({ item }) {
+  const data = extractItemData(item);
+  const primaryOffer = data.merchantOffers?.[0];
+  const viewLink = primaryOffer?.link || data.productLink;
+  const isSerpApiLink = viewLink && viewLink.includes('serpapi.com');
+  const discountPct = data.oldPrice && data.oldPrice > data.price
+    ? Math.round(((data.oldPrice - data.price) / data.oldPrice) * 100)
+    : 0;
+  const [expanded, setExpanded] = useState(false);
+  const sortedOffers = [...(data.merchantOffers || [])].sort((a, b) => (a.extracted_price || 0) - (b.extracted_price || 0));
+
+  return (
+    <>
+      <tr
+        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        style={{ cursor: sortedOffers.length > 1 ? 'pointer' : 'default' }}
+        onClick={() => sortedOffers.length > 1 && setExpanded(!expanded)}
+      >
+        <td className="py-2 px-3 w-14">
+          <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden flex-shrink-0">
+            <img src={data.imageUrl} alt={data.title} className="w-full h-full object-contain p-1" onError={(e) => e.target.style.display = 'none'} />
+          </div>
+        </td>
+        <td className="py-2 px-3">
+          <p className="font-medium text-sm text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">{data.title}</p>
+          {data.delivery && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+              <Truck className="w-3 h-3 flex-shrink-0" />{data.delivery}
+            </p>
+          )}
+        </td>
+        <td className="py-2 px-3 text-center">
+          <MerchantBadge merchant={data.merchant} />
+        </td>
+        <td className="py-2 px-3 text-right font-bold text-green-600 dark:text-green-400">
+          {data.price > 0 ? `$${data.price.toFixed(2)}` : '-'}
+        </td>
+        <td className="py-2 px-3 text-right text-sm text-gray-400 dark:text-gray-500">
+          {data.oldPrice ? <span className="line-through">${data.oldPrice.toFixed(2)}</span> : '-'}
+        </td>
+        <td className="py-2 px-3 text-center">
+          {discountPct > 0 ? (
+            <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-semibold">-{discountPct}%</Badge>
+          ) : '-'}
+        </td>
+        <td className="py-2 px-3 text-center">
+          {data.rating ? (
+            <span className="flex items-center justify-center gap-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
+              <Star className="w-3 h-3 fill-current" />{data.rating}
+            </span>
+          ) : '-'}
+        </td>
+        <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+          {!isSerpApiLink && viewLink ? (
+            <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-xs px-3 py-1 h-auto">
+              <a href={viewLink} target="_blank" rel="noopener noreferrer">View <ExternalLink className="w-3 h-3 ml-1" /></a>
+            </Button>
+          ) : !data.merchantOffersLoaded && data.immersiveToken ? (
+            <Button disabled size="sm" className="bg-blue-400 dark:bg-blue-600 text-white text-xs px-3 py-1 h-auto cursor-not-allowed">
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />Fetching...
+            </Button>
+          ) : (
+            <Button disabled size="sm" className="bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-xs px-3 py-1 h-auto cursor-not-allowed">No Link</Button>
+          )}
+        </td>
+      </tr>
+      {expanded && sortedOffers.length > 0 && (
+        <tr className="bg-indigo-50 dark:bg-indigo-900/10 border-b border-indigo-100 dark:border-indigo-900">
+          <td colSpan={8} className="px-4 py-3">
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Available from {sortedOffers.length} store{sortedOffers.length > 1 ? 's' : ''}:</p>
+            <div className="flex flex-wrap gap-2">
+              {sortedOffers.map((offer, idx) => (
+                <a key={idx} href={offer.link} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-sm hover:border-indigo-400 hover:shadow transition-all">
+                  <span className="font-medium text-gray-800 dark:text-gray-200">{offer.name || offer.merchant || 'Store'}</span>
+                  <span className="text-green-600 dark:text-green-400 font-bold">${(offer.extracted_price || offer.price || 0).toFixed(2)}</span>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
+                </a>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+export function ProductTableView({ items }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+          <tr className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <th className="py-3 px-3 text-left w-14">Image</th>
+            <th className="py-3 px-3 text-left">Product</th>
+            <th className="py-3 px-3 text-center w-32">Marketplace</th>
+            <th className="py-3 px-3 text-right w-24">Price</th>
+            <th className="py-3 px-3 text-right w-24">Was</th>
+            <th className="py-3 px-3 text-center w-20">Discount</th>
+            <th className="py-3 px-3 text-center w-20">Rating</th>
+            <th className="py-3 px-3 text-center w-28">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white dark:bg-gray-900">
+          {items.map((item, idx) => (
+            <ProductTableRow key={idx} item={item} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
