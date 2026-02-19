@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, TrendingUp, Bookmark, ExternalLink, DollarSign, Percent, AlertCircle, Loader2, Flame, Target, Package, Zap, Filter, TrendingDown } from 'lucide-react';
+import { Search, TrendingUp, Bookmark, ExternalLink, DollarSign, Percent, AlertCircle, Loader2, Flame, Target, Package, Zap, Filter, TrendingDown, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,10 @@ import { cn } from '@/lib/utils';
 const ORBEN_API_URL = import.meta.env.VITE_ORBEN_API_URL || 'https://orben-api.fly.dev';
 
 export default function Deals() {
+  const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
   const [filters, setFilters] = useState({
     merchant: '',
     category: '',
@@ -22,6 +25,36 @@ export default function Deals() {
   });
   const { toast } = useToast();
   const loadMoreRef = useRef(null);
+  const searchBarRef = useRef(null);
+  const searchTimerRef = useRef(null);
+  const sentinelRef = useRef(null);
+
+  // Debounced search — fires API call 400ms after user stops typing
+  const handleSearchChange = useCallback((value) => {
+    setInputValue(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setSearchQuery(value);
+    }, 400);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setInputValue('');
+    setSearchQuery('');
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+  }, []);
+
+  // Detect when search bar becomes sticky via IntersectionObserver on a sentinel element
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsSticky(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '0px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   // Infinite query for deals feed with pagination
   const {
@@ -170,6 +203,76 @@ export default function Deals() {
 
   return (
     <div className="p-2 sm:p-4 md:p-6 lg:p-8 min-h-screen bg-background">
+      {/* Sentinel element — sits at natural position of search bar so we can detect when it scrolls off screen */}
+      <div ref={sentinelRef} className="h-px w-full" aria-hidden="true" />
+
+      {/* Sticky Search Bar */}
+      <div
+        ref={searchBarRef}
+        className={cn(
+          "sticky top-0 z-40 -mx-2 sm:-mx-4 md:-mx-6 lg:-mx-8 px-2 sm:px-4 md:px-6 lg:px-8 py-3 mb-4 transition-all duration-300",
+          isSticky
+            ? "bg-background/80 backdrop-blur-xl border-b border-border/60 shadow-sm"
+            : "bg-transparent"
+        )}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="relative flex items-center">
+            {/* Animated search icon */}
+            <div className={cn(
+              "absolute left-3 flex items-center pointer-events-none transition-all duration-200",
+              isSearchFocused ? "text-green-500 scale-110" : "text-muted-foreground"
+            )}>
+              {isLoading && searchQuery ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </div>
+
+            <Input
+              value={inputValue}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              placeholder="Search deals by title, merchant, or category…"
+              className={cn(
+                "pl-9 pr-10 h-11 rounded-xl border-2 transition-all duration-200 bg-card/60 text-sm",
+                isSearchFocused
+                  ? "border-green-500/60 shadow-[0_0_0_3px_rgba(34,197,94,0.12)] bg-card"
+                  : "border-border/50 hover:border-border"
+              )}
+            />
+
+            {/* Clear button — fades in when there's text */}
+            <button
+              onClick={clearSearch}
+              aria-label="Clear search"
+              className={cn(
+                "absolute right-3 flex items-center justify-center w-5 h-5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200",
+                inputValue ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+              )}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Results / status line */}
+          <div
+            className={cn(
+              "overflow-hidden transition-all duration-300",
+              searchQuery ? "max-h-8 mt-1.5 opacity-100" : "max-h-0 opacity-0"
+            )}
+          >
+            <p className="text-xs text-muted-foreground px-1">
+              {isLoading
+                ? "Searching deals…"
+                : `${filteredDeals.length} deal${filteredDeals.length !== 1 ? 's' : ''} found${dealsData.total > filteredDeals.length ? ` (showing ${filteredDeals.length} of ${dealsData.total})` : ''}`}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto">
         {/* Header - Pulse Style */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
@@ -271,7 +374,7 @@ export default function Deals() {
           {isLoading ? (
             <LoadingSkeleton />
           ) : filteredDeals?.length === 0 ? (
-            <EmptyDealState />
+            <EmptyDealState searchQuery={searchQuery} onClearSearch={clearSearch} />
           ) : (
             <div className="space-y-3">
               {filteredDeals.map((deal) => (
@@ -305,7 +408,7 @@ export default function Deals() {
             </div>
           )}
 
-          {filteredDeals?.length === 0 && !isLoading && <EmptyDealState />}
+          {filteredDeals?.length === 0 && !isLoading && <EmptyDealState searchQuery={searchQuery} onClearSearch={clearSearch} />}
         </TabsContent>
 
         {/* Saved Deals Tab */}
@@ -338,6 +441,7 @@ export default function Deals() {
     </div>
   );
 }
+
 
 // Enhanced Deal Card Component - Pulse Style
 function EnhancedDealCard({ deal, isSaved, onSave }) {
@@ -549,7 +653,23 @@ function LoadingSkeleton() {
 }
 
 // Empty State Component
-function EmptyDealState() {
+function EmptyDealState({ searchQuery, onClearSearch }) {
+  if (searchQuery) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Search className="h-16 w-16 text-muted-foreground mb-4 opacity-40" />
+        <h3 className="text-xl font-semibold mb-2">No deals match &ldquo;{searchQuery}&rdquo;</h3>
+        <p className="text-muted-foreground max-w-md mb-4">
+          Try a different keyword, merchant name, or category.
+        </p>
+        <Button onClick={onClearSearch} variant="outline">
+          <X className="w-4 h-4 mr-2" />
+          Clear Search
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <Package className="h-16 w-16 text-muted-foreground mb-4" />
