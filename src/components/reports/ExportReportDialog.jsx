@@ -72,7 +72,7 @@ const REPORTS = [
 ];
 
 const MARKETPLACES = [
-  { value: '', label: 'All platforms' },
+  { value: 'all', label: 'All platforms' },
   { value: 'ebay', label: 'eBay' },
   { value: 'mercari', label: 'Mercari' },
   { value: 'facebook_marketplace', label: 'Facebook Marketplace' },
@@ -81,7 +81,7 @@ const MARKETPLACES = [
 ];
 
 const AGE_BUCKETS = [
-  { value: '', label: 'All ages' },
+  { value: 'all', label: 'All ages' },
   { value: '30', label: '0–30 days' },
   { value: '60', label: '31–60 days' },
   { value: '90', label: '61–90 days' },
@@ -89,9 +89,9 @@ const AGE_BUCKETS = [
 ];
 
 const STATUSES = [
+  { value: 'all', label: 'All statuses' },
   { value: 'available', label: 'Available' },
   { value: 'listed', label: 'Listed' },
-  { value: '', label: 'All statuses' },
 ];
 
 const COLOR_CLASSES = {
@@ -152,9 +152,9 @@ function FiltersForm({ report, filters, onChange }) {
       {needs.includes('marketplace') && (
         <div>
           <Label className="text-xs">Platform</Label>
-          <Select value={filters.marketplace || ''} onValueChange={(v) => onChange({ ...filters, marketplace: v })}>
+          <Select value={filters.marketplace || 'all'} onValueChange={(v) => onChange({ ...filters, marketplace: v })}>
             <SelectTrigger className="mt-1 h-8 text-sm">
-              <SelectValue placeholder="All platforms" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {MARKETPLACES.map((m) => (
@@ -167,9 +167,9 @@ function FiltersForm({ report, filters, onChange }) {
       {needs.includes('ageBucket') && (
         <div>
           <Label className="text-xs">Age bucket</Label>
-          <Select value={filters.ageBucket || ''} onValueChange={(v) => onChange({ ...filters, ageBucket: v })}>
+          <Select value={filters.ageBucket || 'all'} onValueChange={(v) => onChange({ ...filters, ageBucket: v })}>
             <SelectTrigger className="mt-1 h-8 text-sm">
-              <SelectValue placeholder="All ages" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {AGE_BUCKETS.map((b) => (
@@ -182,7 +182,7 @@ function FiltersForm({ report, filters, onChange }) {
       {needs.includes('status') && (
         <div>
           <Label className="text-xs">Status</Label>
-          <Select value={filters.status || 'available'} onValueChange={(v) => onChange({ ...filters, status: v })}>
+          <Select value={filters.status || 'all'} onValueChange={(v) => onChange({ ...filters, status: v })}>
             <SelectTrigger className="mt-1 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -202,7 +202,7 @@ function FiltersForm({ report, filters, onChange }) {
 
 export default function ExportReportDialog({ open, onClose, defaultReportId = 'sales-summary' }) {
   const [selectedId, setSelectedId]   = useState(defaultReportId);
-  const [filters, setFilters]         = useState({ dateFrom: null, dateTo: null, marketplace: '', status: 'available' });
+  const [filters, setFilters]         = useState({ dateFrom: null, dateTo: null, marketplace: 'all', ageBucket: 'all', status: 'all' });
   const [phase, setPhase]             = useState('select'); // select | running | done | error
   const [runResult, setRunResult]     = useState(null);
   const [errorMsg, setErrorMsg]       = useState('');
@@ -217,11 +217,19 @@ export default function ExportReportDialog({ open, onClose, defaultReportId = 's
     setDownloading('');
   }
 
+  function stripAll(f) {
+    const clean = { ...f };
+    if (clean.marketplace === 'all') delete clean.marketplace;
+    if (clean.ageBucket === 'all') delete clean.ageBucket;
+    if (clean.status === 'all') delete clean.status;
+    return clean;
+  }
+
   async function handleRun() {
     setPhase('running');
     setErrorMsg('');
     try {
-      const result = await apiRunReport({ reportId: selectedId, filters });
+      const result = await apiRunReport({ reportId: selectedId, filters: stripAll(filters) });
       setRunResult(result);
       setPhase('done');
     } catch (err) {
@@ -272,10 +280,11 @@ export default function ExportReportDialog({ open, onClose, defaultReportId = 's
   // Also support the old CSV export path for backwards compat
   async function handleCsv() {
     const { openAuthExport } = await import('@/utils/exportWithAuth');
+    const clean = stripAll(filters);
     const params = {};
-    if (filters.dateFrom) params.from = filters.dateFrom;
-    if (filters.dateTo)   params.to = filters.dateTo;
-    if (filters.marketplace) params.platform = filters.marketplace;
+    if (clean.dateFrom) params.from = clean.dateFrom;
+    if (clean.dateTo)   params.to = clean.dateTo;
+    if (clean.marketplace) params.platform = clean.marketplace;
     openAuthExport('/api/sales/export', params);
   }
 

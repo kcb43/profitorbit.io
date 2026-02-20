@@ -13,6 +13,7 @@ import PlatformComparison from "../components/reports/PlatformComparison";
 import StatCard from "../components/dashboard/StatCard";
 import TaxSummary from "../components/dashboard/TaxSummary";
 import ExportReportDialog from "../components/reports/ExportReportDialog";
+import AnalyticsPdfDialog from "../components/reports/AnalyticsPdfDialog";
 
 const PLATFORM_DISPLAY_NAMES = {
   ebay: "eBay",
@@ -50,6 +51,7 @@ export default function ReportsPage() {
   const [range, setRange] = React.useState("lifetime");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportReport, setExportReport] = useState('sales-summary');
+  const [analyticsPdfOpen, setAnalyticsPdfOpen] = useState(false);
 
   function openExport(reportId = 'sales-summary') {
     setExportReport(reportId);
@@ -159,10 +161,10 @@ export default function ReportsPage() {
               size="sm"
               variant="outline"
               className="gap-2 ml-1"
-              onClick={() => openExport('sales-summary')}
+              onClick={() => setAnalyticsPdfOpen(true)}
             >
               <Download className="w-4 h-4" />
-              Export
+              Export PDF
             </Button>
           </div>
         </div>
@@ -364,6 +366,12 @@ export default function ReportsPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         defaultReportId={exportReport}
+      />
+
+      <AnalyticsPdfDialog
+        open={analyticsPdfOpen}
+        onClose={() => setAnalyticsPdfOpen(false)}
+        defaultRange={range}
       />
     </div>
   );

@@ -37,7 +37,7 @@ import KpiSparkCard from "../components/dashboard/mosaic/KpiSparkCard";
 import ProfitTrendCard from "../components/dashboard/mosaic/ProfitTrendCard";
 import PlatformRevenueTableCard from "../components/dashboard/mosaic/PlatformRevenueTableCard";
 import WelcomeInsightsRow from "../components/dashboard/WelcomeInsightsRow";
-import ExportReportDialog from "../components/reports/ExportReportDialog";
+import AnalyticsPdfDialog from "../components/reports/AnalyticsPdfDialog";
 
 const SUPPORTED_MARKETPLACES = [
   {
@@ -784,10 +784,10 @@ export default function Dashboard() {
           onOpenChange={setProductSearchOpen}
         />
 
-        <ExportReportDialog
+        <AnalyticsPdfDialog
           open={exportOpen}
           onClose={() => setExportOpen(false)}
-          defaultReportId="sales-summary"
+          defaultRange="lifetime"
         />
       </div>
     </div>
