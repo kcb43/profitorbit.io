@@ -64,22 +64,37 @@ function ConfidenceBadge({ confidence }) {
   );
 }
 
+// Fields that require navigating to the marketplace form tab (can't be typed in)
+const CATEGORY_FIELDS = ['categoryId', 'mercariCategory', 'category', 'mercariCategoryId'];
+
+// Map marketplace + field to the tab the user needs to visit
+function getCategoryTabHint(marketplace, field) {
+  const tabName = marketplace === 'ebay' ? 'eBay'
+    : marketplace === 'mercari' ? 'Mercari'
+    : marketplace === 'facebook' ? 'Facebook'
+    : 'marketplace';
+  return `Open the ${tabName} tab in the form and select the category using the category picker there.`;
+}
+
 /**
  * IssueItem - Single issue with fix UI
  */
 function IssueItem({ issue, onApplyFix }) {
-  const [localValue, setLocalValue] = React.useState(issue.suggested?.label || '');
+  const [localValue, setLocalValue] = React.useState('');
   const [isApplying, setIsApplying] = React.useState(false);
   
   const fieldLabel = getFieldLabel(issue.field);
   const hasSuggestion = Boolean(issue.suggested);
   const hasOptions = Boolean(issue.options && issue.options.length > 0);
+  const isCategoryField = CATEGORY_FIELDS.includes(issue.field);
   
   // Handle apply fix
-  const handleApply = async () => {
+  const handleApply = async (value) => {
+    const valueToApply = value ?? localValue ?? issue.suggested?.label;
+    if (!valueToApply) return;
     setIsApplying(true);
     try {
-      await onApplyFix(issue, localValue || issue.suggested?.label);
+      await onApplyFix(issue, valueToApply);
     } finally {
       setIsApplying(false);
     }
@@ -115,95 +130,108 @@ function IssueItem({ issue, onApplyFix }) {
       
       {/* Fix UI */}
       <div className="ml-8 space-y-2">
-        {hasSuggestion && (
-          <div className="p-3 bg-muted/50 rounded-md border">
-            <div className="flex items-center justify-between mb-2">
-              <ConfidenceBadge confidence={issue.suggested.confidence || 0} />
-            </div>
-            <div className="text-sm font-medium mb-2">
-              {issue.suggested.label}
-            </div>
-            <Button
-              size="sm"
-              onClick={handleApply}
-              disabled={isApplying}
-              className="w-full"
-            >
-              {isApplying ? 'Applying...' : 'Apply Suggestion'}
-            </Button>
-          </div>
-        )}
-        
-        {hasOptions && (
-          <div>
-            <Label className="text-xs mb-1.5">Select {fieldLabel}</Label>
-            <Select value={localValue} onValueChange={setLocalValue}>
-              <SelectTrigger>
-                <SelectValue placeholder={`Choose ${fieldLabel.toLowerCase()}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {issue.options.map(option => (
-                  <SelectItem key={option.id} value={option.label}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {localValue && (
-              <Button
-                size="sm"
-                onClick={handleApply}
-                disabled={isApplying}
-                className="w-full mt-2"
-              >
-                {isApplying ? 'Applying...' : `Apply "${localValue}"`}
-              </Button>
-            )}
-          </div>
-        )}
-        
-        {/* For fields without suggestions/options, show manual input */}
-        {!hasSuggestion && !hasOptions && (
-          <div>
-            <Label className="text-xs mb-1.5">Enter {fieldLabel}</Label>
-            {issue.field === 'description' ? (
-              <Textarea
-                value={localValue}
-                onChange={(e) => setLocalValue(e.target.value)}
-                placeholder={`Enter ${fieldLabel.toLowerCase()}`}
-                rows={4}
-                className="resize-none"
-              />
-            ) : (
-              <Input
-                type={issue.field.includes('price') || issue.field === 'quantity' ? 'number' : 'text'}
-                value={localValue}
-                onChange={(e) => setLocalValue(e.target.value)}
-                placeholder={`Enter ${fieldLabel.toLowerCase()}`}
-              />
-            )}
-            {localValue && (
-              <Button
-                size="sm"
-                onClick={handleApply}
-                disabled={isApplying}
-                className="w-full mt-2"
-              >
-                {isApplying ? 'Applying...' : 'Apply'}
-              </Button>
-            )}
-          </div>
-        )}
-        
-        {/* Note: Categories should be set before opening Smart Listing */}
-        {(issue.field === 'categoryId' || issue.field === 'mercariCategory' || issue.field === 'category') && (
+
+        {/* Category fields: can't be typed — must use the marketplace form tab */}
+        {isCategoryField ? (
           <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
             <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             <AlertDescription className="text-xs text-amber-900 dark:text-amber-100">
-              <strong>Category Required:</strong> This should have been caught before Smart Listing opened. 
-              Please close this dialog and select the category in the General form first.
+              <strong>Use the category picker:</strong>{' '}
+              {getCategoryTabHint(issue.marketplace, issue.field)}
+              {' '}Close this dialog, fill in the category, then re-open Smart Listing.
             </AlertDescription>
           </Alert>
+        ) : (
+          <>
+            {/* AI Suggestion (shown when available) */}
+            {hasSuggestion && (
+              <div className="p-3 bg-muted/50 rounded-md border">
+                <div className="flex items-center justify-between mb-2">
+                  <ConfidenceBadge confidence={issue.suggested.confidence || 0} />
+                </div>
+                <div className="text-sm font-medium mb-2">
+                  Suggested: {issue.suggested.label}
+                </div>
+                {issue.suggested.reasoning && (
+                  <p className="text-xs text-muted-foreground mb-2">{issue.suggested.reasoning}</p>
+                )}
+                <Button
+                  size="sm"
+                  onClick={() => handleApply(issue.suggested.label)}
+                  disabled={isApplying}
+                  className="w-full"
+                >
+                  {isApplying ? 'Applying...' : 'Apply Suggestion'}
+                </Button>
+              </div>
+            )}
+            
+            {/* Dropdown for fields with predefined options */}
+            {hasOptions && (
+              <div>
+                <Label className="text-xs mb-1.5 block">
+                  {hasSuggestion ? 'Or choose a different value:' : `Select ${fieldLabel}`}
+                </Label>
+                <Select value={localValue} onValueChange={setLocalValue}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Choose ${fieldLabel.toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issue.options.map(option => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {localValue && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleApply(localValue)}
+                    disabled={isApplying}
+                    className="w-full mt-2"
+                  >
+                    {isApplying ? 'Applying...' : `Apply "${issue.options.find(o => o.id === localValue)?.label || localValue}"`}
+                  </Button>
+                )}
+              </div>
+            )}
+            
+            {/* Manual text/number/textarea input for fields with no options or suggestion */}
+            {!hasOptions && (
+              <div>
+                <Label className="text-xs mb-1.5 block">
+                  {hasSuggestion ? 'Or enter a custom value:' : `Enter ${fieldLabel}`}
+                </Label>
+                {issue.field === 'description' ? (
+                  <Textarea
+                    value={localValue}
+                    onChange={(e) => setLocalValue(e.target.value)}
+                    placeholder={`Enter ${fieldLabel.toLowerCase()}`}
+                    rows={4}
+                    className="resize-none"
+                  />
+                ) : (
+                  <Input
+                    type={issue.field.includes('price') || issue.field === 'quantity' ? 'number' : 'text'}
+                    value={localValue}
+                    onChange={(e) => setLocalValue(e.target.value)}
+                    placeholder={`Enter ${fieldLabel.toLowerCase()}`}
+                  />
+                )}
+                {localValue && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleApply(localValue)}
+                    disabled={isApplying}
+                    className="w-full mt-2"
+                  >
+                    {isApplying ? 'Applying...' : 'Apply'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

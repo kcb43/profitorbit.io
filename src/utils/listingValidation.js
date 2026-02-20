@@ -87,6 +87,42 @@ const SHIPPING_SERVICE_OPTIONS = [
   { id: 'FedExHomeDelivery', label: 'FedEx Home Delivery' }
 ];
 
+const PRICING_FORMAT_OPTIONS = [
+  { id: 'fixed', label: 'Fixed Price' },
+  { id: 'auction', label: 'Auction' }
+];
+
+const DURATION_OPTIONS = [
+  { id: "Good 'Til Canceled", label: "Good 'Til Canceled" },
+  { id: '30 Days', label: '30 Days' },
+  { id: '7 Days', label: '7 Days' }
+];
+
+const SHIPPING_COST_TYPE_OPTIONS = [
+  { id: 'Flat: Same cost regardless of buyer location', label: 'Flat: Same cost regardless of buyer location' },
+  { id: 'Calculated: Cost varies based on buyer location', label: 'Calculated: Cost varies based on buyer location' }
+];
+
+const RETURN_WITHIN_OPTIONS = [
+  { id: '30 days', label: '30 days' },
+  { id: '60 days', label: '60 days' }
+];
+
+const RETURN_SHIPPING_PAYER_OPTIONS = [
+  { id: 'Buyer', label: 'Buyer' },
+  { id: 'Free for buyer, you pay', label: 'Free for buyer, you pay' }
+];
+
+const RETURN_REFUND_METHOD_OPTIONS = [
+  { id: 'Full Refund', label: 'Full Refund' },
+  { id: 'Full Refund or Replacement', label: 'Full Refund or Replacement' }
+];
+
+const MERCARI_DELIVERY_METHOD_OPTIONS = [
+  { id: 'prepaid', label: 'Mercari Prepaid (Buyer pays shipping)' },
+  { id: 'seller_ship', label: 'Seller ships (Seller pays shipping)' }
+];
+
 /**
  * Helper: Check if Mercari category is a complete leaf node
  */
@@ -304,6 +340,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Shipping Cost Type is required',
+      options: SHIPPING_COST_TYPE_OPTIONS,
       patchTarget: 'ebay'
     });
   }
@@ -339,6 +376,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Pricing Format is required',
+      options: PRICING_FORMAT_OPTIONS,
       patchTarget: 'ebay'
     });
   }
@@ -350,6 +388,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       type: 'missing',
       severity: 'blocking',
       message: 'Duration is required',
+      options: DURATION_OPTIONS,
       patchTarget: 'ebay'
     });
   }
@@ -377,6 +416,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
         type: 'missing',
         severity: 'blocking',
         message: 'Return Within is required when accepting returns',
+        options: RETURN_WITHIN_OPTIONS,
         patchTarget: 'ebay'
       });
     }
@@ -388,6 +428,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
         type: 'missing',
         severity: 'blocking',
         message: 'Return Shipping Payer is required when accepting returns',
+        options: RETURN_SHIPPING_PAYER_OPTIONS,
         patchTarget: 'ebay'
       });
     }
@@ -399,6 +440,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
         type: 'missing',
         severity: 'blocking',
         message: 'Return Refund Method is required when accepting returns',
+        options: RETURN_REFUND_METHOD_OPTIONS,
         patchTarget: 'ebay'
       });
     }
@@ -544,7 +586,7 @@ export function validateMercariForm(generalForm, mercariForm) {
       field: 'brand',
       type: 'missing',
       severity: 'blocking',
-      message: 'Brand is required (or check "No Brand")',
+      message: 'Brand is required. Type a brand name, or set "noBrand" to true to skip.',
       patchTarget: 'mercari'
     });
   }

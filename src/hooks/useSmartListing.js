@@ -327,45 +327,32 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
           debugLog(`Listing to ${marketplace}...`);
           await handleSubmit(marketplace);
           results.push(marketplace);
-          
-          toast({
-            title: `Listed on ${marketplace}`,
-            description: `Successfully created listing on ${marketplace}`,
-          });
+          // handleSubmit (handleListOnMarketplace) already shows its own success toast
         } catch (error) {
           console.error(`Error listing on ${marketplace}:`, error);
           errors.push({ marketplace, error: error.message });
-          
-          toast({
-            title: `Failed to list on ${marketplace}`,
-            description: error.message || 'Unknown error',
-            variant: "destructive",
-          });
+          // handleSubmit already shows its own error toast; no duplicate needed here
         }
       }
       
-      // Show summary
-      if (results.length > 0) {
-        toast({
-          title: "Listing complete!",
-          description: `Successfully listed on ${results.length} marketplace(s)`,
-        });
-      }
-      
-      if (errors.length === 0) {
-        // Close modal/dialog if all successful
+      if (errors.length === 0 && results.length > 0) {
+        // All succeeded — close modal and reset
         setModalOpen(false);
         setFixesDialogOpen(false);
         setSelectedMarketplaces([]);
         setPreflightResult(null);
         setModalState('idle');
+      } else if (errors.length > 0) {
+        // Some failed — stay on fixes/ready state so user can see what went wrong
+        setModalState(preflightResult?.fixesNeeded?.length > 0 ? 'fixes' : 'ready');
+        toast({
+          title: `${errors.length} marketplace${errors.length !== 1 ? 's' : ''} failed`,
+          description: errors.map(e => e.marketplace).join(', ') + ' — see errors above',
+          variant: "destructive",
+        });
       }
     } finally {
       setIsSubmitting(false);
-      if (errors.length > 0) {
-        // Stay in fixes state if there were errors
-        setModalState('fixes');
-      }
     }
   }, [enabled, handleSubmit, toast, preflightResult, selectedMarketplaces]);
   

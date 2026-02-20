@@ -36923,22 +36923,24 @@ export default function CrosslistComposer() {
             userToken = ebayToken.access_token;
           } else {
             // Token expired - need to refresh or reconnect
+            const msg = "Please reconnect your eBay account to continue.";
             toast({
               title: "eBay token expired",
-              description: "Please reconnect your eBay account to continue.",
+              description: msg,
               variant: "destructive",
             });
-            return;
+            throw new Error(msg);
           }
         }
         
         if (!userToken) {
+          const msg = "Please connect your eBay account before listing items.";
           toast({
             title: "eBay account not connected",
-            description: "Please connect your eBay account before listing items.",
+            description: msg,
             variant: "destructive",
           });
-          return;
+          throw new Error(msg);
         }
 
         // Call eBay listing API
@@ -37037,6 +37039,7 @@ export default function CrosslistComposer() {
           description: error.message || "An error occurred while creating the listing. Please try again.",
           variant: "destructive",
         });
+        throw error;
       } finally {
         setIsSaving(false);
       }
@@ -37054,12 +37057,13 @@ export default function CrosslistComposer() {
         }
       })();
       if (!fbConnected) {
+        const msg = "Please connect your Facebook account first.";
         toast({
           title: "Facebook Not Connected",
-          description: "Please connect your Facebook account first.",
+          description: msg,
           variant: "destructive",
         });
-        return;
+        throw new Error(msg);
       }
 
       try {
@@ -37264,6 +37268,7 @@ export default function CrosslistComposer() {
             </div>
           ) : undefined,
         });
+        throw error;
       } finally {
         setIsSaving(false);
         setIsFacebookListing(false);
@@ -37280,35 +37285,38 @@ export default function CrosslistComposer() {
         const mercariConnected = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
         
         if (!mercariConnected) {
+          const msg = "Please connect your Mercari account in Settings first.";
           toast({
             title: "Mercari Not Connected",
-            description: "Please connect your Mercari account in Settings first.",
+            description: msg,
             variant: "destructive",
           });
           setIsSaving(false);
-          return;
+          throw new Error(msg);
         }
 
         // Validate that full category path is selected (no subcategories remaining)
         if (!mercariForm.mercariCategory || !mercariForm.mercariCategoryId) {
+          const msg = "Please select a complete category path (including all subcategories) before listing.";
           toast({
             title: "Category Required",
-            description: "Please select a complete category path (including all subcategories) before listing.",
+            description: msg,
             variant: "destructive",
           });
           setIsSaving(false);
-          return;
+          throw new Error(msg);
         }
 
         // Validate that brand is selected (required for Mercari unless user marks "No Brand / Unsure")
         if (!mercariForm.noBrand && !mercariForm.brand) {
+          const msg = "Please select a brand from the Mercari brand list before listing.";
           toast({
             title: "Brand Required",
-            description: "Please select a brand from the Mercari brand list before listing.",
+            description: msg,
             variant: "destructive",
           });
           setIsSaving(false);
-          return;
+          throw new Error(msg);
         }
 
         // Check if category is a leaf node (no subcategories) using the category path
@@ -37345,13 +37353,14 @@ export default function CrosslistComposer() {
         };
 
         if (!checkCategoryComplete(mercariForm.mercariCategoryId, mercariForm.mercariCategory)) {
+          const msg = "Please select all subcategories until you reach a final category with no more subcategories.";
           toast({
             title: "Incomplete Category Selection",
-            description: "Please select all subcategories until you reach a final category with no more subcategories.",
+            description: msg,
             variant: "destructive",
           });
           setIsSaving(false);
-          return;
+          throw new Error(msg);
         }
 
         // Prepare listing payload for Mercari
@@ -37474,6 +37483,7 @@ export default function CrosslistComposer() {
         });
         setIsMercariListing(false);
         setIsSaving(false);
+        throw error;
       }
 
       return;
@@ -44696,7 +44706,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title</Label>
+                          <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
                           <div className="flex gap-2">
                             <Input
                               id="general-title"
@@ -44722,7 +44732,7 @@ export default function CrosslistComposer() {
                           </div>
                         </div>
                         <div>
-                          <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price</Label>
+                          <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
                           <Input
                             id="general-price"
                             name="general-price"
@@ -44750,7 +44760,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div className="md:col-span-2">
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1.5">
-                            <Label htmlFor="general-description" className="text-xs">Description</Label>
+                            <Label htmlFor="general-description" className="text-xs">Description <span className="text-red-500">*</span></Label>
                             <div className="flex gap-2">
                               <Button
                                 type="button"
@@ -44807,7 +44817,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand</Label>
+                          <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                           {brandIsCustom ? (
                             <div className="flex gap-2">
                               <Input
@@ -45015,7 +45025,7 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                         <div>
-                          <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition</Label>
+                          <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
                           <Select
                             value={generalForm.condition ? String(generalForm.condition) : undefined}
                             onValueChange={(value) => {
@@ -45479,7 +45489,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Quantity</Label>
+                          <Label className="text-xs mb-1.5 block">Quantity <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             min="1"
