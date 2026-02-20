@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/news/ingest",
+      "schedule": "0 */6 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
