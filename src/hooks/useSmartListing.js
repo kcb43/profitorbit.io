@@ -79,7 +79,40 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     if (!enabled) return;
     
     debugLog('Opening Smart Listing modal');
-    
+
+    // Require title
+    const title = (forms.generalForm?.title || "").trim();
+    if (!title) {
+      toast({
+        title: "Title Required",
+        description: "Please enter an item title before using Smart Listing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Require condition
+    const condition = (forms.generalForm?.condition || "").trim();
+    if (!condition) {
+      toast({
+        title: "Condition Required",
+        description: "Please select a condition before using Smart Listing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Require brand
+    const brand = (forms.generalForm?.brand || "").trim();
+    if (!brand) {
+      toast({
+        title: "Brand Required",
+        description: "Please enter a brand before using Smart Listing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Pre-validate: Check if categories are set for selected marketplaces
     const missingCategories = [];
     
