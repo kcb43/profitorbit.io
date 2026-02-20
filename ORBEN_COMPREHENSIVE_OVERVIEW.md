@@ -227,7 +227,7 @@ Orben is a **comprehensive reselling platform** that combines inventory manageme
 ### 13. 🛠️ **Platform Infrastructure**
 
 #### API Gateway
-- **Cloudflare Workers:** Fast edge computing
+- **Vercel Serverless Functions:** API routes deployed at `/api/*`
   - `orben-search-worker` - Product search API
   - `orben-deal-worker` - Deal scraping API
   - `orben-api` - Main API gateway
@@ -397,7 +397,6 @@ Orben is a **comprehensive reselling platform** that combines inventory manageme
 - **Node.js:** Runtime environment
 - **Express.js:** API framework (serverless functions)
 - **Supabase:** PostgreSQL database + Auth
-- **Cloudflare Workers:** Edge computing
 - **Vercel:** Hosting and serverless functions
 
 ### APIs & Integrations
@@ -485,7 +484,6 @@ Based on git activity and feature development:
 - **Code Files:** 345 JS/JSX/TS files
 - **SQL Migrations:** 69 files
 - **API Endpoints:** 30+ custom endpoints
-- **Cloudflare Workers:** 3 edge workers
 - **Browser Extension:** 1 Chrome extension (5+ scripts)
 
 ---
@@ -630,7 +628,7 @@ Only platform combining product search with live deal monitoring from 15+ source
 Truly mobile-optimized, not just responsive - designed for resellers who work from their phones.
 
 ### Modern Stack
-Cutting-edge tech (React 18, Tailwind, Cloudflare Workers, Supabase) for maximum performance and scalability.
+Cutting-edge tech (React 18, Tailwind, Vercel, Supabase) for maximum performance and scalability.
 
 ---
 

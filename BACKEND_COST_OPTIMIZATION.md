@@ -93,20 +93,6 @@
 
 ---
 
-### Option 4: Cloudflare Workers (Ultra-Cheap)
-
-**Cost:** FREE tier (100,000 requests/day)
-
-**When to use:**
-- If you want the absolute cheapest option
-- If you have very high traffic
-
-**Migration effort:** High (1-2 days) - requires rewriting API routes
-
-**Not recommended** - Vercel is already free and easier.
-
----
-
 ## 📊 Cost Comparison
 
 | Platform | Monthly Cost | Setup Difficulty | Best For |
@@ -114,7 +100,6 @@
 | **Vercel** (Current) | **$0** | ✅ Already done | **Your use case** ⭐ |
 | Railway | $5 | Medium | Long-running processes |
 | Render | $0 | Medium | Backup option |
-| Cloudflare Workers | $0 | Hard | Ultra-high traffic |
 
 ---
 
