@@ -2388,7 +2388,7 @@ export default function InventoryPage() {
                               e.stopPropagation();
                               handleSelect(item.id);
                             }}
-                            className="item-image-clickable md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px] h-[138px] sm:h-[173px] p-1 sm:p-1 transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
+                            className="item-image-clickable md:cursor-default cursor-pointer glass flex items-center justify-center relative w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px] h-[138px] sm:h-[173px] transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
                             style={{
                               borderRadius: '12px',
                               flexShrink: 0
@@ -2399,7 +2399,7 @@ export default function InventoryPage() {
                                 images={(item.images || [])
                                   .filter(Boolean)
                                   .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
-                                imageClassName="object-contain rounded-lg"
+                                imageClassName="object-cover"
                                 counterPosition="bottom"
                               />
                             ) : (
@@ -2407,8 +2407,7 @@ export default function InventoryPage() {
                                 src={item.image_url || DEFAULT_IMAGE_URL}
                                 alt={item.item_name}
                                 fallback={DEFAULT_IMAGE_URL}
-                                className="w-full h-full object-contain rounded-lg"
-                                style={{ maxHeight: '100%' }}
+                                className="w-full h-full object-cover"
                                 lazy={true}
                               />
                             )}
@@ -2939,7 +2938,7 @@ export default function InventoryPage() {
                           <div className={listVariations[viewVariation].padding}>
                             <div
                               onClick={() => handleSelect(item.id)}
-                              className={`relative overflow-hidden rounded-xl border bg-gray-50 dark:bg-card/50 flex items-center justify-center cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
+                              className={`relative overflow-hidden rounded-xl border cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
                               style={{ height: listVariations[viewVariation].imageHeight }}
                               title="Click image to select"
                             >
@@ -2948,7 +2947,7 @@ export default function InventoryPage() {
                                   images={(item.images || [])
                                     .filter(Boolean)
                                     .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
-                                  imageClassName="object-contain"
+                                  imageClassName="object-cover"
                                   counterPosition="bottom"
                                 />
                               ) : (
@@ -2956,7 +2955,7 @@ export default function InventoryPage() {
                                   src={item.image_url || DEFAULT_IMAGE_URL}
                                   alt={item.item_name}
                                   fallback={DEFAULT_IMAGE_URL}
-                                  className="w-full h-full object-contain"
+                                  className="w-full h-full object-cover"
                                   lazy={true}
                                 />
                               )}
