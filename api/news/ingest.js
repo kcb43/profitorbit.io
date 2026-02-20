@@ -190,8 +190,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify cron secret when provided
-  if (CRON_SECRET) {
+  // GET requests are only for Vercel Cron — require CRON_SECRET when set.
+  // POST requests are triggered by authenticated clients (any logged-in user can refresh news).
+  if (req.method === 'GET' && CRON_SECRET) {
     const authHeader = req.headers['authorization'] || '';
     const secret = authHeader.replace('Bearer ', '');
     if (secret !== CRON_SECRET) {

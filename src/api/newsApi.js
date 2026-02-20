@@ -55,3 +55,10 @@ export async function getNewsBadge() {
 export async function markNewsSeen() {
   return apiFetch('/api/news/seen', { method: 'POST' });
 }
+
+/**
+ * Trigger the news ingest pipeline (fetches from all feeds and stores articles).
+ */
+export async function triggerIngest() {
+  return apiFetch('/api/news/ingest', { method: 'POST' });
+}

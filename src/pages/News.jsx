@@ -11,7 +11,7 @@ import {
   Clock, ChevronRight, Flame, Zap, Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getNewsFeed, getNewsFeeds, markNewsSeen } from '@/api/newsApi';
+import { getNewsFeed, getNewsFeeds, markNewsSeen, triggerIngest } from '@/api/newsApi';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 // ─── Tag / filter config ────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ function FeedSidebar({ activeTag, onTagSelect }) {
 
 // ─── Empty State ─────────────────────────────────────────────────────────────
 
-function EmptyState({ searchQuery, onClear }) {
+function EmptyState({ searchQuery, onClear, isIngesting }) {
   if (searchQuery) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -260,11 +260,20 @@ function EmptyState({ searchQuery, onClear }) {
       </div>
     );
   }
+  if (isIngesting) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Loader2 className="h-14 w-14 text-primary/40 mb-4 animate-spin" />
+        <h3 className="text-lg font-semibold mb-1">Fetching articles…</h3>
+        <p className="text-sm text-muted-foreground">Pulling the latest news from our feeds. This takes about 10–20 seconds on first load.</p>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <Newspaper className="h-14 w-14 text-muted-foreground/30 mb-4" />
       <h3 className="text-lg font-semibold mb-1">No news yet</h3>
-      <p className="text-sm text-muted-foreground">Articles are ingested every 6 hours. Check back soon.</p>
+      <p className="text-sm text-muted-foreground">Articles are fetched automatically. Try refreshing in a moment.</p>
     </div>
   );
 }
@@ -282,6 +291,8 @@ export default function News() {
   const [sort, setSort]                 = useState('newest');
   const [isSearchFocused, setFocused]   = useState(false);
   const [isSticky, setIsSticky]         = useState(false);
+  const [isIngesting, setIsIngesting]   = useState(false);
+  const ingestTriggered                 = useRef(false);
 
   const loadMoreRef  = useRef(null);
   const sentinelRef  = useRef(null);
@@ -324,6 +335,18 @@ export default function News() {
     markSeen();
   }, [markSeen]);
 
+  // Trigger ingest from client when there are no articles (serverless can't do background tasks)
+  const { mutate: runIngest } = useMutation({
+    mutationFn: triggerIngest,
+    onSettled: () => {
+      // After ingest completes (success or fail), refetch and stop spinner
+      setTimeout(() => {
+        setIsIngesting(false);
+        queryClient.invalidateQueries({ queryKey: ['newsFeed'] });
+      }, 1500);
+    },
+  });
+
   // Infinite query
   const {
     data,
@@ -331,6 +354,8 @@ export default function News() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isError,
+    error,
     refetch,
     isFetching
   } = useInfiniteQuery({
@@ -345,8 +370,19 @@ export default function News() {
     refetchInterval: 10 * 60_000 // refresh every 10 min
   });
 
-  const allItems = data?.pages.flatMap(p => p.items || []) || [];
-  const total    = data?.pages[0]?.total || 0;
+  const allItems   = data?.pages.flatMap(p => p.items || []) || [];
+  const total      = data?.pages[0]?.total || 0;
+  const needsIngest = data?.pages[0]?.needsIngest === true;
+
+  // When the API signals ingest is needed (empty DB or stale feeds), trigger it from the client.
+  // We only do this once per page visit to avoid repeat calls.
+  useEffect(() => {
+    if (!isLoading && needsIngest && !ingestTriggered.current) {
+      ingestTriggered.current = true;
+      setIsIngesting(true);
+      runIngest();
+    }
+  }, [isLoading, needsIngest, runIngest]);
 
   // Infinite scroll
   useEffect(() => {
@@ -502,8 +538,17 @@ export default function News() {
               <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => <NewsCardSkeleton key={i} />)}
               </div>
+            ) : isError ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Newspaper className="h-14 w-14 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-semibold mb-1">Could not load news</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error?.message || 'An error occurred. Please try again.'}</p>
+                <Button variant="outline" onClick={() => refetch()}>
+                  <RefreshCw className="w-4 h-4 mr-2" /> Try again
+                </Button>
+              </div>
             ) : allItems.length === 0 ? (
-              <EmptyState searchQuery={searchQuery} onClear={clearSearch} />
+              <EmptyState searchQuery={searchQuery} onClear={clearSearch} isIngesting={isIngesting} />
             ) : (
               <div className="space-y-3">
                 {allItems.map(item => (

@@ -1,11 +1,10 @@
 /**
  * GET /api/news/feed
  * Paginated news items with optional search + tag filter.
- * Fires a background ingest when items are empty or a feed is stale (>6 h).
+ * Returns { items, total, needsIngest } - the client triggers ingest when needsIngest is true.
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { runIngest } from './ingest.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -20,7 +19,9 @@ export default async function handler(req, res) {
 
   const { q, tag, sort = 'newest', limit = '30', offset = '0' } = req.query;
 
-  // Background ingest: fire-and-forget when items are empty or stale
+  // Check if we need ingest (return flag to client instead of doing it here,
+  // since background tasks are unreliable in serverless)
+  let needsIngest = false;
   try {
     const { count } = await supabase
       .from('news_items')
@@ -32,9 +33,7 @@ export default async function handler(req, res) {
       .eq('enabled', true)
       .or(`last_fetched_at.is.null,last_fetched_at.lt.${new Date(Date.now() - SIX_HOURS_MS).toISOString()}`);
 
-    if (count === 0 || (staleFeeds && staleFeeds.length > 0)) {
-      runIngest().catch(console.error);
-    }
+    needsIngest = count === 0 || (staleFeeds && staleFeeds.length > 0);
   } catch {
     // Non-fatal
   }
@@ -72,5 +71,5 @@ export default async function handler(req, res) {
   const { data, error, count } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
-  return res.status(200).json({ items: data || [], total: count || 0 });
+  return res.status(200).json({ items: data || [], total: count || 0, needsIngest });
 }

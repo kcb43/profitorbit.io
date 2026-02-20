@@ -54,6 +54,9 @@ import {
   Maximize2,
   Minimize2,
   Download,
+  CheckCircle2,
+  ShoppingBag,
+  Copy,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import SoldLookupDialog from "../components/SoldLookupDialog";
@@ -33241,6 +33244,8 @@ export default function CrosslistComposer() {
   const [facebookListingId, setFacebookListingId] = useState(null);
   const [facebookListingUrl, setFacebookListingUrl] = useState('');
   const [mercariJobId, setMercariJobId] = useState(null);
+  // { marketplace, label, url, listingId } – shown in success dialog after any listing is created
+  const [listingSuccess, setListingSuccess] = useState(null);
   const [mercariListingUrl, setMercariListingUrl] = useState('');
   const [mercariListingId, setMercariListingId] = useState(null);
   const [listingRecordsByMarketplace, setListingRecordsByMarketplace] = useState(() => ({}));
@@ -37032,6 +37037,13 @@ export default function CrosslistComposer() {
             });
           }
 
+          const ebayListingUrl = result.ListingURL || (listingItemId ? `https://www.ebay.com/itm/${listingItemId}` : '');
+          setListingSuccess({
+            marketplace: 'ebay',
+            label: 'eBay',
+            url: ebayListingUrl,
+            listingId: String(listingItemId || ''),
+          });
           toast({
             title: "Listing created successfully!",
             description: listingItemId ? `eBay Item ID: ${listingItemId}` : "Your item has been listed on eBay.",
@@ -37176,6 +37188,14 @@ export default function CrosslistComposer() {
           const listingIdStr = String(result?.listingId || result?.itemId || result?.id || '').trim();
           setFacebookListingId(listingIdStr || null);
           setFacebookListingUrl(listingUrl || '');
+
+          // Show listing success dialog
+          setListingSuccess({
+            marketplace: 'facebook',
+            label: 'Facebook Marketplace',
+            url: listingUrl || '',
+            listingId: listingIdStr || '',
+          });
 
           // Optimistic UI: Listing Info panel is driven by listingRecordsByMarketplace (from localStorage).
           // Update it immediately so the Facebook form shows the listing without needing a refresh/poll.
@@ -38793,6 +38813,65 @@ export default function CrosslistComposer() {
           {/* General Form */}
           {activeForm === "general" && (
             <div className="space-y-3">
+
+              {/* ── Active Marketplace Listings Summary ── */}
+              {(() => {
+                const MP_META = {
+                  facebook: { label: 'Facebook Marketplace', color: 'bg-blue-600' },
+                  ebay:     { label: 'eBay',                 color: 'bg-yellow-500' },
+                  mercari:  { label: 'Mercari',              color: 'bg-red-500'    },
+                  poshmark: { label: 'Poshmark',             color: 'bg-rose-500'   },
+                  etsy:     { label: 'Etsy',                 color: 'bg-orange-500' },
+                };
+                const entries = Object.entries(listingRecordsByMarketplace || {})
+                  .filter(([, rec]) => rec && rec.status)
+                  .map(([mp, rec]) => ({ mp, rec, meta: MP_META[mp] || { label: mp, color: 'bg-gray-500' } }));
+                if (entries.length === 0) return null;
+                return (
+                  <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingBag className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Listed On</span>
+                    </div>
+                    <div className="grid gap-2">
+                      {entries.map(({ mp, rec, meta }) => {
+                        const url = rec.marketplace_listing_url || '';
+                        const hasUrl = url.startsWith('http');
+                        const statusLower = String(rec.status || '').toLowerCase();
+                        const isActive = statusLower === 'active';
+                        const isProcessing = statusLower === 'processing';
+                        const isDelisted = ['ended','delisted','deleted','cancel'].includes(statusLower);
+                        return (
+                          <div key={mp} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.color}`} />
+                              <span className="text-sm font-medium truncate">{meta.label}</span>
+                              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-semibold">Active</span>}
+                              {isProcessing && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-semibold">Processing</span>}
+                              {isDelisted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-700 font-semibold">Ended</span>}
+                            </div>
+                            {hasUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs flex-shrink-0"
+                                onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                View
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground flex-shrink-0">{rec.marketplace_listing_id ? `ID: ${rec.marketplace_listing_id}` : '—'}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div>
                 <div className="flex items-center justify-between">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
@@ -44590,6 +44669,65 @@ export default function CrosslistComposer() {
                   {/* General Form */}
                   {activeForm === "general" && (
                     <div className="space-y-6">
+
+                      {/* ── Active Marketplace Listings Summary (desktop) ── */}
+                      {(() => {
+                        const MP_META = {
+                          facebook: { label: 'Facebook Marketplace', color: 'bg-blue-600' },
+                          ebay:     { label: 'eBay',                 color: 'bg-yellow-500' },
+                          mercari:  { label: 'Mercari',              color: 'bg-red-500'    },
+                          poshmark: { label: 'Poshmark',             color: 'bg-rose-500'   },
+                          etsy:     { label: 'Etsy',                 color: 'bg-orange-500' },
+                        };
+                        const entries = Object.entries(listingRecordsByMarketplace || {})
+                          .filter(([, rec]) => rec && rec.status)
+                          .map(([mp, rec]) => ({ mp, rec, meta: MP_META[mp] || { label: mp, color: 'bg-gray-500' } }));
+                        if (entries.length === 0) return null;
+                        return (
+                          <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <ShoppingBag className="h-4 w-4 text-primary" />
+                              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Listed On</span>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {entries.map(({ mp, rec, meta }) => {
+                                const url = rec.marketplace_listing_url || '';
+                                const hasUrl = url.startsWith('http');
+                                const statusLower = String(rec.status || '').toLowerCase();
+                                const isActive = statusLower === 'active';
+                                const isProcessing = statusLower === 'processing';
+                                const isDelisted = ['ended','delisted','deleted','cancel'].includes(statusLower);
+                                return (
+                                  <div key={mp} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.color}`} />
+                                      <span className="text-sm font-medium truncate">{meta.label}</span>
+                                      {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-semibold">Active</span>}
+                                      {isProcessing && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-semibold">Processing</span>}
+                                      {isDelisted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-700 font-semibold">Ended</span>}
+                                    </div>
+                                    {hasUrl ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 gap-1.5 text-xs flex-shrink-0"
+                                        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                      >
+                                        <ExternalLink className="h-3 w-3" />
+                                        View
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground flex-shrink-0">{rec.marketplace_listing_id ? `ID: ${rec.marketplace_listing_id}` : '—'}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <div>
                         <div className="flex items-center justify-between">
                           <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Photos</Label>
@@ -50100,6 +50238,96 @@ export default function CrosslistComposer() {
           isSubmitting={smartListing.isSubmitting}
         />
       )}
+
+      {/* Listing Success Dialog */}
+      <Dialog open={!!listingSuccess} onOpenChange={(open) => { if (!open) setListingSuccess(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="rounded-full bg-emerald-500/15 p-2">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </div>
+              <DialogTitle className="text-lg">Listed Successfully!</DialogTitle>
+            </div>
+            <DialogDescription>
+              Your item has been published to{' '}
+              <span className="font-semibold text-foreground">{listingSuccess?.label}</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {listingSuccess?.listingId && (
+              <div className="rounded-lg border bg-muted/40 px-3 py-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Listing ID</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono flex-1 truncate">{listingSuccess.listingId}</code>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 flex-shrink-0"
+                    onClick={() => navigator.clipboard?.writeText(listingSuccess.listingId)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {listingSuccess?.url?.startsWith('http') && (
+              <div className="rounded-lg border bg-muted/40 px-3 py-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Listing URL</p>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={listingSuccess.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary underline flex-1 truncate"
+                  >
+                    {listingSuccess.url}
+                  </a>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 flex-shrink-0"
+                    onClick={() => navigator.clipboard?.writeText(listingSuccess.url)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            {listingSuccess?.url?.startsWith('http') && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => window.open(listingSuccess.url, '_blank', 'noopener,noreferrer')}
+              >
+                <ExternalLink className="h-4 w-4" />
+                View Listing
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                setListingSuccess(null);
+                setActiveForm('general');
+              }}
+            >
+              <ShoppingBag className="h-4 w-4" />
+              List on More
+            </Button>
+            <Button onClick={() => setListingSuccess(null)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
