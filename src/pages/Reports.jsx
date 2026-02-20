@@ -1,15 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Percent, TrendingUp, Timer, Sparkles, Trophy, Target, Activity, Package, DollarSign } from "lucide-react";
+import { Percent, TrendingUp, Timer, Sparkles, Trophy, Target, Activity, Package, DollarSign, Download, FileSpreadsheet, FileText, BarChart3 } from "lucide-react";
 import { parseISO, format } from "date-fns";
 import MonthlyPnlChart from "../components/reports/MonthlyPnlChart";
 import CategoryPerformance from "../components/reports/CategoryPerformance";
 import PlatformComparison from "../components/reports/PlatformComparison";
 import StatCard from "../components/dashboard/StatCard";
 import TaxSummary from "../components/dashboard/TaxSummary";
+import ExportReportDialog from "../components/reports/ExportReportDialog";
 
 const PLATFORM_DISPLAY_NAMES = {
   ebay: "eBay",
@@ -45,6 +47,13 @@ const currency = (value) =>
 export default function ReportsPage() {
   // Default to lifetime so categories/tax/avg days are populated immediately.
   const [range, setRange] = React.useState("lifetime");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportReport, setExportReport] = useState('sales-summary');
+
+  function openExport(reportId = 'sales-summary') {
+    setExportReport(reportId);
+    setExportOpen(true);
+  }
 
   async function apiGetJson(path) {
     let session = null;
@@ -278,7 +287,74 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ─── Export Report Builder ─── */}
+        <div className="mt-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-xl font-semibold text-foreground">
+                    <Download className="w-5 h-5" />
+                    Export Reports
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground mt-1">
+                    Download your data as Excel (.xlsx) or open a print-ready PDF view. Choose from 4 report types.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { id: 'sales-summary',   label: 'Sales Summary',    icon: DollarSign,  desc: 'Every sale with fees & profit', color: 'text-emerald-600' },
+                  { id: 'profit-by-month', label: 'Profit by Month',  icon: TrendingUp,  desc: 'Month-over-month aggregates',   color: 'text-violet-600' },
+                  { id: 'fees-breakdown',  label: 'Fees Breakdown',   icon: BarChart3,   desc: 'Fees grouped by platform',      color: 'text-blue-600' },
+                  { id: 'inventory-aging', label: 'Inventory Aging',  icon: Package,     desc: 'Items by days in inventory',    color: 'text-amber-600' },
+                ].map((r) => {
+                  const Icon = r.icon;
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => openExport(r.id)}
+                      className="flex items-start gap-3 text-left rounded-xl border border-border p-4 hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm transition-all group"
+                    >
+                      <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${r.color}`} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{r.label}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{r.desc}</div>
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
+                          <span className="text-[10px] text-muted-foreground">Excel</span>
+                          <FileText className="w-3 h-3 text-rose-500 ml-1" />
+                          <span className="text-[10px] text-muted-foreground">PDF</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
+                <Button variant="outline" size="sm" onClick={() => window.open('/api/sales/export', '_blank')} className="gap-2">
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Quick CSV — All Sales
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => window.open('/api/inventory/export', '_blank')} className="gap-2">
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Quick CSV — Inventory
+                </Button>
+                <span className="text-xs text-muted-foreground ml-auto">Excel: up to 50k rows · PDF: first 500 rows</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      <ExportReportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        defaultReportId={exportReport}
+      />
     </div>
   );
 }
