@@ -88,13 +88,18 @@ export default async function handler(req, res) {
     const useOpenAI = !!openaiApiKey;
     const apiKey = useOpenAI ? openaiApiKey : anthropicApiKey;
 
-    // Build context from similar descriptions (optional)
-    const contextText = Array.isArray(similarDescriptions) && similarDescriptions.length > 0
-      ? `Optional reference examples from similar items:\n${similarDescriptions
-          .filter(Boolean)
-          .slice(0, 5)
-          .map((desc, i) => `${i + 1}. ${String(desc).slice(0, 800)}`)
-          .join('\n')}`
+    // Build context block — similarDescriptions may contain full descriptions (rewrite) OR
+    // product titles from the scraper (generate mode). We label them accordingly.
+    const contextLines = Array.isArray(similarDescriptions)
+      ? similarDescriptions.filter(Boolean).slice(0, 8).map(String)
+      : [];
+
+    const contextBlock = contextLines.length > 0
+      ? (hasSeedDescription
+          // Rewrite mode: treat them as example descriptions
+          ? `Reference examples from similar items (for tone/structure — do NOT copy facts):\n${contextLines.map((d, i) => `${i + 1}. ${d.slice(0, 600)}`).join('\n')}`
+          // Generate mode: these are product titles from the scraper
+          : `Similar products on the market (titles only — use to understand product type and common features, do NOT copy):\n${contextLines.map((t, i) => `${i + 1}. ${t.slice(0, 200)}`).join('\n')}`)
       : '';
 
     const prompt = hasSeedDescription
@@ -114,28 +119,28 @@ Title: ${safeTitle || "(unknown)"}
 ${brand ? `Brand: ${brand}` : ""}
 ${category ? `Category: ${category}` : ""}
 ${condition ? `Condition: ${condition}` : ""}
-${contextText ? `\n${contextText}` : ""}
+${contextBlock ? `\n${contextBlock}` : ""}
 
 User description:
 ${seedDescription}`
-      : `You are an expert at writing compelling product descriptions for online marketplaces like eBay, Etsy, Mercari, and Facebook Marketplace.
+      : `You write compelling product descriptions for online marketplaces.
 
-${contextText ? `${contextText}\n\n` : ''}Generate ${safeNum} different, unique product descriptions for the following item:
+${toneForMarketplace(marketplace)}
 
+Task:
+- Generate ${safeNum} distinct, compelling product descriptions for the item below.
+- Each variation should differ in focus or opening, but all must stay accurate to the provided details.
+- Do NOT invent measurements, model numbers, materials, or accessories not implied by the title.
+- Do NOT include pricing, shipping, or return policy details.
+- Keep each description to 3–5 sentences. Use natural, engaging language.
+- Output only the descriptions as a numbered list (1-${safeNum}). No extra text.
+
+Product details:
 Title: ${safeTitle}
-${brand ? `Brand: ${brand}` : ''}
-${category ? `Category: ${category}` : ''}
-${condition ? `Condition: ${condition}` : ''}
-
-Requirements:
-- Each description should be unique and compelling
-- Keep descriptions concise but informative (2-4 sentences)
-- Focus on key features, benefits, and condition
-- Use natural, engaging language
-- Do NOT include pricing, shipping, or return policy details (those are handled separately)
-- Make each variation different in tone and focus
-
-Return ONLY the descriptions, one per line, numbered 1-${safeNum}. Do not include any other text or formatting.`;
+${brand ? `Brand: ${brand}` : ""}
+${category ? `Category: ${category}` : ""}
+${condition ? `Condition: ${condition}` : ""}
+${contextBlock ? `\n${contextBlock}` : ""}`;
 
     if (!hasSeedDescription && !safeTitle) {
       return res.status(400).json({ error: 'Description text is required (or provide a title).' });
@@ -163,9 +168,9 @@ Return ONLY the descriptions, one per line, numbered 1-${safeNum}. Do not includ
               content: prompt,
             },
           ],
-          temperature: hasSeedDescription ? 0.6 : 0.8, // Lower temp for rewrites (less hallucination)
+          temperature: hasSeedDescription ? 0.6 : 0.9, // Lower temp for rewrites; higher for creative generate mode
           n: 1,
-          max_tokens: 900,
+          max_tokens: 1200,
         }),
       });
 
@@ -193,8 +198,8 @@ Return ONLY the descriptions, one per line, numbered 1-${safeNum}. Do not includ
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307', // Fast and cost-effective
-          max_tokens: 1000,
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1200,
           messages: [
             {
               role: 'user',
