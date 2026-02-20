@@ -5,6 +5,16 @@
 
 import OpenAI from 'openai';
 
+// Top-level Facebook Marketplace categories (kept in sync with src/data/facebookCategories.js)
+const FB_TOP_CATEGORIES = [
+  'Vehicles', 'Bikes', 'Clothing & Accessories', 'Electronics',
+  'Entertainment', 'Family', 'Free Stuff', 'Garden & Outdoor',
+  'Hobbies', 'Home Goods', 'Home Improvement Supplies',
+  'Home Sales', 'Musical Instruments', 'Office Supplies',
+  'Pet Supplies', 'Sporting Goods', 'Toys & Games', 'Buy Nothing',
+  'Rentals',
+];
+
 // Initialize OpenAI client
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -214,8 +224,10 @@ function buildFieldPrompt(marketplace, field, context) {
   }
 
   if (marketplace === 'facebook') {
+    const categoryList = FB_TOP_CATEGORIES.join(' | ');
     const facebookPrompts = {
       condition: `Product: ${title}\nCurrent condition: ${condition}\n\nMap this to Facebook condition: new | used_like_new | used_good | used_fair\nReturn only one of these exact values.`,
+      category: `Product: "${title}"\nDescription: "${description}"\nGeneral category hint: "${category}"\nBrand: "${brand}"\n\nFrom this list of Facebook Marketplace categories, which one best fits this product?\n${categoryList}\n\nReturn ONLY the category name exactly as shown above.`,
     };
     
     return facebookPrompts[field] || commonPrompts[field];

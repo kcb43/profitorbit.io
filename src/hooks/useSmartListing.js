@@ -274,14 +274,22 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     debugLog('Applying fix:', { issue, newValue });
     
     const { marketplace, field, patchTarget } = issue;
+
+    // newValue may be a plain string OR an { id, label } object (e.g. Facebook category picks).
+    const isObject = newValue && typeof newValue === 'object';
+    const displayValue = isObject ? newValue.label : newValue;
+    const idValue     = isObject ? newValue.id    : null;
     
     // Update the appropriate form
     if (patchTarget === 'general') {
-      // Update general form
-      setMarketplaceForm('general', field, newValue);
+      setMarketplaceForm('general', field, displayValue);
     } else {
-      // Update marketplace-specific form
-      setMarketplaceForm(marketplace, field, newValue);
+      setMarketplaceForm(marketplace, field, displayValue);
+
+      // For category fields that carry a separate id (e.g. Facebook 'category' + 'categoryId')
+      if (field === 'category' && idValue !== null) {
+        setMarketplaceForm(marketplace, 'categoryId', idValue);
+      }
     }
     
     toast({

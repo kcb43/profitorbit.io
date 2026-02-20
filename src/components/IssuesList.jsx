@@ -64,8 +64,10 @@ function ConfidenceBadge({ confidence }) {
   );
 }
 
-// Fields that require navigating to the marketplace form tab (can't be typed in)
-const CATEGORY_FIELDS = ['categoryId', 'mercariCategory', 'category', 'mercariCategoryId'];
+// Fields that require navigating to the marketplace form tab (can't be typed in directly).
+// Note: 'category' (Facebook) is intentionally excluded here – it now gets proper
+// dropdown options from FACEBOOK_CATEGORIES, so it can be handled inline.
+const CATEGORY_FIELDS = ['categoryId', 'mercariCategory', 'mercariCategoryId'];
 
 // Map marketplace + field to the tab the user needs to visit
 function getCategoryTabHint(marketplace, field) {
@@ -80,7 +82,9 @@ function getCategoryTabHint(marketplace, field) {
  * IssueItem - Single issue with fix UI
  */
 function IssueItem({ issue, onApplyFix }) {
+  // localOption stores the full { id, label } for option-based pickers; localValue for text inputs
   const [localValue, setLocalValue] = React.useState('');
+  const [localOption, setLocalOption] = React.useState(null); // { id, label }
   const [isApplying, setIsApplying] = React.useState(false);
   
   const fieldLabel = getFieldLabel(issue.field);
@@ -88,9 +92,21 @@ function IssueItem({ issue, onApplyFix }) {
   const hasOptions = Boolean(issue.options && issue.options.length > 0);
   const isCategoryField = CATEGORY_FIELDS.includes(issue.field);
   
-  // Handle apply fix
+  // Determine if this issue uses an option picker that carries id+label pairs
+  // (currently: Facebook 'category' field which needs both category name and categoryId slug)
+  const isOptionIdField = issue.field === 'category' && issue.marketplace === 'facebook';
+
+  // Handle apply fix — pass { id, label } for option-picker fields so the handler
+  // can persist both the display name and the slug.
   const handleApply = async (value) => {
-    const valueToApply = value ?? localValue ?? issue.suggested?.label;
+    let valueToApply;
+    if (value !== undefined) {
+      valueToApply = value;
+    } else if (isOptionIdField && localOption) {
+      valueToApply = localOption; // { id, label }
+    } else {
+      valueToApply = localValue || issue.suggested?.label;
+    }
     if (!valueToApply) return;
     setIsApplying(true);
     try {
@@ -172,7 +188,17 @@ function IssueItem({ issue, onApplyFix }) {
                 <Label className="text-xs mb-1.5 block">
                   {hasSuggestion ? 'Or choose a different value:' : `Select ${fieldLabel}`}
                 </Label>
-                <Select value={localValue} onValueChange={setLocalValue}>
+                <Select
+                  value={isOptionIdField ? (localOption?.id || '') : localValue}
+                  onValueChange={(selectedId) => {
+                    if (isOptionIdField) {
+                      const opt = issue.options.find(o => o.id === selectedId);
+                      setLocalOption(opt || { id: selectedId, label: selectedId });
+                    } else {
+                      setLocalValue(selectedId);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={`Choose ${fieldLabel.toLowerCase()}`} />
                   </SelectTrigger>
@@ -184,14 +210,14 @@ function IssueItem({ issue, onApplyFix }) {
                     ))}
                   </SelectContent>
                 </Select>
-                {localValue && (
+                {(isOptionIdField ? localOption : localValue) && (
                   <Button
                     size="sm"
-                    onClick={() => handleApply(localValue)}
+                    onClick={() => handleApply(isOptionIdField ? localOption : localValue)}
                     disabled={isApplying}
                     className="w-full mt-2"
                   >
-                    {isApplying ? 'Applying...' : `Apply "${issue.options.find(o => o.id === localValue)?.label || localValue}"`}
+                    {isApplying ? 'Applying…' : `Apply "${isOptionIdField ? localOption?.label : (issue.options.find(o => o.id === localValue)?.label || localValue)}"`}
                   </Button>
                 )}
               </div>

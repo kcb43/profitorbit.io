@@ -19,6 +19,71 @@ function getMercariCategories() {
   return MERCARI_CATEGORIES_CACHE;
 }
 
+// ---------------------------------------------------------------------------
+// Facebook categories cache (injected from CrosslistComposer to avoid circular imports)
+// ---------------------------------------------------------------------------
+let FACEBOOK_CATEGORIES_CACHE = null;
+
+export function setFacebookCategories(categories) {
+  FACEBOOK_CATEGORIES_CACHE = categories;
+}
+
+/**
+ * Simple keyword-overlap score between two strings.
+ * Returns a non-negative integer — higher is better.
+ */
+function keywordScore(source, target) {
+  const srcTokens = source.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  const tgtTokens = target.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  let score = 0;
+  for (const t of srcTokens) {
+    if (tgtTokens.some(w => w === t || w.startsWith(t) || t.startsWith(w))) score += 1;
+  }
+  return score;
+}
+
+/**
+ * Find the best matching Facebook category for a free-form category string.
+ * Returns { categoryId, categoryName, confidence } or null.
+ */
+export function suggestFacebookCategory(generalCategory) {
+  if (!FACEBOOK_CATEGORIES_CACHE || !generalCategory) return null;
+
+  let best = null;
+  let bestScore = 0;
+
+  for (const cat of FACEBOOK_CATEGORIES_CACHE) {
+    // Top-level match
+    const topScore = keywordScore(generalCategory, cat.categoryName);
+    if (topScore > bestScore) {
+      bestScore = topScore;
+      best = { categoryId: cat.categoryId, categoryName: cat.categoryName };
+    }
+
+    // Subcategory match
+    for (const sub of (cat.subcategories || [])) {
+      // Score against the subcategory name and also the combined "Parent > Sub" path
+      const subScore = Math.max(
+        keywordScore(generalCategory, sub.categoryName),
+        keywordScore(generalCategory, `${cat.categoryName} ${sub.categoryName}`)
+      );
+      if (subScore > bestScore) {
+        bestScore = subScore;
+        best = {
+          categoryId: sub.categoryId,
+          categoryName: `${cat.categoryName} > ${sub.categoryName}`,
+        };
+      }
+    }
+  }
+
+  if (!best || bestScore === 0) return null;
+
+  // Cap confidence at 0.88 – the AI endpoint may refine further
+  const confidence = Math.min(0.5 + bestScore * 0.12, 0.88);
+  return { ...best, confidence };
+}
+
 /**
  * Issue schema for normalized validation results
  * @typedef {Object} Issue
@@ -635,14 +700,32 @@ export function validateFacebookForm(generalForm, facebookForm) {
   const categoryId = facebookForm.categoryId || generalForm.categoryId;
   
   if (!category || !categoryId) {
-    issues.push({
+    // Provide top-level Facebook categories as selectable options
+    const fbCats = FACEBOOK_CATEGORIES_CACHE || [];
+    const topLevelOptions = fbCats.map(c => ({ id: c.categoryId, label: c.categoryName }));
+
+    // Try to pre-suggest a category from the general form's category text
+    const suggestion = suggestFacebookCategory(generalForm.category || generalForm.title || '');
+
+    const issue = {
       marketplace: 'facebook',
       field: 'category',
       type: 'missing',
       severity: 'blocking',
-      message: 'Facebook category is required',
-      patchTarget: 'facebook'
-    });
+      message: 'Facebook Marketplace category is required',
+      patchTarget: 'facebook',
+      options: topLevelOptions.length > 0 ? topLevelOptions : undefined,
+    };
+
+    if (suggestion) {
+      issue.suggested = {
+        label: suggestion.categoryName,
+        confidence: suggestion.confidence,
+        reasoning: `Matched "${generalForm.category || generalForm.title}" → "${suggestion.categoryName}"`,
+      };
+    }
+
+    issues.push(issue);
   }
   
   // Title validation

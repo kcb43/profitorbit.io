@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import FacebookCategoryPicker from "@/components/FacebookCategoryPicker";
 import { apiClient } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
 import { uploadApi } from "@/api/uploadApi";
@@ -95,7 +96,8 @@ import { SmartListingSection } from '@/components/SmartListingSection';
 import SmartListingModal from '@/components/SmartListingModal';
 import { useSmartListing as checkSmartListingEnabled } from '@/config/features';
 import { Checkbox } from '@/components/ui/checkbox';
-import { setMercariCategories } from '@/utils/listingValidation';
+import { setMercariCategories, setFacebookCategories } from '@/utils/listingValidation';
+import { FACEBOOK_CATEGORIES } from '@/data/facebookCategories';
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const MERCARI_ICON_URL = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
@@ -4657,6 +4659,8 @@ const MERCARI_CATEGORIES = {
 
 // Initialize MERCARI_CATEGORIES for validation
 setMercariCategories(MERCARI_CATEGORIES);
+// Initialize FACEBOOK_CATEGORIES for validation / AI suggestions
+setFacebookCategories(FACEBOOK_CATEGORIES);
 
 const MARKETPLACES = [
   { id: "ebay",     label: "eBay",     icon: EBAY_ICON_URL },
@@ -43100,8 +43104,19 @@ export default function CrosslistComposer() {
                 <Label className="text-xs mb-1.5 block">
                   Category <span className="text-red-500">*</span>
                 </Label>
-                
-                {/* Breadcrumb navigation for category path */}
+
+                {/* Facebook-native category picker */}
+                <FacebookCategoryPicker
+                  value={facebookForm.categoryId || ""}
+                  displayValue={facebookForm.category || ""}
+                  onChange={(categoryId, categoryPath) => {
+                    handleMarketplaceChange("facebook", "category", categoryPath);
+                    handleMarketplaceChange("facebook", "categoryId", categoryId);
+                  }}
+                />
+
+                {/* Legacy eBay-tree picker (hidden – replaced by FacebookCategoryPicker above) */}
+                {false && (() => (<>
                 {generalCategoryPath.length > 0 && (
                   <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground flex-wrap">
                     <button
@@ -43340,6 +43355,7 @@ export default function CrosslistComposer() {
                       : 'Category tree loading...'}
                   </div>
                 )}
+                </>))()} 
               </div>
 
               {/* Category Specifics - Show when category is selected */}
@@ -48745,7 +48761,18 @@ export default function CrosslistComposer() {
                           Category <span className="text-red-500">*</span>
                         </Label>
                         
-                        {generalCategoryPath.length > 0 && (
+                        {/* Facebook-native category picker */}
+                        <FacebookCategoryPicker
+                          value={facebookForm.categoryId || ""}
+                          displayValue={facebookForm.category || ""}
+                          onChange={(categoryId, categoryPath) => {
+                            handleMarketplaceChange("facebook", "category", categoryPath);
+                            handleMarketplaceChange("facebook", "categoryId", categoryId);
+                          }}
+                        />
+
+                        {/* Legacy eBay-tree picker hidden */}
+                        {false && generalCategoryPath.length > 0 && (
                           <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground flex-wrap">
                             <button
                               type="button"
@@ -48782,7 +48809,7 @@ export default function CrosslistComposer() {
                           </div>
                         )}
                         
-                        {((facebookForm.category !== undefined ? facebookForm.category : generalForm.category) || generalCategoryPath.length > 0) && (
+                        {false && ((facebookForm.category !== undefined ? facebookForm.category : generalForm.category) || generalCategoryPath.length > 0) && (
                           <div className="mb-2">
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary" className="text-xs">
@@ -48805,7 +48832,7 @@ export default function CrosslistComposer() {
                           </div>
                         )}
                         
-                        {!isLoadingCategoryTree && categoryTreeId ? (
+                        {false && !isLoadingCategoryTree && categoryTreeId ? (
                           generalCategoryPath.length > 0 && sortedCategories.length === 0 ? (
                             <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-md">
                               <p className="text-sm text-green-700 dark:text-green-400">
