@@ -5,7 +5,7 @@
  * - "Service worker registration failed. Status code: 15"
  * - "Uncaught SyntaxError: Illegal return statement"
  */
-const EXT_BUILD = '2026-02-01-mercari-metrics';
+const EXT_BUILD = '2026-02-20-fb-coercion-fix';
 console.log('Profit Orbit Extension: Background script loaded');
 console.log('EXT BUILD:', EXT_BUILD);
 
@@ -5814,6 +5814,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let vars = {};
         try { vars = form.variables ? JSON.parse(form.variables) : {}; } catch (_) { vars = {}; }
 
+        // Clean up string "null" values for optional price fields — the template sometimes records these as
+        // the literal string "null" (e.g. comparable_price, min_acceptable_checkout_offer_price).
+        // Facebook's GraphQL rejects string "null" with noncoercible_variable_value (code 1675012).
+        const stringNullPaths = [
+          ['input', 'data', 'common', 'comparable_price'],
+          ['input', 'data', 'common', 'min_acceptable_checkout_offer_price'],
+          ['input', 'data', 'common', 'comparable_price_range'],
+        ];
+
         // If we're using the real Marketplace create mutation, override the *specific* fields we know are required.
         // This prevents accidentally overwriting unrelated fields like shipping_price with the item price.
         const setDeep = (obj, pathArr, value) => {
@@ -5872,6 +5881,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           setDeep(obj, pathArr, want);
         };
 
+        // Apply string-null cleanup now that setDeep/getDeep are available.
+        for (const path of stringNullPaths) {
+          const v = getDeep(vars, path);
+          if (v === 'null' || v === 'undefined') setDeep(vars, path, null);
+        }
+
         const isCometCreateMutation =
           String(friendlyName || '') === 'useCometMarketplaceListingCreateMutation' ||
           String(docId || '') === '9551550371629242' ||
@@ -5898,18 +5913,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           setDeep(vars, ['input', 'data', 'common', 'photo_ids'], [coercedPhotoId]);
           setDeepPreserveType(vars, ['input', 'data', 'common', 'is_photo_order_set_by_seller'], true);
           
-          // Set category if provided
-          if (categoryId) {
-            // Facebook category IDs are typically numeric strings
-            setDeepPreserveType(vars, ['input', 'data', 'common', 'marketplace_listing_category_id'], String(categoryId));
+          // Set category if provided — only use it if it looks like a valid Facebook numeric ID.
+          // Non-numeric slugs like "homegoods" will cause noncoercible_variable_value (code 1675012).
+          const isValidFbCategoryId = (id) => id && /^\d{6,}$/.test(String(id).trim());
+          if (isValidFbCategoryId(categoryId)) {
+            // Use the path the template actually has (category_id), not marketplace_listing_category_id.
+            setDeepPreserveType(vars, ['input', 'data', 'common', 'category_id'], String(categoryId).trim());
             console.log('🟦 [FACEBOOK] Set category ID in variables:', categoryId);
+          } else if (categoryId) {
+            console.log('🟦 [FACEBOOK] Skipping non-numeric categoryId (would cause coercion error):', categoryId);
           }
           
-          // Set condition if provided
+          // Set condition if provided.
+          // 1. Always update attribute_data_json with the actual item condition (lowercase enum).
+          //    Without this the template's recorded condition (e.g. "used_like_new") would be used for every item.
+          // 2. Only set a top-level condition field if the template already has one — adding an
+          //    unknown GraphQL field can trigger noncoercible_variable_value.
           if (condition) {
-            const conditionUpper = String(condition).toUpperCase();
-            setDeepPreserveType(vars, ['input', 'data', 'common', 'condition'], conditionUpper);
-            console.log('🟦 [FACEBOOK] Set condition in variables:', conditionUpper);
+            const conditionLower = String(condition).toLowerCase().trim();
+            // Update attribute_data_json condition
+            const existingAttrJson = getDeep(vars, ['input', 'data', 'common', 'attribute_data_json']);
+            if (typeof existingAttrJson === 'string') {
+              try {
+                const attrObj = JSON.parse(existingAttrJson);
+                attrObj.condition = conditionLower;
+                setDeep(vars, ['input', 'data', 'common', 'attribute_data_json'], JSON.stringify(attrObj));
+              } catch (_) {}
+            }
+            // Only set top-level condition if the template already declares it (preserves type)
+            const existingCondition = getDeep(vars, ['input', 'data', 'common', 'condition']);
+            if (existingCondition !== undefined) {
+              // FB enum values match the template's casing — preserve it via setDeepPreserveType
+              const conditionForField = typeof existingCondition === 'string' && existingCondition === existingCondition.toUpperCase()
+                ? conditionLower.toUpperCase()   // template uses UPPER (e.g. "USED_LIKE_NEW")
+                : conditionLower;                 // template uses lower (e.g. "used_like_new")
+              setDeepPreserveType(vars, ['input', 'data', 'common', 'condition'], conditionForField);
+              console.log('🟦 [FACEBOOK] Set condition in variables:', conditionForField);
+            }
           }
         }
 

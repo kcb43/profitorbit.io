@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon, X, Loader2, Sparkles } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ import { scanReceipt } from "@/api/receiptScanner";
 import imageCompression from "browser-image-compression";
 import { ReactSortable } from "react-sortablejs";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
+import { DescriptionGenerator } from "@/components/DescriptionGenerator";
 
 const MAX_PHOTOS = 12;
 const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy", "Facebook", "Mercari"];
@@ -153,6 +154,7 @@ export default function AddInventoryItem() {
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
   const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
+  const [descGenOpen, setDescGenOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null });
   const [base44Tags, setBase44Tags] = useState("");
 
@@ -1190,7 +1192,19 @@ export default function AddInventoryItem() {
 
 
                     <div className="space-y-2 md:col-span-2 min-w-0">
-                        <Label htmlFor="description" className="text-foreground break-words">Description</Label>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="description" className="text-foreground break-words">Description</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 text-xs"
+                            onClick={() => setDescGenOpen(true)}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Generate
+                          </Button>
+                        </div>
                         <Textarea
                           id="description"
                           value={formData.description}
@@ -1326,6 +1340,17 @@ export default function AddInventoryItem() {
         allImages={formData.photos}
         onApplyToAll={handleApplyFiltersToAll}
         itemId={photoEditorItemId}
+      />
+      <DescriptionGenerator
+        open={descGenOpen}
+        onOpenChange={setDescGenOpen}
+        onSelectDescription={(text) => handleChange('description', text)}
+        marketplace="general"
+        inputDescription={formData.description}
+        title={formData.item_name}
+        brand={formData.brand}
+        category={formData.category}
+        condition={formData.condition}
       />
     </div>
   );

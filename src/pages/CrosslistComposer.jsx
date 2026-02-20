@@ -37138,10 +37138,14 @@ export default function CrosslistComposer() {
           return 'used_good'; // safe fallback
         })();
 
-        // Normalize categoryId — don't send "0" or 0, Facebook rejects it
+        // Normalize categoryId — only pass if it's a valid numeric Facebook category ID (6+ digits).
+        // Non-numeric slugs like "homegoods" cause noncoercible_variable_value (code 1675012).
         const rawCategoryId = facebookForm.categoryId || generalForm.categoryId;
-        const facebookCategoryId = (rawCategoryId && rawCategoryId !== '0' && rawCategoryId !== 0)
-          ? rawCategoryId : null;
+        const facebookCategoryId = (() => {
+          if (!rawCategoryId || rawCategoryId === '0' || rawCategoryId === 0) return null;
+          const s = String(rawCategoryId).trim();
+          return /^\d{6,}$/.test(s) ? s : null;
+        })();
 
         // Create Facebook Marketplace listing via extension (no new tab/window)
         const ext = window?.ProfitOrbitExtension;
@@ -37799,10 +37803,14 @@ export default function CrosslistComposer() {
               return 'used_good';
             })();
 
-            // Normalize categoryId — don't send "0" or 0
+            // Normalize categoryId — only pass if it's a valid numeric Facebook category ID (6+ digits).
+            // Non-numeric slugs like "homegoods" cause noncoercible_variable_value (code 1675012).
             const rawCategoryId = facebookForm.categoryId || generalForm.categoryId;
-            const facebookCategoryId = (rawCategoryId && rawCategoryId !== '0' && rawCategoryId !== 0)
-              ? rawCategoryId : null;
+            const facebookCategoryId = (() => {
+              if (!rawCategoryId || rawCategoryId === '0' || rawCategoryId === 0) return null;
+              const s = String(rawCategoryId).trim();
+              return /^\d{6,}$/.test(s) ? s : null;
+            })();
 
             const ext = window?.ProfitOrbitExtension;
             if (!ext?.createFacebookListing) {
