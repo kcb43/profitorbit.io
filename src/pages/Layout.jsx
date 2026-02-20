@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap } from "lucide-react";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
@@ -49,6 +49,7 @@ const navigationCategories = [
     items: [
       { title: "Deal Feed", url: "/deals", icon: TrendingDown },
       { title: "Product Search", url: "/product-search", icon: Search },
+      { title: "Training Center", url: "/training", icon: GraduationCap },
     ]
   },
   {
@@ -96,6 +97,8 @@ const ROUTE_MAP = [
   { path: '/Rewards',                      label: 'Rewards',             icon: Gift },
   { path: '/rewards',                      label: 'Rewards',             icon: Gift },
   { path: '/MigrateData',                  label: 'Migrate Data',        icon: FileText },
+  { path: '/training/playbooks',           label: 'Playbooks',           icon: GraduationCap, parent: { label: 'Training Center', path: '/training', icon: GraduationCap } },
+  { path: '/training',                     label: 'Training Center',     icon: GraduationCap },
 ];
 
 function PageBreadcrumb({ pathname }) {

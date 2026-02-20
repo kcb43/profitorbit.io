@@ -45,6 +45,12 @@ const Deals = React.lazy(() => import("./Deals"));
 const ProductSearch = React.lazy(() => import("./ProductSearch"));
 const SubmitDeal = React.lazy(() => import("./SubmitDeal"));
 
+// Training Center
+const Training = React.lazy(() => import("./Training"));
+const TrainingGuide = React.lazy(() => import("./TrainingGuide"));
+const TrainingPlaybooks = React.lazy(() => import("./TrainingPlaybooks"));
+const TrainingPlaybook = React.lazy(() => import("./TrainingPlaybook"));
+
 const EbayOauthLanding = React.lazy(() => import("./EbayOauthLanding"));
 import DevErrorBoundary from "../components/DevErrorBoundary";
 import ScrollToTop from "../components/ScrollToTop";
@@ -488,6 +494,56 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Rewards">
                         {withSuspense(<RewardsNew />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              {/* Training Center Routes */}
+              <Route
+                path="/training"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Training Center">
+                        {withSuspense(<Training />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/training/playbooks"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Reselling Playbooks">
+                        {withSuspense(<TrainingPlaybooks />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/training/playbooks/:slug"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Playbook">
+                        {withSuspense(<TrainingPlaybook />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/training/:slug"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Guide">
+                        {withSuspense(<TrainingGuide />)}
                       </Layout>
                     )}
                   </AuthGuard>

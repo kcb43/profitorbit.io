@@ -1,0 +1,51 @@
+{
+  "slug": "ship-efficiently",
+  "title": "Ship Items Efficiently",
+  "description": "A step-by-step system to ship faster, cheaper, and with fewer returns or damage claims.",
+  "tags": ["shipping", "ops", "labels", "tracking"],
+  "estimatedTotalTime": 30,
+  "isFeatured": false,
+  "order": 3,
+  "steps": [
+    {
+      "id": "setup-station",
+      "title": "Set up your shipping station",
+      "description": "Printer, labels, tape, scale, and packaging. Get everything in one place before you start.",
+      "estimatedTime": 10,
+      "guideSlug": null,
+      "cta": { "label": "View Inventory", "href": "/Inventory" }
+    },
+    {
+      "id": "pick-pack",
+      "title": "Pick, pack, and weigh consistently",
+      "description": "Weigh every item before printing a label. Avoid overpaying or underpaying for postage.",
+      "estimatedTime": 5,
+      "guideSlug": null,
+      "cta": { "label": "Open Orders", "href": "/SalesHistory" }
+    },
+    {
+      "id": "buy-label",
+      "title": "Buy and attach labels correctly",
+      "description": "Label placement matters — scanners need clear sight of the barcode. Cover the old label if reusing a box.",
+      "estimatedTime": 5,
+      "guideSlug": null,
+      "cta": { "label": "Open Sales", "href": "/SalesHistory" }
+    },
+    {
+      "id": "track",
+      "title": "Track shipments and handle issues",
+      "description": "Know what to do when tracking stalls, packages get lost, or buyers claim non-delivery.",
+      "estimatedTime": 5,
+      "guideSlug": null,
+      "cta": { "label": "Open Sales History", "href": "/SalesHistory" }
+    },
+    {
+      "id": "log-sale",
+      "title": "Log shipping cost in Orben",
+      "description": "Record your actual shipping cost so profit calculations stay accurate.",
+      "estimatedTime": 2,
+      "guideSlug": "profit-tracking",
+      "cta": { "label": "Sales History", "href": "/SalesHistory" }
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "slug": "start-reselling-business",
+  "title": "Start a Reselling Business",
+  "description": "Go from zero to your first 10 sales — sourcing, listing, shipping, and bookkeeping covered.",
+  "tags": ["getting-started", "sourcing", "listing", "shipping", "bookkeeping"],
+  "estimatedTotalTime": 60,
+  "isFeatured": true,
+  "order": 1,
+  "steps": [
+    {
+      "id": "connect-marketplace",
+      "title": "Connect your first marketplace",
+      "description": "Link eBay, Mercari, or Facebook so Orben can track your listings and sales.",
+      "estimatedTime": 5,
+      "guideSlug": "connect-mercari",
+      "cta": { "label": "Open Settings", "href": "/Settings" }
+    },
+    {
+      "id": "import-inventory",
+      "title": "Import your existing inventory",
+      "description": "Pull in your active listings from connected platforms — no re-entry needed.",
+      "estimatedTime": 5,
+      "guideSlug": "import-inventory",
+      "cta": { "label": "Open Import", "href": "/Import" }
+    },
+    {
+      "id": "add-first-item",
+      "title": "Add your first inventory item",
+      "description": "Photograph, measure, and add your first item to Orben's inventory with purchase price set.",
+      "estimatedTime": 10,
+      "guideSlug": "create-listing",
+      "cta": { "label": "Add Item", "href": "/AddInventoryItem" }
+    },
+    {
+      "id": "crosslist",
+      "title": "Crosslist to 2+ marketplaces",
+      "description": "Push that item to multiple platforms at once and get it in front of more buyers.",
+      "estimatedTime": 5,
+      "guideSlug": "crosslist-workflow",
+      "cta": { "label": "Open Crosslist", "href": "/Crosslist" }
+    },
+    {
+      "id": "log-first-sale",
+      "title": "Log your first sale",
+      "description": "When it sells, record the sale in Orben and see your first profit calculation.",
+      "estimatedTime": 3,
+      "guideSlug": "sync-sales",
+      "cta": { "label": "Add Sale", "href": "/AddSale" }
+    },
+    {
+      "id": "review-profit",
+      "title": "Review your profit breakdown",
+      "description": "Open Analytics and understand what you actually made after fees and costs.",
+      "estimatedTime": 5,
+      "guideSlug": "profit-tracking",
+      "cta": { "label": "Open Analytics", "href": "/Analytics" }
+    }
+  ]
+}

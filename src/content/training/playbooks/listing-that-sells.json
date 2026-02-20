@@ -1,0 +1,59 @@
+{
+  "slug": "listing-that-sells",
+  "title": "Create Listings That Sell",
+  "description": "A systematic approach to photos, titles, pricing, and crosslisting that gets items sold faster.",
+  "tags": ["listing", "photos", "pricing", "crosslist"],
+  "estimatedTotalTime": 45,
+  "isFeatured": true,
+  "order": 2,
+  "steps": [
+    {
+      "id": "photos",
+      "title": "Take photos that convert",
+      "description": "Clean background, natural lighting, 6+ angles. The hero shot determines if buyers click.",
+      "estimatedTime": 10,
+      "guideSlug": "create-listing",
+      "cta": { "label": "Add Item", "href": "/AddInventoryItem" }
+    },
+    {
+      "id": "title-keywords",
+      "title": "Write a keyword-rich title",
+      "description": "Include brand, model, size, color, and condition. Buyers search for specifics.",
+      "estimatedTime": 5,
+      "guideSlug": "create-listing",
+      "cta": { "label": "Open Inventory", "href": "/Inventory" }
+    },
+    {
+      "id": "price-research",
+      "title": "Research competitive pricing",
+      "description": "Use Product Search to see what similar items actually sold for (not just listed).",
+      "estimatedTime": 5,
+      "guideSlug": null,
+      "cta": { "label": "Open Product Search", "href": "/product-search" }
+    },
+    {
+      "id": "crosslist-all",
+      "title": "Crosslist to all relevant platforms",
+      "description": "One item on 3 platforms gets 3x the visibility. Takes 2 minutes with Orben.",
+      "estimatedTime": 5,
+      "guideSlug": "crosslist-workflow",
+      "cta": { "label": "Open Crosslist", "href": "/Crosslist" }
+    },
+    {
+      "id": "offers",
+      "title": "Send offers to watchers",
+      "description": "Use Pro Tools → Send Offers to reach eBay buyers who saved your listing.",
+      "estimatedTime": 5,
+      "guideSlug": null,
+      "cta": { "label": "Send Offers", "href": "/pro-tools/send-offers" }
+    },
+    {
+      "id": "reprice",
+      "title": "Reprice items older than 30 days",
+      "description": "If something hasn't sold in 30 days, drop 10% and try a different platform.",
+      "estimatedTime": 10,
+      "guideSlug": "analytics-guide",
+      "cta": { "label": "Open Inventory", "href": "/Inventory" }
+    }
+  ]
+}
