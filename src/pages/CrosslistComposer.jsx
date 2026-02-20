@@ -37118,6 +37118,31 @@ export default function CrosslistComposer() {
           throw new Error('Title, description, and price are required for Facebook Marketplace listings.');
         }
 
+        // Normalize price to a number — Facebook API requires a float, not a string
+        const priceNum = parseFloat(String(price).replace(/[^0-9.]/g, ''));
+        if (isNaN(priceNum) || priceNum <= 0) {
+          throw new Error('A valid price is required for Facebook Marketplace listings.');
+        }
+
+        // Normalize condition to Facebook's enum values
+        // Facebook accepts: "new" | "used_like_new" | "used_good" | "used_fair"
+        const rawCondition = (facebookForm.condition || generalForm.condition || '').toLowerCase().trim();
+        const facebookCondition = (() => {
+          if (['new', 'used_like_new', 'used_good', 'used_fair'].includes(rawCondition)) return rawCondition;
+          if (rawCondition.includes('new') && (rawCondition.includes('tag') || rawCondition.includes('box') || rawCondition.includes('nwt') || rawCondition.includes('nwob'))) return 'new';
+          if (rawCondition === 'new' || rawCondition === 'brand new') return 'new';
+          if (rawCondition.includes('excellent') || rawCondition.includes('like new') || rawCondition.includes('mint')) return 'used_like_new';
+          if (rawCondition.includes('very good')) return 'used_like_new';
+          if (rawCondition.includes('good')) return 'used_good';
+          if (rawCondition.includes('fair') || rawCondition.includes('acceptable') || rawCondition.includes('poor')) return 'used_fair';
+          return 'used_good'; // safe fallback
+        })();
+
+        // Normalize categoryId — don't send "0" or 0, Facebook rejects it
+        const rawCategoryId = facebookForm.categoryId || generalForm.categoryId;
+        const facebookCategoryId = (rawCategoryId && rawCategoryId !== '0' && rawCategoryId !== 0)
+          ? rawCategoryId : null;
+
         // Create Facebook Marketplace listing via extension (no new tab/window)
         const ext = window?.ProfitOrbitExtension;
         if (!ext?.createFacebookListing) {
@@ -37129,12 +37154,11 @@ export default function CrosslistComposer() {
           payload: { 
             title, 
             description, 
-            price, 
+            price: priceNum,
             images: photosToUse,
-            // Include Facebook-specific fields
-            categoryId: facebookForm.categoryId || generalForm.categoryId,
+            categoryId: facebookCategoryId,
             category: facebookForm.category || generalForm.category,
-            condition: facebookForm.condition || generalForm.condition,
+            condition: facebookCondition,
           },
         });
 
@@ -37756,6 +37780,30 @@ export default function CrosslistComposer() {
               throw new Error('Title, description, and price are required for Facebook Marketplace listings.');
             }
 
+            // Normalize price to a number — Facebook API requires a float, not a string
+            const priceNum = parseFloat(String(price).replace(/[^0-9.]/g, ''));
+            if (isNaN(priceNum) || priceNum <= 0) {
+              throw new Error('A valid price is required for Facebook Marketplace listings.');
+            }
+
+            // Normalize condition to Facebook's enum values
+            const rawCondition = (facebookForm.condition || generalForm.condition || '').toLowerCase().trim();
+            const facebookCondition = (() => {
+              if (['new', 'used_like_new', 'used_good', 'used_fair'].includes(rawCondition)) return rawCondition;
+              if (rawCondition.includes('new') && (rawCondition.includes('tag') || rawCondition.includes('box') || rawCondition.includes('nwt') || rawCondition.includes('nwob'))) return 'new';
+              if (rawCondition === 'new' || rawCondition === 'brand new') return 'new';
+              if (rawCondition.includes('excellent') || rawCondition.includes('like new') || rawCondition.includes('mint')) return 'used_like_new';
+              if (rawCondition.includes('very good')) return 'used_like_new';
+              if (rawCondition.includes('good')) return 'used_good';
+              if (rawCondition.includes('fair') || rawCondition.includes('acceptable') || rawCondition.includes('poor')) return 'used_fair';
+              return 'used_good';
+            })();
+
+            // Normalize categoryId — don't send "0" or 0
+            const rawCategoryId = facebookForm.categoryId || generalForm.categoryId;
+            const facebookCategoryId = (rawCategoryId && rawCategoryId !== '0' && rawCategoryId !== 0)
+              ? rawCategoryId : null;
+
             const ext = window?.ProfitOrbitExtension;
             if (!ext?.createFacebookListing) {
               throw new Error('Extension API not available. Please refresh and ensure the Profit Orbit extension is enabled.');
@@ -37766,12 +37814,11 @@ export default function CrosslistComposer() {
               payload: { 
                 title, 
                 description, 
-                price, 
+                price: priceNum,
                 images: photosToUse,
-                // Include Facebook-specific fields
-                categoryId: facebookForm.categoryId || generalForm.categoryId,
+                categoryId: facebookCategoryId,
                 category: facebookForm.category || generalForm.category,
-                condition: facebookForm.condition || generalForm.condition,
+                condition: facebookCondition,
               },
             });
 
