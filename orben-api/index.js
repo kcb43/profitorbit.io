@@ -711,6 +711,254 @@ fastify.patch('/v1/admin/deals/submissions/:id', async (request, reply) => {
 });
 
 // ==========================================
+// NEWS ENDPOINTS
+// ==========================================
+
+const SERPAPI_KEY = process.env.SERPAPI_KEY;
+
+/**
+ * Fetch news from SerpAPI Google News for a single feed row.
+ * Returns an array of mapped news_item-shaped objects.
+ */
+async function fetchFeedFromSerpApi(feed) {
+  if (!SERPAPI_KEY) return [];
+
+  const params = new URLSearchParams({
+    engine: 'google_news',
+    api_key: SERPAPI_KEY,
+    gl: feed.gl || 'us',
+    hl: feed.hl || 'en',
+    num: '10'
+  });
+
+  if (feed.query)             params.set('q', feed.query);
+  if (feed.topic_token)       params.set('topic_token', feed.topic_token);
+  if (feed.publication_token) params.set('publication_token', feed.publication_token);
+  if (feed.so != null)        params.set('so', String(feed.so));
+
+  const url = `https://serpapi.com/search?${params}`;
+
+  try {
+    const res = await axios.get(url, { timeout: 15000 });
+    const results = res.data?.news_results || [];
+
+    return results.map(item => ({
+      feed_id:      feed.id,
+      title:        item.title || '(no title)',
+      summary:      item.snippet || null,
+      source_name:  item.source?.name || null,
+      url:          item.link || item.url || null,
+      thumbnail:    item.thumbnail || null,
+      published_at: item.date ? new Date(item.date) : null,
+      iso_date:     item.iso_date ? new Date(item.iso_date) : null,
+      tags:         feed.tags || [],
+      raw:          item
+    })).filter(r => r.url);  // must have a URL to dedupe on
+  } catch (err) {
+    console.error(`[News] SerpAPI error for feed "${feed.name}": ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Run one full ingestion pass over all enabled news_feeds.
+ */
+async function runNewsIngestion() {
+  console.log('[News] Starting ingestion run…');
+
+  const { data: feeds, error } = await supabase
+    .from('news_feeds')
+    .select('*')
+    .eq('enabled', true);
+
+  if (error || !feeds?.length) {
+    console.warn('[News] No enabled feeds or error:', error?.message);
+    return { ok: false, reason: error?.message || 'no feeds' };
+  }
+
+  let totalInserted = 0;
+
+  for (const feed of feeds) {
+    const items = await fetchFeedFromSerpApi(feed);
+    if (!items.length) continue;
+
+    // Upsert by url (unique constraint)
+    const { error: upsertErr, count } = await supabase
+      .from('news_items')
+      .upsert(items, { onConflict: 'url', ignoreDuplicates: true })
+      .select('id', { count: 'exact', head: true });
+
+    if (upsertErr) {
+      console.error(`[News] Upsert error for feed "${feed.name}": ${upsertErr.message}`);
+    } else {
+      totalInserted += count || 0;
+    }
+
+    // Mark feed as fetched
+    await supabase
+      .from('news_feeds')
+      .update({ last_fetched_at: new Date().toISOString() })
+      .eq('id', feed.id);
+  }
+
+  console.log(`[News] Ingestion done – inserted ${totalInserted} new items.`);
+  return { ok: true, inserted: totalInserted, feeds: feeds.length };
+}
+
+// Cron: run every 6 hours
+if (SERPAPI_KEY) {
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  setTimeout(async () => {
+    await runNewsIngestion();
+    setInterval(runNewsIngestion, SIX_HOURS);
+  }, 10_000); // small boot delay
+} else {
+  console.warn('[News] SERPAPI_KEY not set — news ingestion disabled.');
+}
+
+/**
+ * GET /v1/news/feed
+ * Paginated news items with optional search + tag filter
+ */
+fastify.get('/v1/news/feed', async (request, reply) => {
+  const {
+    q,
+    tag,
+    sort = 'newest',
+    limit = 30,
+    offset = 0
+  } = request.query;
+
+  const cacheKey = `news:feed:${crypto
+    .createHash('sha1')
+    .update(JSON.stringify({ q, tag, sort, limit, offset }))
+    .digest('hex')}`;
+
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  let query = supabase
+    .from('news_items')
+    .select('id, feed_id, title, summary, source_name, url, thumbnail, published_at, iso_date, tags, created_at', { count: 'exact' });
+
+  if (q && q.trim()) {
+    query = query.or(`title.ilike.%${q.trim()}%,summary.ilike.%${q.trim()}%,source_name.ilike.%${q.trim()}%`);
+  }
+
+  if (tag && tag !== 'all') {
+    query = query.contains('tags', [tag]);
+  }
+
+  if (sort === 'newest') {
+    query = query.order('iso_date', { ascending: false, nullsFirst: false })
+                 .order('published_at', { ascending: false, nullsFirst: false })
+                 .order('created_at', { ascending: false });
+  } else {
+    // relevance: keep DB order (by recency as fallback)
+    query = query.order('created_at', { ascending: false });
+  }
+
+  query = query.range(parseInt(offset, 10), parseInt(offset, 10) + parseInt(limit, 10) - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) return reply.code(500).send({ error: error.message });
+
+  const response = { items: data || [], total: count || 0 };
+  await redis.set(cacheKey, JSON.stringify(response), 'EX', 120); // 2 min cache
+
+  return response;
+});
+
+/**
+ * GET /v1/news/feeds
+ * List all feed definitions (for sidebar)
+ */
+fastify.get('/v1/news/feeds', async (request, reply) => {
+  const cached = await redis.get('news:feeds:list');
+  if (cached) return JSON.parse(cached);
+
+  const { data, error } = await supabase
+    .from('news_feeds')
+    .select('id, name, tags, enabled, last_fetched_at')
+    .order('name');
+
+  if (error) return reply.code(500).send({ error: error.message });
+
+  const response = { feeds: data || [] };
+  await redis.set('news:feeds:list', JSON.stringify(response), 'EX', 300);
+  return response;
+});
+
+/**
+ * GET /v1/news/badge
+ * Returns whether there are unread news items for the authenticated user.
+ * Compares max(iso_date, published_at) > user's last_seen_at.
+ */
+fastify.get('/v1/news/badge', async (request, reply) => {
+  let user;
+  try { user = await requireUser(request); } catch (e) {
+    return reply.code(401).send({ error: e.message });
+  }
+
+  // Get user's last_seen_at
+  const { data: state } = await supabase
+    .from('news_user_state')
+    .select('last_seen_at')
+    .eq('user_id', user.id)
+    .single();
+
+  const lastSeen = state?.last_seen_at ? new Date(state.last_seen_at) : new Date(0);
+
+  // Find newest news item
+  const { data: latest } = await supabase
+    .from('news_items')
+    .select('iso_date, published_at, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!latest) return { hasNew: false };
+
+  const latestDate = new Date(latest.iso_date || latest.published_at || latest.created_at);
+  return { hasNew: latestDate > lastSeen };
+});
+
+/**
+ * POST /v1/news/seen
+ * Mark news as seen (update last_seen_at) for the authenticated user.
+ */
+fastify.post('/v1/news/seen', async (request, reply) => {
+  let user;
+  try { user = await requireUser(request); } catch (e) {
+    return reply.code(401).send({ error: e.message });
+  }
+
+  const { error } = await supabase
+    .from('news_user_state')
+    .upsert({ user_id: user.id, last_seen_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+  if (error) return reply.code(500).send({ error: error.message });
+
+  // Invalidate badge cache
+  await redis.set(`news:badge:${user.id}`, JSON.stringify({ hasNew: false }), 'EX', 300);
+
+  return { ok: true };
+});
+
+/**
+ * POST /v1/admin/news/ingest
+ * Manually trigger a news ingestion run (admin)
+ */
+fastify.post('/v1/admin/news/ingest', async (request, reply) => {
+  if (!SERPAPI_KEY) {
+    return reply.code(503).send({ error: 'SERPAPI_KEY not configured' });
+  }
+  const result = await runNewsIngestion();
+  return result;
+});
+
+// ==========================================
 // Start server
 // ==========================================
 const PORT = process.env.PORT || 8080;

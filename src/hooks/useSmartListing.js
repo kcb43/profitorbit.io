@@ -111,7 +111,29 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       });
       return;
     }
-    
+
+    // Require price
+    const price = forms.generalForm?.price;
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      toast({
+        title: "Price Required",
+        description: "Please enter a price before using Smart Listing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Require zip code
+    const zip = (forms.generalForm?.zip || "").trim();
+    if (!zip) {
+      toast({
+        title: "Zip Code Required",
+        description: "Please enter a zip code in the General form before using Smart Listing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     checkConnections();
     setModalState('idle');
     setModalOpen(true);

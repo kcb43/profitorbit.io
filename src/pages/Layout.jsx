@@ -2,7 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getNewsBadge } from "@/api/newsApi";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
@@ -49,6 +51,7 @@ const navigationCategories = [
     items: [
       { title: "Deal Feed", url: "/deals", icon: TrendingDown },
       { title: "Product Search", url: "/product-search", icon: Search },
+      { title: "News", url: "/news", icon: Newspaper, badgeKey: "news" },
       { title: "Training Center", url: "/training", icon: GraduationCap },
     ]
   },
@@ -105,6 +108,7 @@ const ROUTE_MAP = [
   { path: '/MigrateData',                  label: 'Migrate Data',        icon: FileText },
   { path: '/training/playbooks',           label: 'Playbooks',           icon: GraduationCap, parent: { label: 'Training Center', path: '/training', icon: GraduationCap } },
   { path: '/training',                     label: 'Training Center',     icon: GraduationCap },
+  { path: '/news',                         label: 'News',                icon: Newspaper },
 ];
 
 function PageBreadcrumb({ pathname }) {
@@ -326,6 +330,18 @@ export default function Layout({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
+  // News badge — poll every 10 min; disable when on /news (already marked seen)
+  const { data: newsBadgeData } = useQuery({
+    queryKey: ['newsBadge'],
+    queryFn: getNewsBadge,
+    staleTime: 10 * 60_000,
+    refetchInterval: 10 * 60_000,
+    enabled: location.pathname !== '/news',
+  });
+  const hasNewNews = newsBadgeData?.hasNew ?? false;
+
+  const badges = { news: hasNewNews };
+
   const handleProductSearchClick = () => {
     const isMobile = window.innerWidth < 768;
     if (isMobile) {
@@ -441,6 +457,7 @@ export default function Layout({ children }) {
                     {category.items.map((item) => {
                       const isActive = location.pathname === item.url;
                       const IconComponent = item.icon;
+                      const showBadge = item.badgeKey && badges[item.badgeKey];
                       return (
                         <li key={item.title} className="list-item">
                           <Link
@@ -454,7 +471,13 @@ export default function Layout({ children }) {
                             `}
                           >
                             <IconComponent className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
-                            <span className="cursor-pointer text-ellipsis truncate">{item.title}</span>
+                            <span className="cursor-pointer text-ellipsis truncate flex-1">{item.title}</span>
+                            {showBadge && (
+                              <span className="relative flex h-2 w-2 flex-shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                              </span>
+                            )}
                           </Link>
                         </li>
                       );

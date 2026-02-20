@@ -35511,8 +35511,12 @@ export default function CrosslistComposer() {
     });
     
     // Merge with saved form data (saved data takes precedence over initial state)
+    // General defaults (e.g. zip) are applied between item data and saved changes so they
+    // persist across items but can still be overridden by item-specific saved state.
     const merged = {
-      general: savedGeneral ? { ...initial.forms.general, ...savedGeneral } : initial.forms.general,
+      general: savedGeneral
+        ? { ...initial.forms.general, ...(generalDefaults || {}), ...savedGeneral }
+        : { ...initial.forms.general, ...(generalDefaults || {}) },
       ebay: savedEbay ? { ...initial.forms.ebay, ...savedEbay } : { ...initial.forms.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.forms.etsy, ...savedEtsy } : initial.forms.etsy,
       mercari: savedMercari ? { ...initial.forms.mercari, ...savedMercari } : { ...initial.forms.mercari, ...(mercariDefaults || {}) },
@@ -35545,7 +35549,7 @@ export default function CrosslistComposer() {
     } else {
       setBrandIsCustom(false);
     }
-  }, [ebayDefaults, mercariDefaults, facebookDefaults]);
+  }, [ebayDefaults, mercariDefaults, facebookDefaults, generalDefaults]);
   
   // Load saved templates from localStorage - per-item if editing, global templates for new items
   // Note: This runs when item ID changes, but populateTemplates also loads saved data
@@ -39029,8 +39033,7 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      {(generalForm.description || "").trim() && (
-                        <Button
+                      <Button
                           type="button"
                           variant="outline"
                           size="sm"
@@ -39040,7 +39043,6 @@ export default function CrosslistComposer() {
                           <Sparkles className="h-3 w-3" />
                           Generate
                         </Button>
-                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -39724,7 +39726,7 @@ export default function CrosslistComposer() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
+                    <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code <span className="text-red-500">*</span></Label>
                     {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
                       handleGeneralChange("zip", v)
                     )}
@@ -40061,8 +40063,7 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      {((ebayForm.description || generalForm.description || "").trim()) && (
-                        <Button
+                      <Button
                           type="button"
                           variant="outline"
                           size="sm"
@@ -40072,7 +40073,6 @@ export default function CrosslistComposer() {
                           <Sparkles className="h-3 w-3" />
                           Generate
                         </Button>
-                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -41441,8 +41441,7 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      {((etsyForm.description || generalForm.description || "").trim()) && (
-                        <Button
+                      <Button
                           type="button"
                           variant="outline"
                           size="sm"
@@ -41452,7 +41451,6 @@ export default function CrosslistComposer() {
                           <Sparkles className="h-3 w-3" />
                           Generate
                         </Button>
-                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -42023,8 +42021,7 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      {((mercariForm.description || generalForm.description || "").trim()) && (
-                        <Button
+                      <Button
                           type="button"
                           variant="outline"
                           size="sm"
@@ -42034,7 +42031,6 @@ export default function CrosslistComposer() {
                           <Sparkles className="h-3 w-3" />
                           Generate
                         </Button>
-                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -43062,8 +43058,7 @@ export default function CrosslistComposer() {
                         <Maximize2 className="h-3 w-3" />
                         Full
                       </Button>
-                      {((facebookForm.description || generalForm.description || "").trim()) && (
-                        <Button
+                      <Button
                           type="button"
                           variant="outline"
                           size="sm"
@@ -43073,7 +43068,6 @@ export default function CrosslistComposer() {
                           <Sparkles className="h-3 w-3" />
                           Generate
                         </Button>
-                      )}
                     </div>
                   </div>
                   <RichTextarea
@@ -44807,7 +44801,6 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                                {((generalForm.description || "").trim()) && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -44818,7 +44811,6 @@ export default function CrosslistComposer() {
                                     <Sparkles className="h-3 w-3" />
                                     Generate
                                   </Button>
-                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -45491,7 +45483,7 @@ export default function CrosslistComposer() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code</Label>
+                            <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code <span className="text-red-500">*</span></Label>
                             {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
                               handleGeneralChange("zip", v)
                             )}
@@ -45841,7 +45833,6 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                                {((ebayForm.description || generalForm.description || "").trim()) && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -45852,7 +45843,6 @@ export default function CrosslistComposer() {
                                     <Sparkles className="h-3 w-3" />
                                     Generate
                                   </Button>
-                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -47183,7 +47173,6 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                                {((etsyForm.description || generalForm.description || "").trim()) && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -47194,7 +47183,6 @@ export default function CrosslistComposer() {
                                     <Sparkles className="h-3 w-3" />
                                     Generate
                                   </Button>
-                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -47751,7 +47739,6 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                                {((mercariForm.description || generalForm.description || "").trim()) && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -47762,7 +47749,6 @@ export default function CrosslistComposer() {
                                     <Sparkles className="h-3 w-3" />
                                     Generate
                                   </Button>
-                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -48718,7 +48704,6 @@ export default function CrosslistComposer() {
                                 <Maximize2 className="h-3 w-3" />
                                 Full
                               </Button>
-                                {((facebookForm.description || generalForm.description || "").trim()) && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -48729,7 +48714,6 @@ export default function CrosslistComposer() {
                                     <Sparkles className="h-3 w-3" />
                                     Generate
                                   </Button>
-                                )}
                             </div>
                           </div>
                           <RichTextarea
@@ -49702,7 +49686,6 @@ export default function CrosslistComposer() {
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1.5">
                             <Label htmlFor="poshmark-description" className="text-xs">Description</Label>
                             <div className="flex gap-2">
-                                {((templateForms?.[activeForm]?.description || generalForm.description || "").trim()) && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -49713,7 +49696,6 @@ export default function CrosslistComposer() {
                                     <Sparkles className="h-3 w-3" />
                                     Generate
                                   </Button>
-                                )}
                             </div>
                           </div>
                           <RichTextarea
