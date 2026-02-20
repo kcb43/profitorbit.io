@@ -28,6 +28,14 @@ const Import = React.lazy(() => import("./Import"));
 const MarketIntelligence = React.lazy(() => import("./MarketIntelligence"));
 const MarketIntelligenceDetail = React.lazy(() => import("./MarketIntelligenceDetail"));
 const Settings = React.lazy(() => import("./Settings"));
+
+// Settings sections
+const SettingsAccount       = React.lazy(() => import("./settings/Account"));
+const SettingsSecurity      = React.lazy(() => import("./settings/Security"));
+const SettingsNotifications = React.lazy(() => import("./settings/Notifications"));
+const SettingsAppearance    = React.lazy(() => import("./settings/Appearance"));
+const SettingsMarketplaces  = React.lazy(() => import("./settings/Marketplaces"));
+const SettingsReports       = React.lazy(() => import("./settings/ReportsPrefs"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
 const ProTools = React.lazy(() => import("./ProTools"));
@@ -326,6 +334,78 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Settings">
                         {withSuspense(<Settings />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/account"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Account">
+                        {withSuspense(<SettingsAccount />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/security"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Security">
+                        {withSuspense(<SettingsSecurity />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/notifications"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Notifications">
+                        {withSuspense(<SettingsNotifications />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/appearance"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Appearance">
+                        {withSuspense(<SettingsAppearance />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/marketplaces"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Marketplaces">
+                        {withSuspense(<SettingsMarketplaces />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/reports"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Reports Preferences">
+                        {withSuspense(<SettingsReports />)}
                       </Layout>
                     )}
                   </AuthGuard>
