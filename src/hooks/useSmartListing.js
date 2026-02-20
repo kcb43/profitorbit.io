@@ -50,14 +50,12 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
   const checkConnections = useCallback(() => {
     if (!enabled) return;
     
-    debugLog('Checking marketplace connections...', connections);
-    
     setConnectionStatus({
       ebay: connections.ebayConnected || false,
       mercari: connections.mercariConnected || false,
       facebook: connections.facebookConnected || false,
     });
-  }, [enabled, connections]);
+  }, [enabled, connections.ebayConnected, connections.mercariConnected, connections.facebookConnected]);
   
   /**
    * Update connection status whenever connections prop changes
@@ -213,6 +211,29 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
   }, [enabled]);
   
   /**
+   * Apply a fix to a form field WITHOUT re-running preflight.
+   * Used as the onApplyPatch callback inside preflightSelectedMarketplaces
+   * to prevent the circular: runPreflight → onApplyPatch → runPreflight → ∞
+   */
+  const applyFixOnly = useCallback((issue, newValue) => {
+    if (!enabled) return;
+    const { marketplace, field, patchTarget } = issue;
+    const isObject   = newValue !== null && typeof newValue === 'object';
+    const idValue    = isObject ? newValue.id    : null;
+    const labelValue = isObject ? newValue.label : newValue;
+    const storedValue = (idValue !== null && idValue !== undefined) ? idValue : labelValue;
+
+    if (patchTarget === 'general') {
+      setMarketplaceForm('general', field, storedValue);
+    } else {
+      setMarketplaceForm(marketplace, field, storedValue);
+      if (field === 'category' && idValue !== null) {
+        setMarketplaceForm(marketplace, 'categoryId', idValue);
+      }
+    }
+  }, [enabled, setMarketplaceForm]);
+
+  /**
    * Run preflight validation
    */
   const runPreflight = useCallback(async () => {
@@ -238,14 +259,15 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       {
         ...validationOptions,
         autoApplyHighConfidence: autoFillMode === 'auto',
-        onApplyPatch: handleApplyFix, // Pass fix handler for auto-apply
+        // Use applyFixOnly here — NOT handleApplyFix — to avoid circular re-entry
+        onApplyPatch: autoFillMode === 'auto' ? applyFixOnly : null,
       }
     );
     
     debugLog('Preflight result:', result);
     
     return result;
-  }, [enabled, selectedMarketplaces, forms, validationOptions, autoFillMode, toast]);
+  }, [enabled, selectedMarketplaces, forms, validationOptions, autoFillMode, applyFixOnly, toast]);
   
   /**
    * Handle "Start Smart Listing" button click from modal
@@ -322,48 +344,28 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
   }, [enabled, runPreflight, toast]);
   
   /**
-   * Apply a fix to a form field
+   * Apply a fix manually (user-triggered from the modal fixes panel).
+   * Applies the form update then re-runs preflight to refresh the issues list.
    */
   const handleApplyFix = useCallback(async (issue, newValue) => {
     if (!enabled) return;
     debugLog('Applying fix:', { issue, newValue });
-    
-    const { marketplace, field, patchTarget } = issue;
 
-    // newValue may be:
-    //   - a plain string (most fields)
-    //   - an { id, label } object (Facebook category, condition options where id ≠ label)
-    // When `id` differs from `label`, we store the id as the actual form value.
-    const isObject    = newValue !== null && typeof newValue === 'object';
-    const idValue     = isObject ? newValue.id    : null;
-    const labelValue  = isObject ? newValue.label : newValue;
-    // Use id as the stored value if it's present (it's the machine-readable key);
-    // fall back to label otherwise.
-    const storedValue = (idValue !== null && idValue !== undefined) ? idValue : labelValue;
+    // Apply the field update
+    applyFixOnly(issue, newValue);
 
-    // Update the appropriate form
-    if (patchTarget === 'general') {
-      setMarketplaceForm('general', field, storedValue);
-    } else {
-      setMarketplaceForm(marketplace, field, storedValue);
-
-      // Facebook category also needs categoryId persisted
-      if (field === 'category' && idValue !== null) {
-        setMarketplaceForm(marketplace, 'categoryId', idValue);
-      }
-    }
-    
     toast({
       title: "Fix applied",
-      description: `Updated ${field} for ${marketplace}`,
+      description: `Updated ${issue.field} for ${issue.marketplace}`,
     });
-    
-    // Re-run preflight to update issues
+
+    // Re-run preflight after a brief tick so React can flush the state update first
+    await new Promise(r => setTimeout(r, 50));
     const result = await runPreflight();
     if (result) {
       setPreflightResult(result);
     }
-  }, [enabled, setMarketplaceForm, runPreflight, toast]);
+  }, [enabled, applyFixOnly, runPreflight, toast]);
   
   /**
    * List to all ready marketplaces
