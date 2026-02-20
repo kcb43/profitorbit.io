@@ -15,12 +15,14 @@ export function getBearerToken(req) {
  * Determine the user id from either:
  * - x-user-id header (legacy / internal)
  * - Authorization: Bearer <supabase_access_token> (preferred)
+ * - ?token= query param (used for browser-navigated downloads: CSV, PDF)
  */
 export async function getUserIdFromRequest(req, supabase) {
   const xUserId = getHeader(req, 'x-user-id');
   if (xUserId) return xUserId;
 
-  const token = getBearerToken(req);
+  // Bearer header takes priority; fall back to ?token= query param for direct browser downloads
+  const token = getBearerToken(req) || req.query?.token || null;
   if (!token || !supabase?.auth?.getUser) return null;
 
   const { data, error } = await supabase.auth.getUser(token);

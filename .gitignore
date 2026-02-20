@@ -1,3 +1,6 @@
+# Browser session artifacts (Chromium/Puppeteer)
+scripts/.fb-session/
+
 # Logs
 logs
 *.log

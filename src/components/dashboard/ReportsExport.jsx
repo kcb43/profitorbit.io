@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText, FileSpreadsheet, Calendar, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { openAuthExport } from "@/utils/exportWithAuth";
 import ExportReportDialog from "@/components/reports/ExportReportDialog";
 
 export default function ReportsExport({ sales, totalProfit, totalSales }) {
@@ -17,7 +18,7 @@ export default function ReportsExport({ sales, totalProfit, totalSales }) {
   }
 
   function handleQuickCsv() {
-    window.open('/api/sales/export', '_blank');
+    openAuthExport('/api/sales/export');
   }
 
   return (
@@ -41,7 +42,7 @@ export default function ReportsExport({ sales, totalProfit, totalSales }) {
                 className="flex items-center gap-2 text-xs"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                CSV Export
+                Sales Export
               </Button>
               <Button
                 variant="outline"

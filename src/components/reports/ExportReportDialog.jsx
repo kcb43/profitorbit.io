@@ -270,12 +270,13 @@ export default function ExportReportDialog({ open, onClose, defaultReportId = 's
   }
 
   // Also support the old CSV export path for backwards compat
-  function handleCsv() {
-    const params = new URLSearchParams();
-    if (filters.dateFrom) params.set('from', filters.dateFrom);
-    if (filters.dateTo)   params.set('to', filters.dateTo);
-    if (filters.marketplace) params.set('platform', filters.marketplace);
-    window.open(`/api/sales/export?${params.toString()}`, '_blank');
+  async function handleCsv() {
+    const { openAuthExport } = await import('@/utils/exportWithAuth');
+    const params = {};
+    if (filters.dateFrom) params.from = filters.dateFrom;
+    if (filters.dateTo)   params.to = filters.dateTo;
+    if (filters.marketplace) params.platform = filters.marketplace;
+    openAuthExport('/api/sales/export', params);
   }
 
   function handleClose() {

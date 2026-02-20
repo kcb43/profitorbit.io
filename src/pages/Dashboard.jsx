@@ -18,7 +18,7 @@ import {
   subYears,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock, Lightbulb, Timer, Star, Box, Bell, ChevronDown, Settings, Search } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingBag, Percent, Plus, Package, AlarmClock, Lightbulb, Timer, Star, Box, Bell, ChevronDown, Settings, Search, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -37,6 +37,7 @@ import KpiSparkCard from "../components/dashboard/mosaic/KpiSparkCard";
 import ProfitTrendCard from "../components/dashboard/mosaic/ProfitTrendCard";
 import PlatformRevenueTableCard from "../components/dashboard/mosaic/PlatformRevenueTableCard";
 import WelcomeInsightsRow from "../components/dashboard/WelcomeInsightsRow";
+import ExportReportDialog from "../components/reports/ExportReportDialog";
 
 const SUPPORTED_MARKETPLACES = [
   {
@@ -91,6 +92,7 @@ export default function Dashboard() {
   const [desktopCustomRange, setDesktopCustomRange] = useState(undefined);
   const [stockAlertsOpen, setStockAlertsOpen] = useState(false);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
 
   // Load user display name for the welcome card
@@ -434,6 +436,10 @@ export default function Dashboard() {
               <TipOfTheDay variant="banner" />
             </div>
             <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => setExportOpen(true)} className="gap-2">
+                <Download className="w-4 h-4" />
+                Export
+              </Button>
               <Link to={createPageUrl("AddSale")}>
                 <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25">
                   <Plus className="w-4 h-4 mr-2" />
@@ -776,6 +782,12 @@ export default function Dashboard() {
         <ProductSearchDialog
           open={productSearchOpen}
           onOpenChange={setProductSearchOpen}
+        />
+
+        <ExportReportDialog
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          defaultReportId="sales-summary"
         />
       </div>
     </div>

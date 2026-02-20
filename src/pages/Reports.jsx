@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
+import { openAuthExport } from "@/utils/exportWithAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,7 +136,7 @@ export default function ReportsPage() {
               insight on this page.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {RANGE_OPTIONS.map((option) => {
               const active = option.value === range;
               return (
@@ -154,6 +155,15 @@ export default function ReportsPage() {
                 </button>
               );
             })}
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 ml-1"
+              onClick={() => openExport('sales-summary')}
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
           </div>
         </div>
 
@@ -335,13 +345,13 @@ export default function ReportsPage() {
                 })}
               </div>
               <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
-                <Button variant="outline" size="sm" onClick={() => window.open('/api/sales/export', '_blank')} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => openAuthExport('/api/sales/export')} className="gap-2">
                   <FileSpreadsheet className="w-3.5 h-3.5" />
-                  Quick CSV — All Sales
+                  Export All Sales
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => window.open('/api/inventory/export', '_blank')} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => openAuthExport('/api/inventory/export')} className="gap-2">
                   <FileSpreadsheet className="w-3.5 h-3.5" />
-                  Quick CSV — Inventory
+                  Export Inventory
                 </Button>
                 <span className="text-xs text-muted-foreground ml-auto">Excel: up to 50k rows · PDF: first 500 rows</span>
               </div>

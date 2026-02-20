@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText, FileSpreadsheet, Calendar, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { openAuthExport } from "@/utils/exportWithAuth";
 import ExportReportDialog from "@/components/reports/ExportReportDialog";
 
 export default function ReportsExportPopup({ sales, totalProfit, totalSales }) {
@@ -16,7 +17,7 @@ export default function ReportsExportPopup({ sales, totalProfit, totalSales }) {
   }
 
   function handleQuickCsv() {
-    window.open('/api/sales/export', '_blank');
+    openAuthExport('/api/sales/export');
   }
 
   return (

@@ -87,6 +87,8 @@ import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 import { InventoryItemViewDialog } from "@/components/InventoryItemViewDialog";
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
+import { openAuthExport } from "@/utils/exportWithAuth";
+import ExportReportDialog from "@/components/reports/ExportReportDialog";
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 
@@ -563,6 +565,7 @@ export default function Crosslist() {
   const [bulkAction, setBulkAction] = useState(null);
   const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
   const [crosslistLoading, setCrosslistLoading] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   
   // New automation system state
   const [activeJobs, setActiveJobs] = useState({}); // { itemId: jobId }
@@ -1797,6 +1800,14 @@ export default function Crosslist() {
             </p>
           </div>
           <div className="hidden md:flex gap-2 flex-shrink-0 flex-wrap">
+            <Button
+              variant="outline"
+              className="whitespace-nowrap gap-2"
+              onClick={() => setExportOpen(true)}
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
             <Button
               variant="default"
               className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700"
@@ -3191,6 +3202,12 @@ export default function Crosslist() {
         open={productSearchOpen}
         onOpenChange={setProductSearchOpen}
         initialQuery={productSearchQuery}
+      />
+
+      <ExportReportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        defaultReportId="inventory-aging"
       />
     </div>
   );

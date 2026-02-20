@@ -48,6 +48,7 @@ import { GroupDialog, ManageGroupsDialog } from "@/components/GroupDialog";
 import { isConnected } from "@/api/facebookClient";
 const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { supabase } from "@/api/supabaseClient";
+import { openAuthExport } from "@/utils/exportWithAuth";
 import ModeBanner from "@/components/ModeBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
@@ -1738,14 +1739,12 @@ export default function InventoryPage() {
                 if (val === 25 || val === 50 || val === 100 || val === 200) setPageSize(val);
               }}
               onExportCSV={() => {
-                const qs = new URLSearchParams();
-                qs.set('exclude_deleted', 'true');
-                if (filters.search?.trim()) qs.set('search', filters.search.trim());
-                if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
-                else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
-                if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
-                qs.set('limit', '5000');
-                window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
+                const params = { exclude_deleted: 'true', limit: '5000' };
+                if (filters.search?.trim()) params.search = filters.search.trim();
+                if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') params.status = filters.status;
+                else if (filters.status === 'not_sold') params.exclude_status = 'sold';
+                if (favoriteIdsCsv) params.ids = favoriteIdsCsv;
+                openAuthExport('/api/inventory/export', params);
               }}
               pageInfo={{
                 currentPage: pageIndex + 1,
@@ -2034,23 +2033,21 @@ export default function InventoryPage() {
                     </Button>
                   </div>
                   
-                  {/* Export CSV */}
+                  {/* Export */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const qs = new URLSearchParams();
-                      qs.set('exclude_deleted', 'true');
-                      if (filters.search?.trim()) qs.set('search', filters.search.trim());
-                      if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') qs.set('status', filters.status);
-                      else if (filters.status === 'not_sold') qs.set('exclude_status', 'sold');
-                      if (favoriteIdsCsv) qs.set('ids', favoriteIdsCsv);
-                      qs.set('limit', '5000');
-                      window.open(`/api/inventory/export?${qs.toString()}`, '_blank');
+                      const params = { exclude_deleted: 'true', limit: '5000' };
+                      if (filters.search?.trim()) params.search = filters.search.trim();
+                      if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') params.status = filters.status;
+                      else if (filters.status === 'not_sold') params.exclude_status = 'sold';
+                      if (favoriteIdsCsv) params.ids = favoriteIdsCsv;
+                      openAuthExport('/api/inventory/export', params);
                     }}
                     className="self-start md:self-auto"
                   >
-                    Export CSV
+                    Export
                   </Button>
                   
                   {/* Show Dismissed Returns */}

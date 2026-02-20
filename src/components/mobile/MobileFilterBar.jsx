@@ -87,7 +87,7 @@ export default function MobileFilterBar({
         )}
       </div>
 
-      {/* Per Page, Export CSV, Page Info */}
+      {/* Per Page, Export, Page Info */}
       {(pageSize !== undefined || onExportCSV || pageInfo) && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
@@ -123,8 +123,7 @@ export default function MobileFilterBar({
               className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export CSV</span>
-              <span className="sm:hidden">Export</span>
+              <span>Export</span>
             </Button>
           )}
         </div>

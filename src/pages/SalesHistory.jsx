@@ -41,6 +41,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/api/supabaseClient";
+import { openAuthExport } from "@/utils/exportWithAuth";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 
@@ -1273,19 +1274,19 @@ export default function SalesHistory() {
               if (val === 25 || val === 50 || val === 100 || val === 200) setPageSize(val);
             }}
             onExportCSV={() => {
-              const qs = new URLSearchParams();
-              if (showDeletedOnly) qs.set('deleted_only', 'true');
-              else qs.set('include_deleted', 'false');
-              if (!filters.needsReview && filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
-              if (filters.platform && filters.platform !== 'all') qs.set('platform', filters.platform);
-              if (filters.category && filters.category !== 'all') qs.set('category', filters.category);
-              if (filters.minProfit !== '') qs.set('min_profit', String(filters.minProfit));
-              if (filters.maxProfit !== '') qs.set('max_profit', String(filters.maxProfit));
-              if (filters.startDate) qs.set('from', filters.startDate.toISOString().slice(0, 10));
-              if (filters.endDate) qs.set('to', filters.endDate.toISOString().slice(0, 10));
-              if (filters.needsReview) qs.set('needs_review', 'true');
-              qs.set('limit', '5000');
-              window.open(`/api/sales/export?${qs.toString()}`, '_blank');
+              const params = {};
+              if (showDeletedOnly) params.deleted_only = 'true';
+              else params.include_deleted = 'false';
+              if (!filters.needsReview && filters.searchTerm?.trim()) params.search = filters.searchTerm.trim();
+              if (filters.platform && filters.platform !== 'all') params.platform = filters.platform;
+              if (filters.category && filters.category !== 'all') params.category = filters.category;
+              if (filters.minProfit !== '') params.min_profit = String(filters.minProfit);
+              if (filters.maxProfit !== '') params.max_profit = String(filters.maxProfit);
+              if (filters.startDate) params.from = filters.startDate.toISOString().slice(0, 10);
+              if (filters.endDate) params.to = filters.endDate.toISOString().slice(0, 10);
+              if (filters.needsReview) params.needs_review = 'true';
+              params.limit = '5000';
+              openAuthExport('/api/sales/export', params);
             }}
             pageInfo={{
               currentPage: pageIndex + 1,
@@ -1455,24 +1456,23 @@ export default function SalesHistory() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const qs = new URLSearchParams();
-                    // Match current filters; export up to 5000 rows.
-                    if (showDeletedOnly) qs.set('deleted_only', 'true');
-                    else qs.set('include_deleted', 'false');
-                    if (!filters.needsReview && filters.searchTerm?.trim()) qs.set('search', filters.searchTerm.trim());
-                    if (filters.platform && filters.platform !== 'all') qs.set('platform', filters.platform);
-                    if (filters.category && filters.category !== 'all') qs.set('category', filters.category);
-                    if (filters.minProfit !== '') qs.set('min_profit', String(filters.minProfit));
-                    if (filters.maxProfit !== '') qs.set('max_profit', String(filters.maxProfit));
-                    if (filters.startDate) qs.set('from', filters.startDate.toISOString().slice(0, 10));
-                    if (filters.endDate) qs.set('to', filters.endDate.toISOString().slice(0, 10));
-                    if (filters.needsReview) qs.set('needs_review', 'true');
-                    qs.set('limit', '5000');
-                    window.open(`/api/sales/export?${qs.toString()}`, '_blank');
+                    const params = {};
+                    if (showDeletedOnly) params.deleted_only = 'true';
+                    else params.include_deleted = 'false';
+                    if (!filters.needsReview && filters.searchTerm?.trim()) params.search = filters.searchTerm.trim();
+                    if (filters.platform && filters.platform !== 'all') params.platform = filters.platform;
+                    if (filters.category && filters.category !== 'all') params.category = filters.category;
+                    if (filters.minProfit !== '') params.min_profit = String(filters.minProfit);
+                    if (filters.maxProfit !== '') params.max_profit = String(filters.maxProfit);
+                    if (filters.startDate) params.from = filters.startDate.toISOString().slice(0, 10);
+                    if (filters.endDate) params.to = filters.endDate.toISOString().slice(0, 10);
+                    if (filters.needsReview) params.needs_review = 'true';
+                    params.limit = '5000';
+                    openAuthExport('/api/sales/export', params);
                   }}
                   className="flex items-center gap-2 min-w-0 max-w-full"
                 >
-                  Export CSV
+                  Export
                 </Button>
               </div>
             </div>
