@@ -28,6 +28,7 @@ import {
   Zap,
   UserCheck,
   AlertTriangle,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -361,7 +362,7 @@ export default function SmartListingModal({
       ? fixesNeeded.find(mp => mp.marketplace === activeMarketplace)?.issues || []
       : [];
     
-    const { blocking: blockingIssues, warning: warningIssues } = groupIssuesBySeverity(activeIssues);
+    const { blocking: blockingIssues, warning: warningIssues, suggestion: suggestionIssues } = groupIssuesBySeverity(activeIssues);
     
     // Check if all marketplaces are ready to list
     const canListNow = fixesNeeded.every(mp => isMarketplaceReady(mp.issues));
@@ -386,8 +387,9 @@ export default function SmartListingModal({
             
             {/* Marketplaces with issues */}
             {fixesNeeded.map(({ marketplace, issues }) => {
-              const { blocking, warning } = groupIssuesBySeverity(issues);
+              const { blocking, warning, suggestion } = groupIssuesBySeverity(issues);
               const hasBlocking = blocking.length > 0;
+              const hasSuggestions = suggestion.length > 0;
               const isActive = marketplace === activeMarketplace;
               
               return (
@@ -404,6 +406,8 @@ export default function SmartListingModal({
                 >
                   {hasBlocking ? (
                     <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  ) : hasSuggestions ? (
+                    <Wand2 className="w-4 h-4 text-indigo-500 shrink-0" />
                   ) : (
                     <AlertCircle className="w-4 h-4 text-yellow-500 shrink-0" />
                   )}
@@ -411,14 +415,16 @@ export default function SmartListingModal({
                     <div className="text-sm font-medium">
                       {getMarketplaceName(marketplace)}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-1.5">
                       {blocking.length > 0 && (
                         <span className="text-red-600 dark:text-red-400">
-                          {blocking.length} blocking
+                          {blocking.length} required
                         </span>
                       )}
-                      {blocking.length > 0 && warning.length > 0 && (
-                        <span className="mx-1">•</span>
+                      {hasSuggestions && (
+                        <span className="text-indigo-600 dark:text-indigo-400">
+                          {suggestion.length} smart fill
+                        </span>
                       )}
                       {warning.length > 0 && (
                         <span className="text-yellow-600 dark:text-yellow-400">
@@ -448,11 +454,17 @@ export default function SmartListingModal({
                   <div className="flex gap-2 flex-wrap">
                     {blockingIssues.length > 0 && (
                       <Badge variant="destructive">
-                        {blockingIssues.length} Blocking
+                        {blockingIssues.length} Required
+                      </Badge>
+                    )}
+                    {suggestionIssues.length > 0 && (
+                      <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border-0 gap-1">
+                        <Wand2 className="w-3 h-3" />
+                        {suggestionIssues.length} Smart Fill
                       </Badge>
                     )}
                     {warningIssues.length > 0 && (
-                      <Badge variant="warning" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-0">
                         {warningIssues.length} Warning{warningIssues.length !== 1 ? 's' : ''}
                       </Badge>
                     )}

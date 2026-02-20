@@ -275,18 +275,24 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     
     const { marketplace, field, patchTarget } = issue;
 
-    // newValue may be a plain string OR an { id, label } object (e.g. Facebook category picks).
-    const isObject = newValue && typeof newValue === 'object';
-    const displayValue = isObject ? newValue.label : newValue;
+    // newValue may be:
+    //   - a plain string (most fields)
+    //   - an { id, label } object (Facebook category, condition options where id ≠ label)
+    // When `id` differs from `label`, we store the id as the actual form value.
+    const isObject    = newValue !== null && typeof newValue === 'object';
     const idValue     = isObject ? newValue.id    : null;
-    
+    const labelValue  = isObject ? newValue.label : newValue;
+    // Use id as the stored value if it's present (it's the machine-readable key);
+    // fall back to label otherwise.
+    const storedValue = (idValue !== null && idValue !== undefined) ? idValue : labelValue;
+
     // Update the appropriate form
     if (patchTarget === 'general') {
-      setMarketplaceForm('general', field, displayValue);
+      setMarketplaceForm('general', field, storedValue);
     } else {
-      setMarketplaceForm(marketplace, field, displayValue);
+      setMarketplaceForm(marketplace, field, storedValue);
 
-      // For category fields that carry a separate id (e.g. Facebook 'category' + 'categoryId')
+      // Facebook category also needs categoryId persisted
       if (field === 'category' && idValue !== null) {
         setMarketplaceForm(marketplace, 'categoryId', idValue);
       }

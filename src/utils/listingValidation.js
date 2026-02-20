@@ -88,14 +88,298 @@ export function suggestFacebookCategory(generalCategory) {
  * Issue schema for normalized validation results
  * @typedef {Object} Issue
  * @property {'ebay'|'mercari'|'facebook'} marketplace
- * @property {string} field - Field name (e.g., "categoryId", "condition")
- * @property {'missing'|'invalid'|'incomplete_path'|'mismatch'} type
- * @property {'blocking'|'warning'} severity
- * @property {string} message - Human-readable error message
- * @property {Array<{id: string, label: string}>} [options] - Dropdown options
- * @property {{id?: string, label?: string, confidence?: number}} [suggested] - AI suggestion
- * @property {'general'|'ebay'|'mercari'|'facebook'} patchTarget - Which form to patch
+ * @property {string} field
+ * @property {'missing'|'invalid'|'incomplete_path'|'mismatch'|'suggestion'} type
+ * @property {'blocking'|'warning'|'suggestion'} severity
+ * @property {string} message
+ * @property {Array<{id: string, label: string}>} [options]
+ * @property {{id?: string, label: string, confidence?: number, reasoning?: string, sourceField?: string, sourceValue?: string}} [suggested]
+ * @property {'general'|'ebay'|'mercari'|'facebook'} patchTarget
  */
+
+// ---------------------------------------------------------------------------
+// Condition mapping: General form → marketplace-specific values
+// ---------------------------------------------------------------------------
+const CONDITION_MAP = {
+  ebay: {
+    'New With Tags/Box':       { id: 'New',                        label: 'New' },
+    'New Without Tags/Box':    { id: 'New',                        label: 'New' },
+    'New With Imperfections':  { id: 'Open Box',                   label: 'Open Box' },
+    'Pre - Owned - Excellent': { id: 'Used',                       label: 'Used' },
+    'Pre - Owned - Good':      { id: 'Used',                       label: 'Used' },
+    'Pre - Owned - Fair':      { id: 'For parts or not working',   label: 'For parts or not working' },
+  },
+  mercari: {
+    'New With Tags/Box':       { id: 'New',       label: 'New' },
+    'New Without Tags/Box':    { id: 'New',       label: 'New' },
+    'New With Imperfections':  { id: 'Like New',  label: 'Like New' },
+    'Pre - Owned - Excellent': { id: 'Like New',  label: 'Like New' },
+    'Pre - Owned - Good':      { id: 'Good',      label: 'Good' },
+    'Pre - Owned - Fair':      { id: 'Fair',      label: 'Fair' },
+  },
+  facebook: {
+    'New With Tags/Box':       { id: 'new',            label: 'New' },
+    'New Without Tags/Box':    { id: 'new',            label: 'New' },
+    'New With Imperfections':  { id: 'used_like_new',  label: 'Used - Like New' },
+    'Pre - Owned - Excellent': { id: 'used_like_new',  label: 'Used - Like New' },
+    'Pre - Owned - Good':      { id: 'used_good',      label: 'Used - Good' },
+    'Pre - Owned - Fair':      { id: 'used_fair',      label: 'Used - Fair' },
+  },
+};
+
+/**
+ * Map a general-form condition string to the marketplace-specific option.
+ * Returns { id, label } or null if no mapping exists.
+ */
+export function mapCondition(generalCondition, marketplace) {
+  if (!generalCondition || !marketplace) return null;
+  return CONDITION_MAP[marketplace]?.[generalCondition] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Smart suggestions: proactive suggestions derived from the general form
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a suggestion issue object.
+ */
+function makeSuggestion({ marketplace, field, patchTarget, options, suggested, message }) {
+  return {
+    marketplace,
+    field,
+    type: 'suggestion',
+    severity: 'suggestion',
+    message,
+    patchTarget,
+    options,
+    suggested: { ...suggested, confidence: suggested.confidence ?? 0.92 },
+  };
+}
+
+/**
+ * Generate smart suggestions for marketplace-specific fields that can be
+ * derived from the general form.  These appear as proactive "Smart Fill"
+ * items in the review modal — never as blocking errors.
+ *
+ * @param {Object} generalForm
+ * @param {Object} marketplaceForm  - The form for `marketplace`
+ * @param {'ebay'|'mercari'|'facebook'} marketplace
+ * @returns {Issue[]}
+ */
+export function generateSmartSuggestions(generalForm, marketplaceForm, marketplace) {
+  const suggestions = [];
+
+  // -------------------------------------------------------------------------
+  // eBay suggestions
+  // -------------------------------------------------------------------------
+  if (marketplace === 'ebay') {
+    // Condition
+    if (!marketplaceForm.condition && generalForm.condition) {
+      const mapped = mapCondition(generalForm.condition, 'ebay');
+      if (mapped) {
+        suggestions.push(makeSuggestion({
+          marketplace: 'ebay', field: 'condition', patchTarget: 'ebay',
+          options: CONDITION_OPTIONS.ebay,
+          message: `Condition can be mapped from your general listing`,
+          suggested: {
+            id: mapped.id, label: mapped.label, confidence: 0.93,
+            reasoning: `"${generalForm.condition}" → eBay "${mapped.label}"`,
+            sourceField: 'condition', sourceValue: generalForm.condition,
+          },
+        }));
+      }
+    }
+
+    // Brand
+    if (!marketplaceForm.ebayBrand && !marketplaceForm.brand && generalForm.brand) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'ebay', field: 'ebayBrand', patchTarget: 'ebay',
+        message: `Brand can be copied from your general listing`,
+        suggested: {
+          label: generalForm.brand, confidence: 0.95,
+          reasoning: `Using brand "${generalForm.brand}" from your general listing`,
+          sourceField: 'brand', sourceValue: generalForm.brand,
+        },
+      }));
+    }
+
+    // Color
+    if (!marketplaceForm.color && generalForm.color1) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'ebay', field: 'color', patchTarget: 'ebay',
+        message: `Color can be copied from your general listing`,
+        suggested: {
+          label: generalForm.color1, confidence: 0.90,
+          reasoning: `Using color "${generalForm.color1}" from your general listing`,
+          sourceField: 'color1', sourceValue: generalForm.color1,
+        },
+      }));
+    }
+
+    // Price
+    if (!marketplaceForm.buyItNowPrice && generalForm.price) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'ebay', field: 'buyItNowPrice', patchTarget: 'ebay',
+        message: `Price can be copied from your general listing`,
+        suggested: {
+          label: String(generalForm.price), confidence: 0.95,
+          reasoning: `Using price "$${generalForm.price}" from your general listing`,
+          sourceField: 'price', sourceValue: generalForm.price,
+        },
+      }));
+    }
+
+    // Pricing format default
+    if (!marketplaceForm.pricingFormat) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'ebay', field: 'pricingFormat', patchTarget: 'ebay',
+        options: PRICING_FORMAT_OPTIONS,
+        message: `Recommended listing format`,
+        suggested: {
+          id: 'fixed', label: 'Fixed Price', confidence: 0.90,
+          reasoning: 'Fixed Price is the standard format for Buy It Now listings',
+        },
+      }));
+    }
+
+    // Duration default
+    if (!marketplaceForm.duration) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'ebay', field: 'duration', patchTarget: 'ebay',
+        options: DURATION_OPTIONS,
+        message: `Recommended listing duration`,
+        suggested: {
+          id: "Good 'Til Canceled", label: "Good 'Til Canceled", confidence: 0.88,
+          reasoning: "Good 'Til Canceled keeps your listing active until sold",
+        },
+      }));
+    }
+
+    // Handling time default
+    if (!marketplaceForm.handlingTime) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'ebay', field: 'handlingTime', patchTarget: 'ebay',
+        options: HANDLING_TIME_OPTIONS,
+        message: `Recommended handling time`,
+        suggested: {
+          id: '1', label: '1 business day', confidence: 0.85,
+          reasoning: '1 business day is the fastest handling time and improves search ranking',
+        },
+      }));
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Mercari suggestions
+  // -------------------------------------------------------------------------
+  if (marketplace === 'mercari') {
+    // Condition
+    if (!marketplaceForm.condition && generalForm.condition) {
+      const mapped = mapCondition(generalForm.condition, 'mercari');
+      if (mapped) {
+        suggestions.push(makeSuggestion({
+          marketplace: 'mercari', field: 'condition', patchTarget: 'mercari',
+          options: CONDITION_OPTIONS.mercari,
+          message: `Condition can be mapped from your general listing`,
+          suggested: {
+            id: mapped.id, label: mapped.label, confidence: 0.93,
+            reasoning: `"${generalForm.condition}" → Mercari "${mapped.label}"`,
+            sourceField: 'condition', sourceValue: generalForm.condition,
+          },
+        }));
+      }
+    }
+
+    // Brand
+    if (!marketplaceForm.brand && generalForm.brand) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'mercari', field: 'brand', patchTarget: 'mercari',
+        message: `Brand can be copied from your general listing`,
+        suggested: {
+          label: generalForm.brand, confidence: 0.95,
+          reasoning: `Using brand "${generalForm.brand}" from your general listing`,
+          sourceField: 'brand', sourceValue: generalForm.brand,
+        },
+      }));
+    }
+
+    // Color
+    if (!marketplaceForm.color && generalForm.color1) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'mercari', field: 'color', patchTarget: 'mercari',
+        message: `Color can be copied from your general listing`,
+        suggested: {
+          label: generalForm.color1, confidence: 0.90,
+          reasoning: `Using color "${generalForm.color1}" from your general listing`,
+          sourceField: 'color1', sourceValue: generalForm.color1,
+        },
+      }));
+    }
+
+    // Size
+    if (!marketplaceForm.size && generalForm.size) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'mercari', field: 'size', patchTarget: 'mercari',
+        message: `Size can be copied from your general listing`,
+        suggested: {
+          label: generalForm.size, confidence: 0.90,
+          reasoning: `Using size "${generalForm.size}" from your general listing`,
+          sourceField: 'size', sourceValue: generalForm.size,
+        },
+      }));
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Facebook suggestions
+  // -------------------------------------------------------------------------
+  if (marketplace === 'facebook') {
+    // Condition
+    if (!marketplaceForm.condition && generalForm.condition) {
+      const mapped = mapCondition(generalForm.condition, 'facebook');
+      if (mapped) {
+        suggestions.push(makeSuggestion({
+          marketplace: 'facebook', field: 'condition', patchTarget: 'facebook',
+          options: CONDITION_OPTIONS.facebook,
+          message: `Condition can be mapped from your general listing`,
+          suggested: {
+            id: mapped.id, label: mapped.label, confidence: 0.93,
+            reasoning: `"${generalForm.condition}" → Facebook "${mapped.label}"`,
+            sourceField: 'condition', sourceValue: generalForm.condition,
+          },
+        }));
+      }
+    }
+
+    // Brand
+    if (!marketplaceForm.brand && generalForm.brand) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'facebook', field: 'brand', patchTarget: 'facebook',
+        message: `Brand can be copied from your general listing`,
+        suggested: {
+          label: generalForm.brand, confidence: 0.95,
+          reasoning: `Using brand "${generalForm.brand}" from your general listing`,
+          sourceField: 'brand', sourceValue: generalForm.brand,
+        },
+      }));
+    }
+
+    // Size
+    if (!marketplaceForm.size && generalForm.size) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'facebook', field: 'size', patchTarget: 'facebook',
+        message: `Size can be copied from your general listing`,
+        suggested: {
+          label: generalForm.size, confidence: 0.90,
+          reasoning: `Using size "${generalForm.size}" from your general listing`,
+          sourceField: 'size', sourceValue: generalForm.size,
+        },
+      }));
+    }
+  }
+
+  return suggestions;
+}
 
 // Dropdown options for common fields
 const CONDITION_OPTIONS = {
@@ -336,40 +620,66 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
     });
   }
   
-  // Condition validation
+  // Condition validation — pre-suggest from general form condition mapping
   if (!ebayForm.condition) {
+    const condMapped = generalForm.condition ? mapCondition(generalForm.condition, 'ebay') : null;
     issues.push({
       marketplace: 'ebay',
       field: 'condition',
       type: 'missing',
       severity: 'blocking',
-      message: 'Condition is required',
+      message: 'Condition is required for eBay',
       options: CONDITION_OPTIONS.ebay,
-      patchTarget: 'ebay'
+      patchTarget: 'ebay',
+      suggested: condMapped ? {
+        id: condMapped.id, label: condMapped.label, confidence: 0.92,
+        reasoning: `"${generalForm.condition}" → eBay "${condMapped.label}"`,
+        sourceField: 'condition', sourceValue: generalForm.condition,
+      } : undefined,
     });
   }
   
-  // Brand validation (eBay brand or general brand)
+  // Brand validation — pre-suggest from general form brand
   if (!ebayForm.ebayBrand && !generalForm.brand) {
     issues.push({
       marketplace: 'ebay',
       field: 'ebayBrand',
       type: 'missing',
       severity: 'blocking',
-      message: 'Brand is required',
-      patchTarget: 'ebay'
+      message: 'Brand is required for eBay',
+      patchTarget: 'ebay',
+    });
+  } else if (!ebayForm.ebayBrand && generalForm.brand) {
+    // Brand is available from general form — add as a suggestion-aware blocking issue
+    issues.push({
+      marketplace: 'ebay',
+      field: 'ebayBrand',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'eBay-specific brand is required',
+      patchTarget: 'ebay',
+      suggested: {
+        label: generalForm.brand, confidence: 0.95,
+        reasoning: `Using brand "${generalForm.brand}" from your general listing`,
+        sourceField: 'brand', sourceValue: generalForm.brand,
+      },
     });
   }
   
-  // Color validation
+  // Color validation — pre-suggest from general form color
   if (!ebayForm.color) {
     issues.push({
       marketplace: 'ebay',
       field: 'color',
       type: 'missing',
       severity: 'blocking',
-      message: 'Color is required',
-      patchTarget: 'ebay'
+      message: 'Color is required for eBay',
+      patchTarget: 'ebay',
+      suggested: generalForm.color1 ? {
+        label: generalForm.color1, confidence: 0.90,
+        reasoning: `Using color "${generalForm.color1}" from your general listing`,
+        sourceField: 'color1', sourceValue: generalForm.color1,
+      } : undefined,
     });
   }
   
@@ -630,20 +940,36 @@ export function validateMercariForm(generalForm, mercariForm) {
     });
   }
   
-  // Condition validation
+  // Condition validation — pre-suggest from general form
   if (!mercariForm.condition && !generalForm.condition) {
     issues.push({
       marketplace: 'mercari',
       field: 'condition',
       type: 'missing',
       severity: 'blocking',
-      message: 'Condition is required',
+      message: 'Condition is required for Mercari',
       options: CONDITION_OPTIONS.mercari,
-      patchTarget: 'mercari'
+      patchTarget: 'mercari',
+    });
+  } else if (!mercariForm.condition && generalForm.condition) {
+    const condMapped = mapCondition(generalForm.condition, 'mercari');
+    issues.push({
+      marketplace: 'mercari',
+      field: 'condition',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Mercari-specific condition is required',
+      options: CONDITION_OPTIONS.mercari,
+      patchTarget: 'mercari',
+      suggested: condMapped ? {
+        id: condMapped.id, label: condMapped.label, confidence: 0.92,
+        reasoning: `"${generalForm.condition}" → Mercari "${condMapped.label}"`,
+        sourceField: 'condition', sourceValue: generalForm.condition,
+      } : undefined,
     });
   }
   
-  // Brand validation (either brand OR noBrand must be set)
+  // Brand validation
   const brand = mercariForm.brand || generalForm.brand;
   if (!brand && !mercariForm.noBrand) {
     issues.push({
@@ -651,8 +977,22 @@ export function validateMercariForm(generalForm, mercariForm) {
       field: 'brand',
       type: 'missing',
       severity: 'blocking',
-      message: 'Brand is required. Type a brand name, or set "noBrand" to true to skip.',
-      patchTarget: 'mercari'
+      message: 'Brand is required. Enter a brand name or check "No Brand".',
+      patchTarget: 'mercari',
+    });
+  } else if (!mercariForm.brand && generalForm.brand && !mercariForm.noBrand) {
+    issues.push({
+      marketplace: 'mercari',
+      field: 'brand',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Mercari-specific brand field is required',
+      patchTarget: 'mercari',
+      suggested: {
+        label: generalForm.brand, confidence: 0.95,
+        reasoning: `Using brand "${generalForm.brand}" from your general listing`,
+        sourceField: 'brand', sourceValue: generalForm.brand,
+      },
     });
   }
   
@@ -777,16 +1117,32 @@ export function validateFacebookForm(generalForm, facebookForm) {
     });
   }
   
-  // Condition validation
+  // Condition validation — pre-suggest from general form
   if (!facebookForm.condition && !generalForm.condition) {
     issues.push({
       marketplace: 'facebook',
       field: 'condition',
       type: 'missing',
       severity: 'blocking',
-      message: 'Condition is required',
+      message: 'Condition is required for Facebook Marketplace',
       options: CONDITION_OPTIONS.facebook,
-      patchTarget: 'facebook'
+      patchTarget: 'facebook',
+    });
+  } else if (!facebookForm.condition && generalForm.condition) {
+    const condMapped = mapCondition(generalForm.condition, 'facebook');
+    issues.push({
+      marketplace: 'facebook',
+      field: 'condition',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Facebook-specific condition is required',
+      options: CONDITION_OPTIONS.facebook,
+      patchTarget: 'facebook',
+      suggested: condMapped ? {
+        id: condMapped.id, label: condMapped.label, confidence: 0.92,
+        reasoning: `"${generalForm.condition}" → Facebook "${condMapped.label}"`,
+        sourceField: 'condition', sourceValue: generalForm.condition,
+      } : undefined,
     });
   }
   

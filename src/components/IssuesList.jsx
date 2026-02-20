@@ -1,8 +1,14 @@
 /**
- * IssuesList - Displays validation issues and provides UI to fix them
+ * IssuesList – displays Smart Suggestions + Blocking Issues for a single marketplace
+ * in the Smart Listing review modal.
+ *
+ * Sections (in order):
+ *  1. Smart Fill banner  – fields mappable from the general form (severity: 'suggestion')
+ *  2. Blocking issues    – required fields that must be resolved before listing
+ *  3. Warnings           – non-blocking flags
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,240 +27,297 @@ import {
   XCircle,
   CheckCircle,
   Sparkles,
+  ArrowRight,
+  Wand2,
+  Info,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getFieldLabel, groupIssuesBySeverity } from '@/utils/preflightEngine';
 
-/**
- * Get icon for issue severity
- */
-function IssueIcon({ severity, className }) {
-  if (severity === 'blocking') {
-    return <XCircle className={cn("w-5 h-5 text-red-500", className)} />;
-  }
-  return <AlertCircle className={cn("w-5 h-5 text-yellow-500", className)} />;
+// ---------------------------------------------------------------------------
+// Fields that must be chosen via the marketplace's own category picker tree
+// (eBay and Mercari have hierarchical pickers that can't be replicated here)
+// ---------------------------------------------------------------------------
+const TREE_CATEGORY_FIELDS = ['categoryId', 'mercariCategory', 'mercariCategoryId'];
+
+function getCategoryTabHint(marketplace) {
+  const tab = marketplace === 'ebay' ? 'eBay'
+    : marketplace === 'mercari' ? 'Mercari'
+    : 'marketplace';
+  return `Open the ${tab} tab in the form, select a category, then re-open Smart Listing.`;
 }
 
-/**
- * Confidence badge component
- */
-function ConfidenceBadge({ confidence }) {
-  if (confidence >= 0.85) {
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Determine the actual value to store when applying a suggestion or option. */
+function resolveApplyValue(issue, rawValue) {
+  // Facebook category options carry { id, label } objects
+  if (issue.field === 'category' && issue.marketplace === 'facebook' && rawValue && typeof rawValue === 'object') {
+    return rawValue;
+  }
+  // For suggestion issues the suggested.id may differ from label (e.g. Facebook condition)
+  return rawValue;
+}
+
+// ---------------------------------------------------------------------------
+// SmartSuggestionItem – one row in the Smart Fill section
+// ---------------------------------------------------------------------------
+function SmartSuggestionItem({ issue, onApplyFix, onApplied }) {
+  const [applied, setApplied] = useState(false);
+  const [applying, setApplying] = useState(false);
+
+  const label  = getFieldLabel(issue.field);
+  const sugg   = issue.suggested;
+  const value  = sugg?.id ?? sugg?.label ?? '';
+  const display = sugg?.label ?? value;
+
+  async function handleApply() {
+    if (!value) return;
+    setApplying(true);
+    try {
+      await onApplyFix(issue, sugg?.id ? { id: sugg.id, label: sugg.label } : value);
+      setApplied(true);
+      onApplied?.();
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  if (applied) {
     return (
-      <Badge variant="success" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-        <Sparkles className="w-3 h-3 mr-1" />
-        Auto-suggested
-      </Badge>
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+        <Check className="w-4 h-4 text-green-600 shrink-0" />
+        <span className="text-sm font-medium text-green-800 dark:text-green-300 flex-1">{label}</span>
+        <span className="text-xs text-green-600 dark:text-green-400">Applied ✓</span>
+      </div>
     );
   }
-  
-  if (confidence >= 0.70) {
-    return (
-      <Badge variant="warning" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-        <Sparkles className="w-3 h-3 mr-1" />
-        Suggested (review)
-      </Badge>
-    );
-  }
-  
+
   return (
-    <Badge variant="secondary">
-      Low confidence - please confirm
-    </Badge>
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-card hover:bg-muted/30 transition-colors group">
+      {/* Field + mapping */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-sm font-semibold text-foreground">{label}</span>
+          {sugg?.sourceField && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
+              from General
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {sugg?.sourceValue && (
+            <>
+              <span className="italic truncate max-w-[120px]">{sugg.sourceValue}</span>
+              <ArrowRight className="w-3 h-3 shrink-0" />
+            </>
+          )}
+          <span className="font-medium text-foreground truncate">{display}</span>
+        </div>
+        {sugg?.reasoning && (
+          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sugg.reasoning}</p>
+        )}
+      </div>
+
+      {/* Apply button */}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleApply}
+        disabled={applying}
+        className="shrink-0 h-8 gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+      >
+        {applying ? (
+          <span className="animate-pulse">Applying…</span>
+        ) : (
+          <>
+            <Check className="w-3 h-3" />
+            Apply
+          </>
+        )}
+      </Button>
+    </div>
   );
 }
 
-// Fields that require navigating to the marketplace form tab (can't be typed in directly).
-// Note: 'category' (Facebook) is intentionally excluded here – it now gets proper
-// dropdown options from FACEBOOK_CATEGORIES, so it can be handled inline.
-const CATEGORY_FIELDS = ['categoryId', 'mercariCategory', 'mercariCategoryId'];
+// ---------------------------------------------------------------------------
+// BlockingIssueItem – one required field that needs manual input or a fix
+// ---------------------------------------------------------------------------
+function BlockingIssueItem({ issue, onApplyFix }) {
+  const [localValue, setLocalValue] = useState('');
+  const [localOption, setLocalOption] = useState(null); // { id, label }
+  const [applying, setApplying] = useState(false);
 
-// Map marketplace + field to the tab the user needs to visit
-function getCategoryTabHint(marketplace, field) {
-  const tabName = marketplace === 'ebay' ? 'eBay'
-    : marketplace === 'mercari' ? 'Mercari'
-    : marketplace === 'facebook' ? 'Facebook'
-    : 'marketplace';
-  return `Open the ${tabName} tab in the form and select the category using the category picker there.`;
-}
-
-/**
- * IssueItem - Single issue with fix UI
- */
-function IssueItem({ issue, onApplyFix }) {
-  // localOption stores the full { id, label } for option-based pickers; localValue for text inputs
-  const [localValue, setLocalValue] = React.useState('');
-  const [localOption, setLocalOption] = React.useState(null); // { id, label }
-  const [isApplying, setIsApplying] = React.useState(false);
-  
-  const fieldLabel = getFieldLabel(issue.field);
+  const label         = getFieldLabel(issue.field);
   const hasSuggestion = Boolean(issue.suggested);
-  const hasOptions = Boolean(issue.options && issue.options.length > 0);
-  const isCategoryField = CATEGORY_FIELDS.includes(issue.field);
-  
-  // Determine if this issue uses an option picker that carries id+label pairs
-  // (currently: Facebook 'category' field which needs both category name and categoryId slug)
-  const isOptionIdField = issue.field === 'category' && issue.marketplace === 'facebook';
+  const hasOptions    = Boolean(issue.options?.length);
+  const isTreeCategory = TREE_CATEGORY_FIELDS.includes(issue.field);
+  const isFbCategory  = issue.field === 'category' && issue.marketplace === 'facebook';
 
-  // Handle apply fix — pass { id, label } for option-picker fields so the handler
-  // can persist both the display name and the slug.
-  const handleApply = async (value) => {
-    let valueToApply;
-    if (value !== undefined) {
-      valueToApply = value;
-    } else if (isOptionIdField && localOption) {
-      valueToApply = localOption; // { id, label }
+  async function handleApply(raw) {
+    let val;
+    if (raw !== undefined) {
+      val = raw;
+    } else if (isFbCategory && localOption) {
+      val = localOption;
     } else {
-      valueToApply = localValue || issue.suggested?.label;
+      val = localValue || (issue.suggested?.id ?? issue.suggested?.label);
     }
-    if (!valueToApply) return;
-    setIsApplying(true);
+    if (!val) return;
+    setApplying(true);
     try {
-      await onApplyFix(issue, valueToApply);
+      await onApplyFix(issue, val);
     } finally {
-      setIsApplying(false);
+      setApplying(false);
     }
-  };
-  
-  // For connection errors, don't show input - just the message
-  if (issue.field === '_connection' || issue.field === '_error' || issue.field === '_marketplace') {
+  }
+
+  // Special fields: connection/error – simple alert only
+  if (issue.field.startsWith('_')) {
     return (
-      <Alert variant={issue.severity === 'blocking' ? 'destructive' : 'default'}>
-        <IssueIcon severity={issue.severity} className="h-4 w-4" />
+      <Alert variant="destructive">
+        <XCircle className="h-4 w-4" />
         <AlertDescription>
-          <div className="font-medium">{fieldLabel}</div>
-          <div className="text-sm mt-1">{issue.message}</div>
+          <div className="font-semibold">{label}</div>
+          <div className="text-sm mt-0.5">{issue.message}</div>
         </AlertDescription>
       </Alert>
     );
   }
-  
+
   return (
-    <div className="space-y-3 p-4 border rounded-lg">
-      <div className="flex items-start gap-3">
-        <IssueIcon severity={issue.severity} className="mt-0.5" />
+    <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50/40 dark:bg-red-950/10 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-start gap-3 px-4 py-3 border-b border-red-200/60 dark:border-red-900/50">
+        <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-medium text-sm">{fieldLabel}</h4>
-            {issue.severity === 'blocking' && (
-              <Badge variant="destructive" className="text-xs">Required</Badge>
-            )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold">{label}</span>
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Required</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{issue.message}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{issue.message}</p>
         </div>
       </div>
-      
-      {/* Fix UI */}
-      <div className="ml-8 space-y-2">
 
-        {/* Category fields: can't be typed — must use the marketplace form tab */}
-        {isCategoryField ? (
-          <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+      {/* Fix UI */}
+      <div className="px-4 py-3 space-y-3">
+        {/* Tree-category: must use the marketplace picker */}
+        {isTreeCategory ? (
+          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
             <AlertDescription className="text-xs text-amber-900 dark:text-amber-100">
-              <strong>Use the category picker:</strong>{' '}
-              {getCategoryTabHint(issue.marketplace, issue.field)}
-              {' '}Close this dialog, fill in the category, then re-open Smart Listing.
+              <strong>Use the category picker:</strong>{' '}{getCategoryTabHint(issue.marketplace)}
             </AlertDescription>
           </Alert>
         ) : (
           <>
-            {/* AI Suggestion (shown when available) */}
+            {/* AI / client-side suggestion */}
             {hasSuggestion && (
-              <div className="p-3 bg-muted/50 rounded-md border">
-                <div className="flex items-center justify-between mb-2">
-                  <ConfidenceBadge confidence={issue.suggested.confidence || 0} />
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-semibold text-primary">Suggested</span>
+                  </div>
+                  <SuggestionConfidence confidence={issue.suggested.confidence ?? 0} />
                 </div>
-                <div className="text-sm font-medium mb-2">
-                  Suggested: {issue.suggested.label}
-                </div>
+                <p className="text-sm font-medium mb-1">{issue.suggested.label}</p>
                 {issue.suggested.reasoning && (
-                  <p className="text-xs text-muted-foreground mb-2">{issue.suggested.reasoning}</p>
+                  <p className="text-[11px] text-muted-foreground mb-2">{issue.suggested.reasoning}</p>
                 )}
                 <Button
                   size="sm"
-                  onClick={() => handleApply(issue.suggested.label)}
-                  disabled={isApplying}
-                  className="w-full"
+                  onClick={() => handleApply(issue.suggested.id ?? issue.suggested.label)}
+                  disabled={applying}
+                  className="w-full h-8 text-xs gap-1.5"
                 >
-                  {isApplying ? 'Applying...' : 'Apply Suggestion'}
+                  <Check className="w-3 h-3" />
+                  {applying ? 'Applying…' : 'Apply Suggestion'}
                 </Button>
               </div>
             )}
-            
-            {/* Dropdown for fields with predefined options */}
+
+            {/* Dropdown for predefined options */}
             {hasOptions && (
               <div>
-                <Label className="text-xs mb-1.5 block">
-                  {hasSuggestion ? 'Or choose a different value:' : `Select ${fieldLabel}`}
+                <Label className="text-xs text-muted-foreground mb-1.5 block">
+                  {hasSuggestion ? 'Or choose a different value:' : `Select ${label}`}
                 </Label>
-                <Select
-                  value={isOptionIdField ? (localOption?.id || '') : localValue}
-                  onValueChange={(selectedId) => {
-                    if (isOptionIdField) {
-                      const opt = issue.options.find(o => o.id === selectedId);
-                      setLocalOption(opt || { id: selectedId, label: selectedId });
-                    } else {
-                      setLocalValue(selectedId);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={`Choose ${fieldLabel.toLowerCase()}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {issue.options.map(option => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {(isOptionIdField ? localOption : localValue) && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleApply(isOptionIdField ? localOption : localValue)}
-                    disabled={isApplying}
-                    className="w-full mt-2"
+                <div className="flex gap-2">
+                  <Select
+                    value={isFbCategory ? (localOption?.id || '') : localValue}
+                    onValueChange={(id) => {
+                      if (isFbCategory) {
+                        const opt = issue.options.find(o => o.id === id);
+                        setLocalOption(opt ?? { id, label: id });
+                      } else {
+                        setLocalValue(id);
+                      }
+                    }}
                   >
-                    {isApplying ? 'Applying…' : `Apply "${isOptionIdField ? localOption?.label : (issue.options.find(o => o.id === localValue)?.label || localValue)}"`}
-                  </Button>
-                )}
+                    <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectValue placeholder={`Choose ${label.toLowerCase()}…`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {issue.options.map(opt => (
+                        <SelectItem key={opt.id} value={opt.id} className="text-xs">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(isFbCategory ? localOption : localValue) && (
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs shrink-0"
+                      onClick={() => handleApply(isFbCategory ? localOption : localValue)}
+                      disabled={applying}
+                    >
+                      {applying ? '…' : 'Apply'}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
-            
-            {/* Manual text/number/textarea input for fields with no options or suggestion */}
+
+            {/* Text / number input for fields with no predefined options */}
             {!hasOptions && (
               <div>
-                <Label className="text-xs mb-1.5 block">
-                  {hasSuggestion ? 'Or enter a custom value:' : `Enter ${fieldLabel}`}
+                <Label className="text-xs text-muted-foreground mb-1.5 block">
+                  {hasSuggestion ? 'Or enter a custom value:' : `Enter ${label}`}
                 </Label>
-                {issue.field === 'description' ? (
-                  <Textarea
-                    value={localValue}
-                    onChange={(e) => setLocalValue(e.target.value)}
-                    placeholder={`Enter ${fieldLabel.toLowerCase()}`}
-                    rows={4}
-                    className="resize-none"
-                  />
-                ) : (
-                  <Input
-                    type={issue.field.includes('price') || issue.field === 'quantity' ? 'number' : 'text'}
-                    value={localValue}
-                    onChange={(e) => setLocalValue(e.target.value)}
-                    placeholder={`Enter ${fieldLabel.toLowerCase()}`}
-                  />
-                )}
-                {localValue && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleApply(localValue)}
-                    disabled={isApplying}
-                    className="w-full mt-2"
-                  >
-                    {isApplying ? 'Applying...' : 'Apply'}
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {issue.field === 'description' ? (
+                    <Textarea
+                      value={localValue}
+                      onChange={e => setLocalValue(e.target.value)}
+                      placeholder={`Enter ${label.toLowerCase()}…`}
+                      rows={3}
+                      className="resize-none text-xs flex-1"
+                    />
+                  ) : (
+                    <Input
+                      type={issue.field.includes('price') || issue.field === 'quantity' ? 'number' : 'text'}
+                      value={localValue}
+                      onChange={e => setLocalValue(e.target.value)}
+                      placeholder={`Enter ${label.toLowerCase()}…`}
+                      className="h-8 text-xs flex-1"
+                    />
+                  )}
+                  {localValue && (
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs shrink-0"
+                      onClick={() => handleApply(localValue)}
+                      disabled={applying}
+                    >
+                      {applying ? '…' : 'Apply'}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </>
@@ -264,96 +327,171 @@ function IssueItem({ issue, onApplyFix }) {
   );
 }
 
-/**
- * IssuesList component
- */
+function SuggestionConfidence({ confidence }) {
+  if (confidence >= 0.88) {
+    return (
+      <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0">
+        High confidence
+      </Badge>
+    );
+  }
+  if (confidence >= 0.70) {
+    return (
+      <Badge className="text-[10px] px-1.5 py-0 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-0">
+        Review
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+      Low confidence
+    </Badge>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// IssuesList (main export)
+// ---------------------------------------------------------------------------
 export default function IssuesList({ marketplace, issues, onApplyFix }) {
-  const { blocking, warning } = groupIssuesBySeverity(issues);
-  
-  // Check if there are AI suggestions
-  const hasAISuggestions = issues.some(issue => issue.suggested);
-  const aiSuggestions = issues.filter(issue => issue.suggested);
-  
-  // Handler to accept all AI suggestions
-  const handleAcceptAllAI = async () => {
-    for (const issue of aiSuggestions) {
-      await onApplyFix(issue, issue.suggested.label);
+  const { blocking, warning, suggestion } = groupIssuesBySeverity(issues);
+
+  // Track how many suggestions have been applied (to update the banner count live)
+  const [appliedCount, setAppliedCount] = useState(0);
+  const pendingSuggestions = suggestion.length - appliedCount;
+
+  // Accept all smart-fill suggestions in sequence
+  async function handleApplyAllSuggestions() {
+    for (const issue of suggestion) {
+      const sugg = issue.suggested;
+      if (!sugg) continue;
+      const val = sugg.id ? { id: sugg.id, label: sugg.label } : sugg.label;
+      await onApplyFix(issue, val);
+      setAppliedCount(c => c + 1);
     }
-  };
-  
+  }
+
   if (issues.length === 0) {
     return (
-      <div className="text-center py-8">
-        <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
-        <p className="text-lg font-medium">All Set!</p>
-        <p className="text-sm text-muted-foreground">
-          This marketplace is ready to list
-        </p>
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-950/40 flex items-center justify-center mb-3">
+          <CheckCircle className="w-7 h-7 text-green-500" />
+        </div>
+        <p className="text-base font-semibold">All Set!</p>
+        <p className="text-sm text-muted-foreground mt-1">This marketplace is ready to list.</p>
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
-      {/* Accept All AI Suggestions Button */}
-      {hasAISuggestions && (
-        <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm mb-1">AI Suggestions Ready</h4>
-              <p className="text-xs text-muted-foreground mb-3">
-                We've automatically filled {aiSuggestions.length} field{aiSuggestions.length !== 1 ? 's' : ''} based on your product information
-              </p>
-              <Button
-                onClick={handleAcceptAllAI}
-                size="sm"
-                className="w-full"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Accept All {aiSuggestions.length} AI Suggestion{aiSuggestions.length !== 1 ? 's' : ''}
-              </Button>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* SMART FILL SECTION                                                */}
+      {/* ---------------------------------------------------------------- */}
+      {suggestion.length > 0 && (
+        <section>
+          {/* Banner */}
+          <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/30 border border-indigo-200/70 dark:border-indigo-800/60 p-4 mb-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 flex items-center justify-center shrink-0">
+                <Wand2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
+                      Smart Fill
+                    </h4>
+                    <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-0.5">
+                      {pendingSuggestions > 0
+                        ? `${pendingSuggestions} field${pendingSuggestions !== 1 ? 's' : ''} can be auto-filled from your general listing`
+                        : 'All suggestions applied!'}
+                    </p>
+                  </div>
+                  {pendingSuggestions > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={handleApplyAllSuggestions}
+                      className="h-8 gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Apply All ({pendingSuggestions})
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Suggestion rows */}
+          <div className="space-y-2">
+            {suggestion.map((issue, i) => (
+              <SmartSuggestionItem
+                key={`${issue.field}-${i}`}
+                issue={issue}
+                onApplyFix={onApplyFix}
+                onApplied={() => setAppliedCount(c => c + 1)}
+              />
+            ))}
+          </div>
+        </section>
       )}
-      
-      {/* Blocking issues */}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* BLOCKING ISSUES                                                   */}
+      {/* ---------------------------------------------------------------- */}
       {blocking.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <section>
+          <div className="flex items-center gap-2 mb-3">
             <XCircle className="w-4 h-4 text-red-500" />
-            Blocking Issues ({blocking.length})
-          </h4>
+            <h4 className="text-sm font-semibold">
+              Required Fields
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({blocking.length} must be fixed before listing)
+              </span>
+            </h4>
+          </div>
           <div className="space-y-3">
-            {blocking.map((issue, index) => (
-              <IssueItem
-                key={`${issue.field}-${index}`}
+            {blocking.map((issue, i) => (
+              <BlockingIssueItem
+                key={`${issue.field}-${i}`}
                 issue={issue}
                 onApplyFix={onApplyFix}
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
-      
-      {/* Warning issues */}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* WARNINGS                                                          */}
+      {/* ---------------------------------------------------------------- */}
       {warning.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <section>
+          <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="w-4 h-4 text-yellow-500" />
-            Warnings ({warning.length})
-          </h4>
-          <div className="space-y-3">
-            {warning.map((issue, index) => (
-              <IssueItem
-                key={`${issue.field}-${index}`}
-                issue={issue}
-                onApplyFix={onApplyFix}
-              />
+            <h4 className="text-sm font-semibold">
+              Warnings
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({warning.length})
+              </span>
+            </h4>
+          </div>
+          <div className="space-y-2">
+            {warning.map((issue, i) => (
+              <Alert
+                key={`${issue.field}-${i}`}
+                className="border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/10 dark:border-yellow-900"
+              >
+                <Info className="h-4 w-4 text-yellow-600" />
+                <AlertDescription>
+                  <span className="font-medium">{getFieldLabel(issue.field)}:</span>{' '}
+                  {issue.message}
+                </AlertDescription>
+              </Alert>
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );
