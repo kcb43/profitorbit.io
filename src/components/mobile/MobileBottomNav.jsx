@@ -45,7 +45,7 @@ export default function MobileBottomNav() {
 
   const isDashboard = path === "/" || path.toLowerCase().includes("/dashboard");
   const isInventory = path.toLowerCase().includes("/inventory");
-  const isTools = path.toLowerCase().includes("/tools") || path.toLowerCase().includes("/crosslist") || path.toLowerCase().includes("/addsale") || path.toLowerCase().includes("/pulse") || path.toLowerCase().includes("/deals") || path.toLowerCase().includes("/product-search");
+  const isTools = path.toLowerCase().includes("/tools") || path.toLowerCase().includes("/crosslist") || path.toLowerCase().includes("/addsale") || path.toLowerCase().includes("/pulse") || path.toLowerCase().includes("/deals") || path.toLowerCase().includes("/product-search") || path.toLowerCase().includes("/shipping");
   const isAnalytics = path.toLowerCase().includes("/analytics") || path.toLowerCase().includes("/reports") || path.toLowerCase().includes("/profitcalendar") || path.toLowerCase().includes("/gallery") || path.toLowerCase().includes("/saleshistory");
 
   return (

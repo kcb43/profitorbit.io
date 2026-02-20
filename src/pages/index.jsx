@@ -56,6 +56,9 @@ const SubmitDeal = React.lazy(() => import("./SubmitDeal"));
 // News
 const News = React.lazy(() => import("./News"));
 
+// Shipping
+const Shipping = React.lazy(() => import("./Shipping"));
+
 // Training Center
 const Training = React.lazy(() => import("./Training"));
 const TrainingGuide = React.lazy(() => import("./TrainingGuide"));
@@ -577,6 +580,20 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Rewards">
                         {withSuspense(<RewardsNew />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+
+              {/* Shipping */}
+              <Route
+                path="/shipping"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Shipping">
+                        {withSuspense(<Shipping />)}
                       </Layout>
                     )}
                   </AuthGuard>

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper, Truck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNewsBadge } from "@/api/newsApi";
 import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
@@ -44,6 +44,7 @@ const navigationCategories = [
       { title: "Pro Tools", url: createPageUrl("Pro Tools"), icon: Sparkles },
       { title: "Import", url: createPageUrl("Import"), icon: Activity },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
+      { title: "Shipping", url: "/shipping", icon: Truck },
     ]
   },
   {
@@ -109,6 +110,7 @@ const ROUTE_MAP = [
   { path: '/training/playbooks',           label: 'Playbooks',           icon: GraduationCap, parent: { label: 'Training Center', path: '/training', icon: GraduationCap } },
   { path: '/training',                     label: 'Training Center',     icon: GraduationCap },
   { path: '/news',                         label: 'News',                icon: Newspaper },
+  { path: '/shipping',                     label: 'Shipping',            icon: Truck },
 ];
 
 function PageBreadcrumb({ pathname }) {
