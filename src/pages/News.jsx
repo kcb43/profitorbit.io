@@ -49,6 +49,21 @@ function tagClass(tag) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Strip any HTML / comments that slipped through from RSS feeds (e.g. Reddit <!-- SC_OFF -->) */
+function cleanSummary(raw) {
+  if (!raw) return null;
+  return String(raw)
+    .replace(/<!--[\s\S]*?-->/g, '')   // HTML comments
+    .replace(/<[^>]*>/g, ' ')           // HTML tags
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim() || null;
+}
+
 function relativeTime(item) {
   const raw = item.iso_date || item.published_at || item.created_at;
   if (!raw) return null;
@@ -108,9 +123,9 @@ function NewsCard({ item }) {
           </div>
 
           {/* Summary */}
-          {item.summary && (
+          {cleanSummary(item.summary) && (
             <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2 leading-relaxed">
-              {item.summary}
+              {cleanSummary(item.summary)}
             </p>
           )}
 

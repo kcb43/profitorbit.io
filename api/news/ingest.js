@@ -26,13 +26,15 @@ function parseRssXml(xml) {
   let m;
   const decode = (s) =>
     String(s || '')
-      .replace(/<[^>]*>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '')   // strip HTML comments (e.g. Reddit's <!-- SC_OFF -->)
+      .replace(/<[^>]*>/g, ' ')           // strip HTML tags, leave a space
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&apos;/g, "'")
+      .replace(/\s{2,}/g, ' ')            // collapse multiple spaces
       .trim();
 
   while ((m = pattern.exec(xml)) !== null) {
