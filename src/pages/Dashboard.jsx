@@ -436,7 +436,7 @@ export default function Dashboard() {
               <TipOfTheDay variant="banner" />
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={() => setExportOpen(true)} className="gap-2">
+              <Button variant="outline" onClick={() => setExportOpen(true)} className="hidden sm:flex gap-2">
                 <Download className="w-4 h-4" />
                 Export
               </Button>
