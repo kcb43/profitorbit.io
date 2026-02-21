@@ -38812,44 +38812,42 @@ export default function CrosslistComposer() {
         )}
 
         {/* ── Marketplace Form Tab Selector ── */}
-        {!smartListingEnabled && (
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {[
-              { id: 'general',  label: 'General',  icon: null,               color: 'bg-primary' },
-              { id: 'ebay',     label: 'eBay',     icon: EBAY_ICON_URL,      color: 'bg-yellow-400' },
-              { id: 'facebook', label: 'Facebook', icon: FACEBOOK_ICON_URL,  color: 'bg-blue-600' },
-              { id: 'mercari',  label: 'Mercari',  icon: MERCARI_ICON_URL,   color: 'bg-red-500' },
-              { id: 'etsy',     label: 'Etsy',     icon: ETSY_ICON_URL,      color: 'bg-orange-500' },
-              { id: 'poshmark', label: 'Poshmark', icon: POSHMARK_ICON_URL,  color: 'bg-rose-500' },
-            ].map(({ id, label, icon, color }) => {
-              const isActive = activeForm === id;
-              const rec = listingRecordsByMarketplace?.[id];
-              const hasListing = rec && String(rec.status || '').toLowerCase() === 'active';
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setActiveForm(id)}
-                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border flex-shrink-0 ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                      : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  {icon ? (
-                    <img src={icon} alt={label} className="w-3.5 h-3.5 rounded-sm object-contain flex-shrink-0" />
-                  ) : (
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-primary-foreground' : 'bg-primary'}`} />
-                  )}
-                  {label}
-                  {hasListing && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border border-background" title="Active listing" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: 'general',  label: 'General',  icon: null,               color: 'bg-primary' },
+            { id: 'ebay',     label: 'eBay',     icon: EBAY_ICON_URL,      color: 'bg-yellow-400' },
+            { id: 'facebook', label: 'Facebook', icon: FACEBOOK_ICON_URL,  color: 'bg-blue-600' },
+            { id: 'mercari',  label: 'Mercari',  icon: MERCARI_ICON_URL,   color: 'bg-red-500' },
+            { id: 'etsy',     label: 'Etsy',     icon: ETSY_ICON_URL,      color: 'bg-orange-500' },
+            { id: 'poshmark', label: 'Poshmark', icon: POSHMARK_ICON_URL,  color: 'bg-rose-500' },
+          ].map(({ id, label, icon }) => {
+            const isActive = activeForm === id;
+            const rec = listingRecordsByMarketplace?.[id];
+            const hasListing = rec && String(rec.status || '').toLowerCase() === 'active';
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveForm(id)}
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border flex-shrink-0 ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                {icon ? (
+                  <img src={icon} alt={label} className="w-3.5 h-3.5 rounded-sm object-contain flex-shrink-0" />
+                ) : (
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-primary-foreground' : 'bg-primary'}`} />
+                )}
+                {label}
+                {hasListing && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border border-background" title="Active listing" />
+                )}
+              </button>
+            );
+          })}
+        </div>
 
         {/* Form Content */}
         <div className="space-y-3">
@@ -44708,44 +44706,42 @@ export default function CrosslistComposer() {
                 )}
 
                 {/* ── Marketplace Form Tab Selector (desktop) ── */}
-                {!smartListingEnabled && (
-                  <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b pb-3 mb-1">
-                    {[
-                      { id: 'general',  label: 'General',  icon: null,               color: 'bg-primary' },
-                      { id: 'ebay',     label: 'eBay',     icon: EBAY_ICON_URL,      color: 'bg-yellow-400' },
-                      { id: 'facebook', label: 'Facebook', icon: FACEBOOK_ICON_URL,  color: 'bg-blue-600' },
-                      { id: 'mercari',  label: 'Mercari',  icon: MERCARI_ICON_URL,   color: 'bg-red-500' },
-                      { id: 'etsy',     label: 'Etsy',     icon: ETSY_ICON_URL,      color: 'bg-orange-500' },
-                      { id: 'poshmark', label: 'Poshmark', icon: POSHMARK_ICON_URL,  color: 'bg-rose-500' },
-                    ].map(({ id, label, icon, color }) => {
-                      const isActive = activeForm === id;
-                      const rec = listingRecordsByMarketplace?.[id];
-                      const hasListing = rec && String(rec.status || '').toLowerCase() === 'active';
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => setActiveForm(id)}
-                          className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                              : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          {icon ? (
-                            <img src={icon} alt={label} className="w-4 h-4 rounded-sm object-contain flex-shrink-0" />
-                          ) : (
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-primary-foreground' : 'bg-primary'}`} />
-                          )}
-                          {label}
-                          {hasListing && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" title="Active listing" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                <div className="flex gap-1.5 overflow-x-auto pb-3 mb-1 border-b scrollbar-none">
+                  {[
+                    { id: 'general',  label: 'General',  icon: null               },
+                    { id: 'ebay',     label: 'eBay',     icon: EBAY_ICON_URL      },
+                    { id: 'facebook', label: 'Facebook', icon: FACEBOOK_ICON_URL  },
+                    { id: 'mercari',  label: 'Mercari',  icon: MERCARI_ICON_URL   },
+                    { id: 'etsy',     label: 'Etsy',     icon: ETSY_ICON_URL      },
+                    { id: 'poshmark', label: 'Poshmark', icon: POSHMARK_ICON_URL  },
+                  ].map(({ id, label, icon }) => {
+                    const isActive = activeForm === id;
+                    const rec = listingRecordsByMarketplace?.[id];
+                    const hasListing = rec && String(rec.status || '').toLowerCase() === 'active';
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setActiveForm(id)}
+                        className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {icon ? (
+                          <img src={icon} alt={label} className="w-4 h-4 rounded-sm object-contain flex-shrink-0" />
+                        ) : (
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-primary-foreground' : 'bg-primary'}`} />
+                        )}
+                        {label}
+                        {hasListing && (
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" title="Active listing" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 {/* Form Content - Same as mobile */}
                 <div className="space-y-6">
