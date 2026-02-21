@@ -1567,6 +1567,82 @@ async function fillFacebookForm(listingData) {
       }
     }
     
+    // 7. DELIVERY METHOD
+    if (listingData.deliveryMethod) {
+      const deliveryLabel = {
+        'shipping_and_pickup': 'Shipping and local pickup',
+        'shipping_only':       'Shipping only',
+        'local_pickup':        'Local pickup',
+      }[listingData.deliveryMethod];
+      if (deliveryLabel) {
+        const deliveryBtn = document.querySelector('[aria-label*="Delivery method"], [aria-label*="delivery method"]');
+        if (deliveryBtn) {
+          deliveryBtn.click();
+          await sleep(400);
+          const option = Array.from(document.querySelectorAll('[role="menuitem"], [role="option"]'))
+            .find(el => el.textContent?.toLowerCase().includes(deliveryLabel.toLowerCase()));
+          if (option) { option.click(); await sleep(300); console.log('  ✓ Delivery method set'); }
+        }
+      }
+    }
+
+    // 8. SHIPPING OPTION (own label vs prepaid)
+    if (listingData.shippingOption && listingData.deliveryMethod !== 'local_pickup') {
+      const optionLabel = listingData.shippingOption === 'prepaid_label'
+        ? 'prepaid shipping label'
+        : 'your own shipping label';
+      const shippingBtn = document.querySelector('[aria-label*="Shipping option"], [aria-label*="shipping method"]');
+      if (shippingBtn) {
+        shippingBtn.click();
+        await sleep(400);
+        const option = Array.from(document.querySelectorAll('[role="menuitem"], [role="option"]'))
+          .find(el => el.textContent?.toLowerCase().includes(optionLabel));
+        if (option) { option.click(); await sleep(300); console.log('  ✓ Shipping option set'); }
+      }
+    }
+
+    // 9. SHIPPING PRICE (flat rate, own-label only)
+    if (listingData.shippingPrice && listingData.shippingOption !== 'prepaid_label') {
+      const shippingPriceInput = document.querySelector('input[placeholder*="Shipping price"], input[aria-label*="Shipping price"]');
+      if (shippingPriceInput) {
+        shippingPriceInput.focus();
+        shippingPriceInput.value = String(listingData.shippingPrice);
+        shippingPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(200);
+        console.log('  ✓ Shipping price set');
+      }
+    }
+
+    // 10. FREE SHIPPING TOGGLE
+    if (listingData.displayFreeShipping) {
+      const freeShipToggle = document.querySelector('[aria-label*="free shipping"], [aria-label*="Free shipping"]');
+      if (freeShipToggle) {
+        const isChecked = freeShipToggle.getAttribute('aria-checked') === 'true' || freeShipToggle.checked;
+        if (!isChecked) { freeShipToggle.click(); await sleep(200); }
+        console.log('  ✓ Free shipping toggle set');
+      }
+    }
+
+    // 11. ALLOW OFFERS / NEGOTIATION
+    if (typeof listingData.allowOffers === 'boolean') {
+      const offersToggle = document.querySelector('[aria-label*="Allow offers"], [aria-label*="negotiation"], [aria-label*="Offers"]');
+      if (offersToggle) {
+        const isChecked = offersToggle.getAttribute('aria-checked') === 'true' || offersToggle.checked;
+        if (listingData.allowOffers !== isChecked) { offersToggle.click(); await sleep(300); }
+        if (listingData.allowOffers && listingData.minimumOfferPrice) {
+          await sleep(300);
+          const minPriceInput = document.querySelector('input[placeholder*="minimum"], input[aria-label*="minimum price"], input[aria-label*="Minimum"]');
+          if (minPriceInput) {
+            minPriceInput.focus();
+            minPriceInput.value = String(listingData.minimumOfferPrice);
+            minPriceInput.dispatchEvent(new Event('input', { bubbles: true }));
+            await sleep(200);
+          }
+        }
+        console.log('  ✓ Allow offers set');
+      }
+    }
+
     console.log('✅ [FACEBOOK] All form fields filled!');
     return true;
     

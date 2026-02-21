@@ -4681,6 +4681,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const categoryId = payload.categoryId || payload.category_id || payload.facebookCategoryId || null;
         const category = payload.category || null;
         const condition = payload.condition || null;
+
+        // ── NEW: delivery, shipping, offers, location ──
+        const deliveryMethod      = payload.deliveryMethod     || 'shipping_and_pickup';
+        const shippingOption      = payload.shippingOption     || 'own_label';
+        const shippingPriceRaw    = payload.shippingPrice      != null ? Number(payload.shippingPrice)      : null;
+        const displayFreeShipping = !!payload.displayFreeShipping;
+        const shippingCarrier     = payload.shippingCarrier    || null;
+        const packageWeightClass  = payload.packageWeightClass || null;
+        const packageWeightLbs    = payload.packageWeightLbs   != null ? Number(payload.packageWeightLbs)   : null;
+        const packageWeightOz     = payload.packageWeightOz    != null ? Number(payload.packageWeightOz)    : null;
+        const allowOffers         = !!payload.allowOffers;
+        const minOfferPriceRaw    = payload.minimumOfferPrice  != null ? Number(payload.minimumOfferPrice)  : null;
+        const locationText        = payload.location           || null;
+
+        const FB_DELIVERY_TYPE = {
+          'shipping_and_pickup': 'SHIPPING_AND_PICKUP',
+          'shipping_only':       'SHIPPING',
+          'local_pickup':        'LOCAL_PICKUP',
+        };
+        const FB_SHIPPING_OPTION = {
+          'own_label':     'BUYER_PAYS',
+          'prepaid_label': 'SELLER_SHIPS',
+        };
+        const FB_WEIGHT_CLASS = {
+          'under_0.5': 'LESS_THAN_HALF_POUND',
+          '0.5-1':     'HALF_TO_ONE_POUND',
+          '1-2':       'ONE_TO_TWO_POUNDS',
+          '2-5':       'TWO_TO_FIVE_POUNDS',
+          '5-10':      'FIVE_TO_TEN_POUNDS',
+          '10-70':     'TEN_TO_SEVENTY_POUNDS',
+        };
+        const FB_CARRIER = { usps: 'USPS', ups: 'UPS', fedex: 'FEDEX' };
         
         console.log('🟦 [FACEBOOK] Extracted payload fields:', {
           hasTitle: !!title,
@@ -4690,6 +4722,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           categoryId: categoryId,
           category: category,
           condition: condition,
+          deliveryMethod,
+          shippingOption,
+          shippingPriceRaw,
+          packageWeightClass,
+          allowOffers,
+          locationText,
         });
 
         const toUrl = (v) => {
@@ -5950,6 +5988,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               setDeepPreserveType(vars, ['input', 'data', 'common', 'condition'], conditionForField);
               console.log('🟦 [FACEBOOK] Set condition in variables:', conditionForField);
             }
+          }
+
+          // ── NEW: Delivery type ──
+          const fbDeliveryType = FB_DELIVERY_TYPE[deliveryMethod] || 'SHIPPING_AND_PICKUP';
+          setDeep(vars, ['input', 'data', 'common', 'delivery_type'], fbDeliveryType);
+          console.log('🟦 [FACEBOOK] Set delivery_type:', fbDeliveryType);
+
+          const isShipping    = deliveryMethod === 'shipping_only' || deliveryMethod === 'shipping_and_pickup';
+          const isPrepaid     = shippingOption === 'prepaid_label';
+          const isLocalPickup = deliveryMethod === 'local_pickup';
+
+          if (isShipping) {
+            const fbShipOption = FB_SHIPPING_OPTION[shippingOption] || 'BUYER_PAYS';
+            setDeep(vars, ['input', 'data', 'common', 'shipping_option_type'], fbShipOption);
+            console.log('🟦 [FACEBOOK] Set shipping_option_type:', fbShipOption);
+
+            if (!isPrepaid && shippingPriceRaw !== null) {
+              setDeep(vars, ['input', 'data', 'common', 'shipping_price'], {
+                amount: String(Math.round(shippingPriceRaw * 100)),
+                currency: 'USD',
+              });
+            }
+
+            if (!isPrepaid) {
+              setDeep(vars, ['input', 'data', 'common', 'is_free_shipping_offered'], displayFreeShipping);
+            }
+
+            if (isPrepaid) {
+              if (shippingCarrier) {
+                setDeep(vars, ['input', 'data', 'common', 'shipping_carrier'], FB_CARRIER[shippingCarrier] || shippingCarrier.toUpperCase());
+              }
+              if (packageWeightClass) {
+                setDeep(vars, ['input', 'data', 'common', 'package_weight_class'], FB_WEIGHT_CLASS[packageWeightClass] || packageWeightClass);
+              }
+              if (packageWeightLbs !== null) setDeep(vars, ['input', 'data', 'common', 'package_weight_value'],   packageWeightLbs);
+              if (packageWeightOz  !== null) setDeep(vars, ['input', 'data', 'common', 'package_weight_ounces'],  packageWeightOz);
+            }
+          }
+
+          // ── NEW: Allow Offers / negotiation ──
+          setDeep(vars, ['input', 'data', 'common', 'allow_negotiation'], allowOffers);
+          if (allowOffers && !isLocalPickup && minOfferPriceRaw !== null) {
+            setDeep(vars, ['input', 'data', 'common', 'min_negotiated_price'], {
+              amount:   String(Math.round(minOfferPriceRaw * 100)),
+              currency: 'USD',
+            });
+          }
+
+          // ── NEW: Location text ──
+          if (locationText) {
+            setDeep(vars, ['input', 'data', 'common', 'location_text'], locationText);
           }
         }
 

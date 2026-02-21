@@ -37217,6 +37217,7 @@ export default function CrosslistComposer() {
         const result = await ext.createFacebookListing({
           inventory_item_id: currentEditingItemId || null,
           payload: { 
+            // ── Core listing fields ──
             title, 
             description, 
             price: priceNum,
@@ -37224,6 +37225,25 @@ export default function CrosslistComposer() {
             categoryId: facebookCategoryId,
             category: facebookForm.category || generalForm.category,
             condition: facebookCondition,
+
+            // ── Delivery & shipping ──
+            deliveryMethod:      facebookForm.deliveryMethod || 'shipping_and_pickup',
+            shippingOption:      facebookForm.shippingOption || 'own_label',
+            shippingPrice:       facebookForm.shippingPrice ? parseFloat(facebookForm.shippingPrice) : null,
+            displayFreeShipping: !!facebookForm.displayFreeShipping,
+
+            // ── Prepaid label (only used when shippingOption === 'prepaid_label') ──
+            shippingCarrier:    facebookForm.shippingCarrier    || null,
+            packageWeightClass: facebookForm.packageWeightClass || null,
+            packageWeightLbs:   facebookForm.packageWeightLbs   ? parseFloat(facebookForm.packageWeightLbs)  : null,
+            packageWeightOz:    facebookForm.packageWeightOz    ? parseFloat(facebookForm.packageWeightOz)   : null,
+
+            // ── Offers ──
+            allowOffers:       !!facebookForm.allowOffers,
+            minimumOfferPrice: facebookForm.minimumOfferPrice ? parseFloat(facebookForm.minimumOfferPrice) : null,
+
+            // ── Location ──
+            location: facebookForm.meetUpLocation || generalForm.zip || null,
           },
         });
 
