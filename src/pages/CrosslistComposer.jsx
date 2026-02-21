@@ -4789,9 +4789,16 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     categoryId: "",
     deliveryMethod: "shipping_and_pickup",
     shippingPrice: "",
+    shippingOption: "own_label",
+    shippingCarrier: "usps",
+    packageWeightClass: "",
+    packageWeightLbs: "",
+    packageWeightOz: "",
+    displayFreeShipping: false,
     localPickup: true,
     meetUpLocation: "",
     allowOffers: true,
+    minimumOfferPrice: "",
     hideFromFriends: false,
   },
 };
@@ -33243,6 +33250,9 @@ export default function CrosslistComposer() {
   const [isSaving, setIsSaving] = useState(false);
   const [isMercariListing, setIsMercariListing] = useState(false);
   const [isFacebookListing, setIsFacebookListing] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [locationSearchOpen, setLocationSearchOpen] = useState(false);
+  const locationSearchTimer = useRef(null);
   const [currentEditingItemId, setCurrentEditingItemId] = useState(null);
   const [facebookListingId, setFacebookListingId] = useState(null);
   const [facebookListingUrl, setFacebookListingUrl] = useState('');
@@ -36355,6 +36365,42 @@ export default function CrosslistComposer() {
         [field]: value,
       },
     }));
+  };
+
+  // Location autocomplete using OpenStreetMap Nominatim (free, no API key required)
+  const handleLocationSearch = (query) => {
+    handleMarketplaceChange("facebook", "meetUpLocation", query);
+    clearTimeout(locationSearchTimer.current);
+    if (!query || query.length < 2) {
+      setLocationSuggestions([]);
+      setLocationSearchOpen(false);
+      return;
+    }
+    locationSearchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=8`,
+          { headers: { 'User-Agent': 'ProfitOrbit/1.0 (profitorbit.io)' } }
+        );
+        const data = await res.json();
+        const seen = new Set();
+        const suggestions = data.map(item => {
+          const city = item.address.city || item.address.town || item.address.village || item.address.county || item.address.municipality;
+          const state = item.address.state;
+          const country = item.address.country;
+          return [city, state, country].filter(Boolean).join(', ');
+        }).filter(s => {
+          if (!s || seen.has(s)) return false;
+          seen.add(s);
+          return true;
+        });
+        setLocationSuggestions(suggestions);
+        setLocationSearchOpen(suggestions.length > 0);
+      } catch (_) {
+        setLocationSuggestions([]);
+        setLocationSearchOpen(false);
+      }
+    }, 400);
   };
   
   const handleToggleInherit = (marketplace, checked) => {
@@ -39891,6 +39937,19 @@ export default function CrosslistComposer() {
                   <Tag className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Tags</Label>
                 </div>
+                {generalForm.tags && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generalForm.tags);
+                      toast({ title: "Copied!", description: "Tags copied to clipboard." });
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy all
+                  </button>
+                )}
               </div>
               <div className="mb-6">
                 <TagInput
@@ -39945,6 +40004,21 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Package Details</Label>
                 </div>
+                {generalForm.packageWeight && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                        updateGeneralDefault(f, generalForm[f], { silent: true })
+                      );
+                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                    }}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Save as default
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -41301,6 +41375,21 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Package Details</Label>
                 </div>
+                {generalForm.packageWeight && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                        updateGeneralDefault(f, generalForm[f], { silent: true })
+                      );
+                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                    }}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Save as default
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -41896,6 +41985,21 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Package Details</Label>
                 </div>
+                {generalForm.packageWeight && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                        updateGeneralDefault(f, generalForm[f], { silent: true })
+                      );
+                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                    }}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Save as default
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -43814,83 +43918,236 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Delivery Method</Label>
-                    {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
-                      handleMarketplaceChange("facebook", "deliveryMethod", v)
+              {(() => {
+                const isLocalPickup = facebookForm.deliveryMethod === "local_pickup";
+                const hasShipping = facebookForm.deliveryMethod === "shipping_only" || facebookForm.deliveryMethod === "shipping_and_pickup";
+                const isPrepaid = facebookForm.shippingOption === "prepaid_label";
+                return (
+                  <div className="space-y-4">
+                    {/* Row 1: Delivery Method + Shipping Option */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                          {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
+                            handleMarketplaceChange("facebook", "deliveryMethod", v)
+                          )}
+                        </div>
+                        <Select
+                          value={facebookForm.deliveryMethod}
+                          onValueChange={(value) => handleMarketplaceChange("facebook", "deliveryMethod", value)}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="shipping_and_pickup">Shipping & Local Pickup</SelectItem>
+                            <SelectItem value="shipping_only">Shipping Only</SelectItem>
+                            <SelectItem value="local_pickup">Local Pickup</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Shipping Option — only when shipping is involved */}
+                      {hasShipping && (
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping Option <span className="text-red-500">*</span></Label>
+                            {renderFacebookDefaultToggle("shippingOption", facebookForm.shippingOption, (v) =>
+                              handleMarketplaceChange("facebook", "shippingOption", v)
+                            )}
+                          </div>
+                          <Select
+                            value={facebookForm.shippingOption}
+                            onValueChange={(value) => handleMarketplaceChange("facebook", "shippingOption", value)}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="own_label">Use your own shipping label</SelectItem>
+                              <SelectItem value="prepaid_label">Use a prepaid shipping label</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {isPrepaid && (
+                            <p className="mt-1 text-xs text-muted-foreground">Facebook will email you a discounted prepaid USPS shipping label. Shipping will be deducted from your payout.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Prepaid label fields: carrier + weight class + lbs + oz */}
+                    {hasShipping && isPrepaid && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping carrier <span className="text-red-500">*</span></Label>
+                            {renderFacebookDefaultToggle("shippingCarrier", facebookForm.shippingCarrier, (v) =>
+                              handleMarketplaceChange("facebook", "shippingCarrier", v)
+                            )}
+                          </div>
+                          <Select
+                            value={facebookForm.shippingCarrier}
+                            onValueChange={(v) => handleMarketplaceChange("facebook", "shippingCarrier", v)}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="usps">USPS</SelectItem>
+                              <SelectItem value="ups">UPS</SelectItem>
+                              <SelectItem value="fedex">FedEx</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Package weight <span className="text-red-500">*</span></Label>
+                            {renderFacebookDefaultToggle("packageWeightClass", facebookForm.packageWeightClass, (v) =>
+                              handleMarketplaceChange("facebook", "packageWeightClass", v)
+                            )}
+                          </div>
+                          <Select
+                            value={facebookForm.packageWeightClass || (generalForm.packageWeight ? (parseFloat(generalForm.packageWeight) <= 0.5 ? "under_0.5" : parseFloat(generalForm.packageWeight) <= 1 ? "0.5-1" : parseFloat(generalForm.packageWeight) <= 2 ? "1-2" : parseFloat(generalForm.packageWeight) <= 5 ? "2-5" : parseFloat(generalForm.packageWeight) <= 10 ? "5-10" : "10-70") : "")}
+                            onValueChange={(v) => handleMarketplaceChange("facebook", "packageWeightClass", v)}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Select weight class" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="under_0.5">Under 0.5 lbs</SelectItem>
+                              <SelectItem value="0.5-1">0.5–1 lbs</SelectItem>
+                              <SelectItem value="1-2">1–2 lbs</SelectItem>
+                              <SelectItem value="2-5">2–5 lbs</SelectItem>
+                              <SelectItem value="5-10">5–10 lbs</SelectItem>
+                              <SelectItem value="10-70">10–70 lbs</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1.5 block">Weight (lbs)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder={generalForm.packageWeight || "lbs"}
+                            value={facebookForm.packageWeightLbs}
+                            onChange={(e) => handleMarketplaceChange("facebook", "packageWeightLbs", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1.5 block">Weight (oz)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="15"
+                            placeholder="oz"
+                            value={facebookForm.packageWeightOz}
+                            onChange={(e) => handleMarketplaceChange("facebook", "packageWeightOz", e.target.value)}
+                          />
+                        </div>
+                      </div>
                     )}
-                  </div>
-                  <Select
-                    value={facebookForm.deliveryMethod}
-                    onValueChange={(value) => handleMarketplaceChange("facebook", "deliveryMethod", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="shipping_and_pickup">Shipping & Local Pickup</SelectItem>
-                      <SelectItem value="shipping_only">Shipping Only</SelectItem>
-                      <SelectItem value="pickup_only">Pickup Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Flat Shipping Price</Label>
-                  <Input
-                    placeholder="Optional override"
-                    value={facebookForm.shippingPrice}
-                    onChange={(e) => handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
-                    disabled={false}
-                  />
-                  {facebookForm.inheritGeneral && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Uses General pricing when sync is enabled.
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
-                    {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
-                      handleMarketplaceChange("facebook", "meetUpLocation", v)
+
+                    {/* Shipping rate — hidden for local pickup or prepaid label */}
+                    {hasShipping && !isPrepaid && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs mb-1.5 block">Shipping rate</Label>
+                            {renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
+                              handleMarketplaceChange("facebook", "shippingPrice", v)
+                            )}
+                          </div>
+                          <Input
+                            placeholder="e.g. 5.99 or 0 for free"
+                            value={facebookForm.shippingPrice}
+                            onChange={(e) => handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
+                          />
+                        </div>
+
+                        {/* Display Free Shipping toggle */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <Label className="text-xs block">Display Free Shipping</Label>
+                            {renderFacebookDefaultToggle("displayFreeShipping", facebookForm.displayFreeShipping, (v) =>
+                              handleMarketplaceChange("facebook", "displayFreeShipping", v)
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                            <Switch
+                              id="fb-display-free-shipping-mobile"
+                              checked={!!facebookForm.displayFreeShipping}
+                              onCheckedChange={(checked) => handleMarketplaceChange("facebook", "displayFreeShipping", checked)}
+                            />
+                            <Label htmlFor="fb-display-free-shipping-mobile" className="text-xs leading-tight">
+                              Covers the shipping cost so buyers see free shipping. Shipping will be deducted from your payout.
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
                     )}
+
+                    {/* Location with autocomplete */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="relative">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
+                          {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
+                            handleMarketplaceChange("facebook", "meetUpLocation", v)
+                          )}
+                        </div>
+                        <Input
+                          placeholder="Search city, e.g. Boston"
+                          value={facebookForm.meetUpLocation}
+                          onChange={(e) => handleLocationSearch(e.target.value)}
+                          onBlur={() => setTimeout(() => setLocationSearchOpen(false), 150)}
+                          autoComplete="off"
+                        />
+                        {locationSearchOpen && locationSuggestions.length > 0 && (
+                          <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            {locationSuggestions.map((s, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors"
+                                onMouseDown={() => {
+                                  handleMarketplaceChange("facebook", "meetUpLocation", s);
+                                  setLocationSearchOpen(false);
+                                }}
+                              >{s}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Allow Offers */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <Label className="text-xs block">Allow Offers</Label>
+                          {renderFacebookDefaultToggle("allowOffers", facebookForm.allowOffers, (v) =>
+                            handleMarketplaceChange("facebook", "allowOffers", v)
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                          <Switch
+                            id="facebook-allow-offers-mobile"
+                            checked={facebookForm.allowOffers}
+                            onCheckedChange={(checked) => handleMarketplaceChange("facebook", "allowOffers", checked)}
+                          />
+                          <Label htmlFor="facebook-allow-offers-mobile" className="text-xs leading-tight">
+                            Let buyers negotiate a price. Not available if delivery method is Local Pickup.
+                          </Label>
+                        </div>
+                        {facebookForm.allowOffers && (
+                          <div className="mt-2">
+                            <Label className="text-xs mb-1.5 block">Lowest acceptable price</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="Minimum price you'll consider"
+                              value={facebookForm.minimumOfferPrice}
+                              onChange={(e) => handleMarketplaceChange("facebook", "minimumOfferPrice", e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <Input
-                    placeholder={generalForm.zip ? `Inherited from General: ${generalForm.zip}` : "Preferred meetup details"}
-                    value={facebookForm.meetUpLocation}
-                    onChange={(e) => handleMarketplaceChange("facebook", "meetUpLocation", e.target.value)}
-                  />
-                  {generalForm.zip && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Inherited {generalForm.zip} from General form. You can edit this field.
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs mb-1.5 block">Allow Offers</Label>
-                  <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
-                    <Switch
-                      id="facebook-allow-offers"
-                      checked={facebookForm.allowOffers}
-                      onCheckedChange={(checked) => handleMarketplaceChange("facebook", "allowOffers", checked)}
-                    />
-                    <Label htmlFor="facebook-allow-offers" className="text-sm">Allow Messenger offers</Label>
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Local Pickup</Label>
-                  <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
-                    <Switch
-                      id="facebook-local-pickup"
-                      checked={facebookForm.localPickup}
-                      onCheckedChange={(checked) => handleMarketplaceChange("facebook", "localPickup", checked)}
-                    />
-                    <Label htmlFor="facebook-local-pickup" className="text-sm">Offer local pickup</Label>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Additional Options Section */}
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
@@ -43963,6 +44220,21 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Package Details</Label>
                 </div>
+                {generalForm.packageWeight && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                        updateGeneralDefault(f, generalForm[f], { silent: true })
+                      );
+                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                    }}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Save as default
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -45809,6 +46081,21 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-sm font-medium">Package Details</Label>
                         </div>
+                        {generalForm.packageWeight && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                                updateGeneralDefault(f, generalForm[f], { silent: true })
+                              );
+                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                            }}
+                          >
+                            <Save className="h-3.5 w-3.5" />
+                            Save as default
+                          </button>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -47158,6 +47445,21 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-sm font-medium">Package Details</Label>
                         </div>
+                        {generalForm.packageWeight && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                                updateGeneralDefault(f, generalForm[f], { silent: true })
+                              );
+                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                            }}
+                          >
+                            <Save className="h-3.5 w-3.5" />
+                            Save as default
+                          </button>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -47731,6 +48033,21 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-sm font-medium">Package Details</Label>
                         </div>
+                        {generalForm.packageWeight && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                                updateGeneralDefault(f, generalForm[f], { silent: true })
+                              );
+                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                            }}
+                          >
+                            <Save className="h-3.5 w-3.5" />
+                            Save as default
+                          </button>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -49544,83 +49861,227 @@ export default function CrosslistComposer() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Delivery Method</Label>
-                            {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
-                              handleMarketplaceChange("facebook", "deliveryMethod", v)
+                      {(() => {
+                        const isLocalPickup = facebookForm.deliveryMethod === "local_pickup";
+                        const hasShipping = facebookForm.deliveryMethod === "shipping_only" || facebookForm.deliveryMethod === "shipping_and_pickup";
+                        const isPrepaid = facebookForm.shippingOption === "prepaid_label";
+                        return (
+                          <div className="space-y-4">
+                            {/* Row 1: Delivery Method + Shipping Option */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                                  {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
+                                    handleMarketplaceChange("facebook", "deliveryMethod", v)
+                                  )}
+                                </div>
+                                <Select
+                                  value={facebookForm.deliveryMethod}
+                                  onValueChange={(value) => handleMarketplaceChange("facebook", "deliveryMethod", value)}
+                                >
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="shipping_and_pickup">Shipping & Local Pickup</SelectItem>
+                                    <SelectItem value="shipping_only">Shipping Only</SelectItem>
+                                    <SelectItem value="local_pickup">Local Pickup</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {hasShipping && (
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-xs mb-1.5 block">Shipping Option <span className="text-red-500">*</span></Label>
+                                    {renderFacebookDefaultToggle("shippingOption", facebookForm.shippingOption, (v) =>
+                                      handleMarketplaceChange("facebook", "shippingOption", v)
+                                    )}
+                                  </div>
+                                  <Select
+                                    value={facebookForm.shippingOption}
+                                    onValueChange={(value) => handleMarketplaceChange("facebook", "shippingOption", value)}
+                                  >
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="own_label">Use your own shipping label</SelectItem>
+                                      <SelectItem value="prepaid_label">Use a prepaid shipping label</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  {isPrepaid && (
+                                    <p className="mt-1 text-xs text-muted-foreground">Facebook will email you a discounted prepaid USPS shipping label. Shipping will be deducted from your payout.</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Prepaid label fields */}
+                            {hasShipping && isPrepaid && (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-xs mb-1.5 block">Shipping carrier <span className="text-red-500">*</span></Label>
+                                    {renderFacebookDefaultToggle("shippingCarrier", facebookForm.shippingCarrier, (v) =>
+                                      handleMarketplaceChange("facebook", "shippingCarrier", v)
+                                    )}
+                                  </div>
+                                  <Select
+                                    value={facebookForm.shippingCarrier}
+                                    onValueChange={(v) => handleMarketplaceChange("facebook", "shippingCarrier", v)}
+                                  >
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="usps">USPS</SelectItem>
+                                      <SelectItem value="ups">UPS</SelectItem>
+                                      <SelectItem value="fedex">FedEx</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-xs mb-1.5 block">Package weight <span className="text-red-500">*</span></Label>
+                                    {renderFacebookDefaultToggle("packageWeightClass", facebookForm.packageWeightClass, (v) =>
+                                      handleMarketplaceChange("facebook", "packageWeightClass", v)
+                                    )}
+                                  </div>
+                                  <Select
+                                    value={facebookForm.packageWeightClass || (generalForm.packageWeight ? (parseFloat(generalForm.packageWeight) <= 0.5 ? "under_0.5" : parseFloat(generalForm.packageWeight) <= 1 ? "0.5-1" : parseFloat(generalForm.packageWeight) <= 2 ? "1-2" : parseFloat(generalForm.packageWeight) <= 5 ? "2-5" : parseFloat(generalForm.packageWeight) <= 10 ? "5-10" : "10-70") : "")}
+                                    onValueChange={(v) => handleMarketplaceChange("facebook", "packageWeightClass", v)}
+                                  >
+                                    <SelectTrigger><SelectValue placeholder="Select weight class" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="under_0.5">Under 0.5 lbs</SelectItem>
+                                      <SelectItem value="0.5-1">0.5–1 lbs</SelectItem>
+                                      <SelectItem value="1-2">1–2 lbs</SelectItem>
+                                      <SelectItem value="2-5">2–5 lbs</SelectItem>
+                                      <SelectItem value="5-10">5–10 lbs</SelectItem>
+                                      <SelectItem value="10-70">10–70 lbs</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs mb-1.5 block">Weight (lbs)</Label>
+                                  <Input
+                                    type="number" min="0"
+                                    placeholder={generalForm.packageWeight || "lbs"}
+                                    value={facebookForm.packageWeightLbs}
+                                    onChange={(e) => handleMarketplaceChange("facebook", "packageWeightLbs", e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs mb-1.5 block">Weight (oz)</Label>
+                                  <Input
+                                    type="number" min="0" max="15"
+                                    placeholder="oz"
+                                    value={facebookForm.packageWeightOz}
+                                    onChange={(e) => handleMarketplaceChange("facebook", "packageWeightOz", e.target.value)}
+                                  />
+                                </div>
+                              </div>
                             )}
-                          </div>
-                          <Select
-                            value={facebookForm.deliveryMethod}
-                            onValueChange={(value) => handleMarketplaceChange("facebook", "deliveryMethod", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="shipping_and_pickup">Shipping & Local Pickup</SelectItem>
-                              <SelectItem value="shipping_only">Shipping Only</SelectItem>
-                              <SelectItem value="pickup_only">Pickup Only</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs mb-1.5 block">Flat Shipping Price</Label>
-                          <Input
-                            placeholder="Optional override"
-                            value={facebookForm.shippingPrice}
-                            onChange={(e) => handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
-                            disabled={false}
-                          />
-                          {facebookForm.inheritGeneral && (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Uses General pricing when sync is enabled.
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
-                            {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
-                              handleMarketplaceChange("facebook", "meetUpLocation", v)
+
+                            {/* Shipping rate + Display Free Shipping (own label only) */}
+                            {hasShipping && !isPrepaid && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-xs mb-1.5 block">Shipping rate</Label>
+                                    {renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
+                                      handleMarketplaceChange("facebook", "shippingPrice", v)
+                                    )}
+                                  </div>
+                                  <Input
+                                    placeholder="e.g. 5.99 or 0 for free"
+                                    value={facebookForm.shippingPrice}
+                                    onChange={(e) => handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <Label className="text-xs block">Display Free Shipping</Label>
+                                    {renderFacebookDefaultToggle("displayFreeShipping", facebookForm.displayFreeShipping, (v) =>
+                                      handleMarketplaceChange("facebook", "displayFreeShipping", v)
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                                    <Switch
+                                      id="fb-display-free-shipping-desktop"
+                                      checked={!!facebookForm.displayFreeShipping}
+                                      onCheckedChange={(checked) => handleMarketplaceChange("facebook", "displayFreeShipping", checked)}
+                                    />
+                                    <Label htmlFor="fb-display-free-shipping-desktop" className="text-xs leading-tight">
+                                      Covers the shipping cost so buyers see free shipping. Shipping will be deducted from your payout.
+                                    </Label>
+                                  </div>
+                                </div>
+                              </div>
                             )}
+
+                            {/* Location + Allow Offers */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="relative">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
+                                  {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
+                                    handleMarketplaceChange("facebook", "meetUpLocation", v)
+                                  )}
+                                </div>
+                                <Input
+                                  placeholder="Search city, e.g. Boston"
+                                  value={facebookForm.meetUpLocation}
+                                  onChange={(e) => handleLocationSearch(e.target.value)}
+                                  onBlur={() => setTimeout(() => setLocationSearchOpen(false), 150)}
+                                  autoComplete="off"
+                                />
+                                {locationSearchOpen && locationSuggestions.length > 0 && (
+                                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    {locationSuggestions.map((s, i) => (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors"
+                                        onMouseDown={() => {
+                                          handleMarketplaceChange("facebook", "meetUpLocation", s);
+                                          setLocationSearchOpen(false);
+                                        }}
+                                      >{s}</button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <Label className="text-xs block">Allow Offers</Label>
+                                  {renderFacebookDefaultToggle("allowOffers", facebookForm.allowOffers, (v) =>
+                                    handleMarketplaceChange("facebook", "allowOffers", v)
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                                  <Switch
+                                    id="facebook-allow-offers-desktop"
+                                    checked={facebookForm.allowOffers}
+                                    onCheckedChange={(checked) => handleMarketplaceChange("facebook", "allowOffers", checked)}
+                                  />
+                                  <Label htmlFor="facebook-allow-offers-desktop" className="text-xs leading-tight">
+                                    Let buyers negotiate a price. Not available if delivery method is Local Pickup.
+                                  </Label>
+                                </div>
+                                {facebookForm.allowOffers && (
+                                  <div className="mt-2">
+                                    <Label className="text-xs mb-1.5 block">Lowest acceptable price</Label>
+                                    <Input
+                                      type="number" min="0" step="0.01"
+                                      placeholder="Minimum price you'll consider"
+                                      value={facebookForm.minimumOfferPrice}
+                                      onChange={(e) => handleMarketplaceChange("facebook", "minimumOfferPrice", e.target.value)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <Input
-                            placeholder={generalForm.zip ? `Inherited from General: ${generalForm.zip}` : "Preferred meetup details"}
-                            value={facebookForm.meetUpLocation}
-                            onChange={(e) => handleMarketplaceChange("facebook", "meetUpLocation", e.target.value)}
-                          />
-                          {generalForm.zip && (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Inherited {generalForm.zip} from General form. You can edit this field.
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <Label className="text-xs mb-1.5 block">Allow Offers</Label>
-                          <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
-                            <Switch
-                              id="facebook-allow-offers"
-                              checked={facebookForm.allowOffers}
-                              onCheckedChange={(checked) => handleMarketplaceChange("facebook", "allowOffers", checked)}
-                            />
-                            <Label htmlFor="facebook-allow-offers" className="text-sm">Allow Messenger offers</Label>
-                          </div>
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Local Pickup</Label>
-                          <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
-                            <Switch
-                              id="facebook-local-pickup"
-                              checked={facebookForm.localPickup}
-                              onCheckedChange={(checked) => handleMarketplaceChange("facebook", "localPickup", checked)}
-                            />
-                            <Label htmlFor="facebook-local-pickup" className="text-sm">Offer local pickup</Label>
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
 
                       {/* Additional Options Section */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
@@ -49691,6 +50152,21 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-sm font-medium">Package Details</Label>
                         </div>
+                        {generalForm.packageWeight && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                                updateGeneralDefault(f, generalForm[f], { silent: true })
+                              );
+                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                            }}
+                          >
+                            <Save className="h-3.5 w-3.5" />
+                            Save as default
+                          </button>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
