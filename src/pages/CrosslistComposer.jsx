@@ -39885,6 +39885,24 @@ export default function CrosslistComposer() {
                 )}
               </div>
 
+              {/* ── Listing Keywords / Tags ── */}
+              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Listing Keywords</Label>
+                </div>
+              </div>
+              <div className="mb-6">
+                <TagInput
+                  placeholder="Type a keyword and press Enter or comma — used for Mercari, Facebook, Etsy tags"
+                  value={generalForm.tags}
+                  onChange={(value) => handleGeneralChange("tags", value)}
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Keywords are saved with the item and used as tags when crosslisting to marketplaces.
+                </p>
+              </div>
+
               {/* Shipping Settings Section */}
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
@@ -39917,14 +39935,6 @@ export default function CrosslistComposer() {
                     step="1"
                     value={generalForm.quantity}
                     onChange={(e) => handleGeneralChange("quantity", e.target.value)}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Tags</Label>
-                  <TagInput
-                    placeholder="Type keywords and press space or comma to add tags (used for Mercari and Facebook)"
-                    value={generalForm.tags}
-                    onChange={(value) => handleGeneralChange("tags", value)}
                   />
                 </div>
               </div>
@@ -45739,6 +45749,24 @@ export default function CrosslistComposer() {
                         )}
                       </div>
 
+                      {/* ── Listing Keywords / Tags ── */}
+                      <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <Label className="text-sm font-medium">Listing Keywords</Label>
+                        </div>
+                      </div>
+                      <div className="mb-6">
+                        <TagInput
+                          placeholder="Type a keyword and press Enter or comma — used for Mercari, Facebook, Etsy tags"
+                          value={generalForm.tags}
+                          onChange={(value) => handleGeneralChange("tags", value)}
+                        />
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          Keywords are saved with the item and used as tags when crosslisting to marketplaces.
+                        </p>
+                      </div>
+
                       {/* Shipping Settings Section */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
@@ -45771,14 +45799,6 @@ export default function CrosslistComposer() {
                             step="1"
                             value={generalForm.quantity}
                             onChange={(e) => handleGeneralChange("quantity", e.target.value)}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Tags</Label>
-                          <TagInput
-                            placeholder="Type keywords and press space or comma to add tags (used for Mercari and Facebook)"
-                            value={generalForm.tags}
-                            onChange={(value) => handleGeneralChange("tags", value)}
                           />
                         </div>
                       </div>
