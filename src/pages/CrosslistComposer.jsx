@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import FacebookCategoryPicker from "@/components/FacebookCategoryPicker";
 import { apiClient } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
