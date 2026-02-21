@@ -33398,7 +33398,32 @@ export default function CrosslistComposer() {
         await handleListOnMarketplace('ebay');
       }
     } catch (e) {
-      toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
+      const errMsg = e?.message || String(e);
+      toast({ title: 'Failed to delist on eBay', description: `${errMsg} — If you already ended this listing directly on eBay, use "Remove from Orben" on the listing info panel to sync Orben's records.`, variant: 'destructive' });
+
+      // Offer to mark as ended in Orben only (for listings already ended directly on eBay)
+      if (confirm('Was this listing already ended directly on eBay?\n\nPress OK to mark it as ended in Orben only — this will not call eBay.')) {
+        try {
+          if (currentEditingItemId) {
+            await inventoryApi.update(currentEditingItemId, { status: 'available', ebay_listing_id: '' }).catch(() => {});
+            await crosslistingEngine.upsertMarketplaceListing({
+              inventory_item_id: currentEditingItemId,
+              marketplace: 'ebay',
+              marketplace_listing_id: id,
+              marketplace_listing_url: getEbayItemUrl(id),
+              status: 'ended',
+              listed_at: listingRecordsByMarketplace?.ebay?.listed_at || listingRecordsByMarketplace?.ebay?.created_at || new Date().toISOString(),
+              metadata: { ...(listingRecordsByMarketplace?.ebay?.metadata || {}), endedAt: new Date().toISOString(), endedManually: true },
+            });
+            await refreshListingRecords(currentEditingItemId);
+            setEbayListingId(null);
+            try { localStorage.removeItem(`ebay_listing_${currentEditingItemId}`); } catch (_) {}
+          }
+          toast({ title: 'Removed from Orben', description: 'eBay listing marked as ended in Orben.' });
+        } catch (e2) {
+          toast({ title: 'Failed to update', description: e2?.message || String(e2), variant: 'destructive' });
+        }
+      }
     } finally {
       setIsSaving(false);
     }
@@ -33558,116 +33583,195 @@ export default function CrosslistComposer() {
           </Button>
 
           {marketplaceId === 'mercari' && isActive && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-              disabled={isSaving}
-              onClick={async () => {
-                if (!listingId || listingId === '—') {
-                  toast({ title: 'Missing listing id', description: 'No Mercari listing id found for this item.', variant: 'destructive' });
-                  return;
-                }
-                if (!confirm('Delist on Mercari?')) return;
-
-                const ext = window?.ProfitOrbitExtension;
-                if (!ext?.delistMercariListing) {
-                  toast({
-                    title: 'Extension not available',
-                    description: 'Mercari delist requires the Profit Orbit extension. Please refresh and try again.',
-                    variant: 'destructive',
-                  });
-                  return;
-                }
-
-                try {
-                  setIsSaving(true);
-                  const resp = await ext.delistMercariListing({ listingId: String(listingId) });
-                  if (!resp?.success) {
-                    throw new Error(resp?.error || 'Failed to delist on Mercari');
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+                disabled={isSaving}
+                onClick={async () => {
+                  if (!listingId || listingId === '—') {
+                    toast({ title: 'Missing listing id', description: 'No Mercari listing id found for this item.', variant: 'destructive' });
+                    return;
                   }
+                  if (!confirm('Delist on Mercari?')) return;
 
-                  // Update our local listing record so Crosslist + reopen remembers the delist.
-                  if (currentEditingItemId) {
-                    await crosslistingEngine.upsertMarketplaceListing({
-                      inventory_item_id: currentEditingItemId,
-                      marketplace: 'mercari',
-                      marketplace_listing_id: String(listingId),
-                      marketplace_listing_url: canView ? String(listingUrl) : '',
-                      status: 'delisted',
-                      delisted_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
+                  const ext = window?.ProfitOrbitExtension;
+                  if (!ext?.delistMercariListing) {
+                    toast({
+                      title: 'Extension not available',
+                      description: 'Mercari delist requires the Profit Orbit extension. Please refresh and try again.',
+                      variant: 'destructive',
                     });
-                    await refreshListingRecords(currentEditingItemId);
+                    return;
                   }
 
-                  toast({ title: 'Delisted', description: 'Mercari listing removed.' });
-                } catch (e) {
-                  toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            >
-              <Unlock className="h-4 w-4" />
-              Delist on Mercari
-            </Button>
+                  try {
+                    setIsSaving(true);
+                    const resp = await ext.delistMercariListing({ listingId: String(listingId) });
+                    if (!resp?.success) {
+                      throw new Error(resp?.error || 'Failed to delist on Mercari');
+                    }
+
+                    if (currentEditingItemId) {
+                      await crosslistingEngine.upsertMarketplaceListing({
+                        inventory_item_id: currentEditingItemId,
+                        marketplace: 'mercari',
+                        marketplace_listing_id: String(listingId),
+                        marketplace_listing_url: canView ? String(listingUrl) : '',
+                        status: 'delisted',
+                        delisted_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                      });
+                      await refreshListingRecords(currentEditingItemId);
+                    }
+
+                    toast({ title: 'Delisted', description: 'Mercari listing removed.' });
+                  } catch (e) {
+                    const errMsg = e?.message || String(e);
+                    toast({
+                      title: 'Failed to delist on Mercari',
+                      description: `${errMsg} — If you already deleted this listing directly on Mercari, use "Remove from Orben" to sync Orben's records.`,
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              >
+                <Unlock className="h-4 w-4" />
+                Delist on Mercari
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-muted-foreground"
+                disabled={isSaving}
+                title="Already deleted this listing from Mercari? Use this to update Orben's records without calling Mercari."
+                onClick={async () => {
+                  if (!confirm('Mark this Mercari listing as removed in Orben only?\n\nUse this if you already deleted the listing directly on Mercari and just need to sync Orben\'s records.')) return;
+                  try {
+                    setIsSaving(true);
+                    if (currentEditingItemId) {
+                      await crosslistingEngine.upsertMarketplaceListing({
+                        inventory_item_id: currentEditingItemId,
+                        marketplace: 'mercari',
+                        marketplace_listing_id: String(listingId),
+                        marketplace_listing_url: canView ? String(listingUrl) : '',
+                        status: 'delisted',
+                        delisted_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                      });
+                      await refreshListingRecords(currentEditingItemId);
+                    }
+                    toast({ title: 'Removed from Orben', description: 'Mercari listing marked as delisted in Orben.' });
+                  } catch (e2) {
+                    toast({ title: 'Failed to update', description: e2?.message || String(e2), variant: 'destructive' });
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              >
+                <X className="h-4 w-4" />
+                Remove from Orben
+              </Button>
+            </>
           )}
 
           {marketplaceId === 'facebook' && isActive && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-              disabled={isSaving}
-              onClick={async () => {
-                if (!listingId || listingId === '—') {
-                  toast({ title: 'Missing listing id', description: 'No Facebook listing id found for this item.', variant: 'destructive' });
-                  return;
-                }
-                if (!confirm('Delist on Facebook Marketplace?')) return;
-
-                const ext = window?.ProfitOrbitExtension;
-                if (!ext?.delistFacebookListing) {
-                  toast({
-                    title: 'Extension not available',
-                    description: 'Facebook delist requires the Profit Orbit extension. Please refresh and try again.',
-                    variant: 'destructive',
-                  });
-                  return;
-                }
-
-                try {
-                  setIsSaving(true);
-                  const resp = await ext.delistFacebookListing({ listingId: String(listingId) });
-                  if (!resp?.success) {
-                    throw new Error(resp?.error || 'Failed to delist on Facebook');
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+                disabled={isSaving}
+                onClick={async () => {
+                  if (!listingId || listingId === '—') {
+                    toast({ title: 'Missing listing id', description: 'No Facebook listing id found for this item.', variant: 'destructive' });
+                    return;
                   }
+                  if (!confirm('Delist on Facebook Marketplace?')) return;
 
-                  if (currentEditingItemId) {
-                    await crosslistingEngine.upsertMarketplaceListing({
-                      inventory_item_id: currentEditingItemId,
-                      marketplace: 'facebook',
-                      marketplace_listing_id: String(listingId),
-                      marketplace_listing_url: canView ? String(listingUrl) : '',
-                      status: 'delisted',
-                      delisted_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
+                  const ext = window?.ProfitOrbitExtension;
+                  if (!ext?.delistFacebookListing) {
+                    toast({
+                      title: 'Extension not available',
+                      description: 'Facebook delist requires the Profit Orbit extension. Please refresh and try again.',
+                      variant: 'destructive',
                     });
-                    await refreshListingRecords(currentEditingItemId);
+                    return;
                   }
 
-                  toast({ title: 'Delisted', description: 'Facebook listing removed.' });
-                } catch (e) {
-                  toast({ title: 'Failed to delist', description: e?.message || String(e), variant: 'destructive' });
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            >
-              <Unlock className="h-4 w-4" />
-              Delist on Facebook
-            </Button>
+                  try {
+                    setIsSaving(true);
+                    const resp = await ext.delistFacebookListing({ listingId: String(listingId) });
+                    if (!resp?.success) {
+                      throw new Error(resp?.error || 'Failed to delist on Facebook');
+                    }
+
+                    if (currentEditingItemId) {
+                      await crosslistingEngine.upsertMarketplaceListing({
+                        inventory_item_id: currentEditingItemId,
+                        marketplace: 'facebook',
+                        marketplace_listing_id: String(listingId),
+                        marketplace_listing_url: canView ? String(listingUrl) : '',
+                        status: 'delisted',
+                        delisted_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                      });
+                      await refreshListingRecords(currentEditingItemId);
+                    }
+
+                    toast({ title: 'Delisted', description: 'Facebook listing removed.' });
+                  } catch (e) {
+                    const errMsg = e?.message || String(e);
+                    const isRecordingError = errMsg.toLowerCase().includes('no facebook api recording') || errMsg.toLowerCase().includes('recording');
+                    const hint = isRecordingError
+                      ? 'The extension needs a recorded Facebook delist action. Or, if you already deleted this listing directly on Facebook, use "Remove from Orben" instead.'
+                      : 'If you already deleted this listing directly on Facebook, use "Remove from Orben" to sync Orben\'s records.';
+                    toast({ title: 'Failed to delist on Facebook', description: `${errMsg} — ${hint}`, variant: 'destructive' });
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              >
+                <Unlock className="h-4 w-4" />
+                Delist on Facebook
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-muted-foreground"
+                disabled={isSaving}
+                title="Already deleted this listing from Facebook? Use this to update Orben's records without calling Facebook."
+                onClick={async () => {
+                  if (!confirm('Mark this Facebook listing as removed in Orben only?\n\nUse this if you already deleted the listing directly on Facebook and just need to sync Orben\'s records.')) return;
+                  try {
+                    setIsSaving(true);
+                    if (currentEditingItemId) {
+                      await crosslistingEngine.upsertMarketplaceListing({
+                        inventory_item_id: currentEditingItemId,
+                        marketplace: 'facebook',
+                        marketplace_listing_id: String(listingId),
+                        marketplace_listing_url: canView ? String(listingUrl) : '',
+                        status: 'delisted',
+                        delisted_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                      });
+                      await refreshListingRecords(currentEditingItemId);
+                    }
+                    toast({ title: 'Removed from Orben', description: 'Facebook listing marked as delisted in Orben.' });
+                  } catch (e2) {
+                    toast({ title: 'Failed to update', description: e2?.message || String(e2), variant: 'destructive' });
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+              >
+                <X className="h-4 w-4" />
+                Remove from Orben
+              </Button>
+            </>
           )}
         </div>
       </div>
