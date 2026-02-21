@@ -39690,6 +39690,33 @@ export default function CrosslistComposer() {
                         </PopoverTrigger>
                         <PopoverContent className="w-full p-0" align="start">
                           <Command shouldFilter={false}>
+                            {/* Current path breadcrumb inside popover */}
+                            {generalCategoryPath.length > 0 && !getSearchValue().trim() && (
+                              <div className="flex items-center gap-1 px-3 py-2 border-b text-xs bg-muted/30 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setGeneralCategoryPath([])}
+                                  className="text-muted-foreground hover:text-foreground underline"
+                                >
+                                  All
+                                </button>
+                                {generalCategoryPath.map((cat, index) => (
+                                  <React.Fragment key={cat.categoryId}>
+                                    <span className="text-muted-foreground/50">/</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setGeneralCategoryPath(generalCategoryPath.slice(0, index + 1))}
+                                      className={cn(
+                                        "hover:text-foreground underline",
+                                        index === generalCategoryPath.length - 1 ? "text-foreground font-medium" : "text-muted-foreground"
+                                      )}
+                                    >
+                                      {cat.categoryName}
+                                    </button>
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                            )}
                             <CommandInput 
                               placeholder="Search all categories..." 
                               value={activeForm === "general" ? generalCategorySearchValue : 
@@ -39707,6 +39734,17 @@ export default function CrosslistComposer() {
                             />
                             <CommandList>
                               <CommandGroup>
+                                {/* Back button when drilling into subcategories */}
+                                {generalCategoryPath.length > 0 && !getSearchValue().trim() && (
+                                  <CommandItem
+                                    value="__back__"
+                                    onSelect={() => setGeneralCategoryPath(generalCategoryPath.slice(0, -1))}
+                                    className="font-medium text-muted-foreground border-b mb-1"
+                                  >
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Back
+                                  </CommandItem>
+                                )}
                                 {/* Show category suggestions from API when searching - at the top */}
                                 {getSearchValue().trim().length >= 2 && categorySuggestions.length > 0 && (
                                   <>
@@ -39793,8 +39831,13 @@ export default function CrosslistComposer() {
                                           }];
                                           
                                           if (hasChildren) {
+                                            // Drill into subcategory — keep popover open
                                             setGeneralCategoryPath(newPath);
+                                            setGeneralCategorySearchValue("");
+                                            setFacebookCategorySearchValue("");
+                                            setMercariCategorySearchValue("");
                                           } else {
+                                            // Leaf category selected — save and close
                                             const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
                                             if (activeForm === "general") {
                                               handleGeneralChange("category", fullPathStr);
@@ -39807,12 +39850,12 @@ export default function CrosslistComposer() {
                                               handleMarketplaceChange("mercari", "categoryId", category.categoryId);
                                             }
                                             setGeneralCategoryPath(newPath);
+                                            setGeneralCategorySearchValue("");
+                                            setFacebookCategorySearchValue("");
+                                            setMercariCategorySearchValue("");
+                                            setGeneralCategorySearchOpenMobile(false);
+                                            setGeneralCategorySearchOpenDesktop(false);
                                           }
-                                          setGeneralCategorySearchValue("");
-                                          setFacebookCategorySearchValue("");
-                                          setMercariCategorySearchValue("");
-                                          setGeneralCategorySearchOpenMobile(false);
-                                          setGeneralCategorySearchOpenDesktop(false);
                                         }}
                                       >
                                         <Check
@@ -39822,7 +39865,7 @@ export default function CrosslistComposer() {
                                           )}
                                         />
                                         <div className="flex items-center gap-2 flex-1">
-                                          <span className="flex-1">{fullPath}</span>
+                                          <span className="flex-1">{category.categoryName}</span>
                                           {hasChildren && (
                                             <ArrowRight className="w-3 h-3 text-muted-foreground" />
                                           )}
@@ -40666,6 +40709,33 @@ export default function CrosslistComposer() {
                           </PopoverTrigger>
                           <PopoverContent className="w-full p-0" align="start">
                             <Command shouldFilter={false}>
+                              {/* Current path breadcrumb inside popover */}
+                              {selectedCategoryPath.length > 0 && !ebayCategorySearchValue.trim() && (
+                                <div className="flex items-center gap-1 px-3 py-2 border-b text-xs bg-muted/30 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedCategoryPath([])}
+                                    className="text-muted-foreground hover:text-foreground underline"
+                                  >
+                                    All
+                                  </button>
+                                  {selectedCategoryPath.map((cat, index) => (
+                                    <React.Fragment key={cat.categoryId}>
+                                      <span className="text-muted-foreground/50">/</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedCategoryPath(selectedCategoryPath.slice(0, index + 1))}
+                                        className={cn(
+                                          "hover:text-foreground underline",
+                                          index === selectedCategoryPath.length - 1 ? "text-foreground font-medium" : "text-muted-foreground"
+                                        )}
+                                      >
+                                        {cat.categoryName}
+                                      </button>
+                                    </React.Fragment>
+                                  ))}
+                                </div>
+                              )}
                               <CommandInput 
                                 placeholder="Search all categories..." 
                                 value={ebayCategorySearchValue}
@@ -40673,6 +40743,17 @@ export default function CrosslistComposer() {
                               />
                               <CommandList>
                                 <CommandGroup>
+                                  {/* Back button when drilling into subcategories */}
+                                  {selectedCategoryPath.length > 0 && !ebayCategorySearchValue.trim() && (
+                                    <CommandItem
+                                      value="__back__"
+                                      onSelect={() => setSelectedCategoryPath(selectedCategoryPath.slice(0, -1))}
+                                      className="font-medium text-muted-foreground border-b mb-1"
+                                    >
+                                      <ArrowLeft className="mr-2 h-4 w-4" />
+                                      Back
+                                    </CommandItem>
+                                  )}
                                   {/* Show category suggestions from API when searching - at the top */}
                                   {ebayCategorySearchValue.trim().length >= 2 && categorySuggestions.length > 0 && (
                                     <>
@@ -40746,16 +40827,19 @@ export default function CrosslistComposer() {
                                             }];
                                             
                                             if (hasChildren) {
+                                              // Drill into subcategory — keep popover open
                                               setSelectedCategoryPath(newPath);
+                                              setEbayCategorySearchValue("");
                                             } else {
+                                              // Leaf category selected — save and close
                                               const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
                                               handleMarketplaceChange("ebay", "categoryId", category.categoryId);
                                               handleMarketplaceChange("ebay", "categoryName", fullPathStr);
                                               setSelectedCategoryPath(newPath);
+                                              setEbayCategorySearchValue("");
+                                              setCategorySearchOpenMobile(false);
+                                              setCategorySearchOpenDesktop(false);
                                             }
-                                            setEbayCategorySearchValue("");
-                                            setCategorySearchOpenMobile(false);
-                                            setCategorySearchOpenDesktop(false);
                                           }}
                                         >
                                           <Check
@@ -40765,7 +40849,7 @@ export default function CrosslistComposer() {
                                             )}
                                           />
                                           <div className="flex items-center gap-2 flex-1">
-                                            <span className="flex-1">{fullPath}</span>
+                                            <span className="flex-1">{category.categoryName}</span>
                                             {hasChildren && (
                                               <ArrowRight className="w-3 h-3 text-muted-foreground" />
                                             )}
@@ -45783,6 +45867,33 @@ export default function CrosslistComposer() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-full p-0" align="start">
                                   <Command shouldFilter={false}>
+                                    {/* Current path breadcrumb inside popover */}
+                                    {generalCategoryPath.length > 0 && !getSearchValue().trim() && (
+                                      <div className="flex items-center gap-1 px-3 py-2 border-b text-xs bg-muted/30 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={() => setGeneralCategoryPath([])}
+                                          className="text-muted-foreground hover:text-foreground underline"
+                                        >
+                                          All
+                                        </button>
+                                        {generalCategoryPath.map((cat, index) => (
+                                          <React.Fragment key={cat.categoryId}>
+                                            <span className="text-muted-foreground/50">/</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => setGeneralCategoryPath(generalCategoryPath.slice(0, index + 1))}
+                                              className={cn(
+                                                "hover:text-foreground underline",
+                                                index === generalCategoryPath.length - 1 ? "text-foreground font-medium" : "text-muted-foreground"
+                                              )}
+                                            >
+                                              {cat.categoryName}
+                                            </button>
+                                          </React.Fragment>
+                                        ))}
+                                      </div>
+                                    )}
                                     <CommandInput 
                                       placeholder="Search all categories..." 
                                       value={activeForm === "general" ? generalCategorySearchValue : 
@@ -45800,6 +45911,17 @@ export default function CrosslistComposer() {
                                     />
                                     <CommandList>
                                       <CommandGroup>
+                                        {/* Back button when drilling into subcategories */}
+                                        {generalCategoryPath.length > 0 && !getSearchValue().trim() && (
+                                          <CommandItem
+                                            value="__back__"
+                                            onSelect={() => setGeneralCategoryPath(generalCategoryPath.slice(0, -1))}
+                                            className="font-medium text-muted-foreground border-b mb-1"
+                                          >
+                                            <ArrowLeft className="mr-2 h-4 w-4" />
+                                            Back
+                                          </CommandItem>
+                                        )}
                                         {getSearchValue().trim().length >= 2 && categorySuggestions.length > 0 && (
                                           <>
                                             {categorySuggestions.map((suggestion, index) => {
@@ -45884,8 +46006,13 @@ export default function CrosslistComposer() {
                                                   }];
                                                   
                                                   if (hasChildren) {
+                                                    // Drill into subcategory — keep popover open
                                                     setGeneralCategoryPath(newPath);
+                                                    setGeneralCategorySearchValue("");
+                                                    setFacebookCategorySearchValue("");
+                                                    setMercariCategorySearchValue("");
                                                   } else {
+                                                    // Leaf category selected — save and close
                                                     const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
                                                     if (activeForm === "general") {
                                                       handleGeneralChange("category", fullPathStr);
@@ -45898,12 +46025,12 @@ export default function CrosslistComposer() {
                                                       handleMarketplaceChange("mercari", "categoryId", category.categoryId);
                                                     }
                                                     setGeneralCategoryPath(newPath);
+                                                    setGeneralCategorySearchValue("");
+                                                    setFacebookCategorySearchValue("");
+                                                    setMercariCategorySearchValue("");
+                                                    setGeneralCategorySearchOpenMobile(false);
+                                                    setGeneralCategorySearchOpenDesktop(false);
                                                   }
-                                                  setGeneralCategorySearchValue("");
-                                                  setFacebookCategorySearchValue("");
-                                                  setMercariCategorySearchValue("");
-                                                  setGeneralCategorySearchOpenMobile(false);
-                                                  setGeneralCategorySearchOpenDesktop(false);
                                                 }}
                                               >
                                                 <Check
@@ -45913,7 +46040,7 @@ export default function CrosslistComposer() {
                                                   )}
                                                 />
                                                 <div className="flex items-center gap-2 flex-1">
-                                                  <span className="flex-1">{fullPath}</span>
+                                                  <span className="flex-1">{category.categoryName}</span>
                                                   {hasChildren && (
                                                     <ArrowRight className="w-3 h-3 text-muted-foreground" />
                                                   )}
@@ -46749,6 +46876,33 @@ export default function CrosslistComposer() {
                                   </PopoverTrigger>
                                   <PopoverContent className="w-full p-0" align="start">
                                     <Command shouldFilter={false}>
+                                      {/* Current path breadcrumb inside popover */}
+                                      {selectedCategoryPath.length > 0 && !ebayCategorySearchValue.trim() && (
+                                        <div className="flex items-center gap-1 px-3 py-2 border-b text-xs bg-muted/30 flex-wrap">
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedCategoryPath([])}
+                                            className="text-muted-foreground hover:text-foreground underline"
+                                          >
+                                            All
+                                          </button>
+                                          {selectedCategoryPath.map((cat, index) => (
+                                            <React.Fragment key={cat.categoryId}>
+                                              <span className="text-muted-foreground/50">/</span>
+                                              <button
+                                                type="button"
+                                                onClick={() => setSelectedCategoryPath(selectedCategoryPath.slice(0, index + 1))}
+                                                className={cn(
+                                                  "hover:text-foreground underline",
+                                                  index === selectedCategoryPath.length - 1 ? "text-foreground font-medium" : "text-muted-foreground"
+                                                )}
+                                              >
+                                                {cat.categoryName}
+                                              </button>
+                                            </React.Fragment>
+                                          ))}
+                                        </div>
+                                      )}
                                       <CommandInput 
                                         placeholder="Search all categories..." 
                                         value={ebayCategorySearchValue}
@@ -46756,6 +46910,17 @@ export default function CrosslistComposer() {
                                       />
                                       <CommandList>
                                         <CommandGroup>
+                                          {/* Back button when drilling into subcategories */}
+                                          {selectedCategoryPath.length > 0 && !ebayCategorySearchValue.trim() && (
+                                            <CommandItem
+                                              value="__back__"
+                                              onSelect={() => setSelectedCategoryPath(selectedCategoryPath.slice(0, -1))}
+                                              className="font-medium text-muted-foreground border-b mb-1"
+                                            >
+                                              <ArrowLeft className="mr-2 h-4 w-4" />
+                                              Back
+                                            </CommandItem>
+                                          )}
                                           {ebayCategorySearchValue.trim().length >= 2 && categorySuggestions.length > 0 && (
                                             <>
                                               {categorySuggestions.map((suggestion, index) => {
@@ -46827,16 +46992,19 @@ export default function CrosslistComposer() {
                                                     }];
                                                     
                                                     if (hasChildren) {
+                                                      // Drill into subcategory — keep popover open
                                                       setSelectedCategoryPath(newPath);
+                                                      setEbayCategorySearchValue("");
                                                     } else {
+                                                      // Leaf category selected — save and close
                                                       const fullPathStr = newPath.map(c => c.categoryName).join(" > ");
                                                       handleMarketplaceChange("ebay", "categoryId", category.categoryId);
                                                       handleMarketplaceChange("ebay", "categoryName", fullPathStr);
                                                       setSelectedCategoryPath(newPath);
+                                                      setEbayCategorySearchValue("");
+                                                      setCategorySearchOpenMobile(false);
+                                                      setCategorySearchOpenDesktop(false);
                                                     }
-                                                    setEbayCategorySearchValue("");
-                                                    setCategorySearchOpenMobile(false);
-                                                    setCategorySearchOpenDesktop(false);
                                                   }}
                                                 >
                                                   <Check
@@ -46846,7 +47014,7 @@ export default function CrosslistComposer() {
                                                     )}
                                                   />
                                                   <div className="flex items-center gap-2 flex-1">
-                                                    <span className="flex-1">{fullPath}</span>
+                                                    <span className="flex-1">{category.categoryName}</span>
                                                     {hasChildren && (
                                                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                                                     )}
