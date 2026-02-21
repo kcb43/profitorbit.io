@@ -36,6 +36,7 @@ const SettingsNotifications = React.lazy(() => import("./settings/Notifications"
 const SettingsAppearance    = React.lazy(() => import("./settings/Appearance"));
 const SettingsMarketplaces  = React.lazy(() => import("./settings/Marketplaces"));
 const SettingsReports       = React.lazy(() => import("./settings/ReportsPrefs"));
+const SettingsFulfillment   = React.lazy(() => import("./settings/Fulfillment"));
 const Tools = React.lazy(() => import("./Tools"));
 const Analytics = React.lazy(() => import("./Analytics"));
 const ProTools = React.lazy(() => import("./ProTools"));
@@ -412,6 +413,18 @@ function PagesContent() {
                     {withSuspense(
                       <Layout currentPageName="Reports Preferences">
                         {withSuspense(<SettingsReports />)}
+                      </Layout>
+                    )}
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/Settings/fulfillment"
+                element={
+                  <AuthGuard>
+                    {withSuspense(
+                      <Layout currentPageName="Fulfillment Settings">
+                        {withSuspense(<SettingsFulfillment />)}
                       </Layout>
                     )}
                   </AuthGuard>

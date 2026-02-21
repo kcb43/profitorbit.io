@@ -11,6 +11,7 @@ import {
   Palette,
   ShoppingBag,
   BarChart3,
+  Truck,
 } from 'lucide-react';
 
 export const SETTINGS_SECTIONS = [
@@ -73,6 +74,19 @@ export const SETTINGS_SECTIONS = [
     searchKeywords: ['reports', 'export', 'csv', 'excel', 'pdf', 'date range', 'fees', 'default'],
   },
 
+  // ── Selling ───────────────────────────────────────────────────────────────
+  {
+    id: 'fulfillment',
+    title: 'Fulfillment',
+    description: 'Pickup location, shipping notes, and platform-specific fulfillment lines for AI descriptions',
+    icon: Truck,
+    route: '/Settings/fulfillment',
+    category: 'Selling',
+    color: 'teal',
+    gradient: 'from-teal-500 to-cyan-600',
+    searchKeywords: ['pickup', 'shipping', 'fulfillment', 'location', 'facebook pickup', 'ship', 'description ai'],
+  },
+
   // ── Integrations ──────────────────────────────────────────────────────────
   {
     id: 'marketplaces',
@@ -87,7 +101,7 @@ export const SETTINGS_SECTIONS = [
   },
 ];
 
-export const SETTINGS_CATEGORIES = ['Account & Security', 'Preferences', 'Integrations'];
+export const SETTINGS_CATEGORIES = ['Account & Security', 'Preferences', 'Selling', 'Integrations'];
 
 /** Look up a section by id. */
 export function getSectionById(id) {

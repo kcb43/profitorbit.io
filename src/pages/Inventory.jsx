@@ -2796,6 +2796,20 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
+                      {/* Listing keywords from DB (marketplace-facing, set in Crosslist) */}
+                      {Array.isArray(item.listing_keywords) && item.listing_keywords.length > 0 && (
+                        <div className="sm:hidden w-full px-3 py-1 flex flex-wrap gap-1">
+                          {item.listing_keywords.slice(0, 6).map((kw) => (
+                            <span key={kw} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                              {kw}
+                            </span>
+                          ))}
+                          {item.listing_keywords.length > 6 && (
+                            <span className="text-[9px] text-muted-foreground">+{item.listing_keywords.length - 6} more</span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Row 3: Tags (if any) - Mobile only */}
                       {(itemTags.length > 0 || tagDrafts[`show_${item.id}`]) && (
                         <div className="sm:hidden w-full px-3 py-2 border-t border-gray-200 dark:border-border bg-gray-50 dark:bg-card/50">

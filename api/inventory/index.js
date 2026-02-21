@@ -68,6 +68,10 @@ function buildSelectFromFields(fieldsCsv) {
     'facebook_listing_id',
     'mercari_listing_id',
     'marketplace_listings',
+    // tags + fulfillment
+    'internal_tags',
+    'listing_keywords',
+    'is_favorite',
   ]);
 
   const fields = String(fieldsCsv)
