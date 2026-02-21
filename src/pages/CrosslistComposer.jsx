@@ -38952,7 +38952,7 @@ export default function CrosslistComposer() {
                           <div key={mp} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.color}`} />
-                              <span className="text-sm font-medium truncate">{meta.label}</span>
+                              <span className="text-base font-medium truncate">{meta.label}</span>
                               {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-semibold">Active</span>}
                               {isProcessing && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-semibold">Processing</span>}
                               {isDelisted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-700 font-semibold">Ended</span>}
@@ -39182,7 +39182,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-3">
                 <div>
-                  <Label htmlFor="general-title" className="text-xs mb-1 block">Title <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-title" className="text-sm mb-1 block">Title <span className="text-red-500">*</span></Label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       id="general-title"
@@ -39209,7 +39209,7 @@ export default function CrosslistComposer() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="general-price" className="text-xs mb-1 block">Listing Price <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-price" className="text-sm mb-1 block">Listing Price <span className="text-red-500">*</span></Label>
                   <Input
                     id="general-price"
                     name="general-price"
@@ -39224,7 +39224,7 @@ export default function CrosslistComposer() {
                   <p className="mt-0.5 text-[10px] text-muted-foreground">Price you'll list this item for</p>
                 </div>
                 <div>
-                  <Label htmlFor="general-cost" className="text-xs mb-1.5 block">Purchase Price <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-cost" className="text-sm mb-1.5 block">Purchase Price <span className="text-red-500">*</span></Label>
                   <Input
                     id="general-cost"
                     name="general-cost"
@@ -39293,7 +39293,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-brand" className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
@@ -39505,7 +39505,7 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-condition" className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
                   <Select
                     value={generalForm.condition ? String(generalForm.condition) : undefined}
                     onValueChange={(value) => {
@@ -39533,7 +39533,7 @@ export default function CrosslistComposer() {
                 </div>
                 {generalForm.size && (
                   <div>
-                    <Label htmlFor="general-size" className="text-xs mb-1.5 block">Size</Label>
+                    <Label htmlFor="general-size" className="text-sm mb-1.5 block">Size</Label>
                     <Input
                       id="general-size"
                       name="general-size"
@@ -39544,7 +39544,7 @@ export default function CrosslistComposer() {
                   </div>
                 )}
                 <div>
-                  <Label htmlFor="general-sku" className="text-xs mb-1.5 block">SKU</Label>
+                  <Label htmlFor="general-sku" className="text-sm mb-1.5 block">SKU</Label>
                   <Input
                     id="general-sku"
                     name="general-sku"
@@ -39554,7 +39554,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Primary Color</Label>
+                  <Label className="text-sm mb-1.5 block">Primary Color</Label>
                   <Button
                     type="button"
                     variant={generalForm.color1 ? "default" : "outline"}
@@ -39578,7 +39578,7 @@ export default function CrosslistComposer() {
                   </Button>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Secondary Color</Label>
+                  <Label className="text-sm mb-1.5 block">Secondary Color</Label>
                   <Button
                     type="button"
                     variant={generalForm.color2 ? "default" : "outline"}
@@ -39602,7 +39602,7 @@ export default function CrosslistComposer() {
                   </Button>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                   
                   {/* Breadcrumb navigation for category path */}
                   {generalCategoryPath.length > 0 && (
@@ -39984,7 +39984,7 @@ export default function CrosslistComposer() {
                 {/* US Size - Only show when category is selected and has size aspect */}
                 {shouldShowGeneralSize && (
                   <div>
-                    <Label className="text-xs mb-1.5 block">US Size</Label>
+                    <Label className="text-sm mb-1.5 block">US Size</Label>
                     <Input
                       placeholder="e.g. Men's M, 10, XL"
                       value={generalForm.size}
@@ -39998,7 +39998,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Tags</Label>
+                  <Label className="text-base font-medium">Tags</Label>
                 </div>
                 {generalForm.tags && (
                   <button
@@ -40029,14 +40029,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Save className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Shipping Settings</Label>
+                  <Label className="text-base font-medium">Shipping Settings</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="general-zip" className="text-sm mb-1.5 block">Zip Code <span className="text-red-500">*</span></Label>
                     {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
                       handleGeneralChange("zip", v)
                     )}
@@ -40050,7 +40050,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Quantity <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Quantity <span className="text-red-500">*</span></Label>
                   <Input
                     type="number"
                     min="1"
@@ -40065,7 +40065,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Package Details</Label>
+                  <Label className="text-base font-medium">Package Details</Label>
                 </div>
                 {generalForm.packageWeight && (
                   <button
@@ -40086,7 +40086,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Package Details <span className="text-red-500">*</span>
                   </Label>
                   <Button
@@ -40102,7 +40102,7 @@ export default function CrosslistComposer() {
                   </Button>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Custom Labels</Label>
+                  <Label className="text-sm mb-1.5 block">Custom Labels</Label>
                   <Input
                     placeholder="Comma-separated labels (e.g. Q4 Liquidation, Holiday Gift). These will appear as tags in inventory."
                     value={generalForm.customLabels}
@@ -40134,7 +40134,7 @@ export default function CrosslistComposer() {
               {currentEditingItemId && (
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Item ID:</span>
+                  <span className="text-base font-medium text-foreground">Item ID:</span>
                   <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
@@ -40329,14 +40329,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+                  <Label className="text-base font-medium">Item Details</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Title Section */}
                 <div>
-                  <Label htmlFor="ebay-title" className="text-xs mb-1.5 block">Title</Label>
+                  <Label htmlFor="ebay-title" className="text-sm mb-1.5 block">Title</Label>
                   <Input
                     id="ebay-title"
                     name="ebay-title"
@@ -40411,7 +40411,7 @@ export default function CrosslistComposer() {
 
                 {/* eBay Brand - use same dropdown as general form */}
                 <div className="md:col-span-2">
-                  <Label htmlFor="ebay-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="ebay-brand" className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
@@ -40625,7 +40625,7 @@ export default function CrosslistComposer() {
 
                 {/* Category Section */}
                 <div className="md:col-span-2">
-                  <Label htmlFor="ebay-category" className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="ebay-category" className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                   <div className="space-y-2">
                     {/* Breadcrumb navigation */}
                     {selectedCategoryPath.length > 0 && (
@@ -41052,7 +41052,7 @@ export default function CrosslistComposer() {
                         {/* Type/Model Field - Show if ebayTypeAspect exists (even if no values yet, to show loading state) */}
                         {ebayTypeAspect ? (
                           <div>
-                            <Label className="text-xs mb-1.5 block">
+                            <Label className="text-sm mb-1.5 block">
                               {ebayTypeAspect.localizedAspectName} <span className="text-red-500">*</span>
                             </Label>
                             {ebayTypeValues.length > 0 ? (
@@ -41085,7 +41085,7 @@ export default function CrosslistComposer() {
 
                         {/* Condition Dropdown */}
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Condition <span className="text-red-500">*</span>
                           </Label>
                           <Select
@@ -41111,7 +41111,7 @@ export default function CrosslistComposer() {
                 {/* Condition Dropdown - Show when no category selected */}
                 {!ebayForm.categoryId && (
                   <div>
-                    <Label className="text-xs mb-1.5 block">
+                    <Label className="text-sm mb-1.5 block">
                       Condition <span className="text-red-500">*</span>
                     </Label>
                     <Select
@@ -41133,7 +41133,7 @@ export default function CrosslistComposer() {
 
                 {/* SKU Field */}
                 <div>
-                  <Label htmlFor="ebay-sku" className="text-xs mb-1.5 block">SKU</Label>
+                  <Label htmlFor="ebay-sku" className="text-sm mb-1.5 block">SKU</Label>
                   <Input
                     id="ebay-sku"
                     name="ebay-sku"
@@ -41148,7 +41148,7 @@ export default function CrosslistComposer() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Color <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Color <span className="text-red-500">*</span></Label>
                   <Button
                     type="button"
                     variant={ebayForm.color ? "default" : "outline"}
@@ -41176,7 +41176,7 @@ export default function CrosslistComposer() {
               {/* Pricing Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">Pricing Format <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Pricing Format <span className="text-red-500">*</span></Label>
                   <Select
                     value={ebayForm.pricingFormat ? String(ebayForm.pricingFormat) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "pricingFormat", value)}
@@ -41191,7 +41191,7 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Duration <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Duration <span className="text-red-500">*</span></Label>
                   <Select
                     value={ebayForm.duration ? String(ebayForm.duration) : undefined}
                     onValueChange={(value) => handleMarketplaceChange("ebay", "duration", value)}
@@ -41207,7 +41207,7 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Buy It Now Price <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Buy It Now Price <span className="text-red-500">*</span></Label>
                   <Input
                     type="number"
                     min="0"
@@ -41224,7 +41224,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Allow Best Offer</Label>
+                    <Label className="text-sm mb-1.5 block">Allow Best Offer</Label>
                     {renderEbayDefaultToggle("allowBestOffer", ebayForm.allowBestOffer, (v) =>
                       handleMarketplaceChange("ebay", "allowBestOffer", v)
                     )}
@@ -41244,14 +41244,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Save className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Shipping Settings</Label>
+                  <Label className="text-base font-medium">Shipping Settings</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
                     {renderEbayDefaultToggle("shippingMethod", ebayForm.shippingMethod, (v) =>
                       handleMarketplaceChange("ebay", "shippingMethod", v)
                     )}
@@ -41271,7 +41271,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
                     {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
                       handleMarketplaceChange("ebay", "shippingCostType", v)
                     )}
@@ -41291,7 +41291,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
                     {renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
                       handleMarketplaceChange("ebay", "shippingCost", v)
                     )}
@@ -41307,7 +41307,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
                     {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
                       handleMarketplaceChange("ebay", "handlingTime", v)
                     )}
@@ -41328,7 +41328,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Ship From Country</Label>
+                    <Label className="text-sm mb-1.5 block">Ship From Country</Label>
                     {renderEbayDefaultToggle("shipFromCountry", ebayForm.shipFromCountry, (v) =>
                       handleMarketplaceChange("ebay", "shipFromCountry", v)
                     )}
@@ -41351,7 +41351,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
                     {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
                       handleMarketplaceChange("ebay", "shippingService", v)
                     )}
@@ -41372,7 +41372,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                    <Label className="text-sm mb-1.5 block">Location Descriptions</Label>
                     {renderEbayDefaultToggle("locationDescriptions", ebayForm.locationDescriptions, (v) =>
                       handleMarketplaceChange("ebay", "locationDescriptions", v)
                     )}
@@ -41388,7 +41388,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Shipping Location</Label>
+                    <Label className="text-sm mb-1.5 block">Shipping Location</Label>
                     {renderEbayDefaultToggle("shippingLocation", ebayForm.shippingLocation, (v) =>
                       handleMarketplaceChange("ebay", "shippingLocation", v)
                     )}
@@ -41406,7 +41406,7 @@ export default function CrosslistComposer() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
                     {renderEbayDefaultToggle("acceptReturns", ebayForm.acceptReturns, (v) =>
                       handleMarketplaceChange("ebay", "acceptReturns", v)
                     )}
@@ -41425,7 +41425,7 @@ export default function CrosslistComposer() {
                 {ebayForm.acceptReturns && (
                   <>
                     <div>
-                      <Label className="text-xs mb-1.5 block">Return Within <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm mb-1.5 block">Return Within <span className="text-red-500">*</span></Label>
                       <Select
                         value={ebayForm.returnWithin ? String(ebayForm.returnWithin) : "30 days"}
                         onValueChange={(value) => handleMarketplaceChange("ebay", "returnWithin", value)}
@@ -41440,7 +41440,7 @@ export default function CrosslistComposer() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-xs mb-1.5 block">Return Shipping Payer <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm mb-1.5 block">Return Shipping Payer <span className="text-red-500">*</span></Label>
                       <Select
                         value={ebayForm.returnShippingPayer ? String(ebayForm.returnShippingPayer) : "Buyer"}
                         onValueChange={(value) => handleMarketplaceChange("ebay", "returnShippingPayer", value)}
@@ -41455,7 +41455,7 @@ export default function CrosslistComposer() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-xs mb-1.5 block">Return Refund Method <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm mb-1.5 block">Return Refund Method <span className="text-red-500">*</span></Label>
                       <Select
                         value={ebayForm.returnRefundMethod ? String(ebayForm.returnRefundMethod) : "Full Refund"}
                         onValueChange={(value) => handleMarketplaceChange("ebay", "returnRefundMethod", value)}
@@ -41477,7 +41477,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Package Details</Label>
+                  <Label className="text-base font-medium">Package Details</Label>
                 </div>
                 {generalForm.packageWeight && (
                   <button
@@ -41498,7 +41498,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Package Details <span className="text-red-500">*</span>
                   </Label>
                   <Button
@@ -41568,7 +41568,7 @@ export default function CrosslistComposer() {
               {currentEditingItemId && (
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Item ID:</span>
+                  <span className="text-base font-medium text-foreground">Item ID:</span>
                   <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
@@ -41765,14 +41765,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+                  <Label className="text-base font-medium">Item Details</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Title Section */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Label className="text-sm mb-1.5 block">Title</Label>
                   <Input
                     placeholder="Enter listing title"
                     value={etsyForm.title || ""}
@@ -41843,7 +41843,7 @@ export default function CrosslistComposer() {
 
                 {/* Brand Section */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Brand</Label>
+                  <Label className="text-sm mb-1.5 block">Brand</Label>
                   {brandIsCustom ? (
                     <div className="flex gap-2">
                       <Input
@@ -41973,7 +41973,7 @@ export default function CrosslistComposer() {
 
                 {/* SKU Field */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">SKU</Label>
+                  <Label className="text-sm mb-1.5 block">SKU</Label>
                   <Input
                     placeholder={generalForm.sku || "Enter SKU"}
                     value={etsyForm.sku || ""}
@@ -41989,7 +41989,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs mb-1.5 block">Processing Time</Label>
+                  <Label className="text-sm mb-1.5 block">Processing Time</Label>
                   <Select
                     value={etsyForm.processingTime}
                     onValueChange={(value) => handleMarketplaceChange("etsy", "processingTime", value)}
@@ -42006,7 +42006,7 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Renewal Option</Label>
+                  <Label className="text-sm mb-1.5 block">Renewal Option</Label>
                   <Select
                     value={etsyForm.renewalOption}
                     onValueChange={(value) => handleMarketplaceChange("etsy", "renewalOption", value)}
@@ -42021,7 +42021,7 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">Who made it?</Label>
+                  <Label className="text-sm mb-1.5 block">Who made it?</Label>
                   <Select
                     value={etsyForm.whoMade}
                     onValueChange={(value) => handleMarketplaceChange("etsy", "whoMade", value)}
@@ -42037,7 +42037,7 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1.5 block">When was it made?</Label>
+                  <Label className="text-sm mb-1.5 block">When was it made?</Label>
                   <Select
                     value={etsyForm.whenMade}
                     onValueChange={(value) => handleMarketplaceChange("etsy", "whenMade", value)}
@@ -42054,7 +42054,7 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Shipping Profile</Label>
+                  <Label className="text-sm mb-1.5 block">Shipping Profile</Label>
                   <Input
                     placeholder="Link your saved Etsy shipping profile"
                     value={etsyForm.shippingProfile}
@@ -42062,7 +42062,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Tags</Label>
+                  <Label className="text-sm mb-1.5 block">Tags</Label>
                   <TagInput
                     placeholder={etsyForm.inheritGeneral ? "Inherits general tags" : "Type keywords and press space or comma to add tags"}
                     value={etsyForm.tags}
@@ -42071,7 +42071,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Digital Download</Label>
+                  <Label className="text-sm mb-1.5 block">Digital Download</Label>
                   <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                     <Switch
                       id="etsy-digital"
@@ -42087,7 +42087,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Package Details</Label>
+                  <Label className="text-base font-medium">Package Details</Label>
                 </div>
                 {generalForm.packageWeight && (
                   <button
@@ -42108,7 +42108,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Package Details <span className="text-red-500">*</span>
                   </Label>
                   <Button
@@ -42157,7 +42157,7 @@ export default function CrosslistComposer() {
               {currentEditingItemId && (
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Item ID:</span>
+                  <span className="text-base font-medium text-foreground">Item ID:</span>
                   <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
@@ -42355,14 +42355,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+                  <Label className="text-base font-medium">Item Details</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Title Section */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Title <span className="text-red-500">*</span></Label>
                   <Input
                     placeholder={generalForm.title ? `Inherited: ${generalForm.title}` : "What are you selling?"}
                     value={mercariForm.title || ""}
@@ -42441,12 +42441,12 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Category</Label>
+                  <Label className="text-base font-medium">Category</Label>
                 </div>
               </div>
 
               <div className="mb-6">
-                <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                <Label className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                 
                 {/* Category breadcrumb */}
                 {mercariCategoryPath.length > 0 && (
@@ -42692,7 +42692,7 @@ export default function CrosslistComposer() {
                   (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('women') ||
                   (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('kids')) && (
                   <div className="mt-4">
-                    <Label className="text-xs mb-1.5 block">
+                    <Label className="text-sm mb-1.5 block">
                       Size <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -42714,14 +42714,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+                  <Label className="text-base font-medium">Item Details</Label>
                 </div>
               </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Brand Section - Mercari-specific brands only, required */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Brand {!mercariForm.noBrand && <span className="text-red-500">*</span>}
                   </Label>
 
@@ -42887,7 +42887,7 @@ export default function CrosslistComposer() {
 
                 {/* Condition Section */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
                   <Select
                     value={mercariForm.condition || generalForm.condition || ""}
                     onValueChange={(value) => handleMarketplaceChange("mercari", "condition", value)}
@@ -42912,7 +42912,7 @@ export default function CrosslistComposer() {
 
                 {/* Color Section */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Color</Label>
+                  <Label className="text-sm mb-1.5 block">Color</Label>
                   <Select
                     value={mercariForm.color || generalForm.color || ""}
                     onValueChange={(value) => handleMarketplaceChange("mercari", "color", value)}
@@ -42951,14 +42951,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Pricing & Inventory</Label>
+                  <Label className="text-base font-medium">Pricing & Inventory</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Listing Price */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
                   <Input
                     type="number"
                     placeholder={generalForm.price ? `Inherited: $${generalForm.price}` : "(min $1/max $2000)"}
@@ -43023,7 +43023,7 @@ export default function CrosslistComposer() {
                         </div>
                           {mercariForm.smartPricing && (
                             <div className="mt-3">
-                              <Label htmlFor="mercari-floor-price" className="text-xs mb-1.5 block">
+                              <Label htmlFor="mercari-floor-price" className="text-sm mb-1.5 block">
                                 Floor Price
                               </Label>
                               <Input
@@ -43064,7 +43064,7 @@ export default function CrosslistComposer() {
                         </div>
                         {mercariForm.smartOffers && (
                           <div className="mt-3">
-                            <Label htmlFor="mercari-minimum-price" className="text-xs mb-1.5 block">
+                            <Label htmlFor="mercari-minimum-price" className="text-sm mb-1.5 block">
                               Minimum Price
                             </Label>
                             <Input
@@ -43089,7 +43089,7 @@ export default function CrosslistComposer() {
 
                 {/* Quantity */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Quantity</Label>
+                  <Label className="text-sm mb-1.5 block">Quantity</Label>
                   <Input
                     type="number"
                     min="1"
@@ -43109,7 +43109,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Shipping</Label>
+                  <Label className="text-base font-medium">Shipping</Label>
                 </div>
               </div>
 
@@ -43117,7 +43117,7 @@ export default function CrosslistComposer() {
                 {/* Ships From (Zip Code) */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
                     {renderMercariDefaultToggle("shipsFrom", mercariForm.shipsFrom, (v) =>
                       handleMarketplaceChange("mercari", "shipsFrom", v)
                     )}
@@ -43133,7 +43133,7 @@ export default function CrosslistComposer() {
                 {/* Delivery Method */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
                     {renderMercariDefaultToggle("deliveryMethod", mercariForm.deliveryMethod || "prepaid", (v) =>
                       handleMarketplaceChange("mercari", "deliveryMethod", v)
                     )}
@@ -43199,7 +43199,7 @@ export default function CrosslistComposer() {
               {currentEditingItemId && (
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Item ID:</span>
+                  <span className="text-base font-medium text-foreground">Item ID:</span>
                   <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
@@ -43397,14 +43397,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+                  <Label className="text-base font-medium">Item Details</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Title Section */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Title</Label>
+                  <Label className="text-sm mb-1.5 block">Title</Label>
                   <Input
                     placeholder="Enter listing title"
                     value={facebookForm.title || ""}
@@ -43478,12 +43478,12 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Category</Label>
+                  <Label className="text-base font-medium">Category</Label>
                 </div>
               </div>
 
               <div className="mb-6">
-                <Label className="text-xs mb-1.5 block">
+                <Label className="text-sm mb-1.5 block">
                   Category <span className="text-red-500">*</span>
                 </Label>
 
@@ -43744,7 +43744,7 @@ export default function CrosslistComposer() {
               {(facebookForm.category || generalForm.category || facebookForm.categoryId || generalForm.categoryId) && (
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
-                    <Label className="text-sm font-medium">Category Specifics</Label>
+                    <Label className="text-base font-medium">Category Specifics</Label>
                     <Button
                       type="button"
                       variant="ghost"
@@ -43766,7 +43766,7 @@ export default function CrosslistComposer() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Condition - Always show */}
                     <div>
-                      <Label className="text-xs mb-1.5 block">
+                      <Label className="text-sm mb-1.5 block">
                         Condition <span className="text-red-500">*</span>
                       </Label>
                       <Select
@@ -43793,7 +43793,7 @@ export default function CrosslistComposer() {
                       generalForm.category?.toLowerCase().includes('shoes') ||
                       generalForm.category?.toLowerCase().includes('apparel')) && (
                       <div>
-                        <Label className="text-xs mb-1.5 block">
+                        <Label className="text-sm mb-1.5 block">
                           Size <span className="text-red-500">*</span>
                         </Label>
                         <Input
@@ -43821,7 +43821,7 @@ export default function CrosslistComposer() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-md border">
                       {/* Brand */}
                       <div>
-                        <Label className="text-xs mb-1.5 block">Brand</Label>
+                        <Label className="text-sm mb-1.5 block">Brand</Label>
                         {brandIsCustom ? (
                           <div className="flex gap-2">
                             <Input
@@ -43933,7 +43933,7 @@ export default function CrosslistComposer() {
 
                       {/* Type */}
                       <div>
-                        <Label className="text-xs mb-1.5 block">Type</Label>
+                        <Label className="text-sm mb-1.5 block">Type</Label>
                         <Input
                           placeholder="e.g., DSLR, Point & Shoot, Mirrorless"
                           value={facebookForm.itemType || ""}
@@ -43943,7 +43943,7 @@ export default function CrosslistComposer() {
 
                       {/* Color */}
                       <div>
-                        <Label className="text-xs mb-1.5 block">Color</Label>
+                        <Label className="text-sm mb-1.5 block">Color</Label>
                         <Input
                           placeholder={generalForm.color1 ? `Inherited: ${generalForm.color1}` : "Primary color"}
                           value={facebookForm.color || ""}
@@ -43954,7 +43954,7 @@ export default function CrosslistComposer() {
                       {/* Additional category-specific field examples */}
                       {facebookForm.category?.toLowerCase().includes('camera') && (
                         <div>
-                          <Label className="text-xs mb-1.5 block">Camera Megapixels</Label>
+                          <Label className="text-sm mb-1.5 block">Camera Megapixels</Label>
                           <Input
                             placeholder="e.g., 24 MP"
                             value={facebookForm.megapixels || ""}
@@ -43971,14 +43971,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Pricing & Inventory</Label>
+                  <Label className="text-base font-medium">Pricing & Inventory</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Listing Price */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Listing Price <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -43996,7 +43996,7 @@ export default function CrosslistComposer() {
 
                 {/* Quantity */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Quantity <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -44018,7 +44018,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Shipping & Pickup</Label>
+                  <Label className="text-base font-medium">Shipping & Pickup</Label>
                 </div>
               </div>
 
@@ -44032,7 +44032,7 @@ export default function CrosslistComposer() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
                           {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
                             handleMarketplaceChange("facebook", "deliveryMethod", v)
                           )}
@@ -44054,7 +44054,7 @@ export default function CrosslistComposer() {
                       {hasShipping && (
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping Option <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Shipping Option <span className="text-red-500">*</span></Label>
                             {renderFacebookDefaultToggle("shippingOption", facebookForm.shippingOption, (v) =>
                               handleMarketplaceChange("facebook", "shippingOption", v)
                             )}
@@ -44081,7 +44081,7 @@ export default function CrosslistComposer() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping carrier <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Shipping carrier <span className="text-red-500">*</span></Label>
                             {renderFacebookDefaultToggle("shippingCarrier", facebookForm.shippingCarrier, (v) =>
                               handleMarketplaceChange("facebook", "shippingCarrier", v)
                             )}
@@ -44100,7 +44100,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Package weight <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Package weight <span className="text-red-500">*</span></Label>
                             {renderFacebookDefaultToggle("packageWeightClass", facebookForm.packageWeightClass, (v) =>
                               handleMarketplaceChange("facebook", "packageWeightClass", v)
                             )}
@@ -44121,7 +44121,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Weight (lbs)</Label>
+                          <Label className="text-sm mb-1.5 block">Weight (lbs)</Label>
                           <Input
                             type="number"
                             min="0"
@@ -44131,7 +44131,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Weight (oz)</Label>
+                          <Label className="text-sm mb-1.5 block">Weight (oz)</Label>
                           <Input
                             type="number"
                             min="0"
@@ -44149,7 +44149,7 @@ export default function CrosslistComposer() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping rate</Label>
+                            <Label className="text-sm mb-1.5 block">Shipping rate</Label>
                             {renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
                               handleMarketplaceChange("facebook", "shippingPrice", v)
                             )}
@@ -44164,7 +44164,7 @@ export default function CrosslistComposer() {
                         {/* Display Free Shipping toggle */}
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <Label className="text-xs block">Display Free Shipping</Label>
+                            <Label className="text-sm block">Display Free Shipping</Label>
                             {renderFacebookDefaultToggle("displayFreeShipping", facebookForm.displayFreeShipping, (v) =>
                               handleMarketplaceChange("facebook", "displayFreeShipping", v)
                             )}
@@ -44175,7 +44175,7 @@ export default function CrosslistComposer() {
                               checked={!!facebookForm.displayFreeShipping}
                               onCheckedChange={(checked) => handleMarketplaceChange("facebook", "displayFreeShipping", checked)}
                             />
-                            <Label htmlFor="fb-display-free-shipping-mobile" className="text-xs leading-tight">
+                            <Label htmlFor="fb-display-free-shipping-mobile" className="text-sm leading-tight">
                               Covers the shipping cost so buyers see free shipping. Shipping will be deducted from your payout.
                             </Label>
                           </div>
@@ -44187,7 +44187,7 @@ export default function CrosslistComposer() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="relative">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
+                          <Label className="text-sm mb-1.5 block">Location (City and State)</Label>
                           {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
                             handleMarketplaceChange("facebook", "meetUpLocation", v)
                           )}
@@ -44219,7 +44219,7 @@ export default function CrosslistComposer() {
                       {/* Allow Offers */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <Label className="text-xs block">Allow Offers</Label>
+                          <Label className="text-sm block">Allow Offers</Label>
                           {renderFacebookDefaultToggle("allowOffers", facebookForm.allowOffers, (v) =>
                             handleMarketplaceChange("facebook", "allowOffers", v)
                           )}
@@ -44230,13 +44230,13 @@ export default function CrosslistComposer() {
                             checked={facebookForm.allowOffers}
                             onCheckedChange={(checked) => handleMarketplaceChange("facebook", "allowOffers", checked)}
                           />
-                          <Label htmlFor="facebook-allow-offers-mobile" className="text-xs leading-tight">
+                          <Label htmlFor="facebook-allow-offers-mobile" className="text-sm leading-tight">
                             Let buyers negotiate a price. Not available if delivery method is Local Pickup.
                           </Label>
                         </div>
                         {facebookForm.allowOffers && (
                           <div className="mt-2">
-                            <Label className="text-xs mb-1.5 block">Lowest acceptable price</Label>
+                            <Label className="text-sm mb-1.5 block">Lowest acceptable price</Label>
                             <Input
                               type="number"
                               min="0"
@@ -44257,14 +44257,14 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Additional Options</Label>
+                  <Label className="text-base font-medium">Additional Options</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Tags */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Tags</Label>
+                  <Label className="text-sm mb-1.5 block">Tags</Label>
                   <Input
                     placeholder={generalForm.tags ? `Inherited: ${generalForm.tags}` : "Comma-separated tags (e.g., vintage, luxury, gift)"}
                     value={facebookForm.tags || ""}
@@ -44277,7 +44277,7 @@ export default function CrosslistComposer() {
 
                 {/* SKU */}
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">SKU</Label>
+                  <Label className="text-sm mb-1.5 block">SKU</Label>
                   <Input
                     placeholder={generalForm.sku ? `Inherited: ${generalForm.sku}` : "Internal SKU (optional)"}
                     value={facebookForm.sku || ""}
@@ -44293,7 +44293,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Eye className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Privacy Settings</Label>
+                  <Label className="text-base font-medium">Privacy Settings</Label>
                 </div>
               </div>
 
@@ -44322,7 +44322,7 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Package Details</Label>
+                  <Label className="text-base font-medium">Package Details</Label>
                 </div>
                 {generalForm.packageWeight && (
                   <button
@@ -44343,7 +44343,7 @@ export default function CrosslistComposer() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-xs mb-1.5 block">
+                  <Label className="text-sm mb-1.5 block">
                     Package Details <span className="text-red-500">*</span>
                   </Label>
                   <Button
@@ -44399,7 +44399,7 @@ export default function CrosslistComposer() {
               {currentEditingItemId && (
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Package className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Item ID:</span>
+                  <span className="text-base font-medium text-foreground">Item ID:</span>
                   <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                 </div>
               )}
@@ -44588,13 +44588,13 @@ export default function CrosslistComposer() {
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Item Details</Label>
+                  <Label className="text-base font-medium">Item Details</Label>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label htmlFor="poshmark-title-mobile" className="text-xs mb-1.5 block">Title</Label>
+                  <Label htmlFor="poshmark-title-mobile" className="text-sm mb-1.5 block">Title</Label>
                   <Input
                     id="poshmark-title-mobile"
                     placeholder="Enter listing title"
@@ -44603,7 +44603,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="poshmark-price-mobile" className="text-xs mb-1.5 block">Listing Price</Label>
+                  <Label htmlFor="poshmark-price-mobile" className="text-sm mb-1.5 block">Listing Price</Label>
                   <Input
                     id="poshmark-price-mobile"
                     type="number"
@@ -44615,7 +44615,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="poshmark-description-mobile" className="text-xs mb-1.5 block">Description</Label>
+                  <Label htmlFor="poshmark-description-mobile" className="text-sm mb-1.5 block">Description</Label>
                   <RichTextarea
                     id="poshmark-description-mobile"
                     placeholder="Enter a detailed description..."
@@ -44625,7 +44625,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="poshmark-brand-mobile" className="text-xs mb-1.5 block">Brand</Label>
+                  <Label htmlFor="poshmark-brand-mobile" className="text-sm mb-1.5 block">Brand</Label>
                   <Input
                     id="poshmark-brand-mobile"
                     placeholder="Enter brand"
@@ -44634,7 +44634,7 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="poshmark-condition-mobile" className="text-xs mb-1.5 block">Condition</Label>
+                  <Label htmlFor="poshmark-condition-mobile" className="text-sm mb-1.5 block">Condition</Label>
                   <Select
                     value={generalForm.condition ? String(generalForm.condition) : undefined}
                     onValueChange={(value) => handleGeneralChange("condition", value)}
@@ -44655,7 +44655,7 @@ export default function CrosslistComposer() {
                 </div>
                 {generalForm.size && (
                   <div>
-                    <Label htmlFor="poshmark-size-mobile" className="text-xs mb-1.5 block">Size</Label>
+                    <Label htmlFor="poshmark-size-mobile" className="text-sm mb-1.5 block">Size</Label>
                     <Input
                       id="poshmark-size-mobile"
                       placeholder="e.g. Men's M, 10, XL"
@@ -44842,12 +44842,12 @@ export default function CrosslistComposer() {
                           {ebayToken ? (
                             <>
                               <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                              <span className="text-base font-medium text-green-600 dark:text-green-400">Connected</span>
                             </>
                           ) : (
                             <>
                               <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                              <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                              <span className="text-base font-medium text-red-600 dark:text-red-400">Not Connected</span>
                             </>
                           )}
                         </div>
@@ -44919,12 +44919,12 @@ export default function CrosslistComposer() {
                           {facebookConnected ? (
                             <>
                               <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                              <span className="text-base font-medium text-green-600 dark:text-green-400">Connected</span>
                             </>
                           ) : (
                             <>
                               <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                              <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                              <span className="text-base font-medium text-red-600 dark:text-red-400">Not Connected</span>
                             </>
                           )}
                         </div>
@@ -45013,12 +45013,12 @@ export default function CrosslistComposer() {
                           {mercariConnected ? (
                             <>
                               <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              <span className="text-sm font-medium text-green-600 dark:text-green-400">Connected</span>
+                              <span className="text-base font-medium text-green-600 dark:text-green-400">Connected</span>
                             </>
                           ) : (
                             <>
                               <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                              <span className="text-sm font-medium text-red-600 dark:text-red-400">Not Connected</span>
+                              <span className="text-base font-medium text-red-600 dark:text-red-400">Not Connected</span>
                             </>
                           )}
                         </div>
@@ -45043,7 +45043,7 @@ export default function CrosslistComposer() {
                 {/* Bulk item selector */}
                 {bulkSelectedItems.length > 1 && (
                   <div className="space-y-3">
-                    <Label className="text-xs mb-1.5 block">Select Item to Edit</Label>
+                    <Label className="text-sm mb-1.5 block">Select Item to Edit</Label>
                     <div className="flex flex-wrap gap-2">
                       {bulkSelectedItems.map((item) => {
                         const isCurrent = currentEditingItemId === item.id;
@@ -45109,7 +45109,7 @@ export default function CrosslistComposer() {
                         key={id}
                         type="button"
                         onClick={() => setActiveForm(id)}
-                        className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 ${
+                        className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-base font-medium whitespace-nowrap transition-all border flex-shrink-0 ${
                           isActive
                             ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                             : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
@@ -45166,7 +45166,7 @@ export default function CrosslistComposer() {
                                   <div key={mp} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.color}`} />
-                                      <span className="text-sm font-medium truncate">{meta.label}</span>
+                                      <span className="text-base font-medium truncate">{meta.label}</span>
                                       {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-semibold">Active</span>}
                                       {isProcessing && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-semibold">Processing</span>}
                                       {isDelisted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-700 font-semibold">Ended</span>}
@@ -45363,13 +45363,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label htmlFor="general-title" className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="general-title" className="text-sm mb-1.5 block">Title <span className="text-red-500">*</span></Label>
                           <div className="flex gap-2">
                             <Input
                               id="general-title"
@@ -45395,7 +45395,7 @@ export default function CrosslistComposer() {
                           </div>
                         </div>
                         <div>
-                          <Label htmlFor="general-price" className="text-xs mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="general-price" className="text-sm mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
                           <Input
                             id="general-price"
                             name="general-price"
@@ -45409,7 +45409,7 @@ export default function CrosslistComposer() {
                           <p className="mt-1 text-xs text-muted-foreground">Price you'll list this item for</p>
                         </div>
                         <div>
-                          <Label htmlFor="general-cost" className="text-xs mb-1.5 block">Purchase Price</Label>
+                          <Label htmlFor="general-cost" className="text-sm mb-1.5 block">Purchase Price</Label>
                           <Input
                             id="general-cost"
                             name="general-cost"
@@ -45478,7 +45478,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="general-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="general-brand" className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                           {brandIsCustom ? (
                             <div className="flex gap-2">
                               <Input
@@ -45686,7 +45686,7 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                         <div>
-                          <Label htmlFor="general-condition" className="text-xs mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="general-condition" className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
                           <Select
                             value={generalForm.condition ? String(generalForm.condition) : undefined}
                             onValueChange={(value) => {
@@ -45713,7 +45713,7 @@ export default function CrosslistComposer() {
                         </div>
                         {generalForm.size && (
                           <div>
-                            <Label htmlFor="general-size-bulk" className="text-xs mb-1.5 block">Size</Label>
+                            <Label htmlFor="general-size-bulk" className="text-sm mb-1.5 block">Size</Label>
                             <Input
                               id="general-size-bulk"
                               name="general-size-bulk"
@@ -45724,7 +45724,7 @@ export default function CrosslistComposer() {
                           </div>
                         )}
                         <div>
-                          <Label htmlFor="general-sku" className="text-xs mb-1.5 block">SKU</Label>
+                          <Label htmlFor="general-sku" className="text-sm mb-1.5 block">SKU</Label>
                           <Input
                             id="general-sku"
                             name="general-sku"
@@ -45734,7 +45734,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Primary Color</Label>
+                          <Label className="text-sm mb-1.5 block">Primary Color</Label>
                           <Button
                             type="button"
                             variant={generalForm.color1 ? "default" : "outline"}
@@ -45758,7 +45758,7 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Secondary Color</Label>
+                          <Label className="text-sm mb-1.5 block">Secondary Color</Label>
                           <Button
                             type="button"
                             variant={generalForm.color2 ? "default" : "outline"}
@@ -45782,7 +45782,7 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                           
                           {generalCategoryPath.length > 0 && (
                             <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
@@ -46158,7 +46158,7 @@ export default function CrosslistComposer() {
                         
                         {shouldShowGeneralSize && (
                           <div>
-                            <Label className="text-xs mb-1.5 block">US Size</Label>
+                            <Label className="text-sm mb-1.5 block">US Size</Label>
                             <Input
                               placeholder="e.g. Men's M, 10, XL"
                               value={generalForm.size}
@@ -46172,7 +46172,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Tags</Label>
+                          <Label className="text-base font-medium">Tags</Label>
                         </div>
                       </div>
                       <div className="mb-6">
@@ -46190,14 +46190,14 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Save className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Shipping Settings</Label>
+                          <Label className="text-base font-medium">Shipping Settings</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="general-zip" className="text-xs mb-1.5 block">Zip Code <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="general-zip" className="text-sm mb-1.5 block">Zip Code <span className="text-red-500">*</span></Label>
                             {renderGeneralDefaultToggle("zip", generalForm.zip, (v) =>
                               handleGeneralChange("zip", v)
                             )}
@@ -46211,7 +46211,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Quantity <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Quantity <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             min="1"
@@ -46226,7 +46226,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Package Details</Label>
+                          <Label className="text-base font-medium">Package Details</Label>
                         </div>
                         {generalForm.packageWeight && (
                           <button
@@ -46247,7 +46247,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Package Details <span className="text-red-500">*</span>
                           </Label>
                           <Button
@@ -46263,7 +46263,7 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Custom Labels</Label>
+                          <Label className="text-sm mb-1.5 block">Custom Labels</Label>
                           <Input
                             placeholder="Comma-separated labels (e.g. Q4 Liquidation, Holiday Gift). These will appear as tags in inventory."
                             value={generalForm.customLabels}
@@ -46313,7 +46313,7 @@ export default function CrosslistComposer() {
                       {currentEditingItemId && (
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">Item ID:</span>
+                          <span className="text-base font-medium text-foreground">Item ID:</span>
                           <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
@@ -46503,14 +46503,14 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         {/* Title Section */}
                         <div>
-                          <Label htmlFor="ebay-title" className="text-xs mb-1.5 block">Title</Label>
+                          <Label htmlFor="ebay-title" className="text-sm mb-1.5 block">Title</Label>
                           <Input
                             id="ebay-title"
                             name="ebay-title"
@@ -46585,7 +46585,7 @@ export default function CrosslistComposer() {
 
                         {/* eBay Brand - use same dropdown as general form */}
                         <div className="md:col-span-2">
-                          <Label htmlFor="ebay-brand" className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="ebay-brand" className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                           {brandIsCustom ? (
                             <div className="flex gap-2">
                               <Input
@@ -46795,7 +46795,7 @@ export default function CrosslistComposer() {
 
                         {/* Category Section */}
                         <div className="md:col-span-2">
-                          <Label htmlFor="ebay-category" className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="ebay-category" className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                           <div className="space-y-2">
                             {selectedCategoryPath.length > 0 && (
                               <div className="flex items-center gap-1 flex-wrap text-xs text-muted-foreground">
@@ -47210,7 +47210,7 @@ export default function CrosslistComposer() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {ebayTypeAspect ? (
                                   <div>
-                                    <Label className="text-xs mb-1.5 block">
+                                    <Label className="text-sm mb-1.5 block">
                                       {ebayTypeAspect.localizedAspectName} <span className="text-red-500">*</span>
                                     </Label>
                                     {ebayTypeValues.length > 0 ? (
@@ -47242,7 +47242,7 @@ export default function CrosslistComposer() {
                                 )}
 
                                 <div>
-                                  <Label className="text-xs mb-1.5 block">
+                                  <Label className="text-sm mb-1.5 block">
                                     Condition <span className="text-red-500">*</span>
                                   </Label>
                                   <Select
@@ -47267,7 +47267,7 @@ export default function CrosslistComposer() {
 
                         {!ebayForm.categoryId && (
                           <div>
-                            <Label className="text-xs mb-1.5 block">
+                            <Label className="text-sm mb-1.5 block">
                               Condition <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -47288,7 +47288,7 @@ export default function CrosslistComposer() {
                         )}
 
                         <div>
-                          <Label htmlFor="ebay-sku" className="text-xs mb-1.5 block">SKU</Label>
+                          <Label htmlFor="ebay-sku" className="text-sm mb-1.5 block">SKU</Label>
                           <Input
                             id="ebay-sku"
                             name="ebay-sku"
@@ -47303,7 +47303,7 @@ export default function CrosslistComposer() {
                           )}
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Color <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Color <span className="text-red-500">*</span></Label>
                           <Button
                             type="button"
                             variant={ebayForm.color ? "default" : "outline"}
@@ -47331,7 +47331,7 @@ export default function CrosslistComposer() {
                       {/* Pricing Section */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Pricing Format <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Pricing Format <span className="text-red-500">*</span></Label>
                           <Select
                             value={ebayForm.pricingFormat ? String(ebayForm.pricingFormat) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "pricingFormat", value)}
@@ -47346,7 +47346,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Duration <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Duration <span className="text-red-500">*</span></Label>
                           <Select
                             value={ebayForm.duration ? String(ebayForm.duration) : undefined}
                             onValueChange={(value) => handleMarketplaceChange("ebay", "duration", value)}
@@ -47362,7 +47362,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Buy It Now Price <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Buy It Now Price <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             min="0"
@@ -47379,7 +47379,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Allow Best Offer</Label>
+                            <Label className="text-sm mb-1.5 block">Allow Best Offer</Label>
                             {renderEbayDefaultToggle("allowBestOffer", ebayForm.allowBestOffer, (v) =>
                               handleMarketplaceChange("ebay", "allowBestOffer", v)
                             )}
@@ -47399,14 +47399,14 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Save className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Shipping Settings</Label>
+                          <Label className="text-base font-medium">Shipping Settings</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
                             {renderEbayDefaultToggle("shippingMethod", ebayForm.shippingMethod, (v) =>
                               handleMarketplaceChange("ebay", "shippingMethod", v)
                             )}
@@ -47426,7 +47426,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
                             {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
                               handleMarketplaceChange("ebay", "shippingCostType", v)
                             )}
@@ -47446,7 +47446,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
                             {renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
                               handleMarketplaceChange("ebay", "shippingCost", v)
                             )}
@@ -47462,7 +47462,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
                             {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
                               handleMarketplaceChange("ebay", "handlingTime", v)
                             )}
@@ -47483,7 +47483,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Ship From Country</Label>
+                            <Label className="text-sm mb-1.5 block">Ship From Country</Label>
                             {renderEbayDefaultToggle("shipFromCountry", ebayForm.shipFromCountry, (v) =>
                               handleMarketplaceChange("ebay", "shipFromCountry", v)
                             )}
@@ -47506,7 +47506,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
                             {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
                               handleMarketplaceChange("ebay", "shippingService", v)
                             )}
@@ -47527,7 +47527,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div className="md:col-span-2">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Location Descriptions</Label>
+                            <Label className="text-sm mb-1.5 block">Location Descriptions</Label>
                             {renderEbayDefaultToggle("locationDescriptions", ebayForm.locationDescriptions, (v) =>
                               handleMarketplaceChange("ebay", "locationDescriptions", v)
                             )}
@@ -47543,7 +47543,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Shipping Location</Label>
+                            <Label className="text-sm mb-1.5 block">Shipping Location</Label>
                             {renderEbayDefaultToggle("shippingLocation", ebayForm.shippingLocation, (v) =>
                               handleMarketplaceChange("ebay", "shippingLocation", v)
                             )}
@@ -47561,7 +47561,7 @@ export default function CrosslistComposer() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
                             {renderEbayDefaultToggle("acceptReturns", ebayForm.acceptReturns, (v) =>
                               handleMarketplaceChange("ebay", "acceptReturns", v)
                             )}
@@ -47579,7 +47579,7 @@ export default function CrosslistComposer() {
                         {ebayForm.acceptReturns && (
                           <>
                             <div>
-                              <Label className="text-xs mb-1.5 block">Return Within <span className="text-red-500">*</span></Label>
+                              <Label className="text-sm mb-1.5 block">Return Within <span className="text-red-500">*</span></Label>
                               <Select
                                 value={ebayForm.returnWithin ? String(ebayForm.returnWithin) : "30 days"}
                                 onValueChange={(value) => handleMarketplaceChange("ebay", "returnWithin", value)}
@@ -47594,7 +47594,7 @@ export default function CrosslistComposer() {
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs mb-1.5 block">Return Shipping Payer <span className="text-red-500">*</span></Label>
+                              <Label className="text-sm mb-1.5 block">Return Shipping Payer <span className="text-red-500">*</span></Label>
                               <Select
                                 value={ebayForm.returnShippingPayer ? String(ebayForm.returnShippingPayer) : "Buyer"}
                                 onValueChange={(value) => handleMarketplaceChange("ebay", "returnShippingPayer", value)}
@@ -47609,7 +47609,7 @@ export default function CrosslistComposer() {
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs mb-1.5 block">Return Refund Method <span className="text-red-500">*</span></Label>
+                              <Label className="text-sm mb-1.5 block">Return Refund Method <span className="text-red-500">*</span></Label>
                               <Select
                                 value={ebayForm.returnRefundMethod ? String(ebayForm.returnRefundMethod) : "Full Refund"}
                                 onValueChange={(value) => handleMarketplaceChange("ebay", "returnRefundMethod", value)}
@@ -47631,7 +47631,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Package Details</Label>
+                          <Label className="text-base font-medium">Package Details</Label>
                         </div>
                         {generalForm.packageWeight && (
                           <button
@@ -47652,7 +47652,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Package Details <span className="text-red-500">*</span>
                           </Label>
                           <Button
@@ -47713,7 +47713,7 @@ export default function CrosslistComposer() {
                       {currentEditingItemId && (
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">Item ID:</span>
+                          <span className="text-base font-medium text-foreground">Item ID:</span>
                           <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
@@ -47903,13 +47903,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Title</Label>
+                          <Label className="text-sm mb-1.5 block">Title</Label>
                           <Input
                             placeholder="Enter listing title"
                             value={etsyForm.title || ""}
@@ -47978,7 +47978,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">Brand</Label>
+                          <Label className="text-sm mb-1.5 block">Brand</Label>
                           {brandIsCustom ? (
                             <div className="flex gap-2">
                               <Input
@@ -48105,7 +48105,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">SKU</Label>
+                          <Label className="text-sm mb-1.5 block">SKU</Label>
                           <Input
                             placeholder={generalForm.sku || "Enter SKU"}
                             value={etsyForm.sku || ""}
@@ -48121,7 +48121,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Processing Time</Label>
+                          <Label className="text-sm mb-1.5 block">Processing Time</Label>
                           <Select
                             value={etsyForm.processingTime}
                             onValueChange={(value) => handleMarketplaceChange("etsy", "processingTime", value)}
@@ -48138,7 +48138,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Renewal Option</Label>
+                          <Label className="text-sm mb-1.5 block">Renewal Option</Label>
                           <Select
                             value={etsyForm.renewalOption}
                             onValueChange={(value) => handleMarketplaceChange("etsy", "renewalOption", value)}
@@ -48153,7 +48153,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">Who made it?</Label>
+                          <Label className="text-sm mb-1.5 block">Who made it?</Label>
                           <Select
                             value={etsyForm.whoMade}
                             onValueChange={(value) => handleMarketplaceChange("etsy", "whoMade", value)}
@@ -48169,7 +48169,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs mb-1.5 block">When was it made?</Label>
+                          <Label className="text-sm mb-1.5 block">When was it made?</Label>
                           <Select
                             value={etsyForm.whenMade}
                             onValueChange={(value) => handleMarketplaceChange("etsy", "whenMade", value)}
@@ -48186,7 +48186,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Shipping Profile</Label>
+                          <Label className="text-sm mb-1.5 block">Shipping Profile</Label>
                           <Input
                             placeholder="Link your saved Etsy shipping profile"
                             value={etsyForm.shippingProfile}
@@ -48194,7 +48194,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Tags</Label>
+                          <Label className="text-sm mb-1.5 block">Tags</Label>
                           <TagInput
                             placeholder={etsyForm.inheritGeneral ? "Inherits general tags" : "Type keywords and press space or comma to add tags"}
                             value={etsyForm.tags}
@@ -48203,7 +48203,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Digital Download</Label>
+                          <Label className="text-sm mb-1.5 block">Digital Download</Label>
                           <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                             <Switch
                               id="etsy-digital"
@@ -48219,7 +48219,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Package Details</Label>
+                          <Label className="text-base font-medium">Package Details</Label>
                         </div>
                         {generalForm.packageWeight && (
                           <button
@@ -48240,7 +48240,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Package Details <span className="text-red-500">*</span>
                           </Label>
                           <Button
@@ -48289,7 +48289,7 @@ export default function CrosslistComposer() {
                       {currentEditingItemId && (
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">Item ID:</span>
+                          <span className="text-base font-medium text-foreground">Item ID:</span>
                           <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
@@ -48479,13 +48479,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Title <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Title <span className="text-red-500">*</span></Label>
                           <Input
                             placeholder={generalForm.title ? `Inherited: ${generalForm.title}` : "What are you selling?"}
                             value={mercariForm.title || ""}
@@ -48563,12 +48563,12 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Category</Label>
+                          <Label className="text-base font-medium">Category</Label>
                         </div>
                       </div>
 
                       <div className="mb-6">
-                        <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
+                        <Label className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                         
                         {mercariCategoryPath.length > 0 && (
                           <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground flex-wrap">
@@ -48799,7 +48799,7 @@ export default function CrosslistComposer() {
                           (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('women') ||
                           (mercariForm.category !== undefined ? mercariForm.category : generalForm.category)?.toLowerCase().includes('kids')) && (
                           <div className="mt-4">
-                            <Label className="text-xs mb-1.5 block">
+                            <Label className="text-sm mb-1.5 block">
                               Size <span className="text-red-500">*</span>
                             </Label>
                             <Input
@@ -48821,13 +48821,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
                           <Popover 
                             open={mercariBrandSearchOpenDesktop} 
                             onOpenChange={(open) => {
@@ -48957,7 +48957,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
                           <Select
                             value={mercariForm.condition || generalForm.condition || ""}
                             onValueChange={(value) => handleMarketplaceChange("mercari", "condition", value)}
@@ -48981,7 +48981,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">Color</Label>
+                          <Label className="text-sm mb-1.5 block">Color</Label>
                           <Select
                             value={mercariForm.color || generalForm.color || ""}
                             onValueChange={(value) => handleMarketplaceChange("mercari", "color", value)}
@@ -49019,13 +49019,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Pricing & Inventory</Label>
+                          <Label className="text-base font-medium">Pricing & Inventory</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm mb-1.5 block">Listing Price <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             placeholder={generalForm.price ? `Inherited: $${generalForm.price}` : "(min $1/max $2000)"}
@@ -49087,7 +49087,7 @@ export default function CrosslistComposer() {
                                 </div>
                                 {mercariForm.smartPricing && (
                                   <div className="mt-3">
-                                    <Label htmlFor="mercari-floor-price" className="text-xs mb-1.5 block">
+                                    <Label htmlFor="mercari-floor-price" className="text-sm mb-1.5 block">
                                       Floor Price
                                     </Label>
                                     <Input
@@ -49128,7 +49128,7 @@ export default function CrosslistComposer() {
                                 </div>
                                 {mercariForm.smartOffers && (
                                   <div className="mt-3">
-                                    <Label htmlFor="mercari-minimum-price" className="text-xs mb-1.5 block">
+                                    <Label htmlFor="mercari-minimum-price" className="text-sm mb-1.5 block">
                                       Minimum Price
                                     </Label>
                                     <Input
@@ -49152,7 +49152,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">Quantity</Label>
+                          <Label className="text-sm mb-1.5 block">Quantity</Label>
                           <Input
                             type="number"
                             min="1"
@@ -49172,14 +49172,14 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Truck className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Shipping</Label>
+                          <Label className="text-base font-medium">Shipping</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Ships From (Zip Code) <span className="text-red-500">*</span></Label>
                             {renderMercariDefaultToggle("shipsFrom", mercariForm.shipsFrom, (v) =>
                               handleMarketplaceChange("mercari", "shipsFrom", v)
                             )}
@@ -49194,7 +49194,7 @@ export default function CrosslistComposer() {
 
                         <div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
                             {renderMercariDefaultToggle("deliveryMethod", mercariForm.deliveryMethod || "prepaid", (v) =>
                               handleMarketplaceChange("mercari", "deliveryMethod", v)
                             )}
@@ -49259,7 +49259,7 @@ export default function CrosslistComposer() {
                       {currentEditingItemId && (
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">Item ID:</span>
+                          <span className="text-base font-medium text-foreground">Item ID:</span>
                           <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
@@ -49449,13 +49449,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">Title</Label>
+                          <Label className="text-sm mb-1.5 block">Title</Label>
                           <Input
                             placeholder="Enter listing title"
                             value={facebookForm.title || ""}
@@ -49528,12 +49528,12 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Category</Label>
+                          <Label className="text-base font-medium">Category</Label>
                         </div>
                       </div>
 
                       <div className="mb-6">
-                        <Label className="text-xs mb-1.5 block">
+                        <Label className="text-sm mb-1.5 block">
                           Category <span className="text-red-500">*</span>
                         </Label>
                         
@@ -49784,7 +49784,7 @@ export default function CrosslistComposer() {
                       {(facebookForm.category || generalForm.category || facebookForm.categoryId || generalForm.categoryId) && (
                         <div className="mb-6">
                           <div className="flex items-center justify-between mb-3">
-                            <Label className="text-sm font-medium">Category Specifics</Label>
+                            <Label className="text-base font-medium">Category Specifics</Label>
                             <Button
                               type="button"
                               variant="ghost"
@@ -49804,7 +49804,7 @@ export default function CrosslistComposer() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <Label className="text-xs mb-1.5 block">
+                              <Label className="text-sm mb-1.5 block">
                                 Condition <span className="text-red-500">*</span>
                               </Label>
                               <Select
@@ -49830,7 +49830,7 @@ export default function CrosslistComposer() {
                               generalForm.category?.toLowerCase().includes('shoes') ||
                               generalForm.category?.toLowerCase().includes('apparel')) && (
                               <div>
-                                <Label className="text-xs mb-1.5 block">
+                                <Label className="text-sm mb-1.5 block">
                                   Size <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
@@ -49855,7 +49855,7 @@ export default function CrosslistComposer() {
                           {showFacebookMoreDetails && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-md border">
                               <div>
-                                <Label className="text-xs mb-1.5 block">Brand</Label>
+                                <Label className="text-sm mb-1.5 block">Brand</Label>
                                 {brandIsCustom ? (
                                   <div className="flex gap-2">
                                     <Input
@@ -49964,7 +49964,7 @@ export default function CrosslistComposer() {
                               </div>
 
                               <div>
-                                <Label className="text-xs mb-1.5 block">Type</Label>
+                                <Label className="text-sm mb-1.5 block">Type</Label>
                                 <Input
                                   placeholder="e.g., DSLR, Point & Shoot, Mirrorless"
                                   value={facebookForm.itemType || ""}
@@ -49973,7 +49973,7 @@ export default function CrosslistComposer() {
                               </div>
 
                               <div>
-                                <Label className="text-xs mb-1.5 block">Color</Label>
+                                <Label className="text-sm mb-1.5 block">Color</Label>
                                 <Input
                                   placeholder={generalForm.color1 ? `Inherited: ${generalForm.color1}` : "Primary color"}
                                   value={facebookForm.color || ""}
@@ -49983,7 +49983,7 @@ export default function CrosslistComposer() {
 
                               {facebookForm.category?.toLowerCase().includes('camera') && (
                                 <div>
-                                  <Label className="text-xs mb-1.5 block">Camera Megapixels</Label>
+                                  <Label className="text-sm mb-1.5 block">Camera Megapixels</Label>
                                   <Input
                                     placeholder="e.g., 24 MP"
                                     value={facebookForm.megapixels || ""}
@@ -50000,13 +50000,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Pricing & Inventory</Label>
+                          <Label className="text-base font-medium">Pricing & Inventory</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Listing Price <span className="text-red-500">*</span>
                           </Label>
                           <Input
@@ -50023,7 +50023,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Quantity <span className="text-red-500">*</span>
                           </Label>
                           <Input
@@ -50045,7 +50045,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Truck className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Shipping & Pickup</Label>
+                          <Label className="text-base font-medium">Shipping & Pickup</Label>
                         </div>
                       </div>
 
@@ -50059,7 +50059,7 @@ export default function CrosslistComposer() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <div className="flex items-center justify-between">
-                                  <Label className="text-xs mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
+                                  <Label className="text-sm mb-1.5 block">Delivery Method <span className="text-red-500">*</span></Label>
                                   {renderFacebookDefaultToggle("deliveryMethod", facebookForm.deliveryMethod, (v) =>
                                     handleMarketplaceChange("facebook", "deliveryMethod", v)
                                   )}
@@ -50080,7 +50080,7 @@ export default function CrosslistComposer() {
                               {hasShipping && (
                                 <div>
                                   <div className="flex items-center justify-between">
-                                    <Label className="text-xs mb-1.5 block">Shipping Option <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm mb-1.5 block">Shipping Option <span className="text-red-500">*</span></Label>
                                     {renderFacebookDefaultToggle("shippingOption", facebookForm.shippingOption, (v) =>
                                       handleMarketplaceChange("facebook", "shippingOption", v)
                                     )}
@@ -50107,7 +50107,7 @@ export default function CrosslistComposer() {
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <div className="flex items-center justify-between">
-                                    <Label className="text-xs mb-1.5 block">Shipping carrier <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm mb-1.5 block">Shipping carrier <span className="text-red-500">*</span></Label>
                                     {renderFacebookDefaultToggle("shippingCarrier", facebookForm.shippingCarrier, (v) =>
                                       handleMarketplaceChange("facebook", "shippingCarrier", v)
                                     )}
@@ -50126,7 +50126,7 @@ export default function CrosslistComposer() {
                                 </div>
                                 <div>
                                   <div className="flex items-center justify-between">
-                                    <Label className="text-xs mb-1.5 block">Package weight <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm mb-1.5 block">Package weight <span className="text-red-500">*</span></Label>
                                     {renderFacebookDefaultToggle("packageWeightClass", facebookForm.packageWeightClass, (v) =>
                                       handleMarketplaceChange("facebook", "packageWeightClass", v)
                                     )}
@@ -50147,7 +50147,7 @@ export default function CrosslistComposer() {
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label className="text-xs mb-1.5 block">Weight (lbs)</Label>
+                                  <Label className="text-sm mb-1.5 block">Weight (lbs)</Label>
                                   <Input
                                     type="number" min="0"
                                     placeholder={generalForm.packageWeight || "lbs"}
@@ -50156,7 +50156,7 @@ export default function CrosslistComposer() {
                                   />
                                 </div>
                                 <div>
-                                  <Label className="text-xs mb-1.5 block">Weight (oz)</Label>
+                                  <Label className="text-sm mb-1.5 block">Weight (oz)</Label>
                                   <Input
                                     type="number" min="0" max="15"
                                     placeholder="oz"
@@ -50172,7 +50172,7 @@ export default function CrosslistComposer() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <div className="flex items-center justify-between">
-                                    <Label className="text-xs mb-1.5 block">Shipping rate</Label>
+                                    <Label className="text-sm mb-1.5 block">Shipping rate</Label>
                                     {renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
                                       handleMarketplaceChange("facebook", "shippingPrice", v)
                                     )}
@@ -50185,7 +50185,7 @@ export default function CrosslistComposer() {
                                 </div>
                                 <div>
                                   <div className="flex items-center justify-between mb-1.5">
-                                    <Label className="text-xs block">Display Free Shipping</Label>
+                                    <Label className="text-sm block">Display Free Shipping</Label>
                                     {renderFacebookDefaultToggle("displayFreeShipping", facebookForm.displayFreeShipping, (v) =>
                                       handleMarketplaceChange("facebook", "displayFreeShipping", v)
                                     )}
@@ -50196,7 +50196,7 @@ export default function CrosslistComposer() {
                                       checked={!!facebookForm.displayFreeShipping}
                                       onCheckedChange={(checked) => handleMarketplaceChange("facebook", "displayFreeShipping", checked)}
                                     />
-                                    <Label htmlFor="fb-display-free-shipping-desktop" className="text-xs leading-tight">
+                                    <Label htmlFor="fb-display-free-shipping-desktop" className="text-sm leading-tight">
                                       Covers the shipping cost so buyers see free shipping. Shipping will be deducted from your payout.
                                     </Label>
                                   </div>
@@ -50208,7 +50208,7 @@ export default function CrosslistComposer() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="relative">
                                 <div className="flex items-center justify-between">
-                                  <Label className="text-xs mb-1.5 block">Location (City and State)</Label>
+                                  <Label className="text-sm mb-1.5 block">Location (City and State)</Label>
                                   {renderFacebookDefaultToggle("meetUpLocation", facebookForm.meetUpLocation, (v) =>
                                     handleMarketplaceChange("facebook", "meetUpLocation", v)
                                   )}
@@ -50239,7 +50239,7 @@ export default function CrosslistComposer() {
 
                               <div>
                                 <div className="flex items-center justify-between mb-1.5">
-                                  <Label className="text-xs block">Allow Offers</Label>
+                                  <Label className="text-sm block">Allow Offers</Label>
                                   {renderFacebookDefaultToggle("allowOffers", facebookForm.allowOffers, (v) =>
                                     handleMarketplaceChange("facebook", "allowOffers", v)
                                   )}
@@ -50250,13 +50250,13 @@ export default function CrosslistComposer() {
                                     checked={facebookForm.allowOffers}
                                     onCheckedChange={(checked) => handleMarketplaceChange("facebook", "allowOffers", checked)}
                                   />
-                                  <Label htmlFor="facebook-allow-offers-desktop" className="text-xs leading-tight">
+                                  <Label htmlFor="facebook-allow-offers-desktop" className="text-sm leading-tight">
                                     Let buyers negotiate a price. Not available if delivery method is Local Pickup.
                                   </Label>
                                 </div>
                                 {facebookForm.allowOffers && (
                                   <div className="mt-2">
-                                    <Label className="text-xs mb-1.5 block">Lowest acceptable price</Label>
+                                    <Label className="text-sm mb-1.5 block">Lowest acceptable price</Label>
                                     <Input
                                       type="number" min="0" step="0.01"
                                       placeholder="Minimum price you'll consider"
@@ -50275,13 +50275,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Settings className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Additional Options</Label>
+                          <Label className="text-base font-medium">Additional Options</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Tags</Label>
+                          <Label className="text-sm mb-1.5 block">Tags</Label>
                           <Input
                             placeholder={generalForm.tags ? `Inherited: ${generalForm.tags}` : "Comma-separated tags (e.g., vintage, luxury, gift)"}
                             value={facebookForm.tags || ""}
@@ -50293,7 +50293,7 @@ export default function CrosslistComposer() {
                         </div>
 
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">SKU</Label>
+                          <Label className="text-sm mb-1.5 block">SKU</Label>
                           <Input
                             placeholder={generalForm.sku ? `Inherited: ${generalForm.sku}` : "Internal SKU (optional)"}
                             value={facebookForm.sku || ""}
@@ -50309,7 +50309,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Eye className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Privacy Settings</Label>
+                          <Label className="text-base font-medium">Privacy Settings</Label>
                         </div>
                       </div>
 
@@ -50338,7 +50338,7 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Package Details</Label>
+                          <Label className="text-base font-medium">Package Details</Label>
                         </div>
                         {generalForm.packageWeight && (
                           <button
@@ -50359,7 +50359,7 @@ export default function CrosslistComposer() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-xs mb-1.5 block">
+                          <Label className="text-sm mb-1.5 block">
                             Package Details <span className="text-red-500">*</span>
                           </Label>
                           <Button
@@ -50415,7 +50415,7 @@ export default function CrosslistComposer() {
                       {currentEditingItemId && (
                         <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                           <Package className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">Item ID:</span>
+                          <span className="text-base font-medium text-foreground">Item ID:</span>
                           <span className="text-sm text-muted-foreground font-mono break-all">{currentEditingItemId}</span>
                         </div>
                       )}
@@ -50605,13 +50605,13 @@ export default function CrosslistComposer() {
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Item Details</Label>
+                          <Label className="text-base font-medium">Item Details</Label>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label htmlFor="poshmark-title" className="text-xs mb-1.5 block">Title</Label>
+                          <Label htmlFor="poshmark-title" className="text-sm mb-1.5 block">Title</Label>
                           <Input
                             id="poshmark-title"
                             name="poshmark-title"
@@ -50621,7 +50621,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="poshmark-price" className="text-xs mb-1.5 block">Listing Price</Label>
+                          <Label htmlFor="poshmark-price" className="text-sm mb-1.5 block">Listing Price</Label>
                           <Input
                             id="poshmark-price"
                             name="poshmark-price"
@@ -50659,7 +50659,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="poshmark-brand" className="text-xs mb-1.5 block">Brand</Label>
+                          <Label htmlFor="poshmark-brand" className="text-sm mb-1.5 block">Brand</Label>
                           <Input
                             id="poshmark-brand"
                             name="poshmark-brand"
@@ -50669,7 +50669,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="poshmark-condition" className="text-xs mb-1.5 block">Condition</Label>
+                          <Label htmlFor="poshmark-condition" className="text-sm mb-1.5 block">Condition</Label>
                           <Select
                             value={generalForm.condition ? String(generalForm.condition) : undefined}
                             onValueChange={(value) => handleGeneralChange("condition", value)}
@@ -50689,7 +50689,7 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="poshmark-size" className="text-xs mb-1.5 block">Size</Label>
+                          <Label htmlFor="poshmark-size" className="text-sm mb-1.5 block">Size</Label>
                           <Input
                             id="poshmark-size"
                             name="poshmark-size"
@@ -50699,7 +50699,7 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="poshmark-color" className="text-xs mb-1.5 block">Color</Label>
+                          <Label htmlFor="poshmark-color" className="text-sm mb-1.5 block">Color</Label>
                           <Input
                             id="poshmark-color"
                             name="poshmark-color"
@@ -50754,7 +50754,7 @@ export default function CrosslistComposer() {
           
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="package-weight" className="text-sm font-medium">
+              <Label htmlFor="package-weight" className="text-base font-medium">
                 Weight (lbs) <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -50771,7 +50771,7 @@ export default function CrosslistComposer() {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="package-length" className="text-sm font-medium">
+                <Label htmlFor="package-length" className="text-base font-medium">
                   Length (in) <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -50786,7 +50786,7 @@ export default function CrosslistComposer() {
                 />
               </div>
               <div>
-                <Label htmlFor="package-width" className="text-sm font-medium">
+                <Label htmlFor="package-width" className="text-base font-medium">
                   Width (in) <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -50801,7 +50801,7 @@ export default function CrosslistComposer() {
                 />
               </div>
               <div>
-                <Label htmlFor="package-height" className="text-sm font-medium">
+                <Label htmlFor="package-height" className="text-base font-medium">
                   Height (in) <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -50818,7 +50818,7 @@ export default function CrosslistComposer() {
             </div>
 
             <div>
-              <Label htmlFor="package-notes" className="text-sm font-medium">
+              <Label htmlFor="package-notes" className="text-base font-medium">
                 Additional Notes (Optional)
               </Label>
               <Textarea
