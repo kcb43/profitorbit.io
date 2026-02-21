@@ -9,7 +9,7 @@
  * 
  * Cache-first strategy with Redis
  * Budget/quota enforcement
- * Updated: 2026-02-15 - New SerpAPI key deployment
+ * Updated: 2026-02-21 - Always use google_shopping engine; remove organic results; filter $0 items; cache v11
  */
 
 import Fastify from 'fastify';
@@ -312,19 +312,20 @@ class SerpApiGoogleProvider extends SearchProvider {
       
       const requestStartTime = Date.now();
       
-      // SerpAPI parameters for Google Shopping
-      // Hybrid engine strategy:
-      // Page 1: engine=google returns rich immersive_products (~30 items)
-      // Page 2+: engine=google_shopping returns paginated shopping_results (different items each page)
-      const useShoppingEngine = page > 1;
+      // Always use google_shopping engine — searches Google's Shopping tab directly.
+      // Benefits vs engine=google:
+      //  - Returns ONLY merchant product listings: no YouTube videos, no articles, no blog posts
+      //  - Every result includes extracted_price (no more $0 products)
+      //  - Returns 20-40 results per page for specific hardware queries vs 0-9 from immersive_products
+      //  - Paginated via `start` parameter (0, 20, 40...)
       const params = {
-        engine: useShoppingEngine ? 'google_shopping' : 'google',
+        engine: 'google_shopping',
         q: query,
         hl: 'en',
         gl: country.toLowerCase(),
         api_key: this.apiKey,
-        num: 100,
-        start: useShoppingEngine ? (page - 2) * 60 : 0
+        num: 40,
+        start: (page - 1) * 20
       };
       
       console.log('[SerpAPI] Request parameters', JSON.stringify({
@@ -464,32 +465,22 @@ class SerpApiGoogleProvider extends SearchProvider {
         }
       }
       
-      // Priority 4: organic_results (if no shopping results found)
-      if (response.data?.organic_results) {
-        console.log(`[SerpAPI] Found organic_results: ${response.data.organic_results.length}`);
-        for (const product of response.data.organic_results) {
-          
-          // Only include organic results that look like shopping items
-          if (product.price || product.thumbnail) {
-            items.push({
-              title: product.title || 'Untitled',
-              price: product.extracted_price || parseFloat(product.price?.replace(/[^0-9.]/g, '')) || 0,
-              original_price: product.extracted_original_price || null,
-              currency: 'USD',
-              url: product.link || '#',
-              image_url: product.thumbnail || null,
-              merchant: product.source || new URL(product.link || '').hostname.replace('www.', '') || 'Unknown',
-              condition: 'New',
-              rating: product.rating || null,
-              reviews: product.reviews || null,
-              snippet: product.snippet || null
-            });
-          }
-        }
+      // NOTE: organic_results intentionally excluded — they contain YouTube videos, blog posts,
+      // and review articles that are NOT purchasable products. google_shopping engine won't
+      // return organic results anyway, but this guard prevents accidental inclusion if engine changes.
+
+      // Filter: drop any item with $0 price that also has no immersive token to resolve a real price.
+      // These are broken/incomplete results and should not be shown to users.
+      const validItems = items.filter(item =>
+        item.price > 0 || item.immersive_product_page_token
+      );
+
+      if (validItems.length < items.length) {
+        console.log(`[SerpAPI] Filtered out ${items.length - validItems.length} items with $0 price and no offer token`);
       }
 
-      console.log(`[SerpAPI] Transformed ${items.length} items`);
-      return items;
+      console.log(`[SerpAPI] Returning ${validItems.length} valid items`);
+      return validItems;
 
     } catch (error) {
       console.error('[SerpAPI] Search error:', error.message);
@@ -724,8 +715,8 @@ function normalizeQuery(q) {
 
 function getCacheKey(provider, country, query, limit = 10, page = 1) {
   const hash = crypto.createHash('md5').update(`${provider}:${country}:${normalizeQuery(query)}:${limit}:${page}`).digest('hex');
-  // v10: Don't cache empty results, increased timeout to 30s (2026-02-16)
-  return `search:v10:${provider}:${country}:${hash}`;
+  // v11: Always use google_shopping engine, removed organic results, filtered $0 items (2026-02-21)
+  return `search:v11:${provider}:${country}:${hash}`;
 }
 
 async function checkQuota(userId, provider) {
@@ -821,7 +812,7 @@ fastify.post('/search', async (request, reply) => {
         const itemsWithTokens = items.filter(i => i.immersive_product_page_token && !i.url);
         if (itemsWithTokens.length > 0) {
           console.log(`[OfferResolve] Resolving offers for ${itemsWithTokens.length} items server-side`);
-          const BATCH = 10;
+          const BATCH = 20;
           const toResolve = itemsWithTokens.slice(0, BATCH);
           const offerResults = await Promise.allSettled(
             toResolve.map(item => provider.getProductOffers(item.immersive_product_page_token))
