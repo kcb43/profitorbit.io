@@ -182,7 +182,9 @@ export default function AddInventoryItem() {
     }
 
     if (dataToLoad) {
-      const { clean: cleanNotes, tags } = splitBase44Tags(dataToLoad.notes || "");
+      const { clean: rawCleanNotes, tags } = splitBase44Tags(dataToLoad.notes || "");
+      // HTML-clean notes so items saved before paste-cleanup was added display correctly
+      const cleanNotes = cleanHtmlText(rawCleanNotes);
       if (!isCopying) setBase44Tags(tags || "");
 
       const initialSource = dataToLoad.source || "";
@@ -222,7 +224,7 @@ export default function AddInventoryItem() {
         brand: dataToLoad.brand || "", // Load brand
         condition: dataToLoad.condition || "", // Load condition
         size: dataToLoad.size || "", // Load size
-        description: isCopying ? "" : (dataToLoad.description || ""),
+        description: isCopying ? "" : cleanHtmlText(dataToLoad.description || ""),
         notes: isCopying ? "" : cleanNotes,
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,

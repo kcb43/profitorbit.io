@@ -7,6 +7,7 @@ import { sortSalesByRecency } from "@/utils/sales";
 import { salesApi } from "@/api/salesApi";
 import { inventoryApi } from "@/api/inventoryApi";
 import { splitBase44Tags } from "@/utils/base44Notes";
+import { cleanHtmlText } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1701,7 +1702,7 @@ export default function SalesHistory() {
                 {viewMode === "grid" ? (
                   <div className={`grid ${currentGridConfig.containerClass}`}>
                     {filteredSales.map((sale) => {
-                      const safeNotes = splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean;
+                      const safeNotes = cleanHtmlText(splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean);
                       const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
                       const resaleValue = getResaleValue(sale.profit || 0, sale.roi || 0);
                       
@@ -1819,7 +1820,7 @@ export default function SalesHistory() {
                 ) : (
                   <div className="space-y-6 sm:space-y-6 overflow-x-hidden max-w-full">
                     {filteredSales.map((sale) => {
-                      const safeNotes = splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean;
+                      const safeNotes = cleanHtmlText(splitBase44Tags(stripCustomFeeNotes(sale.notes || "")).clean);
                   const isDeleted = sale.deleted_at !== null && sale.deleted_at !== undefined;
                   
                   // Calculate days until permanent deletion for deleted sales

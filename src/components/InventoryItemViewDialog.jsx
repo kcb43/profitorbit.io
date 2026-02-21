@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { OptimizedImage } from "@/components/OptimizedImage";
+import { cleanHtmlText } from "@/lib/utils";
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
@@ -36,8 +37,9 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
   const isSoldOut = quantitySold >= quantity;
   
   // Notes truncation for desktop (show first 150 characters)
+  // Clean HTML from notes at display time to handle items saved before paste-cleanup was added
   const NOTES_TRUNCATE_LENGTH = 150;
-  const notesText = item.notes || '';
+  const notesText = cleanHtmlText(item.notes || '');
   const shouldTruncateNotes = notesText.length > NOTES_TRUNCATE_LENGTH;
   const displayNotes = shouldTruncateNotes && !notesExpanded 
     ? notesText.substring(0, NOTES_TRUNCATE_LENGTH) + '...'
