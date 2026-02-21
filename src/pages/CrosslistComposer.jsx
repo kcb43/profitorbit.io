@@ -39885,11 +39885,11 @@ export default function CrosslistComposer() {
                 )}
               </div>
 
-              {/* ── Listing Keywords / Tags ── */}
+              {/* ── Tags ── */}
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Listing Keywords</Label>
+                  <Label className="text-sm font-medium">Tags</Label>
                 </div>
               </div>
               <div className="mb-6">
@@ -39899,7 +39899,7 @@ export default function CrosslistComposer() {
                   onChange={(value) => handleGeneralChange("tags", value)}
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Keywords are saved with the item and used as tags when crosslisting to marketplaces.
+                  Tags are saved with the item and used when crosslisting to marketplaces.
                 </p>
               </div>
 
@@ -45749,11 +45749,11 @@ export default function CrosslistComposer() {
                         )}
                       </div>
 
-                      {/* ── Listing Keywords / Tags ── */}
+                      {/* ── Tags ── */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-sm font-medium">Listing Keywords</Label>
+                          <Label className="text-sm font-medium">Tags</Label>
                         </div>
                       </div>
                       <div className="mb-6">
@@ -45763,7 +45763,7 @@ export default function CrosslistComposer() {
                           onChange={(value) => handleGeneralChange("tags", value)}
                         />
                         <p className="mt-1.5 text-xs text-muted-foreground">
-                          Keywords are saved with the item and used as tags when crosslisting to marketplaces.
+                          Tags are saved with the item and used when crosslisting to marketplaces.
                         </p>
                       </div>
 
