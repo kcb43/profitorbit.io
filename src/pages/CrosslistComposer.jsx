@@ -4887,10 +4887,10 @@ const createInitialTemplateState = (item) => {
     color3: item?.color3 || "",
     sku: item?.sku || "",
     zip: item?.zip_code || "",
-    // listing_keywords from DB takes priority over legacy item.tags fallback
+    // listing_keywords from DB takes priority; never fall back to category
     tags: (Array.isArray(item?.listing_keywords) && item.listing_keywords.length > 0)
       ? item.listing_keywords.join(', ')
-      : (item?.tags || (shouldClearCategory ? "" : item?.category || "")),
+      : (item?.tags || ""),
     quantity: item?.quantity != null ? String(item.quantity) : "1",
     category: category,
     size: item?.size || "",
