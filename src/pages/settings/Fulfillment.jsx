@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, Package, Loader2, Check, Info } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, Package, Loader2, Check, Info, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ import { getFulfillmentProfile, saveFulfillmentProfile } from '@/api/fulfillment
 const PLATFORMS = [
   { id: 'facebook', label: 'Facebook Marketplace', placeholder: 'e.g. Pickup in Easton, MA. I can also ship if needed.' },
   { id: 'mercari',  label: 'Mercari',              placeholder: 'e.g. Fast shipping, usually next business day.' },
-  { id: 'ebay',     label: 'eBay',                 placeholder: 'e.g. Ships within 1 business day via USPS.' },
+  { id: 'ebay',     label: 'eBay',                 placeholder: 'e.g. Ships within 1 business day via USPS. Free Shipping on all orders.' },
   { id: 'etsy',     label: 'Etsy',                 placeholder: 'e.g. Ships carefully packed within 2 business days.' },
   { id: 'poshmark', label: 'Poshmark',             placeholder: 'e.g. Ships within 1 business day.' },
 ];
@@ -32,7 +32,7 @@ export default function FulfillmentSettings() {
 
   const [isLoading, setIsLoading]   = useState(true);
   const [isSaving, setIsSaving]     = useState(false);
-  const [showPlatform, setShowPlatform] = useState(false);
+  const [showPlatform, setShowPlatform] = useState(true);
 
   const [form, setForm] = useState({
     pickup_enabled:       false,
@@ -221,8 +221,32 @@ export default function FulfillmentSettings() {
                   rows={2}
                   className="mt-1 text-sm"
                 />
+                {id === 'ebay' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Tip: Include "Free Shipping" or "Next Day Shipping" here and the AI will add it to your eBay title suggestions.
+                  </p>
+                )}
               </div>
             ))}
+
+            {/* eBay Emoji Toggle */}
+            <div className="rounded-lg border p-4 bg-muted/20 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smile className="h-4 w-4 text-primary" />
+                  <div>
+                    <Label className="font-medium">eBay Emoji Descriptions</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      When enabled, the AI will use emojis before section headings in eBay descriptions (e.g. ✅ Features & Details).
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={Boolean(form.platform_notes?.ebay_emojis)}
+                  onCheckedChange={(v) => setPlatformNote('ebay_emojis', v || undefined)}
+                />
+              </div>
+            </div>
           </div>
         )}
       </section>

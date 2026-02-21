@@ -2,13 +2,14 @@
  * POST /api/ai/generate-description
  *
  * Generates comprehensive, platform-specific marketplace descriptions
- * for eBay, Mercari, and Facebook — plus a tag list — in one AI call.
+ * for eBay, Mercari, and Facebook — plus a tag list and category suggestions —
+ * in one AI call.
  *
  * Accepts:
  *   { inputDescription, title, brand, category, condition, platform?, numVariations? }
  *
  * Returns:
- *   { ebay, mercari, facebook, tags, warnings, descriptions (legacy compat) }
+ *   { ebay, mercari, facebook, tags, suggestedCategories, warnings, descriptions (legacy compat) }
  *
  * Fulfillment profile (pickup/shipping) is fetched server-side from
  * user_fulfillment_profiles using the caller's JWT.
@@ -60,11 +61,19 @@ async function getFulfillmentProfile(authHeader) {
   return data || null;
 }
 
+/**
+ * Build the fulfillment line for a specific platform.
+ * Platform-specific override takes priority over global pickup/shipping settings.
+ */
 function buildFulfillmentLine(profile, platform) {
   if (!profile) return null;
   const p = String(platform || '').toLowerCase();
+
+  // Platform-specific override wins (but not special flags like ebay_emojis)
   const override = profile.platform_notes?.[p];
   if (override && typeof override === 'string' && override.trim()) return override.trim();
+
+  // Fall back to global settings
   const parts = [];
   if (profile.pickup_enabled && profile.pickup_location_line) {
     parts.push(profile.pickup_location_line.trim());
@@ -76,9 +85,60 @@ function buildFulfillmentLine(profile, platform) {
   return parts.length > 0 ? parts.join(' ') : null;
 }
 
+/**
+ * Detect shipping speed/cost keywords from the eBay note or global shipping note.
+ * Returns a hint string like "Free Shipping" or "Next Day Shipping" for the AI to use in eBay titles.
+ */
+function detectEbayShippingKeyword(profile) {
+  if (!profile) return null;
+  const text = [
+    profile.platform_notes?.ebay || '',
+    profile.shipping_notes || '',
+  ].join(' ').toLowerCase();
+
+  if (/free\s*ship/i.test(text) || /ships?\s*free/i.test(text)) return 'Free Shipping';
+  if (/same[\s-]?day/i.test(text)) return 'Same Day Shipping';
+  if (/next[\s-]?day|overnight|1[\s-]?day\s*ship/i.test(text)) return 'Next Day Shipping';
+  if (/2[\s-]?day\s*ship/i.test(text)) return '2-Day Shipping';
+  if (/fast[\s-]?ship/i.test(text)) return 'Fast Shipping';
+  return null;
+}
+
 // ── Build the AI prompt ───────────────────────────────────────────────────────
 
-function buildPrompt({ title, condition, brand, category, inputDescription, fulfillmentLine, itemFacts }) {
+function buildPrompt({
+  title,
+  condition,
+  brand,
+  category,
+  inputDescription,
+  itemFacts,
+  ebayFulfillment,
+  mercariFulfillment,
+  facebookFulfillment,
+  ebayUseEmojis,
+  ebayShippingKeyword,
+}) {
+  const ebayEmojiInstruction = ebayUseEmojis
+    ? `  • Use relevant emojis immediately before each section heading (e.g. ✅ Features & Details:, 📦 Specifications:, 🏷️ Condition:).`
+    : `  • Do NOT use emojis in the eBay description.`;
+
+  const ebayShippingHint = ebayShippingKeyword
+    ? `  • The seller offers "${ebayShippingKeyword}". Include this in the eBay description's closing section and note it where appropriate for SEO.`
+    : '';
+
+  const ebayFulfillmentLine = ebayFulfillment
+    ? `  • End with this fulfillment line verbatim: "${ebayFulfillment}"`
+    : '';
+
+  const mercariFulfillmentLine = mercariFulfillment
+    ? `  • End with this line: "${mercariFulfillment}"`
+    : '';
+
+  const facebookFulfillmentLine = facebookFulfillment
+    ? `  • End with this pickup/shipping line verbatim: "${facebookFulfillment}"`
+    : '  • Do NOT include pickup or shipping details unless they were provided in the input.';
+
   const systemPrompt = `You are a professional marketplace listing copywriter.
 
 STRICT RULES:
@@ -86,13 +146,15 @@ STRICT RULES:
 - Do not mention price.
 - Return ONLY a single valid JSON object — no markdown fences, no explanation, no extra text.
 - Each description must be complete and polished, ready to paste directly into the marketplace.
+- Honor ALL fulfillment lines exactly as written — do not paraphrase them.
 
 OUTPUT FORMAT (valid JSON, all keys required):
 {
   "ebay": "...",
   "mercari": "...",
   "facebook": "...",
-  "tags": ["tag1", "tag2", ...]
+  "tags": ["tag1", "tag2", ...],
+  "suggestedCategories": ["Category > Subcategory > Leaf", "Category2 > Sub2", ...]
 }
 
 PLATFORM REQUIREMENTS:
@@ -103,23 +165,32 @@ eBay — professional, detail-focused, SEO-friendly:
   • "Specifications:" section listing all measurable details (dimensions, material, quantity, scale, etc.)
   • Close with condition statement
   • Minimum 400 characters. Use paragraph breaks between sections.
+${ebayEmojiInstruction}
+${ebayShippingHint}
+${ebayFulfillmentLine}
 
 Mercari — casual, scannable, ~900-1,000 characters:
   • Open with "Condition: [value]" line
   • Bullet points (•) for all key features and specs — be thorough
   • Close with a 2-3 sentence paragraph that adds personality and summarizes why it is a good buy
   • Stay within 900-1,000 characters
+${mercariFulfillmentLine}
 
 Facebook Marketplace — casual, conversational, friendly:
   • Open with a condition/brand hook (e.g. "Brand New –" or "Excellent condition –")
   • 2-3 natural sentences describing what you are selling and why it is great
   • Bullet points (•) for key features
-  • ${fulfillmentLine ? `End with this pickup/shipping line verbatim: "${fulfillmentLine}"` : 'Do NOT include pickup or shipping details unless they were provided in the input.'}
+${facebookFulfillmentLine}
 
 Tags — search-optimized:
-  • 15-25 tags, each on a new line (inside the JSON array as separate strings)
+  • 15-25 tags, each as a separate string in the JSON array
   • Include: brand, product type, key descriptors, synonyms, category terms
-  • Mix specific (exact product names) and broad (category-level) terms`;
+  • Mix specific (exact product names) and broad (category-level) terms
+
+suggestedCategories — 3-5 category breadcrumbs:
+  • Based on the item, suggest 3 to 5 marketplace category paths (most specific first)
+  • Format: "Parent Category > Subcategory > Leaf" (use " > " as separator)
+  • These are general categories a reseller would use on eBay or Mercari`;
 
   const userLines = [
     title     ? `Title: ${title}` : '',
@@ -190,7 +261,6 @@ async function callAnthropic(apiKey, systemPrompt, userPrompt) {
 // ── Parse AI response ─────────────────────────────────────────────────────────
 
 function parseResponse(rawContent) {
-  // Strip markdown fences if the model added them anyway
   const cleaned = rawContent
     .replace(/^```(?:json)?\s*/m, '')
     .replace(/\s*```\s*$/m, '')
@@ -199,19 +269,18 @@ function parseResponse(rawContent) {
   try {
     return JSON.parse(cleaned);
   } catch {
-    // If parsing fails, try to extract a JSON object from the response
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) {
       try {
         return JSON.parse(match[0]);
       } catch {}
     }
-    // Last resort: return a fallback structure with the raw text as eBay description
     return {
       ebay: cleaned,
       mercari: '',
       facebook: '',
       tags: [],
+      suggestedCategories: [],
       _parseError: true,
     };
   }
@@ -227,7 +296,6 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
 
-    // Extract inputs (support both legacy and new field names)
     const title            = String(body.title || '').trim();
     const condition        = String(body.condition || '').trim();
     const brand            = String(body.brand || body.itemFacts?.brand || '').trim();
@@ -235,34 +303,43 @@ export default async function handler(req, res) {
     const inputDescription = String(body.inputDescription || body.existingDescription || '').trim();
     const itemFacts        = body.itemFacts || {};
 
-    // Validate
     if (!inputDescription && !title) {
       return res.status(400).json({ error: 'Provide a title or existing description.' });
     }
 
-    // Fetch fulfillment profile for this user
+    // Fetch fulfillment profile and build per-platform lines
     const fulfillmentProfile = await getFulfillmentProfile(req.headers.authorization || '').catch(() => null);
-    // Use facebook fulfillment line (most relevant for pickup/shipping mentions)
-    const fulfillmentLine = buildFulfillmentLine(fulfillmentProfile, 'facebook');
 
-    // Check which AI API to use
+    const ebayFulfillment     = buildFulfillmentLine(fulfillmentProfile, 'ebay');
+    const mercariFulfillment  = buildFulfillmentLine(fulfillmentProfile, 'mercari');
+    const facebookFulfillment = buildFulfillmentLine(fulfillmentProfile, 'facebook');
+    const ebayUseEmojis       = Boolean(fulfillmentProfile?.platform_notes?.ebay_emojis);
+    const ebayShippingKeyword = detectEbayShippingKeyword(fulfillmentProfile);
+
     const openaiApiKey    = process.env.OPENAI_API_KEY;
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!openaiApiKey && !anthropicApiKey) {
       return res.status(500).json({ error: 'AI API key not configured.' });
     }
 
-    // Build prompt
     const { systemPrompt, userPrompt } = buildPrompt({
-      title, condition, brand, category, inputDescription, fulfillmentLine, itemFacts,
+      title,
+      condition,
+      brand,
+      category,
+      inputDescription,
+      itemFacts,
+      ebayFulfillment,
+      mercariFulfillment,
+      facebookFulfillment,
+      ebayUseEmojis,
+      ebayShippingKeyword,
     });
 
-    // Call AI
     const rawContent = openaiApiKey
       ? await callOpenAI(openaiApiKey, systemPrompt, userPrompt)
       : await callAnthropic(anthropicApiKey, systemPrompt, userPrompt);
 
-    // Parse
     const parsed = parseResponse(rawContent);
 
     const warnings = [];
@@ -270,19 +347,21 @@ export default async function handler(req, res) {
     if (!brand && !itemFacts.brand) warnings.push('Brand not provided.');
     if (parsed._parseError) warnings.push('AI response could not be fully parsed — showing partial output.');
 
-    const tags = Array.isArray(parsed.tags) ? parsed.tags.filter(Boolean) : [];
-    const ebay = String(parsed.ebay || '').trim();
+    const tags               = Array.isArray(parsed.tags) ? parsed.tags.filter(Boolean) : [];
+    const suggestedCategories = Array.isArray(parsed.suggestedCategories)
+      ? parsed.suggestedCategories.filter(Boolean).slice(0, 5)
+      : [];
+    const ebay    = String(parsed.ebay    || '').trim();
     const mercari = String(parsed.mercari || '').trim();
     const facebook = String(parsed.facebook || '').trim();
 
     return res.status(200).json({
-      // New structured output
       ebay,
       mercari,
       facebook,
       tags,
+      suggestedCategories,
       warnings,
-      // Legacy back-compat: return the eBay description as the primary "descriptions" array
       descriptions: [ebay, mercari, facebook].filter(Boolean),
     });
 

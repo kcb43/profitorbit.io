@@ -1359,6 +1359,20 @@ export default function AddInventoryItem() {
         brand={formData.brand}
         category={formData.category}
         condition={formData.condition}
+        itemId={itemId || undefined}
+        onApplyTags={async (tagsArray) => {
+          // Update form state immediately
+          handleChange('tags', tagsArray.join(', '));
+          // Also persist to DB if we have an existing item
+          if (itemId) {
+            await inventoryApi.update(itemId, { listing_keywords: tagsArray });
+          }
+        }}
+        onSelectCategory={(catPath) => {
+          // Apply the leaf category to the form
+          const parts = catPath.split(' > ');
+          handleChange('category', parts[parts.length - 1]);
+        }}
       />
     </div>
   );

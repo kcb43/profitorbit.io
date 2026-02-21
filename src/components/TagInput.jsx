@@ -64,6 +64,31 @@ export function TagInput({
     }
   };
 
+  const handlePaste = (e) => {
+    const pastedText = e.clipboardData?.getData('text') || '';
+    // If the paste contains newlines or multiple commas, treat as bulk tag import
+    if (pastedText.includes('\n') || (pastedText.match(/,/g) || []).length > 1) {
+      e.preventDefault();
+      const pastedTags = pastedText
+        .split(/[\n,]+/)
+        .map(t => t.trim())
+        .filter(Boolean);
+      if (pastedTags.length === 0) return;
+      const existingSet = new Set(tags.map(t => t.toLowerCase()));
+      const newTags = [...tags];
+      pastedTags.forEach(t => {
+        if (!existingSet.has(t.toLowerCase())) {
+          newTags.push(t);
+          existingSet.add(t.toLowerCase());
+        }
+      });
+      onChange(newTags.join(', '));
+      setInputValue('');
+      setShowDropdown(false);
+    }
+    // Otherwise let the default paste happen (single value into input)
+  };
+
   const addTagFromInput = () => {
     if (!inputValue.trim()) return;
     
@@ -127,6 +152,7 @@ export function TagInput({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
+          onPaste={handlePaste}
           onFocus={() => {
             const trimmed = inputValue.trim();
             const existingTags = new Set(tags.map(t => t.toLowerCase()));

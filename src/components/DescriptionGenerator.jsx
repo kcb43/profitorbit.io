@@ -2,13 +2,18 @@
  * DescriptionGenerator
  *
  * Generates full-length, platform-specific marketplace descriptions
- * (eBay, Mercari, Facebook) and search tags — all in one AI call.
+ * (eBay, Mercari, Facebook) + search tags + category suggestions in one AI call.
  *
- * The user picks which platform description to apply to their form.
- * All descriptions are editable before applying.
+ * Features:
+ * - Square platform icon tabs with marketplace logos
+ * - Per-item localStorage cache (only regenerates when user clicks "Regenerate")
+ * - Apply Tags to Item (saves to DB via onApplyTags callback)
+ * - Animated category suggestions section
+ * - Link to Fulfillment Settings
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,20 +32,96 @@ import {
   Wand2,
   Copy,
   Tag,
+  Settings,
+  ChevronRight,
+  FolderOpen,
+  BookmarkPlus,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
-// Platform tab config
+// Platform config — square icon tabs
 // ---------------------------------------------------------------------------
 
-const PLATFORMS = [
-  { key: 'ebay',     label: 'eBay',      color: 'bg-blue-500' },
-  { key: 'mercari',  label: 'Mercari',   color: 'bg-red-500' },
-  { key: 'facebook', label: 'Facebook',  color: 'bg-[#1877F2]' },
-  { key: 'tags',     label: 'Tags',      color: 'bg-purple-500' },
+const PLATFORM_ICONS = [
+  {
+    key: 'ebay',
+    label: 'eBay',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg',
+    bg: 'bg-white dark:bg-zinc-800',
+    border: 'border-blue-200 dark:border-blue-800',
+    activeBg: 'bg-blue-50 dark:bg-blue-950/50',
+    activeBorder: 'border-blue-500',
+  },
+  {
+    key: 'mercari',
+    label: 'Mercari',
+    logo: 'https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B',
+    bg: 'bg-white dark:bg-zinc-800',
+    border: 'border-red-200 dark:border-red-900',
+    activeBg: 'bg-red-50 dark:bg-red-950/50',
+    activeBorder: 'border-red-500',
+  },
+  {
+    key: 'facebook',
+    label: 'Facebook',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg',
+    bg: 'bg-white dark:bg-zinc-800',
+    border: 'border-blue-200 dark:border-blue-900',
+    activeBg: 'bg-blue-50 dark:bg-blue-950/60',
+    activeBorder: 'border-[#1877F2]',
+  },
+  {
+    key: 'tags',
+    label: 'Tags',
+    logo: null, // uses icon instead
+    bg: 'bg-white dark:bg-zinc-800',
+    border: 'border-purple-200 dark:border-purple-900',
+    activeBg: 'bg-purple-50 dark:bg-purple-950/50',
+    activeBorder: 'border-purple-500',
+  },
 ];
+
+// ---------------------------------------------------------------------------
+// Cache helpers
+// ---------------------------------------------------------------------------
+
+const CACHE_VERSION = 'v1';
+
+function getCacheKey(itemId, title) {
+  const keyBase = itemId || (title ? `title:${title.slice(0, 40)}` : null);
+  return keyBase ? `ai_gen_${CACHE_VERSION}_${keyBase}` : null;
+}
+
+function readCache(key) {
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Expire after 7 days
+    if (Date.now() - (parsed._ts || 0) > 7 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(key, data) {
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify({ ...data, _ts: Date.now() }));
+  } catch {}
+}
+
+function clearCache(key) {
+  if (!key) return;
+  try { localStorage.removeItem(key); } catch {}
+}
 
 // ---------------------------------------------------------------------------
 // Loading indicator
@@ -66,6 +147,71 @@ function GeneratingIndicator() {
 }
 
 // ---------------------------------------------------------------------------
+// Category Suggestions Section
+// ---------------------------------------------------------------------------
+
+function CategorySuggestions({ categories, onSelectCategory }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      const t = setTimeout(() => setVisible(true), 100);
+      return () => clearTimeout(t);
+    }
+    setVisible(false);
+  }, [categories]);
+
+  if (!categories || categories.length === 0) return null;
+
+  return (
+    <div
+      className={cn(
+        'overflow-hidden transition-all duration-500 ease-out',
+        visible ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'
+      )}
+    >
+      <div className="mx-5 mb-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/2 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
+            <FolderOpen className="w-3.5 h-3.5 text-primary" />
+          </div>
+          <p className="text-xs font-semibold text-primary uppercase tracking-wide">
+            Suggested Categories
+          </p>
+          <span className="text-xs text-muted-foreground ml-1">— click to apply to General Form</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {categories.map((cat, i) => {
+            const parts = cat.split(' > ');
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onSelectCategory && onSelectCategory(cat)}
+                className={cn(
+                  'group flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium',
+                  'bg-background hover:bg-primary/10 hover:border-primary/40 border-border/60',
+                  'transition-all duration-150 text-left'
+                )}
+              >
+                {parts.map((part, pi) => (
+                  <span key={pi} className="flex items-center gap-1">
+                    {pi > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground/50" />}
+                    <span className={pi === parts.length - 1 ? 'text-foreground font-semibold' : 'text-muted-foreground'}>
+                      {part}
+                    </span>
+                  </span>
+                ))}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // DescriptionGenerator
 // ---------------------------------------------------------------------------
 
@@ -73,23 +219,27 @@ export function DescriptionGenerator({
   open,
   onOpenChange,
   onSelectDescription,
+  onApplyTags,       // optional: (tags: string[]) => void — saves tags to item
+  onSelectCategory,  // optional: (categoryPath: string) => void — applies category
   marketplace = 'general',
   inputDescription = '',
   title,
   brand,
   category,
   condition,
+  itemId,            // optional: unique item ID for caching
   similarDescriptions = [],
 }) {
-  // 'idle' | 'generating' | 'done' | 'error'
   const [phase, setPhase]             = useState('idle');
-  const [result, setResult]           = useState(null);   // { ebay, mercari, facebook, tags }
+  const [result, setResult]           = useState(null);
   const [activeTab, setActiveTab]     = useState('ebay');
-  const [editedTexts, setEditedTexts] = useState({});     // { ebay: '...', mercari: '...', ... }
+  const [editedTexts, setEditedTexts] = useState({});
   const [errorMsg, setErrorMsg]       = useState('');
+  const [applyingTags, setApplyingTags] = useState(false);
   const { toast } = useToast();
 
-  const lastGeneratedFor = useRef(null);
+  const cacheKey = getCacheKey(itemId, title);
+  const lastOpenKey = useRef(null);
 
   const hasSeed  = typeof inputDescription === 'string' && inputDescription.trim().length > 0;
   const hasTitle = typeof title === 'string' && title.trim().length > 0;
@@ -105,21 +255,36 @@ export function DescriptionGenerator({
     }
   }, [open, marketplace]);
 
-  // Auto-trigger on open
+  // On open: check cache first, only auto-generate if no cached data
   useEffect(() => {
-    if (open && lastGeneratedFor.current !== open) {
-      lastGeneratedFor.current = open;
-      setPhase('idle');
-      setResult(null);
-      setEditedTexts({});
-      setErrorMsg('');
-      runGeneration();
+    const openKey = `${open}:${cacheKey}`;
+    if (open && lastOpenKey.current !== openKey) {
+      lastOpenKey.current = openKey;
+
+      const cached = readCache(cacheKey);
+      if (cached && (cached.ebay || cached.mercari || cached.facebook)) {
+        setResult(cached);
+        setEditedTexts({
+          ebay:     cached.ebay     || '',
+          mercari:  cached.mercari  || '',
+          facebook: cached.facebook || '',
+          tags:     Array.isArray(cached.tags) ? cached.tags.join('\n') : '',
+        });
+        setPhase('done');
+        setErrorMsg('');
+      } else {
+        setPhase('idle');
+        setResult(null);
+        setEditedTexts({});
+        setErrorMsg('');
+        runGeneration();
+      }
     }
     if (!open) {
-      lastGeneratedFor.current = null;
+      lastOpenKey.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, cacheKey]);
 
   const runGeneration = useCallback(async () => {
     if (!hasSeed && !hasTitle) {
@@ -152,10 +317,12 @@ export function DescriptionGenerator({
 
       const data = await res.json();
 
-      // Require at least one platform description
       if (!data.ebay && !data.mercari && !data.facebook) {
         throw new Error('No descriptions returned. Please try again.');
       }
+
+      // Cache the result
+      writeCache(cacheKey, data);
 
       setResult(data);
       setEditedTexts({
@@ -170,7 +337,7 @@ export function DescriptionGenerator({
       setErrorMsg(err.message || 'Generation failed.');
       setPhase('error');
     }
-  }, [hasSeed, hasTitle, inputDescription, title, brand, category, condition, similarDescriptions]);
+  }, [hasSeed, hasTitle, inputDescription, title, brand, category, condition, similarDescriptions, cacheKey]);
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -185,8 +352,27 @@ export function DescriptionGenerator({
     onOpenChange(false);
     toast({
       title: 'Description applied',
-      description: `Your ${PLATFORMS.find(p => p.key === activeTab)?.label || activeTab} description has been added to the form.`,
+      description: `Your ${PLATFORM_ICONS.find(p => p.key === activeTab)?.label || activeTab} description has been added to the form.`,
     });
+  }
+
+  async function handleApplyTags() {
+    const tagsText = editedTexts.tags?.trim();
+    if (!tagsText || !onApplyTags) return;
+    const tagsArray = tagsText.split('\n').map(t => t.trim()).filter(Boolean);
+    if (tagsArray.length === 0) return;
+    setApplyingTags(true);
+    try {
+      await onApplyTags(tagsArray);
+      toast({
+        title: 'Tags applied',
+        description: `${tagsArray.length} tags saved to this item.`,
+      });
+    } catch (err) {
+      toast({ title: 'Failed to apply tags', description: err.message, variant: 'destructive' });
+    } finally {
+      setApplyingTags(false);
+    }
   }
 
   function handleCopyTags() {
@@ -198,6 +384,7 @@ export function DescriptionGenerator({
   }
 
   function handleRegenerate() {
+    clearCache(cacheKey);
     setPhase('idle');
     setResult(null);
     setEditedTexts({});
@@ -210,16 +397,14 @@ export function DescriptionGenerator({
   }
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Render helpers
   // ---------------------------------------------------------------------------
 
   const isLoading = phase === 'generating';
   const isDone    = phase === 'done' && result;
 
-  // Character count helpers
   function charCount(key) {
-    const text = editedTexts[key] || '';
-    return text.length;
+    return (editedTexts[key] || '').length;
   }
 
   function charCountColor(key) {
@@ -231,6 +416,13 @@ export function DescriptionGenerator({
     }
     return 'text-muted-foreground';
   }
+
+  const activePlatform = PLATFORM_ICONS.find(p => p.key === activeTab);
+  const tagCount = result?.tags?.length || editedTexts.tags?.split('\n').filter(Boolean).length || 0;
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -245,11 +437,24 @@ export function DescriptionGenerator({
               </div>
               AI Description Generator
             </DialogTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {hasSeed
-                ? 'Rewrote your description into platform-specific formats ready to use.'
-                : 'Generated platform-specific descriptions from your item details.'}
-            </p>
+            <div className="flex items-center justify-between mt-0.5">
+              <p className="text-xs text-muted-foreground">
+                {hasSeed
+                  ? 'Rewrote your description into platform-specific formats.'
+                  : 'Generated platform-specific descriptions from your item details.'}
+                {phase === 'done' && result?._ts === undefined && (
+                  <span className="ml-1 text-primary/70">· from cache</span>
+                )}
+              </p>
+              <Link
+                to="/Settings/Fulfillment"
+                onClick={() => onOpenChange(false)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Description settings
+              </Link>
+            </div>
           </DialogHeader>
         </div>
 
@@ -279,33 +484,65 @@ export function DescriptionGenerator({
           {/* Done */}
           {isDone && (
             <div className="flex flex-col flex-1">
-              {/* Platform tabs */}
-              <div className="flex border-b shrink-0">
-                {PLATFORMS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setActiveTab(key)}
-                    className={cn(
-                      'flex-1 py-2.5 text-xs font-semibold transition-all border-b-2 -mb-px',
-                      activeTab === key
-                        ? 'border-primary text-primary bg-primary/5'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                    )}
-                  >
-                    {key === 'tags' ? (
-                      <span className="flex items-center justify-center gap-1">
-                        <Tag className="w-3 h-3" />
-                        {label}
-                        {result.tags?.length > 0 && (
-                          <span className="ml-1 text-[10px] text-muted-foreground">({result.tags.length})</span>
-                        )}
-                      </span>
-                    ) : (
-                      label
-                    )}
-                  </button>
-                ))}
+
+              {/* Platform icon tabs */}
+              <div className="flex items-center gap-2 px-5 py-3 border-b shrink-0 bg-muted/10">
+                {PLATFORM_ICONS.map(({ key, label, logo, bg, border, activeBg, activeBorder }) => {
+                  const isActive = activeTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveTab(key)}
+                      title={label}
+                      className={cn(
+                        'flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all duration-150',
+                        'w-16 h-16 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        isActive ? [activeBg, activeBorder, 'shadow-sm'] : [bg, border, 'opacity-70 hover:opacity-100']
+                      )}
+                    >
+                      {key === 'tags' ? (
+                        <>
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center',
+                            isActive ? 'bg-purple-100 dark:bg-purple-900/40' : 'bg-muted'
+                          )}>
+                            <Tag className={cn('w-4 h-4', isActive ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground')} />
+                          </div>
+                          <span className={cn('text-[10px] font-semibold leading-tight', isActive ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground')}>
+                            Tags
+                            {tagCount > 0 && <span className="ml-0.5">({tagCount})</span>}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-zinc-700 flex items-center justify-center shadow-sm">
+                            <img
+                              src={logo}
+                              alt={label}
+                              className="w-full h-full object-contain p-0.5"
+                              onError={e => { e.target.style.display = 'none'; }}
+                            />
+                          </div>
+                          <span className={cn('text-[10px] font-semibold leading-tight', isActive ? 'text-foreground' : 'text-muted-foreground')}>
+                            {label}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Category suggestions (animated reveal) */}
+              {onSelectCategory && (
+                <CategorySuggestions
+                  categories={result?.suggestedCategories}
+                  onSelectCategory={(cat) => {
+                    onSelectCategory(cat);
+                    toast({ title: 'Category applied', description: cat });
+                  }}
+                />
+              )}
 
               {/* Tab content */}
               <div className="flex-1 px-5 py-4 space-y-2 overflow-y-auto">
@@ -313,7 +550,7 @@ export function DescriptionGenerator({
                   <>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-muted-foreground">
-                        One tag per line — edit freely before copying
+                        One tag per line — edit freely. Paste newline-separated tags to bulk-import.
                       </p>
                       <Button
                         size="sm"
@@ -322,7 +559,7 @@ export function DescriptionGenerator({
                         onClick={handleCopyTags}
                       >
                         <Copy className="w-3 h-3" />
-                        Copy All Tags
+                        Copy All
                       </Button>
                     </div>
                     <Textarea
@@ -349,7 +586,7 @@ export function DescriptionGenerator({
                       value={editedTexts[activeTab] || ''}
                       onChange={e => setTabText(activeTab, e.target.value)}
                       className="min-h-[300px] resize-none text-sm leading-relaxed rounded-xl"
-                      placeholder={`${PLATFORMS.find(p => p.key === activeTab)?.label} description will appear here…`}
+                      placeholder={`${activePlatform?.label} description will appear here…`}
                     />
                   </>
                 )}
@@ -372,7 +609,7 @@ export function DescriptionGenerator({
               Regenerate
             </Button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -382,6 +619,36 @@ export function DescriptionGenerator({
                 Cancel
               </Button>
 
+              {/* Tags tab — copy + apply buttons */}
+              {isDone && activeTab === 'tags' && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyTags}
+                    disabled={!editedTexts.tags?.trim()}
+                    className="gap-1.5"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy All Tags
+                  </Button>
+                  {onApplyTags && (
+                    <Button
+                      size="sm"
+                      onClick={handleApplyTags}
+                      disabled={!editedTexts.tags?.trim() || applyingTags}
+                      className="gap-1.5"
+                    >
+                      {applyingTags
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <BookmarkPlus className="w-3.5 h-3.5" />}
+                      Apply Tags to Item
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {/* Description tabs — apply description button */}
               {isDone && activeTab !== 'tags' && (
                 <Button
                   size="sm"
@@ -390,19 +657,7 @@ export function DescriptionGenerator({
                   className="gap-1.5"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  Use {PLATFORMS.find(p => p.key === activeTab)?.label} Description
-                </Button>
-              )}
-
-              {isDone && activeTab === 'tags' && (
-                <Button
-                  size="sm"
-                  onClick={handleCopyTags}
-                  disabled={!editedTexts.tags?.trim()}
-                  className="gap-1.5"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy All Tags
+                  Use {activePlatform?.label} Description
                 </Button>
               )}
             </div>

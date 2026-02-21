@@ -50987,6 +50987,19 @@ export default function CrosslistComposer() {
         category={activeForm === "general" ? generalForm.category : generalForm.category}
         condition={activeForm === "general" ? generalForm.condition : generalForm.condition}
         similarDescriptions={similarItems}
+        itemId={currentEditingItemId || undefined}
+        onApplyTags={async (tagsArray) => {
+          // Update general form tags immediately
+          handleGeneralChange("tags", tagsArray.join(', '));
+          // Also persist to DB if we have the item id
+          if (currentEditingItemId) {
+            await inventoryApi.update(currentEditingItemId, { listing_keywords: tagsArray });
+          }
+        }}
+        onSelectCategory={(catPath) => {
+          const parts = catPath.split(' > ');
+          handleGeneralChange("category", parts[parts.length - 1]);
+        }}
       />
 
       {/* Expanded Description Dialog - Mobile Only */}
