@@ -37510,18 +37510,56 @@ export default function CrosslistComposer() {
       try {
         setIsSaving(true);
 
+        // Detect whether the extension is available
+        const extensionAvailable = Boolean(
+          typeof window !== 'undefined' &&
+          (window.ProfitOrbitExtension || localStorage.getItem('profit_orbit_extension_ready') === 'true')
+        );
+
         // Check if Mercari is connected via extension
-        const mercariConnected = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
-        
-        if (!mercariConnected) {
-          const msg = "Please connect your Mercari account in Settings first.";
-          toast({
-            title: "Mercari Not Connected",
-            description: msg,
-            variant: "destructive",
-          });
-          setIsSaving(false);
-          throw new Error(msg);
+        const mercariConnectedViaExtension = localStorage.getItem('profit_orbit_mercari_connected') === 'true';
+
+        // If extension is NOT available (mobile), check for server-side session
+        let useServerRoute = false;
+        let serverSessionValid = false;
+        if (!extensionAvailable || !mercariConnectedViaExtension) {
+          try {
+            const { data: { session } } = await import('@/integrations/supabase').then(m => m.supabase.auth.getSession());
+            const token = session?.access_token;
+            if (token) {
+              const statusResp = await fetch('/api/mercari/session-status', {
+                headers: { 'Authorization': `Bearer ${token}` },
+              });
+              if (statusResp.ok) {
+                const status = await statusResp.json();
+                serverSessionValid = status.connected === true;
+                if (serverSessionValid) {
+                  useServerRoute = true;
+                  if (status.isStale) {
+                    toast({
+                      title: "Mercari Session Refresh Recommended",
+                      description: `Your desktop session is ${status.ageHours}h old. Visit Mercari.com on desktop to refresh it for best reliability.`,
+                      duration: 6000,
+                    });
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+
+          if (!mercariConnectedViaExtension && !serverSessionValid) {
+            const msg = extensionAvailable
+              ? "Please connect your Mercari account in Settings first."
+              : "On mobile, you need to connect Mercari on desktop first. Open Orben on a desktop browser with the extension installed and connect Mercari. Your session will then work on mobile.";
+            toast({
+              title: "Mercari Not Connected",
+              description: msg,
+              variant: "destructive",
+              duration: 8000,
+            });
+            setIsSaving(false);
+            throw new Error(msg);
+          }
         }
 
         // Validate that full category path is selected (no subcategories remaining)
@@ -37653,13 +37691,96 @@ export default function CrosslistComposer() {
         setIsMercariListing(true);
         setIsSaving(true);
 
+        // Build image URLs array for both routes
+        const photoUrls = (listingPayload.photos || [])
+          .map(p => {
+            if (!p) return null;
+            if (typeof p === 'string') return p;
+            return p.preview || p.url || p.href || p.src || p.signedUrl || p.publicUrl || null;
+          })
+          .filter(Boolean);
+
+        let resp;
+
+        if (useServerRoute) {
+          // ── Mobile / server-side route ──────────────────────────────────────
+          toast({
+            title: "Creating Mercari Listing…",
+            description: "Using server-side connection. This may take 10–20 seconds.",
+            duration: 8000,
+          });
+
+          const { data: { session } } = await import('@/integrations/supabase').then(m => m.supabase.auth.getSession());
+          const token = session?.access_token;
+          if (!token) throw new Error('Not authenticated');
+
+          const serverPayload = {
+            ...listingPayload,
+            images: photoUrls,
+            categoryId: mercariForm.mercariCategoryId || undefined,
+            conditionId: undefined, // let server use kandoSuggest + condition text fallback
+            zipCode: mercariForm.shipsFrom || generalForm.zip || undefined,
+            shippingPayerId: listingPayload.shippingPayer === 'buyer' ? 2 : 1,
+          };
+
+          const serverResp = await fetch('/api/mercari/create-listing', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(serverPayload),
+          });
+
+          const serverData = await serverResp.json().catch(() => ({}));
+          if (!serverData.success) {
+            if (serverData.errorType === 'session_expired') {
+              toast({
+                title: "Mercari Session Expired",
+                description: "Please open Mercari.com on desktop to refresh your connection, then try again.",
+                variant: "destructive",
+                duration: 10000,
+              });
+            }
+            throw new Error(serverData.error || 'Server-side Mercari listing failed');
+          }
+
+          // Server returned the listing — update Orben records directly
+          if (currentEditingItemId && serverData.itemId) {
+            const listingUrl = serverData.url || `https://www.mercari.com/us/item/${serverData.itemId}/`;
+            await crosslistingEngine.upsertMarketplaceListing({
+              inventory_item_id: currentEditingItemId,
+              marketplace: 'mercari',
+              marketplace_listing_id: serverData.itemId,
+              marketplace_listing_url: listingUrl,
+              status: 'active',
+              listed_at: new Date().toISOString(),
+              metadata: { source: 'server_proxy', photoIds: serverData.photoIds },
+            }).catch(() => {});
+            refreshListingRecords(currentEditingItemId).catch(() => {});
+          }
+
+          toast({
+            title: "Mercari Listing Created!",
+            description: serverData.url ? (
+              <span>Listed successfully. <a href={serverData.url} target="_blank" rel="noopener noreferrer" className="underline">View on Mercari</a></span>
+            ) : "Listed successfully on Mercari.",
+            duration: 8000,
+          });
+
+          setIsMercariListing(false);
+          setIsSaving(false);
+          return; // done — skip the extension job flow below
+        }
+
+        // ── Extension / desktop route ──────────────────────────────────────────
         toast({
           title: "Creating Mercari Listing...",
           description: "Your listing job is being queued. The worker will post it in the background.",
           duration: 5000,
         });
 
-        const resp = await listingJobsApi.createJob(
+        resp = await listingJobsApi.createJob(
           currentEditingItemId || null,
           ['mercari'],
           listingPayload

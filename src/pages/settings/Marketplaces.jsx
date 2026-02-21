@@ -17,6 +17,8 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
+  Smartphone,
+  Clock,
 } from 'lucide-react';
 import facebookLogo from '@/assets/facebook-logo.svg';
 import poshmarkLogo from '@/assets/poshmark-logo.svg';
@@ -92,6 +94,7 @@ export default function MarketplacesSettings() {
   const [mercariConnected, setMercariConnected] = useState(
     () => localStorage.getItem('profit_orbit_mercari_connected') === 'true',
   );
+  const [mercariServerSession, setMercariServerSession] = useState(null); // { connected, ageHours, isStale, hasDevice }
 
   const mercariNotificationShown = useRef(false);
   const currentlyConnectingMarketplace = useRef(null);
@@ -170,6 +173,7 @@ export default function MarketplacesSettings() {
 
     checkFacebookStatus();
     loadMarketplaceAccounts();
+    checkMercariServerSession();
 
     // Facebook embedded signup messages
     const handleMessage = (event) => {
@@ -368,6 +372,16 @@ export default function MarketplacesSettings() {
     } finally {
       setLoadingAccounts(false);
     }
+  };
+
+  const checkMercariServerSession = async () => {
+    try {
+      const resp = await fetch('/api/mercari/session-status');
+      if (resp.ok) {
+        const data = await resp.json();
+        setMercariServerSession(data);
+      }
+    } catch (_) {}
   };
 
   // ── Mercari helpers ────────────────────────────────────────────────────────
@@ -648,6 +662,49 @@ export default function MarketplacesSettings() {
                   {/* Mercari-specific toggles */}
                   {marketplace.id === 'mercari' && (
                     <div className="space-y-3 pt-2">
+
+                      {/* Mobile session status banner */}
+                      {mercariServerSession && (
+                        <div className={`rounded-lg border p-3 ${
+                          mercariServerSession.connected
+                            ? mercariServerSession.isStale
+                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
+                              : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                            : 'bg-muted/30 border-border'
+                        }`}>
+                          <div className="flex items-start gap-2">
+                            <Smartphone className={`w-4 h-4 mt-0.5 shrink-0 ${
+                              mercariServerSession.connected
+                                ? mercariServerSession.isStale ? 'text-amber-500' : 'text-green-500'
+                                : 'text-muted-foreground'
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold">
+                                Mobile Session —{' '}
+                                {mercariServerSession.connected
+                                  ? mercariServerSession.isStale ? 'Refresh Recommended' : 'Active'
+                                  : 'Not Set Up'}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {mercariServerSession.connected
+                                  ? mercariServerSession.isStale
+                                    ? `Session is ${mercariServerSession.ageHours}h old. Visit Mercari.com on desktop to refresh.`
+                                    : `Connected ${mercariServerSession.ageHours > 0 ? `${mercariServerSession.ageHours}h` : 'recently'} ago. Mobile listing is enabled.`
+                                  : 'Connect Mercari on desktop with the extension to enable mobile listing.'}
+                              </p>
+                              {mercariServerSession.connected && !mercariServerSession.hasDevice && (
+                                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                  Device token not captured. Visit Mercari.com on desktop to improve reliability.
+                                </p>
+                              )}
+                            </div>
+                            {mercariServerSession.connected && (
+                              <Clock className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
                         <div className="flex-1">
                           <Label htmlFor="mercari-sale-detection" className="text-xs font-medium cursor-pointer">Sale Detection</Label>

@@ -443,6 +443,117 @@ async function ensurePageApiInjected(tabId) {
   return;
 }
 
+// ── Server-side Mercari session sync ─────────────────────────────────────────
+// After capturing tokens on desktop, POST them (+ cookies) to the Orben backend
+// so mobile devices can create listings without the extension.
+
+const SUPABASE_PROJECT_REF = 'hlcwhpajorzbleabavcr';
+const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
+let _lastMercariServerSync = 0;
+const MERCARI_SERVER_SYNC_DEBOUNCE_MS = 10_000; // max once per 10s
+
+async function getOrbenAuthToken() {
+  const ORBIT_URLS = [
+    'https://profitorbit.io/*',
+    'https://*.vercel.app/*',
+    'http://localhost:5173/*',
+    'http://localhost:5174/*',
+  ];
+  try {
+    const tabs = await chrome.tabs.query({ url: ORBIT_URLS });
+    for (const tab of tabs) {
+      if (!tab?.id) continue;
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (key) => {
+            try {
+              const raw = localStorage.getItem(key);
+              if (!raw) return null;
+              const parsed = JSON.parse(raw);
+              return parsed?.access_token || null;
+            } catch (_) { return null; }
+          },
+          args: [SUPABASE_AUTH_KEY],
+        });
+        const token = results?.[0]?.result;
+        if (token && typeof token === 'string') return token;
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function syncMercariTokensToServer() {
+  const now = Date.now();
+  if (now - _lastMercariServerSync < MERCARI_SERVER_SYNC_DEBOUNCE_MS) return;
+  _lastMercariServerSync = now;
+
+  try {
+    // Get user's Orben auth token
+    const orbenToken = await getOrbenAuthToken();
+    if (!orbenToken) {
+      console.log('🟡 [MERCARI SYNC] No Orben auth token found — skipping server sync');
+      return;
+    }
+
+    // Get latest Mercari auth headers from storage
+    const stored = await chrome.storage.local.get(['mercariApiHeaders', 'mercariApiHeadersSourceUrl']);
+    const authHeaders = stored?.mercariApiHeaders;
+    const sourceUrl = stored?.mercariApiHeadersSourceUrl || null;
+
+    if (!authHeaders?.authorization || !authHeaders?.['x-csrf-token']) {
+      console.log('🟡 [MERCARI SYNC] Incomplete headers — skipping server sync');
+      return;
+    }
+
+    // Capture Mercari cookies
+    let cookieJar = {};
+    try {
+      const cookies = await chrome.cookies.getAll({ domain: '.mercari.com' });
+      for (const c of cookies) {
+        cookieJar[c.name] = c.value;
+      }
+      // Also get www.mercari.com cookies
+      const wwwCookies = await chrome.cookies.getAll({ domain: 'www.mercari.com' });
+      for (const c of wwwCookies) {
+        cookieJar[c.name] = c.value;
+      }
+    } catch (_) {}
+
+    // Determine the API base URL from the open Orben tab
+    const tabs = await chrome.tabs.query({ url: ['https://profitorbit.io/*', 'https://*.vercel.app/*', 'http://localhost:5173/*', 'http://localhost:5174/*'] }).catch(() => []);
+    let apiBase = 'https://profitorbit.io';
+    for (const tab of tabs) {
+      if (tab?.url) {
+        const u = new URL(tab.url);
+        apiBase = u.origin;
+        break;
+      }
+    }
+
+    const resp = await fetch(`${apiBase}/api/mercari/save-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${orbenToken}`,
+      },
+      body: JSON.stringify({ authHeaders, cookies: cookieJar, sourceUrl }),
+    });
+
+    if (resp.ok) {
+      const result = await resp.json().catch(() => ({}));
+      console.log('✅ [MERCARI SYNC] Tokens synced to server', { hasDevice: result.hasDevice });
+    } else {
+      console.warn('⚠️ [MERCARI SYNC] Server sync failed:', resp.status);
+    }
+  } catch (e) {
+    console.warn('⚠️ [MERCARI SYNC] Error syncing to server:', e?.message || String(e));
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 async function notifyProfitOrbit(message) {
   const tabs = await chrome.tabs.query({
     url: [
@@ -2364,7 +2475,10 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
                 console.log('💾 Storing seller ID:', sellerId);
               }
               
-              chrome.storage.local.set(dataToStore, () => {});
+              chrome.storage.local.set(dataToStore, () => {
+                // Sync to server so mobile can use stored session
+                syncMercariTokensToServer().catch(() => {});
+              });
             } catch (_) {}
           });
         }
@@ -3088,6 +3202,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         await chrome.storage.local.set(dataToStore);
         console.log('✅ Stored Mercari auth data');
+
+        // Sync to server so mobile can use stored session
+        syncMercariTokensToServer().catch(() => {});
         
         sendResponse({ success: true });
       } catch (e) {
