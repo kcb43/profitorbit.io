@@ -39602,7 +39602,7 @@ export default function CrosslistComposer() {
                   </Button>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-xs mb-1.5 block">Category</Label>
+                  <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                   
                   {/* Breadcrumb navigation for category path */}
                   {generalCategoryPath.length > 0 && (
@@ -45782,7 +45782,7 @@ export default function CrosslistComposer() {
                           </Button>
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-xs mb-1.5 block">Category</Label>
+                          <Label className="text-xs mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                           
                           {generalCategoryPath.length > 0 && (
                             <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
