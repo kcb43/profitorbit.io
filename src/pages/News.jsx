@@ -49,19 +49,29 @@ function tagClass(tag) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Strip any HTML / comments that slipped through from RSS feeds (e.g. Reddit <!-- SC_OFF -->) */
+/** Strip HTML, comments, numeric entities, and Reddit boilerplate from summaries */
 function cleanSummary(raw) {
   if (!raw) return null;
-  return String(raw)
-    .replace(/<!--[\s\S]*?-->/g, '')   // HTML comments
-    .replace(/<[^>]*>/g, ' ')           // HTML tags
+  let t = String(raw)
+    .replace(/<!--[\s\S]*?-->/g, '')      // HTML comments
+    .replace(/<[^>]*>/g, ' ')              // HTML tags
+    // numeric + named entities
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Reddit submission boilerplate
+    .replace(/submitted\s+by\s+\/u\/\S+/gi, '')
+    .replace(/\[link\]/gi, '')
+    .replace(/\[comments\]/gi, '')
     .replace(/\s{2,}/g, ' ')
-    .trim() || null;
+    .trim();
+  return t || null;
 }
 
 function relativeTime(item) {
@@ -100,7 +110,8 @@ function NewsCard({ item }) {
               src={item.thumbnail}
               alt=""
               className="w-full h-full object-cover"
-              onError={(e) => { e.target.style.display = 'none'; }}
+              referrerPolicy="no-referrer"
+              onError={(e) => { e.target.parentElement.style.display = 'none'; }}
             />
           </div>
         )}

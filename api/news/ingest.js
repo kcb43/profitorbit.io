@@ -24,18 +24,38 @@ function parseRssXml(xml) {
   // Handle both <item> (RSS 2.0) and <entry> (Atom)
   const pattern = /<(?:item|entry)>([\s\S]*?)<\/(?:item|entry)>/g;
   let m;
-  const decode = (s) =>
+
+  /** Decode numeric + named HTML entities */
+  const decodeEntities = (s) =>
     String(s || '')
-      .replace(/<!--[\s\S]*?-->/g, '')   // strip HTML comments (e.g. Reddit's <!-- SC_OFF -->)
-      .replace(/<[^>]*>/g, ' ')           // strip HTML tags, leave a space
+      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&apos;/g, "'")
-      .replace(/\s{2,}/g, ' ')            // collapse multiple spaces
-      .trim();
+      .replace(/&nbsp;/g, ' ');
+
+  /** Strip HTML + boilerplate, then decode entities, returning clean plain text */
+  const decode = (s) => {
+    let t = String(s || '');
+    t = t.replace(/<!--[\s\S]*?-->/g, '');   // strip HTML comments (<!-- SC_OFF --> etc.)
+    t = t.replace(/<[^>]*>/g, ' ');           // strip tags, leave a space
+    t = decodeEntities(t);
+    // Strip Reddit submission boilerplate: "submitted by /u/name [link] [comments]"
+    t = t.replace(/submitted\s+by\s+\/u\/\S+/gi, '');
+    t = t.replace(/\[link\]/gi, '').replace(/\[comments\]/gi, '');
+    t = t.replace(/\s{2,}/g, ' ').trim();
+    return t;
+  };
+
+  /** Extract the first image src from raw HTML (for Reddit, images live in the description) */
+  const extractImg = (html) => {
+    const m = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/i.exec(html);
+    return m?.[1] || null;
+  };
 
   while ((m = pattern.exec(xml)) !== null) {
     const block = m[1];
@@ -57,10 +77,11 @@ function parseRssXml(xml) {
       /<(?:pubDate|updated|published)[^>]*>([\s\S]*?)<\/(?:pubDate|updated|published)>/i.exec(block)?.[1]?.trim() || null;
     const pubDate = pubDateStr ? new Date(pubDateStr) : null;
 
-    // Thumbnail
+    // Thumbnail: check media:thumbnail / media:content first, then fall back to first <img> in description
     const thumbAttr =
       /<media:thumbnail[^>]+url=["'](https?:\/\/[^"']+)["']/i.exec(block)?.[1] ||
       /<media:content[^>]+url=["'](https?:\/\/[^"']+)["']/i.exec(block)?.[1] ||
+      extractImg(descRaw) ||
       null;
 
     if (link) items.push({ title, link, description, pubDate, thumbnail: thumbAttr });
