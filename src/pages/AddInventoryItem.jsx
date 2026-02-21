@@ -187,6 +187,12 @@ export default function AddInventoryItem() {
       const cleanNotes = cleanHtmlText(rawCleanNotes);
       if (!isCopying) setBase44Tags(tags || "");
 
+      // Legacy migration: CrosslistComposer previously saved the listing description into the
+      // notes column instead of description. If description is empty but notes has content,
+      // pre-populate description from notes so the user sees their content in the right field.
+      // Notes is left unchanged so the user can review and clear it manually.
+      const legacyDescriptionFromNotes = !dataToLoad.description && cleanNotes ? cleanNotes : '';
+
       const initialSource = dataToLoad.source || "";
       if (initialSource && !PREDEFINED_SOURCES.includes(initialSource)) {
         setIsOtherSource(true);
@@ -224,7 +230,7 @@ export default function AddInventoryItem() {
         brand: dataToLoad.brand || "", // Load brand
         condition: dataToLoad.condition || "", // Load condition
         size: dataToLoad.size || "", // Load size
-        description: isCopying ? "" : cleanHtmlText(dataToLoad.description || ""),
+        description: isCopying ? "" : cleanHtmlText(dataToLoad.description || legacyDescriptionFromNotes),
         notes: isCopying ? "" : cleanNotes,
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,

@@ -36,9 +36,9 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
   const availableToSell = Math.max(quantity - quantitySold, 0);
   const isSoldOut = quantitySold >= quantity;
   
-  // Notes truncation for desktop (show first 150 characters)
-  // Clean HTML from notes at display time to handle items saved before paste-cleanup was added
+  // Clean HTML from both fields at display time to handle items saved before paste-cleanup was added
   const NOTES_TRUNCATE_LENGTH = 150;
+  const descriptionText = cleanHtmlText(item.description || '');
   const notesText = cleanHtmlText(item.notes || '');
   const shouldTruncateNotes = notesText.length > NOTES_TRUNCATE_LENGTH;
   const displayNotes = shouldTruncateNotes && !notesExpanded 
@@ -216,8 +216,18 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                 </div>
               )}
 
+              {/* Description */}
+              {descriptionText && (
+                <div className="pt-2 border-t">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Description</p>
+                  <p className="text-xs break-words text-gray-700 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">
+                    {descriptionText}
+                  </p>
+                </div>
+              )}
+
               {/* Notes - Expandable on desktop */}
-              {item.notes && (
+              {notesText && (
                 <div className="pt-2 border-t">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Notes</p>

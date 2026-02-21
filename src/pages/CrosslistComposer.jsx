@@ -36861,7 +36861,7 @@ export default function CrosslistComposer() {
             custom_labels: generalForm.customLabels || "",
             image_url: imageUrl,
             images: images, // Save all images
-            notes: generalForm.description || "",
+            description: generalForm.description || "",
           };
 
           let savedItem;
@@ -38609,7 +38609,7 @@ export default function CrosslistComposer() {
         custom_labels: generalForm.customLabels || "",
         image_url: imageUrl,
         images: images,
-        notes: generalForm.description || "",
+        description: generalForm.description || "",
         // Persist listing keywords to DB (marketplace-facing tags)
         listing_keywords: listingKeywords,
         // internal_tags stay as localStorage for personal labeling (not overwritten here)
