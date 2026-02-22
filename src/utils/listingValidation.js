@@ -1115,7 +1115,26 @@ export function validateMercariForm(generalForm, mercariForm) {
  * @param {Object} facebookForm - Facebook-specific form data
  * @returns {Issue[]} Array of validation issues
  */
-export function validateFacebookForm(generalForm, facebookForm) {
+// Facebook delivery method options
+const FACEBOOK_DELIVERY_METHOD_OPTIONS = [
+  { id: 'shipping_and_pickup', label: 'Shipping and Local Pickup' },
+  { id: 'shipping', label: 'Shipping Only' },
+  { id: 'local_only', label: 'Local Pickup Only' },
+];
+
+const FACEBOOK_SHIPPING_OPTION_OPTIONS = [
+  { id: 'own_label', label: 'Ship on my own (own label)' },
+  { id: 'prepaid', label: 'Facebook prepaid label' },
+];
+
+const FACEBOOK_CARRIER_OPTIONS = [
+  { id: 'usps', label: 'USPS' },
+  { id: 'ups', label: 'UPS' },
+  { id: 'fedex', label: 'FedEx' },
+];
+
+export function validateFacebookForm(generalForm, facebookForm, options = {}) {
+  const facebookDefaults = options.facebookDefaults || {};
   const issues = [];
   
   // Photos validation
@@ -1259,6 +1278,135 @@ export function validateFacebookForm(generalForm, facebookForm) {
     }
   }
   
+  // ---- Facebook-specific fields (not on general form) ----
+
+  // Delivery Method — required
+  if (!facebookForm.deliveryMethod) {
+    const defaultVal = facebookDefaults.deliveryMethod;
+    issues.push({
+      marketplace: 'facebook',
+      field: 'deliveryMethod',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Delivery method is required for Facebook Marketplace',
+      options: FACEBOOK_DELIVERY_METHOD_OPTIONS,
+      patchTarget: 'facebook',
+      suggested: defaultVal
+        ? {
+            id: defaultVal,
+            label: FACEBOOK_DELIVERY_METHOD_OPTIONS.find(o => o.id === defaultVal)?.label || defaultVal,
+            confidence: 0.97,
+            reasoning: 'From your saved Facebook defaults',
+          }
+        : {
+            id: 'shipping_and_pickup',
+            label: 'Shipping and Local Pickup',
+            confidence: 0.7,
+            reasoning: 'Most sellers offer both shipping and local pickup',
+          },
+    });
+  } else {
+    const deliveryMethod = facebookForm.deliveryMethod;
+    const hasShipping = deliveryMethod === 'shipping' || deliveryMethod === 'shipping_and_pickup';
+    const isPrepaid = facebookForm.shippingOption === 'prepaid';
+
+    // Shipping Option — if shipping enabled
+    if (hasShipping && !facebookForm.shippingOption) {
+      const defaultVal = facebookDefaults.shippingOption;
+      issues.push({
+        marketplace: 'facebook',
+        field: 'shippingOption',
+        type: 'missing',
+        severity: 'blocking',
+        message: 'Shipping option is required when shipping is enabled',
+        options: FACEBOOK_SHIPPING_OPTION_OPTIONS,
+        patchTarget: 'facebook',
+        suggested: defaultVal
+          ? {
+              id: defaultVal,
+              label: FACEBOOK_SHIPPING_OPTION_OPTIONS.find(o => o.id === defaultVal)?.label || defaultVal,
+              confidence: 0.97,
+              reasoning: 'From your saved Facebook defaults',
+            }
+          : {
+              id: 'own_label',
+              label: 'Ship on my own (own label)',
+              confidence: 0.75,
+              reasoning: 'Own label is the most common shipping option',
+            },
+      });
+    }
+
+    // Shipping Carrier — if own label
+    if (hasShipping && !isPrepaid && !facebookForm.shippingCarrier) {
+      const defaultVal = facebookDefaults.shippingCarrier;
+      issues.push({
+        marketplace: 'facebook',
+        field: 'shippingCarrier',
+        type: 'missing',
+        severity: 'blocking',
+        message: 'Shipping carrier is required when using own label',
+        options: FACEBOOK_CARRIER_OPTIONS,
+        patchTarget: 'facebook',
+        suggested: defaultVal
+          ? {
+              id: defaultVal,
+              label: FACEBOOK_CARRIER_OPTIONS.find(o => o.id === defaultVal)?.label || defaultVal,
+              confidence: 0.97,
+              reasoning: 'From your saved Facebook defaults',
+            }
+          : {
+              id: 'usps',
+              label: 'USPS',
+              confidence: 0.7,
+              reasoning: 'USPS is the most commonly used carrier',
+            },
+      });
+    }
+
+    // Shipping Rate — if own label and not free shipping
+    if (hasShipping && !isPrepaid && !facebookForm.displayFreeShipping && !facebookForm.shippingPrice) {
+      const defaultVal = facebookDefaults.shippingPrice;
+      issues.push({
+        marketplace: 'facebook',
+        field: 'shippingPrice',
+        type: 'missing',
+        severity: 'warning',
+        message: 'No shipping rate entered — buyers will see no price listed',
+        patchTarget: 'facebook',
+        suggested: defaultVal
+          ? {
+              id: defaultVal,
+              label: defaultVal,
+              confidence: 0.97,
+              reasoning: 'From your saved Facebook defaults',
+            }
+          : undefined,
+      });
+    }
+  }
+
+  // Allow Offers — advisory if not configured
+  if (facebookForm.allowOffers && !facebookForm.minimumOfferPrice) {
+    const defaultVal = facebookDefaults.minimumOfferPrice;
+    if (defaultVal) {
+      issues.push({
+        marketplace: 'facebook',
+        field: 'minimumOfferPrice',
+        type: 'missing',
+        severity: 'warning',
+        message: 'Offers are enabled but no minimum offer price is set',
+        patchTarget: 'facebook',
+        suggested: {
+          id: defaultVal,
+          label: defaultVal,
+          confidence: 0.97,
+          reasoning: 'From your saved Facebook defaults',
+        },
+      });
+    }
+  }
+
   // Extension connection validation
   const ext = typeof window !== 'undefined' && window?.ProfitOrbitExtension;
   if (!ext?.createFacebookListing) {

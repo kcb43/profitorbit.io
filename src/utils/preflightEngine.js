@@ -71,7 +71,9 @@ export async function preflightSelectedMarketplaces(
           break;
 
         case 'facebook':
-          issues = validateFacebookForm(generalForm, facebookForm);
+          issues = validateFacebookForm(generalForm, facebookForm, {
+            facebookDefaults: validationOptions.facebookDefaults || {},
+          });
           break;
 
         case 'etsy':

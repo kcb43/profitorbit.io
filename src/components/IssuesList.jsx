@@ -67,6 +67,13 @@ const EBAY_DEFAULT_ELIGIBLE_FIELDS = new Set([
   'shippingService', 'shipFromCountry', 'returnWithin', 'returnShippingPayer',
   'returnRefundMethod', 'pricingFormat', 'duration',
 ]);
+
+// Fields where "Save as Facebook default" is offered in the review panel
+const FACEBOOK_DEFAULT_ELIGIBLE_FIELDS = new Set([
+  'deliveryMethod', 'shippingOption', 'shippingCarrier', 'shippingPrice',
+  'displayFreeShipping', 'localPickup', 'meetUpLocation',
+  'allowOffers', 'minimumOfferPrice', 'hideFromFriends',
+]);
 import { cn } from '@/lib/utils';
 import { getFieldLabel, groupIssuesBySeverity } from '@/utils/preflightEngine';
 
@@ -279,7 +286,7 @@ function SmartSuggestionItem({ issue, onApplyFix, onApplied }) {
 // ---------------------------------------------------------------------------
 // BlockingIssueItem – one required field that needs manual input or a fix
 // ---------------------------------------------------------------------------
-function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
+function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault, onSaveFacebookDefault }) {
   const [localValue, setLocalValue] = useState('');
   const [localOption, setLocalOption] = useState(null); // { id, label }
   const [applying, setApplying] = useState(false);
@@ -293,6 +300,9 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
   const isEbayColorField  = issue.field === 'color' && issue.marketplace === 'ebay';
   const isFbCategory  = issue.field === 'category' && issue.marketplace === 'facebook';
   const isEbayDefaultEligible = issue.marketplace === 'ebay' && EBAY_DEFAULT_ELIGIBLE_FIELDS.has(issue.field) && typeof onSaveEbayDefault === 'function';
+  const isFacebookDefaultEligible = issue.marketplace === 'facebook' && FACEBOOK_DEFAULT_ELIGIBLE_FIELDS.has(issue.field) && typeof onSaveFacebookDefault === 'function';
+  const isDefaultEligible = isEbayDefaultEligible || isFacebookDefaultEligible;
+  const defaultLabel = isEbayDefaultEligible ? 'Save as eBay default for future listings' : 'Save as Facebook default for future listings';
 
   async function handleApply(raw) {
     let val;
@@ -307,9 +317,10 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
     setApplying(true);
     try {
       await onApplyFix(issue, val);
-      if (saveAsDefault && isEbayDefaultEligible) {
+      if (saveAsDefault && isDefaultEligible) {
         const storedVal = typeof val === 'object' ? (val.id ?? val.label) : val;
-        onSaveEbayDefault(issue.field, storedVal, { silent: true });
+        if (isEbayDefaultEligible) onSaveEbayDefault(issue.field, storedVal, { silent: true });
+        if (isFacebookDefaultEligible) onSaveFacebookDefault(issue.field, storedVal, { silent: true });
       }
     } finally {
       setApplying(false);
@@ -397,7 +408,7 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
                 {issue.suggested.reasoning && (
                   <p className="text-[11px] text-muted-foreground mb-2">{issue.suggested.reasoning}</p>
                 )}
-                {isEbayDefaultEligible && !issue.suggested.isFromDefault && (
+                {isDefaultEligible && !issue.suggested.isFromDefault && (
                   <div className="flex items-center gap-2 mb-2">
                     <Checkbox
                       id={`save-default-${issue.field}`}
@@ -407,7 +418,7 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
                     />
                     <label htmlFor={`save-default-${issue.field}`} className="text-[11px] text-muted-foreground cursor-pointer flex items-center gap-1">
                       <Save className="w-3 h-3" />
-                      Save as eBay default for future listings
+                      {defaultLabel}
                     </label>
                   </div>
                 )}
@@ -463,7 +474,7 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
                     </Button>
                   )}
                 </div>
-                {isEbayDefaultEligible && (isFbCategory ? localOption : localValue) && (
+                {isDefaultEligible && (isFbCategory ? localOption : localValue) && (
                   <div className="flex items-center gap-2 mt-2">
                     <Checkbox
                       id={`save-default-opt-${issue.field}`}
@@ -473,7 +484,7 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
                     />
                     <label htmlFor={`save-default-opt-${issue.field}`} className="text-[11px] text-muted-foreground cursor-pointer flex items-center gap-1">
                       <Save className="w-3 h-3" />
-                      Save as eBay default for future listings
+                      {defaultLabel}
                     </label>
                   </div>
                 )}
@@ -515,7 +526,7 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
                     </Button>
                   )}
                 </div>
-                {isEbayDefaultEligible && localValue && (
+                {isDefaultEligible && localValue && (
                   <div className="flex items-center gap-2 mt-2">
                     <Checkbox
                       id={`save-default-txt-${issue.field}`}
@@ -525,7 +536,7 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
                     />
                     <label htmlFor={`save-default-txt-${issue.field}`} className="text-[11px] text-muted-foreground cursor-pointer flex items-center gap-1">
                       <Save className="w-3 h-3" />
-                      Save as eBay default for future listings
+                      {defaultLabel}
                     </label>
                   </div>
                 )}
@@ -563,7 +574,7 @@ function SuggestionConfidence({ confidence }) {
 // ---------------------------------------------------------------------------
 // IssuesList (main export)
 // ---------------------------------------------------------------------------
-export default function IssuesList({ marketplace, issues, onApplyFix, onSaveEbayDefault }) {
+export default function IssuesList({ marketplace, issues, onApplyFix, onSaveEbayDefault, onSaveFacebookDefault }) {
   const { blocking, warning, suggestion } = groupIssuesBySeverity(issues);
 
   // Track how many suggestions have been applied (to update the banner count live)
@@ -669,6 +680,7 @@ export default function IssuesList({ marketplace, issues, onApplyFix, onSaveEbay
                 issue={issue}
                 onApplyFix={onApplyFix}
                 onSaveEbayDefault={onSaveEbayDefault}
+                onSaveFacebookDefault={onSaveFacebookDefault}
               />
             ))}
           </div>

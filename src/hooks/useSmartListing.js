@@ -261,6 +261,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       if (stored) ebayDefaults = JSON.parse(stored);
     } catch (e) { /* ignore */ }
 
+    // Load saved Facebook defaults from localStorage
+    let facebookDefaults = {};
+    try {
+      const fbStored = localStorage.getItem('facebook-defaults');
+      if (fbStored) facebookDefaults = JSON.parse(fbStored);
+    } catch (e) { /* ignore */ }
+
     const result = await preflightSelectedMarketplaces(
       selectedMarketplaces,
       forms.generalForm,
@@ -271,6 +278,7 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       {
         ...validationOptions,
         ebayDefaults,
+        facebookDefaults,
         autoApplyHighConfidence: autoFillMode === 'auto',
         // Use applyFixOnly here — NOT handleApplyFix — to avoid circular re-entry
         onApplyPatch: autoFillMode === 'auto' ? applyFixOnly : null,

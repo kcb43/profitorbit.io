@@ -28,6 +28,34 @@ import {
 } from '@/constants/ebay-shipping';
 
 const EBAY_DEFAULTS_KEY = 'ebay-shipping-defaults';
+const FACEBOOK_DEFAULTS_KEY = 'facebook-defaults';
+
+const FB_DELIVERY_OPTIONS = [
+  { id: 'shipping_and_pickup', label: 'Shipping and Local Pickup' },
+  { id: 'shipping', label: 'Shipping Only' },
+  { id: 'local_only', label: 'Local Pickup Only' },
+];
+const FB_SHIPPING_OPTION_OPTIONS = [
+  { id: 'own_label', label: 'Ship on my own (own label)' },
+  { id: 'prepaid', label: 'Facebook prepaid label' },
+];
+const FB_CARRIER_OPTIONS = [
+  { id: 'usps', label: 'USPS' },
+  { id: 'ups', label: 'UPS' },
+  { id: 'fedex', label: 'FedEx' },
+];
+
+function loadFacebookDefaults() {
+  try {
+    const stored = localStorage.getItem(FACEBOOK_DEFAULTS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+}
+function saveFacebookDefaults(defaults) {
+  try {
+    localStorage.setItem(FACEBOOK_DEFAULTS_KEY, JSON.stringify(defaults));
+  } catch { /* ignore */ }
+}
 
 function loadEbayDefaults() {
   try {
@@ -59,6 +87,8 @@ export default function FulfillmentSettings() {
   const [showPlatform, setShowPlatform] = useState(true);
   const [showEbayDefaults, setShowEbayDefaults] = useState(true);
   const [ebayDefaults, setEbayDefaults] = useState(() => loadEbayDefaults());
+  const [showFbDefaults, setShowFbDefaults] = useState(true);
+  const [fbDefaults, setFbDefaults] = useState(() => loadFacebookDefaults());
 
   const [form, setForm] = useState({
     pickup_enabled:       false,
@@ -94,6 +124,14 @@ export default function FulfillmentSettings() {
     setEbayDefaults((prev) => {
       const next = { ...prev, [key]: value };
       saveEbayDefaults(next);
+      return next;
+    });
+  };
+
+  const setFbDefault = (key, value) => {
+    setFbDefaults((prev) => {
+      const next = { ...prev, [key]: value };
+      saveFacebookDefaults(next);
       return next;
     });
   };
@@ -357,6 +395,186 @@ export default function FulfillmentSettings() {
             </div>
           )}
         </div>
+
+        {/* ── Facebook Marketplace Defaults ──────────────────────────────────── */}
+        <div className="pt-3 border-t">
+          <button
+            type="button"
+            onClick={() => setShowFbDefaults((v) => !v)}
+            className="w-full flex items-center justify-between py-1 mb-1 hover:opacity-80 transition-opacity"
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-primary" />
+              <span className="font-medium text-sm">Facebook Marketplace Defaults</span>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
+            </div>
+            {showFbDefaults
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            }
+          </button>
+          <p className="text-xs text-muted-foreground mb-1">
+            Set your Facebook listing defaults. These will be pre-applied during smart listing review and auto-fill so Orben doesn't ask for them repeatedly.
+          </p>
+
+          {showFbDefaults && (
+            <div className="mt-4 space-y-4 pl-1">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm mb-1.5 block">Delivery Method</Label>
+                  <Select
+                    value={fbDefaults.deliveryMethod || ''}
+                    onValueChange={(v) => setFbDefault('deliveryMethod', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select delivery method…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FB_DELIVERY_OPTIONS.map(o => (
+                        <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(fbDefaults.deliveryMethod === 'shipping' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && (
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Shipping Option</Label>
+                    <Select
+                      value={fbDefaults.shippingOption || ''}
+                      onValueChange={(v) => {
+                        setFbDefault('shippingOption', v);
+                        if (v === 'prepaid') setFbDefault('shippingCarrier', '');
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shipping option…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FB_SHIPPING_OPTION_OPTIONS.map(o => (
+                          <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {(fbDefaults.deliveryMethod === 'shipping' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && fbDefaults.shippingOption !== 'prepaid' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Preferred Carrier</Label>
+                    <Select
+                      value={fbDefaults.shippingCarrier || ''}
+                      onValueChange={(v) => setFbDefault('shippingCarrier', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select carrier…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FB_CARRIER_OPTIONS.map(o => (
+                          <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-1.5 block">
+                      Default Shipping Rate
+                      {fbDefaults.displayFreeShipping && (
+                        <span className="ml-1 text-xs text-muted-foreground">(Free shipping enabled)</span>
+                      )}
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder={fbDefaults.displayFreeShipping ? 'Free ($0)' : '0.00'}
+                      disabled={!!fbDefaults.displayFreeShipping}
+                      className={fbDefaults.displayFreeShipping ? 'opacity-50 cursor-not-allowed bg-muted' : ''}
+                      value={fbDefaults.displayFreeShipping ? '' : (fbDefaults.shippingPrice || '')}
+                      onChange={(e) => setFbDefault('shippingPrice', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {(fbDefaults.deliveryMethod === 'shipping' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && fbDefaults.shippingOption !== 'prepaid' && (
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                  <Switch
+                    id="fb-default-free-shipping"
+                    checked={!!fbDefaults.displayFreeShipping}
+                    onCheckedChange={(v) => {
+                      setFbDefault('displayFreeShipping', v);
+                      if (v) setFbDefault('shippingPrice', '');
+                    }}
+                  />
+                  <Label htmlFor="fb-default-free-shipping" className="text-sm leading-tight cursor-pointer">
+                    Display Free Shipping by default — covers shipping cost, deducted from payout
+                  </Label>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm mb-1.5 block">Default Meet-up / Pickup Location</Label>
+                  <Input
+                    placeholder="e.g. Boston, MA"
+                    value={fbDefaults.meetUpLocation || ''}
+                    onChange={(e) => setFbDefault('meetUpLocation', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Used for local pickup listings.</p>
+                </div>
+                <div>
+                  <Label className="text-sm mb-1.5 block">Minimum Offer Price ($)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 10.00"
+                    value={fbDefaults.minimumOfferPrice || ''}
+                    onChange={(e) => setFbDefault('minimumOfferPrice', e.target.value)}
+                    disabled={!fbDefaults.allowOffers}
+                    className={!fbDefaults.allowOffers ? 'opacity-50 cursor-not-allowed bg-muted' : ''}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 flex-1">
+                  <Switch
+                    id="fb-default-allow-offers"
+                    checked={fbDefaults.allowOffers !== false}
+                    onCheckedChange={(v) => {
+                      setFbDefault('allowOffers', v);
+                      if (!v) setFbDefault('minimumOfferPrice', '');
+                    }}
+                  />
+                  <Label htmlFor="fb-default-allow-offers" className="text-sm leading-tight cursor-pointer">
+                    Allow offers by default
+                  </Label>
+                </div>
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 flex-1">
+                  <Switch
+                    id="fb-default-hide-friends"
+                    checked={!!fbDefaults.hideFromFriends}
+                    onCheckedChange={(v) => setFbDefault('hideFromFriends', v)}
+                  />
+                  <Label htmlFor="fb-default-hide-friends" className="text-sm leading-tight cursor-pointer">
+                    Hide from Facebook friends by default
+                  </Label>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                All changes save automatically. The smart listing review will not flag these fields once defaults are set.
+              </p>
+
+            </div>
+          )}
+        </div>
+
       </section>
 
       {/* ── Per-platform overrides ────────────────────────────────────────────── */}

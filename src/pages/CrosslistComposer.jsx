@@ -13473,6 +13473,7 @@ export default function CrosslistComposer() {
                     modalState={smartListing.modalState}
                     onReconnect={smartListing.handleReconnect}
                     onSaveEbayDefault={updateEbayDefault}
+                    onSaveFacebookDefault={updateFacebookDefault}
                   />
                 </>
               )}
@@ -16140,15 +16141,21 @@ export default function CrosslistComposer() {
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-sm mb-1.5 block">Shipping rate</Label>
-                            {renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
+                            {!facebookForm.displayFreeShipping && renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
                               handleMarketplaceChange("facebook", "shippingPrice", v)
                             )}
                           </div>
                           <Input
-                            placeholder="e.g. 5.99 or 0 for free"
-                            value={facebookForm.shippingPrice}
-                            onChange={(e) => handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
+                            type="text"
+                            placeholder="e.g. 5.99"
+                            value={facebookForm.displayFreeShipping ? "FREE SHIPPING" : (facebookForm.shippingPrice || "")}
+                            disabled={!!facebookForm.displayFreeShipping}
+                            className={facebookForm.displayFreeShipping ? "opacity-50 cursor-not-allowed bg-muted font-medium" : ""}
+                            onChange={(e) => !facebookForm.displayFreeShipping && handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
                           />
+                          {facebookForm.displayFreeShipping && (
+                            <p className="mt-1 text-xs text-muted-foreground">Free shipping enabled — $0 will be sent to Facebook.</p>
+                          )}
                         </div>
 
                         {/* Display Free Shipping toggle */}
@@ -16689,6 +16696,7 @@ export default function CrosslistComposer() {
             modalState={smartListing.modalState}
             onReconnect={smartListing.handleReconnect}
             onSaveEbayDefault={updateEbayDefault}
+            onSaveFacebookDefault={updateFacebookDefault}
           />
         )}
 
@@ -18064,6 +18072,7 @@ export default function CrosslistComposer() {
                             modalState={smartListing.modalState}
                             onReconnect={smartListing.handleReconnect}
                             onSaveEbayDefault={updateEbayDefault}
+                            onSaveFacebookDefault={updateFacebookDefault}
                           />
                         </>
                       )}
@@ -22080,15 +22089,21 @@ export default function CrosslistComposer() {
                                 <div>
                                   <div className="flex items-center justify-between">
                                     <Label className="text-sm mb-1.5 block">Shipping rate</Label>
-                                    {renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
+                                    {!facebookForm.displayFreeShipping && renderFacebookDefaultToggle("shippingPrice", facebookForm.shippingPrice, (v) =>
                                       handleMarketplaceChange("facebook", "shippingPrice", v)
                                     )}
                                   </div>
                                   <Input
-                                    placeholder="e.g. 5.99 or 0 for free"
-                                    value={facebookForm.shippingPrice}
-                                    onChange={(e) => handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
+                                    type="text"
+                                    placeholder="e.g. 5.99"
+                                    value={facebookForm.displayFreeShipping ? "FREE SHIPPING" : (facebookForm.shippingPrice || "")}
+                                    disabled={!!facebookForm.displayFreeShipping}
+                                    className={facebookForm.displayFreeShipping ? "opacity-50 cursor-not-allowed bg-muted font-medium" : ""}
+                                    onChange={(e) => !facebookForm.displayFreeShipping && handleMarketplaceChange("facebook", "shippingPrice", e.target.value)}
                                   />
+                                  {facebookForm.displayFreeShipping && (
+                                    <p className="mt-1 text-xs text-muted-foreground">Free shipping enabled — $0 will be sent to Facebook.</p>
+                                  )}
                                 </div>
                                 <div>
                                   <div className="flex items-center justify-between mb-1.5">
@@ -22948,6 +22963,7 @@ export default function CrosslistComposer() {
           onListNow={smartListing.handleListNow}
           isSubmitting={smartListing.isSubmitting}
           onSaveEbayDefault={updateEbayDefault}
+          onSaveFacebookDefault={updateFacebookDefault}
         />
       )}
 
