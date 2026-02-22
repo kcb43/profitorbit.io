@@ -10,6 +10,8 @@ import { colors, spacing, typography, radius, shadow } from '../../../src/compon
 import Button from '../../../src/components/ui/Button';
 import Input from '../../../src/components/ui/Input';
 import Card from '../../../src/components/ui/Card';
+import MarketplacePicker from '../../../src/components/ui/MarketplacePicker';
+import { MARKETPLACE_SOURCES } from '../../../src/constants/marketplaces';
 
 let api = null;
 async function getApi() {
@@ -18,7 +20,6 @@ async function getApi() {
 }
 
 const CONDITIONS  = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
-const SOURCES     = ['eBay', 'Amazon', 'Walmart', 'Thrift Store', 'Garage Sale', 'Facebook', 'Other'];
 const CATEGORIES  = ['Electronics', 'Clothing', 'Shoes', 'Books', 'Toys & Games', 'Home & Garden', 'Sports', 'Collectibles', 'Other'];
 
 function PickerRow({ label, options, value, onChange }) {
@@ -237,7 +238,14 @@ export default function AddItemScreen() {
           {/* Source */}
           <Card style={styles.section}>
             <Text style={styles.sectionTitle}>Sourcing</Text>
-            <PickerRow label="Source" options={SOURCES} value={source} onChange={setSource} />
+            <MarketplacePicker
+              label="Where did you source this?"
+              value={source}
+              onChange={setSource}
+              items={MARKETPLACE_SOURCES}
+              storageKey="orben_custom_sources"
+              placeholder="Select a source…"
+            />
           </Card>
 
           {/* Description / Notes */}

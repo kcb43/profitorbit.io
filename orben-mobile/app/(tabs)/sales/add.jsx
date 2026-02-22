@@ -9,32 +9,13 @@ import { colors, spacing, typography, radius } from '../../../src/components/ui/
 import Button from '../../../src/components/ui/Button';
 import Input from '../../../src/components/ui/Input';
 import Card from '../../../src/components/ui/Card';
+import MarketplacePicker from '../../../src/components/ui/MarketplacePicker';
+import { MARKETPLACE_PLATFORMS } from '../../../src/constants/marketplaces';
 
 let api = null;
 async function getApi() {
   if (!api) api = await import('../../../src/services/orbenApi');
   return api;
-}
-
-const PLATFORMS = ['Mercari', 'eBay', 'Facebook Marketplace', 'Poshmark', 'Depop', 'Other'];
-
-function PickerRow({ label, options, value, onChange }) {
-  return (
-    <View style={styles.pickerSection}>
-      <Text style={styles.pickerLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt}
-            style={[styles.pickerChip, value === opt && styles.pickerChipActive]}
-            onPress={() => onChange(opt === value ? '' : opt)}
-          >
-            <Text style={[styles.pickerChipText, value === opt && styles.pickerChipTextActive]}>{opt}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
 }
 
 export default function AddSaleScreen() {
@@ -185,7 +166,14 @@ export default function AddSaleScreen() {
               placeholder="YYYY-MM-DD"
               keyboardType="numbers-and-punctuation"
             />
-            <PickerRow label="Platform" options={PLATFORMS} value={platform} onChange={setPlatform} />
+            <MarketplacePicker
+              label="Platform Sold On"
+              value={platform}
+              onChange={setPlatform}
+              items={MARKETPLACE_PLATFORMS}
+              storageKey="orben_custom_platforms"
+              placeholder="Select a platform…"
+            />
           </Card>
 
           {/* Costs */}
@@ -289,15 +277,4 @@ const styles = StyleSheet.create({
   },
   profitLabel: { ...typography.body, color: colors.textSecondary },
   profitValue: { ...typography.h3, fontWeight: '800' },
-
-  pickerSection: { marginBottom: spacing.md },
-  pickerLabel: { ...typography.label, color: colors.textSecondary, marginBottom: spacing.xs, textTransform: 'uppercase' },
-  pickerChip: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
-    borderRadius: radius.full, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bgInput, marginRight: spacing.sm,
-  },
-  pickerChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pickerChipText: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '500' },
-  pickerChipTextActive: { color: colors.textInverse, fontWeight: '700' },
 });

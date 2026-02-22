@@ -2,27 +2,20 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../../src/components/ui/theme';
 
+const TAB_ICONS = {
+  dashboard: '⊞',
+  inventory: '📦',
+  crosslist: '🔄',
+  sales:     '💰',
+  settings:  '⚙️',
+};
+
 function TabIcon({ name, focused }) {
-  const ICONS = {
-    dashboard:  { default: '⊞',  active: '⊞'  },
-    inventory:  { default: '📦', active: '📦' },
-    crosslist:  { default: '🔄', active: '🔄' },
-    sales:      { default: '💰', active: '💰' },
-    settings:   { default: '⚙️', active: '⚙️' },
-  };
-  const icon = ICONS[name] || { default: '●', active: '●' };
+  const emoji = TAB_ICONS[name] || '●';
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <Text style={styles.iconEmoji}>{focused ? icon.active : icon.default}</Text>
+      <Text style={styles.iconEmoji}>{emoji}</Text>
     </View>
-  );
-}
-
-function TabLabel({ label, focused }) {
-  return (
-    <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
-      {label}
-    </Text>
   );
 }
 
@@ -34,48 +27,41 @@ export default function TabsLayout() {
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarShowLabel: true,
-        tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Home',
+          tabBarLabel: 'Home',
           tabBarIcon: ({ focused }) => <TabIcon name="dashboard" focused={focused} />,
-          tabBarLabel: ({ focused }) => <TabLabel label="Home" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="inventory"
         options={{
-          title: 'Inventory',
+          tabBarLabel: 'Inventory',
           tabBarIcon: ({ focused }) => <TabIcon name="inventory" focused={focused} />,
-          tabBarLabel: ({ focused }) => <TabLabel label="Inventory" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="crosslist"
         options={{
-          title: 'Crosslist',
+          tabBarLabel: 'Crosslist',
           tabBarIcon: ({ focused }) => <TabIcon name="crosslist" focused={focused} />,
-          tabBarLabel: ({ focused }) => <TabLabel label="Crosslist" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="sales"
         options={{
-          title: 'Sales',
+          tabBarLabel: 'Sales',
           tabBarIcon: ({ focused }) => <TabIcon name="sales" focused={focused} />,
-          tabBarLabel: ({ focused }) => <TabLabel label="Sales" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          tabBarLabel: 'Settings',
           tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
-          tabBarLabel: ({ focused }) => <TabLabel label="Settings" focused={focused} />,
         }}
       />
     </Tabs>
@@ -87,24 +73,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
-    height: 60,
+    height: 64,
+    paddingBottom: 8,
+    paddingTop: 6,
   },
-  tabBarLabel: { display: 'none' },
 
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 10,
+    minWidth: 40,
   },
   iconWrapActive: {
-    backgroundColor: `${colors.primary}18`,
+    backgroundColor: `${colors.primary}1A`,
   },
-  iconEmoji: { fontSize: 22 },
-
-  tabLabel: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
-  tabLabelActive: { color: colors.primary, fontWeight: '600' },
+  iconEmoji: { fontSize: 20 },
 });
