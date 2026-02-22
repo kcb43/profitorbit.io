@@ -61,12 +61,16 @@ export async function getMercariSession() {
     if (!raw) return null;
     const headers = JSON.parse(raw);
     const ageMs = ts ? Date.now() - Number(ts) : Infinity;
+    const hasAny = Boolean(
+      headers.authorization || headers['x-csrf-token'] ||
+      headers.cookie || Object.keys(headers).length > 0
+    );
     return {
       headers,
       ageMs,
       ageHours: Math.floor(ageMs / (1000 * 60 * 60)),
       isStale: ageMs > 23 * 60 * 60 * 1000,
-      isValid: Boolean(headers.authorization && headers['x-csrf-token']),
+      isValid: hasAny,
     };
   } catch (_) {
     return null;

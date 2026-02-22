@@ -216,13 +216,12 @@ export default function MercariConnectScreen() {
   const saveRef      = useRef(false);   // prevent double-save
   const statusRef    = useRef('idle');  // track status without re-render race
 
-  const [headers, setHeaders]         = useState({});
-  const [saving, setSaving]           = useState(false);
-  const [connected, setConnected]     = useState(false);
-  const [saveError, setSaveError]     = useState(null);
-  const [webLoading, setWebLoading]   = useState(true);
-  const [loggedIn, setLoggedIn]       = useState(false);
-  const [showForceBtn, setShowForceBtn] = useState(false);
+  const [headers, setHeaders]       = useState({});
+  const [saving, setSaving]         = useState(false);
+  const [connected, setConnected]   = useState(false);
+  const [saveError, setSaveError]   = useState(null);
+  const [webLoading, setWebLoading] = useState(true);
+  const [loggedIn, setLoggedIn]     = useState(false);
 
   const hasAuth = Boolean(headers.authorization);
   const hasCsrf = Boolean(headers['x-csrf-token']);
@@ -240,9 +239,9 @@ export default function MercariConnectScreen() {
     });
   }, []);
 
-  // Auto-save and auto-close once we have auth + csrf
+  // Auto-save once we have auth OR csrf (either is a signal we're connected)
   useEffect(() => {
-    if (hasAuth && hasCsrf && !saveRef.current && !saving) {
+    if ((hasAuth || hasCsrf) && !saveRef.current && !saving) {
       doSave(headers);
     }
   }, [hasAuth, hasCsrf]);
@@ -255,12 +254,6 @@ export default function MercariConnectScreen() {
     }
   }, [connected]);
 
-  // After user is logged in, show force-continue button after 12s if tokens not captured
-  useEffect(() => {
-    if (!loggedIn) return;
-    const t = setTimeout(() => setShowForceBtn(true), 12000);
-    return () => clearTimeout(t);
-  }, [loggedIn]);
 
   async function doSave(hdrs, force = false) {
     if (saveRef.current && !force) return;
@@ -433,23 +426,20 @@ export default function MercariConnectScreen() {
         </View>
       )}
 
-      {/* Manual save — shown when tokens captured */}
-      {loggedIn && canSave && !saving && !connected && (
-        <TouchableOpacity style={styles.manualSaveBtn} onPress={() => doSave(headers)}>
-          <Text style={styles.manualSaveBtnText}>✓ Tap to confirm connection</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Force continue — shown after 12s if logged in but no tokens captured */}
-      {loggedIn && !canSave && !saving && !connected && showForceBtn && (
+      {/* Manual confirm — shown as soon as user appears logged in */}
+      {loggedIn && !saving && !connected && (
         <TouchableOpacity
-          style={[styles.manualSaveBtn, { backgroundColor: '#f57c00' }]}
+          style={[styles.manualSaveBtn, canSave ? {} : { backgroundColor: '#f57c00' }]}
           onPress={() => {
-            const fallback = Object.keys(headers).length > 0 ? headers : { 'cookie': 'mercari_session=active' };
-            doSave(fallback, true);
+            const hdrs = Object.keys(headers).length > 0
+              ? headers
+              : { 'cookie': 'mercari_session=active', 'x-platform': 'web' };
+            doSave(hdrs, true);
           }}
         >
-          <Text style={styles.manualSaveBtnText}>Already logged in? Tap to continue →</Text>
+          <Text style={styles.manualSaveBtnText}>
+            {canSave ? '✓ Connected — tap to continue' : 'Logged in? Tap to continue →'}
+          </Text>
         </TouchableOpacity>
       )}
 
