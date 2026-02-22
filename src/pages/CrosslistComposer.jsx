@@ -19530,11 +19530,6 @@ export default function CrosslistComposer() {
 
                       {/* Smart Listing Section - Desktop - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
-                        <div style={{backgroundColor: 'red', padding: '20px', margin: '20px 0', color: 'white', fontSize: '24px', fontWeight: 'bold'}}>
-                          ⚠️ DESKTOP: SMART LISTING ENABLED - YOU SHOULD SEE THIS
-                        </div>
-                      )}
-                      {smartListingEnabled && (
                         <SmartListingSection
                           selectedMarketplaces={smartListing.selectedMarketplaces}
                           toggleMarketplace={smartListing.toggleMarketplace}
