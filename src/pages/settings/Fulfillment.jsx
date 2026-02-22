@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, Package, Loader2, Check, Info, Smile } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, Package, Loader2, Check, Info, Smile, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,31 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { getFulfillmentProfile, saveFulfillmentProfile } from '@/api/fulfillmentApi';
+import {
+  HANDLING_TIME_OPTIONS,
+  FLAT_SHIPPING_SERVICES,
+  CALCULATED_SHIPPING_SERVICES,
+} from '@/constants/ebay-shipping';
+
+const EBAY_DEFAULTS_KEY = 'ebay-shipping-defaults';
+
+function loadEbayDefaults() {
+  try {
+    const stored = localStorage.getItem(EBAY_DEFAULTS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+}
+
+function saveEbayDefaults(defaults) {
+  try {
+    localStorage.setItem(EBAY_DEFAULTS_KEY, JSON.stringify(defaults));
+  } catch { /* ignore */ }
+}
 
 const PLATFORMS = [
   { id: 'facebook', label: 'Facebook Marketplace', placeholder: 'e.g. Pickup in Easton, MA. I can also ship if needed.' },
@@ -33,6 +57,8 @@ export default function FulfillmentSettings() {
   const [isLoading, setIsLoading]   = useState(true);
   const [isSaving, setIsSaving]     = useState(false);
   const [showPlatform, setShowPlatform] = useState(true);
+  const [showEbayDefaults, setShowEbayDefaults] = useState(true);
+  const [ebayDefaults, setEbayDefaults] = useState(() => loadEbayDefaults());
 
   const [form, setForm] = useState({
     pickup_enabled:       false,
@@ -63,6 +89,14 @@ export default function FulfillmentSettings() {
   }, []);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const setEbayDefault = (key, value) => {
+    setEbayDefaults((prev) => {
+      const next = { ...prev, [key]: value };
+      saveEbayDefaults(next);
+      return next;
+    });
+  };
 
   const setPlatformNote = (platformId, value) =>
     setForm((prev) => ({
@@ -189,6 +223,140 @@ export default function FulfillmentSettings() {
             </div>
           </div>
         )}
+
+        {/* ── eBay Shipping Defaults ──────────────────────────────────────── */}
+        <div className="pt-3 border-t">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between group"
+            onClick={() => setShowEbayDefaults((v) => !v)}
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-primary" />
+              <span className="font-medium text-sm">eBay Shipping Defaults</span>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
+            </div>
+            {showEbayDefaults
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            }
+          </button>
+          <p className="text-xs text-muted-foreground mt-1 ml-6">
+            These defaults are used by Smart Listing to pre-fill and suggest eBay shipping fields. Saved automatically as you type.
+          </p>
+
+          {showEbayDefaults && (
+            <div className="mt-4 space-y-4 pl-1">
+
+              {/* Shipping Method */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm mb-1.5 block">Shipping Method</Label>
+                  <Select
+                    value={ebayDefaults.shippingMethod || ''}
+                    onValueChange={(v) => setEbayDefault('shippingMethod', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select method…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Standard: Small to medium items">Standard: Small to medium items</SelectItem>
+                      <SelectItem value="Local pickup only: Sell to buyer nears you">Local pickup only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm mb-1.5 block">Handling Time</Label>
+                  <Select
+                    value={ebayDefaults.handlingTime || ''}
+                    onValueChange={(v) => setEbayDefault('handlingTime', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select handling time…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HANDLING_TIME_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Cost Type + Cost */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm mb-1.5 block">Shipping Cost Type</Label>
+                  <Select
+                    value={ebayDefaults.shippingCostType || ''}
+                    onValueChange={(v) => {
+                      setEbayDefault('shippingCostType', v);
+                      // Clear service if cost type changes since services differ
+                      setEbayDefault('shippingService', '');
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select cost type…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Flat: Same cost regardless of buyer location">Flat rate</SelectItem>
+                      <SelectItem value="Calculated: Cost varies based on buyer location">Calculated by eBay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm mb-1.5 block">
+                    Default Shipping Cost
+                    {ebayDefaults.shippingCostType?.startsWith('Calculated') && (
+                      <span className="ml-1 text-xs text-muted-foreground">(eBay calculates — leave blank)</span>
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder={ebayDefaults.shippingCostType?.startsWith('Calculated') ? 'Calculated by eBay' : '0.00'}
+                    disabled={ebayDefaults.shippingCostType?.startsWith('Calculated')}
+                    className={ebayDefaults.shippingCostType?.startsWith('Calculated') ? 'opacity-50 cursor-not-allowed bg-muted' : ''}
+                    value={ebayDefaults.shippingCostType?.startsWith('Calculated') ? '' : (ebayDefaults.shippingCost || '')}
+                    onChange={(e) => setEbayDefault('shippingCost', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Shipping Service */}
+              <div>
+                <Label className="text-sm mb-1.5 block">Shipping Service</Label>
+                <Select
+                  value={ebayDefaults.shippingService || ''}
+                  onValueChange={(v) => setEbayDefault('shippingService', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select shipping service…" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[260px]">
+                    {(ebayDefaults.shippingCostType?.startsWith('Calculated')
+                      ? CALCULATED_SHIPPING_SERVICES
+                      : FLAT_SHIPPING_SERVICES
+                    ).map((svc) => (
+                      <SelectItem key={svc.value} value={svc.value}>
+                        {svc.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {ebayDefaults.shippingCostType?.startsWith('Calculated')
+                    ? 'Showing calculated-rate services (cost determined by eBay at checkout).'
+                    : 'Showing flat-rate services. Select a cost type above to switch.'}
+                </p>
+              </div>
+
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ── Per-platform overrides ────────────────────────────────────────────── */}
