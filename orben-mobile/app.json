@@ -6,30 +6,39 @@
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "io.profitorbit.orben",
+      "buildNumber": "1",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "NSCameraUsageDescription": "Orben uses your camera to add photos of inventory items.",
+        "NSPhotoLibraryUsageDescription": "Orben accesses your photo library to add photos of inventory items.",
+        "NSPhotoLibraryAddUsageDescription": "Orben saves photos to your library.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0a0a0a"
       },
       "package": "io.profitorbit.orben",
+      "versionCode": 1,
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -41,11 +50,23 @@
       "expo-router",
       "expo-secure-store",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Orben needs access to your photos to add inventory item photos.",
+          "cameraPermission": "Orben needs camera access to photograph inventory items."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "orben"
+    "scheme": "orben",
+    "extra": {
+      "eas": {
+        "projectId": "io.profitorbit.orben"
+      }
+    }
   }
 }

@@ -21,14 +21,14 @@ const ExpoSecureStoreAdapter = {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
-    storage:         ExpoSecureStoreAdapter,
-    autoRefreshToken: true,
-    persistSession:  true,
+    storage:            ExpoSecureStoreAdapter,
+    autoRefreshToken:   true,
+    persistSession:     true,
     detectSessionInUrl: false,
   },
 });
 
-/** Get the current user's Orben JWT access token */
+/** Get the current user's Supabase JWT access token */
 export async function getOrbenToken() {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token || null;
@@ -52,7 +52,7 @@ export async function orbenFetch(path, options = {}) {
   return res.json();
 }
 
-// ── Mercari session ───────────────────────────────────────────────────────────
+// ── Mercari session ────────────────────────────────────────────────────────────
 
 export async function getMercariSession() {
   try {
@@ -69,8 +69,8 @@ export async function getMercariSession() {
       headers,
       ageMs,
       ageHours: Math.floor(ageMs / (1000 * 60 * 60)),
-      isStale: ageMs > 23 * 60 * 60 * 1000,
-      isValid: hasAny,
+      isStale:  ageMs > 23 * 60 * 60 * 1000,
+      isValid:  hasAny,
     };
   } catch (_) {
     return null;
@@ -82,7 +82,7 @@ export async function clearMercariSession() {
   await SecureStore.deleteItemAsync('mercari_session_ts').catch(() => {});
 }
 
-// ── Inventory ─────────────────────────────────────────────────────────────────
+// ── Inventory ──────────────────────────────────────────────────────────────────
 
 export async function getInventoryItems(search = '', limit = 50) {
   const params = new URLSearchParams({ limit: String(limit) });
@@ -90,11 +90,64 @@ export async function getInventoryItems(search = '', limit = 50) {
   return orbenFetch(`/api/inventory?${params}`);
 }
 
-// ── Mercari listing via server proxy ─────────────────────────────────────────
+export async function getInventoryItem(id) {
+  return orbenFetch(`/api/inventory?id=${id}`);
+}
+
+export async function createInventoryItem(data) {
+  return orbenFetch('/api/inventory', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateInventoryItem(id, data) {
+  return orbenFetch(`/api/inventory?id=${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteInventoryItem(id) {
+  return orbenFetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+}
+
+// ── Sales ──────────────────────────────────────────────────────────────────────
+
+export async function getSales(params = {}) {
+  const query = new URLSearchParams();
+  if (params.limit)    query.set('limit', String(params.limit));
+  if (params.platform) query.set('platform', params.platform);
+  if (params.from)     query.set('from', params.from);
+  if (params.to)       query.set('to', params.to);
+  const qs = query.toString();
+  return orbenFetch(`/api/sales${qs ? `?${qs}` : ''}`);
+}
+
+export async function getRecentSales(limit = 5) {
+  return getSales({ limit });
+}
+
+export async function recordSale(data) {
+  return orbenFetch('/api/sales', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSalesSummary() {
+  return orbenFetch('/api/reports/summary');
+}
+
+// ── Mercari listing via server proxy ──────────────────────────────────────────
 
 export async function createMercariListingServerSide(payload) {
   return orbenFetch('/api/mercari/create-listing', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function getMercariSessionStatus() {
+  return orbenFetch('/api/mercari/session-status');
 }
