@@ -13,8 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { SOURCE_GROUPS, ALL_SOURCES, getLogoUrl } from "@/constants/marketplaces";
 import { useCustomSources } from "@/hooks/useCustomSources";
+import { MERCARI_BRANDS, POPULAR_BRANDS } from "@/constants/mercari-brands";
 import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon, X, Loader2, Sparkles } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -134,6 +137,9 @@ export default function AddInventoryItem() {
   });
   const [isOtherSource, setIsOtherSource] = useState(false);
   const [sourceSearch, setSourceSearch] = useState('');
+  const [brandOpen, setBrandOpen] = useState(false);
+  const [brandSearch, setBrandSearch] = useState('');
+  const { customSources: customBrands, addCustomSource: addCustomBrand } = useCustomSources("orben_custom_brands");
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const { customSources, addCustomSource, removeCustomSource } = useCustomSources("orben_custom_sources");
   const [isUploading, setIsUploading] = useState(false);
@@ -1252,16 +1258,152 @@ export default function AddInventoryItem() {
                         </div>
                     ) : null}
 
-                    {/* Brand Field */}
+                    {/* Brand Field — searchable combobox backed by Mercari brand list */}
                     <div className="space-y-2 min-w-0">
-                        <Label htmlFor="brand" className="text-foreground break-words">Brand</Label>
-                        <Input
-                            id="brand"
-                            placeholder="e.g., Nike, Adidas, Unbranded"
-                            value={formData.brand || ""}
-                            onChange={(e) => handleChange('brand', e.target.value)}
-                            className="w-full text-foreground bg-background"
-                        />
+                      <Label className="text-foreground break-words">Brand</Label>
+                      <Popover open={brandOpen} onOpenChange={(o) => { setBrandOpen(o); if (!o) setBrandSearch(''); }} modal>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={brandOpen}
+                            className="w-full justify-between font-normal bg-background text-foreground border-border hover:bg-background"
+                          >
+                            <span className={formData.brand ? "text-foreground" : "text-muted-foreground"}>
+                              {formData.brand || "Search brand…"}
+                            </span>
+                            <ArrowLeft className="ml-2 h-4 w-4 shrink-0 opacity-40 rotate-90" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Search brand…"
+                              value={brandSearch}
+                              onValueChange={setBrandSearch}
+                            />
+                            <CommandList className="max-h-64">
+                              <CommandEmpty>
+                                <div className="px-3 py-2 text-sm text-muted-foreground">No match found.</div>
+                                {brandSearch.trim() && (
+                                  <div className="px-3 pb-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="w-full text-xs"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => {
+                                        const trimmed = brandSearch.trim();
+                                        addCustomBrand(trimmed);
+                                        handleChange('brand', trimmed);
+                                        setBrandOpen(false);
+                                        setBrandSearch('');
+                                      }}
+                                    >
+                                      + Use "{brandSearch.trim()}" as custom brand
+                                    </Button>
+                                  </div>
+                                )}
+                              </CommandEmpty>
+
+                              {/* Popular brands quick-picks (shown when no search) */}
+                              {!brandSearch && (
+                                <CommandGroup heading="Popular Brands">
+                                  {POPULAR_BRANDS.map(brand => (
+                                    <CommandItem
+                                      key={brand}
+                                      value={brand}
+                                      onSelect={() => {
+                                        handleChange('brand', brand === formData.brand ? '' : brand);
+                                        setBrandOpen(false);
+                                        setBrandSearch('');
+                                      }}
+                                    >
+                                      <span className={formData.brand === brand ? "font-semibold text-primary" : ""}>{brand}</span>
+                                      {formData.brand === brand && <span className="ml-auto text-primary text-xs">✓</span>}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+
+                              {/* Full Mercari brand list (filtered by search) */}
+                              {brandSearch && (
+                                <CommandGroup heading="Brands">
+                                  {MERCARI_BRANDS
+                                    .filter(b => b.toLowerCase().includes(brandSearch.toLowerCase()))
+                                    .slice(0, 80)
+                                    .map(brand => (
+                                      <CommandItem
+                                        key={brand}
+                                        value={brand}
+                                        onSelect={() => {
+                                          handleChange('brand', brand === formData.brand ? '' : brand);
+                                          setBrandOpen(false);
+                                          setBrandSearch('');
+                                        }}
+                                      >
+                                        <span className={formData.brand === brand ? "font-semibold text-primary" : ""}>{brand}</span>
+                                        {formData.brand === brand && <span className="ml-auto text-primary text-xs">✓</span>}
+                                      </CommandItem>
+                                    ))
+                                  }
+                                </CommandGroup>
+                              )}
+
+                              {/* Custom brands saved by the user */}
+                              {customBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length > 0 && (
+                                <CommandGroup heading="My Custom Brands">
+                                  {customBrands
+                                    .filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase()))
+                                    .map(brand => (
+                                      <CommandItem
+                                        key={brand}
+                                        value={brand}
+                                        onSelect={() => {
+                                          handleChange('brand', brand === formData.brand ? '' : brand);
+                                          setBrandOpen(false);
+                                          setBrandSearch('');
+                                        }}
+                                      >
+                                        <span className="text-xs mr-1">✦</span>
+                                        <span className={formData.brand === brand ? "font-semibold text-primary" : ""}>{brand}</span>
+                                        {formData.brand === brand && <span className="ml-auto text-primary text-xs">✓</span>}
+                                      </CommandItem>
+                                    ))
+                                  }
+                                </CommandGroup>
+                              )}
+
+                              {/* Add custom brand option at bottom when searching */}
+                              {brandSearch.trim() && !MERCARI_BRANDS.some(b => b.toLowerCase() === brandSearch.toLowerCase()) && !customBrands.includes(brandSearch.trim()) && (
+                                <CommandGroup>
+                                  <CommandItem
+                                    value={`__add__${brandSearch}`}
+                                    onSelect={() => {
+                                      const trimmed = brandSearch.trim();
+                                      addCustomBrand(trimmed);
+                                      handleChange('brand', trimmed);
+                                      setBrandOpen(false);
+                                      setBrandSearch('');
+                                    }}
+                                  >
+                                    <span className="text-muted-foreground">+ Add "<strong>{brandSearch.trim()}</strong>" as custom brand</span>
+                                  </CommandItem>
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {formData.brand && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-foreground underline"
+                          onClick={() => handleChange('brand', '')}
+                        >
+                          Clear brand
+                        </button>
+                      )}
                     </div>
 
                     {/* Condition Field */}
