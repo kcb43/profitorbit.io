@@ -836,18 +836,6 @@ export default function AddSale() {
                   </div>
                 )}
 
-                {/* Brand field */}
-                <div className="space-y-2 min-w-0">
-                  <Label className="text-foreground">Brand</Label>
-                  <BrandCombobox
-                    value={formData.brand || ''}
-                    onChange={(brand) => handleChange('brand', brand)}
-                    showAISuggestions={!saleId && !copyId}
-                    itemTitle={formData.item_name || ''}
-                    itemCategory={formData.category || ''}
-                  />
-                </div>
-
                 <div className="space-y-2 min-w-0">
                    <Label htmlFor="quantity_sold" className="text-foreground">
                      Quantity Sold <span className="text-red-500">*</span>
@@ -1393,6 +1381,17 @@ export default function AddSale() {
                   </div>
                 ) : <div />}
 
+                {/* Brand field — same combobox as Add Inventory */}
+                <div className="space-y-2 min-w-0">
+                  <Label className="text-foreground break-words">Brand</Label>
+                  <BrandCombobox
+                    value={formData.brand || ''}
+                    onChange={(brand) => handleChange('brand', brand)}
+                    showAISuggestions={!saleId && !copyId}
+                    itemTitle={formData.item_name || ''}
+                    itemCategory={formData.category || ''}
+                  />
+                </div>
 
                 {/* eBay-specific fields section */}
                 {isImportedEbaySale && (
