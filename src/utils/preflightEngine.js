@@ -7,6 +7,7 @@ import {
   validateEbayForm,
   validateMercariForm,
   validateFacebookForm,
+  validateEtsyForm,
   generateSmartSuggestions,
 } from './listingValidation';
 
@@ -25,8 +26,17 @@ export async function preflightSelectedMarketplaces(
   ebayForm,
   mercariForm,
   facebookForm,
+  etsyForm = {},
   options = {}
 ) {
+  // Support legacy callers that pass options as 6th arg (no etsyForm)
+  if (etsyForm && typeof etsyForm === 'object' && !Array.isArray(etsyForm) &&
+      (etsyForm.autoApplyHighConfidence !== undefined || etsyForm.onApplyPatch !== undefined ||
+       etsyForm.categoryTreeId !== undefined || etsyForm.useAI !== undefined)) {
+    options = etsyForm;
+    etsyForm = {};
+  }
+
   const {
     autoApplyHighConfidence = false,
     onApplyPatch = null,
@@ -37,7 +47,7 @@ export async function preflightSelectedMarketplaces(
   const fixesNeeded = [];
 
   // Form map for smart suggestion generation
-  const formByMarketplace = { ebay: ebayForm, mercari: mercariForm, facebook: facebookForm };
+  const formByMarketplace = { ebay: ebayForm, mercari: mercariForm, facebook: facebookForm, etsy: etsyForm };
 
   for (const marketplace of selectedMarketplaces) {
     let issues = [];
@@ -61,6 +71,10 @@ export async function preflightSelectedMarketplaces(
 
         case 'facebook':
           issues = validateFacebookForm(generalForm, facebookForm);
+          break;
+
+        case 'etsy':
+          issues = validateEtsyForm(generalForm, etsyForm);
           break;
 
         default:
@@ -124,6 +138,7 @@ export async function preflightSelectedMarketplaces(
         ebayForm,
         mercariForm,
         facebookForm,
+        etsyForm,
         fixesNeeded
       );
 
@@ -203,6 +218,7 @@ async function getAISuggestions(
   ebayForm,
   mercariForm,
   facebookForm,
+  etsyForm,
   fixesNeeded
 ) {
   try {
@@ -219,6 +235,7 @@ async function getAISuggestions(
         ebayForm,
         mercariForm,
         facebookForm,
+        etsyForm,
         selectedMarketplaces,
         issues: allIssues,
       }),
@@ -314,6 +331,15 @@ export function getFieldLabel(field) {
     // Mercari
     mercariCategory: 'Category',
     mercariCategoryId: 'Category',
+
+    // Etsy
+    color1: 'Primary Color',
+    color2: 'Secondary Color',
+    processingTime: 'Processing Time',
+    renewalOption: 'Renewal Option',
+    whoMade: 'Who Made It',
+    whenMade: 'When Made',
+    shippingProfile: 'Shipping Profile',
 
     // Facebook
     category: 'Category',

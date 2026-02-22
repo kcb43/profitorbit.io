@@ -256,6 +256,7 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       forms.ebayForm,
       forms.mercariForm,
       forms.facebookForm,
+      forms.etsyForm || {},
       {
         ...validationOptions,
         autoApplyHighConfidence: autoFillMode === 'auto',

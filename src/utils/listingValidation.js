@@ -378,6 +378,50 @@ export function generateSmartSuggestions(generalForm, marketplaceForm, marketpla
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Etsy suggestions
+  // -------------------------------------------------------------------------
+  if (marketplace === 'etsy') {
+    // Primary color — inherit from general if not set on Etsy form
+    if (!marketplaceForm.color1 && generalForm.color1) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'etsy', field: 'color1', patchTarget: 'etsy',
+        message: `Primary color can be copied from your general listing`,
+        suggested: {
+          label: generalForm.color1, confidence: 0.93,
+          reasoning: `Using primary color "${generalForm.color1}" from your general listing`,
+          sourceField: 'color1', sourceValue: generalForm.color1,
+        },
+      }));
+    }
+
+    // Secondary color — prompt the user to add one if only a primary color is set
+    if (!marketplaceForm.color2 && (marketplaceForm.color1 || generalForm.color1)) {
+      suggestions.push({
+        marketplace: 'etsy',
+        field: 'color2',
+        type: 'suggestion',
+        severity: 'suggestion',
+        patchTarget: 'etsy',
+        message: `Etsy supports a secondary color — does your item have a second color?`,
+        suggested: null,
+      });
+    }
+
+    // Brand
+    if (!marketplaceForm.brand && generalForm.brand) {
+      suggestions.push(makeSuggestion({
+        marketplace: 'etsy', field: 'brand', patchTarget: 'etsy',
+        message: `Brand can be copied from your general listing`,
+        suggested: {
+          label: generalForm.brand, confidence: 0.92,
+          reasoning: `Using brand "${generalForm.brand}" from your general listing`,
+          sourceField: 'brand', sourceValue: generalForm.brand,
+        },
+      }));
+    }
+  }
+
   return suggestions;
 }
 
@@ -1146,10 +1190,10 @@ export function validateFacebookForm(generalForm, facebookForm) {
     });
   }
   
-  // Size validation - REQUIRED for clothing/shoes categories
+  // Size validation — REQUIRED for clothing/shoes categories
   const categoryLower = (category || '').toLowerCase();
-  if (categoryLower.includes('clothing') || 
-      categoryLower.includes('shoes') || 
+  if (categoryLower.includes('clothing') ||
+      categoryLower.includes('shoes') ||
       categoryLower.includes('apparel')) {
     if (!facebookForm.size && !generalForm.size) {
       issues.push({
@@ -1176,5 +1220,73 @@ export function validateFacebookForm(generalForm, facebookForm) {
     });
   }
   
+  return issues;
+}
+
+// ---------------------------------------------------------------------------
+// Etsy validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate Etsy form fields
+ * @param {Object} generalForm
+ * @param {Object} etsyForm
+ * @returns {Issue[]} Array of validation issues
+ */
+export function validateEtsyForm(generalForm, etsyForm) {
+  const issues = [];
+
+  // Title
+  const title = etsyForm.title || generalForm.title;
+  if (!title || !title.trim()) {
+    issues.push({
+      marketplace: 'etsy',
+      field: 'title',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Title is required for Etsy',
+      patchTarget: 'etsy',
+    });
+  }
+
+  // Description
+  const description = etsyForm.description || generalForm.description;
+  if (!description || !description.trim()) {
+    issues.push({
+      marketplace: 'etsy',
+      field: 'description',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Description is required for Etsy',
+      patchTarget: 'etsy',
+    });
+  }
+
+  // Price
+  const price = etsyForm.price || generalForm.price;
+  if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+    issues.push({
+      marketplace: 'etsy',
+      field: 'price',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Price is required for Etsy',
+      patchTarget: 'general',
+    });
+  }
+
+  // Photos
+  const photos = etsyForm.photos?.length > 0 ? etsyForm.photos : generalForm.photos;
+  if (!photos || photos.length === 0) {
+    issues.push({
+      marketplace: 'etsy',
+      field: 'photos',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'At least one photo is required for Etsy',
+      patchTarget: 'etsy',
+    });
+  }
+
   return issues;
 }

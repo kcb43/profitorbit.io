@@ -4750,6 +4750,8 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     description: "",
     brand: "",
     sku: "",
+    color1: "",
+    color2: "",
     renewalOption: "manual",
     whoMade: "i_did",
     whenMade: "2020s",
@@ -8173,6 +8175,10 @@ export default function CrosslistComposer() {
       const valueToStore = colorName.startsWith("#") ? colorName : colorName;
       if (editingColorField === "ebay.color") {
         handleMarketplaceChange("ebay", "color", valueToStore);
+      } else if (editingColorField === "etsy.color1") {
+        handleMarketplaceChange("etsy", "color1", valueToStore);
+      } else if (editingColorField === "etsy.color2") {
+        handleMarketplaceChange("etsy", "color2", valueToStore);
       } else {
         handleGeneralChange(editingColorField, valueToStore);
       }
@@ -9689,6 +9695,7 @@ export default function CrosslistComposer() {
       ebayForm,
       mercariForm,
       facebookForm,
+      etsyForm,
     },
     {
       categoryTreeId,
@@ -11427,30 +11434,6 @@ export default function CrosslistComposer() {
                           style={{ backgroundColor: getColorHex(generalForm.color1) || "#808080" }}
                         />
                         <span className="flex-1 text-left">{getColorName(generalForm.color1)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Palette className="w-4 h-4 mr-2" />
-                        <span>Select color</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <div>
-                  <Label className="text-sm mb-1.5 block">Secondary Color</Label>
-                  <Button
-                    type="button"
-                    variant={generalForm.color2 ? "default" : "outline"}
-                    onClick={() => openColorPicker("color2")}
-                    className="w-full justify-start"
-                  >
-                    {generalForm.color2 ? (
-                      <>
-                        <div
-                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
-                          style={{ backgroundColor: getColorHex(generalForm.color2) || "#808080" }}
-                        />
-                        <span className="flex-1 text-left">{getColorName(generalForm.color2)}</span>
                       </>
                     ) : (
                       <>
@@ -13843,6 +13826,59 @@ export default function CrosslistComposer() {
                       Inherited {generalForm.sku} from General form. You can edit this field.
                     </p>
                   )}
+                </div>
+                {/* Etsy Primary Color */}
+                <div>
+                  <Label className="text-sm mb-1.5 block">Primary Color</Label>
+                  <Button
+                    type="button"
+                    variant={(etsyForm.color1 || generalForm.color1) ? "default" : "outline"}
+                    onClick={() => openColorPicker("etsy.color1")}
+                    className="w-full justify-start"
+                  >
+                    {(etsyForm.color1 || generalForm.color1) ? (
+                      <>
+                        <div
+                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(etsyForm.color1 || generalForm.color1) || "#808080" }}
+                        />
+                        <span className="flex-1 text-left">{getColorName(etsyForm.color1 || generalForm.color1)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Palette className="w-4 h-4 mr-2" />
+                        <span>Select color</span>
+                      </>
+                    )}
+                  </Button>
+                  {generalForm.color1 && !etsyForm.color1 && (
+                    <p className="mt-1 text-xs text-muted-foreground">Inherited from General form.</p>
+                  )}
+                </div>
+                {/* Etsy Secondary Color */}
+                <div>
+                  <Label className="text-sm mb-1.5 block">Secondary Color <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Button
+                    type="button"
+                    variant={etsyForm.color2 ? "default" : "outline"}
+                    onClick={() => openColorPicker("etsy.color2")}
+                    className="w-full justify-start"
+                  >
+                    {etsyForm.color2 ? (
+                      <>
+                        <div
+                          className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                          style={{ backgroundColor: getColorHex(etsyForm.color2) || "#808080" }}
+                        />
+                        <span className="flex-1 text-left">{getColorName(etsyForm.color2)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Palette className="w-4 h-4 mr-2" />
+                        <span>Add second color</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
 
@@ -17418,30 +17454,6 @@ export default function CrosslistComposer() {
                             )}
                           </Button>
                         </div>
-                        <div>
-                          <Label className="text-sm mb-1.5 block">Secondary Color</Label>
-                          <Button
-                            type="button"
-                            variant={generalForm.color2 ? "default" : "outline"}
-                            onClick={() => openColorPicker("color2")}
-                            className="w-full justify-start"
-                          >
-                            {generalForm.color2 ? (
-                              <>
-                                <div
-                                  className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
-                                  style={{ backgroundColor: getColorHex(generalForm.color2) || "#808080" }}
-                                />
-                                <span className="flex-1 text-left">{getColorName(generalForm.color2)}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Palette className="w-4 h-4 mr-2" />
-                                <span>Select color</span>
-                              </>
-                            )}
-                          </Button>
-                        </div>
                         <div className="md:col-span-2">
                           <Label className="text-sm mb-1.5 block">Category <span className="text-red-500">*</span></Label>
                           
@@ -19777,6 +19789,59 @@ export default function CrosslistComposer() {
                               Inherited {generalForm.sku} from General form. You can edit this field.
                             </p>
                           )}
+                        </div>
+                        {/* Etsy Primary Color */}
+                        <div>
+                          <Label className="text-sm mb-1.5 block">Primary Color</Label>
+                          <Button
+                            type="button"
+                            variant={(etsyForm.color1 || generalForm.color1) ? "default" : "outline"}
+                            onClick={() => openColorPicker("etsy.color1")}
+                            className="w-full justify-start"
+                          >
+                            {(etsyForm.color1 || generalForm.color1) ? (
+                              <>
+                                <div
+                                  className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                                  style={{ backgroundColor: getColorHex(etsyForm.color1 || generalForm.color1) || "#808080" }}
+                                />
+                                <span className="flex-1 text-left">{getColorName(etsyForm.color1 || generalForm.color1)}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Palette className="w-4 h-4 mr-2" />
+                                <span>Select color</span>
+                              </>
+                            )}
+                          </Button>
+                          {generalForm.color1 && !etsyForm.color1 && (
+                            <p className="mt-1 text-xs text-muted-foreground">Inherited from General form.</p>
+                          )}
+                        </div>
+                        {/* Etsy Secondary Color */}
+                        <div>
+                          <Label className="text-sm mb-1.5 block">Secondary Color <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                          <Button
+                            type="button"
+                            variant={etsyForm.color2 ? "default" : "outline"}
+                            onClick={() => openColorPicker("etsy.color2")}
+                            className="w-full justify-start"
+                          >
+                            {etsyForm.color2 ? (
+                              <>
+                                <div
+                                  className="w-4 h-4 mr-2 rounded border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                                  style={{ backgroundColor: getColorHex(etsyForm.color2) || "#808080" }}
+                                />
+                                <span className="flex-1 text-left">{getColorName(etsyForm.color2)}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Palette className="w-4 h-4 mr-2" />
+                                <span>Add second color</span>
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
 
@@ -22513,12 +22578,22 @@ export default function CrosslistComposer() {
       <ColorPickerDialog
         open={colorPickerOpen}
         onOpenChange={setColorPickerOpen}
-        currentColor={editingColorField === "color1" ? generalForm.color1 : editingColorField === "color2" ? generalForm.color2 : editingColorField === "ebay.color" ? ebayForm.color : ""}
+        currentColor={
+          editingColorField === "color1" ? generalForm.color1 :
+          editingColorField === "color2" ? generalForm.color2 :
+          editingColorField === "ebay.color" ? ebayForm.color :
+          editingColorField === "etsy.color1" ? etsyForm.color1 :
+          editingColorField === "etsy.color2" ? etsyForm.color2 :
+          ""
+        }
         onSelectColor={handleColorSelect}
         fieldLabel={
-          editingColorField === "color1" ? "Primary Color" : 
+          editingColorField === "color1" ? "Primary Color" :
           editingColorField === "color2" ? "Secondary Color" :
-          editingColorField === "ebay.color" ? "Color" : "Color"
+          editingColorField === "ebay.color" ? "Color" :
+          editingColorField === "etsy.color1" ? "Primary Color" :
+          editingColorField === "etsy.color2" ? "Secondary Color" :
+          "Color"
         }
       />
 
