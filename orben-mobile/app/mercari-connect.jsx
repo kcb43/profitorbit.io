@@ -110,31 +110,45 @@ const INJECTED_JS = `
     } catch(e) {}
   }
 
-  // ── Try making an authenticated call and read response body ─────────────
+  // ── Try authenticated calls to extract CSRF + user info ─────────────────
   function tryAuthenticatedFetch() {
-    _origFetch('https://api.mercari.com/v2/me', {
-      method: 'GET',
+    // 1. Try Mercari's GraphQL endpoint — if the session cookie is valid,
+    //    Mercari will process the request and may return a refreshed CSRF token
+    //    in response headers (x-csrf-token, set-cookie, etc.)
+    _origFetch('https://www.mercari.com/v1/api', {
+      method: 'POST',
       credentials: 'include',
-      headers: { 'Accept': 'application/json', 'X-Platform': 'web' }
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Platform': 'web',
+        'Apollo-Require-Preflight': 'true',
+      },
+      body: JSON.stringify({
+        operationName: 'sellQuery',
+        variables: { sellInput: { shippingPayerId: 2, photoIds: [] }, shouldFetchSuggestedPrice: false, includeSuggestedShippingOptions: false },
+        extensions: { persistedQuery: { version: 1, sha256Hash: '563d5747ce3413a076648387bb173b383ba91fd31fc933ddf561d5eb37b4a1a5' } },
+      })
     }).then(function(r) {
       const rh = {};
       r.headers.forEach(function(v,k) { rh[k.toLowerCase()] = v; });
       return r.text().then(function(body) {
         send({ type: 'AUTH_RESPONSE', status: r.status, headers: rh, body: body.slice(0,2000) });
       });
-    }).catch(function() {
-      // Try alternate endpoint
-      _origFetch('https://www.mercari.com/v2/api/services/ProductService/GetProfile', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: '{}'
-      }).then(function(r) {
-        const rh = {};
-        r.headers.forEach(function(v,k) { rh[k.toLowerCase()] = v; });
-        send({ type: 'AUTH_RESPONSE2', status: r.status, headers: rh });
-      }).catch(function(){});
-    });
+    }).catch(function(){});
+
+    // 2. Read CSRF from the page meta tags and Next.js data
+    try {
+      var metaCsrf = document.querySelector('meta[name="csrf-token"], meta[name="_csrf"], meta[name="x-csrf-token"]');
+      if (metaCsrf && metaCsrf.content) {
+        send({ type: 'CSRF_META', value: metaCsrf.content });
+      }
+      if (window.__NEXT_DATA__) {
+        var nd = JSON.stringify(window.__NEXT_DATA__);
+        var cm = nd.match(/"(?:csrfToken|csrf_token|_csrf|xCsrfToken)"\s*:\s*"([^"]{8,})"/i);
+        if (cm) send({ type: 'CSRF_NEXT', value: cm[1] });
+      }
+    } catch(e) {}
   }
 
   // ── Check if logged in via DOM ──────────────────────────────────────────
@@ -162,7 +176,7 @@ const INJECTED_JS = `
   }, 1500);
 
   // Run immediately after short delay
-  setTimeout(function() { dumpStorage(); dumpCookies(); checkLoggedIn(); }, 800);
+  setTimeout(function() { dumpStorage(); dumpCookies(); checkLoggedIn(); tryAuthenticatedFetch(); }, 800);
 
   send({ type: 'INTERCEPTOR_READY', url: window.location.href });
   true;
@@ -228,23 +242,39 @@ export default function MercariConnectScreen() {
     setSaving(true);
     setSaveError(null);
     try {
+      // Only keep auth-relevant keys (not server response headers like cache-control)
+      const AUTH_KEEP = ['authorization', 'x-csrf-token', 'x-de-device-token', 'x-platform'];
+      const authPayload = {};
+      for (const k of AUTH_KEEP) { if (hdrs[k]) authPayload[k] = hdrs[k]; }
+
       // Build cookie string from full cookie dump for server-side use
       const cookieStr = Object.entries(cookiesRef.current)
         .map(([k, v]) => `${k}=${v}`).join('; ');
+      if (cookieStr.length > 10) authPayload['cookie'] = cookieStr;
 
-      const payload = { ...hdrs };
-      if (cookieStr.length > 10) payload['cookie'] = cookieStr;
+      // SecureStore limit is 2048 bytes — trim cookie string if needed
+      const authJson = JSON.stringify(authPayload);
+      let storePayload = authPayload;
+      if (authJson.length > 1900) {
+        // Store just essential fields to stay under limit
+        storePayload = {};
+        for (const k of AUTH_KEEP) { if (authPayload[k]) storePayload[k] = authPayload[k]; }
+        // Trim cookie string to fit
+        const baseSize = JSON.stringify(storePayload).length;
+        const remaining = 1800 - baseSize;
+        if (remaining > 100) storePayload['cookie'] = cookieStr.slice(0, remaining);
+      }
 
-      await SecureStore.setItemAsync('mercari_auth_headers', JSON.stringify(payload));
+      await SecureStore.setItemAsync('mercari_auth_headers', JSON.stringify(storePayload));
       await SecureStore.setItemAsync('mercari_session_ts', String(Date.now()));
-      addLog(`Saved locally (keys: ${Object.keys(payload).join(', ')})`);
+      addLog(`Saved locally (${Object.keys(storePayload).join(', ')})`);
 
       const token = await getOrbenToken();
       if (token) {
         const resp = await fetch(`${ORBEN_API_BASE}/api/mercari/save-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ authHeaders: payload, cookies: cookiesRef.current, sourceUrl: 'mobile_webview' }),
+          body: JSON.stringify({ authHeaders: authPayload, cookies: cookiesRef.current, sourceUrl: 'mobile_webview' }),
         });
         if (!resp.ok) {
           const txt = await resp.text().catch(() => '');
@@ -333,27 +363,43 @@ export default function MercariConnectScreen() {
 
         case 'AUTH_RESPONSE':
         case 'AUTH_RESPONSE2': {
-          addLog(`Auth response: HTTP ${msg.status}, headers: ${Object.keys(msg.headers || {}).join(', ')}`);
-          if (msg.headers) mergeHeaders(msg.headers);
+          const rh = msg.headers || {};
+          // Only pull auth-relevant headers — not generic server headers
+          const AUTH_KEYS = ['x-csrf-token','authorization','x-de-device-token','x-platform','set-cookie'];
+          const filtered = {};
+          for (const k of AUTH_KEYS) { if (rh[k]) filtered[k] = rh[k]; }
+          if (Object.keys(filtered).length) {
+            mergeHeaders(filtered);
+            addLog(`Auth headers from API response: ${Object.keys(filtered).join(', ')}`);
+          } else {
+            addLog(`API responded HTTP ${msg.status} (no auth headers)`);
+          }
           // Parse body for token clues
           if (msg.body) {
             try {
-              const b = JSON.parse(msg.body);
-              const raw = JSON.stringify(b);
+              const raw = typeof msg.body === 'string' ? msg.body : JSON.stringify(msg.body);
               const authMatch = raw.match(/"(?:accessToken|access_token|bearerToken|idToken|id_token)":"([^"]{20,})"/i);
-              const csrfMatch = raw.match(/"(?:csrfToken|csrf_token|_csrf)":"([^"]{8,})"/i);
+              const csrfMatch = raw.match(/"(?:csrfToken|csrf_token|_csrf|x-csrf-token)":"([^"]{8,})"/i);
               if (authMatch) {
                 mergeHeaders({ 'authorization': `Bearer ${authMatch[1]}` });
-                addLog(`Auth token from API response body`);
+                addLog(`Auth token from response body`);
               }
               if (csrfMatch) {
                 mergeHeaders({ 'x-csrf-token': csrfMatch[1] });
-                addLog(`CSRF from API response body`);
+                addLog(`CSRF from response body`);
               }
             } catch(_) {}
           }
           break;
         }
+
+        case 'CSRF_META':
+        case 'CSRF_NEXT':
+          if (msg.value) {
+            mergeHeaders({ 'x-csrf-token': msg.value });
+            addLog(`CSRF from ${msg.type}: ${msg.value.slice(0, 12)}…`);
+          }
+          break;
 
         case 'LOGGED_IN':
           addLog(`Logged in detected @ ${(msg.url || '').slice(0, 40)}`);

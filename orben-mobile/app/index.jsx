@@ -116,13 +116,33 @@ export default function HomeScreen() {
     setListingItemId(item.id);
     try {
       const api = await getApi();
-      const photos = item.photos || item.image_urls || [];
+      // Collect images from all possible field names the API might return
+      const rawPhotos =
+        item.photos ||
+        item.images ||
+        (item.image_url ? [item.image_url] : null) ||
+        item.image_urls ||
+        [];
+      const imageUrls = rawPhotos
+        .map(p => (typeof p === 'string' ? p : p?.url || p?.preview || p?.signedUrl || p?.publicUrl))
+        .filter(Boolean);
+
+      if (!imageUrls.length) {
+        Alert.alert(
+          'No Images',
+          'This item has no photos. Please add at least one image before listing on Mercari.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       const result = await api.createMercariListingServerSide({
         title:       item.item_name || item.name || item.title,
         description: item.description || item.notes || '',
         price:       item.listing_price || item.price,
-        images:      photos.map(p => typeof p === 'string' ? p : p.url || p.preview).filter(Boolean),
+        images:      imageUrls,
         condition:   item.condition || 'Good',
+        zipCode:     item.zip_code || item.zipCode,
       });
       if (result.success) {
         Alert.alert('Listed on Mercari!', result.url || '');
@@ -236,9 +256,14 @@ function MercariBadge({ session, onPress }) {
 }
 
 function InventoryCard({ item, isListing, onListMercari }) {
-  const photos = item.photos || item.image_urls || [];
-  const thumb  = photos[0]
-    ? (typeof photos[0] === 'string' ? photos[0] : photos[0].url || photos[0].preview)
+  const rawPhotos =
+    item.photos ||
+    item.images ||
+    (item.image_url ? [item.image_url] : null) ||
+    item.image_urls ||
+    [];
+  const thumb = rawPhotos[0]
+    ? (typeof rawPhotos[0] === 'string' ? rawPhotos[0] : rawPhotos[0]?.url || rawPhotos[0]?.preview || rawPhotos[0]?.signedUrl)
     : null;
   const price = item.listing_price || item.price;
   const name  = item.item_name || item.name || item.title || 'Untitled';
