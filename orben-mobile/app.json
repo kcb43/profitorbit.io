@@ -3,6 +3,7 @@
     "name": "Orben",
     "slug": "orben-mobile",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -26,7 +27,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "io.profitorbit.orben",
-      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -35,7 +39,9 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

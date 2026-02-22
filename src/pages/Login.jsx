@@ -29,6 +29,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [useEmailPassword, setUseEmailPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -258,9 +259,27 @@ export default function Login() {
                 >
                   ← Back to other options
                 </button>
-                <Link to="/signup" className="text-sm text-emerald-600 hover:text-emerald-700">
-                  Forgot password?
-                </Link>
+                <button
+                  type="button"
+                  className="text-sm text-emerald-600 hover:text-emerald-700"
+                  onClick={async () => {
+                    if (!email) {
+                      toast({ title: 'Enter your email first', description: 'Type your email above, then click Forgot Password.', variant: 'destructive' });
+                      return;
+                    }
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${getPublicSiteOrigin()}/reset-password`,
+                    });
+                    if (error) {
+                      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                    } else {
+                      setResetSent(true);
+                      toast({ title: 'Reset email sent', description: `Check ${email} for a password reset link.` });
+                    }
+                  }}
+                >
+                  {resetSent ? '✓ Email sent' : 'Forgot password?'}
+                </button>
               </div>
 
               <Button

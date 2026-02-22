@@ -7,6 +7,7 @@ const Dashboard = React.lazy(() => import("./Dashboard"));
 const Landing = React.lazy(() => import("./Landing"));
 const Login = React.lazy(() => import("./Login"));
 const SignUp = React.lazy(() => import("./SignUp"));
+const ResetPassword = React.lazy(() => import("./ResetPassword"));
 // ProfileSettings page is removed - profile editing is handled via the dialog in Layout
 
 const AddSale = React.lazy(() => import("./AddSale"));
@@ -103,6 +104,9 @@ function PagesContent() {
               
               {/* Sign Up Page */}
               <Route path="/signup" element={withSuspense(<SignUp />)} />
+
+              {/* Password Reset */}
+              <Route path="/reset-password" element={withSuspense(<ResetPassword />)} />
               
               {/* Protected Dashboard Routes */}
               <Route

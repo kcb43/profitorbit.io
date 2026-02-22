@@ -8,21 +8,12 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       <Stack>
         <Stack.Screen name="index" options={{ title: 'Orben', headerShown: false }} />
+        <Stack.Screen name="auth" options={{ title: 'Sign In', headerShown: false }} />
         <Stack.Screen
           name="mercari-connect"
-          options={{
-            title: 'Connect Mercari',
-            headerBackTitle: 'Back',
-            presentation: 'modal',
-          }}
+          options={{ title: 'Connect Mercari', headerBackTitle: 'Back', presentation: 'modal' }}
         />
-        <Stack.Screen
-          name="mercari-list"
-          options={{
-            title: 'List on Mercari',
-            headerBackTitle: 'Back',
-          }}
-        />
+        <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
       </Stack>
     </SafeAreaProvider>
   );

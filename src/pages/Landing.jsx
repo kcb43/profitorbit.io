@@ -200,7 +200,7 @@ export default function Landing() {
                 size="sm" 
                 className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-6 rounded-full"
               >
-                Login
+                Sign Up
               </Button>
             </div>
 
@@ -252,7 +252,7 @@ export default function Landing() {
                   size="sm" 
                   className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full"
                 >
-                  Login
+                  Sign Up
                 </Button>
               </div>
             </div>
@@ -279,7 +279,7 @@ export default function Landing() {
               size="lg" 
               className="text-lg px-8 py-6 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-full shadow-lg shadow-emerald-500/30"
             >
-              Login
+              Get Started Free
             </Button>
           </div>
         </div>
@@ -737,7 +737,7 @@ export default function Landing() {
             size="lg" 
             className="text-lg px-8 py-6 bg-white text-emerald-600 hover:bg-emerald-50 rounded-full font-bold shadow-2xl"
           >
-            Login
+            Get Started Free
           </Button>
         </div>
       </section>
