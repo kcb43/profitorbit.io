@@ -1,0 +1,96 @@
+/**
+ * Orben API service for the mobile app.
+ * Handles auth, token storage, and API calls to profitorbit.io.
+ */
+
+import * as SecureStore from 'expo-secure-store';
+import { createClient } from '@supabase/supabase-js';
+import 'react-native-url-polyfill/auto';
+
+export const ORBEN_API_BASE = 'https://profitorbit.io';
+
+const SUPABASE_URL  = 'https://hlcwhpajorzbleabavcr.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsY3docGFqb3J6YmxlYWJhdmNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDY3MTY5NTEsImV4cCI6MjAyMjI5Mjk1MX0.yQVjJ6zW5l-D89gIVjDhf4oUHhDQeOLNzP9CTTST9S8';
+
+// Custom Supabase storage adapter using Expo SecureStore
+const ExpoSecureStoreAdapter = {
+  getItem:    (key) => SecureStore.getItemAsync(key),
+  setItem:    (key, value) => SecureStore.setItemAsync(key, value),
+  removeItem: (key) => SecureStore.deleteItemAsync(key),
+};
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    storage:         ExpoSecureStoreAdapter,
+    autoRefreshToken: true,
+    persistSession:  true,
+    detectSessionInUrl: false,
+  },
+});
+
+/** Get the current user's Orben JWT access token */
+export async function getOrbenToken() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
+/** Authenticated fetch to the Orben API */
+export async function orbenFetch(path, options = {}) {
+  const token = await getOrbenToken();
+  const res = await fetch(`${ORBEN_API_BASE}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+// ── Mercari session ───────────────────────────────────────────────────────────
+
+export async function getMercariSession() {
+  try {
+    const raw = await SecureStore.getItemAsync('mercari_auth_headers');
+    const ts  = await SecureStore.getItemAsync('mercari_session_ts');
+    if (!raw) return null;
+    const headers = JSON.parse(raw);
+    const ageMs = ts ? Date.now() - Number(ts) : Infinity;
+    return {
+      headers,
+      ageMs,
+      ageHours: Math.floor(ageMs / (1000 * 60 * 60)),
+      isStale: ageMs > 23 * 60 * 60 * 1000,
+      isValid: Boolean(headers.authorization && headers['x-csrf-token']),
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+export async function clearMercariSession() {
+  await SecureStore.deleteItemAsync('mercari_auth_headers').catch(() => {});
+  await SecureStore.deleteItemAsync('mercari_session_ts').catch(() => {});
+}
+
+// ── Inventory ─────────────────────────────────────────────────────────────────
+
+export async function getInventoryItems(search = '', limit = 50) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (search) params.set('search', search);
+  return orbenFetch(`/api/inventory?${params}`);
+}
+
+// ── Mercari listing via server proxy ─────────────────────────────────────────
+
+export async function createMercariListingServerSide(payload) {
+  return orbenFetch('/api/mercari/create-listing', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
