@@ -5,25 +5,53 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/api/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-import { BarChart3, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { BarChart3, Lock, Eye, EyeOff, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  // Supabase sends the user here with a session already set via the URL hash.
-  // We just need to let the SDK pick it up and then call updateUser.
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event) => {
+    // With PKCE flow, Supabase automatically exchanges the ?code= param from
+    // the reset email and fires onAuthStateChange with PASSWORD_RECOVERY.
+    // We must wait for that event before calling updateUser.
+
+    // Check if there's already an active recovery session (e.g. page refresh)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setSessionReady(true);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // Session is ready — nothing extra needed, the form handles the rest.
+        setSessionReady(true);
+        setSessionError(null);
+      } else if (event === 'SIGNED_IN' && session) {
+        // Some Supabase versions fire SIGNED_IN instead of PASSWORD_RECOVERY
+        setSessionReady(true);
+        setSessionError(null);
       }
     });
+
+    // If no session event fires within 8 seconds, the link has likely expired
+    const timeout = setTimeout(() => {
+      setSessionReady(prev => {
+        if (!prev) setSessionError('This reset link has expired or is invalid. Please request a new one.');
+        return prev;
+      });
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e) => {
@@ -43,7 +71,6 @@ export default function ResetPassword() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
       setDone(true);
-      toast({ title: 'Password updated!', description: 'You can now sign in with your new password.' });
       setTimeout(() => navigate('/login'), 2500);
     }
   };
@@ -51,6 +78,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
+        {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
           <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
             <BarChart3 className="w-6 h-6 text-white" />
@@ -59,13 +87,37 @@ export default function ResetPassword() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          {done ? (
+          {/* Success state */}
+          {done && (
             <div className="text-center py-4">
               <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Updated</h2>
               <p className="text-gray-500">Redirecting you to sign in…</p>
             </div>
-          ) : (
+          )}
+
+          {/* Link expired / invalid */}
+          {!done && sessionError && (
+            <div className="text-center py-4">
+              <AlertCircle className="w-14 h-14 text-red-400 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Link Expired</h2>
+              <p className="text-gray-500 text-sm mb-6">{sessionError}</p>
+              <Button onClick={() => navigate('/login')} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-8">
+                Back to Login
+              </Button>
+            </div>
+          )}
+
+          {/* Waiting for session */}
+          {!done && !sessionError && !sessionReady && (
+            <div className="text-center py-8">
+              <Loader2 className="w-10 h-10 text-emerald-500 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-500">Verifying reset link…</p>
+            </div>
+          )}
+
+          {/* Form — only shown when session is ready */}
+          {!done && !sessionError && sessionReady && (
             <>
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Set a New Password</h2>
@@ -117,7 +169,7 @@ export default function ResetPassword() {
                   className="w-full h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
                   disabled={loading}
                 >
-                  {loading ? 'Updating…' : 'Update Password'}
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating…</> : 'Update Password'}
                 </Button>
               </form>
             </>
