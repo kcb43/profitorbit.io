@@ -22557,19 +22557,37 @@ export default function CrosslistComposer() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
             <Button
-              variant="outline"
-              onClick={() => setPackageDetailsDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => setPackageDetailsDialogOpen(false)}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground sm:mr-auto"
               disabled={!generalForm.packageWeight || !generalForm.packageLength || !generalForm.packageWidth || !generalForm.packageHeight}
+              onClick={() => {
+                ["packageWeight", "packageLength", "packageWidth", "packageHeight", "packageDetails"].forEach(f =>
+                  updateGeneralDefault(f, generalForm[f], { silent: true })
+                );
+                toast({ title: "Saved as default!", description: "These package dimensions will pre-fill on future listings." });
+              }}
             >
-              Save
+              <Save className="h-3.5 w-3.5" />
+              Save as default
             </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setPackageDetailsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => setPackageDetailsDialogOpen(false)}
+                disabled={!generalForm.packageWeight || !generalForm.packageLength || !generalForm.packageWidth || !generalForm.packageHeight}
+              >
+                Save
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
