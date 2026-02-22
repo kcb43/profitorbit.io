@@ -10,7 +10,7 @@ import 'react-native-url-polyfill/auto';
 export const ORBEN_API_BASE = 'https://profitorbit.io';
 
 const SUPABASE_URL  = 'https://hlcwhpajorzbleabavcr.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsY3docGFqb3J6YmxlYWJhdmNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDY3MTY5NTEsImV4cCI6MjAyMjI5Mjk1MX0.yQVjJ6zW5l-D89gIVjDhf4oUHhDQeOLNzP9CTTST9S8';
+const SUPABASE_ANON = 'sb_publishable_AmJEyN9K_q2OJAUCGiO3eA_NZYf6rXm';
 
 // Custom Supabase storage adapter using Expo SecureStore
 const ExpoSecureStoreAdapter = {
