@@ -13,7 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SOURCE_GROUPS, ALL_SOURCES, PLATFORM_GROUPS, ALL_PLATFORMS, getLogoUrl } from "@/constants/marketplaces";
+import { useCustomSources } from "@/hooks/useCustomSources";
 import { ArrowLeft, Save, Calculator, Calendar as CalendarIcon, BarChart, Globe, Camera, Truck, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -25,25 +27,7 @@ import imageCompression from "browser-image-compression";
 import { extractCustomFees, getCustomFeesTotal, injectCustomFees } from "@/utils/customFees";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
-const platformOptions = [
-  { value: "ebay", label: "eBay" },
-  { value: "facebook_marketplace", label: "Facebook" },
-  { value: "etsy", label: "Etsy" },
-  { value: "mercari", label: "Mercari" },
-  { value: "offer_up", label: "OfferUp" }
-];
-
-const platformIcons = {
-  ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  facebook_marketplace: "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg",
-  mercari: "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B",
-  etsy: "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B",
-  offer_up: "https://cdn.brandfetch.io/id5p1Knwlt/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B"
-};
-
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
-
-const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy"];
 const PREDEFINED_CATEGORIES = [
   "Antiques",
   "Books, Movies & Music",
@@ -183,6 +167,8 @@ export default function AddSale() {
   const [calculatedProfit, setCalculatedProfit] = useState(null);
   const [isOtherSource, setIsOtherSource] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  const { customSources, addCustomSource, removeCustomSource } = useCustomSources("orben_custom_sources");
+  const { customSources: customPlatforms, addCustomSource: addCustomPlatform, removeCustomSource: removeCustomPlatform } = useCustomSources("orben_custom_platforms");
   const [isUploading, setIsUploading] = useState(false);
   const [soldDialogOpen, setSoldDialogOpen] = useState(false); // New state for sold listings dialog
   const [activeMarket, setActiveMarket] = useState('ebay_sold');
@@ -258,8 +244,8 @@ export default function AddSale() {
       }));
 
       const currentSource = dataToLoad.source;
-      if (currentSource && !PREDEFINED_SOURCES.includes(currentSource)) {
-        setIsOtherSource(true);
+      if (currentSource && !ALL_SOURCES.some(s => s.name === currentSource) && !customSources.includes(currentSource)) {
+        addCustomSource(currentSource);
       }
 
       const currentCategory = dataToLoad.category;
@@ -291,8 +277,8 @@ export default function AddSale() {
         quantity_sold: initialQuantitySold, // NEW: Set the quantity from URL
       }));
 
-      if (initialSource && !PREDEFINED_SOURCES.includes(initialSource)) {
-        setIsOtherSource(true);
+      if (initialSource && !ALL_SOURCES.some(s => s.name === initialSource) && !customSources.includes(initialSource)) {
+        addCustomSource(initialSource);
       }
       if (initialCategory && !PREDEFINED_CATEGORIES.includes(initialCategory)) {
         setIsOtherCategory(true);
@@ -578,19 +564,26 @@ export default function AddSale() {
   };
 
   const handleSourceSelectChange = (value) => {
-    if (value === 'other') {
+    if (value === '__custom__') {
       setIsOtherSource(true);
-      setFormData(prev => ({
-        ...prev,
-        source: '',
-      }));
+      setFormData(prev => ({ ...prev, source: '' }));
     } else {
       setIsOtherSource(false);
-      setFormData(prev => ({
-        ...prev,
-        source: value,
-      }));
+      setFormData(prev => ({ ...prev, source: value }));
     }
+  };
+
+  const handleCustomSourceSave = () => {
+    const trimmed = formData.source?.trim();
+    if (!trimmed) return;
+    const match = ALL_SOURCES.find(s => s.name.toLowerCase() === trimmed.toLowerCase());
+    if (match) {
+      setFormData(prev => ({ ...prev, source: match.name }));
+    } else {
+      addCustomSource(trimmed);
+      setFormData(prev => ({ ...prev, source: trimmed }));
+    }
+    setIsOtherSource(false);
   };
   
   const handleCategorySelectChange = (value) => {
@@ -899,24 +892,107 @@ export default function AddSale() {
                   required
                 />
 
-                 <div className="space-y-2 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="source_select" className="text-foreground">Source</Label>
                   <Select
                     onValueChange={handleSourceSelectChange}
-                    value={isOtherSource ? 'other' : formData.source}
+                    value={isOtherSource ? '__custom__' : formData.source}
                   >
                     <SelectTrigger id="source_select" className="w-full text-foreground bg-background">
-                      <SelectValue placeholder="Select a source">{isOtherSource && formData.source ? formData.source : (PREDEFINED_SOURCES.includes(formData.source) ? formData.source : "Select a source")}</SelectValue>
+                      <SelectValue placeholder="Select a source">
+                        {formData.source && !isOtherSource ? (() => {
+                          const entry = ALL_SOURCES.find(s => s.name === formData.source);
+                          const logoUrl = entry?.domain ? getLogoUrl(entry.domain) : null;
+                          return (
+                            <div className="flex items-center gap-2">
+                              {logoUrl ? (
+                                <img src={logoUrl} alt={formData.source} className="w-4 h-4 object-contain" />
+                              ) : entry?.emoji ? (
+                                <span className="text-sm">{entry.emoji}</span>
+                              ) : null}
+                              <span>{formData.source}</span>
+                            </div>
+                          );
+                        })() : (isOtherSource ? "Custom source…" : "Select a source")}
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {PREDEFINED_SOURCES.map(source => (
-                        <SelectItem key={source} value={source} className="text-foreground">{source}</SelectItem>
+                    <SelectContent className="bg-popover text-popover-foreground max-h-80">
+                      {SOURCE_GROUPS.map(group => (
+                        <SelectGroup key={group.label}>
+                          <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
+                          {group.items.map(source => (
+                            <SelectItem key={source.name} value={source.name} className="text-foreground">
+                              <div className="flex items-center gap-2">
+                                {source.domain ? (
+                                  <img src={getLogoUrl(source.domain)} alt={source.name} className="w-4 h-4 object-contain flex-shrink-0" />
+                                ) : source.emoji ? (
+                                  <span className="text-sm flex-shrink-0">{source.emoji}</span>
+                                ) : null}
+                                <span>{source.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
-                      <SelectItem value="other" className="text-foreground">Other...</SelectItem>
+                      {customSources.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-muted-foreground text-xs">My Custom Sources</SelectLabel>
+                          {customSources.map(src => (
+                            <SelectItem key={src} value={src} className="text-foreground">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">✦</span>
+                                <span>{src}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      <SelectItem value="__custom__" className="text-foreground font-medium">
+                        + Add Custom Source…
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  {customSources.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {customSources.map(src => (
+                        <span key={src} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
+                          {src}
+                          <button
+                            type="button"
+                            onClick={() => { removeCustomSource(src); if (formData.source === src) handleChange('source', ''); }}
+                            className="hover:text-destructive ml-0.5 leading-none"
+                            title={`Remove "${src}"`}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
+
+                {isOtherSource ? (
+                  <div className="space-y-2 md:col-span-2 min-w-0">
+                    <Label htmlFor="other_source" className="text-foreground">Custom Source</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="other_source"
+                        value={formData.source}
+                        onChange={(e) => handleChange('source', e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCustomSourceSave(); } }}
+                        placeholder="e.g., My Local Store, Neighborhood Sale"
+                        className="flex-1 text-foreground bg-background"
+                        autoFocus
+                      />
+                      <Button type="button" size="sm" onClick={handleCustomSourceSave} disabled={!formData.source?.trim()}>
+                        Save
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => { setIsOtherSource(false); handleChange('source', ''); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Saved to your custom sources list for future use.</p>
+                  </div>
+                ) : null}
+
                 <div className="space-y-2 min-w-0">
                   <Label htmlFor="platform" className="text-foreground flex items-center gap-1">
                     <span>Sold On</span>
@@ -924,40 +1000,80 @@ export default function AddSale() {
                   </Label>
                   <Select
                     value={formData.platform}
-                    onValueChange={(value) => handleChange('platform', value)}
+                    onValueChange={(value) => {
+                      if (value === '__custom_platform__') {
+                        // handled via chip UI below
+                      } else {
+                        handleChange('platform', value);
+                      }
+                    }}
                     required
                   >
                     <SelectTrigger className="w-full text-foreground bg-background">
                       <SelectValue placeholder="Select platform">
-                        {formData.platform && platformIcons[formData.platform] ? (
-                          <div className="flex items-center gap-2">
-                            <img 
-                              src={platformIcons[formData.platform]} 
-                              alt={platformOptions.find(opt => opt.value === formData.platform)?.label || formData.platform} 
-                              className="w-5 h-5 object-contain"
-                            />
-                            <span>{platformOptions.find(opt => opt.value === formData.platform)?.label || formData.platform}</span>
-                          </div>
-                        ) : null}
+                        {formData.platform ? (() => {
+                          const entry = ALL_PLATFORMS.find(p => p.value === formData.platform);
+                          const isCustom = !entry && customPlatforms.includes(formData.platform);
+                          const logoUrl = entry?.domain ? getLogoUrl(entry.domain) : null;
+                          return (
+                            <div className="flex items-center gap-2">
+                              {logoUrl ? (
+                                <img src={logoUrl} alt={entry.label} className="w-4 h-4 object-contain" />
+                              ) : isCustom ? (
+                                <span className="text-xs">✦</span>
+                              ) : null}
+                              <span>{entry?.label || formData.platform}</span>
+                            </div>
+                          );
+                        })() : null}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {platformOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value} className="text-foreground">
-                          <div className="flex items-center gap-2">
-                            {platformIcons[option.value] && (
-                              <img 
-                                src={platformIcons[option.value]} 
-                                alt={option.label} 
-                                className="w-5 h-5 object-contain"
-                              />
-                            )}
-                            <span>{option.label}</span>
-                          </div>
-                        </SelectItem>
+                    <SelectContent className="bg-popover text-popover-foreground max-h-80">
+                      {PLATFORM_GROUPS.map(group => (
+                        <SelectGroup key={group.label}>
+                          <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
+                          {group.items.map(option => (
+                            <SelectItem key={option.value} value={option.value} className="text-foreground">
+                              <div className="flex items-center gap-2">
+                                {option.domain ? (
+                                  <img src={getLogoUrl(option.domain)} alt={option.label} className="w-4 h-4 object-contain flex-shrink-0" />
+                                ) : null}
+                                <span>{option.label}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
+                      {customPlatforms.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-muted-foreground text-xs">My Custom Platforms</SelectLabel>
+                          {customPlatforms.map(p => (
+                            <SelectItem key={p} value={p} className="text-foreground">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">✦</span>
+                                <span>{p}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
                     </SelectContent>
                   </Select>
+                  {customPlatforms.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {customPlatforms.map(p => (
+                        <span key={p} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
+                          {p}
+                          <button
+                            type="button"
+                            onClick={() => { removeCustomPlatform(p); if (formData.platform === p) handleChange('platform', ''); }}
+                            className="hover:text-destructive ml-0.5 leading-none"
+                            title={`Remove "${p}"`}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {isFacebookPlatform && (
@@ -979,19 +1095,6 @@ export default function AddSale() {
                     </Select>
                   </div>
                 )}
-
-                {isOtherSource ? (
-                  <div className="space-y-2 md:col-span-2 min-w-0">
-                    <Label htmlFor="other_source" className="text-foreground">Custom Source</Label>
-                    <Input
-                      id="other_source"
-                      value={formData.source}
-                      onChange={(e) => handleChange('source', e.target.value)}
-                      placeholder="e.g., Garage Sale, Flea Market"
-                      className="w-full text-foreground bg-background"
-                    />
-                  </div>
-                ) : null}
 
                 <div className="space-y-2 min-w-0">
                   <Label htmlFor="selling_price" className="text-foreground">

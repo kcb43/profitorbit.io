@@ -12,7 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SOURCE_GROUPS, ALL_SOURCES, getLogoUrl } from "@/constants/marketplaces";
+import { useCustomSources } from "@/hooks/useCustomSources";
 import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon, X, Loader2, Sparkles } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -29,17 +31,6 @@ import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
 
 const MAX_PHOTOS = 12;
-const PREDEFINED_SOURCES = ["Amazon", "Walmart", "Best Buy", "eBay", "eBay - SalvationArmy", "Facebook", "Mercari"];
-
-const sourceIcons = {
-  "Amazon": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
-  "Walmart": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Walmart_logo.svg",
-  "Best Buy": "https://upload.wikimedia.org/wikipedia/commons/9/9e/Best_Buy_Logo.svg",
-  "eBay": "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  "eBay - SalvationArmy": "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
-  "Facebook": "https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg",
-  "Mercari": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Mercari_logo.svg"
-};
 const PREDEFINED_CATEGORIES = [
   "Antiques",
   "Books, Movies & Music",
@@ -143,6 +134,7 @@ export default function AddInventoryItem() {
   });
   const [isOtherSource, setIsOtherSource] = useState(false);
   const [isOtherCategory, setIsOtherCategory] = useState(false);
+  const { customSources, addCustomSource, removeCustomSource } = useCustomSources("orben_custom_sources");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [soldDialogOpen, setSoldDialogOpen] = useState(false);
@@ -194,8 +186,9 @@ export default function AddInventoryItem() {
       const legacyDescriptionFromNotes = !dataToLoad.description && cleanNotes ? cleanNotes : '';
 
       const initialSource = dataToLoad.source || "";
-      if (initialSource && !PREDEFINED_SOURCES.includes(initialSource)) {
+      if (initialSource && !ALL_SOURCES.some(s => s.name === initialSource) && !customSources.includes(initialSource)) {
         setIsOtherSource(true);
+        addCustomSource(initialSource);
       } else {
         setIsOtherSource(false);
       }
@@ -258,8 +251,9 @@ export default function AddInventoryItem() {
         const notes = searchParams.get('notes');
 
         const initialSource = source || "";
-        if (initialSource && !PREDEFINED_SOURCES.includes(initialSource)) {
+        if (initialSource && !ALL_SOURCES.some(s => s.name === initialSource) && !customSources.includes(initialSource)) {
           setIsOtherSource(true);
+          addCustomSource(initialSource);
         } else {
           setIsOtherSource(false);
         }
@@ -681,7 +675,10 @@ export default function AddInventoryItem() {
       });
 
       if (parsed?.merchant) {
-        setIsOtherSource(!PREDEFINED_SOURCES.includes(String(parsed.merchant)));
+        const merchantName = String(parsed.merchant);
+        const isKnown = ALL_SOURCES.some(s => s.name === merchantName) || customSources.includes(merchantName);
+        if (!isKnown) addCustomSource(merchantName);
+        setIsOtherSource(!isKnown);
       }
 
       setReceiptDialogOpen(false);
@@ -701,7 +698,9 @@ export default function AddInventoryItem() {
       if (inventoryData.category) next.category = inventoryData.category;
       if (inventoryData.source) {
         next.source = inventoryData.source;
-        setIsOtherSource(!PREDEFINED_SOURCES.includes(inventoryData.source));
+        const isKnown = ALL_SOURCES.some(s => s.name === inventoryData.source) || customSources.includes(inventoryData.source);
+        if (!isKnown) addCustomSource(inventoryData.source);
+        setIsOtherSource(!isKnown);
       }
       if (inventoryData.category) {
         setIsOtherCategory(!PREDEFINED_CATEGORIES.includes(inventoryData.category));
@@ -713,13 +712,27 @@ export default function AddInventoryItem() {
   };
 
   const handleSourceSelectChange = (value) => {
-    if (value === 'other') {
+    if (value === '__custom__') {
       setIsOtherSource(true);
       handleChange('source', '');
     } else {
       setIsOtherSource(false);
       handleChange('source', value);
     }
+  };
+
+  const handleCustomSourceSave = () => {
+    const trimmed = formData.source?.trim();
+    if (!trimmed) return;
+    // Check if it matches a predefined source
+    const match = ALL_SOURCES.find(s => s.name.toLowerCase() === trimmed.toLowerCase());
+    if (match) {
+      handleChange('source', match.name);
+    } else {
+      addCustomSource(trimmed);
+      handleChange('source', trimmed);
+    }
+    setIsOtherSource(false);
   };
   
   const handleCategorySelectChange = (value) => {
@@ -1045,42 +1058,78 @@ export default function AddInventoryItem() {
                       <Label htmlFor="source_select" className="text-foreground break-words">Source</Label>
                       <Select
                         onValueChange={handleSourceSelectChange}
-                        value={isOtherSource ? 'other' : formData.source} 
+                        value={isOtherSource ? '__custom__' : formData.source}
                       >
                         <SelectTrigger id="source_select" className="w-full text-foreground bg-background">
                           <SelectValue placeholder="Select a source">
-                            {formData.source && !isOtherSource && sourceIcons[formData.source] ? (
-                              <div className="flex items-center gap-2">
-                                <img 
-                                  src={sourceIcons[formData.source]} 
-                                  alt={formData.source} 
-                                  className="w-5 h-5 object-contain"
-                                />
-                                <span>{formData.source}</span>
-                              </div>
-                            ) : (
-                              isOtherSource && formData.source ? formData.source : (PREDEFINED_SOURCES.includes(formData.source) ? formData.source : "Select a source")
-                            )}
+                            {formData.source && !isOtherSource ? (() => {
+                              const entry = ALL_SOURCES.find(s => s.name === formData.source);
+                              const logoUrl = entry?.domain ? getLogoUrl(entry.domain) : null;
+                              return (
+                                <div className="flex items-center gap-2">
+                                  {logoUrl ? (
+                                    <img src={logoUrl} alt={formData.source} className="w-4 h-4 object-contain" />
+                                  ) : entry?.emoji ? (
+                                    <span className="text-sm">{entry.emoji}</span>
+                                  ) : null}
+                                  <span>{formData.source}</span>
+                                </div>
+                              );
+                            })() : (isOtherSource ? "Custom source…" : "Select a source")}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-popover text-popover-foreground">
-                          {PREDEFINED_SOURCES.map(source => (
-                            <SelectItem key={source} value={source} className="text-foreground">
-                              <div className="flex items-center gap-2">
-                                {sourceIcons[source] && (
-                                  <img 
-                                    src={sourceIcons[source]} 
-                                    alt={source} 
-                                    className="w-5 h-5 object-contain"
-                                  />
-                                )}
-                                <span>{source}</span>
-                              </div>
-                            </SelectItem>
+                        <SelectContent className="bg-popover text-popover-foreground max-h-80">
+                          {SOURCE_GROUPS.map(group => (
+                            <SelectGroup key={group.label}>
+                              <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
+                              {group.items.map(source => (
+                                <SelectItem key={source.name} value={source.name} className="text-foreground">
+                                  <div className="flex items-center gap-2">
+                                    {source.domain ? (
+                                      <img src={getLogoUrl(source.domain)} alt={source.name} className="w-4 h-4 object-contain flex-shrink-0" />
+                                    ) : source.emoji ? (
+                                      <span className="text-sm flex-shrink-0">{source.emoji}</span>
+                                    ) : null}
+                                    <span>{source.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           ))}
-                          <SelectItem value="other" className="text-foreground">Other...</SelectItem>
+                          {customSources.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel className="text-muted-foreground text-xs">My Custom Sources</SelectLabel>
+                              {customSources.map(src => (
+                                <SelectItem key={src} value={src} className="text-foreground">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">✦</span>
+                                    <span>{src}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                          <SelectItem value="__custom__" className="text-foreground font-medium">
+                            + Add Custom Source…
+                          </SelectItem>
                         </SelectContent>
                       </Select>
+                      {/* Custom source management chips */}
+                      {customSources.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {customSources.map(src => (
+                            <span key={src} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
+                              {src}
+                              <button
+                                type="button"
+                                onClick={() => { removeCustomSource(src); if (formData.source === src) handleChange('source', ''); }}
+                                className="hover:text-destructive ml-0.5 leading-none"
+                                title={`Remove "${src}" from custom sources`}
+                              >×</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     
                     <ClearableDateInput
@@ -1093,13 +1142,24 @@ export default function AddInventoryItem() {
                     {isOtherSource ? (
                       <div className="space-y-2 md:col-span-2 min-w-0">
                         <Label htmlFor="other_source" className="text-foreground break-words">Custom Source</Label>
-                        <Input
-                          id="other_source"
-                          placeholder="e.g., Garage Sale, Flea Market"
-                          value={formData.source}
-                          onChange={(e) => handleChange('source', e.target.value)}
-                          className="w-full text-foreground bg-background"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            id="other_source"
+                            placeholder="e.g., My Local Store, Neighborhood Sale"
+                            value={formData.source}
+                            onChange={(e) => handleChange('source', e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCustomSourceSave(); } }}
+                            className="flex-1 text-foreground bg-background"
+                            autoFocus
+                          />
+                          <Button type="button" size="sm" onClick={handleCustomSourceSave} disabled={!formData.source?.trim()}>
+                            Save
+                          </Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => { setIsOtherSource(false); handleChange('source', ''); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">This will be saved to your custom sources list for future use.</p>
                       </div>
                     ) : null}
                      
