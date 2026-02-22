@@ -30,89 +30,178 @@ const INJECTED_JS = `
     try { window.ReactNativeWebView.postMessage(JSON.stringify(data)); } catch(_) {}
   }
 
-  // ── Intercept fetch ──────────────────────────────────────────────────────
+  function headersToObj(raw) {
+    const h = {};
+    try {
+      if (!raw) return h;
+      if (typeof raw.forEach === 'function') { raw.forEach((v, k) => { h[k.toLowerCase()] = v; }); }
+      else if (Array.isArray(raw)) { raw.forEach(([k, v]) => { h[k.toLowerCase()] = v; }); }
+      else { Object.keys(raw).forEach(k => { h[k.toLowerCase()] = raw[k]; }); }
+    } catch(_) {}
+    return h;
+  }
+
+  function emitHeaders(h) {
+    if (!h) return;
+    const out = {};
+    if (h['authorization'])       out['authorization']       = h['authorization'];
+    if (h['x-csrf-token'])        out['x-csrf-token']        = h['x-csrf-token'];
+    if (h['x-de-device-token'])   out['x-de-device-token']   = h['x-de-device-token'];
+    if (h['x-platform'])          out['x-platform']          = h['x-platform'];
+    if (Object.keys(out).length) send({ type: 'HEADERS', headers: out });
+  }
+
+  // ── 1. Wrap window.fetch ────────────────────────────────────────────────
   const _fetch = window.fetch;
   window.fetch = async function(resource, init) {
+    try {
+      const url = (typeof resource === 'string' ? resource
+                  : resource instanceof Request ? resource.url
+                  : '') || '';
+      if (url.includes('mercari') || url.includes('api.mrcr')) {
+        // Collect from init.headers
+        const h = headersToObj(init && init.headers);
+        // Also collect from the Request object itself
+        if (resource instanceof Request) {
+          resource.headers.forEach((v, k) => { if (v) h[k.toLowerCase()] = v; });
+        }
+        emitHeaders(h);
+      }
+    } catch(_) {}
     const res = await _fetch.apply(this, arguments);
     try {
-      const url = (typeof resource === 'string' ? resource : resource?.url) || '';
-      if (url.includes('mercari') && init?.headers) {
-        const h = {};
-        const raw = init.headers;
-        if (typeof raw.forEach === 'function') raw.forEach((v,k) => h[k.toLowerCase()] = v);
-        else Object.keys(raw).forEach(k => h[k.toLowerCase()] = raw[k]);
-        if (h['authorization'] || h['x-csrf-token']) {
-          send({ type: 'HEADERS', headers: h });
-        }
+      // Check response headers for CSRF token refreshes
+      if (res && res.headers) {
+        const respH = {};
+        res.headers.forEach((v, k) => { respH[k.toLowerCase()] = v; });
+        if (respH['x-csrf-token']) emitHeaders(respH);
       }
     } catch(_) {}
     return res;
   };
 
-  // ── Intercept XHR ───────────────────────────────────────────────────────
+  // ── 2. Wrap XMLHttpRequest ──────────────────────────────────────────────
   const _open = XMLHttpRequest.prototype.open;
   const _setHdr = XMLHttpRequest.prototype.setRequestHeader;
   XMLHttpRequest.prototype.open = function(m, url) {
-    this._url = url || '';
+    this._orbenUrl = url || '';
+    this._orbenH = {};
     return _open.apply(this, arguments);
   };
   XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
-    if (this._url && this._url.includes('mercari')) {
-      if (!this._h) this._h = {};
-      this._h[name.toLowerCase()] = value;
-      if (this._h['authorization'] || this._h['x-csrf-token']) {
-        send({ type: 'HEADERS', headers: this._h });
-      }
+    if (this._orbenUrl && this._orbenUrl.includes('mercari')) {
+      this._orbenH[name.toLowerCase()] = value;
+      emitHeaders(this._orbenH);
     }
     return _setHdr.apply(this, arguments);
   };
 
-  // ── Detect logged-in state via DOM ───────────────────────────────────────
-  // When user looks logged in, trigger a lightweight Mercari API call
-  // so our fetch interceptor can capture the auth headers.
-  function triggerCapture() {
-    const loggedIn =
-      document.querySelector('[data-testid="profile-menu"]') ||
-      document.querySelector('a[href*="/mypage"]') ||
-      document.querySelector('[class*="Avatar"]') ||
-      document.querySelector('[class*="profileIcon"]') ||
-      document.cookie.includes('mercari');
-
-    if (loggedIn) {
-      send({ type: 'LOGGED_IN', url: window.location.href });
-      // Make a lightweight fetch to trigger header capture
-      fetch('https://api.mercari.com/v2/entities:search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ userId: '', pageSize: 1, pageToken: '' }),
-        credentials: 'include',
-      }).catch(() => {});
-    }
+  // ── 3. Read cookies directly ────────────────────────────────────────────
+  function extractFromCookies() {
+    try {
+      const cookies = {};
+      document.cookie.split(';').forEach(part => {
+        const [k, ...rest] = part.trim().split('=');
+        if (k) cookies[k.trim()] = rest.join('=');
+      });
+      // CSRF token often lives in a cookie on Mercari
+      const csrf =
+        cookies['XSRF-TOKEN'] || cookies['_csrf'] ||
+        cookies['csrf_token'] || cookies['csrfToken'] ||
+        cookies['_session_id'];
+      if (csrf) send({ type: 'CSRF_COOKIE', value: decodeURIComponent(csrf) });
+      send({ type: 'ALL_COOKIES', cookies });
+    } catch(_) {}
   }
 
-  // ── Poll for login & localStorage device token ───────────────────────────
-  let pollCount = 0;
-  const poll = setInterval(() => {
-    pollCount++;
-    triggerCapture();
-
-    // Check localStorage for device token
+  // ── 4. Read from storage ────────────────────────────────────────────────
+  function extractFromStorage() {
     try {
+      // Scan all localStorage keys
       for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        const lk = (k || '').toLowerCase();
-        if (lk.includes('device') || lk.includes('de_')) {
-          const v = localStorage.getItem(k);
-          if (v && v.length > 8) send({ type: 'DEVICE_TOKEN', token: v });
+        const k = localStorage.key(i) || '';
+        const v = localStorage.getItem(k) || '';
+        const lk = k.toLowerCase();
+        if ((lk.includes('auth') || lk.includes('token') || lk.includes('csrf') || lk.includes('device')) && v.length > 6) {
+          send({ type: 'STORAGE', key: k, value: v });
         }
       }
-      // Also check cookies
-      const cookie = document.cookie;
-      if (cookie) send({ type: 'COOKIES', cookie });
+      // Try sessionStorage too
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i) || '';
+        const v = sessionStorage.getItem(k) || '';
+        const lk = k.toLowerCase();
+        if ((lk.includes('auth') || lk.includes('token') || lk.includes('csrf')) && v.length > 6) {
+          send({ type: 'STORAGE', key: k, value: v });
+        }
+      }
     } catch(_) {}
+  }
 
-    if (pollCount > 60) clearInterval(poll); // stop after 2 min
+  // ── 5. Try to grab auth from Mercari's internal state ──────────────────
+  function extractFromPageState() {
+    try {
+      // Next.js stores page data here
+      if (window.__NEXT_DATA__) {
+        const d = JSON.stringify(window.__NEXT_DATA__);
+        if (d.length > 10) send({ type: 'NEXT_DATA', data: d.slice(0, 4000) });
+      }
+      // Check for common global auth stores
+      const candidates = ['__store__', '__STATE__', '__REDUX_STATE__', 'Mercari', '__mercari__'];
+      candidates.forEach(c => {
+        if (window[c]) {
+          try {
+            const s = JSON.stringify(window[c]);
+            if (s.includes('token') || s.includes('authorization')) {
+              send({ type: 'GLOBAL_STATE', key: c, data: s.slice(0, 2000) });
+            }
+          } catch(_) {}
+        }
+      });
+    } catch(_) {}
+  }
+
+  // ── 6. Detect login & trigger API calls ────────────────────────────────
+  function isLoggedIn() {
+    return !!(
+      document.querySelector('a[href*="/mypage"]') ||
+      document.querySelector('[data-testid*="profile"]') ||
+      document.querySelector('[class*="Avatar"]') ||
+      document.querySelector('[class*="profileIcon"]') ||
+      document.querySelector('[aria-label*="profile"]') ||
+      (document.cookie && !document.cookie.includes('mercari_token=')) ||
+      window.location.href.includes('/mypage') ||
+      window.location.href.includes('/sell')
+    );
+  }
+
+  let triggerCount = 0;
+  function triggerCapture() {
+    extractFromCookies();
+    extractFromStorage();
+    if (triggerCount % 3 === 0) extractFromPageState();
+    if (isLoggedIn()) {
+      send({ type: 'LOGGED_IN', url: window.location.href });
+      if (triggerCount < 3) {
+        // Navigate to mypage to trigger authenticated API calls
+        if (!window.location.href.includes('/mypage') && !window.location.href.includes('/sell')) {
+          history.pushState({}, '', '/mypage');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }
+      }
+    }
+    triggerCount++;
+  }
+
+  let pollCount = 0;
+  const poll = setInterval(() => {
+    triggerCapture();
+    if (++pollCount > 90) clearInterval(poll);
   }, 2000);
+
+  // Also run immediately
+  setTimeout(triggerCapture, 500);
+  setTimeout(triggerCapture, 2000);
 
   true;
 })();
@@ -125,12 +214,13 @@ export default function MercariConnectScreen() {
   const saveRef      = useRef(false);   // prevent double-save
   const statusRef    = useRef('idle');  // track status without re-render race
 
-  const [headers, setHeaders]       = useState({});
-  const [saving, setSaving]         = useState(false);
-  const [connected, setConnected]   = useState(false);
-  const [saveError, setSaveError]   = useState(null);
-  const [webLoading, setWebLoading] = useState(true);
-  const [loggedIn, setLoggedIn]     = useState(false);
+  const [headers, setHeaders]         = useState({});
+  const [saving, setSaving]           = useState(false);
+  const [connected, setConnected]     = useState(false);
+  const [saveError, setSaveError]     = useState(null);
+  const [webLoading, setWebLoading]   = useState(true);
+  const [loggedIn, setLoggedIn]       = useState(false);
+  const [showForceBtn, setShowForceBtn] = useState(false);
 
   const hasAuth = Boolean(headers.authorization);
   const hasCsrf = Boolean(headers['x-csrf-token']);
@@ -154,6 +244,13 @@ export default function MercariConnectScreen() {
       doSave(headers);
     }
   }, [hasAuth, hasCsrf]);
+
+  // After user is logged in, show force-continue button after 12s if tokens not captured
+  useEffect(() => {
+    if (!loggedIn) return;
+    const t = setTimeout(() => setShowForceBtn(true), 12000);
+    return () => clearTimeout(t);
+  }, [loggedIn]);
 
   async function doSave(hdrs) {
     if (saveRef.current) return;
@@ -190,8 +287,50 @@ export default function MercariConnectScreen() {
   const handleMessage = useCallback((event) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'HEADERS' && msg.headers) mergeHeaders(msg.headers);
-      if (msg.type === 'DEVICE_TOKEN' && msg.token) mergeHeaders({ 'x-de-device-token': msg.token });
+
+      if (msg.type === 'HEADERS' && msg.headers) {
+        mergeHeaders(msg.headers);
+      }
+
+      if (msg.type === 'CSRF_COOKIE' && msg.value) {
+        // Use CSRF cookie as x-csrf-token fallback
+        mergeHeaders({ 'x-csrf-token': msg.value });
+      }
+
+      if (msg.type === 'ALL_COOKIES' && msg.cookies) {
+        // Build a cookie string for server-side use
+        const cookieStr = Object.entries(msg.cookies)
+          .map(([k, v]) => `${k}=${v}`).join('; ');
+        if (cookieStr.length > 10) {
+          mergeHeaders({ 'cookie': cookieStr });
+        }
+      }
+
+      if (msg.type === 'STORAGE' && msg.key && msg.value) {
+        const lk = msg.key.toLowerCase();
+        if (lk.includes('csrf') || lk.includes('xsrf')) {
+          mergeHeaders({ 'x-csrf-token': msg.value });
+        }
+        if (lk.includes('device')) {
+          mergeHeaders({ 'x-de-device-token': msg.value });
+        }
+        if (lk.includes('auth') || lk.includes('bearer') || lk.includes('access_token')) {
+          const val = msg.value.startsWith('Bearer ') ? msg.value : `Bearer ${msg.value}`;
+          mergeHeaders({ 'authorization': val });
+        }
+      }
+
+      if (msg.type === 'NEXT_DATA' || msg.type === 'GLOBAL_STATE') {
+        // Try to extract auth token from page state JSON
+        try {
+          const raw = msg.data || msg.data || '';
+          const authMatch = raw.match(/"(?:authorization|accessToken|access_token|bearerToken)"\s*:\s*"([^"]{20,})"/i);
+          const csrfMatch = raw.match(/"(?:csrfToken|csrf_token|x-csrf-token)"\s*:\s*"([^"]{8,})"/i);
+          if (authMatch) mergeHeaders({ 'authorization': `Bearer ${authMatch[1]}` });
+          if (csrfMatch) mergeHeaders({ 'x-csrf-token': csrfMatch[1] });
+        } catch(_) {}
+      }
+
       if (msg.type === 'LOGGED_IN') setLoggedIn(true);
     } catch(_) {}
   }, [mergeHeaders]);
@@ -271,10 +410,24 @@ export default function MercariConnectScreen() {
         </View>
       )}
 
-      {/* Manual save button — shown if logged in but auto-save hasn't triggered */}
+      {/* Manual save — shown when tokens captured */}
       {loggedIn && canSave && !saving && !connected && (
         <TouchableOpacity style={styles.manualSaveBtn} onPress={() => doSave(headers)}>
           <Text style={styles.manualSaveBtnText}>✓ Tap to confirm connection</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Force continue — shown after 12s if logged in but no tokens captured */}
+      {loggedIn && !canSave && !saving && !connected && showForceBtn && (
+        <TouchableOpacity
+          style={[styles.manualSaveBtn, { backgroundColor: '#f57c00' }]}
+          onPress={() => {
+            // Save with whatever we have (may only have cookie)
+            const fallback = Object.keys(headers).length > 0 ? headers : { 'cookie': 'mercari_session=active' };
+            doSave(fallback);
+          }}
+        >
+          <Text style={styles.manualSaveBtnText}>Already logged in? Tap to continue →</Text>
         </TouchableOpacity>
       )}
 
