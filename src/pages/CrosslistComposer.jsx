@@ -60,6 +60,7 @@ import {
   CheckCircle2,
   ShoppingBag,
   Copy,
+  Info,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import SoldLookupDialog from "../components/SoldLookupDialog";
@@ -4730,6 +4731,9 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     shippingMethod: "",
     shippingCostType: "",
     shippingCost: "",
+    freeShipping: false,
+    addLocalPickup: false,
+    localPickupLocation: "",
     handlingTime: "1 business day",
     shipFromCountry: "United States",
     shippingService: "Standard Shipping (3 to 5 business days)",
@@ -13120,6 +13124,39 @@ export default function CrosslistComposer() {
                   </Select>
                 </div>
 
+                {/* Free Shipping + Add Local Pickup toggles — Standard only */}
+                {!isLocalPickup && (
+                  <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-sm font-medium">Free Shipping</Label>
+                        <span title="Buyers get free shipping. Shipping cost will be set to $0." className="cursor-help text-blue-500">
+                          <Info className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
+                      <Switch
+                        checked={!!ebayForm.freeShipping}
+                        onCheckedChange={(checked) => {
+                          handleMarketplaceChange("ebay", "freeShipping", checked);
+                          if (checked) handleMarketplaceChange("ebay", "shippingCost", "0");
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-sm font-medium">Add Local Pickup</Label>
+                        <span title="Buyers near you can pick up the item from a location of your choice." className="cursor-help text-blue-500">
+                          <Info className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
+                      <Switch
+                        checked={!!ebayForm.addLocalPickup}
+                        onCheckedChange={(checked) => handleMarketplaceChange("ebay", "addLocalPickup", checked)}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Standard-only fields */}
                 {!isLocalPickup && (<>
                   <div>
@@ -13146,24 +13183,25 @@ export default function CrosslistComposer() {
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-sm mb-1.5 block">
-                        Shipping Cost {isFlat && <span className="text-red-500">*</span>}
+                        Shipping Cost {isFlat && !ebayForm.freeShipping && <span className="text-red-500">*</span>}
                       </Label>
-                      {!isCalculated && renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
+                      {!isCalculated && !ebayForm.freeShipping && renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
                         handleMarketplaceChange("ebay", "shippingCost", v)
                       )}
                     </div>
                     <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
                       placeholder={isCalculated ? "Calculated by eBay" : "0.00"}
-                      value={isCalculated ? "" : (ebayForm.shippingCost || "")}
-                      disabled={isCalculated}
-                      className={isCalculated ? "opacity-50 cursor-not-allowed bg-muted" : ""}
-                      onChange={(e) => !isCalculated && handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
+                      value={isCalculated ? "" : ebayForm.freeShipping ? "FREE SHIPPING" : (ebayForm.shippingCost || "")}
+                      disabled={isCalculated || !!ebayForm.freeShipping}
+                      className={(isCalculated || ebayForm.freeShipping) ? "opacity-50 cursor-not-allowed bg-muted font-medium" : ""}
+                      onChange={(e) => !isCalculated && !ebayForm.freeShipping && handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
                     />
                     {isCalculated && (
                       <p className="mt-1 text-xs text-muted-foreground">eBay calculates this from your package details and buyer's location.</p>
+                    )}
+                    {ebayForm.freeShipping && (
+                      <p className="mt-1 text-xs text-muted-foreground">Free shipping is enabled — cost is $0.</p>
                     )}
                   </div>
 
@@ -13214,6 +13252,19 @@ export default function CrosslistComposer() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Local pickup location — shown when Add Local Pickup is enabled on Standard */}
+                {!isLocalPickup && ebayForm.addLocalPickup && (
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Local Pickup Location</Label>
+                    <Input
+                      placeholder="e.g. Los Angeles, CA 90001"
+                      value={ebayForm.localPickupLocation || ""}
+                      onChange={(e) => handleMarketplaceChange("ebay", "localPickupLocation", e.target.value)}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">Buyers near this location can arrange to pick up the item.</p>
+                  </div>
+                )}
 
                 {/* Shipping Service — standard only, grouped by carrier */}
                 {!isLocalPickup && (
@@ -19148,6 +19199,39 @@ export default function CrosslistComposer() {
                           </Select>
                         </div>
 
+                        {/* Free Shipping + Add Local Pickup toggles — Standard only */}
+                        {!isLocalPickup && (
+                          <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-2 rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                              <div className="flex items-center gap-1.5">
+                                <Label className="text-sm font-medium">Free Shipping</Label>
+                                <span title="Buyers get free shipping. Shipping cost will be set to $0." className="cursor-help text-blue-500">
+                                  <Info className="h-3.5 w-3.5" />
+                                </span>
+                              </div>
+                              <Switch
+                                checked={!!ebayForm.freeShipping}
+                                onCheckedChange={(checked) => {
+                                  handleMarketplaceChange("ebay", "freeShipping", checked);
+                                  if (checked) handleMarketplaceChange("ebay", "shippingCost", "0");
+                                }}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2 rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                              <div className="flex items-center gap-1.5">
+                                <Label className="text-sm font-medium">Add Local Pickup</Label>
+                                <span title="Buyers near you can pick up the item from a location of your choice." className="cursor-help text-blue-500">
+                                  <Info className="h-3.5 w-3.5" />
+                                </span>
+                              </div>
+                              <Switch
+                                checked={!!ebayForm.addLocalPickup}
+                                onCheckedChange={(checked) => handleMarketplaceChange("ebay", "addLocalPickup", checked)}
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Standard-only fields */}
                         {!isLocalPickup && (<>
                           <div>
@@ -19174,24 +19258,25 @@ export default function CrosslistComposer() {
                           <div>
                             <div className="flex items-center justify-between">
                               <Label className="text-sm mb-1.5 block">
-                                Shipping Cost {isFlat && <span className="text-red-500">*</span>}
+                                Shipping Cost {isFlat && !ebayForm.freeShipping && <span className="text-red-500">*</span>}
                               </Label>
-                              {!isCalculated && renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
+                              {!isCalculated && !ebayForm.freeShipping && renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
                                 handleMarketplaceChange("ebay", "shippingCost", v)
                               )}
                             </div>
                             <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
+                              type="text"
                               placeholder={isCalculated ? "Calculated by eBay" : "0.00"}
-                              value={isCalculated ? "" : (ebayForm.shippingCost || "")}
-                              disabled={isCalculated}
-                              className={isCalculated ? "opacity-50 cursor-not-allowed bg-muted" : ""}
-                              onChange={(e) => !isCalculated && handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
+                              value={isCalculated ? "" : ebayForm.freeShipping ? "FREE SHIPPING" : (ebayForm.shippingCost || "")}
+                              disabled={isCalculated || !!ebayForm.freeShipping}
+                              className={(isCalculated || ebayForm.freeShipping) ? "opacity-50 cursor-not-allowed bg-muted font-medium" : ""}
+                              onChange={(e) => !isCalculated && !ebayForm.freeShipping && handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
                             />
                             {isCalculated && (
                               <p className="mt-1 text-xs text-muted-foreground">eBay calculates this from your package details and buyer's location.</p>
+                            )}
+                            {ebayForm.freeShipping && (
+                              <p className="mt-1 text-xs text-muted-foreground">Free shipping is enabled — cost is $0.</p>
                             )}
                           </div>
 
@@ -19242,6 +19327,19 @@ export default function CrosslistComposer() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Local pickup location — shown when Add Local Pickup is enabled on Standard */}
+                        {!isLocalPickup && ebayForm.addLocalPickup && (
+                          <div>
+                            <Label className="text-sm mb-1.5 block">Local Pickup Location</Label>
+                            <Input
+                              placeholder="e.g. Los Angeles, CA 90001"
+                              value={ebayForm.localPickupLocation || ""}
+                              onChange={(e) => handleMarketplaceChange("ebay", "localPickupLocation", e.target.value)}
+                            />
+                            <p className="mt-1 text-xs text-muted-foreground">Buyers near this location can arrange to pick up the item.</p>
+                          </div>
+                        )}
 
                         {/* Shipping Service — standard only, grouped by carrier */}
                         {!isLocalPickup && (
