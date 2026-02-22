@@ -36,8 +36,19 @@ export function BrandCombobox({
   const [open, setOpen]     = useState(false);
   const [search, setSearch] = useState('');
 
-  const { customSources: customBrands, addCustomSource: addCustomBrand } =
+  const { customSources: primaryBrands, addCustomSource: addCustomBrand } =
     useCustomSources('orben_custom_brands');
+
+  // Also read from CrosslistComposer's legacy 'customBrands' key so brands saved
+  // there appear here too (read-only merge — writes still go to orben_custom_brands).
+  const [legacyBrands] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('customBrands') || '[]'); } catch { return []; }
+  });
+
+  const customBrands = React.useMemo(() => {
+    const seen = new Set(primaryBrands.map(b => b.toLowerCase()));
+    return [...primaryBrands, ...legacyBrands.filter(b => !seen.has(b.toLowerCase()))];
+  }, [primaryBrands, legacyBrands]);
 
   // ── AI suggestions ─────────────────────────────────────────────────────────
   const [aiSuggestions, setAiSuggestions] = useState([]);
