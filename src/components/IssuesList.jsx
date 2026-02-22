@@ -8,7 +8,7 @@
  *  3. Warnings           – non-blocking flags
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -33,7 +34,32 @@ import {
   Info,
   Check,
   Save,
+  Search,
+  Loader2,
 } from 'lucide-react';
+import {
+  useEbayCategoryTreeId,
+  useEbayCategorySuggestions,
+} from '@/hooks/useEbayCategorySuggestions';
+
+// Inline color palette matching ColorPickerDialog
+const EBAY_COLORS = [
+  { name: "Black",  hex: "#000000" },
+  { name: "White",  hex: "#FFFFFF" },
+  { name: "Grey",   hex: "#808080" },
+  { name: "Beige",  hex: "#F5F5DC" },
+  { name: "Red",    hex: "#FF0000" },
+  { name: "Pink",   hex: "#FFC0CB" },
+  { name: "Orange", hex: "#FFA500" },
+  { name: "Yellow", hex: "#FFFF700" },
+  { name: "Green",  hex: "#008000" },
+  { name: "Blue",   hex: "#0000FF" },
+  { name: "Purple", hex: "#800080" },
+  { name: "Brown",  hex: "#8B4513" },
+  { name: "Gold",   hex: "#FFD700" },
+  { name: "Silver", hex: "#C0C0C0" },
+  { name: "Multicolor", hex: "linear-gradient(135deg,red,orange,yellow,green,blue,purple)" },
+];
 
 // Fields where "Save as eBay default" is offered in the review panel
 const EBAY_DEFAULT_ELIGIBLE_FIELDS = new Set([
@@ -45,10 +71,108 @@ import { cn } from '@/lib/utils';
 import { getFieldLabel, groupIssuesBySeverity } from '@/utils/preflightEngine';
 
 // ---------------------------------------------------------------------------
-// Fields that must be chosen via the marketplace's own category picker tree
-// (eBay and Mercari have hierarchical pickers that can't be replicated here)
+// Inline eBay Category Search — lets users search eBay categories without
+// leaving the smart listing review panel.
 // ---------------------------------------------------------------------------
-const TREE_CATEGORY_FIELDS = ['categoryId', 'mercariCategory', 'mercariCategoryId'];
+function EbayCategorySearchInput({ issue, onApplyFix }) {
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [applying, setApplying] = useState(false);
+  const debounceRef = useRef(null);
+
+  // Get the category tree ID (cached; fetches once)
+  const { data: treeData, isLoading: treeLoading } = useEbayCategoryTreeId('EBAY_US');
+  const categoryTreeId = treeData?.categoryTreeId ?? null;
+
+  // Debounce search input by 400ms
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(query.trim()), 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
+
+  const { data: suggestionsData, isFetching } = useEbayCategorySuggestions(
+    categoryTreeId,
+    debouncedQuery,
+    debouncedQuery.length >= 2
+  );
+
+  const suggestions = suggestionsData?.categorySuggestions?.slice(0, 8) ?? [];
+
+  async function handleSelect(cat) {
+    // Build full path: ancestors are ordered from leaf → root, so reverse them
+    const ancestors = [...(cat.categoryTreeNodeAncestors ?? [])].reverse();
+    const fullPath = [...ancestors.map((a) => a.categoryName), cat.category.categoryName].join(' > ');
+    setApplying(true);
+    try {
+      await onApplyFix(issue, { id: cat.category.categoryId, label: fullPath });
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs text-muted-foreground block">Search eBay categories</Label>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="e.g. Cell Phones, Running Shoes, Camera…"
+          className="pl-8 h-9 text-sm"
+        />
+        {(isFetching || treeLoading) && (
+          <Loader2 className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground animate-spin" />
+        )}
+      </div>
+
+      {suggestions.length > 0 && (
+        <ScrollArea className="max-h-48 rounded-md border bg-popover">
+          <div className="p-1 space-y-0.5">
+            {suggestions.map((cat, i) => {
+              const ancestors = [...(cat.categoryTreeNodeAncestors ?? [])].reverse();
+              const fullPath = [...ancestors.map((a) => a.categoryName), cat.category.categoryName].join(' > ');
+              return (
+                <button
+                  key={`${cat.category.categoryId}-${i}`}
+                  type="button"
+                  disabled={applying}
+                  onClick={() => handleSelect(cat)}
+                  className="w-full text-left px-3 py-2 rounded-sm text-xs hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <span className="font-medium text-foreground">{cat.category.categoryName}</span>
+                  {ancestors.length > 0 && (
+                    <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+                      {ancestors.map((a) => a.categoryName).join(' › ')}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
+
+      {debouncedQuery.length >= 2 && !isFetching && suggestions.length === 0 && (
+        <p className="text-xs text-muted-foreground">No categories found for "{debouncedQuery}". Try different keywords.</p>
+      )}
+
+      {applying && (
+        <div className="flex items-center gap-1.5 text-xs text-primary">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Applying category…
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fields that must be chosen via the marketplace's own category picker tree
+// (Mercari hierarchical pickers can't be replicated here — eBay now handled inline)
+// ---------------------------------------------------------------------------
+const TREE_CATEGORY_FIELDS = ['mercariCategory', 'mercariCategoryId'];
 
 function getCategoryTabHint(marketplace) {
   const tab = marketplace === 'ebay' ? 'eBay'
@@ -165,6 +289,8 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
   const hasSuggestion = Boolean(issue.suggested);
   const hasOptions    = Boolean(issue.options?.length);
   const isTreeCategory = TREE_CATEGORY_FIELDS.includes(issue.field);
+  const isEbayCategoryField = issue.field === 'categoryId' && issue.marketplace === 'ebay';
+  const isEbayColorField  = issue.field === 'color' && issue.marketplace === 'ebay';
   const isFbCategory  = issue.field === 'category' && issue.marketplace === 'facebook';
   const isEbayDefaultEligible = issue.marketplace === 'ebay' && EBAY_DEFAULT_ELIGIBLE_FIELDS.has(issue.field) && typeof onSaveEbayDefault === 'function';
 
@@ -219,14 +345,40 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
 
       {/* Fix UI */}
       <div className="px-4 py-3 space-y-3">
-        {/* Tree-category: must use the marketplace picker */}
-        {isTreeCategory ? (
+        {/* eBay category: inline search */}
+        {isEbayCategoryField ? (
+          <EbayCategorySearchInput issue={issue} onApplyFix={onApplyFix} />
+        ) : isTreeCategory ? (
+          /* Other tree-pickers (Mercari): must use the marketplace tab */
           <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
             <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
             <AlertDescription className="text-xs text-amber-900 dark:text-amber-100">
               <strong>Use the category picker:</strong>{' '}{getCategoryTabHint(issue.marketplace)}
             </AlertDescription>
           </Alert>
+        ) : isEbayColorField ? (
+          /* eBay color: inline color swatches */
+          <div>
+            <Label className="text-xs text-muted-foreground mb-2 block">Select a color</Label>
+            <div className="flex flex-wrap gap-2">
+              {EBAY_COLORS.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  title={c.name}
+                  onClick={() => handleApply(c.name)}
+                  disabled={applying}
+                  className="group flex flex-col items-center gap-1 disabled:opacity-50"
+                >
+                  <span
+                    className="h-8 w-8 rounded-full border-2 border-muted hover:border-primary transition-colors shadow-sm"
+                    style={{ background: c.hex.startsWith('linear') ? c.hex : c.hex, borderColor: c.hex === '#FFFFFF' ? '#e5e7eb' : undefined }}
+                  />
+                  <span className="text-[10px] text-muted-foreground leading-none">{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
           <>
             {/* AI / client-side suggestion */}

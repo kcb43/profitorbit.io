@@ -230,6 +230,10 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       if (field === 'category' && idValue !== null) {
         setMarketplaceForm(marketplace, 'categoryId', idValue);
       }
+      // When applying an eBay categoryId fix, also store the human-readable categoryName
+      if (field === 'categoryId' && marketplace === 'ebay' && isObject && labelValue) {
+        setMarketplaceForm(marketplace, 'categoryName', labelValue);
+      }
     }
   }, [enabled, setMarketplaceForm]);
 
