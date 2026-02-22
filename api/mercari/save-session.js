@@ -53,17 +53,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'authHeaders required' });
   }
 
-  // Validate the minimum required headers are present
   const hasAuth   = Boolean(authHeaders?.authorization || authHeaders?.Authorization);
   const hasCsrf   = Boolean(authHeaders?.['x-csrf-token']);
   const hasDevice = Boolean(authHeaders?.['x-de-device-token']);
+  const hasCookie = Boolean(authHeaders?.cookie || cookies);
 
-  if (!hasAuth || !hasCsrf) {
+  // Accept session if we have auth+csrf (best), auth only, csrf only, or at least cookies
+  if (!hasAuth && !hasCsrf && !hasCookie) {
     return res.status(400).json({
-      error: 'authHeaders must include authorization and x-csrf-token',
-      hasAuth,
-      hasCsrf,
-      hasDevice,
+      error: 'At least one of authorization, x-csrf-token, or cookie is required',
+      hasAuth, hasCsrf, hasDevice,
     });
   }
 

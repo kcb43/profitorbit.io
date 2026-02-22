@@ -96,7 +96,15 @@ const INJECTED_JS = `
     return _setHdr.apply(this, arguments);
   };
 
-  // ── 3. Read cookies directly ────────────────────────────────────────────
+  // ── 3a. Read CSRF from meta tags ────────────────────────────────────────
+  function extractFromMeta() {
+    try {
+      const meta = document.querySelector('meta[name="csrf-token"], meta[name="_csrf"], meta[name="x-csrf-token"]');
+      if (meta && meta.content) send({ type: 'CSRF_META', value: meta.content });
+    } catch(_) {}
+  }
+
+  // ── 3b. Read cookies directly ────────────────────────────────────────────
   function extractFromCookies() {
     try {
       const cookies = {};
@@ -188,13 +196,14 @@ const INJECTED_JS = `
 
   let pollCount = 0;
   const poll = setInterval(() => {
+    extractFromMeta();
     triggerCapture();
     if (++pollCount > 90) clearInterval(poll);
   }, 2000);
 
   // Also run immediately
-  setTimeout(triggerCapture, 500);
-  setTimeout(triggerCapture, 2000);
+  setTimeout(() => { extractFromMeta(); triggerCapture(); }, 500);
+  setTimeout(() => { extractFromMeta(); triggerCapture(); }, 2000);
 
   true;
 })();
@@ -283,8 +292,7 @@ export default function MercariConnectScreen() {
         mergeHeaders(msg.headers);
       }
 
-      if (msg.type === 'CSRF_COOKIE' && msg.value) {
-        // Use CSRF cookie as x-csrf-token fallback
+      if ((msg.type === 'CSRF_COOKIE' || msg.type === 'CSRF_META') && msg.value) {
         mergeHeaders({ 'x-csrf-token': msg.value });
       }
 
@@ -443,11 +451,9 @@ export default function MercariConnectScreen() {
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         allowsInlineMediaPlayback
-        userAgent={
-          Platform.OS === 'ios'
-            ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-            : 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
-        }
+        // Desktop user agent — loads the desktop Mercari site which uses
+        // explicit Authorization Bearer tokens (same as the Chrome extension captures)
+        userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         onError={(e) => Alert.alert('Load Error', e.nativeEvent.description)}
       />
     </SafeAreaView>
