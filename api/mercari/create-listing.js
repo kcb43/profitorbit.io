@@ -273,11 +273,29 @@ export default async function handler(req, res) {
   }
 
   const authHeaders = session.auth_headers || {};
-  const cookieJar   = session.cookies || {};
+  // cookies may be stored in the session's cookies column OR as a 'cookie' key in auth_headers
+  const cookieJar = session.cookies && typeof session.cookies === 'object' && Object.keys(session.cookies).length > 0
+    ? session.cookies
+    : null;
 
-  if (!authHeaders.authorization || !authHeaders['x-csrf-token']) {
+  // Parse cookie string into jar if it came in as a header
+  const cookieStr = authHeaders.cookie || authHeaders['Cookie'] || '';
+  const parsedCookies = {};
+  if (cookieStr) {
+    cookieStr.split(';').forEach(part => {
+      const [k, ...r] = part.trim().split('=');
+      if (k) parsedCookies[k.trim()] = r.join('=');
+    });
+  }
+  const effectiveCookieJar = cookieJar || (Object.keys(parsedCookies).length > 0 ? parsedCookies : {});
+
+  const hasAuth   = Boolean(authHeaders.authorization || authHeaders.Authorization);
+  const hasCsrf   = Boolean(authHeaders['x-csrf-token']);
+  const hasCookies = Object.keys(effectiveCookieJar).length > 2;
+
+  if (!hasAuth && !hasCsrf && !hasCookies) {
     return res.status(403).json({
-      error: 'Mercari session is incomplete. Please reconnect on desktop.',
+      error: 'Mercari session is incomplete. Please reconnect Mercari in the app.',
       errorType: 'invalid_session',
     });
   }
@@ -312,13 +330,13 @@ export default async function handler(req, res) {
     if (!images.length) return res.status(400).json({ error: 'At least one image URL required' });
 
     // Upload first photo
-    const { photoId, blob, filename } = await uploadMercariPhoto(authHeaders, cookieJar, images[0]);
+    const { photoId, blob, filename } = await uploadMercariPhoto(authHeaders, effectiveCookieJar, images[0]);
     const photoIds = [photoId];
 
     // Get AI suggestions from Mercari (best-effort)
     let suggestion = null;
     try {
-      const suggestData = await kandoSuggest(authHeaders, cookieJar, photoId, blob, filename);
+      const suggestData = await kandoSuggest(authHeaders, effectiveCookieJar, photoId, blob, filename);
       if (suggestData) suggestion = extractSuggestion(suggestData);
     } catch (_) {}
 
@@ -351,7 +369,7 @@ export default async function handler(req, res) {
     if (!zipCode) {
       // Try to get from sellQuery
       try {
-        const sell = await mercariGql(authHeaders, cookieJar,
+        const sell = await mercariGql(authHeaders, effectiveCookieJar,
           PERSISTED.sellQuery.op, PERSISTED.sellQuery.hash,
           { sellInput: { shippingPayerId: 2, photoIds: [] }, shouldFetchSuggestedPrice: true, includeSuggestedShippingOptions: false }
         );
@@ -400,7 +418,7 @@ export default async function handler(req, res) {
     let created;
     try {
       const input = buildInput('dollars');
-      const data  = await mercariGql(authHeaders, cookieJar,
+      const data  = await mercariGql(authHeaders, effectiveCookieJar,
         PERSISTED.createListing.op, PERSISTED.createListing.hash, { input });
       created = {
         itemId: data?.createListing?.id ||
@@ -413,7 +431,7 @@ export default async function handler(req, res) {
       if (msg.includes('$1.00-2,000.00') || msg.includes('Please enter the item price')) {
         // Retry in cents
         const input = buildInput('cents');
-        const data  = await mercariGql(authHeaders, cookieJar,
+        const data  = await mercariGql(authHeaders, effectiveCookieJar,
           PERSISTED.createListing.op, PERSISTED.createListing.hash, { input });
         created = {
           itemId: data?.createListing?.id ||

@@ -23,188 +23,148 @@ import { getOrbenToken, ORBEN_API_BASE } from '../src/services/orbenApi';
 
 const INJECTED_JS = `
 (function() {
-  if (window.__ORBEN_INSTALLED__) return true;
-  window.__ORBEN_INSTALLED__ = true;
+  if (window.__ORBEN_V3__) return true;
+  window.__ORBEN_V3__ = true;
 
   function send(data) {
-    try { window.ReactNativeWebView.postMessage(JSON.stringify(data)); } catch(_) {}
+    try { window.ReactNativeWebView.postMessage(JSON.stringify(data)); } catch(e) {}
   }
 
-  function headersToObj(raw) {
-    const h = {};
-    try {
-      if (!raw) return h;
-      if (typeof raw.forEach === 'function') { raw.forEach((v, k) => { h[k.toLowerCase()] = v; }); }
-      else if (Array.isArray(raw)) { raw.forEach(([k, v]) => { h[k.toLowerCase()] = v; }); }
-      else { Object.keys(raw).forEach(k => { h[k.toLowerCase()] = raw[k]; }); }
-    } catch(_) {}
-    return h;
-  }
-
-  function emitHeaders(h) {
-    if (!h) return;
-    const out = {};
-    if (h['authorization'])       out['authorization']       = h['authorization'];
-    if (h['x-csrf-token'])        out['x-csrf-token']        = h['x-csrf-token'];
-    if (h['x-de-device-token'])   out['x-de-device-token']   = h['x-de-device-token'];
-    if (h['x-platform'])          out['x-platform']          = h['x-platform'];
-    if (Object.keys(out).length) send({ type: 'HEADERS', headers: out });
-  }
-
-  // ── 1. Wrap window.fetch ────────────────────────────────────────────────
-  const _fetch = window.fetch;
+  // ── Intercept fetch — capture ALL outgoing headers ──────────────────────
+  const _origFetch = window.fetch;
   window.fetch = async function(resource, init) {
     try {
-      const url = (typeof resource === 'string' ? resource
-                  : resource instanceof Request ? resource.url
-                  : '') || '';
-      if (url.includes('mercari') || url.includes('api.mrcr')) {
-        // Collect from init.headers
-        const h = headersToObj(init && init.headers);
-        // Also collect from the Request object itself
-        if (resource instanceof Request) {
-          resource.headers.forEach((v, k) => { if (v) h[k.toLowerCase()] = v; });
+      const url = typeof resource === 'string' ? resource
+                : resource instanceof Request ? resource.url : '';
+      if (url && (url.includes('mercari') || url.includes('mrcr'))) {
+        const h = {};
+        // From init.headers
+        const raw = init && init.headers;
+        if (raw) {
+          if (typeof raw.forEach === 'function') raw.forEach((v,k) => { h[k.toLowerCase()] = v; });
+          else if (Array.isArray(raw)) raw.forEach(([k,v]) => { h[k.toLowerCase()] = v; });
+          else Object.keys(raw).forEach(k => { h[k.toLowerCase()] = raw[k]; });
         }
-        emitHeaders(h);
+        // From Request object headers
+        if (resource instanceof Request) {
+          try { resource.headers.forEach((v,k) => { if (v && !h[k.toLowerCase()]) h[k.toLowerCase()] = v; }); } catch(e){}
+        }
+        if (Object.keys(h).length) send({ type: 'FETCH_HEADERS', url, headers: h });
       }
-    } catch(_) {}
-    const res = await _fetch.apply(this, arguments);
+    } catch(e) {}
+
+    const res = await _origFetch.apply(this, arguments);
+
+    // Also check response headers for CSRF refresh
     try {
-      // Check response headers for CSRF token refreshes
       if (res && res.headers) {
-        const respH = {};
-        res.headers.forEach((v, k) => { respH[k.toLowerCase()] = v; });
-        if (respH['x-csrf-token']) emitHeaders(respH);
+        const rh = {};
+        res.headers.forEach((v,k) => { rh[k.toLowerCase()] = v; });
+        if (rh['x-csrf-token'] || rh['authorization']) send({ type: 'FETCH_HEADERS', url: 'response', headers: rh });
       }
-    } catch(_) {}
+    } catch(e) {}
     return res;
   };
 
-  // ── 2. Wrap XMLHttpRequest ──────────────────────────────────────────────
-  const _open = XMLHttpRequest.prototype.open;
-  const _setHdr = XMLHttpRequest.prototype.setRequestHeader;
+  // ── Intercept XHR ────────────────────────────────────────────────────────
+  const _xhrOpen = XMLHttpRequest.prototype.open;
+  const _xhrSetH = XMLHttpRequest.prototype.setRequestHeader;
   XMLHttpRequest.prototype.open = function(m, url) {
-    this._orbenUrl = url || '';
-    this._orbenH = {};
-    return _open.apply(this, arguments);
+    this._oUrl = url || '';
+    this._oH = {};
+    return _xhrOpen.apply(this, arguments);
   };
-  XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
-    if (this._orbenUrl && this._orbenUrl.includes('mercari')) {
-      this._orbenH[name.toLowerCase()] = value;
-      emitHeaders(this._orbenH);
+  XMLHttpRequest.prototype.setRequestHeader = function(k, v) {
+    if (this._oUrl && this._oUrl.includes('mercari') && v) {
+      this._oH[k.toLowerCase()] = v;
+      send({ type: 'FETCH_HEADERS', url: this._oUrl, headers: this._oH });
     }
-    return _setHdr.apply(this, arguments);
+    return _xhrSetH.apply(this, arguments);
   };
 
-  // ── 3a. Read CSRF from meta tags ────────────────────────────────────────
-  function extractFromMeta() {
+  // ── Dump ALL localStorage + sessionStorage ───────────────────────────────
+  function dumpStorage() {
     try {
-      const meta = document.querySelector('meta[name="csrf-token"], meta[name="_csrf"], meta[name="x-csrf-token"]');
-      if (meta && meta.content) send({ type: 'CSRF_META', value: meta.content });
-    } catch(_) {}
-  }
-
-  // ── 3b. Read cookies directly ────────────────────────────────────────────
-  function extractFromCookies() {
-    try {
-      const cookies = {};
-      document.cookie.split(';').forEach(part => {
-        const [k, ...rest] = part.trim().split('=');
-        if (k) cookies[k.trim()] = rest.join('=');
-      });
-      // CSRF token often lives in a cookie on Mercari
-      const csrf =
-        cookies['XSRF-TOKEN'] || cookies['_csrf'] ||
-        cookies['csrf_token'] || cookies['csrfToken'] ||
-        cookies['_session_id'];
-      if (csrf) send({ type: 'CSRF_COOKIE', value: decodeURIComponent(csrf) });
-      send({ type: 'ALL_COOKIES', cookies });
-    } catch(_) {}
-  }
-
-  // ── 4. Read from storage ────────────────────────────────────────────────
-  function extractFromStorage() {
-    try {
-      // Scan all localStorage keys
+      const ls = {}, ss = {};
       for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i) || '';
-        const v = localStorage.getItem(k) || '';
-        const lk = k.toLowerCase();
-        if ((lk.includes('auth') || lk.includes('token') || lk.includes('csrf') || lk.includes('device')) && v.length > 6) {
-          send({ type: 'STORAGE', key: k, value: v });
-        }
+        const k = localStorage.key(i);
+        ls[k] = localStorage.getItem(k);
       }
-      // Try sessionStorage too
       for (let i = 0; i < sessionStorage.length; i++) {
-        const k = sessionStorage.key(i) || '';
-        const v = sessionStorage.getItem(k) || '';
-        const lk = k.toLowerCase();
-        if ((lk.includes('auth') || lk.includes('token') || lk.includes('csrf')) && v.length > 6) {
-          send({ type: 'STORAGE', key: k, value: v });
-        }
+        const k = sessionStorage.key(i);
+        ss[k] = sessionStorage.getItem(k);
       }
-    } catch(_) {}
+      send({ type: 'STORAGE_DUMP', ls, ss });
+    } catch(e) {}
   }
 
-  // ── 5. Try to grab auth from Mercari's internal state ──────────────────
-  function extractFromPageState() {
+  // ── Dump ALL accessible cookies ──────────────────────────────────────────
+  function dumpCookies() {
     try {
-      // Next.js stores page data here
-      if (window.__NEXT_DATA__) {
-        const d = JSON.stringify(window.__NEXT_DATA__);
-        if (d.length > 10) send({ type: 'NEXT_DATA', data: d.slice(0, 4000) });
-      }
-      // Check for common global auth stores
-      const candidates = ['__store__', '__STATE__', '__REDUX_STATE__', 'Mercari', '__mercari__'];
-      candidates.forEach(c => {
-        if (window[c]) {
-          try {
-            const s = JSON.stringify(window[c]);
-            if (s.includes('token') || s.includes('authorization')) {
-              send({ type: 'GLOBAL_STATE', key: c, data: s.slice(0, 2000) });
-            }
-          } catch(_) {}
-        }
+      const c = {};
+      document.cookie.split(';').forEach(p => {
+        const [k,...r] = p.trim().split('=');
+        if (k) c[k.trim()] = r.join('=');
       });
-    } catch(_) {}
+      send({ type: 'COOKIE_DUMP', cookies: c });
+    } catch(e) {}
   }
 
-  // ── 6. Detect login & trigger API calls ────────────────────────────────
-  function isLoggedIn() {
-    return !!(
+  // ── Try making an authenticated call and read response body ─────────────
+  function tryAuthenticatedFetch() {
+    _origFetch('https://api.mercari.com/v2/me', {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Accept': 'application/json', 'X-Platform': 'web' }
+    }).then(function(r) {
+      const rh = {};
+      r.headers.forEach(function(v,k) { rh[k.toLowerCase()] = v; });
+      return r.text().then(function(body) {
+        send({ type: 'AUTH_RESPONSE', status: r.status, headers: rh, body: body.slice(0,2000) });
+      });
+    }).catch(function() {
+      // Try alternate endpoint
+      _origFetch('https://www.mercari.com/v2/api/services/ProductService/GetProfile', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: '{}'
+      }).then(function(r) {
+        const rh = {};
+        r.headers.forEach(function(v,k) { rh[k.toLowerCase()] = v; });
+        send({ type: 'AUTH_RESPONSE2', status: r.status, headers: rh });
+      }).catch(function(){});
+    });
+  }
+
+  // ── Check if logged in via DOM ──────────────────────────────────────────
+  function checkLoggedIn() {
+    const loggedIn = !!(
       document.querySelector('a[href*="/mypage"]') ||
       document.querySelector('[data-testid*="profile"]') ||
       document.querySelector('[class*="Avatar"]') ||
+      document.querySelector('[class*="avatar"]') ||
       document.querySelector('[class*="profileIcon"]') ||
-      document.querySelector('[aria-label*="profile"]') ||
-      (document.cookie && !document.cookie.includes('mercari_token=')) ||
-      window.location.href.includes('/mypage') ||
-      window.location.href.includes('/sell')
+      document.title.includes('Mercari') && !document.title.toLowerCase().includes('sign')
     );
+    if (loggedIn) send({ type: 'LOGGED_IN', url: window.location.href, title: document.title });
+    return loggedIn;
   }
 
-  let triggerCount = 0;
-  function triggerCapture() {
-    extractFromCookies();
-    extractFromStorage();
-    if (triggerCount % 3 === 0) extractFromPageState();
-    if (isLoggedIn()) {
-      send({ type: 'LOGGED_IN', url: window.location.href });
-    }
-    triggerCount++;
-  }
+  // ── Poll every 1.5s ─────────────────────────────────────────────────────
+  let n = 0;
+  const t = setInterval(function() {
+    dumpCookies();
+    if (n % 2 === 0) dumpStorage();
+    const li = checkLoggedIn();
+    if (li && n < 4) tryAuthenticatedFetch();
+    if (++n > 80) clearInterval(t);
+  }, 1500);
 
-  let pollCount = 0;
-  const poll = setInterval(() => {
-    extractFromMeta();
-    triggerCapture();
-    if (++pollCount > 90) clearInterval(poll);
-  }, 2000);
+  // Run immediately after short delay
+  setTimeout(function() { dumpStorage(); dumpCookies(); checkLoggedIn(); }, 800);
 
-  // Also run immediately
-  setTimeout(() => { extractFromMeta(); triggerCapture(); }, 500);
-  setTimeout(() => { extractFromMeta(); triggerCapture(); }, 2000);
-
+  send({ type: 'INTERCEPTOR_READY', url: window.location.href });
   true;
 })();
 `;
@@ -213,8 +173,8 @@ const INJECTED_JS = `
 
 export default function MercariConnectScreen() {
   const webviewRef   = useRef(null);
-  const saveRef      = useRef(false);   // prevent double-save
-  const statusRef    = useRef('idle');  // track status without re-render race
+  const saveRef      = useRef(false);
+  const cookiesRef   = useRef({});  // latest full cookie dump
 
   const [headers, setHeaders]       = useState({});
   const [saving, setSaving]         = useState(false);
@@ -222,26 +182,34 @@ export default function MercariConnectScreen() {
   const [saveError, setSaveError]   = useState(null);
   const [webLoading, setWebLoading] = useState(true);
   const [loggedIn, setLoggedIn]     = useState(false);
+  const [debugLog, setDebugLog]     = useState([]);
 
-  const hasAuth = Boolean(headers.authorization);
-  const hasCsrf = Boolean(headers['x-csrf-token']);
+  const hasAuth   = Boolean(headers.authorization);
+  const hasCsrf   = Boolean(headers['x-csrf-token']);
   const hasDevice = Boolean(headers['x-de-device-token']);
-  const canSave = hasAuth || hasCsrf;
+  const hasCookie = Object.keys(cookiesRef.current).length > 3;
+  const canSave   = hasAuth || hasCsrf || (loggedIn && hasCookie);
+
+  const addLog = useCallback((msg) => {
+    console.log('[Mercari]', msg);
+    setDebugLog(prev => [...prev.slice(-8), msg]);
+  }, []);
 
   // Merge incoming headers (never overwrite a truthy value with falsy)
   const mergeHeaders = useCallback((incoming) => {
     setHeaders(prev => {
       const next = { ...prev };
       for (const [k, v] of Object.entries(incoming)) {
-        if (v) next[k] = v;
+        if (v && String(v).length > 2) next[k] = v;
       }
       return next;
     });
   }, []);
 
-  // Auto-save once we have auth OR csrf (either is a signal we're connected)
+  // Auto-save once we have real tokens
   useEffect(() => {
     if ((hasAuth || hasCsrf) && !saveRef.current && !saving) {
+      addLog('Auto-saving: auth/csrf found');
       doSave(headers);
     }
   }, [hasAuth, hasCsrf]);
@@ -254,34 +222,43 @@ export default function MercariConnectScreen() {
     }
   }, [connected]);
 
-
   async function doSave(hdrs, force = false) {
     if (saveRef.current && !force) return;
     saveRef.current = true;
     setSaving(true);
     setSaveError(null);
     try {
-      await SecureStore.setItemAsync('mercari_auth_headers', JSON.stringify(hdrs));
+      // Build cookie string from full cookie dump for server-side use
+      const cookieStr = Object.entries(cookiesRef.current)
+        .map(([k, v]) => `${k}=${v}`).join('; ');
+
+      const payload = { ...hdrs };
+      if (cookieStr.length > 10) payload['cookie'] = cookieStr;
+
+      await SecureStore.setItemAsync('mercari_auth_headers', JSON.stringify(payload));
       await SecureStore.setItemAsync('mercari_session_ts', String(Date.now()));
+      addLog(`Saved locally (keys: ${Object.keys(payload).join(', ')})`);
 
       const token = await getOrbenToken();
       if (token) {
         const resp = await fetch(`${ORBEN_API_BASE}/api/mercari/save-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ authHeaders: hdrs, sourceUrl: 'mobile_webview' }),
+          body: JSON.stringify({ authHeaders: payload, cookies: cookiesRef.current, sourceUrl: 'mobile_webview' }),
         });
         if (!resp.ok) {
           const txt = await resp.text().catch(() => '');
+          addLog(`Server save failed ${resp.status}: ${txt.slice(0, 80)}`);
           throw new Error(`Server error ${resp.status}: ${txt.slice(0, 100)}`);
         }
+        addLog('Saved to server ✓');
       }
     } catch (err) {
       setSaveError(err.message);
       saveRef.current = false;
     } finally {
       setSaving(false);
-      setConnected(true); // always show success — locally saved is enough to proceed
+      setConnected(true);
     }
   }
 
@@ -289,51 +266,105 @@ export default function MercariConnectScreen() {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
 
-      if (msg.type === 'HEADERS' && msg.headers) {
-        mergeHeaders(msg.headers);
-      }
+      switch (msg.type) {
+        case 'INTERCEPTOR_READY':
+          addLog(`Interceptor ready @ ${(msg.url || '').slice(0, 50)}`);
+          break;
 
-      if ((msg.type === 'CSRF_COOKIE' || msg.type === 'CSRF_META') && msg.value) {
-        mergeHeaders({ 'x-csrf-token': msg.value });
-      }
-
-      if (msg.type === 'ALL_COOKIES' && msg.cookies) {
-        // Build a cookie string for server-side use
-        const cookieStr = Object.entries(msg.cookies)
-          .map(([k, v]) => `${k}=${v}`).join('; ');
-        if (cookieStr.length > 10) {
-          mergeHeaders({ 'cookie': cookieStr });
+        case 'FETCH_HEADERS': {
+          const h = msg.headers || {};
+          const interesting = Object.keys(h).filter(k =>
+            ['authorization','x-csrf-token','x-de-device-token','x-platform'].includes(k)
+          );
+          if (interesting.length) {
+            addLog(`Fetch headers from ${(msg.url || '').slice(0, 40)}: ${interesting.join(', ')}`);
+            mergeHeaders(h);
+          }
+          break;
         }
-      }
 
-      if (msg.type === 'STORAGE' && msg.key && msg.value) {
-        const lk = msg.key.toLowerCase();
-        if (lk.includes('csrf') || lk.includes('xsrf')) {
-          mergeHeaders({ 'x-csrf-token': msg.value });
-        }
-        if (lk.includes('device')) {
-          mergeHeaders({ 'x-de-device-token': msg.value });
-        }
-        if (lk.includes('auth') || lk.includes('bearer') || lk.includes('access_token')) {
-          const val = msg.value.startsWith('Bearer ') ? msg.value : `Bearer ${msg.value}`;
-          mergeHeaders({ 'authorization': val });
-        }
-      }
+        case 'STORAGE_DUMP': {
+          const ls = msg.ls || {};
+          const ss = msg.ss || {};
+          addLog(`Storage dump: ${Object.keys(ls).length} LS keys, ${Object.keys(ss).length} SS keys`);
+          const toExtract = { ...ls, ...ss };
+          for (const [k, v] of Object.entries(toExtract)) {
+            if (!v || typeof v !== 'string' || v.length < 4) continue;
+            const lk = k.toLowerCase();
+            let parsed = v;
+            // Try to parse JSON stored values
+            try { parsed = JSON.parse(v); } catch(_) {}
+            const strVal = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
 
-      if (msg.type === 'NEXT_DATA' || msg.type === 'GLOBAL_STATE') {
-        // Try to extract auth token from page state JSON
-        try {
-          const raw = msg.data || msg.data || '';
-          const authMatch = raw.match(/"(?:authorization|accessToken|access_token|bearerToken)"\s*:\s*"([^"]{20,})"/i);
-          const csrfMatch = raw.match(/"(?:csrfToken|csrf_token|x-csrf-token)"\s*:\s*"([^"]{8,})"/i);
-          if (authMatch) mergeHeaders({ 'authorization': `Bearer ${authMatch[1]}` });
-          if (csrfMatch) mergeHeaders({ 'x-csrf-token': csrfMatch[1] });
-        } catch(_) {}
-      }
+            if (lk.includes('csrf') || lk.includes('xsrf')) {
+              mergeHeaders({ 'x-csrf-token': strVal });
+              addLog(`CSRF from storage key "${k}"`);
+            }
+            if (lk.includes('device') || lk === 'device_token' || lk === 'devicetoken') {
+              mergeHeaders({ 'x-de-device-token': strVal });
+              addLog(`Device token from storage key "${k}"`);
+            }
+            if (lk.includes('access_token') || lk.includes('bearer') ||
+                lk === 'sso_token' || lk === 'auth_token' || lk === 'authorization' ||
+                (lk.includes('token') && strVal.length > 30 && !lk.includes('csrf') && !lk.includes('device'))) {
+              const val = strVal.startsWith('Bearer ') ? strVal : `Bearer ${strVal}`;
+              mergeHeaders({ 'authorization': val });
+              addLog(`Auth token from storage key "${k}" (len ${strVal.length})`);
+            }
+          }
+          break;
+        }
 
-      if (msg.type === 'LOGGED_IN') setLoggedIn(true);
+        case 'COOKIE_DUMP': {
+          const cookies = msg.cookies || {};
+          cookiesRef.current = { ...cookiesRef.current, ...cookies };
+          const n = Object.keys(cookies).length;
+          if (n > 0) addLog(`Cookie dump: ${n} cookies`);
+          // Try to find CSRF token in cookies
+          for (const [k, v] of Object.entries(cookies)) {
+            const lk = k.toLowerCase();
+            if ((lk.includes('csrf') || lk.includes('xsrf')) && v.length > 4) {
+              mergeHeaders({ 'x-csrf-token': decodeURIComponent(v) });
+              addLog(`CSRF from cookie "${k}"`);
+            }
+          }
+          break;
+        }
+
+        case 'AUTH_RESPONSE':
+        case 'AUTH_RESPONSE2': {
+          addLog(`Auth response: HTTP ${msg.status}, headers: ${Object.keys(msg.headers || {}).join(', ')}`);
+          if (msg.headers) mergeHeaders(msg.headers);
+          // Parse body for token clues
+          if (msg.body) {
+            try {
+              const b = JSON.parse(msg.body);
+              const raw = JSON.stringify(b);
+              const authMatch = raw.match(/"(?:accessToken|access_token|bearerToken|idToken|id_token)":"([^"]{20,})"/i);
+              const csrfMatch = raw.match(/"(?:csrfToken|csrf_token|_csrf)":"([^"]{8,})"/i);
+              if (authMatch) {
+                mergeHeaders({ 'authorization': `Bearer ${authMatch[1]}` });
+                addLog(`Auth token from API response body`);
+              }
+              if (csrfMatch) {
+                mergeHeaders({ 'x-csrf-token': csrfMatch[1] });
+                addLog(`CSRF from API response body`);
+              }
+            } catch(_) {}
+          }
+          break;
+        }
+
+        case 'LOGGED_IN':
+          addLog(`Logged in detected @ ${(msg.url || '').slice(0, 40)}`);
+          setLoggedIn(true);
+          break;
+
+        default:
+          break;
+      }
     } catch(_) {}
-  }, [mergeHeaders]);
+  }, [mergeHeaders, addLog]);
 
   const handleNavChange = useCallback((state) => {
     // Ignore about:srcdoc and blank pages
@@ -411,12 +442,22 @@ export default function MercariConnectScreen() {
         <TokenChip label="Auth" ok={hasAuth} />
         <TokenChip label="CSRF" ok={hasCsrf} />
         <TokenChip label="Device" ok={hasDevice} />
+        <TokenChip label="Cookie" ok={hasCookie} />
         <Text style={styles.hint} numberOfLines={1}>
           {canSave
-            ? (saving ? 'Saving…' : 'Tokens captured!')
-            : loggedIn ? 'Waiting for tokens…' : 'Log in to Mercari below'}
+            ? (saving ? 'Saving…' : '✓ Captured')
+            : loggedIn ? 'Logged in…' : 'Log in below'}
         </Text>
       </View>
+
+      {/* Debug log — visible in app so we can diagnose */}
+      {debugLog.length > 0 && (
+        <ScrollView style={styles.debugBox} nestedScrollEnabled>
+          {debugLog.map((l, i) => (
+            <Text key={i} style={styles.debugText}>{l}</Text>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Saving indicator */}
       {saving && (
@@ -521,6 +562,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4, alignItems: 'center', backgroundColor: '#f8f8f8',
     borderBottomWidth: 1, borderBottomColor: '#eee',
   },
+
+  debugBox: {
+    maxHeight: 80, backgroundColor: '#111', paddingHorizontal: 8, paddingVertical: 4,
+  },
+  debugText: { fontSize: 9, color: '#0f0', fontFamily: 'monospace', lineHeight: 13 },
 
   webview: { flex: 1 },
 
