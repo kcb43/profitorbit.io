@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { MERCARI_BRANDS, POPULAR_BRANDS } from "@/constants/mercari-brands";
 import { BrandCombobox } from "@/components/BrandCombobox";
+import { HANDLING_TIME_OPTIONS, FLAT_SHIPPING_SERVICES, CALCULATED_SHIPPING_SERVICES, CARRIER_ORDER } from "@/constants/ebay-shipping";
 import FacebookCategoryPicker from "@/components/FacebookCategoryPicker";
 import { apiClient } from "@/api/base44Client";
 import { inventoryApi } from "@/api/inventoryApi";
@@ -13090,7 +13091,14 @@ export default function CrosslistComposer() {
                 </div>
               </div>
 
+              {(() => {
+                const isLocalPickup = ebayForm.shippingMethod === "Local pickup only: Sell to buyer nears you";
+                const isFlat = ebayForm.shippingCostType?.startsWith("Flat");
+                const isCalculated = ebayForm.shippingCostType?.startsWith("Calculated");
+                const shippingServiceList = isCalculated ? CALCULATED_SHIPPING_SERVICES : FLAT_SHIPPING_SERVICES;
+                return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Shipping Method — always visible */}
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-sm mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
@@ -13103,7 +13111,7 @@ export default function CrosslistComposer() {
                     onValueChange={(value) => handleMarketplaceChange("ebay", "shippingMethod", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select method" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Standard: Small to medium items">Standard: Small to medium items</SelectItem>
@@ -13111,63 +13119,78 @@ export default function CrosslistComposer() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
-                    {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
-                      handleMarketplaceChange("ebay", "shippingCostType", v)
+
+                {/* Standard-only fields */}
+                {!isLocalPickup && (<>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                      {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
+                        handleMarketplaceChange("ebay", "shippingCostType", v)
+                      )}
+                    </div>
+                    <Select
+                      value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
+                      onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select cost type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Flat: Same cost regardless of buyer location">Flat: Same cost regardless of buyer location</SelectItem>
+                        <SelectItem value="Calculated: Cost varies based on buyer location">Calculated: Cost varies based on buyer location</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm mb-1.5 block">
+                        Shipping Cost {isFlat && <span className="text-red-500">*</span>}
+                      </Label>
+                      {!isCalculated && renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
+                        handleMarketplaceChange("ebay", "shippingCost", v)
+                      )}
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder={isCalculated ? "Calculated by eBay" : "0.00"}
+                      value={isCalculated ? "" : (ebayForm.shippingCost || "")}
+                      disabled={isCalculated}
+                      className={isCalculated ? "opacity-50 cursor-not-allowed bg-muted" : ""}
+                      onChange={(e) => !isCalculated && handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
+                    />
+                    {isCalculated && (
+                      <p className="mt-1 text-xs text-muted-foreground">eBay calculates this from your package details and buyer's location.</p>
                     )}
                   </div>
-                  <Select
-                    value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
-                    onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Calculated: Cost varies based on buyer location">Calculated: Cost varies based on buyer location</SelectItem>
-                      <SelectItem value="Flat: Same cost regardless of buyer location">Flat: Same cost regardless of buyer location</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
-                    {renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
-                      handleMarketplaceChange("ebay", "shippingCost", v)
-                    )}
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                      {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
+                        handleMarketplaceChange("ebay", "handlingTime", v)
+                      )}
+                    </div>
+                    <Select
+                      value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
+                      onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select handling time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HANDLING_TIME_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={ebayForm.shippingCost || ""}
-                    onChange={(e) => handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
-                    {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
-                      handleMarketplaceChange("ebay", "handlingTime", v)
-                    )}
-                  </div>
-                  <Select
-                    value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
-                    onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1 business day">1 business day</SelectItem>
-                      <SelectItem value="2 business days">2 business days</SelectItem>
-                      <SelectItem value="3 business days">3 business days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                </>)}
+
+                {/* Ship From Country — always visible */}
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-sm mb-1.5 block">Ship From Country</Label>
@@ -13191,27 +13214,42 @@ export default function CrosslistComposer() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
-                    {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
-                      handleMarketplaceChange("ebay", "shippingService", v)
-                    )}
+
+                {/* Shipping Service — standard only, grouped by carrier */}
+                {!isLocalPickup && (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                      {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
+                        handleMarketplaceChange("ebay", "shippingService", v)
+                      )}
+                    </div>
+                    <Select
+                      value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
+                      onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select service" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {CARRIER_ORDER.map(carrier => {
+                          const group = shippingServiceList.filter(s => s.carrier === carrier);
+                          if (!group.length) return null;
+                          return (
+                            <React.Fragment key={carrier}>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b">{carrier}</div>
+                              {group.map(svc => (
+                                <SelectItem key={svc.value} value={svc.value}>{svc.label}</SelectItem>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select
-                    value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
-                    onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Standard Shipping (3 to 5 business days)">Standard Shipping (3 to 5 business days)</SelectItem>
-                      <SelectItem value="Expedited Shipping (1 to 3 business days)">Expedited Shipping (1 to 3 business days)</SelectItem>
-                      <SelectItem value="USPS Priority Mail">USPS Priority Mail</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                )}
+
+                {/* Location Descriptions — always visible */}
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm mb-1.5 block">Location Descriptions</Label>
@@ -13228,6 +13266,8 @@ export default function CrosslistComposer() {
                     Optional descriptive text shown to buyers (e.g., "Spain")
                   </p>
                 </div>
+
+                {/* Shipping Location — always visible */}
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-sm mb-1.5 block">Shipping Location</Label>
@@ -13246,6 +13286,8 @@ export default function CrosslistComposer() {
                     </p>
                   )}
                 </div>
+
+                {/* Accept Returns — always visible */}
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-sm mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
@@ -13262,7 +13304,7 @@ export default function CrosslistComposer() {
                     <Label htmlFor="ebay-accept-returns" className="text-sm">Accept returns</Label>
                   </div>
                 </div>
-                
+
                 {/* Return fields - shown when Accept Returns is enabled */}
                 {ebayForm.acceptReturns && (
                   <>
@@ -13314,6 +13356,7 @@ export default function CrosslistComposer() {
                   </>
                 )}
               </div>
+              ); })()}
 
               {/* Package Details Section */}
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
@@ -19076,7 +19119,14 @@ export default function CrosslistComposer() {
                         </div>
                       </div>
 
+                      {(() => {
+                        const isLocalPickup = ebayForm.shippingMethod === "Local pickup only: Sell to buyer nears you";
+                        const isFlat = ebayForm.shippingCostType?.startsWith("Flat");
+                        const isCalculated = ebayForm.shippingCostType?.startsWith("Calculated");
+                        const shippingServiceList = isCalculated ? CALCULATED_SHIPPING_SERVICES : FLAT_SHIPPING_SERVICES;
+                        return (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Shipping Method — always visible */}
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-sm mb-1.5 block">Shipping Method <span className="text-red-500">*</span></Label>
@@ -19089,7 +19139,7 @@ export default function CrosslistComposer() {
                             onValueChange={(value) => handleMarketplaceChange("ebay", "shippingMethod", value)}
                           >
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Select method" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Standard: Small to medium items">Standard: Small to medium items</SelectItem>
@@ -19097,63 +19147,78 @@ export default function CrosslistComposer() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
-                            {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
-                              handleMarketplaceChange("ebay", "shippingCostType", v)
+
+                        {/* Standard-only fields */}
+                        {!isLocalPickup && (<>
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm mb-1.5 block">Shipping Cost Type <span className="text-red-500">*</span></Label>
+                              {renderEbayDefaultToggle("shippingCostType", ebayForm.shippingCostType, (v) =>
+                                handleMarketplaceChange("ebay", "shippingCostType", v)
+                              )}
+                            </div>
+                            <Select
+                              value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
+                              onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select cost type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Flat: Same cost regardless of buyer location">Flat: Same cost regardless of buyer location</SelectItem>
+                                <SelectItem value="Calculated: Cost varies based on buyer location">Calculated: Cost varies based on buyer location</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm mb-1.5 block">
+                                Shipping Cost {isFlat && <span className="text-red-500">*</span>}
+                              </Label>
+                              {!isCalculated && renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
+                                handleMarketplaceChange("ebay", "shippingCost", v)
+                              )}
+                            </div>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder={isCalculated ? "Calculated by eBay" : "0.00"}
+                              value={isCalculated ? "" : (ebayForm.shippingCost || "")}
+                              disabled={isCalculated}
+                              className={isCalculated ? "opacity-50 cursor-not-allowed bg-muted" : ""}
+                              onChange={(e) => !isCalculated && handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
+                            />
+                            {isCalculated && (
+                              <p className="mt-1 text-xs text-muted-foreground">eBay calculates this from your package details and buyer's location.</p>
                             )}
                           </div>
-                          <Select
-                            value={ebayForm.shippingCostType ? String(ebayForm.shippingCostType) : undefined}
-                            onValueChange={(value) => handleMarketplaceChange("ebay", "shippingCostType", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Calculated: Cost varies based on buyer location">Calculated: Cost varies based on buyer location</SelectItem>
-                              <SelectItem value="Flat: Same cost regardless of buyer location">Flat: Same cost regardless of buyer location</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm mb-1.5 block">Shipping Cost <span className="text-red-500">*</span></Label>
-                            {renderEbayDefaultToggle("shippingCost", ebayForm.shippingCost, (v) =>
-                              handleMarketplaceChange("ebay", "shippingCost", v)
-                            )}
+
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
+                              {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
+                                handleMarketplaceChange("ebay", "handlingTime", v)
+                              )}
+                            </div>
+                            <Select
+                              value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
+                              onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select handling time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {HANDLING_TIME_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={ebayForm.shippingCost || ""}
-                            onChange={(e) => handleMarketplaceChange("ebay", "shippingCost", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm mb-1.5 block">Handling Time <span className="text-red-500">*</span></Label>
-                            {renderEbayDefaultToggle("handlingTime", ebayForm.handlingTime, (v) =>
-                              handleMarketplaceChange("ebay", "handlingTime", v)
-                            )}
-                          </div>
-                          <Select
-                            value={ebayForm.handlingTime ? String(ebayForm.handlingTime) : undefined}
-                            onValueChange={(value) => handleMarketplaceChange("ebay", "handlingTime", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1 business day">1 business day</SelectItem>
-                              <SelectItem value="2 business days">2 business days</SelectItem>
-                              <SelectItem value="3 business days">3 business days</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        </>)}
+
+                        {/* Ship From Country — always visible */}
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-sm mb-1.5 block">Ship From Country</Label>
@@ -19177,27 +19242,42 @@ export default function CrosslistComposer() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
-                            {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
-                              handleMarketplaceChange("ebay", "shippingService", v)
-                            )}
+
+                        {/* Shipping Service — standard only, grouped by carrier */}
+                        {!isLocalPickup && (
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm mb-1.5 block">Shipping Service <span className="text-red-500">*</span></Label>
+                              {renderEbayDefaultToggle("shippingService", ebayForm.shippingService, (v) =>
+                                handleMarketplaceChange("ebay", "shippingService", v)
+                              )}
+                            </div>
+                            <Select
+                              value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
+                              onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select service" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {CARRIER_ORDER.map(carrier => {
+                                  const group = shippingServiceList.filter(s => s.carrier === carrier);
+                                  if (!group.length) return null;
+                                  return (
+                                    <React.Fragment key={carrier}>
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b">{carrier}</div>
+                                      {group.map(svc => (
+                                        <SelectItem key={svc.value} value={svc.value}>{svc.label}</SelectItem>
+                                      ))}
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <Select
-                            value={ebayForm.shippingService ? String(ebayForm.shippingService) : undefined}
-                            onValueChange={(value) => handleMarketplaceChange("ebay", "shippingService", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select service" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Standard Shipping (3 to 5 business days)">Standard Shipping (3 to 5 business days)</SelectItem>
-                              <SelectItem value="Expedited Shipping (1 to 3 business days)">Expedited Shipping (1 to 3 business days)</SelectItem>
-                              <SelectItem value="USPS Priority Mail">USPS Priority Mail</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        )}
+
+                        {/* Location Descriptions — always visible */}
                         <div className="md:col-span-2">
                           <div className="flex items-center justify-between">
                             <Label className="text-sm mb-1.5 block">Location Descriptions</Label>
@@ -19214,6 +19294,8 @@ export default function CrosslistComposer() {
                             Optional descriptive text shown to buyers (e.g., "Spain")
                           </p>
                         </div>
+
+                        {/* Shipping Location — always visible */}
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-sm mb-1.5 block">Shipping Location</Label>
@@ -19232,6 +19314,8 @@ export default function CrosslistComposer() {
                             </p>
                           )}
                         </div>
+
+                        {/* Accept Returns — always visible */}
                         <div>
                           <div className="flex items-center justify-between">
                             <Label className="text-sm mb-1.5 block">Accept Returns <span className="text-red-500">*</span></Label>
@@ -19248,7 +19332,7 @@ export default function CrosslistComposer() {
                             <Label htmlFor="ebay-accept-returns" className="text-sm">Accept returns</Label>
                           </div>
                         </div>
-                        
+
                         {ebayForm.acceptReturns && (
                           <>
                             <div>
@@ -19299,6 +19383,7 @@ export default function CrosslistComposer() {
                           </>
                         )}
                       </div>
+                      ); })()}
 
                       {/* Package Details Section */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
