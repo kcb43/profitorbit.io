@@ -182,13 +182,6 @@ const INJECTED_JS = `
     if (triggerCount % 3 === 0) extractFromPageState();
     if (isLoggedIn()) {
       send({ type: 'LOGGED_IN', url: window.location.href });
-      if (triggerCount < 3) {
-        // Navigate to mypage to trigger authenticated API calls
-        if (!window.location.href.includes('/mypage') && !window.location.href.includes('/sell')) {
-          history.pushState({}, '', '/mypage');
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }
-      }
     }
     triggerCount++;
   }
@@ -252,8 +245,8 @@ export default function MercariConnectScreen() {
     return () => clearTimeout(t);
   }, [loggedIn]);
 
-  async function doSave(hdrs) {
-    if (saveRef.current) return;
+  async function doSave(hdrs, force = false) {
+    if (saveRef.current && !force) return;
     saveRef.current = true;
     setSaving(true);
     setSaveError(null);
@@ -273,14 +266,12 @@ export default function MercariConnectScreen() {
           throw new Error(`Server error ${resp.status}: ${txt.slice(0, 100)}`);
         }
       }
-      setConnected(true);
     } catch (err) {
-      saveRef.current = false; // allow retry
       setSaveError(err.message);
-      // Still mark locally saved so user can proceed
-      if (hdrs.authorization) setConnected(true);
+      saveRef.current = false;
     } finally {
       setSaving(false);
+      setConnected(true); // always show success — locally saved is enough to proceed
     }
   }
 
@@ -422,9 +413,8 @@ export default function MercariConnectScreen() {
         <TouchableOpacity
           style={[styles.manualSaveBtn, { backgroundColor: '#f57c00' }]}
           onPress={() => {
-            // Save with whatever we have (may only have cookie)
             const fallback = Object.keys(headers).length > 0 ? headers : { 'cookie': 'mercari_session=active' };
-            doSave(fallback);
+            doSave(fallback, true);
           }}
         >
           <Text style={styles.manualSaveBtnText}>Already logged in? Tap to continue →</Text>
