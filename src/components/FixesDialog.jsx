@@ -47,6 +47,7 @@ export default function FixesDialog({
   onApplyFix,
   onListNow,
   isSubmitting = false,
+  onSaveEbayDefault,
 }) {
   const [activeMarketplace, setActiveMarketplace] = useState(null);
   
@@ -192,6 +193,7 @@ export default function FixesDialog({
                       marketplace={activeMarketplace}
                       issues={activeIssues}
                       onApplyFix={onApplyFix}
+                      onSaveEbayDefault={onSaveEbayDefault}
                     />
                   </div>
                 </ScrollArea>

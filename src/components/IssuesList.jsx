@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -31,7 +32,15 @@ import {
   Wand2,
   Info,
   Check,
+  Save,
 } from 'lucide-react';
+
+// Fields where "Save as eBay default" is offered in the review panel
+const EBAY_DEFAULT_ELIGIBLE_FIELDS = new Set([
+  'shippingMethod', 'shippingCostType', 'shippingCost', 'handlingTime',
+  'shippingService', 'shipFromCountry', 'returnWithin', 'returnShippingPayer',
+  'returnRefundMethod', 'pricingFormat', 'duration',
+]);
 import { cn } from '@/lib/utils';
 import { getFieldLabel, groupIssuesBySeverity } from '@/utils/preflightEngine';
 
@@ -146,16 +155,18 @@ function SmartSuggestionItem({ issue, onApplyFix, onApplied }) {
 // ---------------------------------------------------------------------------
 // BlockingIssueItem – one required field that needs manual input or a fix
 // ---------------------------------------------------------------------------
-function BlockingIssueItem({ issue, onApplyFix }) {
+function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault }) {
   const [localValue, setLocalValue] = useState('');
   const [localOption, setLocalOption] = useState(null); // { id, label }
   const [applying, setApplying] = useState(false);
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
 
   const label         = getFieldLabel(issue.field);
   const hasSuggestion = Boolean(issue.suggested);
   const hasOptions    = Boolean(issue.options?.length);
   const isTreeCategory = TREE_CATEGORY_FIELDS.includes(issue.field);
   const isFbCategory  = issue.field === 'category' && issue.marketplace === 'facebook';
+  const isEbayDefaultEligible = issue.marketplace === 'ebay' && EBAY_DEFAULT_ELIGIBLE_FIELDS.has(issue.field) && typeof onSaveEbayDefault === 'function';
 
   async function handleApply(raw) {
     let val;
@@ -170,6 +181,10 @@ function BlockingIssueItem({ issue, onApplyFix }) {
     setApplying(true);
     try {
       await onApplyFix(issue, val);
+      if (saveAsDefault && isEbayDefaultEligible) {
+        const storedVal = typeof val === 'object' ? (val.id ?? val.label) : val;
+        onSaveEbayDefault(issue.field, storedVal, { silent: true });
+      }
     } finally {
       setApplying(false);
     }
@@ -220,13 +235,29 @@ function BlockingIssueItem({ issue, onApplyFix }) {
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="text-xs font-semibold text-primary">Suggested</span>
+                    <span className="text-xs font-semibold text-primary">
+                      {issue.suggested.isFromDefault ? 'From your saved eBay defaults' : 'Suggested'}
+                    </span>
                   </div>
                   <SuggestionConfidence confidence={issue.suggested.confidence ?? 0} />
                 </div>
                 <p className="text-sm font-medium mb-1">{issue.suggested.label}</p>
                 {issue.suggested.reasoning && (
                   <p className="text-[11px] text-muted-foreground mb-2">{issue.suggested.reasoning}</p>
+                )}
+                {isEbayDefaultEligible && !issue.suggested.isFromDefault && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox
+                      id={`save-default-${issue.field}`}
+                      checked={saveAsDefault}
+                      onCheckedChange={setSaveAsDefault}
+                      className="h-3.5 w-3.5"
+                    />
+                    <label htmlFor={`save-default-${issue.field}`} className="text-[11px] text-muted-foreground cursor-pointer flex items-center gap-1">
+                      <Save className="w-3 h-3" />
+                      Save as eBay default for future listings
+                    </label>
+                  </div>
                 )}
                 <Button
                   size="sm"
@@ -280,6 +311,20 @@ function BlockingIssueItem({ issue, onApplyFix }) {
                     </Button>
                   )}
                 </div>
+                {isEbayDefaultEligible && (isFbCategory ? localOption : localValue) && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Checkbox
+                      id={`save-default-opt-${issue.field}`}
+                      checked={saveAsDefault}
+                      onCheckedChange={setSaveAsDefault}
+                      className="h-3.5 w-3.5"
+                    />
+                    <label htmlFor={`save-default-opt-${issue.field}`} className="text-[11px] text-muted-foreground cursor-pointer flex items-center gap-1">
+                      <Save className="w-3 h-3" />
+                      Save as eBay default for future listings
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 
@@ -318,6 +363,20 @@ function BlockingIssueItem({ issue, onApplyFix }) {
                     </Button>
                   )}
                 </div>
+                {isEbayDefaultEligible && localValue && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Checkbox
+                      id={`save-default-txt-${issue.field}`}
+                      checked={saveAsDefault}
+                      onCheckedChange={setSaveAsDefault}
+                      className="h-3.5 w-3.5"
+                    />
+                    <label htmlFor={`save-default-txt-${issue.field}`} className="text-[11px] text-muted-foreground cursor-pointer flex items-center gap-1">
+                      <Save className="w-3 h-3" />
+                      Save as eBay default for future listings
+                    </label>
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -352,7 +411,7 @@ function SuggestionConfidence({ confidence }) {
 // ---------------------------------------------------------------------------
 // IssuesList (main export)
 // ---------------------------------------------------------------------------
-export default function IssuesList({ marketplace, issues, onApplyFix }) {
+export default function IssuesList({ marketplace, issues, onApplyFix, onSaveEbayDefault }) {
   const { blocking, warning, suggestion } = groupIssuesBySeverity(issues);
 
   // Track how many suggestions have been applied (to update the banner count live)
@@ -457,6 +516,7 @@ export default function IssuesList({ marketplace, issues, onApplyFix }) {
                 key={`${issue.field}-${i}`}
                 issue={issue}
                 onApplyFix={onApplyFix}
+                onSaveEbayDefault={onSaveEbayDefault}
               />
             ))}
           </div>

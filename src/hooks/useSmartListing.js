@@ -250,6 +250,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     debugLog('Running preflight for marketplaces:', selectedMarketplaces);
     debugLog('Auto-fill mode:', autoFillMode);
     
+    // Load saved eBay defaults from localStorage so validation can suggest them
+    let ebayDefaults = {};
+    try {
+      const stored = localStorage.getItem('ebay-shipping-defaults');
+      if (stored) ebayDefaults = JSON.parse(stored);
+    } catch (e) { /* ignore */ }
+
     const result = await preflightSelectedMarketplaces(
       selectedMarketplaces,
       forms.generalForm,
@@ -259,6 +266,7 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       forms.etsyForm || {},
       {
         ...validationOptions,
+        ebayDefaults,
         autoApplyHighConfidence: autoFillMode === 'auto',
         // Use applyFixOnly here — NOT handleApplyFix — to avoid circular re-entry
         onApplyPatch: autoFillMode === 'auto' ? applyFixOnly : null,

@@ -13472,6 +13472,7 @@ export default function CrosslistComposer() {
                     isSubmitting={smartListing.isSubmitting}
                     modalState={smartListing.modalState}
                     onReconnect={smartListing.handleReconnect}
+                    onSaveEbayDefault={updateEbayDefault}
                   />
                 </>
               )}
@@ -16687,6 +16688,7 @@ export default function CrosslistComposer() {
             isSubmitting={smartListing.isSubmitting}
             modalState={smartListing.modalState}
             onReconnect={smartListing.handleReconnect}
+            onSaveEbayDefault={updateEbayDefault}
           />
         )}
 
@@ -18061,6 +18063,7 @@ export default function CrosslistComposer() {
                             isSubmitting={smartListing.isSubmitting}
                             modalState={smartListing.modalState}
                             onReconnect={smartListing.handleReconnect}
+                            onSaveEbayDefault={updateEbayDefault}
                           />
                         </>
                       )}
@@ -22944,6 +22947,7 @@ export default function CrosslistComposer() {
           onApplyFix={smartListing.handleApplyFix}
           onListNow={smartListing.handleListNow}
           isSubmitting={smartListing.isSubmitting}
+          onSaveEbayDefault={updateEbayDefault}
         />
       )}
 

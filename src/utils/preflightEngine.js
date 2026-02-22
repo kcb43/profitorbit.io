@@ -62,6 +62,7 @@ export async function preflightSelectedMarketplaces(
             ebayTypeValues: validationOptions.ebayTypeValues,
             ebayRequiredAspects: validationOptions.ebayRequiredAspects,
             isItemsIncludedRequired: validationOptions.isItemsIncludedRequired,
+            ebayDefaults: validationOptions.ebayDefaults || {},
           });
           break;
 

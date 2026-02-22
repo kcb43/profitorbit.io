@@ -262,7 +262,7 @@ export function generateSmartSuggestions(generalForm, marketplaceForm, marketpla
         options: HANDLING_TIME_OPTIONS,
         message: `Recommended handling time`,
         suggested: {
-          id: '1', label: '1 business day', confidence: 0.85,
+          id: '1 business day', label: '1 business day', confidence: 0.85,
           reasoning: '1 business day is the fastest handling time and improves search ranking',
         },
       }));
@@ -457,10 +457,8 @@ const CONDITION_OPTIONS = {
 };
 
 const SHIPPING_METHOD_OPTIONS = [
-  { id: 'Flat', label: 'Flat' },
-  { id: 'Calculated', label: 'Calculated' },
-  { id: 'FreightFlat', label: 'Freight Flat' },
-  { id: 'Free', label: 'Free' }
+  { id: 'Standard: Small to medium items', label: 'Standard: Small to medium items' },
+  { id: 'Local pickup only: Sell to buyer nears you', label: 'Local pickup only: Sell to buyer nears you' },
 ];
 
 const HANDLING_TIME_OPTIONS = [
@@ -574,6 +572,7 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
     ebayTypeValues = [],
     ebayRequiredAspects = [],
     isItemsIncludedRequired = false,
+    ebayDefaults = {},
   } = options;
   
   // Photos validation
@@ -728,62 +727,115 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
   }
   
   // Shipping validations
-  if (!ebayForm.handlingTime) {
-    issues.push({
-      marketplace: 'ebay',
-      field: 'handlingTime',
-      type: 'missing',
-      severity: 'blocking',
-      message: 'Handling Time is required',
-      options: HANDLING_TIME_OPTIONS,
-      patchTarget: 'ebay'
-    });
-  }
-  
-  if (!ebayForm.shippingService) {
-    issues.push({
-      marketplace: 'ebay',
-      field: 'shippingService',
-      type: 'missing',
-      severity: 'blocking',
-      message: 'Shipping Service is required',
-      options: SHIPPING_SERVICE_OPTIONS,
-      patchTarget: 'ebay'
-    });
-  }
-  
-  if (!ebayForm.shippingCostType) {
-    issues.push({
-      marketplace: 'ebay',
-      field: 'shippingCostType',
-      type: 'missing',
-      severity: 'blocking',
-      message: 'Shipping Cost Type is required',
-      options: SHIPPING_COST_TYPE_OPTIONS,
-      patchTarget: 'ebay'
-    });
-  }
-  
+  // Determine effective shipping mode to skip irrelevant fields
+  const isLocalPickupOnly = ebayForm.shippingMethod?.startsWith('Local pickup');
+  const isFreeShipping = ebayForm.freeShipping;
+
   if (!ebayForm.shippingMethod) {
+    const def = ebayDefaults?.shippingMethod;
     issues.push({
       marketplace: 'ebay',
       field: 'shippingMethod',
       type: 'missing',
       severity: 'blocking',
-      message: 'Shipping Method is required',
+      message: 'Shipping Method is required. Open the eBay form to select one and save it as your default.',
       options: SHIPPING_METHOD_OPTIONS,
-      patchTarget: 'ebay'
+      patchTarget: 'ebay',
+      suggested: {
+        id: def || 'Standard: Small to medium items',
+        label: def || 'Standard: Small to medium items',
+        confidence: def ? 0.95 : 0.80,
+        reasoning: def
+          ? 'From your saved eBay shipping defaults'
+          : 'Standard shipping is the most common method for most items',
+        isFromDefault: !!def,
+      },
     });
   }
-  
-  if (!ebayForm.shippingCost) {
+
+  if (!ebayForm.handlingTime) {
+    const def = ebayDefaults?.handlingTime;
+    issues.push({
+      marketplace: 'ebay',
+      field: 'handlingTime',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Handling Time is required.',
+      options: HANDLING_TIME_OPTIONS,
+      patchTarget: 'ebay',
+      suggested: {
+        id: def || '1 business day',
+        label: def || '1 business day',
+        confidence: def ? 0.95 : 0.85,
+        reasoning: def
+          ? 'From your saved eBay shipping defaults'
+          : '1 business day handling improves your eBay search ranking',
+        isFromDefault: !!def,
+      },
+    });
+  }
+
+  if (!isLocalPickupOnly && !ebayForm.shippingCostType) {
+    const def = ebayDefaults?.shippingCostType;
+    issues.push({
+      marketplace: 'ebay',
+      field: 'shippingCostType',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Shipping Cost Type is required.',
+      options: SHIPPING_COST_TYPE_OPTIONS,
+      patchTarget: 'ebay',
+      suggested: {
+        id: def || 'Flat: Same cost regardless of buyer location',
+        label: def || 'Flat: Same cost regardless of buyer location',
+        confidence: def ? 0.95 : 0.80,
+        reasoning: def
+          ? 'From your saved eBay shipping defaults'
+          : 'Flat rate is the most common shipping cost type for sellers',
+        isFromDefault: !!def,
+      },
+    });
+  }
+
+  if (!isLocalPickupOnly && !isFreeShipping && !ebayForm.shippingCost) {
+    const def = ebayDefaults?.shippingCost;
     issues.push({
       marketplace: 'ebay',
       field: 'shippingCost',
       type: 'missing',
       severity: 'blocking',
-      message: 'Shipping Cost is required',
-      patchTarget: 'ebay'
+      message: 'Shipping Cost is required, or enable Free Shipping in the eBay form.',
+      patchTarget: 'ebay',
+      suggested: def ? {
+        id: def,
+        label: `$${def}`,
+        confidence: 0.90,
+        reasoning: 'From your saved eBay shipping defaults',
+        isFromDefault: true,
+      } : undefined,
+    });
+  }
+
+  if (!isLocalPickupOnly && !ebayForm.shippingService) {
+    const def = ebayDefaults?.shippingService;
+    issues.push({
+      marketplace: 'ebay',
+      field: 'shippingService',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Shipping Service is required.',
+      options: SHIPPING_SERVICE_OPTIONS,
+      patchTarget: 'ebay',
+      suggested: def ? {
+        id: def, label: def, confidence: 0.95,
+        reasoning: 'From your saved eBay shipping defaults',
+        isFromDefault: true,
+      } : {
+        id: 'Standard Shipping (3 to 5 business days)',
+        label: 'Standard Shipping (3 to 5 business days)',
+        confidence: 0.80,
+        reasoning: 'Standard Shipping is the most common service for everyday items',
+      },
     });
   }
   

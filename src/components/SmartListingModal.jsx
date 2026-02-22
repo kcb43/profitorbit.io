@@ -80,6 +80,7 @@ export default function SmartListingModal({
   isSubmitting = false,
   modalState = 'idle',
   onReconnect,
+  onSaveEbayDefault,
 }) {
   const [activeMarketplace, setActiveMarketplace] = useState(null);
   
@@ -478,6 +479,7 @@ export default function SmartListingModal({
                     marketplace={activeMarketplace}
                     issues={activeIssues}
                     onApplyFix={onApplyFix}
+                    onSaveEbayDefault={onSaveEbayDefault}
                   />
                 </div>
               </ScrollArea>

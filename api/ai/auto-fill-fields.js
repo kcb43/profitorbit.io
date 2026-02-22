@@ -48,7 +48,8 @@ export default async function handler(req, res) {
       mercariForm, 
       facebookForm, 
       selectedMarketplaces,
-      issues 
+      issues,
+      ebayDefaults = {},
     } = req.body;
 
     console.log('AI Auto-Fill Request:', {
@@ -79,7 +80,8 @@ export default async function handler(req, res) {
         marketplace,
         generalForm,
         { ebayForm, mercariForm, facebookForm }[`${marketplace}Form`],
-        marketplaceIssues
+        marketplaceIssues,
+        marketplace === 'ebay' ? ebayDefaults : {}
       );
 
       suggestions[marketplace] = marketplaceSuggestions;
@@ -99,7 +101,7 @@ export default async function handler(req, res) {
 /**
  * Fill missing fields for a specific marketplace
  */
-async function fillMarketplaceFields(marketplace, generalForm, marketplaceForm, issues) {
+async function fillMarketplaceFields(marketplace, generalForm, marketplaceForm, issues, savedDefaults = {}) {
   const suggestions = [];
 
   // Build context from general form
@@ -114,6 +116,17 @@ async function fillMarketplaceFields(marketplace, generalForm, marketplaceForm, 
 
   // Process each issue
   for (const issue of issues) {
+    // Use saved default first if available (avoids unnecessary AI call)
+    if (savedDefaults[issue.field]) {
+      suggestions.push({
+        field: issue.field,
+        value: savedDefaults[issue.field],
+        confidence: 0.95,
+        reasoning: 'From your saved eBay shipping defaults',
+      });
+      continue;
+    }
+
     try {
       const suggestion = await fillSingleField(
         marketplace,
@@ -204,8 +217,8 @@ function buildFieldPrompt(marketplace, field, context) {
   if (marketplace === 'ebay') {
     const ebayPrompts = {
       handlingTime: `Return only: "1 business day"`,
-      shippingMethod: `Return only: "Flat"`,
-      shippingCostType: `Return only: "Flat"`,
+      shippingMethod: `Return only: "Standard: Small to medium items"`,
+      shippingCostType: `Return only: "Flat: Same cost regardless of buyer location"`,
       shippingService: `Return only: "Standard Shipping (3 to 5 business days)"`,
       shippingCost: price > 100 ? `Return only: "0.00"` : `Return only: "5.99"`,
       duration: `Return only: "Good 'Til Canceled"`,
