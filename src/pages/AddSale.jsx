@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SOURCE_GROUPS, ALL_SOURCES, PLATFORM_GROUPS, ALL_PLATFORMS, getLogoUrl } from "@/constants/marketplaces";
 import { useCustomSources } from "@/hooks/useCustomSources";
+import { BrandCombobox } from "@/components/BrandCombobox";
 import { ArrowLeft, Save, Calculator, Calendar as CalendarIcon, BarChart, Globe, Camera, Truck, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +114,7 @@ export default function AddSale() {
 
   const [formData, setFormData] = useState({
     item_name: "",
+    brand: "",
     platform: "",
     purchase_price: "",
     purchase_date: new Date().toISOString().split('T')[0],
@@ -833,6 +835,18 @@ export default function AddSale() {
                     </Button>
                   </div>
                 )}
+
+                {/* Brand field */}
+                <div className="space-y-2 min-w-0">
+                  <Label className="text-foreground">Brand</Label>
+                  <BrandCombobox
+                    value={formData.brand || ''}
+                    onChange={(brand) => handleChange('brand', brand)}
+                    showAISuggestions={!saleId && !copyId}
+                    itemTitle={formData.item_name || ''}
+                    itemCategory={formData.category || ''}
+                  />
+                </div>
 
                 <div className="space-y-2 min-w-0">
                    <Label htmlFor="quantity_sold" className="text-foreground">
