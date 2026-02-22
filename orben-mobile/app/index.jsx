@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 // Lazy-load the API so any init errors don't block rendering
 let orbenApi = null;
@@ -69,8 +69,16 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (user) loadData();
-    else if (user === null) setLoading(false); // explicitly not logged in
+    else if (user === null) setLoading(false);
   }, [user, loadData]);
+
+  // Re-check Mercari session every time this screen gains focus
+  // (e.g. after returning from the mercari-connect screen)
+  useFocusEffect(useCallback(() => {
+    getApi().then(api => api.getMercariSession()).then(session => {
+      setMercariSession(session);
+    }).catch(() => {});
+  }, []));
 
   const handleRefresh = () => {
     setRefreshing(true);

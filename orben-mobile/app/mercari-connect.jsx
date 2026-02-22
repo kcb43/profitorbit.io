@@ -240,12 +240,20 @@ export default function MercariConnectScreen() {
     });
   }, []);
 
-  // Auto-save once we have auth + csrf
+  // Auto-save and auto-close once we have auth + csrf
   useEffect(() => {
     if (hasAuth && hasCsrf && !saveRef.current && !saving) {
       doSave(headers);
     }
   }, [hasAuth, hasCsrf]);
+
+  // Auto-close back to inventory 1.5s after connected
+  useEffect(() => {
+    if (connected) {
+      const t = setTimeout(() => router.back(), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [connected]);
 
   // After user is logged in, show force-continue button after 12s if tokens not captured
   useEffect(() => {
@@ -335,10 +343,26 @@ export default function MercariConnectScreen() {
   }, [mergeHeaders]);
 
   const handleNavChange = useCallback((state) => {
-    if (state.url?.includes('mercari.com') && !state.loading) {
+    // Ignore about:srcdoc and blank pages
+    if (!state.url || state.url.startsWith('about:')) return;
+    if (state.url.includes('mercari.com') && !state.loading) {
+      // Re-inject on every mercari.com navigation to cover SPA route changes
       setTimeout(() => {
         webviewRef.current?.injectJavaScript(INJECTED_JS);
-      }, 800);
+        // Also trigger a Mercari API call to force header capture
+        webviewRef.current?.injectJavaScript(`
+          (function() {
+            try {
+              fetch('https://api.mercari.com/v2/entities:search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ pageSize: 1, pageToken: '' }),
+                credentials: 'include',
+              }).catch(function(){});
+            } catch(_) {}
+          })(); true;
+        `);
+      }, 1000);
     }
   }, []);
 
@@ -454,6 +478,11 @@ export default function MercariConnectScreen() {
         // Desktop user agent — loads the desktop Mercari site which uses
         // explicit Authorization Bearer tokens (same as the Chrome extension captures)
         userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        onShouldStartLoadWithRequest={(req) => {
+          // Block about:srcdoc and other non-http URLs that cause warnings
+          if (!req.url || req.url.startsWith('about:')) return false;
+          return true;
+        }}
         onError={(e) => Alert.alert('Load Error', e.nativeEvent.description)}
       />
     </SafeAreaView>
