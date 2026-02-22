@@ -66,13 +66,16 @@ export default function ResetPassword() {
     }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      setDone(true);
-      setTimeout(() => navigate('/login'), 2500);
+      return;
     }
+    // Sign out so the user must log in once with their new password
+    await supabase.auth.signOut();
+    setLoading(false);
+    setDone(true);
+    setTimeout(() => navigate('/login'), 2500);
   };
 
   return (
@@ -91,8 +94,9 @@ export default function ResetPassword() {
           {done && (
             <div className="text-center py-4">
               <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Updated</h2>
-              <p className="text-gray-500">Redirecting you to sign in…</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Updated!</h2>
+              <p className="text-gray-500">Sign in once with your new password to continue.</p>
+              <p className="text-sm text-gray-400 mt-2">Redirecting to login…</p>
             </div>
           )}
 
