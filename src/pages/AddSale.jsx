@@ -166,6 +166,8 @@ export default function AddSale() {
 
   const [calculatedProfit, setCalculatedProfit] = useState(null);
   const [isOtherSource, setIsOtherSource] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState('');
+  const [platformSearch, setPlatformSearch] = useState('');
   const [isOtherCategory, setIsOtherCategory] = useState(false);
   const { customSources, addCustomSource, removeCustomSource } = useCustomSources("orben_custom_sources");
   const { customSources: customPlatforms, addCustomSource: addCustomPlatform, removeCustomSource: removeCustomPlatform } = useCustomSources("orben_custom_platforms");
@@ -897,6 +899,7 @@ export default function AddSale() {
                   <Select
                     onValueChange={handleSourceSelectChange}
                     value={isOtherSource ? '__custom__' : formData.source}
+                    onOpenChange={(open) => { if (!open) setSourceSearch(''); }}
                   >
                     <SelectTrigger id="source_select" className="w-full text-foreground bg-background">
                       <SelectValue placeholder="Select a source">
@@ -916,11 +919,43 @@ export default function AddSale() {
                         })() : (isOtherSource ? "Custom source…" : "Select a source")}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground max-h-80">
-                      {SOURCE_GROUPS.map(group => (
-                        <SelectGroup key={group.label}>
-                          <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
-                          {group.items.map(source => (
+                    <SelectContent className="bg-popover text-popover-foreground p-0 max-h-96">
+                      {/* ── Sticky search + Add Custom ─────────────────── */}
+                      <div
+                        className="sticky top-0 z-10 bg-popover border-b border-border px-2 py-2 space-y-1"
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          className="w-full px-2 py-1.5 text-sm rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          placeholder="Search sources…"
+                          value={sourceSearch}
+                          onChange={(e) => setSourceSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      {/* ── Add Custom Source (always at top) ──────────── */}
+                      <SelectItem value="__custom__" className="text-foreground font-medium border-b border-border rounded-none">
+                        + Add Custom Source…
+                      </SelectItem>
+                      {/* ── My Custom Sources ──────────────────────────── */}
+                      {customSources.filter(s => !sourceSearch || s.toLowerCase().includes(sourceSearch.toLowerCase())).length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-muted-foreground text-xs">My Custom Sources</SelectLabel>
+                          {customSources.filter(s => !sourceSearch || s.toLowerCase().includes(sourceSearch.toLowerCase())).map(src => (
+                            <SelectItem key={src} value={src} className="text-foreground">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">✦</span>
+                                <span>{src}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      {/* ── Standard grouped sources (filtered) ────────── */}
+                      {sourceSearch ? (
+                        <SelectGroup>
+                          <SelectLabel className="text-muted-foreground text-xs">Results</SelectLabel>
+                          {ALL_SOURCES.filter(s => s.name.toLowerCase().includes(sourceSearch.toLowerCase())).map(source => (
                             <SelectItem key={source.name} value={source.name} className="text-foreground">
                               <div className="flex items-center gap-2">
                                 {source.domain ? (
@@ -933,23 +968,25 @@ export default function AddSale() {
                             </SelectItem>
                           ))}
                         </SelectGroup>
-                      ))}
-                      {customSources.length > 0 && (
-                        <SelectGroup>
-                          <SelectLabel className="text-muted-foreground text-xs">My Custom Sources</SelectLabel>
-                          {customSources.map(src => (
-                            <SelectItem key={src} value={src} className="text-foreground">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">✦</span>
-                                <span>{src}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
+                      ) : (
+                        SOURCE_GROUPS.map(group => (
+                          <SelectGroup key={group.label}>
+                            <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
+                            {group.items.map(source => (
+                              <SelectItem key={source.name} value={source.name} className="text-foreground">
+                                <div className="flex items-center gap-2">
+                                  {source.domain ? (
+                                    <img src={getLogoUrl(source.domain)} alt={source.name} className="w-4 h-4 object-contain flex-shrink-0" />
+                                  ) : source.emoji ? (
+                                    <span className="text-sm flex-shrink-0">{source.emoji}</span>
+                                  ) : null}
+                                  <span>{source.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))
                       )}
-                      <SelectItem value="__custom__" className="text-foreground font-medium">
-                        + Add Custom Source…
-                      </SelectItem>
                     </SelectContent>
                   </Select>
                   {customSources.length > 0 && (
@@ -1001,12 +1038,9 @@ export default function AddSale() {
                   <Select
                     value={formData.platform}
                     onValueChange={(value) => {
-                      if (value === '__custom_platform__') {
-                        // handled via chip UI below
-                      } else {
-                        handleChange('platform', value);
-                      }
+                      if (value !== '__custom_platform__') handleChange('platform', value);
                     }}
+                    onOpenChange={(open) => { if (!open) setPlatformSearch(''); }}
                     required
                   >
                     <SelectTrigger className="w-full text-foreground bg-background">
@@ -1028,11 +1062,39 @@ export default function AddSale() {
                         })() : null}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground max-h-80">
-                      {PLATFORM_GROUPS.map(group => (
-                        <SelectGroup key={group.label}>
-                          <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
-                          {group.items.map(option => (
+                    <SelectContent className="bg-popover text-popover-foreground p-0 max-h-96">
+                      {/* ── Sticky search ──────────────────────────────── */}
+                      <div
+                        className="sticky top-0 z-10 bg-popover border-b border-border px-2 py-2"
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          className="w-full px-2 py-1.5 text-sm rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          placeholder="Search platforms…"
+                          value={platformSearch}
+                          onChange={(e) => setPlatformSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      {/* ── My Custom Platforms ────────────────────────── */}
+                      {customPlatforms.filter(p => !platformSearch || p.toLowerCase().includes(platformSearch.toLowerCase())).length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-muted-foreground text-xs">My Custom Platforms</SelectLabel>
+                          {customPlatforms.filter(p => !platformSearch || p.toLowerCase().includes(platformSearch.toLowerCase())).map(p => (
+                            <SelectItem key={p} value={p} className="text-foreground">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">✦</span>
+                                <span>{p}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      {/* ── Standard grouped platforms (filtered) ──────── */}
+                      {platformSearch ? (
+                        <SelectGroup>
+                          <SelectLabel className="text-muted-foreground text-xs">Results</SelectLabel>
+                          {ALL_PLATFORMS.filter(p => p.label.toLowerCase().includes(platformSearch.toLowerCase())).map(option => (
                             <SelectItem key={option.value} value={option.value} className="text-foreground">
                               <div className="flex items-center gap-2">
                                 {option.domain ? (
@@ -1043,19 +1105,22 @@ export default function AddSale() {
                             </SelectItem>
                           ))}
                         </SelectGroup>
-                      ))}
-                      {customPlatforms.length > 0 && (
-                        <SelectGroup>
-                          <SelectLabel className="text-muted-foreground text-xs">My Custom Platforms</SelectLabel>
-                          {customPlatforms.map(p => (
-                            <SelectItem key={p} value={p} className="text-foreground">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">✦</span>
-                                <span>{p}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
+                      ) : (
+                        PLATFORM_GROUPS.map(group => (
+                          <SelectGroup key={group.label}>
+                            <SelectLabel className="text-muted-foreground text-xs">{group.label}</SelectLabel>
+                            {group.items.map(option => (
+                              <SelectItem key={option.value} value={option.value} className="text-foreground">
+                                <div className="flex items-center gap-2">
+                                  {option.domain ? (
+                                    <img src={getLogoUrl(option.domain)} alt={option.label} className="w-4 h-4 object-contain flex-shrink-0" />
+                                  ) : null}
+                                  <span>{option.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))
                       )}
                     </SelectContent>
                   </Select>
