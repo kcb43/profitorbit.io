@@ -1132,7 +1132,11 @@ export default function InventoryPage() {
     e.preventDefault();
     e.stopPropagation();
     if (item.image_url && item.image_url !== DEFAULT_IMAGE_URL) {
-      setImageToEdit({ url: item.image_url, itemId: item.id });
+      // Find the index of this image in the item's photos array
+      const photos = Array.isArray(item?.photos) ? item.photos : (item?.images || []);
+      const toUrl = (p) => typeof p === 'string' ? p : (p?.imageUrl || p?.url || p?.image_url || null);
+      const idx = photos.findIndex(p => toUrl(p) === item.image_url);
+      setImageToEdit({ url: item.image_url, itemId: item.id, imageIndex: idx >= 0 ? idx : 0 });
       setEditorOpen(true);
     } else {
       toast({
@@ -3958,8 +3962,8 @@ export default function InventoryPage() {
         onSave={handleSaveEditedImage}
         fileName={`${imageToEdit.itemId}-edited.jpg`}
         allImages={imageToEdit.itemId ? ((inventoryItems.find(i => i.id === imageToEdit.itemId)?.photos) || (inventoryItems.find(i => i.id === imageToEdit.itemId)?.images) || []) : []}
-        onApplyToAll={handleApplyFiltersToAll}
         itemId={imageToEdit.itemId}
+        imageIndex={imageToEdit.imageIndex ?? 0}
         onAddImage={async (newImageUrl) => {
           if (!imageToEdit.itemId) return;
           const item = inventoryItems.find(i => i.id === imageToEdit.itemId);

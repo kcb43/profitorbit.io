@@ -23019,8 +23019,8 @@ export default function CrosslistComposer() {
             ? (templateForms.general?.photos || [])
             : (templateForms[imageToEdit.marketplace]?.photos || [])
         }
-        onApplyToAll={handleApplyFiltersToAll}
         itemId={currentEditingItemId || `temp_${imageToEdit.marketplace}`}
+        imageIndex={imageToEdit.index ?? 0}
       />
 
       {/* Sold Lookup Dialog */}

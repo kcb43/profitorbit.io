@@ -434,9 +434,10 @@ export default function AddInventoryItem() {
   const handleEditImage = (e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
-    const mainPhoto = formData.photos.find(p => p.isMain);
+    const mainIdx = formData.photos.findIndex(p => p.isMain);
+    const mainPhoto = mainIdx >= 0 ? formData.photos[mainIdx] : formData.photos[0];
     if (mainPhoto) {
-      setImageToEdit({ url: mainPhoto.imageUrl, itemId: itemId });
+      setImageToEdit({ url: mainPhoto.imageUrl, itemId: itemId, photoIndex: mainIdx >= 0 ? mainIdx : 0 });
       setEditorOpen(true);
     }
   };
@@ -1443,8 +1444,8 @@ export default function AddInventoryItem() {
         onSave={handleSaveEditedImage}
         fileName="inventory-item-edited.jpg"
         allImages={formData.photos}
-        onApplyToAll={handleApplyFiltersToAll}
         itemId={photoEditorItemId}
+        imageIndex={imageToEdit.photoIndex ?? 0}
       />
       <DescriptionGenerator
         open={descGenOpen}
