@@ -425,7 +425,10 @@ function ImageEditorInner({
         const outFile = new File([blob], `photo-${i + 1}-edited.jpg`, { type: 'image/jpeg' });
         const { file_url } = await uploadApi.uploadFile({ file: outFile });
         if (onSave) await onSave(file_url, i);
-        imageDesignStates.current[i] = ds;
+        // Don't re-apply the design state to already-processed images.
+        // The edits are baked into the uploaded pixels; loading ds on top
+        // would re-apply crop coordinates meant for image 1 onto image N.
+        imageDesignStates.current[i] = null;
         setModifiedSet(prev => new Set([...prev, i]));
       } catch (err) {
         console.warn(`Apply-to-all: skipped image ${i + 1}`, err.message);
@@ -826,6 +829,7 @@ function ImageEditorInner({
           }}
           tabsIds={[TABS.ADJUST, TABS.FINETUNE, TABS.WATERMARK]}
           defaultTabId={TABS.ADJUST}
+          defaultSavedImageName={defaultName}
           defaultSavedImageType="jpeg"
           defaultSavedImageQuality={0.92}
           savingPixelRatio={4}
