@@ -171,50 +171,18 @@ function ImageEditorInner({
       styleEl.id = styleId;
       document.head.appendChild(styleEl);
     }
+    // Only hover colours go in the stylesheet — everything else is applied via
+    // inline style.setProperty in paintTabs() so it beats styled-components.
     styleEl.textContent = `
-      /* ── Tab hover text colour ── */
       .FIE_tab:hover *,
       .FIE_tab:hover svg * {
         color: #ffffff !important;
         fill:  #ffffff !important;
       }
-
-      /* ── Remove border-radius in fullscreen overlay ── */
-      .FIE_root {
-        border-radius: 0 !important;
-        overflow: hidden !important;
-      }
-
-      /* ── Compact the topbar (was padding:16px → ~95px tall) ── */
-      .FIE_topbar {
-        padding: 6px 12px !important;
-        min-height: unset !important;
-        gap: 8px !important;
-      }
-
-      /* ── Reclaim the vertical space saved from topbar ── */
-      /* Original: height: calc(100% - 95px).
-         With 6px top+bottom padding and ~36px button height → topbar ≈ 48px.
-         Give the main content the recovered ~47px. */
-      .FIE_main-container {
-        height: calc(100% - 48px) !important;
-        flex-grow: 1 !important;
-      }
-
-      /* ── Remove left dead-space in the tab sidebar ── */
-      /* StyledTabs had padding:16px; shrink left to 4px so tabs sit at the edge */
-      .FIE_tabs {
-        padding: 12px 8px 12px 4px !important;
-        min-width: 88px !important;
-      }
-
-      /* ── Canvas column — recover the 20px freed from tabs ── */
-      .FIE_editor-content {
-        width: calc(100% - 88px) !important;
-      }
     `;
 
     function paintTabs() {
+      // ── Tab colours ───────────────────────────────────────────────────────
       document.querySelectorAll(
         '.FIE_tab:not([aria-selected="true"]), .SfxDrawer-item > div:not([aria-selected="true"])',
       ).forEach(el => {
@@ -232,6 +200,42 @@ function ImageEditorInner({
             child.style.setProperty('fill', '#ffffff', 'important');
         });
       });
+
+      // ── Layout compaction (inline !important beats styled-components) ──────
+      // Topbar: shrink from the default padding:16px (~95px tall) to ~48px
+      const topbar = document.querySelector('.FIE_topbar');
+      if (topbar) {
+        topbar.style.setProperty('padding', '6px 12px', 'important');
+        topbar.style.setProperty('min-height', 'unset', 'important');
+        topbar.style.setProperty('gap', '8px', 'important');
+      }
+
+      // Main content: reclaim the vertical space saved from the topbar
+      const mainContent = document.querySelector('.FIE_main-container');
+      if (mainContent) {
+        mainContent.style.setProperty('height', 'calc(100% - 48px)', 'important');
+        mainContent.style.setProperty('flex-grow', '1', 'important');
+      }
+
+      // Tab sidebar: strip excess left padding (was 16px → 4px) and narrow min-width
+      const tabs = document.querySelector('.FIE_tabs');
+      if (tabs) {
+        tabs.style.setProperty('padding', '12px 8px 12px 4px', 'important');
+        tabs.style.setProperty('min-width', '88px', 'important');
+      }
+
+      // Canvas column: expand to fill the space freed from the narrower sidebar
+      const editorContent = document.querySelector('.FIE_editor-content');
+      if (editorContent) {
+        editorContent.style.setProperty('width', 'calc(100% - 88px)', 'important');
+      }
+
+      // App wrapper: remove border-radius (looks wrong in fullscreen overlay)
+      const appWrapper = document.querySelector('.FIE_root');
+      if (appWrapper) {
+        appWrapper.style.setProperty('border-radius', '0', 'important');
+        appWrapper.style.setProperty('overflow', 'hidden', 'important');
+      }
     }
 
     function schedule() {
