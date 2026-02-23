@@ -54,12 +54,13 @@ function ImageEditorInner({
     if (!open) return;
 
     const STYLE_ID = 'fie-tab-color-overrides';
-    let el = document.getElementById(STYLE_ID);
-    if (!el) {
-      el = document.createElement('style');
-      el.id = STYLE_ID;
-      document.head.appendChild(el);
-    }
+    // Always remove and re-append to body so we come AFTER styled-components
+    // (which injects into <head>). Later in document = wins cascade.
+    const existing = document.getElementById(STYLE_ID);
+    if (existing) existing.remove();
+    const el = document.createElement('style');
+    el.id = STYLE_ID;
+    document.body.appendChild(el);
 
     // Same fix for both modes: any selected/active element must have readable text.
     // In dark mode tabs are dark with light text; in light mode they're light with dark text.
@@ -70,18 +71,22 @@ function ImageEditorInner({
     el.textContent = `
       /* ═══ Filerobot Tab & Active-State Overrides ═══ */
 
-      /* Unselected tabs: readable text for current mode.
-         Use .FIE_root parent for higher specificity than styled-components. */
-      .FIE_root .FIE_tab,
-      .FIE_root .FIE_tabs-item,
-      .FIE_root [class*="FIE_tab"],
-      .FIE_root [class*="FIE_tabs-item"] {
+      /* Unselected tabs: force readable text.
+         Appended to <body> so it loads after styled-components <head> injections. */
+      div.FIE_root div.FIE_tab,
+      div.FIE_root li .FIE_tab,
+      div.FIE_root .FIE_tabs-item,
+      div.FIE_root [class*="FIE_tab"],
+      div.FIE_root [class*="FIE_tabs-item"],
+      div.FIE_root .SfxDrawer-item > div {
         color: ${unselectedText} !important;
       }
-      .FIE_root .FIE_tab svg,
-      .FIE_root .FIE_tab svg *,
-      .FIE_root .FIE_tabs-item svg,
-      .FIE_root .FIE_tabs-item svg * {
+      div.FIE_root .FIE_tab svg,
+      div.FIE_root .FIE_tab svg *,
+      div.FIE_root .FIE_tabs-item svg,
+      div.FIE_root .FIE_tabs-item svg *,
+      div.FIE_root .SfxDrawer-item > div svg,
+      div.FIE_root .SfxDrawer-item > div svg * {
         fill: ${unselectedFill} !important;
         color: ${unselectedFill} !important;
       }
@@ -107,8 +112,8 @@ function ImageEditorInner({
     `;
 
     return () => {
-      const existing = document.getElementById(STYLE_ID);
-      if (existing) existing.remove();
+      const toRemove = document.getElementById(STYLE_ID);
+      if (toRemove) toRemove.remove();
     };
   }, [open, isDark]);
 
