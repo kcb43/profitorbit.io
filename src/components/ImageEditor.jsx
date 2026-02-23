@@ -432,27 +432,30 @@ function ImageEditorInner({
         previewPixelRatio={window.devicePixelRatio || 2}
         theme={isDark ? {
           palette: {
-            // Backgrounds — dark neutral matching site dark mode
-            'bg-primary':           '#0a0a0a',
-            'bg-secondary':         '#171717',
-            'bg-primary-active':    '#3b82f6',  // blue only for the active/selected highlight
+            // ── Backgrounds ──
+            'bg-primary':           '#0a0a0a',  // main canvas bg
+            'bg-secondary':         '#171717',  // panels/sidebars
+            'bg-stateless':         '#1e1e1e',  // UNSELECTED tab bg (PC.BackgroundStateless)
+            'bg-primary-active':    '#3b82f6',  // SELECTED tab bg (blue highlight)
             'bg-secondary-active':  '#262626',
-            // Accent
-            'accent-primary':       '#3b82f6',
-            'accent-primary-active':'#2563eb',
-            // Text — white on dark
-            'txt-primary':          '#fafafa',
+            'bg-hover':             '#2a2a2a',
+            // ── Accent ──
+            'accent-primary':        '#3b82f6',
+            'accent-primary-active': '#ffffff', // SELECTED tab text/icon color — must be WHITE on blue
+            'accent-stateless':      '#fafafa',
+            // ── Text ──
+            'txt-primary':          '#fafafa',  // unselected tab label (PC.TextPrimary = txt-primary)
             'txt-secondary':        '#a3a3a3',
             'txt-primary-invert':   '#ffffff',
             'txt-secondary-invert': '#e5e5e5',
-            // Icons
-            'icons-primary':        '#fafafa',
+            // ── Icons ──
+            'icon-primary':         '#fafafa',  // unselected tab icon (PC.IconsPrimary = icon-primary, NOT icons-primary)
             'icons-secondary':      '#a3a3a3',
-            'icons-primary-opacity-95': 'rgba(250,250,250,0.95)',
-            // Borders
-            'border-primary':       '#262626',
-            'border-secondary':     '#171717',
-            // Misc
+            'icons-invert':         '#ffffff',
+            // ── Borders ──
+            'borders-primary':      '#262626',
+            'borders-secondary':    '#171717',
+            // ── Misc ──
             'link-primary':         '#60a5fa',
             'error':                '#ef4444',
             'warning':              '#f59e0b',
@@ -461,27 +464,30 @@ function ImageEditorInner({
           typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
         } : {
           palette: {
-            // Backgrounds — match site light mode (hsl 0 0% 100% = white)
+            // ── Backgrounds ──
             'bg-primary':           '#ffffff',
-            'bg-secondary':         '#f5f5f5',  // muted
-            'bg-primary-active':    '#171717',  // near-black matches site's primary
+            'bg-secondary':         '#f5f5f5',
+            'bg-stateless':         '#f0f0f0',  // UNSELECTED tab bg (light gray)
+            'bg-primary-active':    '#171717',  // SELECTED tab bg (near-black)
             'bg-secondary-active':  '#e5e5e5',
-            // Accent
-            'accent-primary':       '#171717',
-            'accent-primary-active':'#0a0a0a',
-            // Text — hsl 0 0% 3.9% ≈ #0a0a0a
-            'txt-primary':          '#0a0a0a',
-            'txt-secondary':        '#737373',  // muted-foreground light
-            'txt-primary-invert':   '#ffffff',  // white text/icons on dark active tab
+            'bg-hover':             '#e8e8e8',
+            // ── Accent ──
+            'accent-primary':        '#171717',
+            'accent-primary-active': '#ffffff', // SELECTED tab text/icon color — WHITE on dark
+            'accent-stateless':      '#0a0a0a',
+            // ── Text ──
+            'txt-primary':          '#0a0a0a',  // unselected tab label
+            'txt-secondary':        '#737373',
+            'txt-primary-invert':   '#ffffff',
             'txt-secondary-invert': '#f5f5f5',
-            // Icons
-            'icons-primary':        '#0a0a0a',
+            // ── Icons ──
+            'icon-primary':         '#0a0a0a',  // unselected tab icon (correct singular key)
             'icons-secondary':      '#737373',
-            'icons-primary-opacity-95':  'rgba(10,10,10,0.95)',
-            // Borders — hsl 0 0% 89.8% ≈ #e5e5e5
-            'border-primary':       '#e5e5e5',
-            'border-secondary':     '#f5f5f5',
-            // Misc
+            'icons-invert':         '#ffffff',
+            // ── Borders ──
+            'borders-primary':      '#e5e5e5',
+            'borders-secondary':    '#f5f5f5',
+            // ── Misc ──
             'link-primary':         '#171717',
             'error':                '#ef4444',
             'warning':              '#f59e0b',
