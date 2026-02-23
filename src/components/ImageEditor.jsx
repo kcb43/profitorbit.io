@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import FilerobotImageEditor, { TABS } from 'react-filerobot-image-editor';
-import { Loader2, Trash2, BookmarkPlus, FolderOpen, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Trash2, BookmarkPlus, FolderOpen, Layers, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { uploadApi } from '@/api/uploadApi';
 import { inventoryApi } from '@/api/inventoryApi';
@@ -144,6 +144,22 @@ function ImageEditorInner({
 }) {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // ── Original URL tracking (for Reset All) ────────────────────────────────
+  // Capture the image URLs as they existed when this editor session started.
+  // Used to power in-session "Reset All" and cross-session "Reset to Original".
+  const ORIG_KEY = itemId ? `orben_editor_originals_${itemId}` : null;
+  const originalUrls = useRef(
+    allImages.length ? allImages.map(getImgUrl) : imageSrc ? [imageSrc] : [],
+  );
+  // Originals persisted from a previous session (before earlier edits were saved)
+  const [persistedOriginals, setPersistedOriginals] = useState(() => {
+    if (!ORIG_KEY) return null;
+    try { return JSON.parse(localStorage.getItem(ORIG_KEY) || 'null'); }
+    catch { return null; }
+  });
+  // True once any save (individual or Apply-to-All) has happened this session
+  const [hasSavedInSession, setHasSavedInSession] = useState(false);
 
   // ── Theme ────────────────────────────────────────────────────────────────
   const [isDark, setIsDark] = useState(
@@ -354,10 +370,23 @@ function ImageEditorInner({
     setCurrentDesignState(ds);
   }, []);
 
+  // ── Persist original URLs before the first save of a session ────────────
+  // Called once per session — no-ops on subsequent calls.
+  const persistOriginalsIfFirstSave = useCallback(() => {
+    if (!ORIG_KEY) return;
+    if (localStorage.getItem(ORIG_KEY)) return; // already stored from an earlier save
+    const originals = originalUrls.current.filter(Boolean);
+    if (!originals.length) return;
+    localStorage.setItem(ORIG_KEY, JSON.stringify(originals));
+    setPersistedOriginals(originals);
+  }, [ORIG_KEY]);
+
   // ── Save current image ───────────────────────────────────────────────────
   const defaultName = useMemo(() => fileName.replace(/\.[^/.]+$/, ''), [fileName]);
 
   const handleSave = useCallback(async (editedImageObj, savedDesignState) => {
+    persistOriginalsIfFirstSave();
+    setHasSavedInSession(true);
     setIsProcessing(true);
     try {
       const base64 = editedImageObj.imageBase64;
@@ -394,7 +423,7 @@ function ImageEditorInner({
     } finally {
       setIsProcessing(false);
     }
-  }, [onSave, onOpenChange, toast, defaultName, activeIndex, itemId, activeSrc]);
+  }, [onSave, onOpenChange, toast, defaultName, activeIndex, itemId, activeSrc, persistOriginalsIfFirstSave]);
 
   const handleClose = useCallback(() => {
     setLoadedDesignState(null);
@@ -412,6 +441,8 @@ function ImageEditorInner({
 
     if (!others.length) return;
 
+    persistOriginalsIfFirstSave();
+    setHasSavedInSession(true);
     setApplyingToAll(true);
     setApplyProgress({ done: 0, total: others.length });
     let done = 0;
@@ -439,7 +470,7 @@ function ImageEditorInner({
 
     setApplyingToAll(false);
     toast({ title: 'Edits applied to all images' });
-  }, [currentDesignState, activeIndex, allImages, onSave]);
+  }, [currentDesignState, activeIndex, allImages, onSave, persistOriginalsIfFirstSave]);
 
   // ── Template: save ───────────────────────────────────────────────────────
   const handleSaveTemplate = useCallback(() => {
@@ -477,6 +508,40 @@ function ImageEditorInner({
       return next;
     });
   }, []);
+
+  // ── Reset all images to their original state ──────────────────────────────
+  const handleResetAll = useCallback(async () => {
+    // Prefer cross-session originals (stored before earlier saves); fall back to
+    // in-session originals (captured when the editor opened this time).
+    const urlsToRestore = persistedOriginals || originalUrls.current.filter(Boolean);
+    if (!urlsToRestore.length) return;
+
+    setIsProcessing(true);
+    try {
+      for (let i = 0; i < urlsToRestore.length; i++) {
+        const url = urlsToRestore[i];
+        if (url && onSave) await onSave(url, i);
+      }
+      // Clear all per-image design states so FIE reloads clean
+      imageDesignStates.current = {};
+      setModifiedSet(new Set());
+      setCurrentDesignState(null);
+      setLoadedDesignState(null);
+      setHasSavedInSession(false);
+      // These restored URLs become the new baseline for this session
+      originalUrls.current = urlsToRestore;
+      // Remove persisted originals — images are now back to baseline
+      if (ORIG_KEY) {
+        localStorage.removeItem(ORIG_KEY);
+        setPersistedOriginals(null);
+      }
+      toast({ title: 'All images reset to original' });
+    } catch (err) {
+      toast({ title: 'Reset failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [persistedOriginals, onSave, toast, ORIG_KEY]);
 
   // ── Keyboard arrow-key navigation between images ─────────────────────────
   useEffect(() => {
@@ -532,6 +597,8 @@ function ImageEditorInner({
     ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100 border border-neutral-600'
     : 'bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300';
   const canApply = !!(currentDesignState || imageDesignStates.current[activeIndex]);
+  // Show reset button if originals were persisted cross-session OR any save happened in-session
+  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0);
 
   return (
     <div
@@ -639,6 +706,28 @@ function ImageEditorInner({
 
         {/* Col 3 – right-side controls, justified to the right */}
         <div className="flex items-center gap-2 justify-end min-w-0">
+          {/* Reset All */}
+          {canReset && (
+            <button
+              onClick={handleResetAll}
+              disabled={isProcessing}
+              title={
+                persistedOriginals
+                  ? 'Reset all images back to their state before any edits were saved'
+                  : 'Reset all images back to how they looked when you opened this editor'
+              }
+              className="flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: isDark ? '#3b1515' : '#fef2f2',
+                color:           isDark ? '#f87171' : '#dc2626',
+                border:          `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`,
+              }}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset all
+            </button>
+          )}
+
           {/* Apply to all */}
           {hasMultiple && (
             <button
