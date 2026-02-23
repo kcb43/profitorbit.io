@@ -442,34 +442,22 @@ export default function AddInventoryItem() {
     }
   };
 
-  const handleSaveEditedImage = async (editedFile) => {
-    setIsUploading(true);
-    try {
-      const uploadPayload = editedFile instanceof File ? editedFile : new File([editedFile], editedFile.name || 'edited-image.jpg', { type: editedFile.type || 'image/jpeg' });
-      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
-      
-      // Update the photo in the photos array (either main or secondary)
-      setFormData(prev => {
-        const photoId = imageToEdit.photoId;
-        const updatedPhotos = prev.photos.map(p => 
-          (photoId ? p.id === photoId : p.isMain) ? { ...p, imageUrl: file_url } : p
-        );
-        const mainPhoto = updatedPhotos.find(p => p.isMain);
-        return {
-          ...prev,
-          photos: updatedPhotos,
-          image_url: mainPhoto?.imageUrl || file_url
-        };
-      });
-      
-      setEditorOpen(false);
-      setImageToEdit({ url: null });
-    } catch (error) {
-      console.error("Error uploading edited image:", error);
-      alert("Failed to upload edited image. Please try again.");
-    } finally {
-      setIsUploading(false);
-    }
+  // ImageEditor already uploads the file and passes the final URL + index.
+  // We just update the correct slot in formData.photos directly.
+  const handleSaveEditedImage = (fileUrl, index) => {
+    setFormData(prev => {
+      const updatedPhotos = prev.photos.map((p, i) =>
+        i === index ? { ...p, imageUrl: fileUrl } : p
+      );
+      const mainPhoto = updatedPhotos.find(p => p.isMain);
+      return {
+        ...prev,
+        photos: updatedPhotos,
+        image_url: mainPhoto?.imageUrl || prev.image_url,
+      };
+    });
+    // ImageEditor closes itself (via onOpenChange) after a single-image save.
+    // For "Apply to All" the editor stays open by design.
   };
 
   // Apply filters to all images

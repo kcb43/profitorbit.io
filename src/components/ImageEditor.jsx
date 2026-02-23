@@ -21,48 +21,74 @@ function persistTemplates(list) {
 // Applies Finetune adjustments (brightness, contrast, saturation, hue, blur,
 // opacity) plus rotation/flip to an image via the Canvas API.
 // Returns a Promise<Blob>.
-function applyAdjustmentsToCanvas(imgUrl, adjustments = {}) {
+// Applies a FIE design state (finetunes + adjustments.rotation/flip/crop) to an image via Canvas.
+// Crop: uses adjustments.crop.ratio to apply a centred crop at that aspect ratio.
+// Finetune values come from finetunesProps (Konva filter names), NOT from adjustments.
+function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const rotate = adjustments.rotate || 0;
-      const rad = (rotate * Math.PI) / 180;
-      const cos = Math.abs(Math.cos(rad));
-      const sin = Math.abs(Math.sin(rad));
+      const adj = designState.adjustments || {};
+      const fp  = designState.finetunesProps || {};
+
+      // ── Finetune → CSS filter ─────────────────────────────────────────────
+      // Konva filter key → property → CSS mapping
+      const brightness = fp.Brighten?.brightness ?? 0;   // -1 to 1
+      const contrast   = fp.Contrast?.contrast   ?? 0;   // -100 to 100
+      const hue        = fp.HSV?.hue             ?? 0;   // 0-259 (treated as degrees)
+      const saturation = fp.HSV?.saturation      ?? 0;   // -2 to 10 (0 = no change)
+      const blurRadius = fp.Blur?.blurRadius     ?? 0;   // 0-100
+
+      const filterParts = [
+        `brightness(${1 + brightness})`,
+        contrast   !== 0 ? `contrast(${Math.max(0, 1 + contrast / 100)})` : '',
+        hue        !== 0 ? `hue-rotate(${hue}deg)` : '',
+        saturation !== 0 ? `saturate(${Math.max(0, 1 + saturation)})` : '',
+        blurRadius  > 0  ? `blur(${(blurRadius * 0.15).toFixed(1)}px)` : '',
+      ].filter(Boolean);
+
+      // ── Rotation / flip ───────────────────────────────────────────────────
+      const rotate = adj.rotation || 0;
+      const rad    = (rotate * Math.PI) / 180;
+      const cos    = Math.abs(Math.cos(rad));
+      const sin    = Math.abs(Math.sin(rad));
       const w = img.naturalWidth;
       const h = img.naturalHeight;
 
+      // ── Crop: centred crop at the saved aspect ratio ──────────────────────
+      const cropRatio = adj.crop?.ratio;
+      let srcX = 0, srcY = 0, srcW = w, srcH = h;
+      if (cropRatio && cropRatio !== 'original' && typeof cropRatio === 'number') {
+        const imgRatio = w / h;
+        if (imgRatio > cropRatio) {
+          // Image is wider → trim sides
+          srcH = h;
+          srcW = h * cropRatio;
+          srcX = (w - srcW) / 2;
+        } else {
+          // Image is taller → trim top/bottom
+          srcW = w;
+          srcH = w / cropRatio;
+          srcY = (h - srcH) / 2;
+        }
+      }
+
+      // ── Canvas ────────────────────────────────────────────────────────────
       const canvas = document.createElement('canvas');
-      canvas.width  = Math.round(w * cos + h * sin);
-      canvas.height = Math.round(w * sin + h * cos);
+      canvas.width  = Math.round(srcW * cos + srcH * sin);
+      canvas.height = Math.round(srcW * sin + srcH * cos);
       const ctx = canvas.getContext('2d');
 
-      // Build CSS filter from design state adjustments
-      const bri = 1 + (adjustments.brightness || 0);
-      const con = 1 + (adjustments.contrast   || 0);
-      const sat = 1 + (adjustments.saturation || 0);
-      const hue = (adjustments.hue   || 0) * 360;
-      const blr = Math.abs(adjustments.blur   || 0) * 10;
-      const opa = adjustments.opacity ?? 1;
-
-      const parts = [
-        `brightness(${bri})`,
-        `contrast(${con})`,
-        `saturate(${sat})`,
-        hue  !== 0   ? `hue-rotate(${hue}deg)` : '',
-        blr  > 0     ? `blur(${blr}px)`         : '',
-        opa  < 1     ? `opacity(${opa})`         : '',
-      ].filter(Boolean);
-
-      if (parts.length) ctx.filter = parts.join(' ');
+      if (filterParts.length) ctx.filter = filterParts.join(' ');
 
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
-      if (rotate) ctx.rotate(rad);
-      if (adjustments.isFlippedX) ctx.scale(-1,  1);
-      if (adjustments.isFlippedY) ctx.scale( 1, -1);
-      ctx.drawImage(img, -w / 2, -h / 2);
+      if (rotate)         ctx.rotate(rad);
+      if (adj.isFlippedX) ctx.scale(-1,  1);
+      if (adj.isFlippedY) ctx.scale( 1, -1);
+      // drawImage with src crop coords so the centred crop is baked in
+      ctx.drawImage(img, srcX, srcY, srcW, srcH, -srcW / 2, -srcH / 2, srcW, srcH);
       ctx.restore();
 
       canvas.toBlob(
@@ -358,7 +384,7 @@ function ImageEditorInner({
   const handleApplyToAll = useCallback(async () => {
     const ds = currentDesignState || imageDesignStates.current[activeIndex];
     if (!ds) return;
-    const adjustments = ds.adjustments || {};
+
     const others = allImages
       .map((img, i) => ({ img, i }))
       .filter(({ i }) => i !== activeIndex);
@@ -373,11 +399,11 @@ function ImageEditorInner({
       const url = getImgUrl(img);
       if (!url) { done++; continue; }
       try {
-        const blob = await applyAdjustmentsToCanvas(url, adjustments);
+        // Pass full design state so crop ratio + rotation + finetunes are all applied
+        const blob = await applyAdjustmentsToCanvas(url, ds);
         const outFile = new File([blob], `photo-${i + 1}-edited.jpg`, { type: 'image/jpeg' });
         const { file_url } = await uploadApi.uploadFile({ file: outFile });
         if (onSave) await onSave(file_url, i);
-        // Mark this image as having a stored state
         imageDesignStates.current[i] = ds;
         setModifiedSet(prev => new Set([...prev, i]));
       } catch (err) {
@@ -594,7 +620,7 @@ function ImageEditorInner({
             <button
               onClick={handleApplyToAll}
               disabled={applyingToAll || !canApply}
-              title="Applies brightness, contrast, color &amp; rotation to all other images. Each image keeps its own crop/resize."
+              title="Applies brightness, contrast, colour, rotation &amp; aspect-ratio crop to all other images. Manual crop positions and annotations are per-image."
               className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0 ${btnBase} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               {applyingToAll ? (

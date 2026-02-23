@@ -936,14 +936,18 @@ export default function InventoryPage() {
   // Mutation for updating item image
   const updateImageMutation = useMutation({
     mutationFn: async ({ itemId, file, imageIndex, photoId }) => {
-      console.log('Starting image update:', { itemId, imageIndex, fileSize: file?.size });
-      
-      // Upload the edited image
-      const uploadPayload = file instanceof File ? file : new File([file], file.name || 'edited-image.jpg', { type: file.type || 'image/jpeg' });
-      console.log('Uploading file...', { fileName: uploadPayload.name, size: uploadPayload.size });
-      
-      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
-      console.log('File uploaded:', file_url);
+      // ImageEditor already uploads and passes the final URL string.
+      // Only re-upload when a raw File/Blob is passed (legacy path).
+      let file_url;
+      if (typeof file === 'string') {
+        file_url = file;
+      } else {
+        console.log('Starting image upload:', { itemId, imageIndex, fileSize: file?.size });
+        const uploadPayload = file instanceof File ? file : new File([file], file.name || 'edited-image.jpg', { type: file.type || 'image/jpeg' });
+        const result = await uploadApi.uploadFile({ file: uploadPayload });
+        file_url = result.file_url;
+        console.log('File uploaded:', file_url);
+      }
       
       // Get the current item
       const item = inventoryItems.find(i => i.id === itemId);
@@ -1147,15 +1151,16 @@ export default function InventoryPage() {
     }
   };
 
-  const handleSaveEditedImage = (editedFile, imageIndex) => {
+  // ImageEditor calls onSave(fileUrl: string, index: number) — file is already uploaded.
+  const handleSaveEditedImage = (fileUrl, imageIndex) => {
     if (imageToEdit.itemId) {
       const item = inventoryItems.find((i) => i.id === imageToEdit.itemId);
       const photos = Array.isArray(item?.photos) ? item.photos.filter(Boolean) : [];
       const photoId = photos?.[imageIndex]?.id ? String(photos[imageIndex].id) : undefined;
-      updateImageMutation.mutate({ 
-        itemId: imageToEdit.itemId, 
-        file: editedFile,
-        imageIndex: imageIndex,
+      updateImageMutation.mutate({
+        itemId: imageToEdit.itemId,
+        file: fileUrl,       // string URL — mutation skips re-upload
+        imageIndex,
         photoId,
       });
     }
