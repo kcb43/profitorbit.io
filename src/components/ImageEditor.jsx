@@ -49,71 +49,64 @@ function ImageEditorInner({
     return () => observer.disconnect();
   }, []);
 
-  // Inject Filerobot overrides into <head> so they beat styled-components specificity
+  // Directly set inline styles on Filerobot tab elements via MutationObserver.
+  // Inline style.setProperty with 'important' flag beats ALL CSS including styled-components.
   useEffect(() => {
     if (!open) return;
 
-    const STYLE_ID = 'fie-tab-color-overrides';
-    // Always remove and re-append to body so we come AFTER styled-components
-    // (which injects into <head>). Later in document = wins cascade.
-    const existing = document.getElementById(STYLE_ID);
-    if (existing) existing.remove();
-    const el = document.createElement('style');
-    el.id = STYLE_ID;
-    document.body.appendChild(el);
+    const unselectedColor = isDark ? '#fafafa' : '#0a0a0a';
+    let rafId = null;
 
-    // Same fix for both modes: any selected/active element must have readable text.
-    // In dark mode tabs are dark with light text; in light mode they're light with dark text.
-    // When something is selected (blue overlay), text must always be white.
-    const unselectedText = isDark ? '#fafafa' : '#0a0a0a';
-    const unselectedFill = isDark ? '#fafafa' : '#0a0a0a';
+    function paintTabs() {
+      // Unselected main nav tabs — make text/icons visible
+      document.querySelectorAll(
+        '.FIE_tab:not([aria-selected="true"]), .FIE_tabs-item:not([aria-selected="true"]), .SfxDrawer-item > div:not([aria-selected="true"])'
+      ).forEach(el => {
+        el.style.setProperty('color', unselectedColor, 'important');
+        el.querySelectorAll('svg *').forEach(s => {
+          s.style.setProperty('fill', unselectedColor, 'important');
+          s.style.setProperty('color', unselectedColor, 'important');
+        });
+      });
 
-    el.textContent = `
-      /* ═══ Filerobot Tab & Active-State Overrides ═══ */
+      // Selected tabs and any active element — always white on colored bg
+      document.querySelectorAll(
+        '.FIE_root [aria-selected="true"], .FIE_root [aria-pressed="true"]'
+      ).forEach(el => {
+        el.style.setProperty('color', '#ffffff', 'important');
+        el.querySelectorAll('*').forEach(child => {
+          child.style.setProperty('color', '#ffffff', 'important');
+          if (child.tagName === 'svg' || child.closest('svg')) {
+            child.style.setProperty('fill', '#ffffff', 'important');
+          }
+        });
+      });
+    }
 
-      /* Unselected tabs: force readable text.
-         Appended to <body> so it loads after styled-components <head> injections. */
-      div.FIE_root div.FIE_tab,
-      div.FIE_root li .FIE_tab,
-      div.FIE_root .FIE_tabs-item,
-      div.FIE_root [class*="FIE_tab"],
-      div.FIE_root [class*="FIE_tabs-item"],
-      div.FIE_root .SfxDrawer-item > div {
-        color: ${unselectedText} !important;
-      }
-      div.FIE_root .FIE_tab svg,
-      div.FIE_root .FIE_tab svg *,
-      div.FIE_root .FIE_tabs-item svg,
-      div.FIE_root .FIE_tabs-item svg *,
-      div.FIE_root .SfxDrawer-item > div svg,
-      div.FIE_root .SfxDrawer-item > div svg * {
-        fill: ${unselectedFill} !important;
-        color: ${unselectedFill} !important;
-      }
+    function schedule() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(paintTabs);
+    }
 
-      /* ANY selected/active element anywhere in the editor gets white text.
-         This covers main tabs, finetune sub-buttons (Contrast, HSV, Warmth, etc.),
-         tool options, and anything else Filerobot marks as selected. */
-      .FIE_root [aria-selected="true"],
-      .FIE_root [aria-pressed="true"],
-      .FIE_root [data-selected="true"] {
-        color: #ffffff !important;
+    // Watch for DOM mutations (tab selection changes, re-renders)
+    const observer = new MutationObserver(schedule);
+
+    function startObserving() {
+      const root = document.querySelector('.FIE_root');
+      if (root) {
+        observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'aria-pressed', 'class', 'style'] });
+        paintTabs();
+      } else {
+        // FIE_root not mounted yet — retry
+        setTimeout(startObserving, 50);
       }
-      .FIE_root [aria-selected="true"] *,
-      .FIE_root [aria-selected="true"] svg *,
-      .FIE_root [aria-pressed="true"] *,
-      .FIE_root [aria-pressed="true"] svg *,
-      .FIE_root [data-selected="true"] *,
-      .FIE_root [data-selected="true"] svg * {
-        color: #ffffff !important;
-        fill: #ffffff !important;
-        stroke: #ffffff !important;
-      }
-    `;
+    }
+
+    startObserving();
 
     return () => {
-      const toRemove = document.getElementById(STYLE_ID);
-      if (toRemove) toRemove.remove();
+      observer.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [open, isDark]);
 
