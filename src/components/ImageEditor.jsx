@@ -224,10 +224,15 @@ function ImageEditorInner({
         tabs.style.setProperty('min-width', '88px', 'important');
       }
 
-      // Canvas column: expand to fill the space freed from the narrower sidebar
+      // Canvas column: expand to fill space freed from the narrower sidebar.
+      // padding-right + border-box forces a right gap matching the canvas
+      // container's left padding (16px), preventing the Konva stage from
+      // overflowing and clipping the right side of the canvas area.
       const editorContent = document.querySelector('.FIE_editor-content');
       if (editorContent) {
         editorContent.style.setProperty('width', 'calc(100% - 88px)', 'important');
+        editorContent.style.setProperty('padding-right', '16px', 'important');
+        editorContent.style.setProperty('box-sizing', 'border-box', 'important');
       }
 
       // App wrapper: remove border-radius (looks wrong in fullscreen overlay)
