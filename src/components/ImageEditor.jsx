@@ -54,7 +54,6 @@ function ImageEditorInner({
   useEffect(() => {
     if (!open) return;
 
-    const unselectedColor = isDark ? '#fafafa' : '#0a0a0a';
     let rafId = null;
 
     // Inject CSS for hover (can't intercept :hover with MutationObserver).
@@ -77,25 +76,26 @@ function ImageEditorInner({
 
     function paintTabs() {
       // ── Unselected tabs ───────────────────────────────────────────────────
-      // We MUST paint ALL children (not just svg), because when a tab WAS
-      // selected our observer set its label's inline style to #ffffff !important.
-      // That inline style persists until we explicitly override it here.
+      // REMOVE inline styles rather than setting them. Inline styles (even
+      // with !important via setProperty) always beat stylesheet rules, so
+      // leaving any inline color on unselected children blocks the CSS :hover
+      // rule we injected above. Clearing them lets the styled-component
+      // defaults apply normally AND lets the CSS hover rule fire correctly.
       document.querySelectorAll(
         '.FIE_tab:not([aria-selected="true"]), .SfxDrawer-item > div:not([aria-selected="true"])'
       ).forEach(el => {
-        el.style.setProperty('color', unselectedColor, 'important');
+        el.style.removeProperty('color');
         el.querySelectorAll('*').forEach(child => {
-          child.style.setProperty('color', unselectedColor, 'important');
-          if (child.tagName === 'svg' || child.closest('svg')) {
-            child.style.setProperty('fill', unselectedColor, 'important');
-          }
+          child.style.removeProperty('color');
+          child.style.removeProperty('fill');
         });
       });
 
-      // ── Selected tabs — always white on the colored active background ─────
-      document.querySelectorAll(
-        '.FIE_root [aria-selected="true"]'
-      ).forEach(el => {
+      // ── Selected tabs — force white on the colored active background ──────
+      // We still need inline !important here because styled-components sets
+      // accent-primary-active on selected children (which we've tuned to a
+      // blue/dark value for the button), and inline beats that.
+      document.querySelectorAll('.FIE_root [aria-selected="true"]').forEach(el => {
         el.style.setProperty('color', '#ffffff', 'important');
         el.querySelectorAll('*').forEach(child => {
           child.style.setProperty('color', '#ffffff', 'important');
