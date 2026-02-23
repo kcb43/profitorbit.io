@@ -485,7 +485,7 @@ function ImageEditorInner({
         style={{
           height: 60,
           paddingLeft: 12,
-          paddingRight: 16,   // explicit right padding — Tailwind px-3 can get eaten
+          paddingRight: 48,   // match FIE topbar right padding so controls align
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
