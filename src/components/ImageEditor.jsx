@@ -46,16 +46,11 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       // ── Finetune → CSS filter ─────────────────────────────────────────────
       const brightness = fp.Brighten?.brightness ?? 0;   // -1 to 1
       const contrast   = fp.Contrast?.contrast   ?? 0;   // -100 to 100
-      const hue        = fp.HSV?.hue             ?? 0;   // 0-259 (degrees)
-      const saturation = fp.HSV?.saturation      ?? 0;   // -2 to 10 (0 = no change)
-      const blurRadius = fp.Blur?.blurRadius     ?? 0;   // 0-100
+      const shadowsVal = fp.Shadows?.shadowsValue ?? 0;  // -100 to 100 (applied as pixel pass)
 
       const filterParts = [
         `brightness(${1 + brightness})`,
-        contrast   !== 0 ? `contrast(${Math.max(0, 1 + contrast / 100)})` : '',
-        hue        !== 0 ? `hue-rotate(${hue}deg)` : '',
-        saturation !== 0 ? `saturate(${Math.max(0, 1 + saturation)})` : '',
-        blurRadius  > 0  ? `blur(${(blurRadius * 0.15).toFixed(1)}px)` : '',
+        contrast !== 0 ? `contrast(${Math.max(0, 1 + contrast / 100)})` : '',
       ].filter(Boolean);
 
       // ── Rotation / flip ───────────────────────────────────────────────────
@@ -93,6 +88,21 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       if (adj.isFlippedY) ctx.scale( 1, -1);
       ctx.drawImage(img, srcX, srcY, srcW, srcH, -srcW / 2, -srcH / 2, srcW, srcH);
       ctx.restore();
+
+      // ── Shadows pixel pass (CSS filters can't do tonal range adjustment) ──
+      if (shadowsVal !== 0) {
+        const idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const px = idata.data;
+        for (let p = 0; p < px.length; p += 4) {
+          const lum = 0.299 * px[p] + 0.587 * px[p + 1] + 0.114 * px[p + 2];
+          const factor = Math.pow(Math.max(0, 1 - lum / 255), 1.5);
+          const adj2 = shadowsVal * factor;
+          px[p]     = Math.min(255, Math.max(0, px[p]     + adj2));
+          px[p + 1] = Math.min(255, Math.max(0, px[p + 1] + adj2));
+          px[p + 2] = Math.min(255, Math.max(0, px[p + 2] + adj2));
+        }
+        ctx.putImageData(idata, 0, 0);
+      }
 
       if (objectUrl !== imgUrl) URL.revokeObjectURL(objectUrl);
 
