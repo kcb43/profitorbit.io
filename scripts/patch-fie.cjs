@@ -267,17 +267,33 @@ patch('components/tools/tools.constants.js', [
 ]);
 
 /* ══════════════════════════════════════════════════════════════════════════
-   6. CropTransformer.js  – centre the crop box when a preset ratio is active
+   6. CropTransformer.js  – centre the crop box only on INITIAL preset selection
+      (not on every drag handle, which previously snapped position back to centre)
    ══════════════════════════════════════════════════════════════════════════ */
 patch('components/Layers/TransformersLayer/CropTransformer.js', [
   [
-    // Original saveBoundedCropWithLatestConfig body (function E)
+    // FROM: original (unpatched) code
     'var f=t.current,g={width:a,height:b,' +
       'x:null!==(c=j.x)&&void 0!==c?c:0,' +
       'y:null!==(d=j.y)&&void 0!==d?d:0};' +
       'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
         '!(A||B)&&C(),_objectSpread(_objectSpread({},v),e)),!0)',
-    // Patched: compute centred x/y when a numeric ratio preset is active
+    // TO: centre only on initial preset selection (j.x===0 && j.y===0)
+    'var f=t.current,' +
+      '_ratio=!(A||B)&&C(),_w=a,_h=b,' +
+      '_cx=null!==(c=j.x)&&void 0!==c?c:0,' +
+      '_cy=null!==(d=j.y)&&void 0!==d?d:0;' +
+      'if(f&&typeof _ratio===\'number\'){' +
+        'if(a>0&&b>0&&a/b>_ratio){_w=b*_ratio;_h=b;}' +
+        'else if(a>0&&b>0){_w=a;_h=a/_ratio;}' +
+        'if(_cx===0&&_cy===0){_cx=(f.width-_w)/2;_cy=(f.height-_h)/2;}' +
+      '}' +
+      'var g={width:_w,height:_h,x:Math.max(0,_cx),y:Math.max(0,_cy)};' +
+      'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
+        '_ratio,_objectSpread(_objectSpread({},v),e)),!0)',
+  ],
+  [
+    // FROM: old patch (always-centering version) → upgrade to conditional centering
     'var f=t.current,' +
       '_ratio=!(A||B)&&C(),_w=a,_h=b,_x,_y;' +
       'if(f&&typeof _ratio===\'number\'){' +
@@ -291,6 +307,32 @@ patch('components/Layers/TransformersLayer/CropTransformer.js', [
       'var g={width:_w,height:_h,x:Math.max(0,_x),y:Math.max(0,_y)};' +
       'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
         '_ratio,_objectSpread(_objectSpread({},v),e)),!0)',
+    // TO: same as above (conditional centering)
+    'var f=t.current,' +
+      '_ratio=!(A||B)&&C(),_w=a,_h=b,' +
+      '_cx=null!==(c=j.x)&&void 0!==c?c:0,' +
+      '_cy=null!==(d=j.y)&&void 0!==d?d:0;' +
+      'if(f&&typeof _ratio===\'number\'){' +
+        'if(a>0&&b>0&&a/b>_ratio){_w=b*_ratio;_h=b;}' +
+        'else if(a>0&&b>0){_w=a;_h=a/_ratio;}' +
+        'if(_cx===0&&_cy===0){_cx=(f.width-_w)/2;_cy=(f.height-_h)/2;}' +
+      '}' +
+      'var g={width:_w,height:_h,x:Math.max(0,_cx),y:Math.max(0,_cy)};' +
+      'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
+        '_ratio,_objectSpread(_objectSpread({},v),e)),!0)',
+  ],
+]);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. DesignLayer/index.js  – fix cache pixel ratio for HiDPI screens
+      Konva.Node.cache() defaults to pixelRatio:1. On a 2× screen this creates
+      a 1× cache canvas that gets upscaled to the 2× stage → blurry preview.
+      Passing {pixelRatio: devicePixelRatio} makes the cache match the screen.
+   ══════════════════════════════════════════════════════════════════════════ */
+patch('components/Layers/DesignLayer/index.js', [
+  [
+    'J.current?J.current.cache():setTimeout(Y,0)',
+    'J.current?J.current.cache({pixelRatio:window.devicePixelRatio||2}):setTimeout(Y,0)',
   ],
 ]);
 
