@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import FilerobotImageEditor, { TABS } from 'react-filerobot-image-editor';
-import { Loader2, Trash2, BookmarkPlus, FolderOpen, Layers } from 'lucide-react';
+import { Loader2, Trash2, BookmarkPlus, FolderOpen, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { uploadApi } from '@/api/uploadApi';
 import { inventoryApi } from '@/api/inventoryApi';
@@ -367,6 +367,35 @@ function ImageEditorInner({
     });
   }, []);
 
+  // ── Keyboard arrow-key navigation between images ─────────────────────────
+  useEffect(() => {
+    if (!open || allImages.length <= 1) return;
+    const onKey = (e) => {
+      // Don't steal keys when the user is typing in template name input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft')
+        handleSwitchImage(Math.max(0, activeIndex - 1));
+      if (e.key === 'ArrowRight')
+        handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, allImages.length, activeIndex, handleSwitchImage]);
+
+  // ── Touch swipe on the top bar to navigate ───────────────────────────────
+  const swipeTouchStart = useRef(null);
+  const handleBarTouchStart = useCallback((e) => {
+    swipeTouchStart.current = e.touches[0].clientX;
+  }, []);
+  const handleBarTouchEnd = useCallback((e) => {
+    if (swipeTouchStart.current === null) return;
+    const dx = e.changedTouches[0].clientX - swipeTouchStart.current;
+    swipeTouchStart.current = null;
+    if (Math.abs(dx) < 40) return; // minimum swipe distance
+    if (dx < 0) handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1)); // swipe left → next
+    else         handleSwitchImage(Math.max(0, activeIndex - 1));                    // swipe right → prev
+  }, [allImages.length, activeIndex, handleSwitchImage]);
+
   // ── Mobile nav ───────────────────────────────────────────────────────────
   useEffect(() => {
     document.body.classList.toggle('hide-mobile-nav', !!open);
@@ -405,6 +434,8 @@ function ImageEditorInner({
       {/* ── Top bar: filmstrip + template controls ── */}
       <div
         className="flex items-center gap-2 px-3 shrink-0"
+        onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
+        onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
           backgroundColor: barBg,
@@ -413,9 +444,26 @@ function ImageEditorInner({
       >
         {/* Filmstrip (only when multiple images) */}
         {hasMultiple && (
+          <>
+            {/* Prev arrow */}
+            <button
+              onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
+              disabled={activeIndex === 0}
+              title="Previous image (←)"
+              className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
+              style={{
+                backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5',
+                color: isDark ? '#fafafa' : '#0a0a0a',
+              }}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        {hasMultiple && (
           <div
             className="flex items-center gap-1.5 overflow-x-auto flex-1"
-            style={{ maxWidth: 'calc(100% - 320px)', scrollbarWidth: 'none' }}
+            style={{ maxWidth: 'calc(100% - 380px)', scrollbarWidth: 'none' }}
           >
             {allImages.map((img, idx) => {
               const url   = getImgUrl(img);
@@ -468,6 +516,22 @@ function ImageEditorInner({
           </div>
         )}
 
+        {/* Next arrow */}
+        {hasMultiple && (
+          <button
+            onClick={() => handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1))}
+            disabled={activeIndex === allImages.length - 1}
+            title="Next image (→)"
+            className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
+            style={{
+              backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5',
+              color: isDark ? '#fafafa' : '#0a0a0a',
+            }}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+
         {/* Right-side controls */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
           {/* Apply to all */}
@@ -475,7 +539,7 @@ function ImageEditorInner({
             <button
               onClick={handleApplyToAll}
               disabled={applyingToAll || !canApply}
-              title="Apply current adjustments to all other images"
+              title="Applies brightness, contrast, color &amp; rotation to all other images. Each image keeps its own crop/resize."
               className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors ${btnBase} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               {applyingToAll ? (
