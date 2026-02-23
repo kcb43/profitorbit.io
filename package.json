@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "analyze:facebook-har": "node scripts/analyze-facebook-har.js",
     "test:deployment": "node test-deployment.js",
-    "postinstall": "patch-package"
+    "postinstall": "node scripts/patch-fie.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.2",
