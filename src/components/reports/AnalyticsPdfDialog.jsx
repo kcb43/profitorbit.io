@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import DatePickerInput from '@/components/DatePickerInput';
 import { FileText, Loader2, Download } from 'lucide-react';
 import { openAuthExport } from '@/utils/exportWithAuth';
 
@@ -95,14 +96,8 @@ export default function AnalyticsPdfDialog({ open, onClose, defaultRange = 'life
           {/* Custom date pickers */}
           {range === 'custom' && (
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">From</Label>
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-1 h-8 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs">To</Label>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mt-1 h-8 text-sm" />
-              </div>
+              <DatePickerInput label="From" value={from} onChange={setFrom} />
+              <DatePickerInput label="To"   value={to}   onChange={setTo}   />
             </div>
           )}
 

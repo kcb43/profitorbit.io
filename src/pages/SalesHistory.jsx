@@ -10,6 +10,7 @@ import { splitBase44Tags } from "@/utils/base44Notes";
 import { cleanHtmlText } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import DatePickerInput from "@/components/DatePickerInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -2487,14 +2488,11 @@ export default function SalesHistory() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bulk-sale-date">Sale Date</Label>
-              <Input
+              <DatePickerInput
                 id="bulk-sale-date"
-                type="date"
+                label="Sale Date"
                 value={bulkUpdateForm.sale_date}
-                onChange={(e) =>
-                  setBulkUpdateForm((prev) => ({ ...prev, sale_date: e.target.value }))
-                }
+                onChange={(v) => setBulkUpdateForm((prev) => ({ ...prev, sale_date: v }))}
               />
             </div>
           </div>

@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import DatePickerInput from '@/components/DatePickerInput';
 import {
   Select,
   SelectContent,
@@ -129,24 +130,16 @@ function FiltersForm({ report, filters, onChange }) {
     <div className="space-y-3">
       {needs.includes('dateRange') && (
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">From date</Label>
-            <Input
-              type="date"
-              value={filters.dateFrom || ''}
-              onChange={(e) => onChange({ ...filters, dateFrom: e.target.value || null })}
-              className="mt-1 h-8 text-sm"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">To date</Label>
-            <Input
-              type="date"
-              value={filters.dateTo || ''}
-              onChange={(e) => onChange({ ...filters, dateTo: e.target.value || null })}
-              className="mt-1 h-8 text-sm"
-            />
-          </div>
+          <DatePickerInput
+            label="From date"
+            value={filters.dateFrom || ''}
+            onChange={(v) => onChange({ ...filters, dateFrom: v || null })}
+          />
+          <DatePickerInput
+            label="To date"
+            value={filters.dateTo || ''}
+            onChange={(v) => onChange({ ...filters, dateTo: v || null })}
+          />
         </div>
       )}
       {needs.includes('marketplace') && (

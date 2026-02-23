@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
 import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2, FolderPlus, Folders } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import DatePickerInput from "@/components/DatePickerInput";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -3844,12 +3845,11 @@ export default function InventoryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bulk-purchase-date">Purchase Date</Label>
-              <Input
+              <DatePickerInput
                 id="bulk-purchase-date"
-                type="date"
+                label="Purchase Date"
                 value={bulkUpdateForm.purchase_date}
-                onChange={(e) => setBulkUpdateForm((prev) => ({ ...prev, purchase_date: e.target.value }))}
+                onChange={(v) => setBulkUpdateForm((prev) => ({ ...prev, purchase_date: v }))}
               />
             </div>
           </div>
