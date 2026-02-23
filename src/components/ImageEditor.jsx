@@ -78,6 +78,9 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       canvas.width  = Math.round(srcW * cos + srcH * sin);
       canvas.height = Math.round(srcW * sin + srcH * cos);
       const ctx = canvas.getContext('2d');
+      // Force bicubic quality for all drawImage calls (default is 'low')
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
       if (filterParts.length) ctx.filter = filterParts.join(' ');
 
@@ -577,6 +580,29 @@ function ImageEditorInner({
     document.body.classList.toggle('hide-mobile-nav', !!open);
     return () => document.body.classList.remove('hide-mobile-nav');
   }, [open]);
+
+  // ── High-quality canvas rendering ─────────────────────────────────────────
+  // Konva defaults imageSmoothingQuality to 'low', making downscaled images
+  // look noticeably blurry compared to a native <img> tag (which uses bicubic).
+  // We patch ctx.drawImage for the editor's lifetime so every Konva draw call
+  // automatically uses 'high' (bicubic) quality interpolation.
+  useEffect(() => {
+    const orig = CanvasRenderingContext2D.prototype.drawImage;
+    if (orig._fie_hq) return; // already patched (guard against strict-mode double-invoke)
+    function hqDrawImage(...args) {
+      this.imageSmoothingEnabled = true;
+      this.imageSmoothingQuality = 'high';
+      return orig.apply(this, args);
+    }
+    hqDrawImage._fie_hq = true;
+    CanvasRenderingContext2D.prototype.drawImage = hqDrawImage;
+    return () => {
+      // Only restore if our patch is still the active one
+      if (CanvasRenderingContext2D.prototype.drawImage === hqDrawImage) {
+        CanvasRenderingContext2D.prototype.drawImage = orig;
+      }
+    };
+  }, []);
 
   // ── Close template menu when clicking outside ─────────────────────────────
   useEffect(() => {
