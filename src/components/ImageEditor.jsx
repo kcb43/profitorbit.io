@@ -49,6 +49,58 @@ function ImageEditorInner({
     return () => observer.disconnect();
   }, []);
 
+  // Inject Filerobot tab overrides into <head> so they beat styled-components
+  useEffect(() => {
+    if (!open) return;
+
+    const STYLE_ID = 'fie-tab-color-overrides';
+    let el = document.getElementById(STYLE_ID);
+    if (!el) {
+      el = document.createElement('style');
+      el.id = STYLE_ID;
+      document.head.appendChild(el);
+    }
+
+    const tabText   = isDark ? '#fafafa' : '#0a0a0a';
+    const tabFill   = isDark ? '#fafafa' : '#0a0a0a';
+
+    el.textContent = `
+      /* ── Filerobot tab overrides (injected by Orben ImageEditor) ── */
+
+      /* All tabs: base color for current mode */
+      .FIE_tab,
+      .FIE_tabs-item {
+        color: ${tabText} !important;
+      }
+      .FIE_tab svg, .FIE_tab svg *,
+      .FIE_tabs-item svg, .FIE_tabs-item svg * {
+        fill: ${tabFill} !important;
+        color: ${tabFill} !important;
+      }
+
+      /* Selected tab: always white — readable on any accent bg */
+      .FIE_tab[aria-selected="true"],
+      .FIE_tabs-item[aria-selected="true"] {
+        color: #ffffff !important;
+      }
+      .FIE_tab[aria-selected="true"] *,
+      .FIE_tab[aria-selected="true"] svg,
+      .FIE_tab[aria-selected="true"] svg *,
+      .FIE_tabs-item[aria-selected="true"] *,
+      .FIE_tabs-item[aria-selected="true"] svg,
+      .FIE_tabs-item[aria-selected="true"] svg * {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+    `;
+
+    return () => {
+      const existing = document.getElementById(STYLE_ID);
+      if (existing) existing.remove();
+    };
+  }, [open, isDark]);
+
   // Load design state when opening editor
   useEffect(() => {
     const loadDesignState = async () => {
@@ -218,55 +270,6 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
-      {/* Targeted CSS overrides for Filerobot's styled-components internals */}
-      <style>{`
-        /* ── Selected tab: always high-contrast text/icons ── */
-        .FIE_tab[aria-selected="true"],
-        .FIE_tabs-item[aria-selected="true"] {
-          color: #ffffff !important;
-        }
-        .FIE_tab[aria-selected="true"] > *,
-        .FIE_tab[aria-selected="true"] svg,
-        .FIE_tab[aria-selected="true"] svg *,
-        .FIE_tabs-item[aria-selected="true"] > *,
-        .FIE_tabs-item[aria-selected="true"] svg,
-        .FIE_tabs-item[aria-selected="true"] svg * {
-          color: #ffffff !important;
-          fill: #ffffff !important;
-          stroke: #ffffff !important;
-        }
-
-        ${isDark ? `
-        /* ── Dark mode: unselected tabs ── */
-        .FIE_tab,
-        .FIE_tabs-item {
-          color: #fafafa !important;
-        }
-        .FIE_tab > *,
-        .FIE_tab svg,
-        .FIE_tab svg *,
-        .FIE_tabs-item svg,
-        .FIE_tabs-item svg * {
-          color: #fafafa !important;
-          fill: #fafafa !important;
-        }
-        ` : `
-        /* ── Light mode: unselected tabs ── */
-        .FIE_tab,
-        .FIE_tabs-item {
-          color: #0a0a0a !important;
-        }
-        .FIE_tab > *,
-        .FIE_tab svg,
-        .FIE_tab svg *,
-        .FIE_tabs-item svg,
-        .FIE_tabs-item svg * {
-          color: #0a0a0a !important;
-          fill: #0a0a0a !important;
-        }
-        `}
-      `}</style>
-
       <FilerobotImageEditor
         source={imageSrc}
         onSave={handleSave}
