@@ -61,102 +61,44 @@ function ImageEditorInner({
       document.head.appendChild(el);
     }
 
-    if (isDark) {
-      el.textContent = `
-        /* ═══ Filerobot Dark Mode Overrides ═══ */
+    // Same fix for both modes: any selected/active element must have readable text.
+    // In dark mode tabs are dark with light text; in light mode they're light with dark text.
+    // When something is selected (blue overlay), text must always be white.
+    const unselectedText = isDark ? '#fafafa' : '#0a0a0a';
+    const unselectedFill = isDark ? '#fafafa' : '#0a0a0a';
 
-        /* Main nav tabs: blue-tinted background + white text by default */
-        .FIE_tab,
-        .FIE_tabs-item,
-        [class*="FIE_tab"]:not([class*="FIE_topbar"]),
-        [class*="FIE_tabs-item"] {
-          background-color: #1e3a8a !important;
-          color: #ffffff !important;
-        }
-        .FIE_tab svg, .FIE_tab svg *,
-        .FIE_tabs-item svg, .FIE_tabs-item svg * {
-          fill: #ffffff !important;
-          color: #ffffff !important;
-        }
+    el.textContent = `
+      /* ═══ Filerobot Tab & Active-State Overrides ═══ */
 
-        /* Selected main nav tab: brighter blue, text stays white */
-        .FIE_tab[aria-selected="true"],
-        .FIE_tabs-item[aria-selected="true"],
-        [class*="FIE_tab"][aria-selected="true"],
-        [class*="FIE_tabs-item"][aria-selected="true"] {
-          background-color: #3b82f6 !important;
-          color: #ffffff !important;
-        }
-        .FIE_tab[aria-selected="true"] *,
-        .FIE_tab[aria-selected="true"] svg *,
-        .FIE_tabs-item[aria-selected="true"] *,
-        .FIE_tabs-item[aria-selected="true"] svg * {
-          color: #ffffff !important;
-          fill: #ffffff !important;
-          stroke: #ffffff !important;
-        }
+      /* Unselected tabs: readable text for current mode */
+      .FIE_tab,
+      .FIE_tabs-item {
+        color: ${unselectedText} !important;
+      }
+      .FIE_tab svg *, .FIE_tabs-item svg * {
+        fill: ${unselectedFill} !important;
+        color: ${unselectedFill} !important;
+      }
 
-        /* ALL selected/active elements inside the editor (covers finetune items,
-           tool options, sub-buttons — any element with an active/selected state) */
-        .FIE_root [aria-selected="true"],
-        .FIE_root [aria-pressed="true"],
-        .FIE_root [data-selected="true"] {
-          color: #ffffff !important;
-        }
-        .FIE_root [aria-selected="true"] *,
-        .FIE_root [aria-selected="true"] svg *,
-        .FIE_root [aria-pressed="true"] *,
-        .FIE_root [aria-pressed="true"] svg *,
-        .FIE_root [data-selected="true"] *,
-        .FIE_root [data-selected="true"] svg * {
-          color: #ffffff !important;
-          fill: #ffffff !important;
-          stroke: #ffffff !important;
-        }
-      `;
-    } else {
-      el.textContent = `
-        /* ═══ Filerobot Light Mode Overrides ═══ */
-
-        /* Main nav tabs: dark text on light background */
-        .FIE_tab,
-        .FIE_tabs-item {
-          color: #0a0a0a !important;
-        }
-        .FIE_tab svg *, .FIE_tabs-item svg * {
-          fill: #0a0a0a !important;
-          color: #0a0a0a !important;
-        }
-
-        /* Selected tab: white text on dark/colored active background */
-        .FIE_tab[aria-selected="true"],
-        .FIE_tabs-item[aria-selected="true"] {
-          color: #ffffff !important;
-        }
-        .FIE_tab[aria-selected="true"] *,
-        .FIE_tab[aria-selected="true"] svg *,
-        .FIE_tabs-item[aria-selected="true"] *,
-        .FIE_tabs-item[aria-selected="true"] svg * {
-          color: #ffffff !important;
-          fill: #ffffff !important;
-          stroke: #ffffff !important;
-        }
-
-        /* ALL selected/active elements (finetune items etc.) */
-        .FIE_root [aria-selected="true"],
-        .FIE_root [aria-pressed="true"] {
-          color: #ffffff !important;
-        }
-        .FIE_root [aria-selected="true"] *,
-        .FIE_root [aria-selected="true"] svg *,
-        .FIE_root [aria-pressed="true"] *,
-        .FIE_root [aria-pressed="true"] svg * {
-          color: #ffffff !important;
-          fill: #ffffff !important;
-          stroke: #ffffff !important;
-        }
-      `;
-    }
+      /* ANY selected/active element anywhere in the editor gets white text.
+         This covers main tabs, finetune sub-buttons (Contrast, HSV, Warmth, etc.),
+         tool options, and anything else Filerobot marks as selected. */
+      .FIE_root [aria-selected="true"],
+      .FIE_root [aria-pressed="true"],
+      .FIE_root [data-selected="true"] {
+        color: #ffffff !important;
+      }
+      .FIE_root [aria-selected="true"] *,
+      .FIE_root [aria-selected="true"] svg *,
+      .FIE_root [aria-pressed="true"] *,
+      .FIE_root [aria-pressed="true"] svg *,
+      .FIE_root [data-selected="true"] *,
+      .FIE_root [data-selected="true"] svg * {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+    `;
 
     return () => {
       const existing = document.getElementById(STYLE_ID);
@@ -329,7 +271,7 @@ function ImageEditorInner({
         height: '100vh',
         maxWidth: '100vw',
         maxHeight: '100vh',
-        backgroundColor: isDark ? '#0f172a' : '#ffffff',
+        backgroundColor: isDark ? '#0a0a0a' : '#ffffff',
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
@@ -486,26 +428,26 @@ function ImageEditorInner({
         previewPixelRatio={window.devicePixelRatio || 2}
         theme={isDark ? {
           palette: {
-            // Main canvas area background
-            'bg-primary':           '#0f172a',  // slate-900 — dark blue-tinted bg
-            'bg-secondary':         '#1e3a8a',  // deep blue — tab bar / drawer bg
-            'bg-primary-active':    '#3b82f6',  // bright blue for selected state
-            'bg-secondary-active':  '#1e40af',  // slightly darker blue for secondary active
+            // Backgrounds — dark neutral matching site dark mode
+            'bg-primary':           '#0a0a0a',
+            'bg-secondary':         '#171717',
+            'bg-primary-active':    '#3b82f6',  // blue only for the active/selected highlight
+            'bg-secondary-active':  '#262626',
             // Accent
             'accent-primary':       '#3b82f6',
             'accent-primary-active':'#2563eb',
-            // Text — always light in dark mode
-            'txt-primary':          '#ffffff',
-            'txt-secondary':        '#bfdbfe',  // light blue-tinted secondary
+            // Text — white on dark
+            'txt-primary':          '#fafafa',
+            'txt-secondary':        '#a3a3a3',
             'txt-primary-invert':   '#ffffff',
-            'txt-secondary-invert': '#dbeafe',
+            'txt-secondary-invert': '#e5e5e5',
             // Icons
-            'icons-primary':        '#ffffff',
-            'icons-secondary':      '#bfdbfe',
-            'icons-primary-opacity-95': 'rgba(255,255,255,0.95)',
+            'icons-primary':        '#fafafa',
+            'icons-secondary':      '#a3a3a3',
+            'icons-primary-opacity-95': 'rgba(250,250,250,0.95)',
             // Borders
-            'border-primary':       '#1e40af',  // blue-tinted border
-            'border-secondary':     '#1e3a8a',
+            'border-primary':       '#262626',
+            'border-secondary':     '#171717',
             // Misc
             'link-primary':         '#60a5fa',
             'error':                '#ef4444',
