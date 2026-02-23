@@ -172,10 +172,45 @@ function ImageEditorInner({
       document.head.appendChild(styleEl);
     }
     styleEl.textContent = `
+      /* ── Tab hover text colour ── */
       .FIE_tab:hover *,
       .FIE_tab:hover svg * {
         color: #ffffff !important;
         fill:  #ffffff !important;
+      }
+
+      /* ── Remove border-radius in fullscreen overlay ── */
+      .FIE_root {
+        border-radius: 0 !important;
+        overflow: hidden !important;
+      }
+
+      /* ── Compact the topbar (was padding:16px → ~95px tall) ── */
+      .FIE_topbar {
+        padding: 6px 12px !important;
+        min-height: unset !important;
+        gap: 8px !important;
+      }
+
+      /* ── Reclaim the vertical space saved from topbar ── */
+      /* Original: height: calc(100% - 95px).
+         With 6px top+bottom padding and ~36px button height → topbar ≈ 48px.
+         Give the main content the recovered ~47px. */
+      .FIE_main-container {
+        height: calc(100% - 48px) !important;
+        flex-grow: 1 !important;
+      }
+
+      /* ── Remove left dead-space in the tab sidebar ── */
+      /* StyledTabs had padding:16px; shrink left to 4px so tabs sit at the edge */
+      .FIE_tabs {
+        padding: 12px 8px 12px 4px !important;
+        min-width: 88px !important;
+      }
+
+      /* ── Canvas column — recover the 20px freed from tabs ── */
+      .FIE_editor-content {
+        width: calc(100% - 88px) !important;
       }
     `;
 
