@@ -35,6 +35,19 @@ function ImageEditorInner({
   const [isProcessing, setIsProcessing] = useState(false);
   const [designState, setDesignState] = useState(null);
   const [loadedDesignState, setLoadedDesignState] = useState(null);
+  const [isDark, setIsDark] = useState(
+    () => document.documentElement.classList.contains('dark')
+  );
+
+  // Keep isDark in sync with the site's theme class
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setIsDark(root.classList.contains('dark'));
+    });
+    observer.observe(root, { attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Load design state when opening editor
   useEffect(() => {
@@ -194,13 +207,15 @@ function ImageEditorInner({
   }
 
   return (
-    <div 
-      className="fixed inset-0 z-50 bg-background overflow-hidden"
+    <div
+      className="fixed inset-0 z-50 overflow-hidden"
       style={{
         width: '100vw',
         height: '100vh',
         maxWidth: '100vw',
         maxHeight: '100vh',
+        backgroundColor: isDark ? '#0a0a0a' : '#ffffff',
+        colorScheme: isDark ? 'dark' : 'light',
       }}
     >
       <FilerobotImageEditor
@@ -354,15 +369,64 @@ function ImageEditorInner({
         defaultSavedImageQuality={0.92}
         savingPixelRatio={4}
         previewPixelRatio={window.devicePixelRatio || 2}
-        theme={{
+        theme={isDark ? {
           palette: {
-            'bg-primary-active': '#3b82f6',
-            'accent-primary': '#3b82f6',
-            'accent-primary-active': '#2563eb',
+            // Backgrounds — match site dark mode (hsl 0 0% 3.9% ≈ #0a0a0a)
+            'bg-primary':           '#0a0a0a',
+            'bg-secondary':         '#171717',
+            'bg-primary-active':    '#3b82f6',  // blue keeps visual clarity in active state
+            'bg-secondary-active':  '#1e3a5f',
+            // Accent
+            'accent-primary':       '#60a5fa',  // blue-400 — lighter blue for dark bg
+            'accent-primary-active':'#3b82f6',
+            // Text — hsl 0 0% 98% ≈ #fafafa
+            'txt-primary':          '#fafafa',
+            'txt-secondary':        '#a3a3a3',  // muted-foreground dark
+            'txt-primary-invert':   '#ffffff',  // white text/icons on blue active tab
+            'txt-secondary-invert': '#bfdbfe',
+            // Icons
+            'icons-primary':        '#fafafa',
+            'icons-secondary':      '#a3a3a3',
+            'icons-primary-opacity-95':  'rgba(250,250,250,0.95)',
+            // Borders — hsl 0 0% 14.9% ≈ #262626
+            'border-primary':       '#262626',
+            'border-secondary':     '#171717',
+            // Misc
+            'link-primary':         '#60a5fa',
+            'error':                '#ef4444',
+            'warning':              '#f59e0b',
+            'success':              '#22c55e',
           },
-          typography: {
-            fontFamily: 'system-ui, -apple-system, sans-serif',
+          typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
+        } : {
+          palette: {
+            // Backgrounds — match site light mode (hsl 0 0% 100% = white)
+            'bg-primary':           '#ffffff',
+            'bg-secondary':         '#f5f5f5',  // muted
+            'bg-primary-active':    '#171717',  // near-black matches site's primary
+            'bg-secondary-active':  '#e5e5e5',
+            // Accent
+            'accent-primary':       '#171717',
+            'accent-primary-active':'#0a0a0a',
+            // Text — hsl 0 0% 3.9% ≈ #0a0a0a
+            'txt-primary':          '#0a0a0a',
+            'txt-secondary':        '#737373',  // muted-foreground light
+            'txt-primary-invert':   '#ffffff',  // white text/icons on dark active tab
+            'txt-secondary-invert': '#f5f5f5',
+            // Icons
+            'icons-primary':        '#0a0a0a',
+            'icons-secondary':      '#737373',
+            'icons-primary-opacity-95':  'rgba(10,10,10,0.95)',
+            // Borders — hsl 0 0% 89.8% ≈ #e5e5e5
+            'border-primary':       '#e5e5e5',
+            'border-secondary':     '#f5f5f5',
+            // Misc
+            'link-primary':         '#171717',
+            'error':                '#ef4444',
+            'warning':              '#f59e0b',
+            'success':              '#22c55e',
           },
+          typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
         }}
       />
     </div>
