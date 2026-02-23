@@ -57,21 +57,44 @@ function ImageEditorInner({
     const unselectedColor = isDark ? '#fafafa' : '#0a0a0a';
     let rafId = null;
 
+    // Inject CSS for hover (can't intercept :hover with MutationObserver).
+    // In light mode the hover bg is dark (#171717), so text must flip to white.
+    // In dark mode the hover bg is blue, text is already white — no harm adding it.
+    const styleId = 'fie-tab-hover-fix';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+      .FIE_tab:hover *,
+      .FIE_tab:hover svg * {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+      }
+    `;
+
     function paintTabs() {
-      // Unselected main nav tabs — make text/icons visible
+      // ── Unselected tabs ───────────────────────────────────────────────────
+      // We MUST paint ALL children (not just svg), because when a tab WAS
+      // selected our observer set its label's inline style to #ffffff !important.
+      // That inline style persists until we explicitly override it here.
       document.querySelectorAll(
-        '.FIE_tab:not([aria-selected="true"]), .FIE_tabs-item:not([aria-selected="true"]), .SfxDrawer-item > div:not([aria-selected="true"])'
+        '.FIE_tab:not([aria-selected="true"]), .SfxDrawer-item > div:not([aria-selected="true"])'
       ).forEach(el => {
         el.style.setProperty('color', unselectedColor, 'important');
-        el.querySelectorAll('svg *').forEach(s => {
-          s.style.setProperty('fill', unselectedColor, 'important');
-          s.style.setProperty('color', unselectedColor, 'important');
+        el.querySelectorAll('*').forEach(child => {
+          child.style.setProperty('color', unselectedColor, 'important');
+          if (child.tagName === 'svg' || child.closest('svg')) {
+            child.style.setProperty('fill', unselectedColor, 'important');
+          }
         });
       });
 
-      // Selected tabs and any active element — always white on colored bg
+      // ── Selected tabs — always white on the colored active background ─────
       document.querySelectorAll(
-        '.FIE_root [aria-selected="true"], .FIE_root [aria-pressed="true"]'
+        '.FIE_root [aria-selected="true"]'
       ).forEach(el => {
         el.style.setProperty('color', '#ffffff', 'important');
         el.querySelectorAll('*').forEach(child => {
@@ -107,6 +130,9 @@ function ImageEditorInner({
     return () => {
       observer.disconnect();
       if (rafId) cancelAnimationFrame(rafId);
+      // Clean up injected style when editor closes
+      const el = document.getElementById(styleId);
+      if (el) el.remove();
     };
   }, [open, isDark]);
 
@@ -433,24 +459,29 @@ function ImageEditorInner({
         theme={isDark ? {
           palette: {
             // ── Backgrounds ──
-            'bg-primary':           '#0a0a0a',  // main canvas bg
-            'bg-secondary':         '#171717',  // panels/sidebars
-            'bg-stateless':         '#1e1e1e',  // UNSELECTED tab bg (PC.BackgroundStateless)
-            'bg-primary-active':    '#3b82f6',  // SELECTED tab bg (blue highlight)
+            'bg-primary':           '#0a0a0a',
+            'bg-secondary':         '#171717',
+            'bg-stateless':         '#1e1e1e',  // unselected tab bg
+            'bg-primary-active':    '#3b82f6',  // selected tab bg (blue)
             'bg-secondary-active':  '#262626',
             'bg-hover':             '#2a2a2a',
-            // ── Accent ──
+            // ── Accent / Save button ──
+            // The primary Save button uses accent-stateless as bg and btn-primary-text as text.
             'accent-primary':        '#3b82f6',
-            'accent-primary-active': '#ffffff', // SELECTED tab text/icon color — must be WHITE on blue
-            'accent-stateless':      '#fafafa',
+            'accent-primary-hover':  '#2563eb',
+            'accent-primary-active': '#1d4ed8', // button :active bg (tab selected text handled by MutationObserver)
+            'accent-stateless':      '#3b82f6', // Save button background = blue ✓
             // ── Text ──
-            'txt-primary':          '#fafafa',  // unselected tab label (PC.TextPrimary = txt-primary)
+            'txt-primary':          '#fafafa',
             'txt-secondary':        '#a3a3a3',
             'txt-primary-invert':   '#ffffff',
             'txt-secondary-invert': '#e5e5e5',
+            // ── Buttons ──
+            'btn-primary-text':     '#ffffff',  // Save button label = white on blue ✓
             // ── Icons ──
-            'icon-primary':         '#fafafa',  // unselected tab icon (PC.IconsPrimary = icon-primary, NOT icons-primary)
+            'icon-primary':         '#fafafa',  // PC.IconsPrimary — unselected tab icon
             'icons-secondary':      '#a3a3a3',
+            'icons-muted':          '#6b7280',
             'icons-invert':         '#ffffff',
             // ── Borders ──
             'borders-primary':      '#262626',
@@ -467,22 +498,26 @@ function ImageEditorInner({
             // ── Backgrounds ──
             'bg-primary':           '#ffffff',
             'bg-secondary':         '#f5f5f5',
-            'bg-stateless':         '#f0f0f0',  // UNSELECTED tab bg (light gray)
-            'bg-primary-active':    '#171717',  // SELECTED tab bg (near-black)
+            'bg-stateless':         '#f0f0f0',  // unselected tab bg (light gray)
+            'bg-primary-active':    '#171717',  // selected tab bg + hover bg (dark)
             'bg-secondary-active':  '#e5e5e5',
             'bg-hover':             '#e8e8e8',
-            // ── Accent ──
+            // ── Accent / Save button ──
             'accent-primary':        '#171717',
-            'accent-primary-active': '#ffffff', // SELECTED tab text/icon color — WHITE on dark
-            'accent-stateless':      '#0a0a0a',
+            'accent-primary-hover':  '#262626',
+            'accent-primary-active': '#0a0a0a', // button :active bg (tab selected text handled by MutationObserver)
+            'accent-stateless':      '#171717', // Save button background = dark ✓
             // ── Text ──
-            'txt-primary':          '#0a0a0a',  // unselected tab label
+            'txt-primary':          '#0a0a0a',
             'txt-secondary':        '#737373',
             'txt-primary-invert':   '#ffffff',
             'txt-secondary-invert': '#f5f5f5',
+            // ── Buttons ──
+            'btn-primary-text':     '#ffffff',  // Save button label = white on dark ✓
             // ── Icons ──
-            'icon-primary':         '#0a0a0a',  // unselected tab icon (correct singular key)
+            'icon-primary':         '#0a0a0a',  // PC.IconsPrimary — unselected tab icon
             'icons-secondary':      '#737373',
+            'icons-muted':          '#9ca3af',
             'icons-invert':         '#ffffff',
             // ── Borders ──
             'borders-primary':      '#e5e5e5',
