@@ -243,6 +243,21 @@ function ImageEditorInner({
         appWrapper.style.setProperty('border-radius', '0', 'important');
         appWrapper.style.setProperty('overflow', 'hidden', 'important');
       }
+
+      // FIE topbar: truly center the dimensions/zoom element
+      const topbarEl = document.querySelector('.FIE_topbar');
+      if (topbarEl) {
+        topbarEl.style.setProperty('position', 'relative', 'important');
+      }
+      const centerOptions = document.querySelector('.FIE_topbar-center-options');
+      if (centerOptions) {
+        centerOptions.style.setProperty('position', 'absolute', 'important');
+        centerOptions.style.setProperty('left', '50%', 'important');
+        centerOptions.style.setProperty('transform', 'translateX(-50%)', 'important');
+        centerOptions.style.setProperty('width', 'fit-content', 'important');
+        // Prevent overlap with left/right groups
+        centerOptions.style.setProperty('pointer-events', 'auto', 'important');
+      }
     }
 
     function schedule() {
@@ -477,111 +492,103 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
-      {/* ── Top bar: filmstrip + template controls ── */}
+      {/* ── Top bar: 3-column grid so filmstrip is naturally centred ── */}
       <div
-        className="flex items-center gap-2 shrink-0"
+        className="shrink-0"
         onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
         onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
+          alignItems: 'center',
           paddingLeft: 12,
-          paddingRight: 48,   // match FIE topbar right padding so controls align
+          paddingRight: 48,
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
       >
-        {/* Filmstrip (only when multiple images) */}
-        {hasMultiple && (
-          <>
-            {/* Prev arrow */}
+        {/* Col 1 – empty spacer (balances the right controls so centre column is truly centred) */}
+        <div />
+
+        {/* Col 2 – centred filmstrip with prev/next arrows */}
+        <div className="flex items-center gap-2">
+          {hasMultiple && (
             <button
               onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
               disabled={activeIndex === 0}
-              title="Previous image (←)"
+              title="Previous image (← / A)"
               className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
-              style={{
-                backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5',
-                color: isDark ? '#fafafa' : '#0a0a0a',
-              }}
+              style={{ backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5', color: isDark ? '#fafafa' : '#0a0a0a' }}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-          </>
-        )}
-        {hasMultiple && (
-          <div
-            className="flex items-center gap-1.5 overflow-x-auto flex-1"
-            style={{ maxWidth: 'calc(100% - 380px)', scrollbarWidth: 'none' }}
-          >
-            {allImages.map((img, idx) => {
-              const url   = getImgUrl(img);
-              const isAct = idx === activeIndex;
-              const isMod = modifiedSet.has(idx) && !isAct;
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleSwitchImage(idx)}
-                  title={`Photo #${idx + 1}`}
-                  className="relative shrink-0 rounded overflow-hidden transition-all focus:outline-none"
-                  style={{
-                    width: 42, height: 42,
-                    border: isAct
-                      ? '2px solid #3b82f6'
-                      : `2px solid ${isDark ? '#404040' : '#d4d4d4'}`,
-                    boxShadow: isAct ? '0 0 0 2px rgba(59,130,246,0.3)' : 'none',
-                    opacity: applyingToAll && !isAct ? 0.5 : 1,
-                  }}
-                >
-                  {url ? (
-                    <img
-                      src={url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      draggable={false}
-                    />
-                  ) : (
-                    <div
-                      className="w-full h-full flex items-center justify-center text-[10px]"
-                      style={{ backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5', color: isDark ? '#737373' : '#9ca3af' }}
-                    >
-                      ?
-                    </div>
-                  )}
-                  {/* Number badge */}
-                  <span
-                    className="absolute bottom-0 left-0 right-0 text-center text-white text-[9px] font-medium leading-4"
-                    style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
+          )}
+
+          {hasMultiple && (
+            <div
+              className="flex items-center gap-1.5 overflow-x-auto"
+              style={{ maxWidth: '60vw', scrollbarWidth: 'none' }}
+            >
+              {allImages.map((img, idx) => {
+                const url   = getImgUrl(img);
+                const isAct = idx === activeIndex;
+                const isMod = modifiedSet.has(idx) && !isAct;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleSwitchImage(idx)}
+                    title={`Photo #${idx + 1}`}
+                    className="relative shrink-0 rounded overflow-hidden transition-all focus:outline-none"
+                    style={{
+                      width: 42, height: 42,
+                      border: isAct
+                        ? '2px solid #3b82f6'
+                        : `2px solid ${isDark ? '#404040' : '#d4d4d4'}`,
+                      boxShadow: isAct ? '0 0 0 2px rgba(59,130,246,0.3)' : 'none',
+                      opacity: applyingToAll && !isAct ? 0.5 : 1,
+                    }}
                   >
-                    #{idx + 1}
-                  </span>
-                  {/* Modified dot */}
-                  {isMod && (
-                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 ring-1 ring-black" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+                    {url ? (
+                      <img src={url} alt="" className="w-full h-full object-cover" draggable={false} />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center text-[10px]"
+                        style={{ backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5', color: isDark ? '#737373' : '#9ca3af' }}
+                      >
+                        ?
+                      </div>
+                    )}
+                    <span
+                      className="absolute bottom-0 left-0 right-0 text-center text-white text-[9px] font-medium leading-4"
+                      style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
+                    >
+                      #{idx + 1}
+                    </span>
+                    {isMod && (
+                      <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 ring-1 ring-black" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-        {/* Next arrow */}
-        {hasMultiple && (
-          <button
-            onClick={() => handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1))}
-            disabled={activeIndex === allImages.length - 1}
-            title="Next image (→)"
-            className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
-            style={{
-              backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5',
-              color: isDark ? '#fafafa' : '#0a0a0a',
-            }}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
+          {hasMultiple && (
+            <button
+              onClick={() => handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1))}
+              disabled={activeIndex === allImages.length - 1}
+              title="Next image (→ / D)"
+              className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
+              style={{ backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5', color: isDark ? '#fafafa' : '#0a0a0a' }}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-        {/* Right-side controls — no shrink-0 so they compress before overflowing */}
-        <div className="flex items-center gap-2 ml-auto min-w-0">
+        {/* Col 3 – right-side controls, justified to the right */}
+        <div className="flex items-center gap-2 justify-end min-w-0">
           {/* Apply to all */}
           {hasMultiple && (
             <button
