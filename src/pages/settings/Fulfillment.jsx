@@ -28,6 +28,16 @@ import {
 } from '@/constants/ebay-shipping';
 
 const EBAY_DEFAULTS_KEY = 'ebay-shipping-defaults';
+
+const EBAY_COUNTRIES = [
+  'United States', 'Canada', 'United Kingdom', 'Australia', 'Germany',
+  'France', 'Italy', 'Spain', 'Japan', 'China', 'Mexico', 'Brazil',
+  'Netherlands', 'Belgium', 'Sweden', 'Switzerland', 'Austria', 'Poland',
+  'Portugal', 'Ireland', 'New Zealand', 'Singapore', 'Hong Kong', 'India',
+  'South Korea', 'Israel', 'United Arab Emirates', 'Saudi Arabia',
+  'South Africa', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Russia',
+  'Ukraine', 'Turkey', 'Greece', 'Denmark', 'Finland', 'Norway',
+];
 const FACEBOOK_DEFAULTS_KEY = 'facebook-defaults';
 
 const FB_DELIVERY_OPTIONS = [
@@ -262,7 +272,7 @@ export default function FulfillmentSettings() {
           </div>
         )}
 
-        {/* ── eBay Shipping Defaults ──────────────────────────────────────── */}
+        {/* ── eBay Listing Defaults ──────────────────────────────────────── */}
         <div className="pt-3 border-t">
           <button
             type="button"
@@ -271,7 +281,7 @@ export default function FulfillmentSettings() {
           >
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-4 w-4 text-primary" />
-              <span className="font-medium text-sm">eBay Shipping Defaults</span>
+              <span className="font-medium text-sm">eBay Listing Defaults</span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
             </div>
             {showEbayDefaults
@@ -280,120 +290,347 @@ export default function FulfillmentSettings() {
             }
           </button>
           <p className="text-xs text-muted-foreground mt-1 ml-6">
-            These defaults are used by Smart Listing to pre-fill and suggest eBay shipping fields. Saved automatically as you type.
+            These defaults are used by Smart Listing to pre-fill and suggest eBay fields. Saved automatically.
           </p>
 
-          {showEbayDefaults && (
-            <div className="mt-4 space-y-4 pl-1">
+          {showEbayDefaults && (() => {
+            const isEbayLocalPickup = ebayDefaults.shippingMethod?.startsWith('Local pickup');
+            return (
+            <div className="mt-4 space-y-5 pl-1">
 
-              {/* Shipping Method */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm mb-1.5 block">Shipping Method</Label>
-                  <Select
-                    value={ebayDefaults.shippingMethod || ''}
-                    onValueChange={(v) => setEbayDefault('shippingMethod', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select method…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Standard: Small to medium items">Standard: Small to medium items</SelectItem>
-                      <SelectItem value="Local pickup only: Sell to buyer nears you">Local pickup only</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* ── Group A: Pricing & Offers ── */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pricing &amp; Offers</p>
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 mb-3">
+                  <Switch
+                    id="ebay-default-best-offer"
+                    checked={ebayDefaults.allowBestOffer !== false}
+                    onCheckedChange={(v) => {
+                      setEbayDefault('allowBestOffer', v);
+                      if (!v) { setEbayDefault('autoAcceptPrice', ''); setEbayDefault('minimumOfferPrice', ''); }
+                    }}
+                  />
+                  <Label htmlFor="ebay-default-best-offer" className="text-sm cursor-pointer">Allow Best Offer by default</Label>
                 </div>
-
-                <div>
-                  <Label className="text-sm mb-1.5 block">Handling Time</Label>
-                  <Select
-                    value={ebayDefaults.handlingTime || ''}
-                    onValueChange={(v) => setEbayDefault('handlingTime', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select handling time…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {HANDLING_TIME_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {ebayDefaults.allowBestOffer !== false && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Auto-accept price</Label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="pl-6"
+                          placeholder="0.00"
+                          value={ebayDefaults.autoAcceptPrice || ''}
+                          onChange={(e) => setEbayDefault('autoAcceptPrice', e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Auto-accept offers at or above this price.</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Minimum offer price</Label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="pl-6"
+                          placeholder="0.00"
+                          value={ebayDefaults.minimumOfferPrice || ''}
+                          onChange={(e) => setEbayDefault('minimumOfferPrice', e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Auto-decline offers below this price.</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Cost Type + Cost */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm mb-1.5 block">Shipping Cost Type</Label>
-                  <Select
-                    value={ebayDefaults.shippingCostType || ''}
-                    onValueChange={(v) => {
-                      setEbayDefault('shippingCostType', v);
-                      // Clear service if cost type changes since services differ
-                      setEbayDefault('shippingService', '');
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select cost type…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Flat: Same cost regardless of buyer location">Flat rate</SelectItem>
-                      <SelectItem value="Calculated: Cost varies based on buyer location">Calculated by eBay</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* ── Group B: Shipping Method & Toggles ── */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Shipping Method</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Shipping Method</Label>
+                    <Select
+                      value={ebayDefaults.shippingMethod || ''}
+                      onValueChange={(v) => {
+                        setEbayDefault('shippingMethod', v);
+                        if (v?.startsWith('Local pickup')) {
+                          setEbayDefault('shippingCostType', '');
+                          setEbayDefault('shippingCost', '');
+                          setEbayDefault('shippingService', '');
+                          setEbayDefault('handlingTime', '');
+                          setEbayDefault('freeShipping', false);
+                          setEbayDefault('addLocalPickup', false);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select method…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Standard: Small to medium items">Standard: Small to medium items</SelectItem>
+                        <SelectItem value="Local pickup only: Sell to buyer nears you">Local pickup only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {!isEbayLocalPickup && (
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Handling Time</Label>
+                      <Select
+                        value={ebayDefaults.handlingTime || ''}
+                        onValueChange={(v) => setEbayDefault('handlingTime', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select handling time…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HANDLING_TIME_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
+                {!isEbayLocalPickup && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                      <Label className="text-sm font-medium">Free Shipping</Label>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="ebay-default-free-shipping"
+                          checked={!!ebayDefaults.freeShipping}
+                          onCheckedChange={(v) => {
+                            setEbayDefault('freeShipping', v);
+                            if (v) setEbayDefault('shippingCost', '');
+                          }}
+                        />
+                        <Label htmlFor="ebay-default-free-shipping" className="text-sm cursor-pointer">Enable free shipping by default</Label>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                      <Label className="text-sm font-medium">Add Local Pickup</Label>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="ebay-default-local-pickup"
+                          checked={!!ebayDefaults.addLocalPickup}
+                          onCheckedChange={(v) => {
+                            setEbayDefault('addLocalPickup', v);
+                            if (!v) setEbayDefault('localPickupLocation', '');
+                          }}
+                        />
+                        <Label htmlFor="ebay-default-local-pickup" className="text-sm cursor-pointer">Allow local pickup in addition to shipping</Label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!isEbayLocalPickup && ebayDefaults.addLocalPickup && (
+                  <div className="mt-4">
+                    <Label className="text-sm mb-1.5 block">Local Pickup Location</Label>
+                    <Input
+                      placeholder="e.g. Los Angeles, CA 90001"
+                      value={ebayDefaults.localPickupLocation || ''}
+                      onChange={(e) => setEbayDefault('localPickupLocation', e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Buyers near this location can arrange local pickup.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Group C: Shipping Details (hidden for local pickup) ── */}
+              {!isEbayLocalPickup && (
                 <div>
-                  <Label className="text-sm mb-1.5 block">
-                    Default Shipping Cost
-                    {ebayDefaults.shippingCostType?.startsWith('Calculated') && (
-                      <span className="ml-1 text-xs text-muted-foreground">(eBay calculates — leave blank)</span>
-                    )}
-                  </Label>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Shipping Details</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Shipping Cost Type</Label>
+                      <Select
+                        value={ebayDefaults.shippingCostType || ''}
+                        onValueChange={(v) => {
+                          setEbayDefault('shippingCostType', v);
+                          setEbayDefault('shippingService', '');
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select cost type…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Flat: Same cost regardless of buyer location">Flat rate</SelectItem>
+                          <SelectItem value="Calculated: Cost varies based on buyer location">Calculated by eBay</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-sm mb-1.5 block">
+                        Default Shipping Cost
+                        {(ebayDefaults.freeShipping || ebayDefaults.shippingCostType?.startsWith('Calculated')) && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            {ebayDefaults.freeShipping ? '(free shipping enabled)' : '(eBay calculates)'}
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={ebayDefaults.freeShipping ? 'Free ($0)' : ebayDefaults.shippingCostType?.startsWith('Calculated') ? 'Calculated by eBay' : '0.00'}
+                        disabled={!!ebayDefaults.freeShipping || ebayDefaults.shippingCostType?.startsWith('Calculated')}
+                        className={(ebayDefaults.freeShipping || ebayDefaults.shippingCostType?.startsWith('Calculated')) ? 'opacity-50 cursor-not-allowed bg-muted' : ''}
+                        value={(ebayDefaults.freeShipping || ebayDefaults.shippingCostType?.startsWith('Calculated')) ? '' : (ebayDefaults.shippingCost || '')}
+                        onChange={(e) => setEbayDefault('shippingCost', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Label className="text-sm mb-1.5 block">Shipping Service</Label>
+                    <Select
+                      value={ebayDefaults.shippingService || ''}
+                      onValueChange={(v) => setEbayDefault('shippingService', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shipping service…" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[260px]">
+                        {(ebayDefaults.shippingCostType?.startsWith('Calculated')
+                          ? CALCULATED_SHIPPING_SERVICES
+                          : FLAT_SHIPPING_SERVICES
+                        ).map((svc) => (
+                          <SelectItem key={svc.value} value={svc.value}>{svc.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ebayDefaults.shippingCostType?.startsWith('Calculated')
+                        ? 'Showing calculated-rate services (cost determined by eBay at checkout).'
+                        : 'Showing flat-rate services. Select a cost type above to switch.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Group D: Location (always visible) ── */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Location</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Ship From Country</Label>
+                    <Select
+                      value={ebayDefaults.shipFromCountry || 'United States'}
+                      onValueChange={(v) => setEbayDefault('shipFromCountry', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country…" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[260px]">
+                        {EBAY_COUNTRIES.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Shipping Location (zip/region)</Label>
+                    <Input
+                      placeholder="e.g. 90001 or Los Angeles"
+                      value={ebayDefaults.shippingLocation || ''}
+                      onChange={(e) => setEbayDefault('shippingLocation', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Label className="text-sm mb-1.5 block">Location Description</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder={ebayDefaults.shippingCostType?.startsWith('Calculated') ? 'Calculated by eBay' : '0.00'}
-                    disabled={ebayDefaults.shippingCostType?.startsWith('Calculated')}
-                    className={ebayDefaults.shippingCostType?.startsWith('Calculated') ? 'opacity-50 cursor-not-allowed bg-muted' : ''}
-                    value={ebayDefaults.shippingCostType?.startsWith('Calculated') ? '' : (ebayDefaults.shippingCost || '')}
-                    onChange={(e) => setEbayDefault('shippingCost', e.target.value)}
+                    placeholder="e.g. Spain (optional text shown to buyers)"
+                    value={ebayDefaults.locationDescriptions || ''}
+                    onChange={(e) => setEbayDefault('locationDescriptions', e.target.value)}
                   />
                 </div>
               </div>
 
-              {/* Shipping Service */}
+              {/* ── Group E: Returns ── */}
               <div>
-                <Label className="text-sm mb-1.5 block">Shipping Service</Label>
-                <Select
-                  value={ebayDefaults.shippingService || ''}
-                  onValueChange={(v) => setEbayDefault('shippingService', v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select shipping service…" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[260px]">
-                    {(ebayDefaults.shippingCostType?.startsWith('Calculated')
-                      ? CALCULATED_SHIPPING_SERVICES
-                      : FLAT_SHIPPING_SERVICES
-                    ).map((svc) => (
-                      <SelectItem key={svc.value} value={svc.value}>
-                        {svc.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {ebayDefaults.shippingCostType?.startsWith('Calculated')
-                    ? 'Showing calculated-rate services (cost determined by eBay at checkout).'
-                    : 'Showing flat-rate services. Select a cost type above to switch.'}
-                </p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Returns</p>
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 mb-4">
+                  <Switch
+                    id="ebay-default-accept-returns"
+                    checked={!!ebayDefaults.acceptReturns}
+                    onCheckedChange={(v) => {
+                      setEbayDefault('acceptReturns', v);
+                      if (!v) {
+                        setEbayDefault('returnWithin', '');
+                        setEbayDefault('returnShippingPayer', '');
+                        setEbayDefault('returnRefundMethod', '');
+                      }
+                    }}
+                  />
+                  <Label htmlFor="ebay-default-accept-returns" className="text-sm cursor-pointer">Accept returns by default</Label>
+                </div>
+                {ebayDefaults.acceptReturns && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Return Within</Label>
+                      <Select
+                        value={ebayDefaults.returnWithin || '30 days'}
+                        onValueChange={(v) => setEbayDefault('returnWithin', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30 days">30 days</SelectItem>
+                          <SelectItem value="60 days">60 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Return Shipping Payer</Label>
+                      <Select
+                        value={ebayDefaults.returnShippingPayer || 'Buyer'}
+                        onValueChange={(v) => setEbayDefault('returnShippingPayer', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Buyer">Buyer pays</SelectItem>
+                          <SelectItem value="Free for buyer, you pay">Free for buyer, you pay</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Refund Method</Label>
+                      <Select
+                        value={ebayDefaults.returnRefundMethod || 'Full Refund'}
+                        onValueChange={(v) => setEbayDefault('returnRefundMethod', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Full Refund">Full Refund</SelectItem>
+                          <SelectItem value="Full Refund or Replacement">Full Refund or Replacement</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </div>
 
+              <p className="text-xs text-muted-foreground">All changes save automatically. Smart Listing will skip flagging fields that have a saved default.</p>
+
             </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* ── Facebook Marketplace Defaults ──────────────────────────────────── */}

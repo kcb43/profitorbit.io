@@ -66,6 +66,9 @@ const EBAY_DEFAULT_ELIGIBLE_FIELDS = new Set([
   'shippingMethod', 'shippingCostType', 'shippingCost', 'handlingTime',
   'shippingService', 'shipFromCountry', 'returnWithin', 'returnShippingPayer',
   'returnRefundMethod', 'pricingFormat', 'duration',
+  'allowBestOffer', 'autoAcceptPrice', 'minimumOfferPrice',
+  'freeShipping', 'addLocalPickup', 'localPickupLocation',
+  'locationDescriptions', 'shippingLocation', 'acceptReturns',
 ]);
 
 // Fields where "Save as Facebook default" is offered in the review panel

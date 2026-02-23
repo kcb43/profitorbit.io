@@ -4747,6 +4747,8 @@ const MARKETPLACE_TEMPLATE_DEFAULTS = {
     duration: "Good 'Til Canceled",
     buyItNowPrice: "",
     allowBestOffer: true,
+    autoAcceptPrice: "",
+    minimumOfferPrice: "",
   },
   etsy: {
     inheritGeneral: true,
@@ -13078,12 +13080,58 @@ export default function CrosslistComposer() {
                   </div>
                   <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                     <Switch
-                      id="ebay-best-offer"
-                      checked={ebayForm.allowBestOffer}
+                      id="ebay-best-offer-mobile"
+                      checked={!!ebayForm.allowBestOffer}
                       onCheckedChange={(checked) => handleMarketplaceChange("ebay", "allowBestOffer", checked)}
                     />
-                    <Label htmlFor="ebay-best-offer" className="text-sm">Allow buyers to submit offers</Label>
+                    <Label htmlFor="ebay-best-offer-mobile" className="text-sm">Allow buyers to submit offers</Label>
                   </div>
+                  {ebayForm.allowBestOffer && (
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <Label className="text-sm block">Auto-accept</Label>
+                          {renderEbayDefaultToggle("autoAcceptPrice", ebayForm.autoAcceptPrice, (v) =>
+                            handleMarketplaceChange("ebay", "autoAcceptPrice", v)
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="pl-6"
+                            placeholder="0.00"
+                            value={ebayForm.autoAcceptPrice || ""}
+                            onChange={(e) => handleMarketplaceChange("ebay", "autoAcceptPrice", e.target.value)}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Auto-accept offers at or above this price.</p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <Label className="text-sm block">Minimum offer</Label>
+                          {renderEbayDefaultToggle("minimumOfferPrice", ebayForm.minimumOfferPrice, (v) =>
+                            handleMarketplaceChange("ebay", "minimumOfferPrice", v)
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="pl-6"
+                            placeholder="0.00"
+                            value={ebayForm.minimumOfferPrice || ""}
+                            onChange={(e) => handleMarketplaceChange("ebay", "minimumOfferPrice", e.target.value)}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Auto-decline offers below this price.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -19165,12 +19213,58 @@ export default function CrosslistComposer() {
                           </div>
                           <div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                             <Switch
-                              id="ebay-best-offer"
-                              checked={ebayForm.allowBestOffer}
+                              id="ebay-best-offer-desktop"
+                              checked={!!ebayForm.allowBestOffer}
                               onCheckedChange={(checked) => handleMarketplaceChange("ebay", "allowBestOffer", checked)}
                             />
-                            <Label htmlFor="ebay-best-offer" className="text-sm">Allow buyers to submit offers</Label>
+                            <Label htmlFor="ebay-best-offer-desktop" className="text-sm">Allow buyers to submit offers</Label>
                           </div>
+                          {ebayForm.allowBestOffer && (
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                              <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <Label className="text-sm block">Auto-accept</Label>
+                                  {renderEbayDefaultToggle("autoAcceptPrice", ebayForm.autoAcceptPrice, (v) =>
+                                    handleMarketplaceChange("ebay", "autoAcceptPrice", v)
+                                  )}
+                                </div>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    className="pl-6"
+                                    placeholder="0.00"
+                                    value={ebayForm.autoAcceptPrice || ""}
+                                    onChange={(e) => handleMarketplaceChange("ebay", "autoAcceptPrice", e.target.value)}
+                                  />
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">Auto-accept offers at or above this price.</p>
+                              </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <Label className="text-sm block">Minimum offer</Label>
+                                  {renderEbayDefaultToggle("minimumOfferPrice", ebayForm.minimumOfferPrice, (v) =>
+                                    handleMarketplaceChange("ebay", "minimumOfferPrice", v)
+                                  )}
+                                </div>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    className="pl-6"
+                                    placeholder="0.00"
+                                    value={ebayForm.minimumOfferPrice || ""}
+                                    onChange={(e) => handleMarketplaceChange("ebay", "minimumOfferPrice", e.target.value)}
+                                  />
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">Auto-decline offers below this price.</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
