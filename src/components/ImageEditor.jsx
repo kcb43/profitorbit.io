@@ -207,7 +207,7 @@ function ImageEditorInner({
       // crowded against the right edge.
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
-        topbar.style.setProperty('padding', '6px 24px 6px 12px', 'important');
+        topbar.style.setProperty('padding', '6px 48px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('gap', '8px', 'important');
       }
