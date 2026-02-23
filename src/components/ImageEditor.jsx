@@ -5,6 +5,22 @@ import { useToast } from '@/components/ui/use-toast';
 import { uploadApi } from '@/api/uploadApi';
 import { inventoryApi } from '@/api/inventoryApi';
 
+// ── Module-level high-quality canvas patch ─────────────────────────────────────
+// Konva defaults imageSmoothingQuality to 'low'. Patching at module-load time
+// means EVERY drawImage call—including FIE's very first render—uses bicubic.
+;(function () {
+  if (typeof CanvasRenderingContext2D === 'undefined') return;
+  const _orig = CanvasRenderingContext2D.prototype.drawImage;
+  if (_orig && _orig._fie_hq) return;
+  function hqDrawImage(...args) {
+    this.imageSmoothingEnabled = true;
+    this.imageSmoothingQuality = 'high';
+    return _orig.apply(this, args);
+  }
+  hqDrawImage._fie_hq = true;
+  CanvasRenderingContext2D.prototype.drawImage = hqDrawImage;
+})();
+
 // ── Template persistence ───────────────────────────────────────────────────────
 const TEMPLATES_KEY = 'orben_editor_templates';
 const MAX_TEMPLATES = 20;
@@ -43,13 +59,19 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       const adj = designState.adjustments || {};
       const fp  = designState.finetunesProps || {};
 
-      // ── Finetune → CSS filter ─────────────────────────────────────────────
-      const brightness = fp.Brighten?.brightness ?? 0;   // -1 to 1
-      const contrast   = fp.Contrast?.contrast   ?? 0;   // -100 to 100
-      const shadowsVal = fp.Shadows?.shadowsValue ?? 0;  // -100 to 100 (applied as pixel pass)
+      // ── Finetune props (finetunesProps is a FLAT object, keys are prop names) ─
+      // GammaBrightness (-100..100): gamma-curve exposure adjustment
+      // Brighten (-1..1): legacy linear brightness (kept for old design states)
+      // contrast (-100..100): Konva Contrast filter value
+      // shadowsVal (-100..100): tonal shadow lift/crush (pixel pass below)
+      const gammaBrightness = fp.gammaBrightness ?? 0;
+      const legacyBrightness = fp.brightness ?? 0;
+      const contrast   = fp.contrast   ?? 0;
+      const shadowsVal = fp.shadowsValue ?? 0;
 
+      // CSS filter handles legacy linear brightness and contrast
       const filterParts = [
-        `brightness(${1 + brightness})`,
+        legacyBrightness !== 0 ? `brightness(${1 + legacyBrightness})` : '',
         contrast !== 0 ? `contrast(${Math.max(0, 1 + contrast / 100)})` : '',
       ].filter(Boolean);
 
@@ -92,14 +114,32 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       ctx.drawImage(img, srcX, srcY, srcW, srcH, -srcW / 2, -srcH / 2, srcW, srcH);
       ctx.restore();
 
-      // ── Shadows pixel pass (CSS filters can't do tonal range adjustment) ──
+      // ── Gamma brightness pixel pass ────────────────────────────────────────
+      // gamma = 2^(-b/50): at b=0 → 1 (no-op); b=100 → 0.25 (bright); b=-100 → 4 (dark)
+      if (gammaBrightness !== 0) {
+        const gamma = Math.pow(2, -gammaBrightness / 50);
+        const lut = new Uint8ClampedArray(256);
+        for (let i = 0; i < 256; i++) lut[i] = Math.round(Math.pow(i / 255, gamma) * 255);
+        const idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const px = idata.data;
+        for (let p = 0; p < px.length; p += 4) {
+          px[p]     = lut[px[p]];
+          px[p + 1] = lut[px[p + 1]];
+          px[p + 2] = lut[px[p + 2]];
+        }
+        ctx.putImageData(idata, 0, 0);
+      }
+
+      // ── Shadows pixel pass (linear tonal range, broader than before) ───────
+      // Affects pixels below lum=192 linearly. At s=100: dark pixels +100, mid ~+50.
       if (shadowsVal !== 0) {
         const idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const px = idata.data;
         for (let p = 0; p < px.length; p += 4) {
-          const lum = 0.299 * px[p] + 0.587 * px[p + 1] + 0.114 * px[p + 2];
-          const factor = Math.pow(Math.max(0, 1 - lum / 255), 1.5);
-          const adj2 = shadowsVal * factor;
+          const lum = (px[p] * 299 + px[p + 1] * 587 + px[p + 2] * 114) / 1000;
+          const factor = Math.max(0, (192 - lum) / 192);
+          if (factor < 0.01) continue;
+          const adj2 = Math.round(shadowsVal * factor);
           px[p]     = Math.min(255, Math.max(0, px[p]     + adj2));
           px[p + 1] = Math.min(255, Math.max(0, px[p + 1] + adj2));
           px[p + 2] = Math.min(255, Math.max(0, px[p + 2] + adj2));
@@ -580,29 +620,6 @@ function ImageEditorInner({
     document.body.classList.toggle('hide-mobile-nav', !!open);
     return () => document.body.classList.remove('hide-mobile-nav');
   }, [open]);
-
-  // ── High-quality canvas rendering ─────────────────────────────────────────
-  // Konva defaults imageSmoothingQuality to 'low', making downscaled images
-  // look noticeably blurry compared to a native <img> tag (which uses bicubic).
-  // We patch ctx.drawImage for the editor's lifetime so every Konva draw call
-  // automatically uses 'high' (bicubic) quality interpolation.
-  useEffect(() => {
-    const orig = CanvasRenderingContext2D.prototype.drawImage;
-    if (orig._fie_hq) return; // already patched (guard against strict-mode double-invoke)
-    function hqDrawImage(...args) {
-      this.imageSmoothingEnabled = true;
-      this.imageSmoothingQuality = 'high';
-      return orig.apply(this, args);
-    }
-    hqDrawImage._fie_hq = true;
-    CanvasRenderingContext2D.prototype.drawImage = hqDrawImage;
-    return () => {
-      // Only restore if our patch is still the active one
-      if (CanvasRenderingContext2D.prototype.drawImage === hqDrawImage) {
-        CanvasRenderingContext2D.prototype.drawImage = orig;
-      }
-    };
-  }, []);
 
   // ── Close template menu when clicking outside ─────────────────────────────
   useEffect(() => {

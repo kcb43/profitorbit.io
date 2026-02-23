@@ -69,37 +69,104 @@ patch('utils/constants.js', [
 ]);
 
 /* ══════════════════════════════════════════════════════════════════════════
-   2. custom/finetunes/index.js  – export the Shadows finetune
+   2. custom/finetunes/index.js  – export all custom finetunes
+      (Written in full so adding new exports is always idempotent.)
    ══════════════════════════════════════════════════════════════════════════ */
-patch('custom/finetunes/index.js', [
-  [
-    'export{default as CustomThreshold}from"./CustomThreshold";',
-    'export{default as CustomThreshold}from"./CustomThreshold";export{default as Shadows}from"./Shadows";',
-  ],
-]);
+writeFile('custom/finetunes/index.js',
+  'export{default as Warmth}from"./Warmth";' +
+  'export{default as CustomThreshold}from"./CustomThreshold";' +
+  'export{default as Shadows}from"./Shadows";' +
+  'export{default as GammaBrightness}from"./GammaBrightness";'
+);
 
 /* ══════════════════════════════════════════════════════════════════════════
-   3. custom/finetunes/Shadows.js  – new Konva filter for shadows
+   3a. custom/finetunes/Shadows.js  – improved Konva filter for shadows
+       Linear falloff over lum 0-192 so the effect is visible on typical images.
    ══════════════════════════════════════════════════════════════════════════ */
 writeFile('custom/finetunes/Shadows.js',
   'import Konva from"konva";' +
   'import{Factory as KonvaFactory}from"konva/lib/Factory";' +
   'import{getNumberValidator as konvaGetNumberValidator}from"konva/lib/Validators";' +
   'function Shadows(imageData){' +
-    'var s=this.shadowsValue();var data=imageData.data;' +
+    'var s=this.shadowsValue();' +
+    'if(s===0)return;' +
+    'var data=imageData.data;' +
     'for(var i=0;i<data.length;i+=4){' +
-      'var r=data[i],g=data[i+1],b=data[i+2];' +
-      'var lum=0.299*r+0.587*g+0.114*b;' +
-      'var factor=Math.pow(Math.max(0,1-lum/255),1.5);' +
-      'var adj=s*factor;' +
-      'data[i]=Math.min(255,Math.max(0,r+adj));' +
-      'data[i+1]=Math.min(255,Math.max(0,g+adj));' +
-      'data[i+2]=Math.min(255,Math.max(0,b+adj));' +
+      'var lum=(data[i]*299+data[i+1]*587+data[i+2]*114)/1000;' +
+      // Linear shadow weight: 1.0 at lum=0, 0 at lum=192, ignores highlights.
+      'var factor=Math.max(0,(192-lum)/192);' +
+      'if(factor<0.01)continue;' +
+      'var adj=Math.round(s*factor);' +
+      'data[i]=Math.min(255,Math.max(0,data[i]+adj));' +
+      'data[i+1]=Math.min(255,Math.max(0,data[i+1]+adj));' +
+      'data[i+2]=Math.min(255,Math.max(0,data[i+2]+adj));' +
     '}' +
   '}' +
   'Shadows.finetuneName="Shadows";' +
   'export default Shadows;' +
   'KonvaFactory.addGetterSetter(Konva.Image,"shadowsValue",0,konvaGetNumberValidator(),KonvaFactory.afterSetFilter);'
+);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3b. custom/finetunes/GammaBrightness.js  – gamma-curve brightness filter
+       Replaces Konva.Filters.Brighten (additive/overlay) with proper midtone
+       adjustment: output = (input/255)^gamma * 255, gamma = 2^(-slider/50).
+       Slider range -100 to 100. At 0: no change. At +100: ~+2 stops. -100: ~-2 stops.
+   ══════════════════════════════════════════════════════════════════════════ */
+writeFile('custom/finetunes/GammaBrightness.js',
+  'import Konva from"konva";' +
+  'import{Factory as KonvaFactory}from"konva/lib/Factory";' +
+  'import{getNumberValidator as konvaGetNumberValidator}from"konva/lib/Validators";' +
+  'function GammaBrightness(imageData){' +
+    'var b=this.gammaBrightness();' +
+    'if(b===0)return;' +
+    'var gamma=Math.pow(2,-b/50);' +
+    'var lut=new Uint8ClampedArray(256);' +
+    'for(var i=0;i<256;i++)lut[i]=Math.round(Math.pow(i/255,gamma)*255);' +
+    'var data=imageData.data;' +
+    'for(var j=0;j<data.length;j+=4){' +
+      'data[j]=lut[data[j]];' +
+      'data[j+1]=lut[data[j+1]];' +
+      'data[j+2]=lut[data[j+2]];' +
+    '}' +
+  '}' +
+  'GammaBrightness.finetuneName="GammaBrightness";' +
+  'export default GammaBrightness;' +
+  'KonvaFactory.addGetterSetter(Konva.Image,"gammaBrightness",0,konvaGetNumberValidator(),KonvaFactory.afterSetFilter);'
+);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3c. components/tools/Brightness/BrightnessOptions.js
+       Replace Konva.Filters.Brighten (linear) with our GammaBrightness filter.
+       Slider range becomes -100..100 (was -1..1), step 1 (was 0.05).
+   ══════════════════════════════════════════════════════════════════════════ */
+writeFile('components/tools/Brightness/BrightnessOptions.js',
+  'import _slicedToArray from"@babel/runtime/helpers/slicedToArray";' +
+  'import React from"react";' +
+  'import{GammaBrightness}from"../../../custom/finetunes";' +
+  'import{useFinetune}from"../../../hooks";' +
+  'import restrictNumber from"../../../utils/restrictNumber";' +
+  'import Slider from"../../common/Slider";' +
+  'import{StyledSliderContainer,StyledSliderInput,StyledSliderLabel,StyledSliderWrapper}from"../tools.styled";' +
+  'var MIN_VALUE=-100,DEFAULT_VALUE={gammaBrightness:0},MAX_VALUE=100,sliderStyle={width:150,padding:0,margin:0},' +
+  'BrightnessOptions=function(a){' +
+    'var b,c,d=a.t,' +
+    'e=useFinetune(GammaBrightness,DEFAULT_VALUE),' +
+    'f=_slicedToArray(e,2),g=f[0],h=f[1],' +
+    'i=function(a){h({gammaBrightness:restrictNumber(a,MIN_VALUE,MAX_VALUE)})};' +
+    'return React.createElement(StyledSliderContainer,{className:"FIE_brightness-option-wrapper"},' +
+      'React.createElement(StyledSliderLabel,{className:"FIE_brightness-option-label"},d("brightness")),' +
+      'React.createElement(StyledSliderWrapper,null,' +
+        'React.createElement(Slider,{className:"FIE_brightness-option",min:MIN_VALUE,step:1,max:MAX_VALUE,width:"124px",' +
+          'value:null!==(b=g.gammaBrightness)&&void 0!==b?b:DEFAULT_VALUE.gammaBrightness,onChange:i,style:sliderStyle}),' +
+        'React.createElement(StyledSliderInput,{' +
+          'value:null!==(c=g.gammaBrightness)&&void 0!==c?c:DEFAULT_VALUE.gammaBrightness,' +
+          'onChange:function onChange(a){var b=a.target.value;return i(b)}' +
+        '})' +
+      ')' +
+    ')' +
+  '};' +
+  'export default BrightnessOptions;'
 );
 
 /* ══════════════════════════════════════════════════════════════════════════
