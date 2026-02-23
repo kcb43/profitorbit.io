@@ -417,11 +417,11 @@ function ImageEditorInner({
   useEffect(() => {
     if (!open || allImages.length <= 1) return;
     const onKey = (e) => {
-      // Don't steal keys when the user is typing in template name input
+      // Don't steal keys when the user is typing in an input/textarea
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'ArrowLeft')
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A')
         handleSwitchImage(Math.max(0, activeIndex - 1));
-      if (e.key === 'ArrowRight')
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D')
         handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1));
     };
     window.addEventListener('keydown', onKey);
