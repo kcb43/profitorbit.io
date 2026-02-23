@@ -202,10 +202,12 @@ function ImageEditorInner({
       });
 
       // ── Layout compaction (inline !important beats styled-components) ──────
-      // Topbar: shrink from the default padding:16px (~95px tall) to ~48px
+      // Topbar: shrink from the default padding:16px (~95px tall) to ~48px.
+      // Use asymmetric padding (more on right) so the X close button isn't
+      // crowded against the right edge.
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
-        topbar.style.setProperty('padding', '6px 12px', 'important');
+        topbar.style.setProperty('padding', '6px 24px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('gap', '8px', 'important');
       }
@@ -477,11 +479,13 @@ function ImageEditorInner({
     >
       {/* ── Top bar: filmstrip + template controls ── */}
       <div
-        className="flex items-center gap-2 px-3 shrink-0"
+        className="flex items-center gap-2 shrink-0"
         onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
         onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
+          paddingLeft: 12,
+          paddingRight: 16,   // explicit right padding — Tailwind px-3 can get eaten
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
@@ -576,15 +580,15 @@ function ImageEditorInner({
           </button>
         )}
 
-        {/* Right-side controls */}
-        <div className="flex items-center gap-2 ml-auto shrink-0">
+        {/* Right-side controls — no shrink-0 so they compress before overflowing */}
+        <div className="flex items-center gap-2 ml-auto min-w-0">
           {/* Apply to all */}
           {hasMultiple && (
             <button
               onClick={handleApplyToAll}
               disabled={applyingToAll || !canApply}
               title="Applies brightness, contrast, color &amp; rotation to all other images. Each image keeps its own crop/resize."
-              className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors ${btnBase} disabled:opacity-40 disabled:cursor-not-allowed`}
+              className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0 ${btnBase} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               {applyingToAll ? (
                 <>
@@ -601,7 +605,7 @@ function ImageEditorInner({
           )}
 
           {/* Load template */}
-          <div className="relative" data-template-menu>
+          <div className="relative shrink-0" data-template-menu>
             <button
               onClick={() => setShowTemplateMenu(v => !v)}
               title="Load a saved edit template"
@@ -661,7 +665,7 @@ function ImageEditorInner({
 
           {/* Save template */}
           {showSaveTemplate ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <input
                 autoFocus
                 value={templateName}
@@ -700,7 +704,7 @@ function ImageEditorInner({
               onClick={() => setShowSaveTemplate(true)}
               disabled={!canApply}
               title="Save current edits as a reusable template"
-              className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors ${btnBase} disabled:opacity-40 disabled:cursor-not-allowed`}
+              className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0 ${btnBase} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               <BookmarkPlus className="w-3.5 h-3.5" />
               Save template
