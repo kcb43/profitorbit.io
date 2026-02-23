@@ -218,6 +218,55 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
+      {/* Targeted CSS overrides for Filerobot's styled-components internals */}
+      <style>{`
+        /* ── Selected tab: always high-contrast text/icons ── */
+        .FIE_tab[aria-selected="true"],
+        .FIE_tabs-item[aria-selected="true"] {
+          color: #ffffff !important;
+        }
+        .FIE_tab[aria-selected="true"] > *,
+        .FIE_tab[aria-selected="true"] svg,
+        .FIE_tab[aria-selected="true"] svg *,
+        .FIE_tabs-item[aria-selected="true"] > *,
+        .FIE_tabs-item[aria-selected="true"] svg,
+        .FIE_tabs-item[aria-selected="true"] svg * {
+          color: #ffffff !important;
+          fill: #ffffff !important;
+          stroke: #ffffff !important;
+        }
+
+        ${isDark ? `
+        /* ── Dark mode: unselected tabs ── */
+        .FIE_tab,
+        .FIE_tabs-item {
+          color: #fafafa !important;
+        }
+        .FIE_tab > *,
+        .FIE_tab svg,
+        .FIE_tab svg *,
+        .FIE_tabs-item svg,
+        .FIE_tabs-item svg * {
+          color: #fafafa !important;
+          fill: #fafafa !important;
+        }
+        ` : `
+        /* ── Light mode: unselected tabs ── */
+        .FIE_tab,
+        .FIE_tabs-item {
+          color: #0a0a0a !important;
+        }
+        .FIE_tab > *,
+        .FIE_tab svg,
+        .FIE_tab svg *,
+        .FIE_tabs-item svg,
+        .FIE_tabs-item svg * {
+          color: #0a0a0a !important;
+          fill: #0a0a0a !important;
+        }
+        `}
+      `}</style>
+
       <FilerobotImageEditor
         source={imageSrc}
         onSave={handleSave}
