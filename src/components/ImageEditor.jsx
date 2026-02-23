@@ -70,12 +70,18 @@ function ImageEditorInner({
     el.textContent = `
       /* ═══ Filerobot Tab & Active-State Overrides ═══ */
 
-      /* Unselected tabs: readable text for current mode */
-      .FIE_tab,
-      .FIE_tabs-item {
+      /* Unselected tabs: readable text for current mode.
+         Use .FIE_root parent for higher specificity than styled-components. */
+      .FIE_root .FIE_tab,
+      .FIE_root .FIE_tabs-item,
+      .FIE_root [class*="FIE_tab"],
+      .FIE_root [class*="FIE_tabs-item"] {
         color: ${unselectedText} !important;
       }
-      .FIE_tab svg *, .FIE_tabs-item svg * {
+      .FIE_root .FIE_tab svg,
+      .FIE_root .FIE_tab svg *,
+      .FIE_root .FIE_tabs-item svg,
+      .FIE_root .FIE_tabs-item svg * {
         fill: ${unselectedFill} !important;
         color: ${unselectedFill} !important;
       }
