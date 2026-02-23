@@ -17,26 +17,36 @@ function persistTemplates(list) {
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
 }
 
-// ── Canvas-based batch adjustment processor ───────────────────────────────────
-// Applies Finetune adjustments (brightness, contrast, saturation, hue, blur,
-// opacity) plus rotation/flip to an image via the Canvas API.
+// ── Canvas-based batch adjustment processor ─────────────────────────────────
+// Fetches each image as a blob first (avoids CORS canvas taint), then applies:
+//   • Finetune adjustments from finetunesProps (Konva filter names → CSS filters)
+//   • Rotation / flip from adjustments.rotation / isFlippedX / isFlippedY
+//   • Aspect-ratio crop from adjustments.crop.ratio (centred)
 // Returns a Promise<Blob>.
-// Applies a FIE design state (finetunes + adjustments.rotation/flip/crop) to an image via Canvas.
-// Crop: uses adjustments.crop.ratio to apply a centred crop at that aspect ratio.
-// Finetune values come from finetunesProps (Konva filter names), NOT from adjustments.
-function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
+async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
+  // Fetch as blob → object URL so the canvas is never cross-origin tainted
+  let objectUrl = null;
+  try {
+    const resp = await fetch(imgUrl);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    objectUrl = URL.createObjectURL(blob);
+  } catch {
+    // Fallback: try direct URL with crossOrigin (may taint canvas on some hosts)
+    objectUrl = imgUrl;
+  }
+
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+
     img.onload = () => {
       const adj = designState.adjustments || {};
       const fp  = designState.finetunesProps || {};
 
       // ── Finetune → CSS filter ─────────────────────────────────────────────
-      // Konva filter key → property → CSS mapping
       const brightness = fp.Brighten?.brightness ?? 0;   // -1 to 1
       const contrast   = fp.Contrast?.contrast   ?? 0;   // -100 to 100
-      const hue        = fp.HSV?.hue             ?? 0;   // 0-259 (treated as degrees)
+      const hue        = fp.HSV?.hue             ?? 0;   // 0-259 (degrees)
       const saturation = fp.HSV?.saturation      ?? 0;   // -2 to 10 (0 = no change)
       const blurRadius = fp.Blur?.blurRadius     ?? 0;   // 0-100
 
@@ -56,21 +66,15 @@ function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       const w = img.naturalWidth;
       const h = img.naturalHeight;
 
-      // ── Crop: centred crop at the saved aspect ratio ──────────────────────
+      // ── Centred aspect-ratio crop ─────────────────────────────────────────
       const cropRatio = adj.crop?.ratio;
       let srcX = 0, srcY = 0, srcW = w, srcH = h;
       if (cropRatio && cropRatio !== 'original' && typeof cropRatio === 'number') {
         const imgRatio = w / h;
         if (imgRatio > cropRatio) {
-          // Image is wider → trim sides
-          srcH = h;
-          srcW = h * cropRatio;
-          srcX = (w - srcW) / 2;
+          srcH = h;  srcW = h * cropRatio;  srcX = (w - srcW) / 2;
         } else {
-          // Image is taller → trim top/bottom
-          srcW = w;
-          srcH = w / cropRatio;
-          srcY = (h - srcH) / 2;
+          srcW = w;  srcH = w / cropRatio;  srcY = (h - srcH) / 2;
         }
       }
 
@@ -87,17 +91,24 @@ function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       if (rotate)         ctx.rotate(rad);
       if (adj.isFlippedX) ctx.scale(-1,  1);
       if (adj.isFlippedY) ctx.scale( 1, -1);
-      // drawImage with src crop coords so the centred crop is baked in
       ctx.drawImage(img, srcX, srcY, srcW, srcH, -srcW / 2, -srcH / 2, srcW, srcH);
       ctx.restore();
+
+      if (objectUrl !== imgUrl) URL.revokeObjectURL(objectUrl);
 
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
         'image/jpeg', 0.92,
       );
     };
-    img.onerror = () => reject(new Error(`Failed to load image: ${imgUrl}`));
-    img.src = imgUrl;
+
+    img.onerror = () => {
+      if (objectUrl !== imgUrl) URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Failed to load image: ${imgUrl}`));
+    };
+
+    if (objectUrl === imgUrl) img.crossOrigin = 'anonymous';
+    img.src = objectUrl;
   });
 }
 
@@ -752,6 +763,7 @@ function ImageEditorInner({
           key={`fie-${activeIndex}-${activeSrc}`}
           source={activeSrc}
           onSave={handleSave}
+          onBeforeSave={() => false}
           onClose={handleClose}
           onModify={handleModify}
           observePluginContainerSize={true}
