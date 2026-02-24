@@ -10324,57 +10324,60 @@ export default function CrosslistComposer() {
     });
   };
 
-  const handleSaveEditedImage = async (editedFile) => {
-    if (!imageToEdit.photoId || !imageToEdit.marketplace) return;
+  // ImageEditor calls onSave(fileUrl, index) where fileUrl is already uploaded
+  // to S3 (a string URL).  Index is the photo's position in allImages.
+  // For Apply-to-All, this is called once per image with different indices;
+  // for a single save it's called once with activeIndex === imageToEdit.index.
+  const handleSaveEditedImage = async (fileUrl, index) => {
+    if (imageToEdit.marketplace === null || imageToEdit.marketplace === undefined) return;
 
     try {
-      // Create a new preview URL for the edited image
-      const newPreview = URL.createObjectURL(editedFile);
-      
-      // Update the photo in the correct form
       setTemplateForms((prev) => {
         const updated = { ...prev };
-        const formPhotos = imageToEdit.marketplace === 'general' 
-          ? updated.general.photos 
-          : updated[imageToEdit.marketplace]?.photos || [];
-        
+        const marketplace = imageToEdit.marketplace;
+        const formPhotos = marketplace === 'general'
+          ? updated.general.photos
+          : updated[marketplace]?.photos || [];
+
         const updatedPhotos = formPhotos.map((photo, idx) => {
-          if (photo.id === imageToEdit.photoId) {
-            return {
-              ...photo,
-              file: editedFile,
-              preview: newPreview,
-            };
-          }
-          return photo;
+          // Match by position (index) if provided, else fall back to photoId.
+          const isTarget = index !== undefined
+            ? idx === index
+            : photo.id === imageToEdit.photoId;
+          if (!isTarget) return photo;
+          return {
+            ...photo,
+            // The file was already uploaded to S3 by ImageEditor — store the
+            // URL directly so downstream marketplace submission uses it as-is.
+            file: null,
+            preview: fileUrl,
+            url: fileUrl,
+            fromInventory: true,
+          };
         });
 
-        if (imageToEdit.marketplace === 'general') {
-          updated.general = {
-            ...updated.general,
-            photos: updatedPhotos,
-          };
-          // Sync edited photos to all marketplace forms
-          updated.ebay = { ...updated.ebay, photos: updatedPhotos };
-          updated.etsy = { ...updated.etsy, photos: updatedPhotos };
-          updated.mercari = { ...updated.mercari, photos: updatedPhotos };
-          updated.facebook = { ...updated.facebook, photos: updatedPhotos };
+        if (marketplace === 'general') {
+          updated.general   = { ...updated.general,   photos: updatedPhotos };
+          updated.ebay      = { ...updated.ebay,      photos: updatedPhotos };
+          updated.etsy      = { ...updated.etsy,      photos: updatedPhotos };
+          updated.mercari   = { ...updated.mercari,   photos: updatedPhotos };
+          updated.facebook  = { ...updated.facebook,  photos: updatedPhotos };
         } else {
-          updated[imageToEdit.marketplace] = {
-            ...updated[imageToEdit.marketplace],
-            photos: updatedPhotos,
-          };
+          updated[marketplace] = { ...updated[marketplace], photos: updatedPhotos };
         }
-
         return updated;
       });
 
-      toast({
-        title: "Image Updated",
-        description: "The photo has been successfully updated.",
-      });
-      setEditorOpen(false);
-      setImageToEdit({ url: null, photoId: null, marketplace: null, index: null });
+      // Show toast and close only for the primary (single) save.
+      // Apply-to-All calls onSave for every OTHER image and manages its own UX.
+      if (index === imageToEdit.index || index === undefined) {
+        toast({
+          title: "Image Updated",
+          description: "The photo has been successfully updated.",
+        });
+        setEditorOpen(false);
+        setImageToEdit({ url: null, photoId: null, marketplace: null, index: null });
+      }
     } catch (error) {
       console.error("Error updating image:", error);
       toast({
