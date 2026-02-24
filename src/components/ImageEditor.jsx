@@ -5,18 +5,79 @@ import { useToast } from '@/components/ui/use-toast';
 import { uploadApi } from '@/api/uploadApi';
 import { inventoryApi } from '@/api/inventoryApi';
 
-// ── Module-level high-quality canvas patch ─────────────────────────────────────
-// Konva defaults imageSmoothingQuality to 'low'. Patching at module-load time
-// means EVERY drawImage call—including FIE's very first render—uses bicubic.
+// ── Module-level high-quality canvas patch with multi-step downscaling ─────────
+// Problem: a single drawImage call from a large source (e.g. 4000px) to a small
+// destination (e.g. 800px) uses bilinear filtering even at quality:'high', which
+// looks noticeably softer than a CSS <img> tag (which the browser Lanczos-scales).
+// Fix: when downscaling by >2×, halve in steps (each step ≤50% reduction) before
+// the final draw. Each halving step is near-lossless bilinear, and the chain
+// approaches Lanczos quality — this is the same technique used by Photoshop and
+// Canva. The patch fires at module-load time so it covers FIE's very first render.
 ;(function () {
   if (typeof CanvasRenderingContext2D === 'undefined') return;
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
   if (_orig && _orig._fie_hq) return;
-  function hqDrawImage(...args) {
+
+  function hqDrawImage(source) {
     this.imageSmoothingEnabled = true;
     this.imageSmoothingQuality = 'high';
-    return _orig.apply(this, args);
+
+    // Only apply multi-step for HTMLImageElement sources with explicit dest size.
+    // Canvas-to-canvas draws are already pre-scaled; skip them to avoid recursion.
+    if (source instanceof HTMLImageElement && arguments.length >= 5) {
+      const is9 = arguments.length >= 9;
+      // Effective source region dimensions
+      const effSrcW = is9 ? Math.abs(arguments[3]) : source.naturalWidth;
+      const effSrcH = is9 ? Math.abs(arguments[4]) : source.naturalHeight;
+      const destW   = Math.abs(is9 ? arguments[7] : arguments[3]);
+      const destH   = Math.abs(is9 ? arguments[8] : arguments[4]);
+
+      if (destW > 0 && destH > 0 && (effSrcW > destW * 2 || effSrcH > destH * 2)) {
+        // ── multi-step path ──────────────────────────────────────────────────
+        let cur = source;
+        let curW = effSrcW;
+        let curH = effSrcH;
+
+        // For 9-arg form, first extract the source crop onto a temp canvas.
+        if (is9) {
+          const crop = document.createElement('canvas');
+          crop.width  = effSrcW;
+          crop.height = effSrcH;
+          const cc = crop.getContext('2d');
+          cc.imageSmoothingEnabled = true;
+          cc.imageSmoothingQuality = 'high';
+          _orig.call(cc, source,
+            arguments[1], arguments[2], effSrcW, effSrcH,
+            0, 0, effSrcW, effSrcH);
+          cur = crop;
+        }
+
+        // Halve repeatedly until within 2× of the target.
+        while (curW > destW * 2 || curH > destH * 2) {
+          const nw = Math.max(Math.round(curW / 2), destW);
+          const nh = Math.max(Math.round(curH / 2), destH);
+          const tmp = document.createElement('canvas');
+          tmp.width  = nw;
+          tmp.height = nh;
+          const tc = tmp.getContext('2d');
+          tc.imageSmoothingEnabled = true;
+          tc.imageSmoothingQuality = 'high';
+          _orig.call(tc, cur, 0, 0, nw, nh);
+          cur = tmp; curW = nw; curH = nh;
+        }
+
+        // Final draw of the pre-scaled canvas to this context.
+        if (is9) {
+          return _orig.call(this, cur, 0, 0, curW, curH,
+            arguments[5], arguments[6], destW, destH);
+        }
+        return _orig.call(this, cur, arguments[1], arguments[2], destW, destH);
+      }
+    }
+
+    return _orig.apply(this, arguments);
   }
+
   hqDrawImage._fie_hq = true;
   CanvasRenderingContext2D.prototype.drawImage = hqDrawImage;
 })();
@@ -151,7 +212,7 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
 
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
-        'image/jpeg', 0.92,
+        'image/jpeg', 0.95,
       );
     };
 
@@ -964,7 +1025,7 @@ function ImageEditorInner({
           defaultSavedImageName={defaultName}
           defaultSavedImageType="jpeg"
           defaultSavedImageQuality={0.92}
-          savingPixelRatio={4}
+          savingPixelRatio={1}
           previewPixelRatio={window.devicePixelRatio || 2}
           theme={isDark ? {
             palette: {

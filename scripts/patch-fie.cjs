@@ -307,4 +307,17 @@ patch('components/Layers/DesignLayer/index.js', [
   ],
 ]);
 
+/* ══════════════════════════════════════════════════════════════════════════
+   8. hooks/useTransformedImgData.js  – raise default save quality 92 → 97
+      FIE hard-codes quality:92 for JPEG saves. At 92 compression artefacts
+      are visible on sharp product photos. 97 is near-lossless while keeping
+      file sizes reasonable.
+   ══════════════════════════════════════════════════════════════════════════ */
+patch('hooks/useTransformedImgData.js', [
+  [
+    'void 0===D?92:D',
+    'void 0===D?97:D',
+  ],
+]);
+
 console.log('[patch-fie] Done.');
