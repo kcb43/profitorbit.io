@@ -42,12 +42,40 @@ import { inventoryApi } from '@/api/inventoryApi';
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
   if (_orig && _orig._fie_hq) return;
 
+  // Laplacian sharpen: compensates for the softness inherent in multi-step
+  // bicubic downscaling, restoring the perceived sharpness of a CSS <img>.
+  // Applied once to the final-sized canvas before handing off to Konva.
+  function sharpenCanvas(cvs, amount) {
+    const w = cvs.width, h = cvs.height;
+    if (w < 3 || h < 3) return cvs;
+    const ctx = cvs.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const src = imgData.data;
+    const dst = new Uint8ClampedArray(src);
+    const stride = w * 4;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * stride + x * 4;
+        for (let c = 0; c < 3; c++) {
+          const center = src[i + c];
+          const laplacian = 4 * center
+            - src[i - stride + c]   // top
+            - src[i + stride + c]   // bottom
+            - src[i - 4 + c]        // left
+            - src[i + 4 + c];       // right
+          dst[i + c] = Math.max(0, Math.min(255, center + amount * laplacian + 0.5 | 0));
+        }
+      }
+    }
+    imgData.data.set(dst);
+    ctx.putImageData(imgData, 0, 0);
+    return cvs;
+  }
+
   function hqDrawImage(source) {
     this.imageSmoothingEnabled = true;
     this.imageSmoothingQuality = 'high';
 
-    // Only multi-step for HTMLImageElement with explicit dest size.
-    // Canvas→canvas skips multi-step (already pre-scaled, no recursion risk).
     if (source instanceof HTMLImageElement && arguments.length >= 5) {
       const is9    = arguments.length >= 9;
       const effSrcW = is9 ? Math.abs(arguments[3]) : source.naturalWidth;
@@ -55,30 +83,26 @@ import { inventoryApi } from '@/api/inventoryApi';
       const cssDW   = Math.abs(is9 ? arguments[7] : arguments[3]);
       const cssDH   = Math.abs(is9 ? arguments[8] : arguments[4]);
 
-      // ── Detect context scale so we target physical pixels, not CSS pixels ──
-      // Konva sets scale(pixelRatio) on cache canvases before calling drawImage.
-      // Without this, we'd pre-scale to cssD* then the context's transform would
-      // upscale the result, negating all quality gains.
       let sx = 1, sy = 1;
       try {
         if (typeof this.getTransform === 'function') {
           const m = this.getTransform();
-          // Extract scale magnitude (handles rotation too: |col₀| = scaleX)
           sx = Math.sqrt(m.a * m.a + m.b * m.b) || 1;
           sy = Math.sqrt(m.c * m.c + m.d * m.d) || 1;
         }
-      } catch (_) { /* ignore – older browsers */ }
+      } catch (_) { /* older browsers */ }
 
-      // Physical pixel destination (what actually gets drawn on screen/canvas).
       const physDW = Math.round(cssDW * sx);
       const physDH = Math.round(cssDH * sy);
 
-      if (physDW > 0 && physDH > 0 && (effSrcW > physDW * 2 || effSrcH > physDH * 2)) {
+      // Trigger multi-step when the source is significantly larger than dest.
+      // Lower threshold (1.5× instead of 2×) catches more cases where single-
+      // pass bicubic would be noticeably soft.
+      if (physDW > 0 && physDH > 0 && (effSrcW > physDW * 1.5 || effSrcH > physDH * 1.5)) {
         let cur = source;
         let curW = effSrcW;
         let curH = effSrcH;
 
-        // For 9-arg (source crop), extract the crop region onto a temp canvas first.
         if (is9) {
           const crop = document.createElement('canvas');
           crop.width  = effSrcW;
@@ -92,8 +116,7 @@ import { inventoryApi } from '@/api/inventoryApi';
           cur = crop;
         }
 
-        // Halve until within 2× of the PHYSICAL destination.
-        // Each step is ≤50% → bilinear chains to Lanczos quality.
+        // Halve until within 2× of the physical destination.
         while (curW > physDW * 2 || curH > physDH * 2) {
           const nw = Math.max(Math.round(curW / 2), physDW);
           const nh = Math.max(Math.round(curH / 2), physDH);
@@ -107,8 +130,24 @@ import { inventoryApi } from '@/api/inventoryApi';
           cur = tmp; curW = nw; curH = nh;
         }
 
-        // Draw the pre-scaled canvas (physDW×physDH pixels) using CSS coordinates.
-        // The context's scale transform maps cssD* → physD* physical pixels → 1:1.
+        // Final step to exact physical pixel dimensions.
+        if (curW !== physDW || curH !== physDH) {
+          const fin = document.createElement('canvas');
+          fin.width  = physDW;
+          fin.height = physDH;
+          const fc = fin.getContext('2d');
+          fc.imageSmoothingEnabled = true;
+          fc.imageSmoothingQuality = 'high';
+          _orig.call(fc, cur, 0, 0, physDW, physDH);
+          cur = fin; curW = physDW; curH = physDH;
+        }
+
+        // Sharpen to recover edge detail lost during bicubic resampling.
+        // Amount 0.35 ≈ Photoshop "Smart Sharpen" 35% at radius 1px.
+        sharpenCanvas(cur, 0.35);
+
+        // Draw the sharpened canvas at CSS coordinates.
+        // Context transform maps cssD → physD 1:1.
         if (is9) {
           return _orig.call(this, cur, 0, 0, curW, curH,
             arguments[5], arguments[6], cssDW, cssDH);
@@ -1074,41 +1113,8 @@ function ImageEditorInner({
         </div>
       </div>
 
-      {/*
-        ── SVG Unsharp Mask filter ──────────────────────────────────────────
-        Applied via CSS to the Konva canvas so the image appears as sharp as
-        CSS <img> rendering.  This is purely a display post-process — saves
-        continue to use applyAdjustmentsToCanvas with the original S3 URL so
-        the USM has ZERO effect on saved pixels.
-        Formula: sharpened = src + 0.5 × (src − blurred)  (radius 0.6 px)
-      */}
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-        style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}
-      >
-        <defs>
-          <filter id="orben-usm" x="0%" y="0%" width="100%" height="100%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" result="blurred" />
-            <feComposite
-              operator="arithmetic"
-              k1="0" k2="1.5" k3="-0.5" k4="0"
-              in="SourceGraphic"
-              in2="blurred"
-            />
-          </filter>
-        </defs>
-      </svg>
-      {/* Apply USM + high-quality rendering to Konva canvases */}
-      <style>{`
-        .orben-fie-area canvas {
-          filter: url(#orben-usm);
-          image-rendering: high-quality;
-        }
-      `}</style>
-
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      <div ref={editorAreaRef} className="orben-fie-area flex-1 min-h-0 overflow-hidden relative">
+      <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
         {/* Loading overlay while pre-scaling for high-quality preview */}
         {fieSourceLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10 gap-2">
