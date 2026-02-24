@@ -5,14 +5,16 @@ import { useToast } from '@/components/ui/use-toast';
 import { uploadApi } from '@/api/uploadApi';
 import { inventoryApi } from '@/api/inventoryApi';
 
-// ── Module-level high-quality canvas patch with multi-step downscaling ─────────
-// Problem: a single drawImage call from a large source (e.g. 4000px) to a small
-// destination (e.g. 800px) uses bilinear filtering even at quality:'high', which
-// looks noticeably softer than a CSS <img> tag (which the browser Lanczos-scales).
-// Fix: when downscaling by >2×, halve in steps (each step ≤50% reduction) before
-// the final draw. Each halving step is near-lossless bilinear, and the chain
-// approaches Lanczos quality — this is the same technique used by Photoshop and
-// Canva. The patch fires at module-load time so it covers FIE's very first render.
+// ── Module-level high-quality canvas patch with transform-aware multi-step downscaling ───
+// Root cause of blurry preview: Konva applies context.scale(pixelRatio) BEFORE calling
+// drawImage(img, 0, 0, cssW, cssH). The CSS destination (e.g. 800px) looks small, but
+// the actual physical pixels drawn are 800 × pixelRatio (e.g. 1600px on a 2× screen).
+// Our old patch pre-scaled to 800px then the context's 2× transform upscaled it to
+// 1600px — throwing away all the quality we just computed.
+//
+// Fix: read the current transform matrix via getTransform() to find the actual physical
+// pixel size, pre-scale to THAT size, then let the context transform produce 1:1 pixels.
+// Intermediate canvases are fresh (identity transform) so they don't recurse.
 ;(function () {
   if (typeof CanvasRenderingContext2D === 'undefined') return;
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
@@ -22,23 +24,39 @@ import { inventoryApi } from '@/api/inventoryApi';
     this.imageSmoothingEnabled = true;
     this.imageSmoothingQuality = 'high';
 
-    // Only apply multi-step for HTMLImageElement sources with explicit dest size.
-    // Canvas-to-canvas draws are already pre-scaled; skip them to avoid recursion.
+    // Only multi-step for HTMLImageElement with explicit dest size.
+    // Canvas→canvas skips multi-step (already pre-scaled, no recursion risk).
     if (source instanceof HTMLImageElement && arguments.length >= 5) {
-      const is9 = arguments.length >= 9;
-      // Effective source region dimensions
+      const is9    = arguments.length >= 9;
       const effSrcW = is9 ? Math.abs(arguments[3]) : source.naturalWidth;
       const effSrcH = is9 ? Math.abs(arguments[4]) : source.naturalHeight;
-      const destW   = Math.abs(is9 ? arguments[7] : arguments[3]);
-      const destH   = Math.abs(is9 ? arguments[8] : arguments[4]);
+      const cssDW   = Math.abs(is9 ? arguments[7] : arguments[3]);
+      const cssDH   = Math.abs(is9 ? arguments[8] : arguments[4]);
 
-      if (destW > 0 && destH > 0 && (effSrcW > destW * 2 || effSrcH > destH * 2)) {
-        // ── multi-step path ──────────────────────────────────────────────────
+      // ── Detect context scale so we target physical pixels, not CSS pixels ──
+      // Konva sets scale(pixelRatio) on cache canvases before calling drawImage.
+      // Without this, we'd pre-scale to cssD* then the context's transform would
+      // upscale the result, negating all quality gains.
+      let sx = 1, sy = 1;
+      try {
+        if (typeof this.getTransform === 'function') {
+          const m = this.getTransform();
+          // Extract scale magnitude (handles rotation too: |col₀| = scaleX)
+          sx = Math.sqrt(m.a * m.a + m.b * m.b) || 1;
+          sy = Math.sqrt(m.c * m.c + m.d * m.d) || 1;
+        }
+      } catch (_) { /* ignore – older browsers */ }
+
+      // Physical pixel destination (what actually gets drawn on screen/canvas).
+      const physDW = Math.round(cssDW * sx);
+      const physDH = Math.round(cssDH * sy);
+
+      if (physDW > 0 && physDH > 0 && (effSrcW > physDW * 2 || effSrcH > physDH * 2)) {
         let cur = source;
         let curW = effSrcW;
         let curH = effSrcH;
 
-        // For 9-arg form, first extract the source crop onto a temp canvas.
+        // For 9-arg (source crop), extract the crop region onto a temp canvas first.
         if (is9) {
           const crop = document.createElement('canvas');
           crop.width  = effSrcW;
@@ -52,10 +70,11 @@ import { inventoryApi } from '@/api/inventoryApi';
           cur = crop;
         }
 
-        // Halve repeatedly until within 2× of the target.
-        while (curW > destW * 2 || curH > destH * 2) {
-          const nw = Math.max(Math.round(curW / 2), destW);
-          const nh = Math.max(Math.round(curH / 2), destH);
+        // Halve until within 2× of the PHYSICAL destination.
+        // Each step is ≤50% → bilinear chains to Lanczos quality.
+        while (curW > physDW * 2 || curH > physDH * 2) {
+          const nw = Math.max(Math.round(curW / 2), physDW);
+          const nh = Math.max(Math.round(curH / 2), physDH);
           const tmp = document.createElement('canvas');
           tmp.width  = nw;
           tmp.height = nh;
@@ -66,12 +85,13 @@ import { inventoryApi } from '@/api/inventoryApi';
           cur = tmp; curW = nw; curH = nh;
         }
 
-        // Final draw of the pre-scaled canvas to this context.
+        // Draw the pre-scaled canvas (physDW×physDH pixels) using CSS coordinates.
+        // The context's scale transform maps cssD* → physD* physical pixels → 1:1.
         if (is9) {
           return _orig.call(this, cur, 0, 0, curW, curH,
-            arguments[5], arguments[6], destW, destH);
+            arguments[5], arguments[6], cssDW, cssDH);
         }
-        return _orig.call(this, cur, arguments[1], arguments[2], destW, destH);
+        return _orig.call(this, cur, arguments[1], arguments[2], cssDW, cssDH);
       }
     }
 

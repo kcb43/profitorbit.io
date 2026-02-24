@@ -308,15 +308,25 @@ patch('components/Layers/DesignLayer/index.js', [
 ]);
 
 /* ══════════════════════════════════════════════════════════════════════════
-   8. hooks/useTransformedImgData.js  – raise default save quality 92 → 97
-      FIE hard-codes quality:92 for JPEG saves. At 92 compression artefacts
-      are visible on sharp product photos. 97 is near-lossless while keeping
-      file sizes reasonable.
+   8. hooks/useTransformedImgData.js
+   8a. Raise default save quality 92 → 97 (near-lossless for product photos).
+   8b. Fix save-path cache resolution.
+       Root cause: y.cache() creates an 800px cache, but the save layer has
+       scaleX = originalWidth/displayWidth (e.g. 5.04 for 4032/800). FIE then
+       upscales this 800px cache 5× onto the 4032px output canvas → horribly
+       blurry saves. Fix: pass pixelRatio = originalWidth/displayWidth to
+       cache() so the cache is created at full original resolution → 1:1 draw.
+       Note: y.cache() is called before var z is defined, so we use
+       v.width()/d.width directly (same value as z.x that comes after).
    ══════════════════════════════════════════════════════════════════════════ */
 patch('hooks/useTransformedImgData.js', [
   [
     'void 0===D?92:D',
     'void 0===D?97:D',
+  ],
+  [
+    'y.cache();',
+    'y.cache({pixelRatio:d.width>0?v.width()/d.width:1});',
   ],
 ]);
 
