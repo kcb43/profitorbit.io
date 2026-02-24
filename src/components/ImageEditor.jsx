@@ -314,11 +314,107 @@ function ImageEditorInner({
   const [applyingToAll, setApplyingToAll]   = useState(false);
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
-  // Active image URL
+  // Active image URL (original, always used for saves and as ground truth)
   const activeSrc = useMemo(() => {
     if (!allImages.length) return imageSrc;
     return getImgUrl(allImages[activeIndex]) || imageSrc;
   }, [allImages, activeIndex, imageSrc]);
+
+  // ── High-quality pre-scaled source for FIE preview ─────────────────────────
+  // The browser's native createImageBitmap({resizeQuality:'high'}) uses a
+  // Lanczos-quality algorithm — the same path as CSS <img> scaling — which is
+  // visibly sharper than any canvas drawImage downscale.
+  // We pre-scale the image BEFORE passing it to FIE so Konva never needs to
+  // perform the large downscale step itself; it receives an already-optimal
+  // source and draws it nearly 1:1 onto the cache canvas.
+  // The original activeSrc is kept for all saves (never the pre-scaled version).
+  const [fieSource, setFieSource] = useState(null);
+  const [fieSourceLoading, setFieSourceLoading] = useState(false);
+  const prevBlobUrl = useRef(null);
+
+  useEffect(() => {
+    if (!open || !activeSrc) { setFieSource(activeSrc || null); return; }
+
+    setFieSource(null);
+    setFieSourceLoading(true);
+
+    let cancelled = false;
+
+    async function prescale() {
+      let blobUrl = null;
+      try {
+        const resp = await fetch(activeSrc);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const blob = await resp.blob();
+
+        // Check original dimensions first
+        const origBitmap = await createImageBitmap(blob);
+        const sw = origBitmap.width;
+        const sh = origBitmap.height;
+        origBitmap.close?.();
+
+        // Target: 2× the largest screen dimension × DPR.
+        // This gives Konva an image that needs ≤ 2× downscale — one bilinear
+        // step — to fill the preview canvas, which is nearly lossless.
+        const dpr    = window.devicePixelRatio || 1;
+        const maxDim = Math.max(window.screen.width, window.screen.height) * dpr * 2;
+
+        if (sw <= maxDim && sh <= maxDim) {
+          // Already small enough — serve as a blob URL so the browser can
+          // cache-decode it once rather than re-fetching from the network.
+          blobUrl = URL.createObjectURL(blob);
+        } else {
+          const ratio = Math.min(maxDim / sw, maxDim / sh);
+          const tw    = Math.round(sw * ratio);
+          const th    = Math.round(sh * ratio);
+
+          // createImageBitmap with resizeQuality:'high' uses the browser's
+          // internal Lanczos pipeline — identical to CSS <img> rendering.
+          let scaled;
+          try {
+            scaled = await createImageBitmap(blob, {
+              resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
+            });
+          } catch {
+            // Older Safari: fall back to a blob URL without pre-scaling.
+            blobUrl = URL.createObjectURL(blob);
+          }
+
+          if (scaled) {
+            const canvas = document.createElement('canvas');
+            canvas.width = tw; canvas.height = th;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(scaled, 0, 0);
+            scaled.close?.();
+
+            const outBlob = await new Promise(res =>
+              canvas.toBlob(res, 'image/jpeg', 0.97),
+            );
+            if (outBlob) blobUrl = URL.createObjectURL(outBlob);
+          }
+        }
+
+        if (!cancelled) {
+          if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current);
+          prevBlobUrl.current = blobUrl;
+          setFieSource(blobUrl || activeSrc);
+        }
+      } catch {
+        if (!cancelled) setFieSource(activeSrc);
+      } finally {
+        if (!cancelled) setFieSourceLoading(false);
+      }
+    }
+
+    prescale();
+
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeSrc]);
 
   // Reset everything when a new item/editor session starts
   useEffect(() => {
@@ -508,20 +604,19 @@ function ImageEditorInner({
   // ── Save current image ───────────────────────────────────────────────────
   const defaultName = useMemo(() => fileName.replace(/\.[^/.]+$/, ''), [fileName]);
 
-  const handleSave = useCallback(async (editedImageObj, savedDesignState) => {
+  const handleSave = useCallback(async (_editedImageObj, savedDesignState) => {
     persistOriginalsIfFirstSave();
     setHasSavedInSession(true);
     setIsProcessing(true);
     try {
-      const base64 = editedImageObj.imageBase64;
-      const mime   = editedImageObj.mimeType || 'image/jpeg';
-      const name   = editedImageObj.fullName  || `${defaultName}.jpg`;
-
-      const bytes  = atob(base64.split(',')[1]);
-      const buf    = new ArrayBuffer(bytes.length);
-      const ua     = new Uint8Array(buf);
-      for (let i = 0; i < bytes.length; i++) ua[i] = bytes.charCodeAt(i);
-      const file = new File([new Blob([buf], { type: mime })], name, { type: mime });
+      // Bypass Konva's rendering pipeline entirely.
+      // applyAdjustmentsToCanvas fetches the original full-resolution image
+      // from S3 and applies crop/rotation/adjustments directly — no Konva
+      // re-encoding involved.  This is the same path used by "Apply to All"
+      // and guarantees maximum quality for the saved output.
+      const blob = await applyAdjustmentsToCanvas(activeSrc, savedDesignState);
+      const name = `${defaultName}.jpg`;
+      const file = new File([blob], name, { type: 'image/jpeg' });
 
       const { file_url } = await uploadApi.uploadFile({ file });
 
@@ -984,10 +1079,15 @@ function ImageEditorInner({
       </div>
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        {fieSourceLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+            <Loader2 className="w-8 h-8 animate-spin text-white" />
+          </div>
+        )}
         <FilerobotImageEditor
-          key={`fie-${activeIndex}-${activeSrc}`}
-          source={activeSrc}
+          key={`fie-${activeIndex}-${fieSource}`}
+          source={fieSource || activeSrc}
           onSave={handleSave}
           onBeforeSave={() => false}
           onClose={handleClose}
