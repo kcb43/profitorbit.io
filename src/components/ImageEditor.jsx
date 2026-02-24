@@ -227,6 +227,7 @@ function ImageEditorInner({
 }) {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const apiWorksRef = useRef(false);
 
   // ── Original URL tracking (for Reset All) ────────────────────────────────
   // Capture the image URLs as they existed when this editor session started.
@@ -336,15 +337,18 @@ function ImageEditorInner({
   // ── Load saved design state from DB when editor opens ────────────────────
   useEffect(() => {
     if (!open || !itemId || !imageSrc) return;
+    apiWorksRef.current = false;
     let cancelled = false;
     (async () => {
       try {
         const { data: item } = await inventoryApi.get(itemId);
-        if (cancelled || !item?.image_editor_state) return;
+        if (cancelled) return;
+        apiWorksRef.current = true;
+        if (!item?.image_editor_state) return;
         const states = JSON.parse(item.image_editor_state);
         const saved = states[imageSrc];
         if (saved) setLoadedDesignState(saved);
-      } catch { /* non-critical */ }
+      } catch { /* non-critical — API may not support this item */ }
     })();
     return () => { cancelled = true; };
   }, [open, itemId, imageSrc]);
@@ -540,8 +544,8 @@ function ImageEditorInner({
 
       const { file_url } = await uploadApi.uploadFile({ file });
 
-      // Persist design state to item metadata keyed by original URL
-      if (itemId && activeSrc) {
+      // Persist design state to item metadata (only if the initial load succeeded)
+      if (itemId && activeSrc && apiWorksRef.current) {
         try {
           const { data: item } = await inventoryApi.get(itemId);
           const existing = item?.image_editor_state
@@ -783,7 +787,9 @@ function ImageEditorInner({
       if (!inserted) {
         const canvases = konvajsContent.querySelectorAll('canvas');
         if (canvases.length < 2) return;
-        konvajsContent.insertBefore(svgEl, canvases[1]);
+        // SVG filter defs go on document.body so url(#id) resolves reliably
+        // regardless of container transforms or clipping
+        if (!svgEl.parentNode) document.body.appendChild(svgEl);
         konvajsContent.insertBefore(oImg, canvases[1]);
         oImg.style.display = 'block';
         inserted = true;
