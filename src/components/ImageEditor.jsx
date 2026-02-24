@@ -27,50 +27,20 @@ import { inventoryApi } from '@/api/inventoryApi';
   } catch (_) { /* Konva not ready — the per-module registrations will handle it */ }
 })();
 
-// ── Module-level high-quality canvas patch with transform-aware multi-step downscaling ───
-// Root cause of blurry preview: Konva applies context.scale(pixelRatio) BEFORE calling
-// drawImage(img, 0, 0, cssW, cssH). The CSS destination (e.g. 800px) looks small, but
-// the actual physical pixels drawn are 800 × pixelRatio (e.g. 1600px on a 2× screen).
-// Our old patch pre-scaled to 800px then the context's 2× transform upscaled it to
-// 1600px — throwing away all the quality we just computed.
+// ── Module-level high-quality drawImage patch ───────────────────────────────
+// Strategy: intercept Konva's drawImage calls and replace single-pass bicubic
+// with the browser's native Lanczos resampler (createImageBitmap).
 //
-// Fix: read the current transform matrix via getTransform() to find the actual physical
-// pixel size, pre-scale to THAT size, then let the context transform produce 1:1 pixels.
-// Intermediate canvases are fresh (identity transform) so they don't recurse.
+// Phase 1 (synchronous, instant): multi-step bicubic + sharpen for the first
+//   frame.  Looks good but not perfect.
+// Phase 2 (async, ~200 ms later): createImageBitmap with resizeQuality:'high'
+//   produces a true Lanczos-quality bitmap.  We cache it on the Image element,
+//   force a Konva re-cache, and on the next drawImage call we draw the bitmap
+//   at 1:1 — identical to CSS <img> rendering quality.
 ;(function () {
   if (typeof CanvasRenderingContext2D === 'undefined') return;
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
   if (_orig && _orig._fie_hq) return;
-
-  // Laplacian sharpen: compensates for the softness inherent in multi-step
-  // bicubic downscaling, restoring the perceived sharpness of a CSS <img>.
-  // Applied once to the final-sized canvas before handing off to Konva.
-  function sharpenCanvas(cvs, amount) {
-    const w = cvs.width, h = cvs.height;
-    if (w < 3 || h < 3) return cvs;
-    const ctx = cvs.getContext('2d');
-    const imgData = ctx.getImageData(0, 0, w, h);
-    const src = imgData.data;
-    const dst = new Uint8ClampedArray(src);
-    const stride = w * 4;
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * stride + x * 4;
-        for (let c = 0; c < 3; c++) {
-          const center = src[i + c];
-          const laplacian = 4 * center
-            - src[i - stride + c]   // top
-            - src[i + stride + c]   // bottom
-            - src[i - 4 + c]        // left
-            - src[i + 4 + c];       // right
-          dst[i + c] = Math.max(0, Math.min(255, center + amount * laplacian + 0.5 | 0));
-        }
-      }
-    }
-    imgData.data.set(dst);
-    ctx.putImageData(imgData, 0, 0);
-    return cvs;
-  }
 
   function hqDrawImage(source) {
     this.imageSmoothingEnabled = true;
@@ -95,18 +65,70 @@ import { inventoryApi } from '@/api/inventoryApi';
       const physDW = Math.round(cssDW * sx);
       const physDH = Math.round(cssDH * sy);
 
-      // Trigger multi-step when the source is significantly larger than dest.
-      // Lower threshold (1.5× instead of 2×) catches more cases where single-
-      // pass bicubic would be noticeably soft.
-      if (physDW > 0 && physDH > 0 && (effSrcW > physDW * 1.5 || effSrcH > physDH * 1.5)) {
-        let cur = source;
-        let curW = effSrcW;
-        let curH = effSrcH;
+      if (physDW > 0 && physDH > 0 && effSrcW > physDW * 1.3 && !is9) {
+        // ── Phase 2: use cached Lanczos bitmap if available ──
+        const lc = source._lanczosCache;
+        if (lc && lc.w === physDW && lc.h === physDH) {
+          return _orig.call(this, lc.bitmap,
+            arguments[1], arguments[2], cssDW, cssDH);
+        }
 
+        // ── Phase 1: synchronous multi-step bicubic for instant display ──
+        let cur = source, curW = effSrcW, curH = effSrcH;
+
+        while (curW > physDW * 2 || curH > physDH * 2) {
+          const nw = Math.max(Math.round(curW / 2), physDW);
+          const nh = Math.max(Math.round(curH / 2), physDH);
+          const tmp = document.createElement('canvas');
+          tmp.width = nw; tmp.height = nh;
+          const tc = tmp.getContext('2d');
+          tc.imageSmoothingEnabled = true;
+          tc.imageSmoothingQuality = 'high';
+          _orig.call(tc, cur, 0, 0, nw, nh);
+          cur = tmp; curW = nw; curH = nh;
+        }
+        if (curW !== physDW || curH !== physDH) {
+          const fin = document.createElement('canvas');
+          fin.width = physDW; fin.height = physDH;
+          const fc = fin.getContext('2d');
+          fc.imageSmoothingEnabled = true;
+          fc.imageSmoothingQuality = 'high';
+          _orig.call(fc, cur, 0, 0, physDW, physDH);
+          cur = fin;
+        }
+
+        // Draw bicubic result for now
+        _orig.call(this, cur, arguments[1], arguments[2], cssDW, cssDH);
+
+        // ── Kick off async Lanczos upgrade (runs once per image/size) ──
+        const pendingKey = `${physDW}_${physDH}`;
+        if (source._lanczosPending !== pendingKey) {
+          source._lanczosPending = pendingKey;
+          createImageBitmap(source, {
+            resizeWidth: physDW, resizeHeight: physDH, resizeQuality: 'high',
+          }).then(bitmap => {
+            source._lanczosCache = { bitmap, w: physDW, h: physDH };
+            // Force Konva to re-cache the image node with the Lanczos bitmap
+            try {
+              const stage = Konva.stages && Konva.stages[0];
+              const imgNode = stage && stage.findOne('#FIE_original-image');
+              if (imgNode) {
+                imgNode.clearCache();
+                imgNode.cache({ pixelRatio: window.devicePixelRatio || 2 });
+                imgNode.getLayer()?.batchDraw();
+              }
+            } catch (_) { /* non-critical */ }
+          }).catch(() => { /* createImageBitmap not supported — keep bicubic */ });
+        }
+        return;
+      }
+
+      // 9-arg (Konva crop) or smaller downscale: multi-step only, no async
+      if (physDW > 0 && physDH > 0 && (effSrcW > physDW * 2 || effSrcH > physDH * 2)) {
+        let cur = source, curW = effSrcW, curH = effSrcH;
         if (is9) {
           const crop = document.createElement('canvas');
-          crop.width  = effSrcW;
-          crop.height = effSrcH;
+          crop.width = effSrcW; crop.height = effSrcH;
           const cc = crop.getContext('2d');
           cc.imageSmoothingEnabled = true;
           cc.imageSmoothingQuality = 'high';
@@ -115,39 +137,17 @@ import { inventoryApi } from '@/api/inventoryApi';
             0, 0, effSrcW, effSrcH);
           cur = crop;
         }
-
-        // Halve until within 2× of the physical destination.
         while (curW > physDW * 2 || curH > physDH * 2) {
           const nw = Math.max(Math.round(curW / 2), physDW);
           const nh = Math.max(Math.round(curH / 2), physDH);
           const tmp = document.createElement('canvas');
-          tmp.width  = nw;
-          tmp.height = nh;
+          tmp.width = nw; tmp.height = nh;
           const tc = tmp.getContext('2d');
           tc.imageSmoothingEnabled = true;
           tc.imageSmoothingQuality = 'high';
           _orig.call(tc, cur, 0, 0, nw, nh);
           cur = tmp; curW = nw; curH = nh;
         }
-
-        // Final step to exact physical pixel dimensions.
-        if (curW !== physDW || curH !== physDH) {
-          const fin = document.createElement('canvas');
-          fin.width  = physDW;
-          fin.height = physDH;
-          const fc = fin.getContext('2d');
-          fc.imageSmoothingEnabled = true;
-          fc.imageSmoothingQuality = 'high';
-          _orig.call(fc, cur, 0, 0, physDW, physDH);
-          cur = fin; curW = physDW; curH = physDH;
-        }
-
-        // Sharpen to recover edge detail lost during bicubic resampling.
-        // Amount 0.35 ≈ Photoshop "Smart Sharpen" 35% at radius 1px.
-        sharpenCanvas(cur, 0.35);
-
-        // Draw the sharpened canvas at CSS coordinates.
-        // Context transform maps cssD → physD 1:1.
         if (is9) {
           return _orig.call(this, cur, 0, 0, curW, curH,
             arguments[5], arguments[6], cssDW, cssDH);
