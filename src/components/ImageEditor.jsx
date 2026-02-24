@@ -393,15 +393,24 @@ function ImageEditorInner({
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
 
-        // 2. Measure the physical pixel budget of the editor canvas area.
-        //    editorAreaRef points to the flex-1 div that will host FIE.
-        //    FIE's Konva stage fills this div, so its physical width IS this div's
-        //    offsetWidth × devicePixelRatio.  We add 10% headroom so slight zoom
-        //    doesn't force Konva to upscale.
+        // 2. Determine the prescale target size.
+        //
+        //    FIE's image node physically fits srcW:srcH inside the Konva stage.
+        //    The stage dimensions ≈ (containerW − 130 px tools panel) × containerH.
+        //    However, for HEIGHT-LIMITED images (common for landscape iPhone photos
+        //    in a wide editor), tw = containerH × DPR × (srcW/srcH) — and this is
+        //    independent of the 130 px tool panel, so using containerW × DPR (no
+        //    subtraction) gives a tw that matches the image node's physical width.
+        //    For WIDTH-LIMITED images tw = (containerW) × DPR which is ~12 % larger
+        //    than the image node (containerW−130), so Konva does a tiny 1.12× step.
+        //    Either way the Konva final step is ≤1.15× — tiny compared to the old
+        //    1.41× that was softening the image.
         const dpr    = window.devicePixelRatio || 1;
         const el     = editorAreaRef.current;
-        const physW  = Math.round((el ? el.offsetWidth  : window.innerWidth  * 0.65) * dpr * 1.1);
-        const physH  = Math.round((el ? el.offsetHeight : window.innerHeight * 0.85) * dpr * 1.1);
+        const elW    = (el && el.offsetWidth  > 0) ? el.offsetWidth  : window.innerWidth  * 0.65;
+        const elH    = (el && el.offsetHeight > 0) ? el.offsetHeight : window.innerHeight * 0.75;
+        const physW  = Math.round(elW * dpr);
+        const physH  = Math.round(elH * dpr);
 
         // 3. Check original dimensions.
         const orig   = await createImageBitmap(blob);
@@ -410,31 +419,46 @@ function ImageEditorInner({
         orig.close?.();
 
         if (srcW <= physW && srcH <= physH) {
-          // Image is already at or below the physical display budget — wrap in
-          // a same-origin blob URL without any re-encoding.
+          // Image already fits — wrap in a same-origin blob URL (no re-encoding).
           blobUrl = URL.createObjectURL(blob);
         } else {
-          // Downscale with the browser's native Lanczos resampler so Konva
-          // renders it near-1:1 (no further bicubic quality loss).
           const ratio = Math.min(physW / srcW, physH / srcH);
           const tw    = Math.max(1, Math.round(srcW * ratio));
           const th    = Math.max(1, Math.round(srcH * ratio));
 
-          const scaled = await createImageBitmap(blob, {
-            resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
-          });
+          // Multi-step Lanczos chain using createImageBitmap 'high'.
+          // Each step is ≤2× so the Lanczos kernel never aliases.  We chain
+          // ImageBitmap→ImageBitmap (no intermediate blob re-encoding) to avoid
+          // generation loss between steps.
+          let cur = await createImageBitmap(blob);
+          let curW = cur.width, curH = cur.height;
 
-          // Draw Lanczos bitmap to a canvas (1:1 copy, no quality change).
-          const cvs   = document.createElement('canvas');
-          cvs.width   = tw;
-          cvs.height  = th;
-          const ctx   = cvs.getContext('2d');
-          ctx.imageSmoothingEnabled = false; // already correctly sized — no smoothing needed
-          ctx.drawImage(scaled, 0, 0);
-          scaled.close?.();
+          while (curW > tw * 2 || curH > th * 2) {
+            const stepW = Math.max(Math.round(curW / 2), tw);
+            const stepH = Math.max(Math.round(curH / 2), th);
+            const next  = await createImageBitmap(cur, {
+              resizeWidth: stepW, resizeHeight: stepH, resizeQuality: 'high',
+            });
+            cur.close?.();
+            cur = next;  curW = stepW;  curH = stepH;
+          }
+          // Final step to exact target dimensions.
+          if (curW !== tw || curH !== th) {
+            const final = await createImageBitmap(cur, {
+              resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
+            });
+            cur.close?.();
+            cur = final;
+          }
 
-          // Encode: prefer WebP at very high quality (fast, small, visually
-          // lossless after a Lanczos pass).  Fall back to JPEG on Safari.
+          // Draw Lanczos bitmap to canvas (1:1, no quality change).
+          const cvs = document.createElement('canvas');
+          cvs.width  = tw;
+          cvs.height = th;
+          cvs.getContext('2d').drawImage(cur, 0, 0);
+          cur.close?.();
+
+          // Encode: WebP at near-lossless quality, fallback JPEG for Safari.
           let outBlob = await new Promise(res => cvs.toBlob(res, 'image/webp', 0.99));
           if (!outBlob || outBlob.size < 1000) {
             outBlob = await new Promise(res => cvs.toBlob(res, 'image/jpeg', 1.0));
