@@ -356,15 +356,22 @@ function ImageEditorInner({
   }, [allImages, activeIndex, imageSrc]);
 
   // ── High-quality pre-scaled source for FIE preview ──────────────────────────
-  // Pre-scaling the image to the editor's physical pixel budget before passing
-  // it to FIE means Konva never has to perform a large (e.g. 4032→600px)
-  // downscale at render time — an operation that loses sharpness even with
-  // `imageSmoothingQuality:'high'`.  Instead FIE receives an already-optimal
-  // source and draws it nearly 1:1.  Saves still use the full-resolution
-  // original via applyAdjustmentsToCanvas(activeSrc, …).
+  // Strategy: use the browser's own Lanczos resampler (createImageBitmap with
+  // resizeQuality:'high') — the SAME algorithm CSS uses to display <img> — to
+  // downscale the image to exactly the editor's physical pixel budget.  FIE
+  // then receives a source that is ALREADY at display resolution, so Konva
+  // draws it 1:1 on the cache canvas (no further downscaling, no quality loss).
+  //
+  // Why this beats our hqDrawImage multi-step bicubic:
+  //   • createImageBitmap 'high' is Lanczos in Chrome/Edge, matching CSS quality.
+  //   • Konva bicubic (even chained) is perceptibly softer than Lanczos at >1.5×
+  //     reductions (which is the common case: 4032→2000 = 2× on large screens).
+  //
+  // Saves still use the full-resolution original via applyAdjustmentsToCanvas.
   const [fieSource,        setFieSource]        = useState(null);
   const [fieSourceLoading, setFieSourceLoading] = useState(false);
   const prevBlobUrl = useRef(null);
+  const editorAreaRef = useRef(null); // measures the FIE canvas container for physical px
 
   useEffect(() => {
     if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
@@ -377,31 +384,65 @@ function ImageEditorInner({
     setFieSourceLoading(true);
     let cancelled = false;
 
-    async function fetchAsBlobUrl() {
-      // Why a blob URL instead of the raw S3 URL:
-      //   1. Same-origin blob URLs keep the canvas untainted so Konva's filter
-      //      system (getImageData) works without CORS errors.
-      //   2. The fetch also warms the CORS cache so the later
-      //      applyAdjustmentsToCanvas fetch is instant (network hit only once).
-      //
-      // We intentionally do NOT re-encode or resize here.  Any re-encoding
-      // (even WebP/JPEG q=1.0) introduces generation loss.  More importantly,
-      // prescaling to ~2400 px was breaking the multi-step bicubic chain in
-      // hqDrawImage: for a 1920 px DPR=2 screen the physical canvas is ~1200 px,
-      // so 2400 px source → `2400 > 1200×2` is FALSE (equal), skipping
-      // multi-step and falling back to a single bicubic pass.
-      //
-      // Passing the ORIGINAL ~4032 px blob to FIE means hqDrawImage sees
-      //   4032 > 1200×2 = 2400  →  TRUE  →  4032→2016→1200 (two bicubic steps)
-      // which is visibly sharper than a single 2400→1200 pass.
+    async function prescale() {
       let blobUrl = null;
       try {
+        // 1. Fetch as same-origin blob (keeps canvas untainted for filters,
+        //    also warms the CORS cache for the later applyAdjustmentsToCanvas).
         const resp = await fetch(activeSrc);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
-        blobUrl = URL.createObjectURL(blob);
+
+        // 2. Measure the physical pixel budget of the editor canvas area.
+        //    editorAreaRef points to the flex-1 div that will host FIE.
+        //    FIE's Konva stage fills this div, so its physical width IS this div's
+        //    offsetWidth × devicePixelRatio.  We add 10% headroom so slight zoom
+        //    doesn't force Konva to upscale.
+        const dpr    = window.devicePixelRatio || 1;
+        const el     = editorAreaRef.current;
+        const physW  = Math.round((el ? el.offsetWidth  : window.innerWidth  * 0.65) * dpr * 1.1);
+        const physH  = Math.round((el ? el.offsetHeight : window.innerHeight * 0.85) * dpr * 1.1);
+
+        // 3. Check original dimensions.
+        const orig   = await createImageBitmap(blob);
+        const srcW   = orig.width;
+        const srcH   = orig.height;
+        orig.close?.();
+
+        if (srcW <= physW && srcH <= physH) {
+          // Image is already at or below the physical display budget — wrap in
+          // a same-origin blob URL without any re-encoding.
+          blobUrl = URL.createObjectURL(blob);
+        } else {
+          // Downscale with the browser's native Lanczos resampler so Konva
+          // renders it near-1:1 (no further bicubic quality loss).
+          const ratio = Math.min(physW / srcW, physH / srcH);
+          const tw    = Math.max(1, Math.round(srcW * ratio));
+          const th    = Math.max(1, Math.round(srcH * ratio));
+
+          const scaled = await createImageBitmap(blob, {
+            resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
+          });
+
+          // Draw Lanczos bitmap to a canvas (1:1 copy, no quality change).
+          const cvs   = document.createElement('canvas');
+          cvs.width   = tw;
+          cvs.height  = th;
+          const ctx   = cvs.getContext('2d');
+          ctx.imageSmoothingEnabled = false; // already correctly sized — no smoothing needed
+          ctx.drawImage(scaled, 0, 0);
+          scaled.close?.();
+
+          // Encode: prefer WebP at very high quality (fast, small, visually
+          // lossless after a Lanczos pass).  Fall back to JPEG on Safari.
+          let outBlob = await new Promise(res => cvs.toBlob(res, 'image/webp', 0.99));
+          if (!outBlob || outBlob.size < 1000) {
+            outBlob = await new Promise(res => cvs.toBlob(res, 'image/jpeg', 1.0));
+          }
+          blobUrl = URL.createObjectURL(outBlob || blob);
+        }
       } catch (err) {
-        console.warn('[ImageEditor] Blob fetch failed, using original URL:', err.message);
+        console.warn('[ImageEditor] Prescale failed, using original URL:', err.message);
       }
 
       if (!cancelled) {
@@ -412,7 +453,7 @@ function ImageEditorInner({
       }
     }
 
-    fetchAsBlobUrl();
+    prescale();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeSrc]);
@@ -1092,7 +1133,7 @@ function ImageEditorInner({
       </div>
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      <div className="flex-1 min-h-0 overflow-hidden relative">
+      <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
         {/* Loading overlay while pre-scaling for high-quality preview */}
         {fieSourceLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10 gap-2">
