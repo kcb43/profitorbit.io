@@ -342,8 +342,130 @@ function ImageEditorInner({
     return getImgUrl(allImages[activeIndex]) || imageSrc;
   }, [allImages, activeIndex, imageSrc]);
 
-  // FIE uses activeSrc directly. Quality in the preview is handled by the
-  // module-level hqDrawImage patch (transform-aware multi-step downscaling).
+  // ── High-quality pre-scaled source for FIE preview ──────────────────────────
+  // Pre-scaling the image to the editor's physical pixel budget before passing
+  // it to FIE means Konva never has to perform a large (e.g. 4032→600px)
+  // downscale at render time — an operation that loses sharpness even with
+  // `imageSmoothingQuality:'high'`.  Instead FIE receives an already-optimal
+  // source and draws it nearly 1:1.  Saves still use the full-resolution
+  // original via applyAdjustmentsToCanvas(activeSrc, …).
+  const [fieSource,        setFieSource]        = useState(null);
+  const [fieSourceLoading, setFieSourceLoading] = useState(false);
+  const prevBlobUrl = useRef(null);
+
+  useEffect(() => {
+    if (!open || !activeSrc) {
+      setFieSource(null);
+      setFieSourceLoading(false);
+      return;
+    }
+
+    setFieSource(null);
+    setFieSourceLoading(true);
+    let cancelled = false;
+
+    async function prescale() {
+      let blobUrl = null;
+      try {
+        // Fetch the original image — this also warms the browser cache so that
+        // the later applyAdjustmentsToCanvas fetch hits the cache instantly.
+        const resp = await fetch(activeSrc);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const blob = await resp.blob();
+
+        // Check original dimensions
+        const origBitmap = await createImageBitmap(blob);
+        const srcW = origBitmap.width;
+        const srcH = origBitmap.height;
+        origBitmap.close?.();
+
+        // Target: 2× the largest screen axis × DPR gives Konva an image it
+        // can draw nearly 1:1 into the physical preview canvas.
+        const dpr    = window.devicePixelRatio || 1;
+        const maxDim = Math.max(window.screen.width, window.screen.height) * dpr * 2;
+
+        if (srcW <= maxDim && srcH <= maxDim) {
+          // Already small enough — wrap in a blob URL (same-origin, no CORS taint)
+          blobUrl = URL.createObjectURL(blob);
+        } else {
+          const ratio = Math.min(maxDim / srcW, maxDim / srcH);
+          const tw    = Math.round(srcW * ratio);
+          const th    = Math.round(srcH * ratio);
+
+          // Primary: createImageBitmap resize — Chrome uses Lanczos, which is
+          // visibly sharper than a single-pass Canvas bicubic downscale.
+          let outCanvas = null;
+          try {
+            const scaled = await createImageBitmap(blob, {
+              resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
+            });
+            outCanvas         = document.createElement('canvas');
+            outCanvas.width   = tw;
+            outCanvas.height  = th;
+            const ctx         = outCanvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(scaled, 0, 0);
+            scaled.close?.();
+          } catch {
+            // Fallback: multi-step ≤50% bilinear halving (≈ Lanczos quality)
+            const fullBmp = await createImageBitmap(blob);
+            let cur = document.createElement('canvas');
+            cur.width  = srcW; cur.height = srcH;
+            let curCtx = cur.getContext('2d');
+            curCtx.imageSmoothingEnabled = true;
+            curCtx.imageSmoothingQuality = 'high';
+            curCtx.drawImage(fullBmp, 0, 0);
+            fullBmp.close?.();
+
+            let curW = srcW, curH = srcH;
+            while (curW > tw * 2 || curH > th * 2) {
+              const nw = Math.max(Math.round(curW / 2), tw);
+              const nh = Math.max(Math.round(curH / 2), th);
+              const tmp = document.createElement('canvas');
+              tmp.width = nw; tmp.height = nh;
+              const tc  = tmp.getContext('2d');
+              tc.imageSmoothingEnabled = true;
+              tc.imageSmoothingQuality = 'high';
+              tc.drawImage(cur, 0, 0, nw, nh);
+              cur = tmp; curW = nw; curH = nh;
+            }
+            outCanvas        = document.createElement('canvas');
+            outCanvas.width  = tw; outCanvas.height = th;
+            const finalCtx   = outCanvas.getContext('2d');
+            finalCtx.imageSmoothingEnabled = true;
+            finalCtx.imageSmoothingQuality = 'high';
+            finalCtx.drawImage(cur, 0, 0, tw, th);
+          }
+
+          if (outCanvas) {
+            const outBlob = await new Promise(res =>
+              outCanvas.toBlob(res, 'image/jpeg', 0.95),
+            );
+            blobUrl = outBlob
+              ? URL.createObjectURL(outBlob)
+              : URL.createObjectURL(blob);
+          } else {
+            blobUrl = URL.createObjectURL(blob);
+          }
+        }
+      } catch (err) {
+        console.warn('[ImageEditor] Prescale failed, falling back to original:', err.message);
+        // blobUrl stays null → FIE will use activeSrc as source
+      }
+
+      if (!cancelled) {
+        if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current);
+        prevBlobUrl.current = blobUrl;
+        setFieSource(blobUrl || activeSrc);
+        setFieSourceLoading(false);
+      }
+    }
+
+    prescale();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeSrc]);
 
   // Reset everything when a new item/editor session starts
   useEffect(() => {
@@ -1020,10 +1142,17 @@ function ImageEditorInner({
       </div>
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <FilerobotImageEditor
-          key={`fie-${activeIndex}-${activeSrc}`}
-          source={activeSrc}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        {/* Loading overlay while pre-scaling for high-quality preview */}
+        {fieSourceLoading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10 gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-white" />
+            <span className="text-white text-sm">Preparing image…</span>
+          </div>
+        )}
+        {!fieSourceLoading && fieSource && <FilerobotImageEditor
+          key={`fie-${activeIndex}-${fieSource}`}
+          source={fieSource}
           onSave={handleSave}
           onBeforeSave={() => false}
           onClose={handleClose}
@@ -1142,7 +1271,7 @@ function ImageEditorInner({
             },
             typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
           }}
-        />
+        />}
       </div>
 
       {/* ── Apply-to-all progress overlay ── */}
