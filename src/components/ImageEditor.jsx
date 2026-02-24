@@ -377,109 +377,31 @@ function ImageEditorInner({
     setFieSourceLoading(true);
     let cancelled = false;
 
-    async function prescale() {
+    async function fetchAsBlobUrl() {
+      // Why a blob URL instead of the raw S3 URL:
+      //   1. Same-origin blob URLs keep the canvas untainted so Konva's filter
+      //      system (getImageData) works without CORS errors.
+      //   2. The fetch also warms the CORS cache so the later
+      //      applyAdjustmentsToCanvas fetch is instant (network hit only once).
+      //
+      // We intentionally do NOT re-encode or resize here.  Any re-encoding
+      // (even WebP/JPEG q=1.0) introduces generation loss.  More importantly,
+      // prescaling to ~2400 px was breaking the multi-step bicubic chain in
+      // hqDrawImage: for a 1920 px DPR=2 screen the physical canvas is ~1200 px,
+      // so 2400 px source → `2400 > 1200×2` is FALSE (equal), skipping
+      // multi-step and falling back to a single bicubic pass.
+      //
+      // Passing the ORIGINAL ~4032 px blob to FIE means hqDrawImage sees
+      //   4032 > 1200×2 = 2400  →  TRUE  →  4032→2016→1200 (two bicubic steps)
+      // which is visibly sharper than a single 2400→1200 pass.
       let blobUrl = null;
       try {
-        // Fetch the original image — this also warms the browser cache so that
-        // the later applyAdjustmentsToCanvas fetch hits the cache instantly.
         const resp = await fetch(activeSrc);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
-
-        // Check original dimensions
-        const origBitmap = await createImageBitmap(blob);
-        const srcW = origBitmap.width;
-        const srcH = origBitmap.height;
-        origBitmap.close?.();
-
-        // Target: 2× the physical pixel width of the editor canvas area.
-        // FIE renders the image to fit ~70% of the viewport. We cap at 2400 px
-        // so that typical photos (iPhone 4032 px, Android 4000+ px) are ALWAYS
-        // prescaled — on DPR=2 screens the previous `screen.width × DPR × 2`
-        // threshold was >7000 px, so nothing was being prescaled and Konva still
-        // had to perform the large 4000→800 px downscale itself.
-        const dpr    = window.devicePixelRatio || 1;
-        const maxDim = Math.min(
-          Math.round(window.innerWidth * 0.7 * dpr * 2),
-          2400,
-        );
-
-        if (srcW <= maxDim && srcH <= maxDim) {
-          // Already within the display budget — wrap in a same-origin blob URL.
-          blobUrl = URL.createObjectURL(blob);
-        } else {
-          const ratio = Math.min(maxDim / srcW, maxDim / srcH);
-          const tw    = Math.round(srcW * ratio);
-          const th    = Math.round(srcH * ratio);
-
-          // Primary: createImageBitmap resize — Chrome/Edge use Lanczos here,
-          // which is visibly sharper than a single-pass Canvas bicubic downscale.
-          let outCanvas = null;
-          try {
-            const scaled = await createImageBitmap(blob, {
-              resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
-            });
-            outCanvas         = document.createElement('canvas');
-            outCanvas.width   = tw;
-            outCanvas.height  = th;
-            const ctx         = outCanvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(scaled, 0, 0);
-            scaled.close?.();
-          } catch {
-            // Fallback: multi-step ≤50% bilinear halving (≈ Lanczos quality)
-            const fullBmp = await createImageBitmap(blob);
-            let cur = document.createElement('canvas');
-            cur.width  = srcW; cur.height = srcH;
-            const curCtx = cur.getContext('2d');
-            curCtx.imageSmoothingEnabled = true;
-            curCtx.imageSmoothingQuality = 'high';
-            curCtx.drawImage(fullBmp, 0, 0);
-            fullBmp.close?.();
-
-            let curW = srcW, curH = srcH;
-            while (curW > tw * 2 || curH > th * 2) {
-              const nw = Math.max(Math.round(curW / 2), tw);
-              const nh = Math.max(Math.round(curH / 2), th);
-              const tmp = document.createElement('canvas');
-              tmp.width = nw; tmp.height = nh;
-              const tc  = tmp.getContext('2d');
-              tc.imageSmoothingEnabled = true;
-              tc.imageSmoothingQuality = 'high';
-              tc.drawImage(cur, 0, 0, nw, nh);
-              cur = tmp; curW = nw; curH = nh;
-            }
-            outCanvas        = document.createElement('canvas');
-            outCanvas.width  = tw; outCanvas.height = th;
-            const finalCtx   = outCanvas.getContext('2d');
-            finalCtx.imageSmoothingEnabled = true;
-            finalCtx.imageSmoothingQuality = 'high';
-            finalCtx.drawImage(cur, 0, 0, tw, th);
-          }
-
-          if (outCanvas) {
-            // Use WebP at max quality (lossy but visually lossless at q=1.0,
-            // and smaller than PNG).  Fall back to max-quality JPEG for Safari.
-            let outBlob = await new Promise(res =>
-              outCanvas.toBlob(res, 'image/webp', 1.0),
-            );
-            if (!outBlob || outBlob.size < 1000) {
-              // Safari doesn't support WebP encoding — fall back to JPEG q=1.0
-              outBlob = await new Promise(res =>
-                outCanvas.toBlob(res, 'image/jpeg', 1.0),
-              );
-            }
-            blobUrl = outBlob
-              ? URL.createObjectURL(outBlob)
-              : URL.createObjectURL(blob);
-          } else {
-            blobUrl = URL.createObjectURL(blob);
-          }
-        }
+        blobUrl = URL.createObjectURL(blob);
       } catch (err) {
-        console.warn('[ImageEditor] Prescale failed, falling back to original:', err.message);
-        // blobUrl stays null → FIE will use activeSrc as source
+        console.warn('[ImageEditor] Blob fetch failed, using original URL:', err.message);
       }
 
       if (!cancelled) {
@@ -490,7 +412,7 @@ function ImageEditorInner({
       }
     }
 
-    prescale();
+    fetchAsBlobUrl();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeSrc]);
