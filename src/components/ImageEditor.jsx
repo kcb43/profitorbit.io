@@ -130,8 +130,7 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       const canvas = document.createElement('canvas');
       canvas.width  = Math.round(srcW * cos + srcH * sin);
       canvas.height = Math.round(srcW * sin + srcH * cos);
-      const ctx = canvas.getContext('2d');
-      // Force bicubic quality for all drawImage calls (default is 'low')
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
@@ -708,6 +707,10 @@ function ImageEditorInner({
   const overlayImgRef = useRef(null);
   const overlayRafRef = useRef(null);
   const overlaySvgRef = useRef(null);
+  // Ref so the RAF loop always reads the latest design state without
+  // tearing down / recreating the overlay on every slider move.
+  const designStateRef = useRef(null);
+  useEffect(() => { designStateRef.current = currentDesignState; }, [currentDesignState]);
 
   useEffect(() => {
     if (!open || !fieSource || fieSourceLoading) return;
@@ -742,7 +745,6 @@ function ImageEditorInner({
     filter.id = 'orben-img-overlay-filter';
     filter.setAttribute('color-interpolation-filters', 'sRGB');
 
-    // Gamma component transfer (brightness)
     const compTransfer = document.createElementNS(svgNS, 'feComponentTransfer');
     compTransfer.setAttribute('in', 'SourceGraphic');
     compTransfer.setAttribute('result', 'gamma');
@@ -775,13 +777,10 @@ function ImageEditorInner({
       const imgNode = stage.findOne('#FIE_original-image');
       if (!imgNode) return;
 
-      // Find the konvajs-content container and insert the overlay if needed
       const konvajsContent = editorArea.querySelector('.konvajs-content');
       if (!konvajsContent) return;
 
       if (!inserted) {
-        // Insert SVG defs and overlay img into the konvajs-content
-        // Position: after the first canvas (Design Layer), before the second (Transformers)
         const canvases = konvajsContent.querySelectorAll('canvas');
         if (canvases.length < 2) return;
         konvajsContent.insertBefore(svgEl, canvases[1]);
@@ -790,9 +789,7 @@ function ImageEditorInner({
         inserted = true;
       }
 
-      // Use the absolute transform matrix to position the overlay exactly
-      // where Konva draws the image.  This handles translation, rotation,
-      // scale (including flip) in one CSS matrix() call.
+      // Position the overlay via CSS matrix() — handles translate, rotate, scale, flip
       const m = imgNode.getAbsoluteTransform().getMatrix();
       const nodeW = imgNode.width();
       const nodeH = imgNode.height();
@@ -808,20 +805,18 @@ function ImageEditorInner({
         oImg.style.transform = `matrix(${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]})`;
       }
 
-      // Build CSS filter string from design state finetunes
-      const ds = currentDesignState;
+      // Read design state from the ref (always latest, no effect teardown)
+      const ds = designStateRef.current;
       const fp = ds?.finetunesProps || {};
       const legacyBrightness = fp.brightness ?? 0;
       const contrast = fp.contrast ?? 0;
       const gammaBrightness = fp.gammaBrightness ?? 0;
       const shadowsVal = fp.shadowsValue ?? 0;
 
-      // CSS filter parts
       const filterParts = [];
       if (legacyBrightness !== 0) filterParts.push(`brightness(${1 + legacyBrightness})`);
       if (contrast !== 0) filterParts.push(`contrast(${Math.max(0, 1 + contrast / 100)})`);
 
-      // SVG filter for gamma + shadows
       const needsSvgFilter = gammaBrightness !== 0 || shadowsVal !== 0;
       if (needsSvgFilter) {
         const gamma = Math.pow(2, -gammaBrightness / 50);
@@ -831,8 +826,6 @@ function ImageEditorInner({
           svgRef.feFuncG.setAttribute('exponent', gamma.toFixed(4));
           svgRef.feFuncB.setAttribute('exponent', gamma.toFixed(4));
 
-          // Approximate shadows with offset on gamma
-          // Shadows lifts dark tones: translate to a brightness offset for darks
           if (shadowsVal !== 0) {
             const shadowOffset = (shadowsVal / 100) * 0.15;
             svgRef.feFuncR.setAttribute('offset', shadowOffset.toFixed(4));
@@ -854,7 +847,6 @@ function ImageEditorInner({
       }
     }
 
-    // Watch for the konvajs-content to appear
     const observer = new MutationObserver(() => {
       if (!inserted && editorArea.querySelector('.konvajs-content canvas')) {
         syncOverlay();
@@ -862,7 +854,6 @@ function ImageEditorInner({
     });
     observer.observe(editorArea, { childList: true, subtree: true });
 
-    // Start sync loop
     overlayRafRef.current = requestAnimationFrame(syncOverlay);
 
     return () => {
@@ -874,7 +865,10 @@ function ImageEditorInner({
       overlaySvgRef.current = null;
       inserted = false;
     };
-  }, [open, fieSource, fieSourceLoading, activeIndex, currentDesignState]);
+  // Design state is read from designStateRef — NOT a dependency here,
+  // so the overlay persists and updates live without teardown.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, fieSource, fieSourceLoading, activeIndex]);
 
   // ── Touch swipe on the top bar to navigate ───────────────────────────────
   const swipeTouchStart = useRef(null);
