@@ -295,15 +295,22 @@ patch('components/Layers/TransformersLayer/CropTransformer.js', [
 ]);
 
 /* ══════════════════════════════════════════════════════════════════════════
-   7. DesignLayer/index.js  – fix cache pixel ratio for HiDPI screens
-      Konva.Node.cache() defaults to pixelRatio:1. On a 2× screen this creates
-      a 1× cache canvas that gets upscaled to the 2× stage → blurry preview.
-      Passing {pixelRatio: devicePixelRatio} makes the cache match the screen.
+   7. DesignLayer/index.js  – 2× super-sampling for cache pixel ratio
+      The preview canvas is rendered at DPR*2 so the CSS compositor's GPU
+      Lanczos handles the final downscale → sharp display identical to <img>.
+      We also need the image-node cache to match so it isn't blurry.
    ══════════════════════════════════════════════════════════════════════════ */
 patch('components/Layers/DesignLayer/index.js', [
   [
     'J.current?J.current.cache():setTimeout(Y,0)',
+    'J.current?J.current.cache({pixelRatio:(window.devicePixelRatio||2)*2}):setTimeout(Y,0)',
+  ],
+]);
+// Also handle the case where the old DPR-only patch was already applied
+patch('components/Layers/DesignLayer/index.js', [
+  [
     'J.current?J.current.cache({pixelRatio:window.devicePixelRatio||2}):setTimeout(Y,0)',
+    'J.current?J.current.cache({pixelRatio:(window.devicePixelRatio||2)*2}):setTimeout(Y,0)',
   ],
 ]);
 

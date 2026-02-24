@@ -27,135 +27,21 @@ import { inventoryApi } from '@/api/inventoryApi';
   } catch (_) { /* Konva not ready — the per-module registrations will handle it */ }
 })();
 
-// ── Module-level high-quality drawImage patch ───────────────────────────────
-// Strategy: intercept Konva's drawImage calls and replace single-pass bicubic
-// with the browser's native Lanczos resampler (createImageBitmap).
-//
-// Phase 1 (synchronous, instant): multi-step bicubic + sharpen for the first
-//   frame.  Looks good but not perfect.
-// Phase 2 (async, ~200 ms later): createImageBitmap with resizeQuality:'high'
-//   produces a true Lanczos-quality bitmap.  We cache it on the Image element,
-//   force a Konva re-cache, and on the next drawImage call we draw the bitmap
-//   at 1:1 — identical to CSS <img> rendering quality.
+// ── Module-level drawImage patch: enforce high-quality smoothing ─────────────
+// With 2× super-sampling (previewPixelRatio = DPR * 2), the Konva canvas is
+// rendered at double the display resolution.  The browser's CSS compositor then
+// downscales it for display using the GPU — the SAME Lanczos path CSS <img>
+// uses.  All we need here is to ensure imageSmoothingQuality is 'high' so the
+// initial image-to-cache draw uses the best available CPU interpolation.  The
+// CSS compositor handles the final quality step.
 ;(function () {
   if (typeof CanvasRenderingContext2D === 'undefined') return;
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
   if (_orig && _orig._fie_hq) return;
 
-  function hqDrawImage(source) {
+  function hqDrawImage() {
     this.imageSmoothingEnabled = true;
     this.imageSmoothingQuality = 'high';
-
-    if (source instanceof HTMLImageElement && arguments.length >= 5) {
-      const is9    = arguments.length >= 9;
-      const effSrcW = is9 ? Math.abs(arguments[3]) : source.naturalWidth;
-      const effSrcH = is9 ? Math.abs(arguments[4]) : source.naturalHeight;
-      const cssDW   = Math.abs(is9 ? arguments[7] : arguments[3]);
-      const cssDH   = Math.abs(is9 ? arguments[8] : arguments[4]);
-
-      let sx = 1, sy = 1;
-      try {
-        if (typeof this.getTransform === 'function') {
-          const m = this.getTransform();
-          sx = Math.sqrt(m.a * m.a + m.b * m.b) || 1;
-          sy = Math.sqrt(m.c * m.c + m.d * m.d) || 1;
-        }
-      } catch (_) { /* older browsers */ }
-
-      const physDW = Math.round(cssDW * sx);
-      const physDH = Math.round(cssDH * sy);
-
-      if (physDW > 0 && physDH > 0 && effSrcW > physDW * 1.3 && !is9) {
-        // ── Phase 2: use cached Lanczos bitmap if available ──
-        const lc = source._lanczosCache;
-        if (lc && lc.w === physDW && lc.h === physDH) {
-          return _orig.call(this, lc.bitmap,
-            arguments[1], arguments[2], cssDW, cssDH);
-        }
-
-        // ── Phase 1: synchronous multi-step bicubic for instant display ──
-        let cur = source, curW = effSrcW, curH = effSrcH;
-
-        while (curW > physDW * 2 || curH > physDH * 2) {
-          const nw = Math.max(Math.round(curW / 2), physDW);
-          const nh = Math.max(Math.round(curH / 2), physDH);
-          const tmp = document.createElement('canvas');
-          tmp.width = nw; tmp.height = nh;
-          const tc = tmp.getContext('2d');
-          tc.imageSmoothingEnabled = true;
-          tc.imageSmoothingQuality = 'high';
-          _orig.call(tc, cur, 0, 0, nw, nh);
-          cur = tmp; curW = nw; curH = nh;
-        }
-        if (curW !== physDW || curH !== physDH) {
-          const fin = document.createElement('canvas');
-          fin.width = physDW; fin.height = physDH;
-          const fc = fin.getContext('2d');
-          fc.imageSmoothingEnabled = true;
-          fc.imageSmoothingQuality = 'high';
-          _orig.call(fc, cur, 0, 0, physDW, physDH);
-          cur = fin;
-        }
-
-        // Draw bicubic result for now
-        _orig.call(this, cur, arguments[1], arguments[2], cssDW, cssDH);
-
-        // ── Kick off async Lanczos upgrade (runs once per image/size) ──
-        const pendingKey = `${physDW}_${physDH}`;
-        if (source._lanczosPending !== pendingKey) {
-          source._lanczosPending = pendingKey;
-          createImageBitmap(source, {
-            resizeWidth: physDW, resizeHeight: physDH, resizeQuality: 'high',
-          }).then(bitmap => {
-            source._lanczosCache = { bitmap, w: physDW, h: physDH };
-            // Force Konva to re-cache the image node with the Lanczos bitmap
-            try {
-              const stage = Konva.stages && Konva.stages[0];
-              const imgNode = stage && stage.findOne('#FIE_original-image');
-              if (imgNode) {
-                imgNode.clearCache();
-                imgNode.cache({ pixelRatio: window.devicePixelRatio || 2 });
-                imgNode.getLayer()?.batchDraw();
-              }
-            } catch (_) { /* non-critical */ }
-          }).catch(() => { /* createImageBitmap not supported — keep bicubic */ });
-        }
-        return;
-      }
-
-      // 9-arg (Konva crop) or smaller downscale: multi-step only, no async
-      if (physDW > 0 && physDH > 0 && (effSrcW > physDW * 2 || effSrcH > physDH * 2)) {
-        let cur = source, curW = effSrcW, curH = effSrcH;
-        if (is9) {
-          const crop = document.createElement('canvas');
-          crop.width = effSrcW; crop.height = effSrcH;
-          const cc = crop.getContext('2d');
-          cc.imageSmoothingEnabled = true;
-          cc.imageSmoothingQuality = 'high';
-          _orig.call(cc, source,
-            arguments[1], arguments[2], effSrcW, effSrcH,
-            0, 0, effSrcW, effSrcH);
-          cur = crop;
-        }
-        while (curW > physDW * 2 || curH > physDH * 2) {
-          const nw = Math.max(Math.round(curW / 2), physDW);
-          const nh = Math.max(Math.round(curH / 2), physDH);
-          const tmp = document.createElement('canvas');
-          tmp.width = nw; tmp.height = nh;
-          const tc = tmp.getContext('2d');
-          tc.imageSmoothingEnabled = true;
-          tc.imageSmoothingQuality = 'high';
-          _orig.call(tc, cur, 0, 0, nw, nh);
-          cur = tmp; curW = nw; curH = nh;
-        }
-        if (is9) {
-          return _orig.call(this, cur, 0, 0, curW, curH,
-            arguments[5], arguments[6], cssDW, cssDH);
-        }
-        return _orig.call(this, cur, arguments[1], arguments[2], cssDW, cssDH);
-      }
-    }
-
     return _orig.apply(this, arguments);
   }
 
@@ -812,6 +698,184 @@ function ImageEditorInner({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, allImages.length, activeIndex, handleSwitchImage]);
 
+  // ── CSS <img> overlay for GPU-quality rendering ─────────────────────────
+  // Places a native <img> element inside Konva's container, positioned between
+  // the Design Layer canvas and the Transformers Layer canvas.  The browser's
+  // GPU compositor renders the <img> with Lanczos filtering — identical to how
+  // images display on the item details page and in Canva.  The blurry Konva
+  // image (CPU bicubic) is occluded by this sharp overlay.  Crop handles and
+  // annotations on the Transformers Layer canvas remain visible on top.
+  const overlayImgRef = useRef(null);
+  const overlayRafRef = useRef(null);
+  const overlaySvgRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || !fieSource || fieSourceLoading) return;
+
+    const editorArea = editorAreaRef.current;
+    if (!editorArea) return;
+
+    // Create the overlay <img> element
+    const oImg = document.createElement('img');
+    oImg.src = fieSource;
+    oImg.crossOrigin = 'Anonymous';
+    oImg.draggable = false;
+    oImg.style.cssText = [
+      'position:absolute',
+      'pointer-events:none',
+      'image-rendering:auto',
+      'object-fit:fill',
+      'will-change:transform,filter',
+      'display:none',
+    ].join(';');
+    overlayImgRef.current = oImg;
+
+    // Create an inline SVG for gamma + shadows filters
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svgEl = document.createElementNS(svgNS, 'svg');
+    svgEl.setAttribute('width', '0');
+    svgEl.setAttribute('height', '0');
+    svgEl.style.cssText = 'position:absolute;pointer-events:none';
+
+    const defs = document.createElementNS(svgNS, 'defs');
+    const filter = document.createElementNS(svgNS, 'filter');
+    filter.id = 'orben-img-overlay-filter';
+    filter.setAttribute('color-interpolation-filters', 'sRGB');
+
+    // Gamma component transfer (brightness)
+    const compTransfer = document.createElementNS(svgNS, 'feComponentTransfer');
+    compTransfer.setAttribute('in', 'SourceGraphic');
+    compTransfer.setAttribute('result', 'gamma');
+    const feFuncR = document.createElementNS(svgNS, 'feFuncR');
+    feFuncR.setAttribute('type', 'gamma'); feFuncR.setAttribute('amplitude', '1');
+    feFuncR.setAttribute('exponent', '1'); feFuncR.setAttribute('offset', '0');
+    const feFuncG = document.createElementNS(svgNS, 'feFuncG');
+    feFuncG.setAttribute('type', 'gamma'); feFuncG.setAttribute('amplitude', '1');
+    feFuncG.setAttribute('exponent', '1'); feFuncG.setAttribute('offset', '0');
+    const feFuncB = document.createElementNS(svgNS, 'feFuncB');
+    feFuncB.setAttribute('type', 'gamma'); feFuncB.setAttribute('amplitude', '1');
+    feFuncB.setAttribute('exponent', '1'); feFuncB.setAttribute('offset', '0');
+    compTransfer.append(feFuncR, feFuncG, feFuncB);
+    filter.appendChild(compTransfer);
+
+    defs.appendChild(filter);
+    svgEl.appendChild(defs);
+    overlaySvgRef.current = { svgEl, feFuncR, feFuncG, feFuncB };
+
+    let inserted = false;
+    let prevTransformStr = '';
+    let prevFilterStr = '';
+
+    function syncOverlay() {
+      overlayRafRef.current = requestAnimationFrame(syncOverlay);
+
+      const stage = Konva.stages?.[0];
+      if (!stage) return;
+
+      const imgNode = stage.findOne('#FIE_original-image');
+      if (!imgNode) return;
+
+      // Find the konvajs-content container and insert the overlay if needed
+      const konvajsContent = editorArea.querySelector('.konvajs-content');
+      if (!konvajsContent) return;
+
+      if (!inserted) {
+        // Insert SVG defs and overlay img into the konvajs-content
+        // Position: after the first canvas (Design Layer), before the second (Transformers)
+        const canvases = konvajsContent.querySelectorAll('canvas');
+        if (canvases.length < 2) return;
+        konvajsContent.insertBefore(svgEl, canvases[1]);
+        konvajsContent.insertBefore(oImg, canvases[1]);
+        oImg.style.display = 'block';
+        inserted = true;
+      }
+
+      // Use the absolute transform matrix to position the overlay exactly
+      // where Konva draws the image.  This handles translation, rotation,
+      // scale (including flip) in one CSS matrix() call.
+      const m = imgNode.getAbsoluteTransform().getMatrix();
+      const nodeW = imgNode.width();
+      const nodeH = imgNode.height();
+
+      const transformStr = `${m[0].toFixed(4)},${m[1].toFixed(4)},${m[2].toFixed(4)},${m[3].toFixed(4)},${m[4].toFixed(1)},${m[5].toFixed(1)},${nodeW.toFixed(1)},${nodeH.toFixed(1)}`;
+      if (transformStr !== prevTransformStr) {
+        prevTransformStr = transformStr;
+        oImg.style.width = `${nodeW}px`;
+        oImg.style.height = `${nodeH}px`;
+        oImg.style.left = '0';
+        oImg.style.top = '0';
+        oImg.style.transformOrigin = '0 0';
+        oImg.style.transform = `matrix(${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]})`;
+      }
+
+      // Build CSS filter string from design state finetunes
+      const ds = currentDesignState;
+      const fp = ds?.finetunesProps || {};
+      const legacyBrightness = fp.brightness ?? 0;
+      const contrast = fp.contrast ?? 0;
+      const gammaBrightness = fp.gammaBrightness ?? 0;
+      const shadowsVal = fp.shadowsValue ?? 0;
+
+      // CSS filter parts
+      const filterParts = [];
+      if (legacyBrightness !== 0) filterParts.push(`brightness(${1 + legacyBrightness})`);
+      if (contrast !== 0) filterParts.push(`contrast(${Math.max(0, 1 + contrast / 100)})`);
+
+      // SVG filter for gamma + shadows
+      const needsSvgFilter = gammaBrightness !== 0 || shadowsVal !== 0;
+      if (needsSvgFilter) {
+        const gamma = Math.pow(2, -gammaBrightness / 50);
+        const svgRef = overlaySvgRef.current;
+        if (svgRef) {
+          svgRef.feFuncR.setAttribute('exponent', gamma.toFixed(4));
+          svgRef.feFuncG.setAttribute('exponent', gamma.toFixed(4));
+          svgRef.feFuncB.setAttribute('exponent', gamma.toFixed(4));
+
+          // Approximate shadows with offset on gamma
+          // Shadows lifts dark tones: translate to a brightness offset for darks
+          if (shadowsVal !== 0) {
+            const shadowOffset = (shadowsVal / 100) * 0.15;
+            svgRef.feFuncR.setAttribute('offset', shadowOffset.toFixed(4));
+            svgRef.feFuncG.setAttribute('offset', shadowOffset.toFixed(4));
+            svgRef.feFuncB.setAttribute('offset', shadowOffset.toFixed(4));
+          } else {
+            svgRef.feFuncR.setAttribute('offset', '0');
+            svgRef.feFuncG.setAttribute('offset', '0');
+            svgRef.feFuncB.setAttribute('offset', '0');
+          }
+        }
+        filterParts.push('url(#orben-img-overlay-filter)');
+      }
+
+      const filterStr = filterParts.join(' ') || 'none';
+      if (filterStr !== prevFilterStr) {
+        prevFilterStr = filterStr;
+        oImg.style.filter = filterStr;
+      }
+    }
+
+    // Watch for the konvajs-content to appear
+    const observer = new MutationObserver(() => {
+      if (!inserted && editorArea.querySelector('.konvajs-content canvas')) {
+        syncOverlay();
+      }
+    });
+    observer.observe(editorArea, { childList: true, subtree: true });
+
+    // Start sync loop
+    overlayRafRef.current = requestAnimationFrame(syncOverlay);
+
+    return () => {
+      observer.disconnect();
+      if (overlayRafRef.current) cancelAnimationFrame(overlayRafRef.current);
+      oImg.remove();
+      svgEl.remove();
+      overlayImgRef.current = null;
+      overlaySvgRef.current = null;
+      inserted = false;
+    };
+  }, [open, fieSource, fieSourceLoading, activeIndex, currentDesignState]);
+
   // ── Touch swipe on the top bar to navigate ───────────────────────────────
   const swipeTouchStart = useRef(null);
   const handleBarTouchStart = useCallback((e) => {
@@ -1183,7 +1247,7 @@ function ImageEditorInner({
           defaultSavedImageType="jpeg"
           defaultSavedImageQuality={0.92}
           savingPixelRatio={1}
-          previewPixelRatio={window.devicePixelRatio || 2}
+          previewPixelRatio={(window.devicePixelRatio || 2) * 2}
           theme={isDark ? {
             palette: {
               'bg-primary':            '#0a0a0a',
