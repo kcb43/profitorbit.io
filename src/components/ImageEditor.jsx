@@ -143,6 +143,9 @@ function persistTemplates(list) {
 //   • Aspect-ratio crop from adjustments.crop.ratio (centred)
 // Returns a Promise<Blob>.
 async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
+  if (!imgUrl || !isValidImgUrl(imgUrl)) {
+    throw new Error(`Invalid image URL for canvas processing: ${imgUrl}`);
+  }
   // Fetch as blob → object URL so the canvas is never cross-origin tainted
   let objectUrl = null;
   try {
@@ -269,10 +272,20 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
 }
 
 // ── Helper: extract URL from various image object shapes ──────────────────────
+// Only returns strings that look like real network/blob/data URLs.
+// This guards against photo IDs (bare UUIDs like "0ca208a6-8ee0-…") being
+// mistakenly treated as fetchable URLs.
+function isValidImgUrl(s) {
+  return typeof s === 'string' &&
+    (s.startsWith('http://') || s.startsWith('https://') ||
+     s.startsWith('blob:')   || s.startsWith('data:'));
+}
+
 function getImgUrl(img) {
   if (!img) return null;
-  if (typeof img === 'string') return img;
-  return img.imageUrl || img.url || img.image_url || img.preview || null;
+  if (typeof img === 'string') return isValidImgUrl(img) ? img : null;
+  const url = img.imageUrl || img.url || img.image_url || img.preview || null;
+  return isValidImgUrl(url) ? url : null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,8 +367,8 @@ function ImageEditorInner({
   const prevBlobUrl = useRef(null);
 
   useEffect(() => {
-    if (!open || !activeSrc) {
-      setFieSource(null);
+    if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
+      setFieSource(activeSrc || null);
       setFieSourceLoading(false);
       return;
     }
@@ -379,21 +392,28 @@ function ImageEditorInner({
         const srcH = origBitmap.height;
         origBitmap.close?.();
 
-        // Target: 2× the largest screen axis × DPR gives Konva an image it
-        // can draw nearly 1:1 into the physical preview canvas.
+        // Target: 2× the physical pixel width of the editor canvas area.
+        // FIE renders the image to fit ~70% of the viewport. We cap at 2400 px
+        // so that typical photos (iPhone 4032 px, Android 4000+ px) are ALWAYS
+        // prescaled — on DPR=2 screens the previous `screen.width × DPR × 2`
+        // threshold was >7000 px, so nothing was being prescaled and Konva still
+        // had to perform the large 4000→800 px downscale itself.
         const dpr    = window.devicePixelRatio || 1;
-        const maxDim = Math.max(window.screen.width, window.screen.height) * dpr * 2;
+        const maxDim = Math.min(
+          Math.round(window.innerWidth * 0.7 * dpr * 2),
+          2400,
+        );
 
         if (srcW <= maxDim && srcH <= maxDim) {
-          // Already small enough — wrap in a blob URL (same-origin, no CORS taint)
+          // Already within the display budget — wrap in a same-origin blob URL.
           blobUrl = URL.createObjectURL(blob);
         } else {
           const ratio = Math.min(maxDim / srcW, maxDim / srcH);
           const tw    = Math.round(srcW * ratio);
           const th    = Math.round(srcH * ratio);
 
-          // Primary: createImageBitmap resize — Chrome uses Lanczos, which is
-          // visibly sharper than a single-pass Canvas bicubic downscale.
+          // Primary: createImageBitmap resize — Chrome/Edge use Lanczos here,
+          // which is visibly sharper than a single-pass Canvas bicubic downscale.
           let outCanvas = null;
           try {
             const scaled = await createImageBitmap(blob, {
@@ -412,7 +432,7 @@ function ImageEditorInner({
             const fullBmp = await createImageBitmap(blob);
             let cur = document.createElement('canvas');
             cur.width  = srcW; cur.height = srcH;
-            let curCtx = cur.getContext('2d');
+            const curCtx = cur.getContext('2d');
             curCtx.imageSmoothingEnabled = true;
             curCtx.imageSmoothingQuality = 'high';
             curCtx.drawImage(fullBmp, 0, 0);
@@ -439,9 +459,17 @@ function ImageEditorInner({
           }
 
           if (outCanvas) {
-            const outBlob = await new Promise(res =>
-              outCanvas.toBlob(res, 'image/jpeg', 0.95),
+            // Use WebP at max quality (lossy but visually lossless at q=1.0,
+            // and smaller than PNG).  Fall back to max-quality JPEG for Safari.
+            let outBlob = await new Promise(res =>
+              outCanvas.toBlob(res, 'image/webp', 1.0),
             );
+            if (!outBlob || outBlob.size < 1000) {
+              // Safari doesn't support WebP encoding — fall back to JPEG q=1.0
+              outBlob = await new Promise(res =>
+                outCanvas.toBlob(res, 'image/jpeg', 1.0),
+              );
+            }
             blobUrl = outBlob
               ? URL.createObjectURL(outBlob)
               : URL.createObjectURL(blob);
