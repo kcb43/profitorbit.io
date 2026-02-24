@@ -267,19 +267,17 @@ patch('components/tools/tools.constants.js', [
 ]);
 
 /* ══════════════════════════════════════════════════════════════════════════
-   6. CropTransformer.js  – REVERT any previous centering patches.
-      All centering attempts broke resize handle behaviour; use FIE default.
+   6. CropTransformer.js  – centre the crop box when a preset ratio is active
    ══════════════════════════════════════════════════════════════════════════ */
-const CROP_ORIG =
-  'var f=t.current,g={width:a,height:b,' +
-    'x:null!==(c=j.x)&&void 0!==c?c:0,' +
-    'y:null!==(d=j.y)&&void 0!==d?d:0};' +
-    'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
-      '!(A||B)&&C(),_objectSpread(_objectSpread({},v),e)),!0)';
-
 patch('components/Layers/TransformersLayer/CropTransformer.js', [
   [
-    // Revert "always-center" patch → original
+    // Original saveBoundedCropWithLatestConfig body (function E)
+    'var f=t.current,g={width:a,height:b,' +
+      'x:null!==(c=j.x)&&void 0!==c?c:0,' +
+      'y:null!==(d=j.y)&&void 0!==d?d:0};' +
+      'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
+        '!(A||B)&&C(),_objectSpread(_objectSpread({},v),e)),!0)',
+    // Patched: compute centred x/y when a numeric ratio preset is active
     'var f=t.current,' +
       '_ratio=!(A||B)&&C(),_w=a,_h=b,_x,_y;' +
       'if(f&&typeof _ratio===\'number\'){' +
@@ -293,23 +291,6 @@ patch('components/Layers/TransformersLayer/CropTransformer.js', [
       'var g={width:_w,height:_h,x:Math.max(0,_x),y:Math.max(0,_y)};' +
       'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
         '_ratio,_objectSpread(_objectSpread({},v),e)),!0)',
-    CROP_ORIG,
-  ],
-  [
-    // Revert "conditional-center" patch → original
-    'var f=t.current,' +
-      '_ratio=!(A||B)&&C(),_w=a,_h=b,' +
-      '_cx=null!==(c=j.x)&&void 0!==c?c:0,' +
-      '_cy=null!==(d=j.y)&&void 0!==d?d:0;' +
-      'if(f&&typeof _ratio===\'number\'){' +
-        'if(a>0&&b>0&&a/b>_ratio){_w=b*_ratio;_h=b;}' +
-        'else if(a>0&&b>0){_w=a;_h=a/_ratio;}' +
-        'if(_cx===0&&_cy===0){_cx=(f.width-_w)/2;_cy=(f.height-_h)/2;}' +
-      '}' +
-      'var g={width:_w,height:_h,x:Math.max(0,_cx),y:Math.max(0,_cy)};' +
-      'D(boundResizing(g,g,_objectSpread(_objectSpread({},f),{},{abstractX:0,abstractY:0}),' +
-        '_ratio,_objectSpread(_objectSpread({},v),e)),!0)',
-    CROP_ORIG,
   ],
 ]);
 
