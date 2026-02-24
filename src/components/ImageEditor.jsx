@@ -355,23 +355,16 @@ function ImageEditorInner({
     return getImgUrl(allImages[activeIndex]) || imageSrc;
   }, [allImages, activeIndex, imageSrc]);
 
-  // ── High-quality pre-scaled source for FIE preview ──────────────────────────
-  // Strategy: use the browser's own Lanczos resampler (createImageBitmap with
-  // resizeQuality:'high') — the SAME algorithm CSS uses to display <img> — to
-  // downscale the image to exactly the editor's physical pixel budget.  FIE
-  // then receives a source that is ALREADY at display resolution, so Konva
-  // draws it 1:1 on the cache canvas (no further downscaling, no quality loss).
-  //
-  // Why this beats our hqDrawImage multi-step bicubic:
-  //   • createImageBitmap 'high' is Lanczos in Chrome/Edge, matching CSS quality.
-  //   • Konva bicubic (even chained) is perceptibly softer than Lanczos at >1.5×
-  //     reductions (which is the common case: 4032→2000 = 2× on large screens).
-  //
-  // Saves still use the full-resolution original via applyAdjustmentsToCanvas.
+  // ── Same-origin blob source for FIE ──────────────────────────────────────
+  // Fetch the original image as a blob so the canvas stays untainted for
+  // filters and saves.  NO prescaling or re-encoding — the full-resolution
+  // original is passed straight to FIE.  The hqDrawImage multi-step bicubic
+  // patch + CSS USM sharpening handle display quality without any lossy
+  // intermediate encoding step.
   const [fieSource,        setFieSource]        = useState(null);
   const [fieSourceLoading, setFieSourceLoading] = useState(false);
   const prevBlobUrl = useRef(null);
-  const editorAreaRef = useRef(null); // measures the FIE canvas container for physical px
+  const editorAreaRef = useRef(null);
 
   useEffect(() => {
     if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
@@ -384,77 +377,15 @@ function ImageEditorInner({
     setFieSourceLoading(true);
     let cancelled = false;
 
-    async function prescale() {
+    (async () => {
       let blobUrl = null;
       try {
-        // 1. Fetch as same-origin blob (keeps canvas untainted for filters,
-        //    also warms the CORS cache for the later applyAdjustmentsToCanvas).
         const resp = await fetch(activeSrc);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
-
-        // 2. Determine the prescale target size.
-        //
-        //    FIE's image node physically fits srcW:srcH inside the Konva stage.
-        //    The stage dimensions ≈ (containerW − 130 px tools panel) × containerH.
-        //    However, for HEIGHT-LIMITED images (common for landscape iPhone photos
-        //    in a wide editor), tw = containerH × DPR × (srcW/srcH) — and this is
-        //    independent of the 130 px tool panel, so using containerW × DPR (no
-        //    subtraction) gives a tw that matches the image node's physical width.
-        //    For WIDTH-LIMITED images tw = (containerW) × DPR which is ~12 % larger
-        //    than the image node (containerW−130), so Konva does a tiny 1.12× step.
-        //    Either way the Konva final step is ≤1.15× — tiny compared to the old
-        //    1.41× that was softening the image.
-        const dpr    = window.devicePixelRatio || 1;
-        const el     = editorAreaRef.current;
-        const elW    = (el && el.offsetWidth  > 0) ? el.offsetWidth  : window.innerWidth  * 0.65;
-        const elH    = (el && el.offsetHeight > 0) ? el.offsetHeight : window.innerHeight * 0.75;
-        const physW  = Math.round(elW * dpr);
-        const physH  = Math.round(elH * dpr);
-
-        // 3. Check original dimensions.
-        const orig   = await createImageBitmap(blob);
-        const srcW   = orig.width;
-        const srcH   = orig.height;
-        orig.close?.();
-
-        if (srcW <= physW && srcH <= physH) {
-          // Image already fits at display resolution — no rescale needed.
-          blobUrl = URL.createObjectURL(blob);
-        } else {
-          const ratio = Math.min(physW / srcW, physH / srcH);
-          const tw    = Math.max(1, Math.round(srcW * ratio));
-          const th    = Math.max(1, Math.round(srcH * ratio));
-
-          // Single-step browser Lanczos resampler.
-          // createImageBitmap(blob, {resizeQuality:'high'}) dispatches directly
-          // to the browser's highest-quality downsampler (Lanczos in Chrome/Edge)
-          // — the same path CSS <img> uses.  Using the blob as source (not a
-          // chained ImageBitmap) guarantees the quality option is honoured.
-          const scaled = await createImageBitmap(blob, {
-            resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
-          });
-
-          // 1:1 copy to canvas — no quality change.
-          const cvs = document.createElement('canvas');
-          cvs.width  = tw;
-          cvs.height = th;
-          const ctx  = cvs.getContext('2d');
-          ctx.imageSmoothingEnabled = false; // already at target size, no smoothing
-          ctx.drawImage(scaled, 0, 0);
-          scaled.close?.();
-
-          // WebP at 0.99 ≈ visually lossless (PSNR > 50 dB).
-          // Fast to encode (~200 ms) and much smaller than PNG for photos.
-          let outBlob = await new Promise(res => cvs.toBlob(res, 'image/webp', 0.99));
-          if (!outBlob || outBlob.size < 1000) {
-            // Fallback: JPEG q=1.0 for Safari (no WebP encode support).
-            outBlob = await new Promise(res => cvs.toBlob(res, 'image/jpeg', 1.0));
-          }
-          blobUrl = URL.createObjectURL(outBlob || blob);
-        }
+        blobUrl = URL.createObjectURL(blob);
       } catch (err) {
-        console.warn('[ImageEditor] Prescale failed, using original URL:', err.message);
+        console.warn('[ImageEditor] Blob fetch failed, using original URL:', err.message);
       }
 
       if (!cancelled) {
@@ -463,9 +394,8 @@ function ImageEditorInner({
         setFieSource(blobUrl || activeSrc);
         setFieSourceLoading(false);
       }
-    }
+    })();
 
-    prescale();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeSrc]);
@@ -1150,28 +1080,29 @@ function ImageEditorInner({
         CSS <img> rendering.  This is purely a display post-process — saves
         continue to use applyAdjustmentsToCanvas with the original S3 URL so
         the USM has ZERO effect on saved pixels.
-        Formula: sharpened = src + 0.35 × (src − blurred)  (radius 0.9 px)
+        Formula: sharpened = src + 0.5 × (src − blurred)  (radius 0.6 px)
       */}
       <svg
+        xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
         style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}
       >
         <defs>
-          <filter id="orben-usm" x="-5%" y="-5%" width="110%" height="110%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="blurred" />
+          <filter id="orben-usm" x="0%" y="0%" width="100%" height="100%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" result="blurred" />
             <feComposite
               operator="arithmetic"
-              k1="0" k2="1.35" k3="-0.35" k4="0"
+              k1="0" k2="1.5" k3="-0.5" k4="0"
               in="SourceGraphic"
               in2="blurred"
             />
           </filter>
         </defs>
       </svg>
-      {/* Apply the USM to every Konva canvas inside the editor area */}
+      {/* Apply USM + high-quality rendering to Konva canvases */}
       <style>{`
         .orben-fie-area canvas {
-          filter: url('#orben-usm');
+          filter: url(#orben-usm);
           image-rendering: high-quality;
         }
       `}</style>
