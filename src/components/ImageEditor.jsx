@@ -419,48 +419,36 @@ function ImageEditorInner({
         orig.close?.();
 
         if (srcW <= physW && srcH <= physH) {
-          // Image already fits — wrap in a same-origin blob URL (no re-encoding).
+          // Image already fits at display resolution — no rescale needed.
           blobUrl = URL.createObjectURL(blob);
         } else {
           const ratio = Math.min(physW / srcW, physH / srcH);
           const tw    = Math.max(1, Math.round(srcW * ratio));
           const th    = Math.max(1, Math.round(srcH * ratio));
 
-          // Multi-step Lanczos chain using createImageBitmap 'high'.
-          // Each step is ≤2× so the Lanczos kernel never aliases.  We chain
-          // ImageBitmap→ImageBitmap (no intermediate blob re-encoding) to avoid
-          // generation loss between steps.
-          let cur = await createImageBitmap(blob);
-          let curW = cur.width, curH = cur.height;
+          // Single-step browser Lanczos resampler.
+          // createImageBitmap(blob, {resizeQuality:'high'}) dispatches directly
+          // to the browser's highest-quality downsampler (Lanczos in Chrome/Edge)
+          // — the same path CSS <img> uses.  Using the blob as source (not a
+          // chained ImageBitmap) guarantees the quality option is honoured.
+          const scaled = await createImageBitmap(blob, {
+            resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
+          });
 
-          while (curW > tw * 2 || curH > th * 2) {
-            const stepW = Math.max(Math.round(curW / 2), tw);
-            const stepH = Math.max(Math.round(curH / 2), th);
-            const next  = await createImageBitmap(cur, {
-              resizeWidth: stepW, resizeHeight: stepH, resizeQuality: 'high',
-            });
-            cur.close?.();
-            cur = next;  curW = stepW;  curH = stepH;
-          }
-          // Final step to exact target dimensions.
-          if (curW !== tw || curH !== th) {
-            const final = await createImageBitmap(cur, {
-              resizeWidth: tw, resizeHeight: th, resizeQuality: 'high',
-            });
-            cur.close?.();
-            cur = final;
-          }
-
-          // Draw Lanczos bitmap to canvas (1:1, no quality change).
+          // 1:1 copy to canvas — no quality change.
           const cvs = document.createElement('canvas');
           cvs.width  = tw;
           cvs.height = th;
-          cvs.getContext('2d').drawImage(cur, 0, 0);
-          cur.close?.();
+          const ctx  = cvs.getContext('2d');
+          ctx.imageSmoothingEnabled = false; // already at target size, no smoothing
+          ctx.drawImage(scaled, 0, 0);
+          scaled.close?.();
 
-          // Encode: WebP at near-lossless quality, fallback JPEG for Safari.
+          // WebP at 0.99 ≈ visually lossless (PSNR > 50 dB).
+          // Fast to encode (~200 ms) and much smaller than PNG for photos.
           let outBlob = await new Promise(res => cvs.toBlob(res, 'image/webp', 0.99));
           if (!outBlob || outBlob.size < 1000) {
+            // Fallback: JPEG q=1.0 for Safari (no WebP encode support).
             outBlob = await new Promise(res => cvs.toBlob(res, 'image/jpeg', 1.0));
           }
           blobUrl = URL.createObjectURL(outBlob || blob);
@@ -1156,8 +1144,40 @@ function ImageEditorInner({
         </div>
       </div>
 
+      {/*
+        ── SVG Unsharp Mask filter ──────────────────────────────────────────
+        Applied via CSS to the Konva canvas so the image appears as sharp as
+        CSS <img> rendering.  This is purely a display post-process — saves
+        continue to use applyAdjustmentsToCanvas with the original S3 URL so
+        the USM has ZERO effect on saved pixels.
+        Formula: sharpened = src + 0.35 × (src − blurred)  (radius 0.9 px)
+      */}
+      <svg
+        aria-hidden="true"
+        style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}
+      >
+        <defs>
+          <filter id="orben-usm" x="-5%" y="-5%" width="110%" height="110%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="blurred" />
+            <feComposite
+              operator="arithmetic"
+              k1="0" k2="1.35" k3="-0.35" k4="0"
+              in="SourceGraphic"
+              in2="blurred"
+            />
+          </filter>
+        </defs>
+      </svg>
+      {/* Apply the USM to every Konva canvas inside the editor area */}
+      <style>{`
+        .orben-fie-area canvas {
+          filter: url('#orben-usm');
+          image-rendering: high-quality;
+        }
+      `}</style>
+
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
+      <div ref={editorAreaRef} className="orben-fie-area flex-1 min-h-0 overflow-hidden relative">
         {/* Loading overlay while pre-scaling for high-quality preview */}
         {fieSourceLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10 gap-2">
