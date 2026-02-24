@@ -5,9 +5,9 @@ import {
 } from "@/utils/imageUploadStandards";
 
 const DEFAULT_OPTIONS = {
-  // We keep these conservative to avoid hurting quality too much while still shrinking huge phone photos.
-  maxSizeMB: 2.5,
-  maxWidthOrHeight: 2048,
+  // Compress only enough to stay under the per-photo upload limit.
+  // Do NOT cap width/height — the original full resolution must be preserved.
+  maxSizeMB: LISTING_MAX_FILE_SIZE_MB,
   useWebWorker: true,
 };
 
@@ -34,7 +34,7 @@ async function convertHeicToJpeg(file) {
   const outBlob = await heic2any({
     blob: file,
     toType: "image/jpeg",
-    quality: 0.92,
+    quality: 0.95,
   });
 
   const blob = Array.isArray(outBlob) ? outBlob[0] : outBlob;
@@ -78,7 +78,7 @@ async function convertWebpToJpeg(file) {
       canvas.toBlob(
         (b) => resolve(b),
         "image/jpeg",
-        0.92
+        0.95
       );
     });
     if (!outBlob) throw new Error("WebP conversion failed");
