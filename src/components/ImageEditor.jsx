@@ -720,10 +720,13 @@ function ImageEditorInner({
   }, [open, allImages.length, activeIndex, handleSwitchImage]);
 
   // ── Sharp image overlay ────────────────────────────────────────────────
-  // A single native <img> element positioned over Konva's blurry canvas
-  // rendering.  The browser's GPU compositor renders <img> with Lanczos
-  // filtering — the exact same path Canva and the item details page use.
-  // No extra filters, no SVG, no processing.  Just a clean image.
+  // Places a native <img> over Konva's canvas.  The browser's GPU renders
+  // <img> with Lanczos filtering — the same path Canva uses.
+  //
+  // KEY: We decompose the Konva transform matrix into scale + rotation/flip.
+  // The scale goes into CSS width/height so the browser rasterizes the <img>
+  // at the EFFECTIVE display size (sharp at any zoom).  Only rotation/flip
+  // go through CSS transform (no scaling in the transform = no quality loss).
   const overlayRafRef = useRef(null);
   const designStateRef = useRef(null);
   useEffect(() => { designStateRef.current = currentDesignState; }, [currentDesignState]);
@@ -738,7 +741,11 @@ function ImageEditorInner({
     oImg.crossOrigin = 'Anonymous';
     oImg.draggable = false;
     oImg.style.cssText =
-      'position:absolute;pointer-events:none;display:none;transform-origin:0 0';
+      'position:absolute;pointer-events:none;display:none;transform-origin:0 0;z-index:1';
+
+    let imgLoaded = false;
+    oImg.onload = () => { imgLoaded = true; };
+    oImg.onerror = () => { imgLoaded = false; };
 
     let inserted = false;
     let prevKey = '';
@@ -753,36 +760,54 @@ function ImageEditorInner({
       const konvaDiv = editorArea.querySelector('.konvajs-content');
       if (!konvaDiv) return;
 
+      // Re-insert if Konva rebuilt its DOM (tab switch, etc.)
+      if (inserted && !oImg.parentNode) inserted = false;
+
       if (!inserted) {
-        const canvases = konvaDiv.querySelectorAll(':scope > canvas');
+        const canvases = konvaDiv.querySelectorAll('canvas');
         if (canvases.length < 2) return;
-        if (!oImg.naturalWidth) return; // image not loaded yet
+        if (!imgLoaded) return;
         konvaDiv.insertBefore(oImg, canvases[1]);
         oImg.style.display = 'block';
         inserted = true;
       }
 
+      // Decompose the absolute transform matrix [a,b,c,d,e,f]
       const m = imgNode.getAbsoluteTransform().getMatrix();
-      const w = imgNode.width();
-      const h = imgNode.height();
-      const key = `${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]},${w},${h}`;
+      const nodeW = imgNode.width();
+      const nodeH = imgNode.height();
+
+      // Extract scale factors (include zoom level)
+      const sx = Math.hypot(m[0], m[1]) || 1;
+      const sy = Math.hypot(m[2], m[3]) || 1;
+
+      // Set <img> CSS size to the EFFECTIVE display size so the browser
+      // rasterizes at full resolution (this is why Canva looks sharp)
+      const effW = nodeW * sx;
+      const effH = nodeH * sy;
+
+      // Remove scale from the matrix — only rotation/flip + translation remain.
+      // No CSS scaling means the browser won't upscale a low-res texture.
+      const ra = m[0] / sx, rb = m[1] / sx;
+      const rc = m[2] / sy, rd = m[3] / sy;
+
+      const key = `${effW},${effH},${ra},${rb},${rc},${rd},${m[4]},${m[5]}`;
       if (key !== prevKey) {
         prevKey = key;
-        oImg.style.width  = w + 'px';
-        oImg.style.height = h + 'px';
+        oImg.style.width  = effW + 'px';
+        oImg.style.height = effH + 'px';
         oImg.style.transform =
-          `matrix(${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]})`;
+          `matrix(${ra},${rb},${rc},${rd},${m[4]},${m[5]})`;
       }
 
-      // Mirror Konva's brightness / contrast as simple CSS filters
       const fp = designStateRef.current?.finetunesProps || {};
-      const b = fp.brightness ?? 0;
-      const c = fp.contrast ?? 0;
-      const g = fp.gammaBrightness ?? 0;
+      const br = fp.brightness ?? 0;
+      const ct = fp.contrast ?? 0;
+      const gm = fp.gammaBrightness ?? 0;
       const parts = [];
-      if (b !== 0) parts.push(`brightness(${1 + b})`);
-      if (c !== 0) parts.push(`contrast(${Math.max(0, 1 + c / 100)})`);
-      if (g !== 0) parts.push(`brightness(${Math.pow(2, g / 50)})`);
+      if (br !== 0) parts.push(`brightness(${1 + br})`);
+      if (ct !== 0) parts.push(`contrast(${Math.max(0, 1 + ct / 100)})`);
+      if (gm !== 0) parts.push(`brightness(${Math.pow(2, gm / 50)})`);
       oImg.style.filter = parts.length ? parts.join(' ') : '';
     }
 
