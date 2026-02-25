@@ -27,90 +27,18 @@ import { inventoryApi } from '@/api/inventoryApi';
   } catch (_) { /* Konva not ready — the per-module registrations will handle it */ }
 })();
 
-// ── Module-level high-quality drawImage patch ───────────────────────────────
-// Multi-step bicubic downscaling for the immediate frame, then an async
-// createImageBitmap Lanczos pass that replaces it on the next render.
-// Combined with 2× super-sampling (previewPixelRatio = DPR * 2) and the
-// CSS <img> overlay, this provides three layers of quality improvement.
+// ── Ensure Konva uses highest-quality image smoothing ────────────────────────
 ;(function () {
   if (typeof CanvasRenderingContext2D === 'undefined') return;
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
   if (_orig && _orig._fie_hq) return;
-
-  function hqDrawImage(source) {
+  function hqSmoothing() {
     this.imageSmoothingEnabled = true;
     this.imageSmoothingQuality = 'high';
-
-    if (source instanceof HTMLImageElement && arguments.length >= 5) {
-      const is9    = arguments.length >= 9;
-      const effSrcW = is9 ? Math.abs(arguments[3]) : source.naturalWidth;
-      const effSrcH = is9 ? Math.abs(arguments[4]) : source.naturalHeight;
-      const cssDW   = Math.abs(is9 ? arguments[7] : arguments[3]);
-      const cssDH   = Math.abs(is9 ? arguments[8] : arguments[4]);
-
-      let sx = 1, sy = 1;
-      try {
-        if (typeof this.getTransform === 'function') {
-          const m = this.getTransform();
-          sx = Math.sqrt(m.a * m.a + m.b * m.b) || 1;
-          sy = Math.sqrt(m.c * m.c + m.d * m.d) || 1;
-        }
-      } catch (_) { /* older browsers */ }
-
-      const physDW = Math.round(cssDW * sx);
-      const physDH = Math.round(cssDH * sy);
-
-      if (physDW > 0 && physDH > 0 && effSrcW > physDW * 1.5 && !is9) {
-        // Use cached Lanczos bitmap if available
-        const lc = source._lanczosCache;
-        if (lc && lc.w === physDW && lc.h === physDH) {
-          return _orig.call(this, lc.bitmap,
-            arguments[1], arguments[2], cssDW, cssDH);
-        }
-
-        // Multi-step bicubic for the immediate frame
-        let cur = source, curW = effSrcW, curH = effSrcH;
-        while (curW > physDW * 2 || curH > physDH * 2) {
-          const nw = Math.max(Math.round(curW / 2), physDW);
-          const nh = Math.max(Math.round(curH / 2), physDH);
-          const tmp = document.createElement('canvas');
-          tmp.width = nw; tmp.height = nh;
-          const tc = tmp.getContext('2d');
-          tc.imageSmoothingEnabled = true;
-          tc.imageSmoothingQuality = 'high';
-          _orig.call(tc, cur, 0, 0, nw, nh);
-          cur = tmp; curW = nw; curH = nh;
-        }
-        _orig.call(this, cur, arguments[1], arguments[2], cssDW, cssDH);
-
-        // Kick off async Lanczos upgrade (runs once per image/size)
-        const pendingKey = `${physDW}_${physDH}`;
-        if (source._lanczosPending !== pendingKey) {
-          source._lanczosPending = pendingKey;
-          createImageBitmap(source, {
-            resizeWidth: physDW, resizeHeight: physDH, resizeQuality: 'high',
-          }).then(bitmap => {
-            source._lanczosCache = { bitmap, w: physDW, h: physDH };
-            try {
-              const stage = Konva.stages && Konva.stages[0];
-              const imgNode = stage && stage.findOne('#FIE_original-image');
-              if (imgNode) {
-                imgNode.clearCache();
-                imgNode.cache({ pixelRatio: (window.devicePixelRatio || 2) * 2 });
-                imgNode.getLayer()?.batchDraw();
-              }
-            } catch (_) { /* non-critical */ }
-          }).catch(() => {});
-        }
-        return;
-      }
-    }
-
     return _orig.apply(this, arguments);
   }
-
-  hqDrawImage._fie_hq = true;
-  CanvasRenderingContext2D.prototype.drawImage = hqDrawImage;
+  hqSmoothing._fie_hq = true;
+  CanvasRenderingContext2D.prototype.drawImage = hqSmoothing;
 })();
 
 // ── Template persistence ───────────────────────────────────────────────────────
@@ -791,185 +719,85 @@ function ImageEditorInner({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, allImages.length, activeIndex, handleSwitchImage]);
 
-  // ── CSS <img> overlay for GPU-quality rendering ─────────────────────────
-  // Places a native <img> element inside Konva's container, positioned between
-  // the Design Layer canvas and the Transformers Layer canvas.  The browser's
-  // GPU compositor renders the <img> with Lanczos filtering — identical to how
-  // images display on the item details page and in Canva.  The blurry Konva
-  // image (CPU bicubic) is occluded by this sharp overlay.  Crop handles and
-  // annotations on the Transformers Layer canvas remain visible on top.
-  const overlayImgRef = useRef(null);
+  // ── Sharp image overlay ────────────────────────────────────────────────
+  // A single native <img> element positioned over Konva's blurry canvas
+  // rendering.  The browser's GPU compositor renders <img> with Lanczos
+  // filtering — the exact same path Canva and the item details page use.
+  // No extra filters, no SVG, no processing.  Just a clean image.
   const overlayRafRef = useRef(null);
-  const overlaySvgRef = useRef(null);
-  // Ref so the RAF loop always reads the latest design state without
-  // tearing down / recreating the overlay on every slider move.
   const designStateRef = useRef(null);
   useEffect(() => { designStateRef.current = currentDesignState; }, [currentDesignState]);
 
   useEffect(() => {
     if (!open || !fieSource || fieSourceLoading) return;
-
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
-    // Create the overlay <img> element — uses the browser's GPU compositor
-    // (Lanczos filtering) for sharp display, identical to a CSS <img> tag.
     const oImg = document.createElement('img');
+    oImg.src = fieSource;
     oImg.crossOrigin = 'Anonymous';
     oImg.draggable = false;
-    oImg.style.cssText = [
-      'position:absolute',
-      'pointer-events:none',
-      'image-rendering:high-quality',
-      'will-change:transform,filter',
-      'display:none',
-    ].join(';');
-    // Set source and wait for full decode before allowing display
-    let overlayReady = false;
-    oImg.src = fieSource;
-    if (typeof oImg.decode === 'function') {
-      oImg.decode().then(() => { overlayReady = true; }).catch(() => {});
-    } else {
-      oImg.onload = () => { overlayReady = true; };
-    }
-    overlayImgRef.current = oImg;
-
-    // Create an inline SVG for gamma + shadows filters
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svgEl = document.createElementNS(svgNS, 'svg');
-    svgEl.setAttribute('width', '0');
-    svgEl.setAttribute('height', '0');
-    svgEl.style.cssText = 'position:absolute;pointer-events:none';
-
-    const defs = document.createElementNS(svgNS, 'defs');
-    const filter = document.createElementNS(svgNS, 'filter');
-    filter.id = 'orben-img-overlay-filter';
-    filter.setAttribute('color-interpolation-filters', 'sRGB');
-
-    const compTransfer = document.createElementNS(svgNS, 'feComponentTransfer');
-    compTransfer.setAttribute('in', 'SourceGraphic');
-    compTransfer.setAttribute('result', 'gamma');
-    const feFuncR = document.createElementNS(svgNS, 'feFuncR');
-    feFuncR.setAttribute('type', 'gamma'); feFuncR.setAttribute('amplitude', '1');
-    feFuncR.setAttribute('exponent', '1'); feFuncR.setAttribute('offset', '0');
-    const feFuncG = document.createElementNS(svgNS, 'feFuncG');
-    feFuncG.setAttribute('type', 'gamma'); feFuncG.setAttribute('amplitude', '1');
-    feFuncG.setAttribute('exponent', '1'); feFuncG.setAttribute('offset', '0');
-    const feFuncB = document.createElementNS(svgNS, 'feFuncB');
-    feFuncB.setAttribute('type', 'gamma'); feFuncB.setAttribute('amplitude', '1');
-    feFuncB.setAttribute('exponent', '1'); feFuncB.setAttribute('offset', '0');
-    compTransfer.append(feFuncR, feFuncG, feFuncB);
-    filter.appendChild(compTransfer);
-
-    defs.appendChild(filter);
-    svgEl.appendChild(defs);
-    overlaySvgRef.current = { svgEl, feFuncR, feFuncG, feFuncB };
+    oImg.style.cssText =
+      'position:absolute;pointer-events:none;display:none;transform-origin:0 0';
 
     let inserted = false;
-    let prevTransformStr = '';
-    let prevFilterStr = '';
+    let prevKey = '';
 
-    function syncOverlay() {
-      overlayRafRef.current = requestAnimationFrame(syncOverlay);
+    function sync() {
+      overlayRafRef.current = requestAnimationFrame(sync);
 
       const stage = Konva.stages?.[0];
       if (!stage) return;
-
       const imgNode = stage.findOne('#FIE_original-image');
       if (!imgNode) return;
-
-      const konvajsContent = editorArea.querySelector('.konvajs-content');
-      if (!konvajsContent) return;
+      const konvaDiv = editorArea.querySelector('.konvajs-content');
+      if (!konvaDiv) return;
 
       if (!inserted) {
-        const canvases = konvajsContent.querySelectorAll('canvas');
+        const canvases = konvaDiv.querySelectorAll(':scope > canvas');
         if (canvases.length < 2) return;
-        if (!overlayReady) return; // wait for image decode
-        // SVG filter defs go on document.body so url(#id) resolves reliably
-        if (!svgEl.parentNode) document.body.appendChild(svgEl);
-        konvajsContent.insertBefore(oImg, canvases[1]);
+        if (!oImg.naturalWidth) return; // image not loaded yet
+        konvaDiv.insertBefore(oImg, canvases[1]);
         oImg.style.display = 'block';
         inserted = true;
       }
 
-      // Position the overlay via CSS matrix() — handles translate, rotate, scale, flip
       const m = imgNode.getAbsoluteTransform().getMatrix();
-      const nodeW = imgNode.width();
-      const nodeH = imgNode.height();
-
-      const transformStr = `${m[0].toFixed(4)},${m[1].toFixed(4)},${m[2].toFixed(4)},${m[3].toFixed(4)},${m[4].toFixed(1)},${m[5].toFixed(1)},${nodeW.toFixed(1)},${nodeH.toFixed(1)}`;
-      if (transformStr !== prevTransformStr) {
-        prevTransformStr = transformStr;
-        oImg.style.width = `${nodeW}px`;
-        oImg.style.height = `${nodeH}px`;
-        oImg.style.left = '0';
-        oImg.style.top = '0';
-        oImg.style.transformOrigin = '0 0';
-        oImg.style.transform = `matrix(${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]})`;
+      const w = imgNode.width();
+      const h = imgNode.height();
+      const key = `${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]},${w},${h}`;
+      if (key !== prevKey) {
+        prevKey = key;
+        oImg.style.width  = w + 'px';
+        oImg.style.height = h + 'px';
+        oImg.style.transform =
+          `matrix(${m[0]},${m[1]},${m[2]},${m[3]},${m[4]},${m[5]})`;
       }
 
-      // Read design state from the ref (always latest, no effect teardown)
-      const ds = designStateRef.current;
-      const fp = ds?.finetunesProps || {};
-      const legacyBrightness = fp.brightness ?? 0;
-      const contrast = fp.contrast ?? 0;
-      const gammaBrightness = fp.gammaBrightness ?? 0;
-      const shadowsVal = fp.shadowsValue ?? 0;
-
-      const filterParts = [];
-      if (legacyBrightness !== 0) filterParts.push(`brightness(${1 + legacyBrightness})`);
-      if (contrast !== 0) filterParts.push(`contrast(${Math.max(0, 1 + contrast / 100)})`);
-
-      const needsSvgFilter = gammaBrightness !== 0 || shadowsVal !== 0;
-      if (needsSvgFilter) {
-        const gamma = Math.pow(2, -gammaBrightness / 50);
-        const svgRef = overlaySvgRef.current;
-        if (svgRef) {
-          svgRef.feFuncR.setAttribute('exponent', gamma.toFixed(4));
-          svgRef.feFuncG.setAttribute('exponent', gamma.toFixed(4));
-          svgRef.feFuncB.setAttribute('exponent', gamma.toFixed(4));
-
-          if (shadowsVal !== 0) {
-            const shadowOffset = (shadowsVal / 100) * 0.15;
-            svgRef.feFuncR.setAttribute('offset', shadowOffset.toFixed(4));
-            svgRef.feFuncG.setAttribute('offset', shadowOffset.toFixed(4));
-            svgRef.feFuncB.setAttribute('offset', shadowOffset.toFixed(4));
-          } else {
-            svgRef.feFuncR.setAttribute('offset', '0');
-            svgRef.feFuncG.setAttribute('offset', '0');
-            svgRef.feFuncB.setAttribute('offset', '0');
-          }
-        }
-        filterParts.push('url(#orben-img-overlay-filter)');
-      }
-
-      const filterStr = filterParts.join(' ') || 'none';
-      if (filterStr !== prevFilterStr) {
-        prevFilterStr = filterStr;
-        oImg.style.filter = filterStr;
-      }
+      // Mirror Konva's brightness / contrast as simple CSS filters
+      const fp = designStateRef.current?.finetunesProps || {};
+      const b = fp.brightness ?? 0;
+      const c = fp.contrast ?? 0;
+      const g = fp.gammaBrightness ?? 0;
+      const parts = [];
+      if (b !== 0) parts.push(`brightness(${1 + b})`);
+      if (c !== 0) parts.push(`contrast(${Math.max(0, 1 + c / 100)})`);
+      if (g !== 0) parts.push(`brightness(${Math.pow(2, g / 50)})`);
+      oImg.style.filter = parts.length ? parts.join(' ') : '';
     }
 
-    const observer = new MutationObserver(() => {
-      if (!inserted && editorArea.querySelector('.konvajs-content canvas')) {
-        syncOverlay();
-      }
+    const obs = new MutationObserver(() => {
+      if (!inserted && editorArea.querySelector('.konvajs-content canvas')) sync();
     });
-    observer.observe(editorArea, { childList: true, subtree: true });
-
-    overlayRafRef.current = requestAnimationFrame(syncOverlay);
+    obs.observe(editorArea, { childList: true, subtree: true });
+    overlayRafRef.current = requestAnimationFrame(sync);
 
     return () => {
-      observer.disconnect();
+      obs.disconnect();
       if (overlayRafRef.current) cancelAnimationFrame(overlayRafRef.current);
       oImg.remove();
-      svgEl.remove();
-      overlayImgRef.current = null;
-      overlaySvgRef.current = null;
       inserted = false;
     };
-  // Design state is read from designStateRef — NOT a dependency here,
-  // so the overlay persists and updates live without teardown.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, fieSource, fieSourceLoading, activeIndex]);
 
@@ -1344,7 +1172,7 @@ function ImageEditorInner({
           defaultSavedImageType="jpeg"
           defaultSavedImageQuality={0.92}
           savingPixelRatio={1}
-          previewPixelRatio={(window.devicePixelRatio || 2) * 2}
+          previewPixelRatio={window.devicePixelRatio || 2}
           theme={isDark ? {
             palette: {
               'bg-primary':            '#0a0a0a',
