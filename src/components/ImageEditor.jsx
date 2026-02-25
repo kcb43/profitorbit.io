@@ -720,13 +720,21 @@ function ImageEditorInner({
   }, [open, allImages.length, activeIndex, handleSwitchImage]);
 
   // ── Sharp image overlay ────────────────────────────────────────────────
-  // Places a native <img> over Konva's canvas.  The browser's GPU renders
-  // <img> with Lanczos filtering — the same path Canva uses.
+  // A native <img> element layered between Konva's Design canvas and its
+  // Transformers canvas.  The browser's GPU renders <img> with Lanczos
+  // filtering — the exact same pipeline Canva uses.
   //
-  // KEY: We decompose the Konva transform matrix into scale + rotation/flip.
-  // The scale goes into CSS width/height so the browser rasterizes the <img>
-  // at the EFFECTIVE display size (sharp at any zoom).  Only rotation/flip
-  // go through CSS transform (no scaling in the transform = no quality loss).
+  // Critical quality details:
+  //   1. CSS width/height are set to the EFFECTIVE display size (including
+  //      zoom).  This forces the browser to rasterize at full resolution
+  //      instead of rasterizing small and CSS-scaling up.
+  //   2. For the common case (no rotation, no flip) we use left/top
+  //      positioning with NO CSS transform at all, so the browser never
+  //      creates a compositing layer that could be rasterized at a lower
+  //      resolution.
+  //   3. Explicit z-index stacking ensures the overlay is always above
+  //      the Design Layer (blurry Konva image) and below the Transformers
+  //      Layer (crop handles, annotations).
   const overlayRafRef = useRef(null);
   const designStateRef = useRef(null);
   useEffect(() => { designStateRef.current = currentDesignState; }, [currentDesignState]);
@@ -738,10 +746,10 @@ function ImageEditorInner({
 
     const oImg = document.createElement('img');
     oImg.src = fieSource;
-    oImg.crossOrigin = 'Anonymous';
     oImg.draggable = false;
     oImg.style.cssText =
-      'position:absolute;pointer-events:none;display:none;transform-origin:0 0;z-index:1';
+      'position:absolute;pointer-events:none;display:none;' +
+      'image-rendering:high-quality;z-index:1;left:0;top:0';
 
     let imgLoaded = false;
     oImg.onload = () => { imgLoaded = true; };
@@ -769,35 +777,48 @@ function ImageEditorInner({
         if (!imgLoaded) return;
         konvaDiv.insertBefore(oImg, canvases[1]);
         oImg.style.display = 'block';
+        // Explicit z-index stacking: Design canvas < overlay < Transformers canvas
+        for (let i = 1; i < canvases.length; i++) canvases[i].style.zIndex = '2';
         inserted = true;
       }
 
-      // Decompose the absolute transform matrix [a,b,c,d,e,f]
       const m = imgNode.getAbsoluteTransform().getMatrix();
       const nodeW = imgNode.width();
       const nodeH = imgNode.height();
 
-      // Extract scale factors (include zoom level)
+      // Decompose scale (includes zoom) out of the matrix
       const sx = Math.hypot(m[0], m[1]) || 1;
       const sy = Math.hypot(m[2], m[3]) || 1;
-
-      // Set <img> CSS size to the EFFECTIVE display size so the browser
-      // rasterizes at full resolution (this is why Canva looks sharp)
       const effW = nodeW * sx;
       const effH = nodeH * sy;
 
-      // Remove scale from the matrix — only rotation/flip + translation remain.
-      // No CSS scaling means the browser won't upscale a low-res texture.
+      // Unit-scale rotation/flip components
       const ra = m[0] / sx, rb = m[1] / sx;
       const rc = m[2] / sy, rd = m[3] / sy;
 
-      const key = `${effW},${effH},${ra},${rb},${rc},${rd},${m[4]},${m[5]}`;
+      // Detect the common case: no rotation, no flip
+      const isSimple = Math.abs(rb) < 0.001 && Math.abs(rc) < 0.001
+                     && ra > 0 && rd > 0;
+
+      const key = `${effW},${effH},${m[4]},${m[5]},${isSimple},${ra},${rb},${rc},${rd}`;
       if (key !== prevKey) {
         prevKey = key;
         oImg.style.width  = effW + 'px';
         oImg.style.height = effH + 'px';
-        oImg.style.transform =
-          `matrix(${ra},${rb},${rc},${rd},${m[4]},${m[5]})`;
+        if (isSimple) {
+          // No CSS transform at all — browser rasterizes at full CSS size
+          // with no compositing layer overhead
+          oImg.style.left = m[4] + 'px';
+          oImg.style.top  = m[5] + 'px';
+          oImg.style.transform = '';
+          oImg.style.transformOrigin = '';
+        } else {
+          oImg.style.left = '0';
+          oImg.style.top  = '0';
+          oImg.style.transformOrigin = '0 0';
+          oImg.style.transform =
+            `matrix(${ra},${rb},${rc},${rd},${m[4]},${m[5]})`;
+        }
       }
 
       const fp = designStateRef.current?.finetunesProps || {};
