@@ -27,21 +27,85 @@ import { inventoryApi } from '@/api/inventoryApi';
   } catch (_) { /* Konva not ready — the per-module registrations will handle it */ }
 })();
 
-// ── Module-level drawImage patch: enforce high-quality smoothing ─────────────
-// With 2× super-sampling (previewPixelRatio = DPR * 2), the Konva canvas is
-// rendered at double the display resolution.  The browser's CSS compositor then
-// downscales it for display using the GPU — the SAME Lanczos path CSS <img>
-// uses.  All we need here is to ensure imageSmoothingQuality is 'high' so the
-// initial image-to-cache draw uses the best available CPU interpolation.  The
-// CSS compositor handles the final quality step.
+// ── Module-level high-quality drawImage patch ───────────────────────────────
+// Multi-step bicubic downscaling for the immediate frame, then an async
+// createImageBitmap Lanczos pass that replaces it on the next render.
+// Combined with 2× super-sampling (previewPixelRatio = DPR * 2) and the
+// CSS <img> overlay, this provides three layers of quality improvement.
 ;(function () {
   if (typeof CanvasRenderingContext2D === 'undefined') return;
   const _orig = CanvasRenderingContext2D.prototype.drawImage;
   if (_orig && _orig._fie_hq) return;
 
-  function hqDrawImage() {
+  function hqDrawImage(source) {
     this.imageSmoothingEnabled = true;
     this.imageSmoothingQuality = 'high';
+
+    if (source instanceof HTMLImageElement && arguments.length >= 5) {
+      const is9    = arguments.length >= 9;
+      const effSrcW = is9 ? Math.abs(arguments[3]) : source.naturalWidth;
+      const effSrcH = is9 ? Math.abs(arguments[4]) : source.naturalHeight;
+      const cssDW   = Math.abs(is9 ? arguments[7] : arguments[3]);
+      const cssDH   = Math.abs(is9 ? arguments[8] : arguments[4]);
+
+      let sx = 1, sy = 1;
+      try {
+        if (typeof this.getTransform === 'function') {
+          const m = this.getTransform();
+          sx = Math.sqrt(m.a * m.a + m.b * m.b) || 1;
+          sy = Math.sqrt(m.c * m.c + m.d * m.d) || 1;
+        }
+      } catch (_) { /* older browsers */ }
+
+      const physDW = Math.round(cssDW * sx);
+      const physDH = Math.round(cssDH * sy);
+
+      if (physDW > 0 && physDH > 0 && effSrcW > physDW * 1.5 && !is9) {
+        // Use cached Lanczos bitmap if available
+        const lc = source._lanczosCache;
+        if (lc && lc.w === physDW && lc.h === physDH) {
+          return _orig.call(this, lc.bitmap,
+            arguments[1], arguments[2], cssDW, cssDH);
+        }
+
+        // Multi-step bicubic for the immediate frame
+        let cur = source, curW = effSrcW, curH = effSrcH;
+        while (curW > physDW * 2 || curH > physDH * 2) {
+          const nw = Math.max(Math.round(curW / 2), physDW);
+          const nh = Math.max(Math.round(curH / 2), physDH);
+          const tmp = document.createElement('canvas');
+          tmp.width = nw; tmp.height = nh;
+          const tc = tmp.getContext('2d');
+          tc.imageSmoothingEnabled = true;
+          tc.imageSmoothingQuality = 'high';
+          _orig.call(tc, cur, 0, 0, nw, nh);
+          cur = tmp; curW = nw; curH = nh;
+        }
+        _orig.call(this, cur, arguments[1], arguments[2], cssDW, cssDH);
+
+        // Kick off async Lanczos upgrade (runs once per image/size)
+        const pendingKey = `${physDW}_${physDH}`;
+        if (source._lanczosPending !== pendingKey) {
+          source._lanczosPending = pendingKey;
+          createImageBitmap(source, {
+            resizeWidth: physDW, resizeHeight: physDH, resizeQuality: 'high',
+          }).then(bitmap => {
+            source._lanczosCache = { bitmap, w: physDW, h: physDH };
+            try {
+              const stage = Konva.stages && Konva.stages[0];
+              const imgNode = stage && stage.findOne('#FIE_original-image');
+              if (imgNode) {
+                imgNode.clearCache();
+                imgNode.cache({ pixelRatio: (window.devicePixelRatio || 2) * 2 });
+                imgNode.getLayer()?.batchDraw();
+              }
+            } catch (_) { /* non-critical */ }
+          }).catch(() => {});
+        }
+        return;
+      }
+    }
+
     return _orig.apply(this, arguments);
   }
 
@@ -65,9 +129,11 @@ function persistTemplates(list) {
 // Fetches each image as a blob first (avoids CORS canvas taint), then applies:
 //   • Finetune adjustments from finetunesProps (Konva filter names → CSS filters)
 //   • Rotation / flip from adjustments.rotation / isFlippedX / isFlippedY
-//   • Aspect-ratio crop from adjustments.crop.ratio (centred)
+//   • Crop from adjustments.crop (explicit coords + ratio, or ratio-only fallback)
+// displayDims: { w, h } — the image's display size in the FIE stage, needed to
+//   convert crop coordinates from display space to source image space.
 // Returns a Promise<Blob>.
-async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
+async function applyAdjustmentsToCanvas(imgUrl, designState = {}, displayDims = null) {
   if (!imgUrl || !isValidImgUrl(imgUrl)) {
     throw new Error(`Invalid image URL for canvas processing: ${imgUrl}`);
   }
@@ -114,10 +180,26 @@ async function applyAdjustmentsToCanvas(imgUrl, designState = {}) {
       const w = img.naturalWidth;
       const h = img.naturalHeight;
 
-      // ── Centred aspect-ratio crop ─────────────────────────────────────────
-      const cropRatio = adj.crop?.ratio;
+      // ── Crop ─────────────────────────────────────────────────────────────
+      const crop = adj.crop || {};
+      const cropRatio = crop.ratio;
       let srcX = 0, srcY = 0, srcW = w, srcH = h;
-      if (cropRatio && cropRatio !== 'original' && typeof cropRatio === 'number') {
+
+      // Prefer explicit crop coordinates (set when user manually resizes the
+      // crop handles).  They are in FIE display coordinates and need to be
+      // scaled to the source image's pixel space.
+      if (displayDims && displayDims.w > 0 && displayDims.h > 0 &&
+          crop.width != null && crop.height != null &&
+          crop.width > 0 && crop.height > 0) {
+        const sx = w / displayDims.w;
+        const sy = h / displayDims.h;
+        srcX = Math.max(0, Math.round((crop.x || 0) * sx));
+        srcY = Math.max(0, Math.round((crop.y || 0) * sy));
+        srcW = Math.min(w - srcX, Math.round(crop.width * sx));
+        srcH = Math.min(h - srcY, Math.round(crop.height * sy));
+      } else if (cropRatio && cropRatio !== 'original' && typeof cropRatio === 'number') {
+        // Fallback: ratio-only crop (centered, maximum size).
+        // Used by Apply-to-All where display dims aren't available.
         const imgRatio = w / h;
         if (imgRatio > cropRatio) {
           srcH = h;  srcW = h * cropRatio;  srcX = (w - srcW) / 2;
@@ -525,7 +607,15 @@ function ImageEditorInner({
       // full-resolution image directly for maximum quality.
       let file;
       try {
-        const blob = await applyAdjustmentsToCanvas(activeSrc, savedDesignState);
+        // Read the image's display dimensions from the Konva stage so the
+        // crop coordinates can be mapped from display space to source space.
+        let displayDims = null;
+        try {
+          const stage = Konva.stages?.[0];
+          const imgNode = stage?.findOne('#FIE_original-image');
+          if (imgNode) displayDims = { w: imgNode.width(), h: imgNode.height() };
+        } catch { /* non-critical */ }
+        const blob = await applyAdjustmentsToCanvas(activeSrc, savedDesignState, displayDims);
         file = new File([blob], `${defaultName}.jpg`, { type: 'image/jpeg' });
       } catch (canvasErr) {
         // Fallback: use FIE's Konva-rendered output if our pipeline fails
@@ -722,19 +812,26 @@ function ImageEditorInner({
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
-    // Create the overlay <img> element
+    // Create the overlay <img> element — uses the browser's GPU compositor
+    // (Lanczos filtering) for sharp display, identical to a CSS <img> tag.
     const oImg = document.createElement('img');
-    oImg.src = fieSource;
     oImg.crossOrigin = 'Anonymous';
     oImg.draggable = false;
     oImg.style.cssText = [
       'position:absolute',
       'pointer-events:none',
-      'image-rendering:auto',
-      'object-fit:fill',
+      'image-rendering:high-quality',
       'will-change:transform,filter',
       'display:none',
     ].join(';');
+    // Set source and wait for full decode before allowing display
+    let overlayReady = false;
+    oImg.src = fieSource;
+    if (typeof oImg.decode === 'function') {
+      oImg.decode().then(() => { overlayReady = true; }).catch(() => {});
+    } else {
+      oImg.onload = () => { overlayReady = true; };
+    }
     overlayImgRef.current = oImg;
 
     // Create an inline SVG for gamma + shadows filters
@@ -787,8 +884,8 @@ function ImageEditorInner({
       if (!inserted) {
         const canvases = konvajsContent.querySelectorAll('canvas');
         if (canvases.length < 2) return;
+        if (!overlayReady) return; // wait for image decode
         // SVG filter defs go on document.body so url(#id) resolves reliably
-        // regardless of container transforms or clipping
         if (!svgEl.parentNode) document.body.appendChild(svgEl);
         konvajsContent.insertBefore(oImg, canvases[1]);
         oImg.style.display = 'block';
