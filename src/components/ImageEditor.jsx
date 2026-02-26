@@ -379,7 +379,10 @@ function ImageEditorInner({
   useEffect(() => {
     if (!activeOriginalSrc) { setActiveSrc(null); return; }
     let cancelled = false;
-    setActiveSrc(null); // unmount FIE immediately while we fetch
+    // Do NOT null activeSrc here — keeping FIE mounted while fetching is
+    // intentional. FIE stays alive showing the previous image until the new
+    // HTMLImageElement is ready, then source prop changes (not a remount).
+    // This eliminates the isFieMounted race that caused the image swap.
 
     // Revoke previous blob URL to free memory
     if (blobUrlRef.current) {
@@ -719,10 +722,10 @@ function ImageEditorInner({
     setLoadedDesignState(null);
     designStateSourceRef.current = 'none';
     setCurrentDesignState(null);
-    // Null activeSrc SYNCHRONOUSLY so that FIE unmounts before React
-    // re-renders. Without this, FIE mounts with the STALE blob URL from
-    // the previous image (blob fetch is async) and shows the wrong image.
-    setActiveSrc(null);
+    // Do NOT null activeSrc here — that would unmount FIE, flip isFieMounted
+    // false→true, and create the exact race condition we're trying to avoid.
+    // Instead, activeSrc transitions directly from img_old → img_new via the
+    // loading effect, and FIE's own useUpdateEffect([source]) handles the swap.
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
@@ -1503,11 +1506,16 @@ function ImageEditorInner({
       </div>
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      {/* debug removed — URLs confirmed correct; swap was FIE internal cache */}
+      {/* FIE uses a STABLE key so it never remounts during image switches.     */}
+      {/* Switching images changes the `source` prop; FIE's own                */}
+      {/* useUpdateEffect([source]) reloads the image without an               */}
+      {/* unmount→mount cycle. That cycle was flipping isFieMounted            */}
+      {/* false→true and creating the race condition that swapped images.      */}
       <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
         {activeSrc && <FilerobotImageEditor
-          key={`fie-${activeIndex}-${switchCount}`}
+          key={`fie-${imageSrc}`}
           source={activeSrc}
+          resetOnImageSourceChange={true}
           onSave={handleSave}
           onBeforeSave={() => false}
           onClose={handleClose}
