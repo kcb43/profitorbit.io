@@ -348,25 +348,12 @@ function ImageEditorInner({
   const [applyingToAll, setApplyingToAll]   = useState(false);
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
-  // ── Stable image URL list ─────────────────────────────────────────────────
-  // Snapshot all image URLs once when the editor opens. Using a ref prevents
-  // any parent re-render (e.g. ReactSortable, form state) from reordering
-  // the URLs mid-session — the root cause of the image-swap bug.
-  const stableUrls = useRef([]);
-  useEffect(() => {
-    if (!open) return;
-    stableUrls.current = allImages.length
-      ? allImages.map(getImgUrl)
-      : imageSrc ? [imageSrc] : [];
-  }, [open]); // only on open — deliberately ignores allImages/imageSrc changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-
   // Active image URL (original, always used for saves and as ground truth)
+  // Uses allImages directly so the canvas always matches the filmstrip thumbnails.
   const activeSrc = useMemo(() => {
-    const urls = stableUrls.current;
-    if (!urls.length) return imageSrc;
-    return urls[activeIndex] || imageSrc;
-  }, [activeIndex, imageSrc]);
+    if (!allImages.length) return imageSrc;
+    return getImgUrl(allImages[activeIndex]) || imageSrc;
+  }, [allImages, activeIndex, imageSrc]);
 
   // ── Same-origin blob source for FIE ──────────────────────────────────────
   // Fetch the original image as a blob so the canvas stays untainted for
@@ -407,7 +394,7 @@ function ImageEditorInner({
     (async () => {
       let blobUrl = null;
       try {
-        const resp = await fetch(urlToFetch);
+        const resp = await fetch(urlToFetch, { cache: 'no-store' });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
         blobUrl = URL.createObjectURL(blob);
@@ -435,10 +422,6 @@ function ImageEditorInner({
     setModifiedSet(new Set());
     setCurrentDesignState(null);
     setLoadedDesignState(null);
-    // Re-snapshot URLs for the new session
-    stableUrls.current = allImages.length
-      ? allImages.map(getImgUrl)
-      : imageSrc ? [imageSrc] : [];
   }, [imageIndex, imageSrc]);
 
   // ── Load saved design state from DB when editor opens ────────────────────
@@ -527,18 +510,20 @@ function ImageEditorInner({
       // align with Save template, Load, etc. in the bar above.
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
-        topbar.style.setProperty('padding', '6px 48px 6px 12px', 'important');
+        topbar.style.setProperty('padding', '6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Target only the right-side group (undo/redo/back/X) to remove gaps
-        const rightGroup = topbar.lastElementChild;
+        // Target the right-side group (undo/redo/close) — group tightly, shift left
+        const rightGroup = topbar.querySelector('[class*="sc-21g986-2"]') || topbar.lastElementChild;
         if (rightGroup) {
           rightGroup.style.setProperty('display', 'flex', 'important');
-          rightGroup.style.setProperty('gap', '2px', 'important');
+          rightGroup.style.setProperty('gap', '0px', 'important');
           rightGroup.style.setProperty('align-items', 'center', 'important');
+          rightGroup.style.setProperty('margin-right', '36px', 'important');
           rightGroup.querySelectorAll(':scope > *').forEach(btn => {
             btn.style.setProperty('margin', '0', 'important');
+            btn.style.setProperty('padding', '4px', 'important');
           });
         }
       }
@@ -1155,7 +1140,7 @@ function ImageEditorInner({
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
           paddingLeft: 12,
-          paddingRight: 48,
+          paddingRight: 12,
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
