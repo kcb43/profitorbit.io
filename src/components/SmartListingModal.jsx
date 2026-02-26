@@ -255,30 +255,12 @@ export default function SmartListingModal({
     </div>
   );
   
-  // Render auto-fill mode toggle
+  // Render auto-fill mode toggle (Review mode first, then Generate Auto Fill)
   const renderAutoFillMode = () => (
     <div className="space-y-3">
       <h4 className="text-sm font-semibold text-foreground">Step 3: Auto-fill Settings</h4>
       <RadioGroup value={autoFillMode} onValueChange={toggleAutoFillMode}>
         <div className="space-y-2">
-          <div className={cn(
-            "flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer",
-            autoFillMode === 'auto' ? "bg-primary/5 border-primary" : "border-muted hover:bg-muted/30"
-          )}
-          onClick={() => toggleAutoFillMode('auto')}
-          >
-            <RadioGroupItem value="auto" id="auto-mode" className="mt-0.5" />
-            <div className="flex-1 space-y-1">
-              <Label htmlFor="auto-mode" className="cursor-pointer font-medium flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Generate Auto-fill
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                High confidence fields (≥85%) filled automatically. Low confidence shown for review.
-              </p>
-            </div>
-          </div>
-          
           <div className={cn(
             "flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer",
             autoFillMode === 'manual' ? "bg-primary/5 border-primary" : "border-muted hover:bg-muted/30"
@@ -293,6 +275,24 @@ export default function SmartListingModal({
               </Label>
               <p className="text-xs text-muted-foreground">
                 Review and approve all suggestions before listing.
+              </p>
+            </div>
+          </div>
+
+          <div className={cn(
+            "flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer",
+            autoFillMode === 'auto' ? "bg-primary/5 border-primary" : "border-muted hover:bg-muted/30"
+          )}
+          onClick={() => toggleAutoFillMode('auto')}
+          >
+            <RadioGroupItem value="auto" id="auto-mode" className="mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="auto-mode" className="cursor-pointer font-medium flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Generate Auto-fill
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                High confidence fields (≥85%) filled automatically. Low confidence shown for review.
               </p>
             </div>
           </div>

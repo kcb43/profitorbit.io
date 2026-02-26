@@ -9696,6 +9696,33 @@ export default function CrosslistComposer() {
     });
   };
 
+  // Smart Listing: Can open only when all required general form fields (red star) are filled
+  const canUseSmartListing = useMemo(() => {
+    const title = (generalForm?.title || "").trim();
+    const price = generalForm?.price;
+    const cost = generalForm?.cost;
+    const description = (generalForm?.description || "").trim();
+    const brand = (generalForm?.brand || "").trim();
+    const condition = (generalForm?.condition || "").trim();
+    const categoryId = generalForm?.categoryId;
+    const category = (generalForm?.category || "").trim();
+    const zip = (generalForm?.zip || "").trim();
+    const quantity = generalForm?.quantity;
+    const hasPackageDetails = !!(generalForm?.packageWeight && generalForm?.packageLength && generalForm?.packageWidth && generalForm?.packageHeight);
+    return !!(
+      title &&
+      price && !isNaN(parseFloat(price)) && parseFloat(price) > 0 &&
+      cost && !isNaN(parseFloat(cost)) &&
+      description &&
+      brand &&
+      condition &&
+      (categoryId && categoryId !== "0" && categoryId !== 0) && category &&
+      zip &&
+      quantity && parseInt(quantity, 10) >= 1 &&
+      hasPackageDetails
+    );
+  }, [generalForm]);
+
   // Smart Listing: Initialize hook (must be after handleListOnMarketplace is defined)
   const smartListing = useSmartListing(
     {
@@ -11865,19 +11892,19 @@ export default function CrosslistComposer() {
               </div>
               <div className="mb-6">
                 <TagInput
-                  placeholder="Type a keyword and press Enter or comma — used for Mercari, Facebook, Etsy tags"
+                  placeholder="Add tags…"
                   value={generalForm.tags}
                   onChange={(value) => handleGeneralChange("tags", value)}
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Tags are saved with the item and used when crosslisting to marketplaces.
+                  Helps your item get found. (comma or enter)
                 </p>
               </div>
 
               {/* Shipping Settings Section */}
               <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                 <div className="flex items-center gap-2">
-                  <Save className="h-4 w-4 text-muted-foreground" />
+                  <Truck className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-base font-medium">Shipping Settings</Label>
                 </div>
               </div>
@@ -11916,21 +11943,26 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-base font-medium">Package Details</Label>
                 </div>
-                {generalForm.packageWeight && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => {
-                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                        updateGeneralDefault(f, generalForm[f], { silent: true })
-                      );
-                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                    }}
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    Save as default
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs transition-colors",
+                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                  onClick={() => {
+                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                      updateGeneralDefault(f, generalForm[f], { silent: true })
+                    );
+                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                  }}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Save as default
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -11965,7 +11997,7 @@ export default function CrosslistComposer() {
 
               {/* Smart Listing Section - Mobile General Form - List to Multiple Marketplaces */}
               {smartListingEnabled && (
-                <SmartListingSection onOpenModal={smartListing.openModal} />
+                <SmartListingSection onOpenModal={smartListing.openModal} disabled={!canUseSmartListing} />
               )}
 
               <div className="flex flex-col sm:flex-row sm:justify-end gap-1.5">
@@ -13138,7 +13170,7 @@ export default function CrosslistComposer() {
               {/* Shipping Settings */}
               <div className="flex items-center justify-between pb-2 border-b mb-4">
                 <div className="flex items-center gap-2">
-                  <Save className="h-4 w-4 text-muted-foreground" />
+                  <Truck className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-base font-medium">Shipping Settings</Label>
                 </div>
               </div>
@@ -13463,21 +13495,26 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-base font-medium">Package Details</Label>
                 </div>
-                {generalForm.packageWeight && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => {
-                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                        updateGeneralDefault(f, generalForm[f], { silent: true })
-                      );
-                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                    }}
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    Save as default
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs transition-colors",
+                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                  onClick={() => {
+                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                      updateGeneralDefault(f, generalForm[f], { silent: true })
+                    );
+                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                  }}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Save as default
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -13504,7 +13541,7 @@ export default function CrosslistComposer() {
               {/* Smart Listing Section - List to Multiple Marketplaces */}
               {smartListingEnabled && (
                 <>
-                  <SmartListingSection onOpenModal={smartListing.openModal} />
+                  <SmartListingSection onOpenModal={smartListing.openModal} disabled={!canUseSmartListing} />
                   <SmartListingModal
                     open={smartListing.modalOpen}
                     onClose={smartListing.closeModal}
@@ -14128,21 +14165,26 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-base font-medium">Package Details</Label>
                 </div>
-                {generalForm.packageWeight && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => {
-                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                        updateGeneralDefault(f, generalForm[f], { silent: true })
-                      );
-                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                    }}
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    Save as default
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs transition-colors",
+                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                  onClick={() => {
+                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                      updateGeneralDefault(f, generalForm[f], { silent: true })
+                    );
+                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                  }}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Save as default
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -16369,21 +16411,26 @@ export default function CrosslistComposer() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-base font-medium">Package Details</Label>
                 </div>
-                {generalForm.packageWeight && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => {
-                      ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                        updateGeneralDefault(f, generalForm[f], { silent: true })
-                      );
-                      toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                    }}
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    Save as default
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs transition-colors",
+                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                  onClick={() => {
+                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                      updateGeneralDefault(f, generalForm[f], { silent: true })
+                    );
+                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                  }}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Save as default
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -17986,19 +18033,19 @@ export default function CrosslistComposer() {
                       </div>
                       <div className="mb-6">
                         <TagInput
-                          placeholder="Type a keyword and press Enter or comma — used for Mercari, Facebook, Etsy tags"
+                          placeholder="Add tags…"
                           value={generalForm.tags}
                           onChange={(value) => handleGeneralChange("tags", value)}
                         />
                         <p className="mt-1.5 text-xs text-muted-foreground">
-                          Tags are saved with the item and used when crosslisting to marketplaces.
+                          Helps your item get found. (comma or enter)
                         </p>
                       </div>
 
                       {/* Shipping Settings Section */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
                         <div className="flex items-center gap-2">
-                          <Save className="h-4 w-4 text-muted-foreground" />
+                          <Truck className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-base font-medium">Shipping Settings</Label>
                         </div>
                       </div>
@@ -18087,7 +18134,7 @@ export default function CrosslistComposer() {
                       {/* Smart Listing Section - Desktop General Form - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
                         <>
-                          <SmartListingSection onOpenModal={smartListing.openModal} />
+                          <SmartListingSection onOpenModal={smartListing.openModal} disabled={!canUseSmartListing} />
                           <SmartListingModal
                             open={smartListing.modalOpen}
                             onClose={smartListing.closeModal}
@@ -19255,7 +19302,7 @@ export default function CrosslistComposer() {
                       {/* Shipping Settings */}
                       <div className="flex items-center justify-between pb-2 border-b mb-4">
                         <div className="flex items-center gap-2">
-                          <Save className="h-4 w-4 text-muted-foreground" />
+                          <Truck className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-base font-medium">Shipping Settings</Label>
                         </div>
                       </div>
@@ -19621,6 +19668,8 @@ export default function CrosslistComposer() {
                       {/* Smart Listing Section - Desktop - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
                         <SmartListingSection
+                          onOpenModal={smartListing.openModal}
+                          disabled={!canUseSmartListing}
                           selectedMarketplaces={smartListing.selectedMarketplaces}
                           toggleMarketplace={smartListing.toggleMarketplace}
                           handleListToSelected={smartListing.handleListToSelected}

@@ -732,22 +732,79 @@ function ImageEditorInner({
   // useUpdateEffect can race with tab switches; calling updateStateFnRef
   // directly ensures the Konva Design layer receives finetunes/filters
   // so they persist when switching to Finetune or Watermark tabs.
-  useEffect(() => {
+  const applyLoadedTemplate = useCallback(() => {
     if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
     const payload = {
       ...loadedDesignState,
       finetunes: finetunesStrsToClasses(loadedDesignState.finetunes),
       filter: filterStrToClass(loadedDesignState.filter),
     };
-    const apply = () => {
-      const fn = updateStateFnRef.current;
-      if (fn) fn(payload);
-    };
-    apply();
-    // FIE sets the ref in its own useEffect; retry next frame if ref wasn't ready
-    const id = requestAnimationFrame(apply);
-    return () => cancelAnimationFrame(id);
+    const fn = updateStateFnRef.current;
+    if (fn) fn(payload);
   }, [loadedDesignState]);
+
+  useEffect(() => {
+    if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
+    applyLoadedTemplate();
+    const id = requestAnimationFrame(applyLoadedTemplate);
+    return () => cancelAnimationFrame(id);
+  }, [loadedDesignState, applyLoadedTemplate]);
+
+  // Re-apply template when switching to Finetune or Watermark tabs.
+  // FIE resets Konva state during tab transitions; re-applying at multiple intervals restores the design.
+  useEffect(() => {
+    if (!open || !loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
+    const editorArea = editorAreaRef.current;
+    if (!editorArea) return;
+
+    const isAdjustTab = () => !!editorAreaRef.current?.querySelector(
+      '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
+    );
+
+    let timeoutIds = [];
+    let intervalId = null;
+
+    const scheduleReapply = () => {
+      timeoutIds.forEach(id => clearTimeout(id));
+      timeoutIds = [];
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      // Re-apply immediately and at staggered intervals
+      [0, 50, 150, 350, 800].forEach((delay) => {
+        const id = setTimeout(() => {
+          if (!isAdjustTab()) applyLoadedTemplate();
+          timeoutIds = timeoutIds.filter(x => x !== id);
+        }, delay);
+        timeoutIds.push(id);
+      });
+      // Poll every 200ms for 2s to overcome FIE's async tab-switch resets
+      let elapsed = 0;
+      intervalId = setInterval(() => {
+        elapsed += 200;
+        if (elapsed > 2000) {
+          clearInterval(intervalId);
+          intervalId = null;
+          return;
+        }
+        if (!isAdjustTab()) applyLoadedTemplate();
+      }, 200);
+    };
+
+    const obs = new MutationObserver(scheduleReapply);
+    obs.observe(editorArea, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-selected'],
+    });
+    return () => {
+      obs.disconnect();
+      timeoutIds.forEach(id => clearTimeout(id));
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [open, loadedDesignState, applyLoadedTemplate]);
 
   // ── Template: delete ─────────────────────────────────────────────────────
   const handleDeleteTemplate = useCallback((id, e) => {
