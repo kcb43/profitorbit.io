@@ -356,11 +356,17 @@ function ImageEditorInner({
   // to pass to FIE) vs from an image switch (must be null to avoid swap).
   const designStateSourceRef = useRef('none'); // 'none' | 'template' | 'db'
 
-  // Use allImages directly — no session snapshot needed since the nuclear
-  // key (switchCount) already guarantees a fresh FIE instance.
-  const activeSrc = allImages.length
+  // The original URL for the active image (used for thumbnails and saves).
+  const activeOriginalSrc = allImages.length
     ? (getImgUrl(allImages[activeIndex]) || imageSrc)
     : imageSrc;
+
+  // Cache-busted URL passed to FIE. FIE's internal image loader caches by
+  // URL string, so switching A→B→A can serve B's pixels for A's URL.
+  // Appending a unique query parameter forces a real network fetch each time.
+  const activeSrc = activeOriginalSrc
+    ? `${activeOriginalSrc}${activeOriginalSrc.includes('?') ? '&' : '?'}_fie=${switchCount}`
+    : null;
 
   // Pass the original URL directly to FIE — no blob conversion.
   // The save handler already has a fallback for tainted canvases.
@@ -469,19 +475,17 @@ function ImageEditorInner({
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Left-side group (save button)
+        // Left-side group (save button) — absolutely positioned by the centering block below
         const leftGroup = topbar.querySelector('[class*="sc-21g986-1"]') || topbar.firstElementChild;
         if (leftGroup) {
-          leftGroup.style.setProperty('margin-left', '-0.5rem', 'important');
           leftGroup.style.setProperty('padding-left', '0', 'important');
         }
-        // Right-side group (undo/redo/close) — group tightly, shift left
+        // Right-side group (undo/redo/close) — compact children
         const rightGroup = topbar.querySelector('[class*="sc-21g986-2"]') || topbar.lastElementChild;
         if (rightGroup) {
           rightGroup.style.setProperty('display', 'flex', 'important');
           rightGroup.style.setProperty('gap', '0px', 'important');
           rightGroup.style.setProperty('align-items', 'center', 'important');
-          rightGroup.style.setProperty('margin-right', '36px', 'important');
           rightGroup.querySelectorAll(':scope > *').forEach(btn => {
             btn.style.setProperty('margin', '0', 'important');
             btn.style.setProperty('padding', '4px', 'important');
@@ -525,34 +529,27 @@ function ImageEditorInner({
         el.style.setProperty('scrollbar-width', 'none', 'important');
       });
 
-      // FIE topbar: truly center the dimensions/zoom element
+      // FIE topbar: center the dimensions/zoom by making left+right absolute
       const topbarEl = document.querySelector('.FIE_topbar');
       if (topbarEl) {
         topbarEl.style.setProperty('position', 'relative', 'important');
         topbarEl.style.setProperty('display', 'flex', 'important');
-        topbarEl.style.setProperty('justify-content', 'space-between', 'important');
+        topbarEl.style.setProperty('justify-content', 'center', 'important');
         topbarEl.style.setProperty('align-items', 'center', 'important');
-        // Find center element: try named class, then any child that isn't left/right group
-        let centerEl = topbarEl.querySelector('.FIE_topbar-center-options, [class*="FIE_topbar-center-options"], [class*="topbar-center"]');
-        if (!centerEl && topbarEl.children.length >= 3) {
-          centerEl = topbarEl.children[1];
+        // Make left and right groups absolute so the center content flows naturally
+        const left = topbarEl.querySelector('[class*="sc-21g986-1"]') || topbarEl.firstElementChild;
+        const right = topbarEl.querySelector('[class*="sc-21g986-2"]') || topbarEl.lastElementChild;
+        if (left && left !== right) {
+          left.style.setProperty('position', 'absolute', 'important');
+          left.style.setProperty('left', '12px', 'important');
+          left.style.setProperty('top', '50%', 'important');
+          left.style.setProperty('transform', 'translateY(-50%)', 'important');
         }
-        if (!centerEl) {
-          // Last resort: find the child that contains zoom/dimension text
-          Array.from(topbarEl.children).forEach(child => {
-            if (child.textContent && child.textContent.match(/\d+\s*x\s*\d+|%/)) {
-              centerEl = child;
-            }
-          });
-        }
-        if (centerEl) {
-          centerEl.style.setProperty('position', 'absolute', 'important');
-          centerEl.style.setProperty('left', '50%', 'important');
-          centerEl.style.setProperty('top', '50%', 'important');
-          centerEl.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
-          centerEl.style.setProperty('width', 'fit-content', 'important');
-          centerEl.style.setProperty('pointer-events', 'auto', 'important');
-          centerEl.style.setProperty('z-index', '1', 'important');
+        if (right && right !== left) {
+          right.style.setProperty('position', 'absolute', 'important');
+          right.style.setProperty('right', '48px', 'important');
+          right.style.setProperty('top', '50%', 'important');
+          right.style.setProperty('transform', 'translateY(-50%)', 'important');
         }
       }
     }
@@ -641,7 +638,7 @@ function ImageEditorInner({
           const imgNode = stage?.findOne('#FIE_original-image');
           if (imgNode) displayDims = { w: imgNode.width(), h: imgNode.height() };
         } catch { /* non-critical */ }
-        const blob = await applyAdjustmentsToCanvas(activeSrc, savedDesignState, displayDims);
+        const blob = await applyAdjustmentsToCanvas(activeOriginalSrc, savedDesignState, displayDims);
         file = new File([blob], `${defaultName}.jpg`, { type: 'image/jpeg' });
       } catch (canvasErr) {
         // Fallback: use FIE's Konva-rendered output if our pipeline fails
@@ -661,12 +658,12 @@ function ImageEditorInner({
       const { file_url } = await uploadApi.uploadFile({ file });
 
       // Persist design state to item metadata (only if the initial load succeeded)
-      if (itemId && activeSrc && apiWorksRef.current) {
+      if (itemId && activeOriginalSrc && apiWorksRef.current) {
         try {
           const { data: item } = await inventoryApi.get(itemId);
           const existing = item?.image_editor_state
             ? JSON.parse(item.image_editor_state) : {};
-          existing[activeSrc] = savedDesignState;
+          existing[activeOriginalSrc] = savedDesignState;
           await inventoryApi.update(itemId, {
             image_editor_state: JSON.stringify(existing),
           });
@@ -682,7 +679,7 @@ function ImageEditorInner({
     } finally {
       setIsProcessing(false);
     }
-  }, [onSave, onOpenChange, toast, defaultName, activeIndex, itemId, activeSrc, persistOriginalsIfFirstSave]);
+  }, [onSave, onOpenChange, toast, defaultName, activeIndex, itemId, activeOriginalSrc, persistOriginalsIfFirstSave]);
 
   const handleClose = useCallback(() => {
     setLoadedDesignState(null);
@@ -1116,30 +1113,24 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
-      {/* ── Top bar (position:relative container, children use absolute positioning) ── */}
+      {/* ── Top bar: flex centers the filmstrip, right controls are absolute ── */}
       <div
         className="shrink-0"
         onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
         onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           position: 'relative',
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
       >
-        {/* Filmstrip – viewport-centred via absolute left:50% */}
+        {/* Filmstrip – centred by parent's justify-content: center */}
         {hasMultiple && (
-          <div
-            className="flex items-center gap-2"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50vw',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1,
-            }}
-          >
+          <div className="flex items-center gap-2">
             <button
               onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
               disabled={activeIndex === 0}
@@ -1384,7 +1375,7 @@ function ImageEditorInner({
       </div>
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
-      {(() => { console.log('[ImageEditor] activeIndex:', activeIndex, 'switchCount:', switchCount, 'activeSrc:', activeSrc, 'thumbnails:', allImages.map(getImgUrl)); return null; })()}
+      {/* debug removed — URLs confirmed correct; swap was FIE internal cache */}
       <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
         {activeSrc && <FilerobotImageEditor
           key={`fie-${activeIndex}-${switchCount}`}
