@@ -4334,6 +4334,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           } catch (_) {}
         }
 
+        // When no local recording: try golden template before failing.
+        if (!records.length || !recordingLooksLikeDelist({ records })) {
+          const maybeGolden = await maybeFallbackToGoldenRecording('delist', { records });
+          const gRecords = Array.isArray(maybeGolden?.records) ? maybeGolden.records : Array.isArray(maybeGolden) ? maybeGolden : [];
+          if (gRecords.length && recordingLooksLikeDelist({ records: gRecords })) {
+            records = gRecords;
+          }
+        }
+
         if (!records.length) {
           try {
             chrome.storage.local.set(
@@ -4354,15 +4363,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           throw new Error(
             'No Facebook API recording found in extension storage. In Profit Orbit, run Start/Stop Facebook API recording once while deleting/delisting a Marketplace listing.'
           );
-        }
-
-        // Golden fallback: if we don't have a usable local delist recording, try the golden template.
-        if (!recordingLooksLikeDelist({ records })) {
-          const maybeGolden = await maybeFallbackToGoldenRecording('delist', { records });
-          const gRecords = Array.isArray(maybeGolden?.records) ? maybeGolden.records : Array.isArray(maybeGolden) ? maybeGolden : [];
-          if (gRecords.length && recordingLooksLikeDelist({ records: gRecords })) {
-            records = gRecords;
-          }
         }
 
         const getRecordedBodyText = (rec) => {
