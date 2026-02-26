@@ -24,7 +24,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay
 } from "@/components/ui/dialog";
 import ClearableDateInput from "../components/ClearableDateInput";
-import imageCompression from "browser-image-compression";
+
 import { extractCustomFees, getCustomFeesTotal, injectCustomFees } from "@/utils/customFees";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
@@ -547,14 +547,7 @@ export default function AddSale() {
 
     setIsUploading(true);
     try {
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 0.25,
-        maxWidthOrHeight: 1200,
-        useWebWorker: true,
-      });
-      const fileToUpload = compressedFile || file;
-      const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
+      const { file_url } = await uploadApi.uploadFile({ file });
       handleChange('image_url', file_url);
     } catch (error) {
       console.error("Image upload failed:", error);

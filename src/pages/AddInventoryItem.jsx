@@ -26,7 +26,7 @@ import ReceiptScannerDialog from "@/components/ReceiptScannerDialog";
 const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
 import { ImageEditor } from "@/components/ImageEditor";
 import { scanReceipt } from "@/api/receiptScanner";
-import imageCompression from "browser-image-compression";
+
 import { ReactSortable } from "react-sortablejs";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
@@ -412,14 +412,7 @@ export default function AddInventoryItem() {
     if (!file) return;
     setIsUploading(true);
     try {
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 0.25,
-        maxWidthOrHeight: 1200,
-        useWebWorker: true,
-      });
-      const fileToUpload = compressedFile || file;
-      const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-      const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
+      const { file_url } = await uploadApi.uploadFile({ file });
       handleChange('image_url', file_url);
     } catch (error) {
       console.error("Image upload failed:", error);
@@ -520,14 +513,7 @@ export default function AddInventoryItem() {
       const uploadedPhotos = [];
 
       for (const file of filesToUpload) {
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: 0.25,
-          maxWidthOrHeight: 1200,
-          useWebWorker: true,
-        });
-        const fileToUpload = compressedFile || file;
-        const uploadPayload = fileToUpload instanceof File ? fileToUpload : new File([fileToUpload], file.name, { type: file.type });
-        const { file_url } = await uploadApi.uploadFile({ file: uploadPayload });
+        const { file_url } = await uploadApi.uploadFile({ file });
 
         uploadedPhotos.push({
           id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
