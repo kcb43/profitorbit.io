@@ -1212,15 +1212,36 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
   }
 }
 
+/* ── FIE: Hide all scrollbars inside the editor ──────────────────────────── */
+.FIE_root,
+.FIE_root * {
+  scrollbar-width: none !important;
+}
+.FIE_root::-webkit-scrollbar,
+.FIE_root *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* ── FIE Topbar ──────────────────────────────────────────────────────────── */
 .FIE_topbar,
 [class*="FIE_topbar"] {
   padding: 6px 12px !important;
+  position: relative !important;
 }
-/* Left-side group (save button): shift left to align under tabs */
+/* Center the pixel dimensions / zoom percentage on the page */
+.FIE_topbar-center-options,
+[class*="FIE_topbar-center-options"] {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: fit-content !important;
+}
+/* Left-side group (save button): shift 5rem left to align under tabs */
 [class*="sc-21g986-1"],
 .FIE_topbar > *:first-child {
-  margin-left: 0 !important;
+  margin-left: -5rem !important;
   padding-left: 0 !important;
 }
 /* Right-side group (undo/redo/close): no gaps, tightly packed, pulled left */

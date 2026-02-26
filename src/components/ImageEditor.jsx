@@ -348,12 +348,14 @@ function ImageEditorInner({
   const [applyingToAll, setApplyingToAll]   = useState(false);
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
-  // Active image URL (original, always used for saves and as ground truth)
-  // Uses allImages directly so the canvas always matches the filmstrip thumbnails.
+  // Lock the images array at session start so ReactSortable (or any parent
+  // re-render) cannot reorder the photos mid-edit and cause the swap bug.
+  const sessionImages = useMemo(() => allImages.length ? [...allImages] : [], [imageIndex, imageSrc]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const activeSrc = useMemo(() => {
-    if (!allImages.length) return imageSrc;
-    return getImgUrl(allImages[activeIndex]) || imageSrc;
-  }, [allImages, activeIndex, imageSrc]);
+    if (!sessionImages.length) return imageSrc;
+    return getImgUrl(sessionImages[activeIndex]) || imageSrc;
+  }, [sessionImages, activeIndex, imageSrc]);
 
   // Pass the original URL directly to FIE — no blob conversion.
   // The save handler already has a fallback for tainted canvases.
@@ -458,10 +460,10 @@ function ImageEditorInner({
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Left-side group (save button) — push left
+        // Left-side group (save button) — shift 5rem further left
         const leftGroup = topbar.querySelector('[class*="sc-21g986-1"]') || topbar.firstElementChild;
         if (leftGroup) {
-          leftGroup.style.setProperty('margin-left', '0', 'important');
+          leftGroup.style.setProperty('margin-left', '-5rem', 'important');
           leftGroup.style.setProperty('padding-left', '0', 'important');
         }
         // Right-side group (undo/redo/close) — group tightly, shift left
@@ -504,11 +506,15 @@ function ImageEditorInner({
       }
 
       // App wrapper: remove border-radius (looks wrong in fullscreen overlay)
+      // Also hide any vertical scrollbar that FIE may render
       const appWrapper = document.querySelector('.FIE_root');
       if (appWrapper) {
         appWrapper.style.setProperty('border-radius', '0', 'important');
         appWrapper.style.setProperty('overflow', 'hidden', 'important');
       }
+      document.querySelectorAll('.FIE_root, .FIE_root *').forEach(el => {
+        el.style.setProperty('scrollbar-width', 'none', 'important');
+      });
 
       // FIE topbar: truly center the dimensions/zoom element
       const topbarEl = document.querySelector('.FIE_topbar');
@@ -658,7 +664,7 @@ function ImageEditorInner({
     const ds = currentDesignState || imageDesignStates.current[activeIndex];
     if (!ds) return;
 
-    const others = allImages
+    const others = sessionImages
       .map((img, i) => ({ img, i }))
       .filter(({ i }) => i !== activeIndex);
 
@@ -693,7 +699,7 @@ function ImageEditorInner({
 
     setApplyingToAll(false);
     toast({ title: 'Edits applied to all images' });
-  }, [currentDesignState, activeIndex, allImages, onSave, persistOriginalsIfFirstSave]);
+  }, [currentDesignState, activeIndex, sessionImages, onSave, persistOriginalsIfFirstSave]);
 
   // ── Template: save ───────────────────────────────────────────────────────
   const handleSaveTemplate = useCallback(() => {
@@ -861,18 +867,18 @@ function ImageEditorInner({
 
   // ── Keyboard arrow-key navigation between images ─────────────────────────
   useEffect(() => {
-    if (!open || allImages.length <= 1) return;
+    if (!open || sessionImages.length <= 1) return;
     const onKey = (e) => {
       // Don't steal keys when the user is typing in an input/textarea
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A')
         handleSwitchImage(Math.max(0, activeIndex - 1));
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D')
-        handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1));
+        handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, allImages.length, activeIndex, handleSwitchImage]);
+  }, [open, sessionImages.length, activeIndex, handleSwitchImage]);
 
   // ── Sharp image overlay ────────────────────────────────────────────────
   // A native <img> element layered between Konva's Design canvas and its
@@ -1037,9 +1043,9 @@ function ImageEditorInner({
     const dx = e.changedTouches[0].clientX - swipeTouchStart.current;
     swipeTouchStart.current = null;
     if (Math.abs(dx) < 40) return; // minimum swipe distance
-    if (dx < 0) handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1)); // swipe left → next
+    if (dx < 0) handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1)); // swipe left → next
     else         handleSwitchImage(Math.max(0, activeIndex - 1));                    // swipe right → prev
-  }, [allImages.length, activeIndex, handleSwitchImage]);
+  }, [sessionImages.length, activeIndex, handleSwitchImage]);
 
   // ── Mobile nav ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1059,7 +1065,7 @@ function ImageEditorInner({
 
   if (!open || !imageSrc) return null;
 
-  const hasMultiple = allImages.length > 1;
+  const hasMultiple = sessionImages.length > 1;
   const barBg    = isDark ? '#111111' : '#f0f0f0';
   const barBorder= isDark ? '#262626' : '#d4d4d4';
   const btnBase  = isDark
@@ -1079,15 +1085,15 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
-      {/* ── Top bar: 3-column grid so filmstrip is naturally centred ── */}
+      {/* ── Top bar ── */}
       <div
         className="shrink-0"
         onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
         onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
+          position: 'relative',
+          display: 'flex',
           alignItems: 'center',
           paddingLeft: 12,
           paddingRight: 48,
@@ -1095,12 +1101,18 @@ function ImageEditorInner({
           borderBottom: `1px solid ${barBorder}`,
         }}
       >
-        {/* Col 1 – empty spacer (balances the right controls so centre column is truly centred) */}
-        <div />
-
-        {/* Col 2 – centred filmstrip with prev/next arrows */}
-        <div className="flex items-center gap-2">
-          {hasMultiple && (
+        {/* Filmstrip – absolutely centred on the viewport */}
+        {hasMultiple && (
+          <div
+            className="flex items-center gap-2"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1,
+            }}
+          >
             <button
               onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
               disabled={activeIndex === 0}
@@ -1110,14 +1122,12 @@ function ImageEditorInner({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-          )}
 
-          {hasMultiple && (
             <div
               className="flex items-center gap-1.5 overflow-x-auto"
               style={{ maxWidth: '60vw', scrollbarWidth: 'none' }}
             >
-              {allImages.map((img, idx) => {
+              {sessionImages.map((img, idx) => {
                 const url   = getImgUrl(img);
                 const isAct = idx === activeIndex;
                 const isMod = modifiedSet.has(idx) && !isAct;
@@ -1159,23 +1169,21 @@ function ImageEditorInner({
                 );
               })}
             </div>
-          )}
 
-          {hasMultiple && (
             <button
-              onClick={() => handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1))}
-              disabled={activeIndex === allImages.length - 1}
+              onClick={() => handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1))}
+              disabled={activeIndex === sessionImages.length - 1}
               title="Next image (→ / D)"
               className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
               style={{ backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5', color: isDark ? '#fafafa' : '#0a0a0a' }}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Col 3 – right-side controls, justified to the right */}
-        <div className="flex items-center gap-2 justify-end min-w-0">
+        {/* Right-side controls, pushed to the right edge */}
+        <div className="flex items-center gap-2 min-w-0" style={{ marginLeft: 'auto' }}>
           {/* Revert template (undo last change when template was applied) */}
           {hasTemplate && (
             <button
