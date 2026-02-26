@@ -348,20 +348,18 @@ function ImageEditorInner({
   const [applyingToAll, setApplyingToAll]   = useState(false);
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
-  // Lock the images array at session start using a ref that React cannot
-  // recalculate. This prevents ReactSortable (or any parent re-render)
-  // from reordering images mid-edit and causing the swap bug.
-  const sessionImagesRef = useRef([]);
-  const sessionKeyRef = useRef('');
-  const sessionKey = open ? `${imageIndex}|${imageSrc}` : '';
-  if (sessionKey !== sessionKeyRef.current) {
-    sessionKeyRef.current = sessionKey;
-    sessionImagesRef.current = (open && allImages.length) ? [...allImages] : [];
-  }
-  const sessionImages = sessionImagesRef.current;
+  // Monotonic counter — guarantees a unique FIE key on every image switch
+  // so React never reuses a stale FIE instance.
+  const [switchCount, setSwitchCount] = useState(0);
 
-  const activeSrc = sessionImages.length
-    ? (getImgUrl(sessionImages[activeIndex]) || imageSrc)
+  // Track whether the current loadedDesignState came from a TEMPLATE (safe
+  // to pass to FIE) vs from an image switch (must be null to avoid swap).
+  const designStateSourceRef = useRef('none'); // 'none' | 'template' | 'db'
+
+  // Use allImages directly — no session snapshot needed since the nuclear
+  // key (switchCount) already guarantees a fresh FIE instance.
+  const activeSrc = allImages.length
+    ? (getImgUrl(allImages[activeIndex]) || imageSrc)
     : imageSrc;
 
   // Pass the original URL directly to FIE — no blob conversion.
@@ -392,6 +390,7 @@ function ImageEditorInner({
         const saved = states[imageSrc];
         if (saved) {
           const { imgSrc: _strip, ...safeState } = saved;
+          designStateSourceRef.current = 'db';
           setLoadedDesignState(safeState);
         }
       } catch { /* non-critical — API may not support this item */ }
@@ -589,23 +588,21 @@ function ImageEditorInner({
   // ── Switch to a different image in the filmstrip ─────────────────────────
   const handleSwitchImage = useCallback((newIndex) => {
     if (newIndex === activeIndex) return;
-    // Persist current design state for the outgoing image (include loaded template if no edits yet)
+    // Persist current design state for the outgoing image
     const stateToPersist = currentDesignState || loadedDesignState;
     if (stateToPersist) {
       imageDesignStates.current[activeIndex] = stateToPersist;
       setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
-    // Load in-session state for the incoming image (if previously visited).
-    // Always strip imgSrc so FIE uses the source prop (prevents swap bug).
-    const incoming = imageDesignStates.current[newIndex];
-    if (incoming) {
-      const { imgSrc: _strip, ...safeState } = incoming;
-      setLoadedDesignState(safeState);
-    } else {
-      setLoadedDesignState(null);
-    }
+    // NUCLEAR: never pass design state from a previous image into FIE.
+    // FIE's loadableDesignState can cause it to display the wrong image
+    // even after stripping imgSrc (other fields like shownImageDimensions
+    // or internal caching can interfere). Start fresh on every switch.
+    setLoadedDesignState(null);
+    designStateSourceRef.current = 'none';
     setCurrentDesignState(null);
     setActiveIndex(newIndex);
+    setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
 
   // ── onModify: keep currentDesignState in sync in real time ──────────────
@@ -697,7 +694,7 @@ function ImageEditorInner({
     const ds = currentDesignState || imageDesignStates.current[activeIndex];
     if (!ds) return;
 
-    const others = sessionImages
+    const others = allImages
       .map((img, i) => ({ img, i }))
       .filter(({ i }) => i !== activeIndex);
 
@@ -732,7 +729,7 @@ function ImageEditorInner({
 
     setApplyingToAll(false);
     toast({ title: 'Edits applied to all images' });
-  }, [currentDesignState, activeIndex, sessionImages, onSave, persistOriginalsIfFirstSave]);
+  }, [currentDesignState, activeIndex, allImages, onSave, persistOriginalsIfFirstSave]);
 
   // ── Template: save ───────────────────────────────────────────────────────
   const handleSaveTemplate = useCallback(() => {
@@ -758,6 +755,7 @@ function ImageEditorInner({
   const handleLoadTemplate = useCallback((tpl) => {
     const safe = extractTemplateFields(tpl.designState);
     const ds = Object.keys(safe).length ? safe : null;
+    designStateSourceRef.current = 'template';
     setLoadedDesignState(ds);
     if (ds) {
       imageDesignStates.current[activeIndex] = ds;
@@ -900,18 +898,18 @@ function ImageEditorInner({
 
   // ── Keyboard arrow-key navigation between images ─────────────────────────
   useEffect(() => {
-    if (!open || sessionImages.length <= 1) return;
+    if (!open || allImages.length <= 1) return;
     const onKey = (e) => {
       // Don't steal keys when the user is typing in an input/textarea
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A')
         handleSwitchImage(Math.max(0, activeIndex - 1));
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D')
-        handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1));
+        handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, sessionImages.length, activeIndex, handleSwitchImage]);
+  }, [open, allImages.length, activeIndex, handleSwitchImage]);
 
   // ── Sharp image overlay ────────────────────────────────────────────────
   // A native <img> element layered between Konva's Design canvas and its
@@ -1076,9 +1074,9 @@ function ImageEditorInner({
     const dx = e.changedTouches[0].clientX - swipeTouchStart.current;
     swipeTouchStart.current = null;
     if (Math.abs(dx) < 40) return; // minimum swipe distance
-    if (dx < 0) handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1)); // swipe left → next
+    if (dx < 0) handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1)); // swipe left → next
     else         handleSwitchImage(Math.max(0, activeIndex - 1));                    // swipe right → prev
-  }, [sessionImages.length, activeIndex, handleSwitchImage]);
+  }, [allImages.length, activeIndex, handleSwitchImage]);
 
   // ── Mobile nav ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1098,7 +1096,7 @@ function ImageEditorInner({
 
   if (!open || !imageSrc) return null;
 
-  const hasMultiple = sessionImages.length > 1;
+  const hasMultiple = allImages.length > 1;
   const barBg    = isDark ? '#111111' : '#f0f0f0';
   const barBorder= isDark ? '#262626' : '#d4d4d4';
   const btnBase  = isDark
@@ -1118,27 +1116,30 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
-      {/* ── Top bar: symmetric-padding grid for true centering ── */}
+      {/* ── Top bar (position:relative container, children use absolute positioning) ── */}
       <div
         className="shrink-0"
         onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
         onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
-          alignItems: 'center',
-          padding: '0 12px',
+          position: 'relative',
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
       >
-        {/* Col 1 – spacer */}
-        <div />
-
-        {/* Col 2 – centred filmstrip with prev/next arrows */}
-        <div className="flex items-center gap-2">
-          {hasMultiple && (
+        {/* Filmstrip – viewport-centred via absolute left:50% */}
+        {hasMultiple && (
+          <div
+            className="flex items-center gap-2"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50vw',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1,
+            }}
+          >
             <button
               onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
               disabled={activeIndex === 0}
@@ -1148,14 +1149,12 @@ function ImageEditorInner({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-          )}
 
-          {hasMultiple && (
             <div
               className="flex items-center gap-1.5 overflow-x-auto"
               style={{ maxWidth: '60vw', scrollbarWidth: 'none' }}
             >
-              {sessionImages.map((img, idx) => {
+              {allImages.map((img, idx) => {
                 const url   = getImgUrl(img);
                 const isAct = idx === activeIndex;
                 const isMod = modifiedSet.has(idx) && !isAct;
@@ -1197,23 +1196,24 @@ function ImageEditorInner({
                 );
               })}
             </div>
-          )}
 
-          {hasMultiple && (
             <button
-              onClick={() => handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1))}
-              disabled={activeIndex === sessionImages.length - 1}
+              onClick={() => handleSwitchImage(Math.min(allImages.length - 1, activeIndex + 1))}
+              disabled={activeIndex === allImages.length - 1}
               title="Next image (→ / D)"
               className="shrink-0 flex items-center justify-center w-7 h-7 rounded transition-colors disabled:opacity-25"
               style={{ backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5', color: isDark ? '#fafafa' : '#0a0a0a' }}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Col 3 – right-side controls */}
-        <div className="flex items-center gap-2 min-w-0" style={{ justifySelf: 'end', marginRight: 36 }}>
+        {/* Right-side controls – absolutely positioned at top-right */}
+        <div
+          className="flex items-center gap-2 min-w-0"
+          style={{ position: 'absolute', right: 48, top: '50%', transform: 'translateY(-50%)' }}
+        >
           {/* Revert template (undo last change when template was applied) */}
           {hasTemplate && (
             <button
@@ -1384,16 +1384,17 @@ function ImageEditorInner({
       </div>
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
+      {(() => { console.log('[ImageEditor] activeIndex:', activeIndex, 'switchCount:', switchCount, 'activeSrc:', activeSrc, 'thumbnails:', allImages.map(getImgUrl)); return null; })()}
       <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
         {activeSrc && <FilerobotImageEditor
-          key={`fie-${activeIndex}-${activeSrc}`}
+          key={`fie-${activeIndex}-${switchCount}`}
           source={activeSrc}
           onSave={handleSave}
           onBeforeSave={() => false}
           onClose={handleClose}
           onModify={handleModify}
           observePluginContainerSize={true}
-          loadableDesignState={loadedDesignState ? (() => { const { imgSrc, ...rest } = loadedDesignState; return rest; })() : null}
+          loadableDesignState={designStateSourceRef.current !== 'none' && loadedDesignState ? (() => { const { imgSrc, ...rest } = loadedDesignState; return rest; })() : null}
           updateStateFnRef={updateStateFnRef}
           annotationsCommon={{
             fill: '#3b82f6', stroke: '#1d4ed8', strokeWidth: 2,
