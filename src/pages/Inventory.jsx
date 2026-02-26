@@ -2962,8 +2962,7 @@ export default function InventoryPage() {
                           <div className={listVariations[viewVariation].padding}>
                             <div
                               onClick={() => handleSelect(item.id)}
-                              className={`relative overflow-hidden rounded-xl border cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80`}
-                              style={{ height: listVariations[viewVariation].imageHeight }}
+                              className={`relative overflow-hidden rounded-xl border cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80 aspect-square`}
                               title="Click image to select"
                             >
                               {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
