@@ -12001,6 +12001,16 @@ export default function CrosslistComposer() {
                   </button>
                 )}
               </div>
+              {(() => {
+                const tagCount = (generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length;
+                const exceeded = TAG_LIMITS_BY_MARKETPLACE.filter((t) => tagCount > t.limit);
+                const msg = exceeded.length > 0 ? exceeded.map((t) => `${t.name}: ${t.limit} limit`).join(' - ') : null;
+                return msg ? (
+                  <p className="mb-2 text-xs text-amber-600 dark:text-amber-500">
+                    {msg}
+                  </p>
+                ) : null;
+              })()}
               <div className="mb-6">
                 <TagInput
                   placeholder="Add tags…"
@@ -12010,16 +12020,6 @@ export default function CrosslistComposer() {
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Helps your item get found. (comma or enter)
                 </p>
-                {(() => {
-                  const tagCount = (generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length;
-                  const exceeded = TAG_LIMITS_BY_MARKETPLACE.filter((t) => tagCount > t.limit);
-                  const msg = exceeded.length > 0 ? exceeded.map((t) => `${t.name}: ${t.limit} limit`).join(' - ') : null;
-                  return msg ? (
-                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
-                      {msg}
-                    </p>
-                  ) : null;
-                })()}
                 {((generalForm?.description || '').trim().length >= 20) && (
                   <div className="mt-3">
                     <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -18104,6 +18104,16 @@ export default function CrosslistComposer() {
                           <Label className="text-base font-medium">Tags</Label>
                         </div>
                       </div>
+                      {(() => {
+                        const tagCount = (generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length;
+                        const exceeded = TAG_LIMITS_BY_MARKETPLACE.filter((t) => tagCount > t.limit);
+                        const msg = exceeded.length > 0 ? exceeded.map((t) => `${t.name}: ${t.limit} limit`).join(' - ') : null;
+                        return msg ? (
+                          <p className="mb-2 text-xs text-amber-600 dark:text-amber-500">
+                            {msg}
+                          </p>
+                        ) : null;
+                      })()}
                       <div className="mb-6">
                         <TagInput
                           placeholder="Add tags…"
@@ -18113,16 +18123,6 @@ export default function CrosslistComposer() {
                         <p className="mt-1.5 text-xs text-muted-foreground">
                           Helps your item get found. (comma or enter)
                         </p>
-                        {(() => {
-                          const tagCount = (generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length;
-                          const exceeded = TAG_LIMITS_BY_MARKETPLACE.filter((t) => tagCount > t.limit);
-                          const msg = exceeded.length > 0 ? exceeded.map((t) => `${t.name}: ${t.limit} limit`).join(' - ') : null;
-                          return msg ? (
-                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
-                              {msg}
-                            </p>
-                          ) : null;
-                        })()}
                         {((generalForm?.description || '').trim().length >= 20) && (
                           <div className="mt-3">
                             <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
