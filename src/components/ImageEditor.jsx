@@ -390,7 +390,10 @@ function ImageEditorInner({
         if (!item?.image_editor_state) return;
         const states = JSON.parse(item.image_editor_state);
         const saved = states[imageSrc];
-        if (saved) setLoadedDesignState(saved);
+        if (saved) {
+          const { imgSrc: _strip, ...safeState } = saved;
+          setLoadedDesignState(safeState);
+        }
       } catch { /* non-critical — API may not support this item */ }
     })();
     return () => { cancelled = true; };
@@ -527,10 +530,21 @@ function ImageEditorInner({
       const topbarEl = document.querySelector('.FIE_topbar');
       if (topbarEl) {
         topbarEl.style.setProperty('position', 'relative', 'important');
-        // Find center element: named class first, then middle child
-        let centerEl = topbarEl.querySelector('.FIE_topbar-center-options, [class*="FIE_topbar-center-options"]');
+        topbarEl.style.setProperty('display', 'flex', 'important');
+        topbarEl.style.setProperty('justify-content', 'space-between', 'important');
+        topbarEl.style.setProperty('align-items', 'center', 'important');
+        // Find center element: try named class, then any child that isn't left/right group
+        let centerEl = topbarEl.querySelector('.FIE_topbar-center-options, [class*="FIE_topbar-center-options"], [class*="topbar-center"]');
         if (!centerEl && topbarEl.children.length >= 3) {
           centerEl = topbarEl.children[1];
+        }
+        if (!centerEl) {
+          // Last resort: find the child that contains zoom/dimension text
+          Array.from(topbarEl.children).forEach(child => {
+            if (child.textContent && child.textContent.match(/\d+\s*x\s*\d+|%/)) {
+              centerEl = child;
+            }
+          });
         }
         if (centerEl) {
           centerEl.style.setProperty('position', 'absolute', 'important');
@@ -539,6 +553,7 @@ function ImageEditorInner({
           centerEl.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
           centerEl.style.setProperty('width', 'fit-content', 'important');
           centerEl.style.setProperty('pointer-events', 'auto', 'important');
+          centerEl.style.setProperty('z-index', '1', 'important');
         }
       }
     }
@@ -580,8 +595,15 @@ function ImageEditorInner({
       imageDesignStates.current[activeIndex] = stateToPersist;
       setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
-    // Load in-session state for the incoming image (if previously visited)
-    setLoadedDesignState(imageDesignStates.current[newIndex] || null);
+    // Load in-session state for the incoming image (if previously visited).
+    // Always strip imgSrc so FIE uses the source prop (prevents swap bug).
+    const incoming = imageDesignStates.current[newIndex];
+    if (incoming) {
+      const { imgSrc: _strip, ...safeState } = incoming;
+      setLoadedDesignState(safeState);
+    } else {
+      setLoadedDesignState(null);
+    }
     setCurrentDesignState(null);
     setActiveIndex(newIndex);
   }, [activeIndex, currentDesignState, loadedDesignState]);
@@ -1096,36 +1118,27 @@ function ImageEditorInner({
         colorScheme: isDark ? 'dark' : 'light',
       }}
     >
-      {/* ── Top bar ── */}
+      {/* ── Top bar: symmetric-padding grid for true centering ── */}
       <div
         className="shrink-0"
         onTouchStart={hasMultiple ? handleBarTouchStart : undefined}
         onTouchEnd={hasMultiple ? handleBarTouchEnd : undefined}
         style={{
           height: 60,
-          position: 'relative',
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          paddingLeft: 12,
-          paddingRight: 48,
+          padding: '0 12px',
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
       >
-        {/* Filmstrip – centred via full-bleed overlay + flexbox */}
-        {hasMultiple && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0, right: 0, top: 0, bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              pointerEvents: 'none',
-              zIndex: 1,
-            }}
-          >
-          <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
+        {/* Col 1 – spacer */}
+        <div />
+
+        {/* Col 2 – centred filmstrip with prev/next arrows */}
+        <div className="flex items-center gap-2">
+          {hasMultiple && (
             <button
               onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
               disabled={activeIndex === 0}
@@ -1135,7 +1148,9 @@ function ImageEditorInner({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
+          )}
 
+          {hasMultiple && (
             <div
               className="flex items-center gap-1.5 overflow-x-auto"
               style={{ maxWidth: '60vw', scrollbarWidth: 'none' }}
@@ -1182,7 +1197,9 @@ function ImageEditorInner({
                 );
               })}
             </div>
+          )}
 
+          {hasMultiple && (
             <button
               onClick={() => handleSwitchImage(Math.min(sessionImages.length - 1, activeIndex + 1))}
               disabled={activeIndex === sessionImages.length - 1}
@@ -1192,12 +1209,11 @@ function ImageEditorInner({
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-          </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Right-side controls, pushed to the right edge */}
-        <div className="flex items-center gap-2 min-w-0" style={{ marginLeft: 'auto' }}>
+        {/* Col 3 – right-side controls */}
+        <div className="flex items-center gap-2 min-w-0" style={{ justifySelf: 'end', marginRight: 36 }}>
           {/* Revert template (undo last change when template was applied) */}
           {hasTemplate && (
             <button
@@ -1377,7 +1393,7 @@ function ImageEditorInner({
           onClose={handleClose}
           onModify={handleModify}
           observePluginContainerSize={true}
-          loadableDesignState={loadedDesignState}
+          loadableDesignState={loadedDesignState ? (() => { const { imgSrc, ...rest } = loadedDesignState; return rest; })() : null}
           updateStateFnRef={updateStateFnRef}
           annotationsCommon={{
             fill: '#3b82f6', stroke: '#1d4ed8', strokeWidth: 2,
