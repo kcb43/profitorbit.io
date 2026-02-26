@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import FilerobotImageEditor, { TABS } from 'react-filerobot-image-editor';
+import finetunesStrsToClasses from 'react-filerobot-image-editor/lib/utils/finetunesStrsToClasses';
+import filterStrToClass from 'react-filerobot-image-editor/lib/utils/filterStrToClass';
 import Konva from 'konva';
 import { Factory as KonvaFactory } from 'konva/lib/Factory';
 import { getNumberValidator } from 'konva/lib/Validators';
@@ -334,6 +336,7 @@ function ImageEditorInner({
   const [modifiedSet, setModifiedSet]     = useState(new Set()); // reactive mirror of ref keys
   const [currentDesignState, setCurrentDesignState] = useState(null);
   const [loadedDesignState, setLoadedDesignState]   = useState(null);
+  const updateStateFnRef = useRef(null);
 
   // ── Template management ──────────────────────────────────────────────────
   const [templates, setTemplates]           = useState(loadTemplates);
@@ -724,6 +727,27 @@ function ImageEditorInner({
     setShowTemplateMenu(false);
     toast({ title: `Template "${tpl.name}" applied` });
   }, []);
+
+  // Force template into FIE store when loaded. FIE's loadableDesignState
+  // useUpdateEffect can race with tab switches; calling updateStateFnRef
+  // directly ensures the Konva Design layer receives finetunes/filters
+  // so they persist when switching to Finetune or Watermark tabs.
+  useEffect(() => {
+    if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
+    const payload = {
+      ...loadedDesignState,
+      finetunes: finetunesStrsToClasses(loadedDesignState.finetunes),
+      filter: filterStrToClass(loadedDesignState.filter),
+    };
+    const apply = () => {
+      const fn = updateStateFnRef.current;
+      if (fn) fn(payload);
+    };
+    apply();
+    // FIE sets the ref in its own useEffect; retry next frame if ref wasn't ready
+    const id = requestAnimationFrame(apply);
+    return () => cancelAnimationFrame(id);
+  }, [loadedDesignState]);
 
   // ── Template: delete ─────────────────────────────────────────────────────
   const handleDeleteTemplate = useCallback((id, e) => {
@@ -1253,6 +1277,7 @@ function ImageEditorInner({
           onModify={handleModify}
           observePluginContainerSize={true}
           loadableDesignState={loadedDesignState}
+          updateStateFnRef={updateStateFnRef}
           annotationsCommon={{
             fill: '#3b82f6', stroke: '#1d4ed8', strokeWidth: 2,
             shadowOffsetX: 0, shadowOffsetY: 0, shadowBlur: 0, opacity: 1,

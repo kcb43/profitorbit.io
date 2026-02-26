@@ -19,7 +19,12 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center gap-1",
-        caption_label: "text-sm font-medium",
+        // Single-date calendars: hide duplicate month/year text; user navigates via dropdowns only.
+        // Range calendars: keep caption_label visible.
+        caption_label:
+          props.mode === "range"
+            ? "text-sm font-medium"
+            : "hidden",
         caption_dropdowns: "flex gap-1 items-center",
         dropdown:
           "appearance-none bg-background border border-border rounded-md px-2 py-1 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring hover:bg-accent transition-colors",

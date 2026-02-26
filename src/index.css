@@ -1238,6 +1238,19 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 [class*="FIE_"][class*="tool-button"]:not([aria-selected='true']) * {
   color: #0a0a0a !important;
 }
+/* Light mode: hover over unselected tool buttons — white text on blue bg */
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']):hover,
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']):hover * {
+  color: #ffffff !important;
+}
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']):hover svg,
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']):hover svg * {
+  fill: #ffffff !important;
+}
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']):hover {
+  background: #3b82f6 !important;
+  border-radius: 4px !important;
+}
 .dark [class*="FIE_"][class*="tool-button"]:not([aria-selected='true']),
 .dark [class*="FIE_"][class*="tool-button"]:not([aria-selected='true']) * {
   color: #fafafa !important;
