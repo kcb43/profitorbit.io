@@ -41,8 +41,33 @@ export async function preflightSelectedMarketplaces(
     autoApplyHighConfidence = false,
     onApplyPatch = null,
     fulfillmentProfile = null,
+    generalFormBaseline = null,
     ...validationOptions
   } = options;
+
+  // Fields in general form that affect the listing — if any changed from baseline, require re-review
+  const GENERAL_FORM_COMPARE_FIELDS = [
+    'title', 'description', 'price', 'condition', 'brand', 'category', 'categoryId',
+    'size', 'color1', 'color2', 'zip', 'quantity',
+    'packageWeight', 'packageLength', 'packageWidth', 'packageHeight', 'packageDetails',
+  ];
+  const getPhotoUrls = (photos) =>
+    (photos || []).map(p => (typeof p === 'string' ? p : p?.url || p?.imageUrl || '')).filter(Boolean);
+  const hasGeneralFormChanged = generalFormBaseline && (() => {
+    for (const k of GENERAL_FORM_COMPARE_FIELDS) {
+      const a = generalFormBaseline[k];
+      const b = generalForm[k];
+      if (k === 'photos') {
+        const aUrls = getPhotoUrls(a);
+        const bUrls = getPhotoUrls(b);
+        if (aUrls.length !== bUrls.length) return true;
+        for (let i = 0; i < aUrls.length; i++) if (aUrls[i] !== bUrls[i]) return true;
+      } else if (String(a || '') !== String(b || '')) {
+        return true;
+      }
+    }
+    return false;
+  })();
 
   const fulfillmentConfigured =
     fulfillmentProfile &&
@@ -56,6 +81,17 @@ export async function preflightSelectedMarketplaces(
 
   for (const marketplace of selectedMarketplaces) {
     let issues = [];
+
+    if (hasGeneralFormChanged) {
+      issues.push({
+        marketplace,
+        field: '_generalFormChanged',
+        type: 'suggestion',
+        severity: 'blocking',
+        message: "You've changed the general listing details (title, price, description, etc.) since opening this item. Please review before listing.",
+        patchTarget: 'general',
+      });
+    }
 
     if (!fulfillmentConfigured) {
       issues.push({
@@ -369,6 +405,8 @@ export function getFieldLabel(field) {
     _connection: 'Connection',
     _error: 'Validation Error',
     _marketplace: 'Marketplace',
+    _generalFormChanged: 'General listing details changed',
+    _fulfillment: 'Fulfillment settings',
   };
 
   if (field.startsWith('customItemSpecifics.')) {

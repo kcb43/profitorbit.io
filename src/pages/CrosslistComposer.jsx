@@ -5742,6 +5742,7 @@ export default function CrosslistComposer() {
   const [facebookCategorySearchValue, setFacebookCategorySearchValue] = useState("");
   const [mercariCategorySearchValue, setMercariCategorySearchValue] = useState("");
   const [etsyCategorySearchValue, setEtsyCategorySearchValue] = useState("");
+  const generalFormBaselineRef = React.useRef(null);
   const photoInputRef = React.useRef(null);
   const ebayPhotoInputRef = React.useRef(null);
   const etsyPhotoInputRef = React.useRef(null);
@@ -7527,6 +7528,7 @@ export default function CrosslistComposer() {
     });
     
     setTemplateForms(merged);
+    generalFormBaselineRef.current = { ...merged.general };
     console.log('🔧 Called setTemplateForms with merged data');
     setActiveForm("general");
     setSelectedCategoryPath([]);
@@ -9790,6 +9792,7 @@ export default function CrosslistComposer() {
       ebayRequiredAspects: [], // Will be available later in render
       isItemsIncludedRequired: false, // Will be calculated later
       useAI: true, // Enable AI auto-fill
+      generalFormBaseline: generalFormBaselineRef.current,
     },
     (marketplace, field, value) => {
       // Update form field handler
