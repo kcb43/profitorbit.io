@@ -640,11 +640,14 @@ function ImageEditorInner({
   const handleSaveTemplate = useCallback(() => {
     const ds = currentDesignState;
     if (!ds || !templateName.trim()) return;
+    // Strip image-specific data — templates are adjustments only.
+    // imgSrc is a session-scoped blob URL that expires after navigation.
+    const { imgSrc, ...adjustmentsOnly } = ds;
     const entry = {
       id: `tpl_${Date.now()}`,
       name: templateName.trim(),
       createdAt: Date.now(),
-      designState: ds,
+      designState: adjustmentsOnly,
     };
     setTemplates(prev => {
       const next = [entry, ...prev].slice(0, MAX_TEMPLATES);
@@ -658,7 +661,9 @@ function ImageEditorInner({
 
   // ── Template: load ───────────────────────────────────────────────────────
   const handleLoadTemplate = useCallback((tpl) => {
-    setLoadedDesignState(tpl.designState);
+    // Strip imgSrc in case it was saved by an older version with blob URLs
+    const { imgSrc, ...safeState } = tpl.designState || {};
+    setLoadedDesignState(safeState);
     setShowTemplateMenu(false);
     toast({ title: `Template "${tpl.name}" applied` });
   }, []);
