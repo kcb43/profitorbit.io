@@ -349,12 +349,10 @@ function ImageEditorInner({
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
   // Active image URL (original, always used for saves and as ground truth)
-  // When 2 images: user reports swap bug — use 1-activeIndex as workaround until root cause found
-  const displayIndex = allImages.length === 2 ? (1 - activeIndex) : activeIndex;
   const activeSrc = useMemo(() => {
     if (!allImages.length) return imageSrc;
-    return getImgUrl(allImages[displayIndex]) || imageSrc;
-  }, [allImages, displayIndex, imageSrc]);
+    return getImgUrl(allImages[activeIndex]) || imageSrc;
+  }, [allImages, activeIndex, imageSrc]);
 
   // ── Same-origin blob source for FIE ──────────────────────────────────────
   // Fetch the original image as a blob so the canvas stays untainted for
@@ -505,7 +503,7 @@ function ImageEditorInner({
       // align with Save template, Load, etc. in the bar above.
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
-        topbar.style.setProperty('padding', '6px 12px 6px 48px', 'important');
+        topbar.style.setProperty('padding', '6px 48px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('gap', '8px', 'important');
         topbar.style.setProperty('width', '100%', 'important');
@@ -593,17 +591,15 @@ function ImageEditorInner({
     if (newIndex === activeIndex) return;
     // Persist current design state for the outgoing image (include loaded template if no edits yet)
     const stateToPersist = currentDesignState || loadedDesignState;
-    const outIdx = allImages.length === 2 ? (1 - activeIndex) : activeIndex;
-    const inIdx = allImages.length === 2 ? (1 - newIndex) : newIndex;
     if (stateToPersist) {
-      imageDesignStates.current[outIdx] = stateToPersist;
-      setModifiedSet(prev => new Set([...prev, outIdx]));
+      imageDesignStates.current[activeIndex] = stateToPersist;
+      setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
     // Load in-session state for the incoming image (if previously visited)
-    setLoadedDesignState(imageDesignStates.current[inIdx] || null);
+    setLoadedDesignState(imageDesignStates.current[newIndex] || null);
     setCurrentDesignState(null);
     setActiveIndex(newIndex);
-  }, [activeIndex, currentDesignState, loadedDesignState, allImages.length]);
+  }, [activeIndex, currentDesignState, loadedDesignState]);
 
   // ── onModify: keep currentDesignState in sync in real time ──────────────
   const handleModify = useCallback((ds) => {
@@ -673,7 +669,7 @@ function ImageEditorInner({
         } catch { /* non-critical */ }
       }
 
-      if (onSave) await onSave(file_url, displayIndex);
+      if (onSave) await onSave(file_url, activeIndex);
 
       toast({ title: 'Image saved' });
       if (onOpenChange) onOpenChange(false);
@@ -682,7 +678,7 @@ function ImageEditorInner({
     } finally {
       setIsProcessing(false);
     }
-  }, [onSave, onOpenChange, toast, defaultName, displayIndex, itemId, activeSrc, persistOriginalsIfFirstSave]);
+  }, [onSave, onOpenChange, toast, defaultName, activeIndex, itemId, activeSrc, persistOriginalsIfFirstSave]);
 
   const handleClose = useCallback(() => {
     setLoadedDesignState(null);
@@ -691,12 +687,12 @@ function ImageEditorInner({
 
   // ── Apply to all ─────────────────────────────────────────────────────────
   const handleApplyToAll = useCallback(async () => {
-    const ds = currentDesignState || imageDesignStates.current[displayIndex];
+    const ds = currentDesignState || imageDesignStates.current[activeIndex];
     if (!ds) return;
 
     const others = allImages
       .map((img, i) => ({ img, i }))
-      .filter(({ i }) => i !== displayIndex);
+      .filter(({ i }) => i !== activeIndex);
 
     if (!others.length) return;
 
@@ -729,7 +725,7 @@ function ImageEditorInner({
 
     setApplyingToAll(false);
     toast({ title: 'Edits applied to all images' });
-  }, [currentDesignState, displayIndex, allImages, onSave, persistOriginalsIfFirstSave]);
+  }, [currentDesignState, activeIndex, allImages, onSave, persistOriginalsIfFirstSave]);
 
   // ── Template: save ───────────────────────────────────────────────────────
   const handleSaveTemplate = useCallback(() => {
@@ -757,12 +753,12 @@ function ImageEditorInner({
     const ds = Object.keys(safe).length ? safe : null;
     setLoadedDesignState(ds);
     if (ds) {
-      imageDesignStates.current[displayIndex] = ds;
-      setModifiedSet(prev => new Set([...prev, displayIndex]));
+      imageDesignStates.current[activeIndex] = ds;
+      setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
     setShowTemplateMenu(false);
     toast({ title: `Template "${tpl.name}" applied` });
-  }, [displayIndex]);
+  }, [activeIndex]);
 
   // Force template into FIE store when loaded. FIE's loadableDesignState
   // useUpdateEffect can race with tab switches; calling updateStateFnRef
@@ -1101,7 +1097,7 @@ function ImageEditorInner({
   const btnBase  = isDark
     ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100 border border-neutral-600'
     : 'bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300';
-  const canApply = !!(currentDesignState || imageDesignStates.current[displayIndex]);
+  const canApply = !!(currentDesignState || imageDesignStates.current[activeIndex]);
   const hasTemplate = !!(loadedDesignState && Object.keys(loadedDesignState).length > 0);
   // Show reset button if originals were persisted cross-session OR any save happened in-session OR template/edits applied
   const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate);

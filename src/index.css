@@ -1212,15 +1212,11 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
   }
 }
 
-/* ── FIE Topbar: align X/back icons with custom bar (pull right group left) ─── */
+/* ── FIE Topbar: align X/back icons with custom bar ────────────────────────── */
 .FIE_topbar,
 [class*="FIE_topbar"] {
   padding-right: 48px !important;
-}
-/* Shift the right-most group (X, back) left to align with Save template/Load */
-.FIE_topbar > *:last-child,
-[class*="FIE_topbar"] > *:last-child {
-  margin-right: 36px !important;
+  padding-left: 12px !important;
 }
 
 /* ── FIE Dark Mode: Selected tabs (Adjust, Finetune, Watermark) always white ─ */
