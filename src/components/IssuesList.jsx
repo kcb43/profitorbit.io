@@ -330,7 +330,35 @@ function BlockingIssueItem({ issue, onApplyFix, onSaveEbayDefault, onSaveFaceboo
     }
   }
 
-  // Special fields: connection/error – simple alert only
+  // Fulfillment setup prompt — friendly info card with link to settings
+  if (issue.field === '_fulfillment') {
+    return (
+      <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 p-1.5">
+            <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Quick setup needed</p>
+            <p className="text-xs text-blue-800/80 dark:text-blue-300/80 mt-1 leading-relaxed">
+              {issue.message}
+            </p>
+            <a
+              href="/Settings/Fulfillment"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+            >
+              Open Fulfillment Settings
+              <ArrowRight className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Other special fields: connection/error – simple alert only
   if (issue.field.startsWith('_')) {
     return (
       <Alert variant="destructive">

@@ -62,8 +62,8 @@ export async function preflightSelectedMarketplaces(
         marketplace,
         field: '_fulfillment',
         type: 'missing',
-        severity: 'warning',
-        message: 'Fulfillment settings not configured. Visit Settings → Fulfillment to set up shipping details, pickup locations, and marketplace-specific options (e.g. Hide from Friends on Facebook).',
+        severity: 'blocking',
+        message: 'Before your first listing, head over to Settings → Fulfillment to set up your shipping and pickup preferences. This only takes a minute and helps us fill in marketplace-specific details like shipping carriers, handling time, and options such as Hide from Friends on Facebook.',
         patchTarget: 'general',
       });
     }
