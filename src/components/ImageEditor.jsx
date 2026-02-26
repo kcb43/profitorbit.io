@@ -355,65 +355,9 @@ function ImageEditorInner({
     return getImgUrl(allImages[activeIndex]) || imageSrc;
   }, [allImages, activeIndex, imageSrc]);
 
-  // ── Same-origin blob source for FIE ──────────────────────────────────────
-  // Fetch the original image as a blob so the canvas stays untainted for
-  // filters and saves.  Each original URL gets ONE stable blob URL cached in
-  // a Map — no race conditions when switching images quickly.
-  const [fieSource,        setFieSource]        = useState(null);
-  const [fieSourceLoading, setFieSourceLoading] = useState(false);
-  const blobCache = useRef(new Map());    // originalUrl → blobUrl
+  // Pass the original URL directly to FIE — no blob conversion.
+  // The save handler already has a fallback for tainted canvases.
   const editorAreaRef = useRef(null);
-
-  // Clean up all cached blob URLs when the editor unmounts
-  useEffect(() => {
-    return () => {
-      blobCache.current.forEach(url => URL.revokeObjectURL(url));
-      blobCache.current.clear();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
-      setFieSource(activeSrc || null);
-      setFieSourceLoading(false);
-      return;
-    }
-
-    // If already cached, use immediately — no fetch, no race
-    if (blobCache.current.has(activeSrc)) {
-      setFieSource(blobCache.current.get(activeSrc));
-      setFieSourceLoading(false);
-      return;
-    }
-
-    setFieSource(null);
-    setFieSourceLoading(true);
-    let cancelled = false;
-    const urlToFetch = activeSrc;
-
-    (async () => {
-      let blobUrl = null;
-      try {
-        const resp = await fetch(urlToFetch, { cache: 'no-store' });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const blob = await resp.blob();
-        blobUrl = URL.createObjectURL(blob);
-      } catch (err) {
-        console.warn('[ImageEditor] Blob fetch failed, using original URL:', err.message);
-      }
-
-      // Always cache the blob URL (even if user switched away)
-      if (blobUrl) blobCache.current.set(urlToFetch, blobUrl);
-
-      if (!cancelled) {
-        setFieSource(blobUrl || urlToFetch);
-        setFieSourceLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, activeSrc]);
 
   // Reset everything when a new item/editor session starts
   useEffect(() => {
@@ -514,7 +458,13 @@ function ImageEditorInner({
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Target the right-side group (undo/redo/close) — group tightly, shift left
+        // Left-side group (save button) — push left
+        const leftGroup = topbar.querySelector('[class*="sc-21g986-1"]') || topbar.firstElementChild;
+        if (leftGroup) {
+          leftGroup.style.setProperty('margin-left', '0', 'important');
+          leftGroup.style.setProperty('padding-left', '0', 'important');
+        }
+        // Right-side group (undo/redo/close) — group tightly, shift left
         const rightGroup = topbar.querySelector('[class*="sc-21g986-2"]') || topbar.lastElementChild;
         if (rightGroup) {
           rightGroup.style.setProperty('display', 'flex', 'important');
@@ -949,12 +899,12 @@ function ImageEditorInner({
   }, [currentDesignState, loadedDesignState]);
 
   useEffect(() => {
-    if (!open || !fieSource || fieSourceLoading) return;
+    if (!open || !activeSrc) return;
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
     const oImg = document.createElement('img');
-    oImg.src = fieSource;
+    oImg.src = activeSrc;
     oImg.draggable = false;
     oImg.style.cssText =
       'position:absolute;pointer-events:none;display:none;' +
@@ -1075,7 +1025,7 @@ function ImageEditorInner({
       inserted = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, fieSource, fieSourceLoading, activeIndex]);
+  }, [open, activeSrc, activeIndex]);
 
   // ── Touch swipe on the top bar to navigate ───────────────────────────────
   const swipeTouchStart = useRef(null);
@@ -1140,7 +1090,7 @@ function ImageEditorInner({
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
           paddingLeft: 12,
-          paddingRight: 12,
+          paddingRight: 48,
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
@@ -1397,16 +1347,9 @@ function ImageEditorInner({
 
       {/* ── Filerobot Image Editor (takes remaining height) ── */}
       <div ref={editorAreaRef} className="flex-1 min-h-0 overflow-hidden relative">
-        {/* Loading overlay while pre-scaling for high-quality preview */}
-        {fieSourceLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10 gap-2">
-            <Loader2 className="w-8 h-8 animate-spin text-white" />
-            <span className="text-white text-sm">Preparing image…</span>
-          </div>
-        )}
-        {!fieSourceLoading && fieSource && <FilerobotImageEditor
+        {activeSrc && <FilerobotImageEditor
           key={`fie-${activeIndex}-${activeSrc}`}
-          source={fieSource}
+          source={activeSrc}
           onSave={handleSave}
           onBeforeSave={() => false}
           onClose={handleClose}

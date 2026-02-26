@@ -1212,12 +1212,18 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
   }
 }
 
-/* ── FIE Topbar: right-side icons grouped tightly, aligned under custom bar ── */
+/* ── FIE Topbar ──────────────────────────────────────────────────────────── */
 .FIE_topbar,
 [class*="FIE_topbar"] {
   padding: 6px 12px !important;
 }
-/* Right-side group (undo/redo/close): no gaps, no margins, tightly packed */
+/* Left-side group (save button): shift left to align under tabs */
+[class*="sc-21g986-1"],
+.FIE_topbar > *:first-child {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+/* Right-side group (undo/redo/close): no gaps, tightly packed, pulled left */
 [class*="sc-21g986-2"],
 .FIE_topbar > *:last-child {
   display: flex !important;
