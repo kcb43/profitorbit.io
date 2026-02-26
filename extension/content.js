@@ -1623,6 +1623,22 @@ async function fillFacebookForm(listingData) {
       }
     }
 
+    // 10b. HIDE FROM FRIENDS (privacy)
+    if (listingData.hideFromFriends === true) {
+      const hideToggle = document.querySelector('[aria-label*="Hide from friends" i], [aria-label*="hide from friends" i]');
+      if (hideToggle) {
+        const isChecked = hideToggle.getAttribute('aria-checked') === 'true' || hideToggle.checked;
+        if (!isChecked) { hideToggle.click(); await sleep(200); }
+        console.log('  ✓ Hide from friends set');
+      } else {
+        const byText = Array.from(document.querySelectorAll('span, label, div')).find(el => /hide\s*(your\s*)?(listing\s*)?from\s*friends/i.test(el.textContent || ''));
+        if (byText) {
+          const toggle = byText.closest('[role="switch"]') || byText.parentElement?.querySelector('[role="switch"]') || byText.previousElementSibling || byText.nextElementSibling;
+          if (toggle && (toggle.getAttribute('aria-checked') !== 'true' && !toggle.checked)) { toggle.click(); await sleep(200); console.log('  ✓ Hide from friends set'); }
+        }
+      }
+    }
+
     // 11. ALLOW OFFERS / NEGOTIATION
     if (typeof listingData.allowOffers === 'boolean') {
       const offersToggle = document.querySelector('[aria-label*="Allow offers"], [aria-label*="negotiation"], [aria-label*="Offers"]');

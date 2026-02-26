@@ -5343,22 +5343,6 @@ export default function CrosslistComposer() {
             <Label className="text-xs text-muted-foreground mb-1">Listing ID</Label>
             <code className="text-sm bg-background px-2 py-1 rounded border break-all inline-block">{String(listingId)}</code>
           </div>
-          <div className="md:col-span-2">
-            <Label className="text-xs text-muted-foreground mb-1">Listing URL</Label>
-            <div className="text-sm break-all">
-              {canView ? (
-                <button
-                  type="button"
-                  className="underline text-emerald-700 dark:text-emerald-400"
-                  onClick={() => window.open(listingUrl, '_blank', 'noopener,noreferrer')}
-                >
-                  {listingUrl}
-                </button>
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              )}
-            </div>
-          </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
@@ -5765,6 +5749,7 @@ export default function CrosslistComposer() {
   const [soldDialogOpen, setSoldDialogOpen] = useState(false);
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
   const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
+  const [listingDetailPopupRec, setListingDetailPopupRec] = useState(null); // { mp, rec, meta } for marketplace listing detail dialog
   
   // eBay OAuth token state
   const [ebayToken, setEbayToken] = useState(() => {
@@ -7487,7 +7472,7 @@ export default function CrosslistComposer() {
       ebay: savedEbay ? { ...initial.forms.ebay, ...savedEbay } : { ...initial.forms.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.forms.etsy, ...savedEtsy } : initial.forms.etsy,
       mercari: savedMercari ? { ...initial.forms.mercari, ...savedMercari } : { ...initial.forms.mercari, ...(mercariDefaults || {}) },
-      facebook: savedFacebook ? { ...initial.forms.facebook, ...savedFacebook } : { ...initial.forms.facebook, ...(facebookDefaults || {}) },
+      facebook: { ...initial.forms.facebook, ...(facebookDefaults || {}), ...(savedFacebook || {}) },
     };
     
     console.log('🔧 Merged template state (after localStorage):', {
@@ -7517,6 +7502,16 @@ export default function CrosslistComposer() {
       setBrandIsCustom(false);
     }
   }, [ebayDefaults, mercariDefaults, facebookDefaults, generalDefaults]);
+
+  // Sync Facebook form from fulfillment defaults when user switches to Facebook form
+  // Ensures "Hide from friends" etc. from Fulfillment settings apply when opening Facebook form
+  useEffect(() => {
+    if (activeForm !== 'facebook') return;
+    const fb = loadFacebookDefaults();
+    if (!fb || Object.keys(fb).length === 0) return;
+    setFacebookDefaults(fb);
+    setTemplateForms((prev) => ({ ...prev, facebook: { ...prev.facebook, ...fb } }));
+  }, [activeForm]);
   
   // Load saved templates from localStorage - per-item if editing, global templates for new items
   // Note: This runs when item ID changes, but populateTemplates also loads saved data
@@ -9197,6 +9192,9 @@ export default function CrosslistComposer() {
 
             // ── Location ──
             location: facebookForm.meetUpLocation || generalForm.zip || null,
+
+            // ── Privacy ──
+            hideFromFriends: !!facebookForm.hideFromFriends,
           },
         });
 
@@ -9238,9 +9236,12 @@ export default function CrosslistComposer() {
             }));
           }
 
+          const appliedSettings = [];
+          if (facebookForm.hideFromFriends) appliedSettings.push('Hide from friends');
+          const settingsNote = appliedSettings.length ? ` (${appliedSettings.join(', ')} enabled)` : '';
           toast({
             title: "Facebook listing created successfully!",
-            description: listingUrl ? `Listed! ${listingUrl}` : (result?.message || 'Listed successfully.'),
+            description: (listingUrl ? `Listed! ${listingUrl}` : (result?.message || 'Listed successfully.')) + settingsNote,
           });
 
           // Update inventory item status and save marketplace listing
@@ -9991,6 +9992,18 @@ export default function CrosslistComposer() {
                 categoryId: facebookCategoryId,
                 category: facebookForm.category || generalForm.category,
                 condition: facebookCondition,
+                deliveryMethod:      facebookForm.deliveryMethod || 'shipping_and_pickup',
+                shippingOption:      facebookForm.shippingOption || 'own_label',
+                shippingPrice:       facebookForm.shippingPrice ? parseFloat(facebookForm.shippingPrice) : null,
+                displayFreeShipping: !!facebookForm.displayFreeShipping,
+                shippingCarrier:    facebookForm.shippingCarrier || null,
+                packageWeightClass: facebookForm.packageWeightClass || null,
+                packageWeightLbs:   facebookForm.packageWeightLbs ? parseFloat(facebookForm.packageWeightLbs) : null,
+                packageWeightOz:    facebookForm.packageWeightOz ? parseFloat(facebookForm.packageWeightOz) : null,
+                allowOffers:        !!facebookForm.allowOffers,
+                minimumOfferPrice:  facebookForm.minimumOfferPrice ? parseFloat(facebookForm.minimumOfferPrice) : null,
+                location:           facebookForm.meetUpLocation || generalForm.zip || null,
+                hideFromFriends:    !!facebookForm.hideFromFriends,
               },
             });
 
@@ -10999,60 +11012,44 @@ export default function CrosslistComposer() {
           {activeForm === "general" && (
             <div className="space-y-3">
 
-              {/* ── Active Marketplace Listings Summary ── */}
+              {/* ── Active Marketplace Listings Summary (compact buttons → popup) ── */}
               {(() => {
                 const MP_META = {
-                  facebook: { label: 'Facebook Marketplace', color: 'bg-blue-600' },
-                  ebay:     { label: 'eBay',                 color: 'bg-yellow-500' },
-                  mercari:  { label: 'Mercari',              color: 'bg-red-500'    },
-                  poshmark: { label: 'Poshmark',             color: 'bg-rose-500'   },
-                  etsy:     { label: 'Etsy',                 color: 'bg-orange-500' },
+                  facebook: { label: 'Facebook', color: 'bg-blue-600' },
+                  ebay:     { label: 'eBay',   color: 'bg-yellow-500' },
+                  mercari:  { label: 'Mercari', color: 'bg-red-500' },
+                  poshmark: { label: 'Poshmark', color: 'bg-rose-500' },
+                  etsy:     { label: 'Etsy',   color: 'bg-orange-500' },
                 };
                 const entries = Object.entries(listingRecordsByMarketplace || {})
                   .filter(([, rec]) => rec && rec.status)
                   .map(([mp, rec]) => ({ mp, rec, meta: MP_META[mp] || { label: mp, color: 'bg-gray-500' } }));
                 if (entries.length === 0) return null;
                 return (
-                  <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ShoppingBag className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Listed On</span>
-                    </div>
-                    <div className="grid gap-2">
-                      {entries.map(({ mp, rec, meta }) => {
-                        const url = rec.marketplace_listing_url || '';
-                        const hasUrl = url.startsWith('http');
-                        const statusLower = String(rec.status || '').toLowerCase();
-                        const isActive = statusLower === 'active';
-                        const isProcessing = statusLower === 'processing';
-                        const isDelisted = ['ended','delisted','deleted','cancel'].includes(statusLower);
-                        return (
-                          <div key={mp} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.color}`} />
-                              <span className="text-base font-medium truncate">{meta.label}</span>
-                              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-semibold">Active</span>}
-                              {isProcessing && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-semibold">Processing</span>}
-                              {isDelisted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-700 font-semibold">Ended</span>}
-                            </div>
-                            {hasUrl ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 gap-1.5 text-xs flex-shrink-0"
-                                onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                View
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground flex-shrink-0">{rec.marketplace_listing_id ? `ID: ${rec.marketplace_listing_id}` : '—'}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="flex flex-wrap gap-2">
+                    {entries.map(({ mp, rec, meta }) => {
+                      const statusLower = String(rec.status || '').toLowerCase();
+                      const isActive = statusLower === 'active';
+                      const isProcessing = statusLower === 'processing';
+                      const isDelisted = ['ended','delisted','deleted','cancel'].includes(statusLower);
+                      const statusBadge = isActive ? 'bg-emerald-500/15 text-emerald-700' : isProcessing ? 'bg-amber-500/15 text-amber-700' : isDelisted ? 'bg-red-500/15 text-red-700' : 'bg-muted text-muted-foreground';
+                      return (
+                        <Button
+                          key={mp}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 px-3 text-xs font-medium rounded-full border-muted-foreground/30 hover:border-primary/50"
+                          onClick={() => setListingDetailPopupRec({ mp, rec, meta })}
+                        >
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.color}`} />
+                          <span>{meta.label}</span>
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge}`}>
+                            {isActive ? 'Active' : isProcessing ? 'Processing' : isDelisted ? 'Ended' : listingStatusLabel(rec.status)}
+                          </span>
+                        </Button>
+                      );
+                    })}
                   </div>
                 );
               })()}
@@ -22760,6 +22757,67 @@ export default function CrosslistComposer() {
           </div>
         </div>
       </div>
+
+      {/* Marketplace Listing Detail Dialog */}
+      <Dialog open={!!listingDetailPopupRec} onOpenChange={(open) => !open && setListingDetailPopupRec(null)}>
+        <DialogContent className="sm:max-w-[420px]">
+          {listingDetailPopupRec && (() => {
+            const { mp, rec, meta } = listingDetailPopupRec;
+            const createdAt = rec.listed_at || rec.created_at || null;
+            const lastSavedAt = rec.updated_at || rec.created_at || rec.listed_at || null;
+            const listingId = rec.marketplace_listing_id || '—';
+            const fallbackUrl = mp === 'ebay' && listingId && listingId !== '—' ? getEbayItemUrl(String(listingId)) : '';
+            const listingUrl = rec.marketplace_listing_url || fallbackUrl || '';
+            const canView = typeof listingUrl === 'string' && listingUrl.startsWith('http');
+            const statusLower = String(rec.status || '').toLowerCase();
+            const statusText = listingStatusLabel(rec.status);
+            const isDelisted = statusLower === 'ended' || statusLower === 'delisted' || statusLower === 'deleted' || statusLower === 'cancel';
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${meta.color}`} />
+                    {meta.label}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-3 text-sm">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1">Status</Label>
+                    <div>
+                      {isDelisted ? (
+                        <span className="inline-flex items-center rounded px-2 py-1 text-xs font-semibold bg-red-600 text-white">{statusText}</span>
+                      ) : (
+                        <span className="inline-flex items-center rounded px-2 py-1 text-xs font-semibold bg-emerald-600 text-white">{statusText}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1">Created</Label>
+                      <div className="font-medium">{formatListingDate(createdAt)}</div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1">Last Saved</Label>
+                      <div className="font-medium">{formatLastSaved(lastSavedAt)}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1">Listing ID</Label>
+                    <code className="text-sm bg-muted px-2 py-1 rounded border break-all inline-block">{String(listingId)}</code>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setListingDetailPopupRec(null)}>Close</Button>
+                  <Button disabled={!canView} onClick={() => { if (canView) window.open(listingUrl, '_blank', 'noopener,noreferrer'); setListingDetailPopupRec(null); }}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Listing
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Package Details Dialog */}
       <Dialog open={packageDetailsDialogOpen} onOpenChange={setPackageDetailsDialogOpen}>

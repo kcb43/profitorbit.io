@@ -4811,6 +4811,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const allowOffers         = !!payload.allowOffers;
         const minOfferPriceRaw    = payload.minimumOfferPrice  != null ? Number(payload.minimumOfferPrice)  : null;
         const locationText        = payload.location           || null;
+        const hideFromFriends     = !!payload.hideFromFriends;
 
         const FB_DELIVERY_TYPE = {
           'shipping_and_pickup': 'SHIPPING_AND_PICKUP',
@@ -4845,6 +4846,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           packageWeightClass,
           allowOffers,
           locationText,
+          hideFromFriends,
         });
 
         const toUrl = (v) => {
@@ -6156,6 +6158,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // ── NEW: Location text ──
           if (locationText) {
             setDeep(vars, ['input', 'data', 'common', 'location_text'], locationText);
+          }
+
+          // ── NEW: Hide from friends (privacy) ──
+          // Facebook GraphQL may use hide_from_friends or similar; try common paths.
+          if (hideFromFriends) {
+            setDeep(vars, ['input', 'data', 'common', 'hide_from_friends'], true);
+            setDeep(vars, ['input', 'data', 'common', 'hide_from_feed'], true);
+            console.log('🟦 [FACEBOOK] Set hide_from_friends / hide_from_feed:', true);
           }
         }
 
