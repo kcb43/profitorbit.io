@@ -421,44 +421,45 @@ function ImageEditorInner({
   const editorAreaRef = useRef(null);
 
   // ── Post-mount safety net: verify FIE shows the correct image ─────────────
-  // Even with the pre-loaded HTMLImageElement approach, FIE's internal
-  // isFieMounted race can occasionally write the wrong originalImage into its
-  // store. We check 200 ms and 1 000 ms after activeSrc lands (giving FIE
-  // time to finish its own internal setTimeout dispatch), compare what Konva
-  // is actually rendering, and if it is wrong we force-correct FIE's store
-  // via updateStateFnRef (UPDATE_STATE action — deepMerge treats HTMLImageElement
-  // as a direct-assign per deepMerge.js "f instanceof HTMLElement" branch)
-  // AND directly patch the Konva image node for immediate visual feedback.
+  // The pre-loaded HTMLImageElement is the correct source, but FIE's internal
+  // isFieMounted race can still write the wrong originalImage into its store.
+  // We poll at 50 ms, 300 ms, and 1 500 ms after activeSrc is set.
+  //   • If Konva's image node has no image yet, FIE is still loading — skip
+  //     and let the later interval catch it (prevents correcting too early and
+  //     having FIE's own load overwrite us with the wrong image afterwards).
+  //   • If the node holds a DIFFERENT HTMLImageElement than correctImg, FIE
+  //     loaded the wrong image: fix its store via UPDATE_STATE (deepMerge.js
+  //     treats HTMLElement as a direct-assign, not a deep merge) and also
+  //     patch Konva directly for instant visual feedback.
   useEffect(() => {
     if (!(activeSrc instanceof HTMLImageElement) || !editorAreaRef.current) return;
     const correctImg = activeSrc;
     const capturedIndex = activeIndex;
 
+    const findStage = () =>
+      // Prefer the stage that lives inside our editor wrapper; fall back to
+      // Konva.stages[0] so the check still works if contains() fails.
+      Konva.stages?.find(s => {
+        try { return editorAreaRef.current?.contains(s.container()); } catch { return false; }
+      }) ?? Konva.stages?.[0];
+
     const check = () => {
       if (!editorAreaRef.current) return;
-      // Find the Konva stage inside THIS editor's wrapper — not Konva.stages[0]
-      // which may be a stale instance from a previous mount.
-      const stage = Konva.stages?.find(s => {
-        try { return editorAreaRef.current?.contains(s.container()); } catch { return false; }
-      });
+      const stage = findStage();
       const imgNode = stage?.findOne?.('#FIE_original-image');
       const konvaImg = imgNode?.image?.();
 
-      // Compare by object identity first, then by URL base path (ignoring ?_v= params)
-      const baseSrc = (u) => (u || '').split('?')[0].slice(-50);
-      const sameImg = konvaImg === correctImg
-        || (konvaImg?.src && correctImg.src && baseSrc(konvaImg.src) === baseSrc(correctImg.src));
+      // If FIE hasn't placed an image yet, do nothing — a later interval will retry.
+      if (!konvaImg) return;
 
-      if (!sameImg) {
+      // Object-identity is the reliable comparison: FIE's setOriginalImage
+      // stores the passed HTMLImageElement directly into state and into Konva.
+      if (konvaImg !== correctImg) {
         console.warn(
           '[ImageEditor] FIE rendered wrong image for idx=', capturedIndex,
-          '| konva=', baseSrc(konvaImg?.src),
-          '| expected=', baseSrc(correctImg.src),
-          '→ forcing correction via store + Konva',
+          '— forcing correction via store + Konva',
         );
-        // 1. Fix FIE's internal store (originalImage + imgSrc).
-        //    deepMerge treats HTMLElement as direct-assign, so originalImage
-        //    is replaced correctly, not deep-merged.
+        // 1. Fix FIE's internal store so edits/saves use the right image.
         updateStateFnRef.current?.({ originalImage: correctImg, imgSrc: correctImg.src });
         // 2. Patch Konva directly for immediate visual update.
         if (imgNode) {
@@ -469,9 +470,10 @@ function ImageEditorInner({
       }
     };
 
-    const t1 = setTimeout(check, 200);
-    const t2 = setTimeout(check, 1000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t1 = setTimeout(check,   50);
+    const t2 = setTimeout(check,  300);
+    const t3 = setTimeout(check, 1500);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   // editorAreaRef is a stable ref — intentionally not in deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSrc, activeIndex, switchCount]);
