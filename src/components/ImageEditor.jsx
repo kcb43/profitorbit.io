@@ -361,15 +361,45 @@ function ImageEditorInner({
     ? (getImgUrl(allImages[activeIndex]) || imageSrc)
     : imageSrc;
 
-  // Cache-busted URL passed to FIE. FIE's internal image loader caches by
-  // URL string, so switching A→B→A can serve B's pixels for A's URL.
-  // Appending a unique query parameter forces a real network fetch each time.
-  const activeSrc = activeOriginalSrc
-    ? `${activeOriginalSrc}${activeOriginalSrc.includes('?') ? '&' : '?'}_fie=${switchCount}`
-    : null;
+  // Blob URL for FIE: we fetch the image bytes and create a unique blob://
+  // URL each time. This eliminates any browser/CDN/FIE caching that could
+  // serve stale pixels when switching between images.
+  const [activeSrc, setActiveSrc] = useState(null);
+  const blobUrlRef = useRef(null);
 
-  // Pass the original URL directly to FIE — no blob conversion.
-  // The save handler already has a fallback for tainted canvases.
+  useEffect(() => {
+    if (!activeOriginalSrc) { setActiveSrc(null); return; }
+    let cancelled = false;
+
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+
+    fetch(activeOriginalSrc)
+      .then(r => r.blob())
+      .then(blob => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        blobUrlRef.current = url;
+        console.log('[ImageEditor] blob ready for index', activeIndex,
+          'original:', activeOriginalSrc.slice(-30),
+          'blob:', url.slice(0, 40), 'size:', blob.size);
+        setActiveSrc(url);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveSrc(activeOriginalSrc);
+      });
+
+    return () => {
+      cancelled = true;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [activeOriginalSrc, switchCount, activeIndex]);
+
   const editorAreaRef = useRef(null);
 
   // Reset everything when a new item/editor session starts
@@ -683,6 +713,11 @@ function ImageEditorInner({
 
   const handleClose = useCallback(() => {
     setLoadedDesignState(null);
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    setActiveSrc(null);
     if (onOpenChange) onOpenChange(false);
   }, [onOpenChange]);
 
