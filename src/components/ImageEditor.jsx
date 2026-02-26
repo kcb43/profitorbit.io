@@ -356,30 +356,38 @@ function ImageEditorInner({
 
   // ── Same-origin blob source for FIE ──────────────────────────────────────
   // Fetch the original image as a blob so the canvas stays untainted for
-  // filters and saves.  NO prescaling or re-encoding — the full-resolution
-  // original is passed straight to FIE.  The hqDrawImage multi-step bicubic
-  // patch + CSS USM sharpening handle display quality without any lossy
-  // intermediate encoding step.
+  // filters and saves.  Each original URL gets ONE stable blob URL cached in
+  // a Map — no race conditions when switching images quickly.
   const [fieSource,        setFieSource]        = useState(null);
   const [fieSourceLoading, setFieSourceLoading] = useState(false);
-  const fieSourceForUrl = useRef(null); // URL this fieSource was fetched for (prevents swap)
-  const prevBlobUrl = useRef(null);
+  const blobCache = useRef(new Map());    // originalUrl → blobUrl
   const editorAreaRef = useRef(null);
-  const fetchGenerationRef = useRef(0);
+
+  // Clean up all cached blob URLs when the editor unmounts
+  useEffect(() => {
+    return () => {
+      blobCache.current.forEach(url => URL.revokeObjectURL(url));
+      blobCache.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
       setFieSource(activeSrc || null);
       setFieSourceLoading(false);
-      fieSourceForUrl.current = activeSrc || null;
+      return;
+    }
+
+    // If already cached, use immediately — no fetch, no race
+    if (blobCache.current.has(activeSrc)) {
+      setFieSource(blobCache.current.get(activeSrc));
+      setFieSourceLoading(false);
       return;
     }
 
     setFieSource(null);
     setFieSourceLoading(true);
-    fieSourceForUrl.current = null;
     let cancelled = false;
-    const gen = ++fetchGenerationRef.current;
     const urlToFetch = activeSrc;
 
     (async () => {
@@ -393,14 +401,12 @@ function ImageEditorInner({
         console.warn('[ImageEditor] Blob fetch failed, using original URL:', err.message);
       }
 
-      if (!cancelled && gen === fetchGenerationRef.current) {
-        if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current);
-        prevBlobUrl.current = blobUrl;
-        fieSourceForUrl.current = urlToFetch;
+      // Always cache the blob URL (even if user switched away)
+      if (blobUrl) blobCache.current.set(urlToFetch, blobUrl);
+
+      if (!cancelled) {
         setFieSource(blobUrl || urlToFetch);
         setFieSourceLoading(false);
-      } else if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
       }
     })();
 
@@ -505,9 +511,14 @@ function ImageEditorInner({
       if (topbar) {
         topbar.style.setProperty('padding', '6px 48px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
-        topbar.style.setProperty('gap', '8px', 'important');
+        topbar.style.setProperty('gap', '4px', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
+        topbar.style.setProperty('justify-content', 'flex-end', 'important');
+        // Remove margins from all children so icons sit next to each other
+        topbar.querySelectorAll(':scope > *').forEach(child => {
+          child.style.setProperty('margin', '0', 'important');
+        });
       }
 
       // Main content: reclaim the vertical space saved from the topbar
@@ -1386,7 +1397,7 @@ function ImageEditorInner({
             <span className="text-white text-sm">Preparing image…</span>
           </div>
         )}
-        {!fieSourceLoading && fieSource && fieSourceForUrl.current === activeSrc && <FilerobotImageEditor
+        {!fieSourceLoading && fieSource && <FilerobotImageEditor
           key={`fie-${activeIndex}-${activeSrc}`}
           source={fieSource}
           onSave={handleSave}
