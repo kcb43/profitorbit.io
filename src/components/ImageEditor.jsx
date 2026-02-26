@@ -364,6 +364,7 @@ function ImageEditorInner({
   const [fieSourceLoading, setFieSourceLoading] = useState(false);
   const prevBlobUrl = useRef(null);
   const editorAreaRef = useRef(null);
+  const fetchGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
@@ -375,6 +376,7 @@ function ImageEditorInner({
     setFieSource(null);
     setFieSourceLoading(true);
     let cancelled = false;
+    const gen = ++fetchGenerationRef.current;
 
     (async () => {
       let blobUrl = null;
@@ -387,11 +389,13 @@ function ImageEditorInner({
         console.warn('[ImageEditor] Blob fetch failed, using original URL:', err.message);
       }
 
-      if (!cancelled) {
+      if (!cancelled && gen === fetchGenerationRef.current) {
         if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current);
         prevBlobUrl.current = blobUrl;
         setFieSource(blobUrl || activeSrc);
         setFieSourceLoading(false);
+      } else if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
       }
     })();
 
@@ -440,9 +444,13 @@ function ImageEditorInner({
       styleEl.id = styleId;
       document.head.appendChild(styleEl);
     }
-    // Only hover colours go in the stylesheet — everything else is applied via
-    // inline style.setProperty in paintTabs() so it beats styled-components.
+    // Selected tab + hover: always white (dark mode was showing gray when selected)
     styleEl.textContent = `
+      .FIE_tab[aria-selected="true"],
+      .FIE_tab[aria-selected="true"] *,
+      .FIE_tab[aria-selected="true"] svg,
+      .FIE_tab[aria-selected="true"] svg *,
+      .FIE_tab:hover,
       .FIE_tab:hover *,
       .FIE_tab:hover svg * {
         color: #ffffff !important;
@@ -474,12 +482,11 @@ function ImageEditorInner({
       });
 
       // ── Layout compaction (inline !important beats styled-components) ──────
-      // Topbar: shrink from the default padding:16px (~95px tall) to ~48px.
-      // Use asymmetric padding (more on right) so the X close button isn't
-      // crowded against the right edge.
+      // Topbar: align with our custom bar (paddingRight 12 to match left; X/back
+      // icons align with Save template, Load, etc. in the bar above).
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
-        topbar.style.setProperty('padding', '6px 48px 6px 12px', 'important');
+        topbar.style.setProperty('padding', '6px 12px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('gap', '8px', 'important');
       }
@@ -723,9 +730,13 @@ function ImageEditorInner({
   // ── Template: load ───────────────────────────────────────────────────────
   const handleLoadTemplate = useCallback((tpl) => {
     const safe = extractTemplateFields(tpl.designState);
-    setLoadedDesignState(Object.keys(safe).length ? safe : null);
+    const ds = Object.keys(safe).length ? safe : null;
+    setLoadedDesignState(ds);
+    if (ds) {
+      imageDesignStates.current[activeIndex] = ds;
+      setModifiedSet(prev => new Set([...prev, activeIndex]));
+    }
     setShowTemplateMenu(false);
-    setModifiedSet(prev => new Set([...prev, activeIndex]));
     toast({ title: `Template "${tpl.name}" applied` });
   }, [activeIndex]);
 
@@ -1091,7 +1102,7 @@ function ImageEditorInner({
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
           paddingLeft: 12,
-          paddingRight: 48,
+          paddingRight: 12,
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
