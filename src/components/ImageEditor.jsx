@@ -337,6 +337,10 @@ function ImageEditorInner({
   const [currentDesignState, setCurrentDesignState] = useState(null);
   const [loadedDesignState, setLoadedDesignState]   = useState(null);
   const updateStateFnRef = useRef(null);
+  // Suppresses onModify calls during image switches. FIE fires onModify as part
+  // of its internal reset/dimension-recalc when resetOnImageSourceChange fires.
+  // That is not a real user edit and should not light up the Reset All button.
+  const ignoringModify = useRef(false);
 
   // ── Template management ──────────────────────────────────────────────────
   const [templates, setTemplates]           = useState(loadTemplates);
@@ -383,17 +387,25 @@ function ImageEditorInner({
     // intentional. FIE stays alive showing the previous image until the new
     // HTMLImageElement is ready, then source prop changes (not a remount).
     // This eliminates the isFieMounted race that caused the image swap.
-
-    // Revoke previous blob URL to free memory
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
+    //
+    // Blob URL revocation: we intentionally do NOT revoke in the cleanup.
+    // Revoking in cleanup means the old blob URL (still set as img_old.src,
+    // still referenced by FIE's internal state) gets invalidated while FIE
+    // is mid-transition. That causes ERR_FILE_NOT_FOUND in the console.
+    // Instead, we revoke the previous blob URL inside the .then callback,
+    // right before we create the new one — at that point FIE has the new
+    // HTMLImageElement and the old blob URL is safe to release.
 
     fetch(activeOriginalSrc)
       .then(r => r.blob())
       .then(blob => {
         if (cancelled) return;
+        // Revoke the previous blob URL now that we have the new data ready.
+        // It is safe here because we are about to replace activeSrc entirely.
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = null;
+        }
         const blobUrl = URL.createObjectURL(blob);
         blobUrlRef.current = blobUrl;
         const img = new Image();
@@ -402,23 +414,28 @@ function ImageEditorInner({
           console.log('[ImageEditor] HTMLImg ready idx=', activeIndex,
             'src=', activeOriginalSrc.slice(-20), 'w=', img.naturalWidth);
           setActiveSrc(img); // pass the already-loaded element to FIE
+          // FIE will fire onModify as part of its internal reset
+          // (resetOnImageSourceChange / dimension recalc). Give it ~300 ms to
+          // finish so we can ignore those auto-modifications.
+          setTimeout(() => { ignoringModify.current = false; }, 300);
         };
         img.onerror = () => {
-          if (!cancelled) setActiveSrc(activeOriginalSrc); // fallback to URL
+          if (!cancelled) {
+            setActiveSrc(activeOriginalSrc); // fallback to URL
+            ignoringModify.current = false;
+          }
         };
         img.src = blobUrl;
       })
       .catch(() => {
-        if (!cancelled) setActiveSrc(activeOriginalSrc);
+        if (!cancelled) {
+          setActiveSrc(activeOriginalSrc);
+          ignoringModify.current = false;
+        }
       });
 
-    return () => {
-      cancelled = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
+    return () => { cancelled = true; };
+    // No blob revocation in cleanup — see comment above.
   }, [activeOriginalSrc, switchCount, activeIndex]);
 
   const editorAreaRef = useRef(null);
@@ -726,12 +743,21 @@ function ImageEditorInner({
     // false→true, and create the exact race condition we're trying to avoid.
     // Instead, activeSrc transitions directly from img_old → img_new via the
     // loading effect, and FIE's own useUpdateEffect([source]) handles the swap.
+    //
+    // Suppress onModify during the switch: FIE fires onModify internally when
+    // resetOnImageSourceChange resets its state and when it recalculates the
+    // displayed image dimensions for the new image. Neither of those is a real
+    // user edit. The flag is cleared in img.onload + a 300 ms grace period.
+    ignoringModify.current = true;
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
 
   // ── onModify: keep currentDesignState in sync in real time ──────────────
   const handleModify = useCallback((ds) => {
+    // Ignore modifications fired by FIE's internal reset/recalc during an
+    // image switch. ignoringModify is cleared after the new image loads.
+    if (ignoringModify.current) return;
     setCurrentDesignState(ds);
   }, []);
 
@@ -812,6 +838,12 @@ function ImageEditorInner({
   const handleClose = useCallback(() => {
     setLoadedDesignState(null);
     setActiveSrc(null);
+    // Revoke the last blob URL now that the editor is closing.
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    ignoringModify.current = false;
     if (onOpenChange) onOpenChange(false);
   }, [onOpenChange]);
 
