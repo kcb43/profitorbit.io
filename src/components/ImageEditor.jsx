@@ -971,14 +971,17 @@ function ImageEditorInner({
         }
       }
 
-      // Only show overlay on the Adjust tab — it provides sharp rendering for
-      // crop/rotate preview.  On Finetune and Watermark tabs, hide it so the
-      // Konva canvas is authoritative: crop state, annotations, shadows, and
-      // all filters are visible without the overlay masking them.
+      // Show overlay on Adjust tab for sharp crop/rotate preview.
+      // On Finetune/Watermark: keep overlay visible when we have a loaded template
+      // (finetunesProps), because FIE's Konva layer often fails to apply loadableDesignState
+      // on tab switch — hiding would reveal the raw image. Once Konva has the design,
+      // both overlay and Konva match; overlay has pointer-events:none so interaction works.
       const isAdjustTab = !!editorArea.querySelector(
         '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
       );
-      if (!isAdjustTab) {
+      const hasFinetunes = designStateRef.current?.finetunesProps &&
+        Object.keys(designStateRef.current.finetunesProps).length > 0;
+      if (!isAdjustTab && !hasFinetunes) {
         oImg.style.display = 'none';
         return;
       }

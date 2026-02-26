@@ -9775,6 +9775,13 @@ export default function CrosslistComposer() {
     }
   );
 
+  const handleSmartListingOpen = useCallback(() => {
+    if (!canUseSmartListing) {
+      toast({ title: 'Complete required fields', description: 'Fill in all required fields (marked with *) first.', variant: 'destructive' });
+      return;
+    }
+    smartListing.openModal();
+  }, [canUseSmartListing, smartListing]);
 
   const getComposerItemIdsForSync = () => {
     try {
@@ -11997,7 +12004,7 @@ export default function CrosslistComposer() {
 
               {/* Smart Listing Section - Mobile General Form - List to Multiple Marketplaces */}
               {smartListingEnabled && (
-                <SmartListingSection onOpenModal={smartListing.openModal} disabled={!canUseSmartListing} />
+                <SmartListingSection onOpenModal={handleSmartListingOpen} />
               )}
 
               <div className="flex flex-col sm:flex-row sm:justify-end gap-1.5">
@@ -13541,7 +13548,7 @@ export default function CrosslistComposer() {
               {/* Smart Listing Section - List to Multiple Marketplaces */}
               {smartListingEnabled && (
                 <>
-                  <SmartListingSection onOpenModal={smartListing.openModal} disabled={!canUseSmartListing} />
+                  <SmartListingSection onOpenModal={handleSmartListingOpen} />
                   <SmartListingModal
                     open={smartListing.modalOpen}
                     onClose={smartListing.closeModal}
@@ -18134,7 +18141,7 @@ export default function CrosslistComposer() {
                       {/* Smart Listing Section - Desktop General Form - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
                         <>
-                          <SmartListingSection onOpenModal={smartListing.openModal} disabled={!canUseSmartListing} />
+                          <SmartListingSection onOpenModal={handleSmartListingOpen} />
                           <SmartListingModal
                             open={smartListing.modalOpen}
                             onClose={smartListing.closeModal}
@@ -19668,8 +19675,7 @@ export default function CrosslistComposer() {
                       {/* Smart Listing Section - Desktop - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
                         <SmartListingSection
-                          onOpenModal={smartListing.openModal}
-                          disabled={!canUseSmartListing}
+                          onOpenModal={handleSmartListingOpen}
                           selectedMarketplaces={smartListing.selectedMarketplaces}
                           toggleMarketplace={smartListing.toggleMarketplace}
                           handleListToSelected={smartListing.handleListToSelected}
