@@ -1250,3 +1250,19 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
   background: #3b82f6 !important;
   border-radius: 4px !important;
 }
+
+/* Crop tool (shows "Original" when selected) uses FIE_crop-tool, not tool-button.
+   In light mode it gets accent-primary-active (#1d4ed8) = dark text on blue.
+   Override so selected Crop/Original has white text on blue background.        */
+[class*="FIE_crop-tool"][aria-selected='true'],
+[class*="FIE_crop-tool"][aria-selected='true'] * {
+  color: #ffffff !important;
+}
+[class*="FIE_crop-tool"][aria-selected='true'] svg,
+[class*="FIE_crop-tool"][aria-selected='true'] svg * {
+  fill: #ffffff !important;
+}
+[class*="FIE_crop-tool"][aria-selected='true'] {
+  background: #3b82f6 !important;
+  border-radius: 4px !important;
+}

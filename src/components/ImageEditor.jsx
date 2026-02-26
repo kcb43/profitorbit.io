@@ -45,6 +45,17 @@ import { inventoryApi } from '@/api/inventoryApi';
 const TEMPLATES_KEY = 'orben_editor_templates';
 const MAX_TEMPLATES = 20;
 
+// Maps finetunesProps keys to FIE finetune string names (for finetunesStrsToClasses).
+// FIE stores finetunes as class refs internally; JSON loses them. Infer from props.
+const FINETUNE_PROP_TO_NAME = {
+  gammaBrightness: 'GammaBrightness',
+  shadowsValue: 'Shadows',
+  warmth: 'Warmth',
+  threshold: 'CustomThreshold',
+  brightness: 'Brightness',
+  contrast: 'Contrast',
+};
+
 // Extracts ONLY reusable, image-agnostic fields from a FIE design state.
 // Everything else (imgSrc, annotations, selectionsIds, undo history,
 // shownImageDimensions, resize, etc.) is image-specific or internal state
@@ -52,10 +63,20 @@ const MAX_TEMPLATES = 20;
 function extractTemplateFields(ds) {
   if (!ds) return {};
   const tpl = {};
-  if (ds.finetunesProps && Object.keys(ds.finetunesProps).length)
+  if (ds.finetunesProps && Object.keys(ds.finetunesProps).length) {
     tpl.finetunesProps = { ...ds.finetunesProps };
-  if (Array.isArray(ds.finetunes) && ds.finetunes.length)
-    tpl.finetunes = [...ds.finetunes];
+    // Infer finetunes string names from props (ds.finetunes may be class refs that
+    // don't serialize). FIE's finetunesStrsToClasses needs these for Konva filters.
+    const inferred = Object.keys(tpl.finetunesProps)
+      .map(k => FINETUNE_PROP_TO_NAME[k])
+      .filter(Boolean);
+    if (inferred.length) tpl.finetunes = inferred;
+  } else if (Array.isArray(ds.finetunes) && ds.finetunes.length) {
+    const names = ds.finetunes
+      .map(f => (typeof f === 'string' ? f : f?.finetuneName))
+      .filter(Boolean);
+    if (names.length) tpl.finetunes = names;
+  }
   if (ds.filter) tpl.filter = ds.filter;
   if (ds.adjustments) {
     tpl.adjustments = {};
@@ -781,7 +802,11 @@ function ImageEditorInner({
   //      Layer (crop handles, annotations).
   const overlayRafRef = useRef(null);
   const designStateRef = useRef(null);
-  useEffect(() => { designStateRef.current = currentDesignState; }, [currentDesignState]);
+  // Overlay uses currentDesignState (from onModify) or loadedDesignState (from template).
+  // FIE does not call onModify when applying loadableDesignState, so we need both.
+  useEffect(() => {
+    designStateRef.current = currentDesignState ?? loadedDesignState;
+  }, [currentDesignState, loadedDesignState]);
 
   useEffect(() => {
     if (!open || !fieSource || fieSourceLoading) return;
