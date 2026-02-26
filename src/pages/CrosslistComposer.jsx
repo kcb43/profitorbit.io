@@ -61,6 +61,7 @@ import {
   ShoppingBag,
   Copy,
   Info,
+  Loader2,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import SoldLookupDialog from "../components/SoldLookupDialog";
@@ -4691,7 +4692,7 @@ const GENERAL_TEMPLATE_DEFAULT = {
   description: "",
   brand: "",
   condition: "",
-  color1: "",
+  color1: "Black",
   color2: "",
   color3: "",
   sku: "",
@@ -4900,7 +4901,7 @@ const createInitialTemplateState = (item) => {
     description: item?.description || item?.notes || "", // Use description first, fallback to notes
     brand: item?.brand || "",
     condition: mapConditionToGeneral(item?.condition) || "", // Map condition
-    color1: item?.color1 || "",
+    color1: item?.color1 || "Black",
     color2: item?.color2 || "",
     color3: item?.color3 || "",
     sku: item?.sku || "",
@@ -7025,6 +7026,39 @@ export default function CrosslistComposer() {
 
   const [generalDefaults, setGeneralDefaults] = useState(() => loadGeneralDefaults() || {});
 
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [tagSuggestionsLoading, setTagSuggestionsLoading] = useState(false);
+  const tagSuggestDebounceRef = useRef(null);
+
+  useEffect(() => {
+    const desc = (generalForm?.description || '').trim();
+    if (desc.length < 20) {
+      setTagSuggestions([]);
+      return;
+    }
+    if (tagSuggestDebounceRef.current) clearTimeout(tagSuggestDebounceRef.current);
+    tagSuggestDebounceRef.current = setTimeout(async () => {
+      tagSuggestDebounceRef.current = null;
+      setTagSuggestionsLoading(true);
+      try {
+        const res = await fetch('/api/ai/suggest-tags', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: desc }),
+        });
+        const data = res.ok ? await res.json() : { tags: [] };
+        setTagSuggestions(Array.isArray(data.tags) ? data.tags : []);
+      } catch {
+        setTagSuggestions([]);
+      } finally {
+        setTagSuggestionsLoading(false);
+      }
+    }, 500);
+    return () => {
+      if (tagSuggestDebounceRef.current) clearTimeout(tagSuggestDebounceRef.current);
+    };
+  }, [generalForm?.description]);
+
   const updateGeneralDefault = (field, value, opts = {}) => {
     const next = { ...(generalDefaults || {}), [field]: value };
     setGeneralDefaults(next);
@@ -8304,7 +8338,15 @@ export default function CrosslistComposer() {
       return next;
     });
   };
-  
+
+  const addSuggestedTag = useCallback((tag) => {
+    const current = (generalForm?.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    const lower = new Set(current.map(t => t.toLowerCase()));
+    if (lower.has(tag.toLowerCase())) return;
+    handleGeneralChange('tags', [...current, tag].join(', '));
+    setTagSuggestions(prev => prev.filter(t => t.toLowerCase() !== tag.toLowerCase()));
+  }, [generalForm?.tags, handleGeneralChange]);
+
   const handleMarketplaceChange = (marketplace, field, value) => {
     setTemplateForms((prev) => ({
       ...prev,
@@ -11906,6 +11948,32 @@ export default function CrosslistComposer() {
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Helps your item get found. (comma or enter)
                 </p>
+                {((generalForm?.description || '').trim().length >= 20) && (
+                  <div className="mt-3">
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                      {tagSuggestionsLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      Suggested tags
+                    </p>
+                    {tagSuggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {tagSuggestions.map((t) => (
+                          <Badge
+                            key={t}
+                            variant="outline"
+                            className="cursor-pointer hover:bg-primary/10 hover:border-primary/50 text-xs font-normal"
+                            onClick={() => addSuggestedTag(t)}
+                          >
+                            + {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Shipping Settings Section */}
@@ -18047,6 +18115,32 @@ export default function CrosslistComposer() {
                         <p className="mt-1.5 text-xs text-muted-foreground">
                           Helps your item get found. (comma or enter)
                         </p>
+                        {((generalForm?.description || '').trim().length >= 20) && (
+                          <div className="mt-3">
+                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                              {tagSuggestionsLoading ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3.5 w-3.5" />
+                              )}
+                              Suggested tags
+                            </p>
+                            {tagSuggestions.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {tagSuggestions.map((t) => (
+                                  <Badge
+                                    key={t}
+                                    variant="outline"
+                                    className="cursor-pointer hover:bg-primary/10 hover:border-primary/50 text-xs font-normal"
+                                    onClick={() => addSuggestedTag(t)}
+                                  >
+                                    + {t}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Shipping Settings Section */}
@@ -18091,21 +18185,26 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-base font-medium">Package Details</Label>
                         </div>
-                        {generalForm.packageWeight && (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => {
-                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                                updateGeneralDefault(f, generalForm[f], { silent: true })
-                              );
-                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                            }}
-                          >
-                            <Save className="h-3.5 w-3.5" />
-                            Save as default
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs transition-colors",
+                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                              ? "text-muted-foreground hover:text-foreground"
+                              : "text-muted-foreground/50 cursor-not-allowed"
+                          )}
+                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                          onClick={() => {
+                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                              updateGeneralDefault(f, generalForm[f], { silent: true })
+                            );
+                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                          }}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          Save as default
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -19633,21 +19732,26 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-base font-medium">Package Details</Label>
                         </div>
-                        {generalForm.packageWeight && (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => {
-                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                                updateGeneralDefault(f, generalForm[f], { silent: true })
-                              );
-                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                            }}
-                          >
-                            <Save className="h-3.5 w-3.5" />
-                            Save as default
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs transition-colors",
+                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                              ? "text-muted-foreground hover:text-foreground"
+                              : "text-muted-foreground/50 cursor-not-allowed"
+                          )}
+                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                          onClick={() => {
+                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                              updateGeneralDefault(f, generalForm[f], { silent: true })
+                            );
+                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                          }}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          Save as default
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -20270,21 +20374,26 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-base font-medium">Package Details</Label>
                         </div>
-                        {generalForm.packageWeight && (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => {
-                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                                updateGeneralDefault(f, generalForm[f], { silent: true })
-                              );
-                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                            }}
-                          >
-                            <Save className="h-3.5 w-3.5" />
-                            Save as default
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs transition-colors",
+                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                              ? "text-muted-foreground hover:text-foreground"
+                              : "text-muted-foreground/50 cursor-not-allowed"
+                          )}
+                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                          onClick={() => {
+                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                              updateGeneralDefault(f, generalForm[f], { silent: true })
+                            );
+                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                          }}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          Save as default
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -22395,21 +22504,26 @@ export default function CrosslistComposer() {
                           <Package className="h-4 w-4 text-muted-foreground" />
                           <Label className="text-base font-medium">Package Details</Label>
                         </div>
-                        {generalForm.packageWeight && (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => {
-                              ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                                updateGeneralDefault(f, generalForm[f], { silent: true })
-                              );
-                              toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                            }}
-                          >
-                            <Save className="h-3.5 w-3.5" />
-                            Save as default
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs transition-colors",
+                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
+                              ? "text-muted-foreground hover:text-foreground"
+                              : "text-muted-foreground/50 cursor-not-allowed"
+                          )}
+                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
+                          onClick={() => {
+                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
+                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
+                              updateGeneralDefault(f, generalForm[f], { silent: true })
+                            );
+                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
+                          }}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          Save as default
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
