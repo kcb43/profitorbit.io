@@ -1244,7 +1244,7 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 [class*="sc-21g986-2"],
 .FIE_topbar > *:last-child {
   position: absolute !important;
-  right: 48px !important;
+  right: 12px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
 }

@@ -577,7 +577,7 @@ function ImageEditorInner({
         }
         if (right && right !== left) {
           right.style.setProperty('position', 'absolute', 'important');
-          right.style.setProperty('right', '48px', 'important');
+          right.style.setProperty('right', '12px', 'important');
           right.style.setProperty('top', '50%', 'important');
           right.style.setProperty('transform', 'translateY(-50%)', 'important');
         }
