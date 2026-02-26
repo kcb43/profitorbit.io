@@ -361,40 +361,62 @@ function ImageEditorInner({
     ? (getImgUrl(allImages[activeIndex]) || imageSrc)
     : imageSrc;
 
-  // Data URL for FIE source. Converting to base64 means the string itself
-  // IS the pixel data — FIE has no URL to cache, confuse, or re-fetch.
-  // This is the only approach that eliminates all forms of image-swap bugs.
+  // We pass an already-loaded HTMLImageElement to FIE instead of a URL.
+  //
+  // WHY: FIE's App component has a module-level `isFieMounted` flag that gets
+  // reset to `true` when a NEW FIE instance mounts. If the OLD instance has an
+  // async image load in flight, the completion fires into the NEW instance's
+  // dispatch, writing the wrong image onto the canvas. Passing a pre-loaded
+  // HTMLImageElement bypasses FIE's async loadImage path entirely — FIE sees
+  // `img.complete === true` and dispatches SET_ORIGINAL_IMAGE synchronously.
+  //
+  // The pre-loading pipeline: fetch → blob → blobUrl → new Image → img.onload
+  // → setActiveSrc(img). FIE receives the element, checks it's complete,
+  // dispatches immediately. Zero async window for a race condition.
   const [activeSrc, setActiveSrc] = useState(null);
+  const blobUrlRef = useRef(null); // tracks the blob URL so we can revoke it
 
   useEffect(() => {
     if (!activeOriginalSrc) { setActiveSrc(null); return; }
     let cancelled = false;
     setActiveSrc(null); // unmount FIE immediately while we fetch
 
+    // Revoke previous blob URL to free memory
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+
     fetch(activeOriginalSrc)
       .then(r => r.blob())
-      .then(blob => new Promise((resolve, reject) => {
-        if (cancelled) { reject('cancelled'); return; }
-        const reader = new FileReader();
-        reader.onload  = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      }))
-      .then(dataUrl => {
-        if (!cancelled) {
-          console.log('[ImageEditor] dataUrl ready idx=', activeIndex,
-            'src=', activeOriginalSrc.slice(-25), 'bytes=', dataUrl.length);
-          setActiveSrc(dataUrl);
-        }
+      .then(blob => {
+        if (cancelled) return;
+        const blobUrl = URL.createObjectURL(blob);
+        blobUrlRef.current = blobUrl;
+        const img = new Image();
+        img.onload = () => {
+          if (cancelled) return;
+          console.log('[ImageEditor] HTMLImg ready idx=', activeIndex,
+            'src=', activeOriginalSrc.slice(-20), 'w=', img.naturalWidth);
+          setActiveSrc(img); // pass the already-loaded element to FIE
+        };
+        img.onerror = () => {
+          if (!cancelled) setActiveSrc(activeOriginalSrc); // fallback to URL
+        };
+        img.src = blobUrl;
       })
-      .catch(err => {
-        if (!cancelled && err !== 'cancelled') {
-          setActiveSrc(activeOriginalSrc); // last-resort fallback
-        }
+      .catch(() => {
+        if (!cancelled) setActiveSrc(activeOriginalSrc);
       });
 
-    return () => { cancelled = true; };
-  }, [activeOriginalSrc, activeIndex]);
+    return () => {
+      cancelled = true;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [activeOriginalSrc, switchCount, activeIndex]);
 
   const editorAreaRef = useRef(null);
 
@@ -590,7 +612,7 @@ function ImageEditorInner({
           rightGroup.style.setProperty('display', 'flex', 'important');
           rightGroup.style.setProperty('gap', '0px', 'important');
           rightGroup.style.setProperty('align-items', 'center', 'important');
-          rightGroup.style.setProperty('margin-right', '1rem', 'important');
+          rightGroup.style.setProperty('margin-right', '3rem', 'important');
           // Remove any stale absolute positioning from previous builds
           rightGroup.style.removeProperty('position');
           rightGroup.style.removeProperty('right');
@@ -984,7 +1006,9 @@ function ImageEditorInner({
     if (!editorArea) return;
 
     const oImg = document.createElement('img');
-    oImg.src = activeSrc;
+    // activeSrc may be an HTMLImageElement (when using pre-load approach)
+    // or a string URL (fallback). Always use the string src.
+    oImg.src = activeSrc instanceof HTMLImageElement ? activeSrc.src : activeSrc;
     oImg.draggable = false;
     oImg.style.cssText =
       'position:absolute;pointer-events:none;display:none;' +
