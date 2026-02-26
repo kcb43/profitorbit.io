@@ -362,6 +362,7 @@ function ImageEditorInner({
   // intermediate encoding step.
   const [fieSource,        setFieSource]        = useState(null);
   const [fieSourceLoading, setFieSourceLoading] = useState(false);
+  const fieSourceForUrl = useRef(null); // URL this fieSource was fetched for (prevents swap)
   const prevBlobUrl = useRef(null);
   const editorAreaRef = useRef(null);
   const fetchGenerationRef = useRef(0);
@@ -370,18 +371,21 @@ function ImageEditorInner({
     if (!open || !activeSrc || !isValidImgUrl(activeSrc)) {
       setFieSource(activeSrc || null);
       setFieSourceLoading(false);
+      fieSourceForUrl.current = activeSrc || null;
       return;
     }
 
     setFieSource(null);
     setFieSourceLoading(true);
+    fieSourceForUrl.current = null;
     let cancelled = false;
     const gen = ++fetchGenerationRef.current;
+    const urlToFetch = activeSrc;
 
     (async () => {
       let blobUrl = null;
       try {
-        const resp = await fetch(activeSrc);
+        const resp = await fetch(urlToFetch);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const blob = await resp.blob();
         blobUrl = URL.createObjectURL(blob);
@@ -392,7 +396,8 @@ function ImageEditorInner({
       if (!cancelled && gen === fetchGenerationRef.current) {
         if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current);
         prevBlobUrl.current = blobUrl;
-        setFieSource(blobUrl || activeSrc);
+        fieSourceForUrl.current = urlToFetch;
+        setFieSource(blobUrl || urlToFetch);
         setFieSourceLoading(false);
       } else if (blobUrl) {
         URL.revokeObjectURL(blobUrl);
@@ -494,11 +499,11 @@ function ImageEditorInner({
       });
 
       // ── Layout compaction (inline !important beats styled-components) ──────
-      // Topbar: align with our custom bar (padding 12px) so X/back icons align with
-      // Save template, Load, etc. in the bar above.
+      // Topbar: align with our custom bar (paddingRight 48px) so X/back icons
+      // align with Save template, Load, etc. in the bar above.
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
-        topbar.style.setProperty('padding', '6px 12px 6px 12px', 'important');
+        topbar.style.setProperty('padding', '6px 12px 6px 48px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('gap', '8px', 'important');
         topbar.style.setProperty('width', '100%', 'important');
@@ -1117,7 +1122,7 @@ function ImageEditorInner({
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
           paddingLeft: 12,
-          paddingRight: 12,
+          paddingRight: 48,
           backgroundColor: barBg,
           borderBottom: `1px solid ${barBorder}`,
         }}
@@ -1381,8 +1386,8 @@ function ImageEditorInner({
             <span className="text-white text-sm">Preparing image…</span>
           </div>
         )}
-        {!fieSourceLoading && fieSource && <FilerobotImageEditor
-          key={`fie-${activeIndex}-${activeSrc}-${fieSource}`}
+        {!fieSourceLoading && fieSource && fieSourceForUrl.current === activeSrc && <FilerobotImageEditor
+          key={`fie-${activeIndex}-${activeSrc}`}
           source={fieSource}
           onSave={handleSave}
           onBeforeSave={() => false}
