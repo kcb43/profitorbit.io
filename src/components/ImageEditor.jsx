@@ -847,8 +847,13 @@ function ImageEditorInner({
 
     const obs = new MutationObserver(() => {
       if (!inserted && editorArea.querySelector('.konvajs-content canvas')) sync();
+
+      // Strip leftover inline color on deselected tool buttons (FIE bug: inline
+      // !important color persists after aria-selected flips to false).
+      editorArea.querySelectorAll('[class*="tool-button"]:not([aria-selected="true"])')
+        .forEach(btn => { if (btn.style.color) btn.style.removeProperty('color'); });
     });
-    obs.observe(editorArea, { childList: true, subtree: true });
+    obs.observe(editorArea, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected'] });
     overlayRafRef.current = requestAnimationFrame(sync);
 
     return () => {

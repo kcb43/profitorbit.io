@@ -349,4 +349,18 @@ patch('components/NodeControls/NodeControls.styled.js', [
   ],
 ]);
 
+/* ══════════════════════════════════════════════════════════════════════════
+   10. CanvasNode.js  – click on photo to deselect annotations
+       FIE only deselects annotations when clicking on the raw Stage (empty
+       area outside the image). Since the photo covers the entire stage,
+       there is effectively no empty area. Broaden the check: clear
+       selections when clicking ANY non-annotation target.
+   ══════════════════════════════════════════════════════════════════════════ */
+patch('components/MainCanvas/CanvasNode.js', [
+  [
+    'a.target instanceof Konva.Stage&&0<n.length&&f({type:CLEAR_ANNOTATIONS_SELECTIONS})',
+    '!n.includes(a.target&&a.target.id&&a.target.id())&&0<n.length&&f({type:CLEAR_ANNOTATIONS_SELECTIONS})',
+  ],
+]);
+
 console.log('[patch-fie] Done.');

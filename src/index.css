@@ -1230,3 +1230,23 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 [class*="FIE_"] [class*="sc-1tst9ex"] {
   z-index: 3 !important;
 }
+
+/* ── FIE Tool Button Colors ────────────────────────────────────────────── */
+/* In light mode, deselected tool buttons can retain an inline white color
+   from FIE's styled-component. Override here so text stays visible.       */
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']),
+[class*="FIE_"][class*="tool-button"]:not([aria-selected='true']) * {
+  color: #0a0a0a !important;
+}
+.dark [class*="FIE_"][class*="tool-button"]:not([aria-selected='true']),
+.dark [class*="FIE_"][class*="tool-button"]:not([aria-selected='true']) * {
+  color: #fafafa !important;
+}
+[class*="FIE_"][class*="tool-button"][aria-selected='true'],
+[class*="FIE_"][class*="tool-button"][aria-selected='true'] * {
+  color: #ffffff !important;
+}
+[class*="FIE_"][class*="tool-button"][aria-selected='true'] {
+  background: #3b82f6 !important;
+  border-radius: 4px !important;
+}
