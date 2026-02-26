@@ -42,7 +42,7 @@ const Input = React.forwardRef(({ className, type, ...props }, ref) => {
     return (
       <div className="relative flex w-full">
         {inputEl}
-        <div className="absolute right-0 top-0 flex h-9 flex-col border-l border-input rounded-r-md [&>button]:flex [&>button]:h-1/2 [&>button]:items-center [&>button]:justify-center [&>button]:text-muted-foreground hover:[&>button]:text-foreground [&>button]:transition-colors disabled:[&>button]:opacity-50">
+        <div className="absolute right-0 top-0 flex h-9 flex-col border-l border-input rounded-r-md [&>button]:flex [&>button]:flex-1 [&>button]:min-h-0 [&>button]:items-center [&>button]:justify-center [&>button]:text-muted-foreground hover:[&>button]:text-foreground [&>button]:transition-colors disabled:[&>button]:opacity-50 [&>button_svg]:block [&>button_svg]:shrink-0">
           <button
             type="button"
             tabIndex={-1}
