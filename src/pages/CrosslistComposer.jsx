@@ -22912,7 +22912,15 @@ export default function CrosslistComposer() {
 
       {/* Package Details Dialog */}
       <Dialog open={packageDetailsDialogOpen} onOpenChange={setPackageDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent
+          className="sm:max-w-[500px]"
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            // Focus weight input after a tick so browser doesn't select-all (number inputs ignore setSelectionRange)
+            const el = document.getElementById('package-weight');
+            if (el) setTimeout(() => el.focus(), 0);
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Package Details</DialogTitle>
             <DialogDescription>

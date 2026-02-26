@@ -1042,7 +1042,7 @@ export default function AddInventoryItem() {
                       <Label htmlFor="source_select" className="text-foreground break-words">Source</Label>
                       <Select
                         onValueChange={handleSourceSelectChange}
-                        value={isOtherSource ? '__custom__' : formData.source}
+                        value={isOtherSource ? '__custom__' : (formData.source ?? '')}
                         onOpenChange={(open) => { if (!open) setSourceSearch(''); }}
                       >
                         <SelectTrigger id="source_select" className="w-full text-foreground bg-background">
@@ -1178,7 +1178,7 @@ export default function AddInventoryItem() {
                      <div className="space-y-2 min-w-0">
                         <Label htmlFor="status" className="text-foreground break-words">Status *</Label>
                         <Select 
-                          value={formData.status} 
+                          value={formData.status ?? ''} 
                           onValueChange={(value) => handleChange('status', value)}
                           required
                         >
@@ -1201,7 +1201,7 @@ export default function AddInventoryItem() {
                         </Label>
                         <Select
                             onValueChange={handleCategorySelectChange}
-                            value={isOtherCategory ? 'other' : formData.category}
+                            value={isOtherCategory ? 'other' : (formData.category ?? '')}
                         >
                             <SelectTrigger id="category_select" className="w-full text-foreground bg-background">
                                 <SelectValue placeholder="Select a category">{isOtherCategory && formData.category ? formData.category : (PREDEFINED_CATEGORIES.includes(formData.category) ? formData.category : "Select a category")}</SelectValue>
@@ -1244,7 +1244,7 @@ export default function AddInventoryItem() {
                     <div className="space-y-2 min-w-0">
                         <Label htmlFor="condition" className="text-foreground break-words">Condition</Label>
                         <Select
-                            value={formData.condition || undefined}
+                            value={formData.condition ?? ''}
                             onValueChange={(value) => handleChange('condition', value)}
                         >
                             <SelectTrigger id="condition" className="w-full text-foreground bg-background">

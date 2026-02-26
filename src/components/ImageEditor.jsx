@@ -444,17 +444,23 @@ function ImageEditorInner({
       styleEl.id = styleId;
       document.head.appendChild(styleEl);
     }
-    // Selected tab + hover: always white (dark mode was showing gray when selected)
+    // Selected tab + hover: always white (dark mode was showing gray when selected, no hover)
     styleEl.textContent = `
       .FIE_tab[aria-selected="true"],
       .FIE_tab[aria-selected="true"] *,
       .FIE_tab[aria-selected="true"] svg,
       .FIE_tab[aria-selected="true"] svg *,
+      .FIE_tab[aria-selected="true"] path,
+      .SfxDrawer-item > div[aria-selected="true"],
+      .SfxDrawer-item > div[aria-selected="true"] *,
+      .SfxDrawer-item > div[aria-selected="true"] svg,
+      .SfxDrawer-item > div[aria-selected="true"] path,
       .FIE_tab:hover,
       .FIE_tab:hover *,
       .FIE_tab:hover svg * {
         color: #ffffff !important;
         fill:  #ffffff !important;
+        stroke: #ffffff !important;
       }
     `;
 
@@ -470,25 +476,33 @@ function ImageEditorInner({
           child.style.removeProperty('fill');
         });
       });
-      // Apply white text only to selected TABS (not tool buttons — those are
-      // handled by CSS and the FIE palette).
+      // Apply white text/icon to selected TABS (Adjust, Finetune, Watermark)
       document.querySelectorAll('.FIE_tab[aria-selected="true"], .SfxDrawer-item > div[aria-selected="true"]').forEach(el => {
         el.style.setProperty('color', '#ffffff', 'important');
         el.querySelectorAll('*').forEach(child => {
           child.style.setProperty('color', '#ffffff', 'important');
-          if (child.tagName === 'svg' || child.closest('svg'))
+          if (child.tagName === 'svg' || child.closest('svg')) {
             child.style.setProperty('fill', '#ffffff', 'important');
+            child.style.setProperty('stroke', '#ffffff', 'important');
+          }
+        });
+        // Target SVG paths directly (FIE icons use path elements)
+        el.querySelectorAll('path').forEach(p => {
+          p.style.setProperty('fill', '#ffffff', 'important');
+          p.style.setProperty('stroke', '#ffffff', 'important');
         });
       });
 
       // ── Layout compaction (inline !important beats styled-components) ──────
-      // Topbar: align with our custom bar (paddingRight 12 to match left; X/back
-      // icons align with Save template, Load, etc. in the bar above).
+      // Topbar: align with our custom bar (padding 12px) so X/back icons align with
+      // Save template, Load, etc. in the bar above.
       const topbar = document.querySelector('.FIE_topbar');
       if (topbar) {
         topbar.style.setProperty('padding', '6px 12px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('gap', '8px', 'important');
+        topbar.style.setProperty('width', '100%', 'important');
+        topbar.style.setProperty('box-sizing', 'border-box', 'important');
       }
 
       // Main content: reclaim the vertical space saved from the topbar
@@ -570,16 +584,17 @@ function ImageEditorInner({
   // ── Switch to a different image in the filmstrip ─────────────────────────
   const handleSwitchImage = useCallback((newIndex) => {
     if (newIndex === activeIndex) return;
-    // Persist current design state for the outgoing image
-    if (currentDesignState) {
-      imageDesignStates.current[activeIndex] = currentDesignState;
+    // Persist current design state for the outgoing image (include loaded template if no edits yet)
+    const stateToPersist = currentDesignState || loadedDesignState;
+    if (stateToPersist) {
+      imageDesignStates.current[activeIndex] = stateToPersist;
       setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
     // Load in-session state for the incoming image (if previously visited)
     setLoadedDesignState(imageDesignStates.current[newIndex] || null);
     setCurrentDesignState(null);
     setActiveIndex(newIndex);
-  }, [activeIndex, currentDesignState]);
+  }, [activeIndex, currentDesignState, loadedDesignState]);
 
   // ── onModify: keep currentDesignState in sync in real time ──────────────
   const handleModify = useCallback((ds) => {
@@ -1367,7 +1382,7 @@ function ImageEditorInner({
           </div>
         )}
         {!fieSourceLoading && fieSource && <FilerobotImageEditor
-          key={`fie-${activeIndex}-${fieSource}`}
+          key={`fie-${activeIndex}-${activeSrc}-${fieSource}`}
           source={fieSource}
           onSave={handleSave}
           onBeforeSave={() => false}

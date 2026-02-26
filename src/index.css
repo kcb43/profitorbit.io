@@ -1212,6 +1212,20 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
   }
 }
 
+/* ── FIE Dark Mode: Selected tabs (Adjust, Finetune, Watermark) always white ─ */
+.dark .FIE_tab[aria-selected="true"],
+.dark .FIE_tab[aria-selected="true"] *,
+.dark .FIE_tab[aria-selected="true"] svg,
+.dark .FIE_tab[aria-selected="true"] path,
+.dark .SfxDrawer-item > div[aria-selected="true"],
+.dark .SfxDrawer-item > div[aria-selected="true"] *,
+.dark .SfxDrawer-item > div[aria-selected="true"] svg,
+.dark .SfxDrawer-item > div[aria-selected="true"] path {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
 /* ── FIE Dark Mode Fixes ──────────────────────────────────────────────────── */
 /* Scaleflex UI's Input component hardcodes lightPalette for bg/border/text,
    bypassing the theme. Override here so finetune inputs are visible in dark. */
