@@ -12017,9 +12017,11 @@ export default function CrosslistComposer() {
                   value={generalForm.tags}
                   onChange={(value) => handleGeneralChange("tags", value)}
                 />
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Helps your item get found. (comma or enter)
-                </p>
+                {!((generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length) && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Helps your item get found. (comma or enter)
+                  </p>
+                )}
                 {((generalForm?.description || '').trim().length >= 20) && (
                   <div className="mt-3">
                     <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -18120,9 +18122,11 @@ export default function CrosslistComposer() {
                           value={generalForm.tags}
                           onChange={(value) => handleGeneralChange("tags", value)}
                         />
-                        <p className="mt-1.5 text-xs text-muted-foreground">
-                          Helps your item get found. (comma or enter)
-                        </p>
+                        {!((generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length) && (
+                          <p className="mt-1.5 text-xs text-muted-foreground">
+                            Helps your item get found. (comma or enter)
+                          </p>
+                        )}
                         {((generalForm?.description || '').trim().length >= 20) && (
                           <div className="mt-3">
                             <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
