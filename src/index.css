@@ -207,6 +207,17 @@ button:focus-visible {
   }
 }
 
+/* Modern number inputs: hide default spinners (Chrome/Edge on Windows use old-looking icons) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Make checkboxes white in Default Dark theme only */
 [data-theme="default-dark"] button[role="checkbox"] {
   border-color: white !important;

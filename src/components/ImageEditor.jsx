@@ -5,7 +5,7 @@ import filterStrToClass from 'react-filerobot-image-editor/lib/utils/filterStrTo
 import Konva from 'konva';
 import { Factory as KonvaFactory } from 'konva/lib/Factory';
 import { getNumberValidator } from 'konva/lib/Validators';
-import { Loader2, Trash2, BookmarkPlus, FolderOpen, Layers, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Loader2, Trash2, BookmarkPlus, FolderOpen, Layers, ChevronLeft, ChevronRight, RotateCcw, Undo2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { uploadApi } from '@/api/uploadApi';
 import { inventoryApi } from '@/api/inventoryApi';
@@ -725,8 +725,9 @@ function ImageEditorInner({
     const safe = extractTemplateFields(tpl.designState);
     setLoadedDesignState(Object.keys(safe).length ? safe : null);
     setShowTemplateMenu(false);
+    setModifiedSet(prev => new Set([...prev, activeIndex]));
     toast({ title: `Template "${tpl.name}" applied` });
-  }, []);
+  }, [activeIndex]);
 
   // Force template into FIE store when loaded. FIE's loadableDesignState
   // useUpdateEffect can race with tab switches; calling updateStateFnRef
@@ -805,6 +806,15 @@ function ImageEditorInner({
       if (intervalId) clearInterval(intervalId);
     };
   }, [open, loadedDesignState, applyLoadedTemplate]);
+
+  // ── Revert template / last change ───────────────────────────────────────
+  const handleRevertTemplate = useCallback(() => {
+    if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
+    setLoadedDesignState(null);
+    const fn = updateStateFnRef.current;
+    if (fn) fn({ finetunesProps: {}, finetunes: [], filter: null });
+    toast({ title: 'Template reverted' });
+  }, [loadedDesignState]);
 
   // ── Template: delete ─────────────────────────────────────────────────────
   const handleDeleteTemplate = useCallback((id, e) => {
@@ -1057,8 +1067,9 @@ function ImageEditorInner({
     ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100 border border-neutral-600'
     : 'bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300';
   const canApply = !!(currentDesignState || imageDesignStates.current[activeIndex]);
-  // Show reset button if originals were persisted cross-session OR any save happened in-session
-  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0);
+  const hasTemplate = !!(loadedDesignState && Object.keys(loadedDesignState).length > 0);
+  // Show reset button if originals were persisted cross-session OR any save happened in-session OR template/edits applied
+  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate);
 
   return (
     <div
@@ -1166,6 +1177,22 @@ function ImageEditorInner({
 
         {/* Col 3 – right-side controls, justified to the right */}
         <div className="flex items-center gap-2 justify-end min-w-0">
+          {/* Revert template (undo last change when template was applied) */}
+          {hasTemplate && (
+            <button
+              onClick={handleRevertTemplate}
+              title="Revert the template you just applied"
+              className="flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0"
+              style={{
+                backgroundColor: isDark ? '#1e3a5f' : '#eff6ff',
+                color:           isDark ? '#93c5fd' : '#2563eb',
+                border:          `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`,
+              }}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              Revert
+            </button>
+          )}
           {/* Reset All */}
           {canReset && (
             <button

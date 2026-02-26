@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, Package, Loader2, Check, Info, Smile, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, Package, Loader2, Check, Info, Smile, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,9 +17,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { getFulfillmentProfile, saveFulfillmentProfile } from '@/api/fulfillmentApi';
 import {
   HANDLING_TIME_OPTIONS,
@@ -80,6 +82,14 @@ function saveEbayDefaults(defaults) {
   } catch { /* ignore */ }
 }
 
+const MARKETPLACE_LOGOS = {
+  facebook: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg',
+  mercari: 'https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B',
+  ebay: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg',
+  etsy: 'https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B',
+  poshmark: 'https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B',
+};
+
 const PLATFORMS = [
   { id: 'facebook', label: 'Facebook Marketplace', placeholder: 'e.g. Pickup in Easton, MA. I can also ship if needed.' },
   { id: 'mercari',  label: 'Mercari',              placeholder: 'e.g. Fast shipping, usually next business day.' },
@@ -92,12 +102,10 @@ export default function FulfillmentSettings() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [isLoading, setIsLoading]   = useState(true);
-  const [isSaving, setIsSaving]     = useState(false);
-  const [showPlatform, setShowPlatform] = useState(true);
-  const [showEbayDefaults, setShowEbayDefaults] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [openMarketplace, setOpenMarketplace] = useState(null);
   const [ebayDefaults, setEbayDefaults] = useState(() => loadEbayDefaults());
-  const [showFbDefaults, setShowFbDefaults] = useState(true);
   const [fbDefaults, setFbDefaults] = useState(() => loadFacebookDefaults());
 
   const [form, setForm] = useState({
@@ -271,29 +279,70 @@ export default function FulfillmentSettings() {
             </div>
           </div>
         )}
+        <div className="pt-3 border-t flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving} size="sm" className="gap-2">
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {isSaving ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </section>
 
-        {/* ── eBay Listing Defaults ──────────────────────────────────────── */}
-        <div className="pt-3 border-t">
-          <button
-            type="button"
-            className="w-full flex items-center justify-between group"
-            onClick={() => setShowEbayDefaults((v) => !v)}
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-primary" />
-              <span className="font-medium text-sm">eBay Listing Defaults</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
-            </div>
-            {showEbayDefaults
-              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            }
-          </button>
-          <p className="text-xs text-muted-foreground mt-1 ml-6">
-            These defaults are used by Smart Listing to pre-fill and suggest eBay fields. Saved automatically.
-          </p>
+      {/* ── Marketplace Settings ───────────────────────────────────────────────── */}
+      <section className="space-y-3 rounded-xl border p-5 bg-card">
+        <div className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          <div>
+            <h2 className="font-semibold">Marketplace Settings</h2>
+            <p className="text-xs text-muted-foreground">
+              Per-marketplace fulfillment notes and listing defaults. Overrides the general pickup/shipping above.
+            </p>
+          </div>
+        </div>
 
-          {showEbayDefaults && (() => {
+        <div className="space-y-2 pt-2">
+          {PLATFORMS.map(({ id, label, placeholder }) => {
+            const isOpen = openMarketplace === id;
+            const logo = MARKETPLACE_LOGOS[id];
+            return (
+              <Collapsible
+                key={id}
+                open={isOpen}
+                onOpenChange={(open) => setOpenMarketplace(open ? id : null)}
+              >
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/50",
+                      isOpen && "border-primary/50 bg-muted/30"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {logo && (
+                        <img src={logo} alt={label} className="h-6 w-6 shrink-0 object-contain" />
+                      )}
+                      <span className="font-medium truncate">{label}</span>
+                    </div>
+                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-3 rounded-lg border bg-muted/20 p-4 space-y-4">
+                    {/* Platform note (all marketplaces) */}
+                    <div>
+                      <Label htmlFor={`platform_${id}`}>Fulfillment note</Label>
+                      <Textarea
+                        id={`platform_${id}`}
+                        placeholder={placeholder}
+                        value={form.platform_notes?.[id] || ''}
+                        onChange={(e) => setPlatformNote(id, e.target.value)}
+                        rows={2}
+                        className="mt-1.5 text-sm"
+                      />
+                    </div>
+
+                    {/* eBay-specific: defaults + emoji toggle */}
+                    {id === 'ebay' && (() => {
             const isEbayLocalPickup = ebayDefaults.shippingMethod?.startsWith('Local pickup');
             return (
             <div className="mt-4 space-y-5 pl-1">
@@ -626,36 +675,35 @@ export default function FulfillmentSettings() {
                 )}
               </div>
 
-              <p className="text-xs text-muted-foreground">All changes save automatically. Smart Listing will skip flagging fields that have a saved default.</p>
+              <p className="text-xs text-muted-foreground">eBay defaults save automatically. Smart Listing will skip flagging fields that have a saved default.</p>
 
+              {/* eBay Emoji Toggle */}
+              <div className="rounded-lg border border-dashed border-muted-foreground/40 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Smile className="h-4 w-4 text-primary" />
+                    <div>
+                      <Label className="font-medium text-sm">Emoji descriptions</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">Use emojis before section headings in eBay descriptions.</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={Boolean(form.platform_notes?.ebay_emojis)}
+                    onCheckedChange={(v) => setPlatformNote('ebay_emojis', v || undefined)}
+                  />
+                </div>
+              </div>
             </div>
             );
           })()}
-        </div>
 
-        {/* ── Facebook Marketplace Defaults ──────────────────────────────────── */}
-        <div className="pt-3 border-t">
-          <button
-            type="button"
-            onClick={() => setShowFbDefaults((v) => !v)}
-            className="w-full flex items-center justify-between py-1 mb-1 hover:opacity-80 transition-opacity"
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-primary" />
-              <span className="font-medium text-sm">Facebook Marketplace Defaults</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
-            </div>
-            {showFbDefaults
-              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            }
-          </button>
-          <p className="text-xs text-muted-foreground mb-1">
-            Set your Facebook listing defaults. These will be pre-applied during smart listing review and auto-fill so Orben doesn't ask for them repeatedly.
-          </p>
-
-          {showFbDefaults && (
-            <div className="mt-4 space-y-4 pl-1">
+                    {/* Facebook-specific: defaults */}
+                    {id === 'facebook' && (
+            <div className="space-y-4 pt-2 border-t">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
+                <span className="text-xs text-muted-foreground">Pre-applied during smart listing review.</span>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -804,84 +852,28 @@ export default function FulfillmentSettings() {
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                All changes save automatically. The smart listing review will not flag these fields once defaults are set.
-              </p>
-
+              <p className="text-xs text-muted-foreground">Facebook defaults save automatically.</p>
             </div>
-          )}
-        </div>
+                    )}
 
-      </section>
-
-      {/* ── Per-platform overrides ────────────────────────────────────────────── */}
-      <section className="space-y-4 rounded-xl border p-5 bg-card">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            <div>
-              <h2 className="font-semibold">Platform-specific overrides</h2>
-              <p className="text-xs text-muted-foreground">
-                Write a custom fulfillment line for a specific marketplace. Overrides the defaults above.
-              </p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setShowPlatform((v) => !v)}>
-            {showPlatform ? 'Hide' : 'Show'}
-          </Button>
-        </div>
-
-        {showPlatform && (
-          <div className="space-y-4 pt-2 border-t">
-            {PLATFORMS.map(({ id, label, placeholder }) => (
-              <div key={id}>
-                <Label htmlFor={`platform_${id}`}>{label}</Label>
-                <Textarea
-                  id={`platform_${id}`}
-                  placeholder={placeholder}
-                  value={form.platform_notes?.[id] || ''}
-                  onChange={(e) => setPlatformNote(id, e.target.value)}
-                  rows={2}
-                  className="mt-1 text-sm"
-                />
-                {id === 'ebay' && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tip: Include "Free Shipping" or "Next Day Shipping" here and the AI will add it to your eBay title suggestions.
-                  </p>
-                )}
-              </div>
-            ))}
-
-            {/* eBay Emoji Toggle */}
-            <div className="rounded-lg border p-4 bg-muted/20 space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Smile className="h-4 w-4 text-primary" />
-                  <div>
-                    <Label className="font-medium">eBay Emoji Descriptions</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      When enabled, the AI will use emojis before section headings in eBay descriptions (e.g. ✅ Features & Details).
-                    </p>
+                    {/* Save button (saves fulfillment profile; eBay/FB defaults save to localStorage automatically) */}
+                    <div className="pt-2 border-t flex justify-end">
+                      <Button onClick={handleSave} disabled={isSaving} size="sm" className="gap-2">
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        {isSaving ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <Switch
-                  checked={Boolean(form.platform_notes?.ebay_emojis)}
-                  onCheckedChange={(v) => setPlatformNote('ebay_emojis', v || undefined)}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </div>
       </section>
 
-      {/* Save */}
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate('/Settings')}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          {isSaving ? 'Saving…' : 'Save Settings'}
+          Back to Settings
         </Button>
       </div>
     </div>

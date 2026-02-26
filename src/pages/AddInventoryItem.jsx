@@ -1017,6 +1017,13 @@ export default function AddInventoryItem() {
                       required
                     />
                     
+                    <ClearableDateInput
+                      id="return_deadline"
+                      label="Return Deadline (optional)"
+                      value={formData.return_deadline}
+                      onChange={(val) => handleChange('return_deadline', val)}
+                    />
+                    
                     <div className="space-y-2 min-w-0">
                         <Label htmlFor="quantity" className="text-foreground break-words">Quantity *</Label>
                         <Input 
@@ -1143,13 +1150,6 @@ export default function AddInventoryItem() {
                         </div>
                       )}
                     </div>
-                    
-                    <ClearableDateInput
-                      id="return_deadline"
-                      label="Return Deadline (optional)"
-                      value={formData.return_deadline}
-                      onChange={(val) => handleChange('return_deadline', val)}
-                    />
 
                     {isOtherSource ? (
                       <div className="space-y-2 md:col-span-2 min-w-0">
