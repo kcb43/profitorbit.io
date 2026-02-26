@@ -7073,6 +7073,44 @@ export default function CrosslistComposer() {
     saveGeneralDefaults(next, opts);
   };
 
+  const PACKAGE_FIELDS = ['packageWeight', 'packageLength', 'packageWidth', 'packageHeight', 'packageDetails'];
+  const clearPackageDefaults = (opts = {}) => {
+    const next = { ...(generalDefaults || {}) };
+    PACKAGE_FIELDS.forEach((f) => delete next[f]);
+    setGeneralDefaults(next);
+    saveGeneralDefaults(next, opts);
+  };
+
+  const renderPackageDefaultToggle = () => {
+    const gd = generalDefaults || {};
+    const hasDefault = PACKAGE_FIELDS.slice(0, 4).every((f) => Object.prototype.hasOwnProperty.call(gd, f));
+    const isUsingDefault = hasDefault && ['packageWeight', 'packageLength', 'packageWidth', 'packageHeight'].every(
+      (f) => String(gd[f] ?? '') === String(generalForm[f] ?? '')
+    );
+    const labelText = isUsingDefault ? 'Using Default (click to reset)' : 'Package default saved';
+
+    if (!hasDefault) return null;
+
+    return (
+      <button
+        type="button"
+        className="group relative -top-1.5 inline-flex items-center justify-center rounded bg-background border border-border p-1 shadow-sm hover:bg-accent transition-colors"
+        onClick={() => {
+          clearPackageDefaults({ silent: true });
+          PACKAGE_FIELDS.forEach((f) => handleGeneralChange(f, ''));
+        }}
+        aria-label={labelText}
+      >
+        <span className="absolute right-full mr-2 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none">
+          <span className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md shadow-lg border whitespace-nowrap">
+            {labelText}
+          </span>
+        </span>
+        <Check className="h-4 w-4 text-foreground" />
+      </button>
+    );
+  };
+
   const renderGeneralDefaultToggle = (field, currentValue, setValue) => {
     const hasDefault = Object.prototype.hasOwnProperty.call(generalDefaults || {}, field);
     const savedValue = hasDefault ? generalDefaults[field] : undefined;
@@ -12024,41 +12062,22 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Package Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-base font-medium">Package Details</Label>
-                </div>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs transition-colors",
-                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                      ? "text-muted-foreground hover:text-foreground"
-                      : "text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                  onClick={() => {
-                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                      updateGeneralDefault(f, generalForm[f], { silent: true })
-                    );
-                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                  }}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Save as default
-                </button>
+              <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-medium">Package Details</Label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-sm mb-1.5 block">
-                    Package Details <span className="text-red-500">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm mb-1.5 block">
+                      Package Details <span className="text-red-500">*</span>
+                    </Label>
+                    {renderPackageDefaultToggle()}
+                  </div>
                   <Button
                     type="button"
-                    variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setPackageDetailsDialogOpen(true)}
                     className="w-full justify-start"
                   >
@@ -13576,41 +13595,22 @@ export default function CrosslistComposer() {
               ); })()}
 
               {/* Package Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-base font-medium">Package Details</Label>
-                </div>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs transition-colors",
-                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                      ? "text-muted-foreground hover:text-foreground"
-                      : "text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                  onClick={() => {
-                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                      updateGeneralDefault(f, generalForm[f], { silent: true })
-                    );
-                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                  }}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Save as default
-                </button>
+              <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-medium">Package Details</Label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-sm mb-1.5 block">
-                    Package Details <span className="text-red-500">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm mb-1.5 block">
+                      Package Details <span className="text-red-500">*</span>
+                    </Label>
+                    {renderPackageDefaultToggle()}
+                  </div>
                   <Button
                     type="button"
-                    variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setPackageDetailsDialogOpen(true)}
                     className="w-full justify-start"
                   >
@@ -14246,41 +14246,22 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Package Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-base font-medium">Package Details</Label>
-                </div>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs transition-colors",
-                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                      ? "text-muted-foreground hover:text-foreground"
-                      : "text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                  onClick={() => {
-                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                      updateGeneralDefault(f, generalForm[f], { silent: true })
-                    );
-                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                  }}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Save as default
-                </button>
+              <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-medium">Package Details</Label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-sm mb-1.5 block">
-                    Package Details <span className="text-red-500">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm mb-1.5 block">
+                      Package Details <span className="text-red-500">*</span>
+                    </Label>
+                    {renderPackageDefaultToggle()}
+                  </div>
                   <Button
                     type="button"
-                    variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setPackageDetailsDialogOpen(true)}
                     className="w-full justify-start"
                   >
@@ -16494,41 +16475,22 @@ export default function CrosslistComposer() {
               </div>
 
               {/* Package Details Section */}
-              <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-base font-medium">Package Details</Label>
-                </div>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs transition-colors",
-                    generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                      ? "text-muted-foreground hover:text-foreground"
-                      : "text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                  disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                  onClick={() => {
-                    if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                    ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                      updateGeneralDefault(f, generalForm[f], { silent: true })
-                    );
-                    toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                  }}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Save as default
-                </button>
+              <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-medium">Package Details</Label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <Label className="text-sm mb-1.5 block">
-                    Package Details <span className="text-red-500">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm mb-1.5 block">
+                      Package Details <span className="text-red-500">*</span>
+                    </Label>
+                    {renderPackageDefaultToggle()}
+                  </div>
                   <Button
                     type="button"
-                    variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setPackageDetailsDialogOpen(true)}
                     className="w-full justify-start"
                   >
@@ -18193,41 +18155,22 @@ export default function CrosslistComposer() {
                       </div>
 
                       {/* Package Details Section */}
-                      <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-base font-medium">Package Details</Label>
-                        </div>
-                        <button
-                          type="button"
-                          className={cn(
-                            "inline-flex items-center gap-1 text-xs transition-colors",
-                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                              ? "text-muted-foreground hover:text-foreground"
-                              : "text-muted-foreground/50 cursor-not-allowed"
-                          )}
-                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                          onClick={() => {
-                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                              updateGeneralDefault(f, generalForm[f], { silent: true })
-                            );
-                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                          }}
-                        >
-                          <Save className="h-3.5 w-3.5" />
-                          Save as default
-                        </button>
+                      <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-base font-medium">Package Details</Label>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-sm mb-1.5 block">
-                            Package Details <span className="text-red-500">*</span>
-                          </Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm mb-1.5 block">
+                              Package Details <span className="text-red-500">*</span>
+                            </Label>
+                            {renderPackageDefaultToggle()}
+                          </div>
                           <Button
                             type="button"
-                            variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                            variant="outline"
                             onClick={() => setPackageDetailsDialogOpen(true)}
                             className="w-full justify-start"
                           >
@@ -19740,41 +19683,22 @@ export default function CrosslistComposer() {
                       ); })()}
 
                       {/* Package Details Section */}
-                      <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-base font-medium">Package Details</Label>
-                        </div>
-                        <button
-                          type="button"
-                          className={cn(
-                            "inline-flex items-center gap-1 text-xs transition-colors",
-                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                              ? "text-muted-foreground hover:text-foreground"
-                              : "text-muted-foreground/50 cursor-not-allowed"
-                          )}
-                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                          onClick={() => {
-                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                              updateGeneralDefault(f, generalForm[f], { silent: true })
-                            );
-                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                          }}
-                        >
-                          <Save className="h-3.5 w-3.5" />
-                          Save as default
-                        </button>
+                      <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-base font-medium">Package Details</Label>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-sm mb-1.5 block">
-                            Package Details <span className="text-red-500">*</span>
-                          </Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm mb-1.5 block">
+                              Package Details <span className="text-red-500">*</span>
+                            </Label>
+                            {renderPackageDefaultToggle()}
+                          </div>
                           <Button
                             type="button"
-                            variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                            variant="outline"
                             onClick={() => setPackageDetailsDialogOpen(true)}
                             className="w-full justify-start"
                           >
@@ -20382,41 +20306,22 @@ export default function CrosslistComposer() {
                       </div>
 
                       {/* Package Details Section */}
-                      <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-base font-medium">Package Details</Label>
-                        </div>
-                        <button
-                          type="button"
-                          className={cn(
-                            "inline-flex items-center gap-1 text-xs transition-colors",
-                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                              ? "text-muted-foreground hover:text-foreground"
-                              : "text-muted-foreground/50 cursor-not-allowed"
-                          )}
-                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                          onClick={() => {
-                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                              updateGeneralDefault(f, generalForm[f], { silent: true })
-                            );
-                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                          }}
-                        >
-                          <Save className="h-3.5 w-3.5" />
-                          Save as default
-                        </button>
+                      <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-base font-medium">Package Details</Label>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-sm mb-1.5 block">
-                            Package Details <span className="text-red-500">*</span>
-                          </Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm mb-1.5 block">
+                              Package Details <span className="text-red-500">*</span>
+                            </Label>
+                            {renderPackageDefaultToggle()}
+                          </div>
                           <Button
                             type="button"
-                            variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                            variant="outline"
                             onClick={() => setPackageDetailsDialogOpen(true)}
                             className="w-full justify-start"
                           >
@@ -22514,41 +22419,22 @@ export default function CrosslistComposer() {
                       </div>
 
                       {/* Package Details Section */}
-                      <div className="flex items-center justify-between pb-2 border-b mb-4 mt-6">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <Label className="text-base font-medium">Package Details</Label>
-                        </div>
-                        <button
-                          type="button"
-                          className={cn(
-                            "inline-flex items-center gap-1 text-xs transition-colors",
-                            generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight
-                              ? "text-muted-foreground hover:text-foreground"
-                              : "text-muted-foreground/50 cursor-not-allowed"
-                          )}
-                          disabled={!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)}
-                          onClick={() => {
-                            if (!(generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight)) return;
-                            ["packageWeight", "packageLength", "packageWidth", "packageHeight"].forEach(f =>
-                              updateGeneralDefault(f, generalForm[f], { silent: true })
-                            );
-                            toast({ title: "Saved!", description: "Package dimensions saved as default." });
-                          }}
-                        >
-                          <Save className="h-3.5 w-3.5" />
-                          Save as default
-                        </button>
+                      <div className="flex items-center gap-2 pb-2 border-b mb-4 mt-6">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-base font-medium">Package Details</Label>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                          <Label className="text-sm mb-1.5 block">
-                            Package Details <span className="text-red-500">*</span>
-                          </Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm mb-1.5 block">
+                              Package Details <span className="text-red-500">*</span>
+                            </Label>
+                            {renderPackageDefaultToggle()}
+                          </div>
                           <Button
                             type="button"
-                            variant={generalForm.packageWeight && generalForm.packageLength && generalForm.packageWidth && generalForm.packageHeight ? "default" : "outline"}
+                            variant="outline"
                             onClick={() => setPackageDetailsDialogOpen(true)}
                             className="w-full justify-start"
                           >
