@@ -1232,16 +1232,18 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 }
 /* Center the pixel dimensions / zoom percentage on the page */
 .FIE_topbar-center-options,
-[class*="FIE_topbar-center-options"] {
+[class*="FIE_topbar-center-options"],
+.FIE_topbar > *:nth-child(2) {
   position: absolute !important;
   left: 50% !important;
-  transform: translateX(-50%) !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
   width: fit-content !important;
 }
-/* Left-side group (save button): shift 5rem left to align under tabs */
+/* Left-side group (save button) */
 [class*="sc-21g986-1"],
 .FIE_topbar > *:first-child {
-  margin-left: -5rem !important;
+  margin-left: -0.5rem !important;
   padding-left: 0 !important;
 }
 /* Right-side group (undo/redo/close): no gaps, tightly packed, pulled left */

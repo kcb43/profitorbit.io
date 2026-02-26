@@ -348,14 +348,21 @@ function ImageEditorInner({
   const [applyingToAll, setApplyingToAll]   = useState(false);
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
-  // Lock the images array at session start so ReactSortable (or any parent
-  // re-render) cannot reorder the photos mid-edit and cause the swap bug.
-  const sessionImages = useMemo(() => allImages.length ? [...allImages] : [], [imageIndex, imageSrc]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Lock the images array at session start using a ref that React cannot
+  // recalculate. This prevents ReactSortable (or any parent re-render)
+  // from reordering images mid-edit and causing the swap bug.
+  const sessionImagesRef = useRef([]);
+  const sessionKeyRef = useRef('');
+  const sessionKey = open ? `${imageIndex}|${imageSrc}` : '';
+  if (sessionKey !== sessionKeyRef.current) {
+    sessionKeyRef.current = sessionKey;
+    sessionImagesRef.current = (open && allImages.length) ? [...allImages] : [];
+  }
+  const sessionImages = sessionImagesRef.current;
 
-  const activeSrc = useMemo(() => {
-    if (!sessionImages.length) return imageSrc;
-    return getImgUrl(sessionImages[activeIndex]) || imageSrc;
-  }, [sessionImages, activeIndex, imageSrc]);
+  const activeSrc = sessionImages.length
+    ? (getImgUrl(sessionImages[activeIndex]) || imageSrc)
+    : imageSrc;
 
   // Pass the original URL directly to FIE — no blob conversion.
   // The save handler already has a fallback for tainted canvases.
@@ -460,10 +467,10 @@ function ImageEditorInner({
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Left-side group (save button) — shift 5rem further left
+        // Left-side group (save button)
         const leftGroup = topbar.querySelector('[class*="sc-21g986-1"]') || topbar.firstElementChild;
         if (leftGroup) {
-          leftGroup.style.setProperty('margin-left', '-5rem', 'important');
+          leftGroup.style.setProperty('margin-left', '-0.5rem', 'important');
           leftGroup.style.setProperty('padding-left', '0', 'important');
         }
         // Right-side group (undo/redo/close) — group tightly, shift left
@@ -520,15 +527,19 @@ function ImageEditorInner({
       const topbarEl = document.querySelector('.FIE_topbar');
       if (topbarEl) {
         topbarEl.style.setProperty('position', 'relative', 'important');
-      }
-      const centerOptions = document.querySelector('.FIE_topbar-center-options');
-      if (centerOptions) {
-        centerOptions.style.setProperty('position', 'absolute', 'important');
-        centerOptions.style.setProperty('left', '50%', 'important');
-        centerOptions.style.setProperty('transform', 'translateX(-50%)', 'important');
-        centerOptions.style.setProperty('width', 'fit-content', 'important');
-        // Prevent overlap with left/right groups
-        centerOptions.style.setProperty('pointer-events', 'auto', 'important');
+        // Find center element: named class first, then middle child
+        let centerEl = topbarEl.querySelector('.FIE_topbar-center-options, [class*="FIE_topbar-center-options"]');
+        if (!centerEl && topbarEl.children.length >= 3) {
+          centerEl = topbarEl.children[1];
+        }
+        if (centerEl) {
+          centerEl.style.setProperty('position', 'absolute', 'important');
+          centerEl.style.setProperty('left', '50%', 'important');
+          centerEl.style.setProperty('top', '50%', 'important');
+          centerEl.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+          centerEl.style.setProperty('width', 'fit-content', 'important');
+          centerEl.style.setProperty('pointer-events', 'auto', 'important');
+        }
       }
     }
 
@@ -1101,18 +1112,20 @@ function ImageEditorInner({
           borderBottom: `1px solid ${barBorder}`,
         }}
       >
-        {/* Filmstrip – absolutely centred on the viewport */}
+        {/* Filmstrip – centred via full-bleed overlay + flexbox */}
         {hasMultiple && (
           <div
-            className="flex items-center gap-2"
             style={{
               position: 'absolute',
-              left: '50%',
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
+              left: 0, right: 0, top: 0, bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
               zIndex: 1,
             }}
           >
+          <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
             <button
               onClick={() => handleSwitchImage(Math.max(0, activeIndex - 1))}
               disabled={activeIndex === 0}
@@ -1179,6 +1192,7 @@ function ImageEditorInner({
             >
               <ChevronRight className="w-4 h-4" />
             </button>
+          </div>
           </div>
         )}
 
