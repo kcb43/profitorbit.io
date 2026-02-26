@@ -2356,7 +2356,7 @@ export default function Crosslist() {
                     {/* Row 1: Image and Crosslist/Edit Buttons */}
                     <div className="flex flex-row items-start gap-3 p-3">
                       {/* Image - 15% bigger (138px from 120px) */}
-                      <div className="flex-shrink-0 w-[138px] sm:w-[173px]" style={{ minWidth: '138px', maxWidth: '138px' }}>
+                      <div className="flex-shrink-0 w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px]">
                         <div
                           onClick={(e) => {
                             e.stopPropagation();

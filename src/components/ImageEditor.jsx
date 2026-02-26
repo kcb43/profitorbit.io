@@ -821,20 +821,20 @@ function ImageEditorInner({
         }
       }
 
-      // Hide overlay when Watermark tab is active (annotations render on the
-      // Design canvas which is below the overlay) or when Shadows finetune is
-      // non-zero (no CSS filter equivalent — must show the Konva canvas).
-      const isWatermarkTab = !!editorArea.querySelector(
-        '[class*="FIE_watermark-add"], [class*="FIE_watermark-gallery"], [class*="FIE_watermark-padding"]'
+      // Only show overlay on the Adjust tab — it provides sharp rendering for
+      // crop/rotate preview.  On Finetune and Watermark tabs, hide it so the
+      // Konva canvas is authoritative: crop state, annotations, shadows, and
+      // all filters are visible without the overlay masking them.
+      const isAdjustTab = !!editorArea.querySelector(
+        '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
       );
-      const fp = designStateRef.current?.finetunesProps || {};
-      const sw = fp.shadowsValue ?? 0;
-      if (isWatermarkTab || sw !== 0) {
+      if (!isAdjustTab) {
         oImg.style.display = 'none';
         return;
       }
       if (oImg.style.display === 'none' && inserted) oImg.style.display = 'block';
 
+      const fp = designStateRef.current?.finetunesProps || {};
       const br = fp.brightness ?? 0;
       const ct = fp.contrast ?? 0;
       const gm = fp.gammaBrightness ?? 0;
