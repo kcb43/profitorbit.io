@@ -2356,13 +2356,13 @@ export default function Crosslist() {
                     {/* Row 1: Image and Crosslist/Edit Buttons */}
                     <div className="flex flex-row items-start gap-3 p-3">
                       {/* Image - 15% bigger (138px from 120px) */}
-                      <div className="flex-shrink-0 w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px]">
+                      <div className="flex-shrink-0 w-[138px] sm:w-[173px] aspect-square">
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleSelect(it.id);
                           }}
-                          className="item-image-clickable cursor-pointer flex items-center justify-center relative w-[138px] sm:w-[173px] min-w-[138px] sm:min-w-[173px] max-w-[138px] sm:max-w-[173px] h-[138px] sm:h-[173px] transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
+                          className="item-image-clickable cursor-pointer flex items-center justify-center relative w-full h-full transition-all duration-200 overflow-hidden bg-gray-50 dark:bg-card/70 border border-gray-200 dark:border-border hover:opacity-90 hover:shadow-md"
                           style={{
                             borderRadius: '12px',
                             flexShrink: 0
