@@ -45,8 +45,48 @@ import { inventoryApi } from '@/api/inventoryApi';
 const TEMPLATES_KEY = 'orben_editor_templates';
 const MAX_TEMPLATES = 20;
 
+// Extracts ONLY reusable, image-agnostic fields from a FIE design state.
+// Everything else (imgSrc, annotations, selectionsIds, undo history,
+// shownImageDimensions, resize, etc.) is image-specific or internal state
+// that corrupts / crashes the editor when deep-merged into a different image.
+function extractTemplateFields(ds) {
+  if (!ds) return {};
+  const tpl = {};
+  if (ds.finetunesProps && Object.keys(ds.finetunesProps).length)
+    tpl.finetunesProps = { ...ds.finetunesProps };
+  if (Array.isArray(ds.finetunes) && ds.finetunes.length)
+    tpl.finetunes = [...ds.finetunes];
+  if (ds.filter) tpl.filter = ds.filter;
+  if (ds.adjustments) {
+    tpl.adjustments = {};
+    if (ds.adjustments.crop) {
+      tpl.adjustments.crop = {};
+      if (ds.adjustments.crop.ratio != null)
+        tpl.adjustments.crop.ratio = ds.adjustments.crop.ratio;
+      if (ds.adjustments.crop.ratioTitleKey != null)
+        tpl.adjustments.crop.ratioTitleKey = ds.adjustments.crop.ratioTitleKey;
+    }
+    if (ds.adjustments.rotation) tpl.adjustments.rotation = ds.adjustments.rotation;
+    if (ds.adjustments.isFlippedX) tpl.adjustments.isFlippedX = ds.adjustments.isFlippedX;
+    if (ds.adjustments.isFlippedY) tpl.adjustments.isFlippedY = ds.adjustments.isFlippedY;
+  }
+  return tpl;
+}
+
 function loadTemplates() {
-  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]'); }
+  try {
+    const raw = JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]');
+    // Migrate: re-sanitize every stored template so legacy entries that
+    // contain imgSrc, annotations, selectionsIds, etc. are cleaned up.
+    const clean = raw.map(t => ({
+      ...t,
+      designState: extractTemplateFields(t.designState),
+    }));
+    // Persist the cleaned list back so migration only happens once.
+    if (JSON.stringify(clean) !== JSON.stringify(raw))
+      localStorage.setItem(TEMPLATES_KEY, JSON.stringify(clean));
+    return clean;
+  }
   catch { return []; }
 }
 function persistTemplates(list) {
@@ -640,14 +680,11 @@ function ImageEditorInner({
   const handleSaveTemplate = useCallback(() => {
     const ds = currentDesignState;
     if (!ds || !templateName.trim()) return;
-    // Strip image-specific data — templates are adjustments only.
-    // imgSrc is a session-scoped blob URL that expires after navigation.
-    const { imgSrc, ...adjustmentsOnly } = ds;
     const entry = {
       id: `tpl_${Date.now()}`,
       name: templateName.trim(),
       createdAt: Date.now(),
-      designState: adjustmentsOnly,
+      designState: extractTemplateFields(ds),
     };
     setTemplates(prev => {
       const next = [entry, ...prev].slice(0, MAX_TEMPLATES);
@@ -661,9 +698,8 @@ function ImageEditorInner({
 
   // ── Template: load ───────────────────────────────────────────────────────
   const handleLoadTemplate = useCallback((tpl) => {
-    // Strip imgSrc in case it was saved by an older version with blob URLs
-    const { imgSrc, ...safeState } = tpl.designState || {};
-    setLoadedDesignState(safeState);
+    const safe = extractTemplateFields(tpl.designState);
+    setLoadedDesignState(Object.keys(safe).length ? safe : null);
     setShowTemplateMenu(false);
     toast({ title: `Template "${tpl.name}" applied` });
   }, []);
