@@ -821,7 +821,20 @@ function ImageEditorInner({
         }
       }
 
+      // Hide overlay when Watermark tab is active (annotations render on the
+      // Design canvas which is below the overlay) or when Shadows finetune is
+      // non-zero (no CSS filter equivalent — must show the Konva canvas).
+      const isWatermarkTab = !!editorArea.querySelector(
+        '[class*="FIE_watermark-add"], [class*="FIE_watermark-gallery"], [class*="FIE_watermark-padding"]'
+      );
       const fp = designStateRef.current?.finetunesProps || {};
+      const sw = fp.shadowsValue ?? 0;
+      if (isWatermarkTab || sw !== 0) {
+        oImg.style.display = 'none';
+        return;
+      }
+      if (oImg.style.display === 'none' && inserted) oImg.style.display = 'block';
+
       const br = fp.brightness ?? 0;
       const ct = fp.contrast ?? 0;
       const gm = fp.gammaBrightness ?? 0;
@@ -1255,13 +1268,14 @@ function ImageEditorInner({
               'bg-primary':            '#ffffff',
               'bg-secondary':          '#f5f5f5',
               'bg-stateless':          '#f0f0f0',
-              'bg-primary-active':     '#171717',
+              'bg-active':             '#dbeafe',
+              'bg-primary-active':     '#3b82f6',
               'bg-secondary-active':   '#e5e5e5',
               'bg-hover':              '#e8e8e8',
-              'accent-primary':        '#171717',
-              'accent-primary-hover':  '#262626',
-              'accent-primary-active': '#0a0a0a',
-              'accent-stateless':      '#171717',
+              'accent-primary':        '#3b82f6',
+              'accent-primary-hover':  '#2563eb',
+              'accent-primary-active': '#1d4ed8',
+              'accent-stateless':      '#3b82f6',
               'txt-primary':           '#0a0a0a',
               'txt-secondary':         '#737373',
               'txt-primary-invert':    '#ffffff',
@@ -1273,7 +1287,8 @@ function ImageEditorInner({
               'icons-invert':          '#ffffff',
               'borders-primary':       '#e5e5e5',
               'borders-secondary':     '#f5f5f5',
-              'link-primary':          '#171717',
+              'border-primary-stateless': '#d4d4d4',
+              'link-primary':          '#3b82f6',
               'error':                 '#ef4444',
               'warning':               '#f59e0b',
               'success':               '#22c55e',

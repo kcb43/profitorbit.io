@@ -1224,3 +1224,9 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 .dark [class*="FIE_"] [class*="SfxInput-Base"] {
   color: #fafafa !important;
 }
+
+/* Ensure NodeControls (delete/duplicate) float above overlay */
+[class*="FIE_"] [class*="NodeControls"],
+[class*="FIE_"] [class*="sc-1tst9ex"] {
+  z-index: 3 !important;
+}

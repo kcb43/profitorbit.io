@@ -337,4 +337,16 @@ patch('hooks/useTransformedImgData.js', [
   ],
 ]);
 
+/* ══════════════════════════════════════════════════════════════════════════
+   9. NodeControls/NodeControls.styled.js  – increase trash-can offset
+      Move the delete/duplicate controls further below the transformer
+      bounding box so they don't overlap with the resize handles.
+   ══════════════════════════════════════════════════════════════════════════ */
+patch('components/NodeControls/NodeControls.styled.js', [
+  [
+    '(c||0)+8',
+    '(c||0)+20',
+  ],
+]);
+
 console.log('[patch-fie] Done.');
