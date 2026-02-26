@@ -348,11 +348,25 @@ function ImageEditorInner({
   const [applyingToAll, setApplyingToAll]   = useState(false);
   const [applyProgress, setApplyProgress]   = useState({ done: 0, total: 0 });
 
+  // ── Stable image URL list ─────────────────────────────────────────────────
+  // Snapshot all image URLs once when the editor opens. Using a ref prevents
+  // any parent re-render (e.g. ReactSortable, form state) from reordering
+  // the URLs mid-session — the root cause of the image-swap bug.
+  const stableUrls = useRef([]);
+  useEffect(() => {
+    if (!open) return;
+    stableUrls.current = allImages.length
+      ? allImages.map(getImgUrl)
+      : imageSrc ? [imageSrc] : [];
+  }, [open]); // only on open — deliberately ignores allImages/imageSrc changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   // Active image URL (original, always used for saves and as ground truth)
   const activeSrc = useMemo(() => {
-    if (!allImages.length) return imageSrc;
-    return getImgUrl(allImages[activeIndex]) || imageSrc;
-  }, [allImages, activeIndex, imageSrc]);
+    const urls = stableUrls.current;
+    if (!urls.length) return imageSrc;
+    return urls[activeIndex] || imageSrc;
+  }, [activeIndex, imageSrc]);
 
   // ── Same-origin blob source for FIE ──────────────────────────────────────
   // Fetch the original image as a blob so the canvas stays untainted for
@@ -421,6 +435,10 @@ function ImageEditorInner({
     setModifiedSet(new Set());
     setCurrentDesignState(null);
     setLoadedDesignState(null);
+    // Re-snapshot URLs for the new session
+    stableUrls.current = allImages.length
+      ? allImages.map(getImgUrl)
+      : imageSrc ? [imageSrc] : [];
   }, [imageIndex, imageSrc]);
 
   // ── Load saved design state from DB when editor opens ────────────────────
@@ -511,14 +529,18 @@ function ImageEditorInner({
       if (topbar) {
         topbar.style.setProperty('padding', '6px 48px 6px 12px', 'important');
         topbar.style.setProperty('min-height', 'unset', 'important');
-        topbar.style.setProperty('gap', '4px', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        topbar.style.setProperty('justify-content', 'flex-end', 'important');
-        // Remove margins from all children so icons sit next to each other
-        topbar.querySelectorAll(':scope > *').forEach(child => {
-          child.style.setProperty('margin', '0', 'important');
-        });
+        // Target only the right-side group (undo/redo/back/X) to remove gaps
+        const rightGroup = topbar.lastElementChild;
+        if (rightGroup) {
+          rightGroup.style.setProperty('display', 'flex', 'important');
+          rightGroup.style.setProperty('gap', '2px', 'important');
+          rightGroup.style.setProperty('align-items', 'center', 'important');
+          rightGroup.querySelectorAll(':scope > *').forEach(btn => {
+            btn.style.setProperty('margin', '0', 'important');
+          });
+        }
       }
 
       // Main content: reclaim the vertical space saved from the topbar

@@ -1212,24 +1212,21 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
   }
 }
 
-/* ── FIE Topbar: group buttons tightly and align with custom bar above ──── */
+/* ── FIE Topbar: align right edge with custom bar above ────────────────── */
 .FIE_topbar,
 [class*="FIE_topbar"] {
   padding: 6px 48px 6px 12px !important;
-  justify-content: flex-end !important;
-  gap: 4px !important;
 }
-/* Group all topbar children tightly on the right */
-.FIE_topbar > *,
-[class*="FIE_topbar"] > * {
+/* The right-side group (undo/redo/back/X): remove all gaps so icons sit together */
+.FIE_topbar > *:last-child,
+[class*="FIE_topbar"] > *:last-child {
+  display: flex !important;
+  gap: 2px !important;
+  align-items: center !important;
+}
+.FIE_topbar > *:last-child > *,
+[class*="FIE_topbar"] > *:last-child > * {
   margin: 0 !important;
-}
-/* Push the center options (zoom/dimensions) to auto if present */
-.FIE_topbar-center-options,
-[class*="FIE_topbar-center-options"] {
-  position: absolute !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
 }
 
 /* ── FIE Dark Mode: Selected tabs (Adjust, Finetune, Watermark) always white ─ */
