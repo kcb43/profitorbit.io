@@ -7031,7 +7031,7 @@ export default function CrosslistComposer() {
   const tagSuggestDebounceRef = useRef(null);
 
   useEffect(() => {
-    const desc = (generalForm?.description || '').trim();
+    const desc = (templateForms?.general?.description || '').trim();
     if (desc.length < 20) {
       setTagSuggestions([]);
       return;
@@ -7057,7 +7057,7 @@ export default function CrosslistComposer() {
     return () => {
       if (tagSuggestDebounceRef.current) clearTimeout(tagSuggestDebounceRef.current);
     };
-  }, [generalForm?.description]);
+  }, [templateForms?.general?.description]);
 
   const updateGeneralDefault = (field, value, opts = {}) => {
     const next = { ...(generalDefaults || {}), [field]: value };
@@ -8340,12 +8340,12 @@ export default function CrosslistComposer() {
   };
 
   const addSuggestedTag = useCallback((tag) => {
-    const current = (generalForm?.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    const current = (templateForms?.general?.tags || '').split(',').map(t => t.trim()).filter(Boolean);
     const lower = new Set(current.map(t => t.toLowerCase()));
     if (lower.has(tag.toLowerCase())) return;
     handleGeneralChange('tags', [...current, tag].join(', '));
     setTagSuggestions(prev => prev.filter(t => t.toLowerCase() !== tag.toLowerCase()));
-  }, [generalForm?.tags, handleGeneralChange]);
+  }, [templateForms?.general?.tags, handleGeneralChange]);
 
   const handleMarketplaceChange = (marketplace, field, value) => {
     setTemplateForms((prev) => ({
