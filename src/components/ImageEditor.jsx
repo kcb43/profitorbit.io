@@ -361,47 +361,40 @@ function ImageEditorInner({
     ? (getImgUrl(allImages[activeIndex]) || imageSrc)
     : imageSrc;
 
-  // Blob URL for FIE: we fetch the image bytes and create a unique blob://
-  // URL each time. This eliminates any browser/CDN/FIE caching that could
-  // serve stale pixels when switching between images.
+  // Data URL for FIE source. Converting to base64 means the string itself
+  // IS the pixel data — FIE has no URL to cache, confuse, or re-fetch.
+  // This is the only approach that eliminates all forms of image-swap bugs.
   const [activeSrc, setActiveSrc] = useState(null);
-  const blobUrlRef = useRef(null);
 
   useEffect(() => {
     if (!activeOriginalSrc) { setActiveSrc(null); return; }
     let cancelled = false;
-
-    // Immediately null so FIE doesn't render with a stale blob
-    setActiveSrc(null);
-
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
+    setActiveSrc(null); // unmount FIE immediately while we fetch
 
     fetch(activeOriginalSrc)
       .then(r => r.blob())
-      .then(blob => {
-        if (cancelled) return;
-        const url = URL.createObjectURL(blob);
-        blobUrlRef.current = url;
-        console.log('[ImageEditor] blob ready for index', activeIndex,
-          'original:', activeOriginalSrc.slice(-30),
-          'blob:', url.slice(0, 40), 'size:', blob.size);
-        setActiveSrc(url);
+      .then(blob => new Promise((resolve, reject) => {
+        if (cancelled) { reject('cancelled'); return; }
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .then(dataUrl => {
+        if (!cancelled) {
+          console.log('[ImageEditor] dataUrl ready idx=', activeIndex,
+            'src=', activeOriginalSrc.slice(-25), 'bytes=', dataUrl.length);
+          setActiveSrc(dataUrl);
+        }
       })
-      .catch(() => {
-        if (!cancelled) setActiveSrc(activeOriginalSrc);
+      .catch(err => {
+        if (!cancelled && err !== 'cancelled') {
+          setActiveSrc(activeOriginalSrc); // last-resort fallback
+        }
       });
 
-    return () => {
-      cancelled = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
-  }, [activeOriginalSrc, switchCount, activeIndex]);
+    return () => { cancelled = true; };
+  }, [activeOriginalSrc, activeIndex]);
 
   const editorAreaRef = useRef(null);
 
@@ -562,35 +555,46 @@ function ImageEditorInner({
         el.style.setProperty('scrollbar-width', 'none', 'important');
       });
 
-      // FIE topbar: use flex space-between — left, center, right all in flow.
-      // The middle child gets flex:1 + centered content so dimensions/zoom sit
-      // in the visual centre while left (Save) and right (undo/redo/close)
-      // stay at their natural edges. NO absolute positioning — nothing can
-      // be pushed off-screen.
+      // FIE topbar: separate centering of pixels/zoom vs undo/redo/close.
+      // Strategy: topbar is position:relative flex. The dimensions/zoom element
+      // (.FIE_topbar-center-options) is absolutely centred at left:50%.
+      // The right group (undo/redo/close) stays in the normal flex flow at
+      // the far right with 1rem breathing room — entirely separate elements.
       const topbarEl = document.querySelector('.FIE_topbar');
       if (topbarEl) {
+        topbarEl.style.setProperty('position', 'relative', 'important');
         topbarEl.style.setProperty('display', 'flex', 'important');
         topbarEl.style.setProperty('justify-content', 'space-between', 'important');
         topbarEl.style.setProperty('align-items', 'center', 'important');
-        // Remove any stale absolute positioning from previous builds
-        topbarEl.style.removeProperty('position');
-        // If there are 3 children, center the middle one
-        if (topbarEl.children.length >= 3) {
-          const mid = topbarEl.children[1];
-          mid.style.setProperty('flex', '1', 'important');
-          mid.style.setProperty('display', 'flex', 'important');
-          mid.style.setProperty('justify-content', 'center', 'important');
-          mid.style.setProperty('align-items', 'center', 'important');
+
+        // ── Center element: absolutely centred, pointer-events preserved ──
+        const centerEl = topbarEl.querySelector('.FIE_topbar-center-options')
+          || topbarEl.querySelector('[class*="topbar-center"]');
+        if (centerEl) {
+          centerEl.style.setProperty('position', 'absolute', 'important');
+          centerEl.style.setProperty('left', '50%', 'important');
+          centerEl.style.setProperty('top', '50%', 'important');
+          centerEl.style.setProperty('transform', 'translate(-50%,-50%)', 'important');
+          centerEl.style.setProperty('pointer-events', 'auto', 'important');
+          centerEl.style.setProperty('z-index', '0', 'important');
         }
-        // Ensure right group is visible and compact
-        const right = topbarEl.querySelector('[class*="21g986-2"]') || topbarEl.lastElementChild;
-        if (right) {
-          right.style.setProperty('display', 'flex', 'important');
-          right.style.setProperty('gap', '0px', 'important');
-          right.style.setProperty('align-items', 'center', 'important');
-          right.style.removeProperty('position');
-          right.style.removeProperty('right');
-          right.style.removeProperty('transform');
+
+        // ── Right group (undo/redo/close): in flex flow, 1rem from right edge ──
+        // Find it via the close button so the selector is build-independent.
+        const closeBtn = topbarEl.querySelector('.FIE_topbar-close-button')
+          || topbarEl.querySelector('[class*="topbar-close"]');
+        const rightGroup = closeBtn?.parentElement && closeBtn.parentElement !== topbarEl
+          ? closeBtn.parentElement
+          : (topbarEl.querySelector('[class*="21g986-2"]') || topbarEl.lastElementChild);
+        if (rightGroup) {
+          rightGroup.style.setProperty('display', 'flex', 'important');
+          rightGroup.style.setProperty('gap', '0px', 'important');
+          rightGroup.style.setProperty('align-items', 'center', 'important');
+          rightGroup.style.setProperty('margin-right', '1rem', 'important');
+          // Remove any stale absolute positioning from previous builds
+          rightGroup.style.removeProperty('position');
+          rightGroup.style.removeProperty('right');
+          rightGroup.style.removeProperty('transform');
         }
       }
     }
@@ -724,10 +728,6 @@ function ImageEditorInner({
 
   const handleClose = useCallback(() => {
     setLoadedDesignState(null);
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
     setActiveSrc(null);
     if (onOpenChange) onOpenChange(false);
   }, [onOpenChange]);

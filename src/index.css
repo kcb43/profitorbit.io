@@ -1228,18 +1228,22 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 .FIE_topbar,
 [class*="FIE_topbar"] {
   padding: 6px 12px !important;
+  position: relative !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
 }
-/* Center child: flex-grow to fill middle, center its content */
-.FIE_topbar > *:nth-child(2) {
-  flex: 1 !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
+/* Dimensions/zoom: truly centred regardless of Save button or right group width */
+.FIE_topbar-center-options,
+[class*="topbar-center-options"] {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: auto !important;
+  z-index: 0 !important;
 }
-/* Right-side group children: compact spacing */
+/* Right-side group (undo/redo/close): in flex flow, 1rem from right edge */
 [class*="21g986-2"] > *,
 .FIE_topbar > *:last-child > * {
   margin: 0 !important;
