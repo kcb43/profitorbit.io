@@ -387,9 +387,10 @@ function ImageEditorInner({
     `;
 
     function paintTabs() {
-      // ── Tab colours ───────────────────────────────────────────────────────
+      // ── Tab & tool-button colours ──────────────────────────────────────────
+      // Clear inline color on ALL deselected elements (tabs AND tool buttons)
       document.querySelectorAll(
-        '.FIE_tab:not([aria-selected="true"]), .SfxDrawer-item > div:not([aria-selected="true"])',
+        '.FIE_root [aria-selected="false"]',
       ).forEach(el => {
         el.style.removeProperty('color');
         el.querySelectorAll('*').forEach(child => {
@@ -397,7 +398,9 @@ function ImageEditorInner({
           child.style.removeProperty('fill');
         });
       });
-      document.querySelectorAll('.FIE_root [aria-selected="true"]').forEach(el => {
+      // Apply white text only to selected TABS (not tool buttons — those are
+      // handled by CSS and the FIE palette).
+      document.querySelectorAll('.FIE_tab[aria-selected="true"], .SfxDrawer-item > div[aria-selected="true"]').forEach(el => {
         el.style.setProperty('color', '#ffffff', 'important');
         el.querySelectorAll('*').forEach(child => {
           child.style.setProperty('color', '#ffffff', 'important');
