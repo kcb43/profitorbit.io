@@ -6161,11 +6161,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
 
           // ── NEW: Hide from friends (privacy) ──
-          // Facebook GraphQL may use hide_from_friends or similar; try common paths.
-          if (hideFromFriends) {
-            setDeep(vars, ['input', 'data', 'common', 'hide_from_friends'], true);
-            setDeep(vars, ['input', 'data', 'common', 'hide_from_feed'], true);
-            console.log('🟦 [FACEBOOK] Set hide_from_friends / hide_from_feed:', true);
+          // Use hidden_from_friends_visibility (template field). Do NOT add hide_from_friends/hide_from_feed - they cause 1675012.
+          const existingVisibility = getDeep(vars, ['input', 'data', 'common', 'hidden_from_friends_visibility']);
+          if (existingVisibility !== undefined) {
+            const visibility = hideFromFriends ? 'HIDDEN_FROM_FRIENDS' : 'VISIBLE_FROM_FRIENDS';
+            setDeep(vars, ['input', 'data', 'common', 'hidden_from_friends_visibility'], visibility);
+            console.log('🟦 [FACEBOOK] Set hidden_from_friends_visibility:', visibility);
           }
         }
 
