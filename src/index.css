@@ -1228,28 +1228,19 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
 .FIE_topbar,
 [class*="FIE_topbar"] {
   padding: 6px 12px !important;
-  position: relative !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+/* Center child: flex-grow to fill middle, center its content */
+.FIE_topbar > *:nth-child(2) {
+  flex: 1 !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
 }
-/* Left & right groups absolute so center content flows naturally centred */
-[class*="sc-21g986-1"],
-.FIE_topbar > *:first-child {
-  position: absolute !important;
-  left: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-}
-[class*="sc-21g986-2"],
-.FIE_topbar > *:last-child {
-  position: absolute !important;
-  right: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-}
 /* Right-side group children: compact spacing */
-[class*="sc-21g986-2"] > *,
+[class*="21g986-2"] > *,
 .FIE_topbar > *:last-child > * {
   margin: 0 !important;
   padding: 4px !important;

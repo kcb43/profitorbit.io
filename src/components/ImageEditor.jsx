@@ -371,6 +371,9 @@ function ImageEditorInner({
     if (!activeOriginalSrc) { setActiveSrc(null); return; }
     let cancelled = false;
 
+    // Immediately null so FIE doesn't render with a stale blob
+    setActiveSrc(null);
+
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
@@ -505,13 +508,13 @@ function ImageEditorInner({
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Left-side group (save button) — absolutely positioned by the centering block below
-        const leftGroup = topbar.querySelector('[class*="sc-21g986-1"]') || topbar.firstElementChild;
+        // Left-side group (save button)
+        const leftGroup = topbar.querySelector('[class*="21g986-1"]') || topbar.firstElementChild;
         if (leftGroup) {
           leftGroup.style.setProperty('padding-left', '0', 'important');
         }
-        // Right-side group (undo/redo/close) — compact children
-        const rightGroup = topbar.querySelector('[class*="sc-21g986-2"]') || topbar.lastElementChild;
+        // Right-side group (undo/redo/close) — compact children, NO absolute positioning
+        const rightGroup = topbar.querySelector('[class*="21g986-2"]') || topbar.lastElementChild;
         if (rightGroup) {
           rightGroup.style.setProperty('display', 'flex', 'important');
           rightGroup.style.setProperty('gap', '0px', 'important');
@@ -559,27 +562,35 @@ function ImageEditorInner({
         el.style.setProperty('scrollbar-width', 'none', 'important');
       });
 
-      // FIE topbar: center the dimensions/zoom by making left+right absolute
+      // FIE topbar: use flex space-between — left, center, right all in flow.
+      // The middle child gets flex:1 + centered content so dimensions/zoom sit
+      // in the visual centre while left (Save) and right (undo/redo/close)
+      // stay at their natural edges. NO absolute positioning — nothing can
+      // be pushed off-screen.
       const topbarEl = document.querySelector('.FIE_topbar');
       if (topbarEl) {
-        topbarEl.style.setProperty('position', 'relative', 'important');
         topbarEl.style.setProperty('display', 'flex', 'important');
-        topbarEl.style.setProperty('justify-content', 'center', 'important');
+        topbarEl.style.setProperty('justify-content', 'space-between', 'important');
         topbarEl.style.setProperty('align-items', 'center', 'important');
-        // Make left and right groups absolute so the center content flows naturally
-        const left = topbarEl.querySelector('[class*="sc-21g986-1"]') || topbarEl.firstElementChild;
-        const right = topbarEl.querySelector('[class*="sc-21g986-2"]') || topbarEl.lastElementChild;
-        if (left && left !== right) {
-          left.style.setProperty('position', 'absolute', 'important');
-          left.style.setProperty('left', '12px', 'important');
-          left.style.setProperty('top', '50%', 'important');
-          left.style.setProperty('transform', 'translateY(-50%)', 'important');
+        // Remove any stale absolute positioning from previous builds
+        topbarEl.style.removeProperty('position');
+        // If there are 3 children, center the middle one
+        if (topbarEl.children.length >= 3) {
+          const mid = topbarEl.children[1];
+          mid.style.setProperty('flex', '1', 'important');
+          mid.style.setProperty('display', 'flex', 'important');
+          mid.style.setProperty('justify-content', 'center', 'important');
+          mid.style.setProperty('align-items', 'center', 'important');
         }
-        if (right && right !== left) {
-          right.style.setProperty('position', 'absolute', 'important');
-          right.style.setProperty('right', '12px', 'important');
-          right.style.setProperty('top', '50%', 'important');
-          right.style.setProperty('transform', 'translateY(-50%)', 'important');
+        // Ensure right group is visible and compact
+        const right = topbarEl.querySelector('[class*="21g986-2"]') || topbarEl.lastElementChild;
+        if (right) {
+          right.style.setProperty('display', 'flex', 'important');
+          right.style.setProperty('gap', '0px', 'important');
+          right.style.setProperty('align-items', 'center', 'important');
+          right.style.removeProperty('position');
+          right.style.removeProperty('right');
+          right.style.removeProperty('transform');
         }
       }
     }
@@ -621,13 +632,13 @@ function ImageEditorInner({
       imageDesignStates.current[activeIndex] = stateToPersist;
       setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
-    // NUCLEAR: never pass design state from a previous image into FIE.
-    // FIE's loadableDesignState can cause it to display the wrong image
-    // even after stripping imgSrc (other fields like shownImageDimensions
-    // or internal caching can interfere). Start fresh on every switch.
     setLoadedDesignState(null);
     designStateSourceRef.current = 'none';
     setCurrentDesignState(null);
+    // Null activeSrc SYNCHRONOUSLY so that FIE unmounts before React
+    // re-renders. Without this, FIE mounts with the STALE blob URL from
+    // the previous image (blob fetch is async) and shows the wrong image.
+    setActiveSrc(null);
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
