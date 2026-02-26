@@ -1200,3 +1200,27 @@ body.hide-mobile-nav .md\:hidden.fixed.inset-x-0.bottom-0 {
     padding: 8px !important;
   }
 }
+
+/* ── FIE Dark Mode Fixes ──────────────────────────────────────────────────── */
+/* Scaleflex UI's Input component hardcodes lightPalette for bg/border/text,
+   bypassing the theme. Override here so finetune inputs are visible in dark. */
+.dark [class*="FIE_"] .SfxInput-root,
+.dark [class*="FIE_"] [class*="SfxInput-root"] {
+  background-color: #262626 !important;
+  border-color: #404040 !important;
+  color: #fafafa !important;
+}
+.dark [class*="FIE_"] .SfxInput-root:hover,
+.dark [class*="FIE_"] [class*="SfxInput-root"]:hover {
+  background-color: #2a2a2a !important;
+  border-color: #525252 !important;
+}
+.dark [class*="FIE_"] .SfxInput-root:focus-within,
+.dark [class*="FIE_"] [class*="SfxInput-root"]:focus-within {
+  background-color: #171717 !important;
+  border-color: #3b82f6 !important;
+}
+.dark [class*="FIE_"] .SfxInput-Base,
+.dark [class*="FIE_"] [class*="SfxInput-Base"] {
+  color: #fafafa !important;
+}
