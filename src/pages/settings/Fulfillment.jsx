@@ -41,11 +41,17 @@ const EBAY_COUNTRIES = [
   'Ukraine', 'Turkey', 'Greece', 'Denmark', 'Finland', 'Norway',
 ];
 const FACEBOOK_DEFAULTS_KEY = 'facebook-defaults';
+const MERCARI_DEFAULTS_KEY = 'mercari-defaults';
+
+const MERCARI_DELIVERY_OPTIONS = [
+  { id: 'prepaid', label: 'Mercari Prepaid Label' },
+  { id: 'ship_on_own', label: 'Ship on Your Own' },
+];
 
 const FB_DELIVERY_OPTIONS = [
   { id: 'shipping_and_pickup', label: 'Shipping and Local Pickup' },
-  { id: 'shipping', label: 'Shipping Only' },
-  { id: 'local_only', label: 'Local Pickup Only' },
+  { id: 'shipping_only', label: 'Shipping Only' },
+  { id: 'local_pickup', label: 'Local Pickup Only' },
 ];
 const FB_SHIPPING_OPTION_OPTIONS = [
   { id: 'own_label', label: 'Ship on my own (own label)' },
@@ -60,7 +66,11 @@ const FB_CARRIER_OPTIONS = [
 function loadFacebookDefaults() {
   try {
     const stored = localStorage.getItem(FACEBOOK_DEFAULTS_KEY);
-    return stored ? JSON.parse(stored) : {};
+    const parsed = stored ? JSON.parse(stored) : {};
+    // Migrate old IDs to match form: local_only -> local_pickup, shipping -> shipping_only
+    if (parsed.deliveryMethod === 'local_only') parsed.deliveryMethod = 'local_pickup';
+    if (parsed.deliveryMethod === 'shipping') parsed.deliveryMethod = 'shipping_only';
+    return parsed;
   } catch { return {}; }
 }
 function saveFacebookDefaults(defaults) {
@@ -79,6 +89,18 @@ function loadEbayDefaults() {
 function saveEbayDefaults(defaults) {
   try {
     localStorage.setItem(EBAY_DEFAULTS_KEY, JSON.stringify(defaults));
+  } catch { /* ignore */ }
+}
+
+function loadMercariDefaults() {
+  try {
+    const stored = localStorage.getItem(MERCARI_DEFAULTS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+}
+function saveMercariDefaults(defaults) {
+  try {
+    localStorage.setItem(MERCARI_DEFAULTS_KEY, JSON.stringify(defaults));
   } catch { /* ignore */ }
 }
 
@@ -107,6 +129,7 @@ export default function FulfillmentSettings() {
   const [openMarketplace, setOpenMarketplace] = useState(null);
   const [ebayDefaults, setEbayDefaults] = useState(() => loadEbayDefaults());
   const [fbDefaults, setFbDefaults] = useState(() => loadFacebookDefaults());
+  const [mercariDefaults, setMercariDefaults] = useState(() => loadMercariDefaults());
 
   const [form, setForm] = useState({
     pickup_enabled:       false,
@@ -150,6 +173,14 @@ export default function FulfillmentSettings() {
     setFbDefaults((prev) => {
       const next = { ...prev, [key]: value };
       saveFacebookDefaults(next);
+      return next;
+    });
+  };
+
+  const setMercariDefault = (key, value) => {
+    setMercariDefaults((prev) => {
+      const next = { ...prev, [key]: value };
+      saveMercariDefaults(next);
       return next;
     });
   };
@@ -347,7 +378,45 @@ export default function FulfillmentSettings() {
             return (
             <div className="mt-4 space-y-5 pl-1">
 
-              {/* ── Group A: Pricing & Offers ── */}
+              {/* ── Group A: Listing Format ── */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Listing Format</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Pricing Format</Label>
+                    <Select
+                      value={ebayDefaults.pricingFormat || 'fixed'}
+                      onValueChange={(v) => setEbayDefault('pricingFormat', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed Price</SelectItem>
+                        <SelectItem value="auction">Auction</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Duration</Label>
+                    <Select
+                      value={ebayDefaults.duration || ''}
+                      onValueChange={(v) => setEbayDefault('duration', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Good 'Til Canceled">Good 'Til Canceled</SelectItem>
+                        <SelectItem value="30 Days">30 Days</SelectItem>
+                        <SelectItem value="7 Days">7 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Group A2: Pricing & Offers ── */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pricing &amp; Offers</p>
                 <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 mb-3">
@@ -567,7 +636,71 @@ export default function FulfillmentSettings() {
                 </div>
               )}
 
-              {/* ── Group D: Location (always visible) ── */}
+              {/* ── Group D: Package Details (for calculated shipping) ── */}
+              {!isEbayLocalPickup && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Package Details</p>
+                  <p className="text-xs text-muted-foreground mb-3">Required for eBay calculated shipping. Pre-fills the General form when listing.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Weight (lbs)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={ebayDefaults.packageWeight || ''}
+                        onChange={(e) => setEbayDefault('packageWeight', e.target.value)}
+                      />
+                    </div>
+                    <div className="sm:col-span-2 grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-sm mb-1.5 block">Length (in)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={ebayDefaults.packageLength || ''}
+                          onChange={(e) => setEbayDefault('packageLength', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm mb-1.5 block">Width (in)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={ebayDefaults.packageWidth || ''}
+                          onChange={(e) => setEbayDefault('packageWidth', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm mb-1.5 block">Height (in)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={ebayDefaults.packageHeight || ''}
+                          onChange={(e) => setEbayDefault('packageHeight', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label className="text-sm mb-1.5 block">Package Notes (optional)</Label>
+                      <Input
+                        placeholder="Fragile, special handling, etc."
+                        value={ebayDefaults.packageDetails || ''}
+                        onChange={(e) => setEbayDefault('packageDetails', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Group E: Location (always visible) ── */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Location</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -606,7 +739,7 @@ export default function FulfillmentSettings() {
                 </div>
               </div>
 
-              {/* ── Group E: Returns ── */}
+              {/* ── Group F: Returns ── */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Returns</p>
                 <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 mb-4">
@@ -697,6 +830,69 @@ export default function FulfillmentSettings() {
             );
           })()}
 
+                    {/* Mercari-specific: defaults (excludes smart pricing/offers - those change per item) */}
+                    {id === 'mercari' && (
+            <div className="space-y-4 pt-2 border-t">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Smart Listing</Badge>
+                <span className="text-xs text-muted-foreground">Pre-applied during smart listing review.</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm mb-1.5 block">Ships From (Zip Code)</Label>
+                  <Input
+                    placeholder="e.g. 90210"
+                    maxLength={5}
+                    value={mercariDefaults.shipsFrom || ''}
+                    onChange={(e) => setMercariDefault('shipsFrom', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm mb-1.5 block">Delivery Method</Label>
+                  <Select
+                    value={mercariDefaults.deliveryMethod || 'prepaid'}
+                    onValueChange={(v) => setMercariDefault('deliveryMethod', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MERCARI_DELIVERY_OPTIONS.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Smart Pricing & Smart Offers — per-item; flag in Smart Listing unless user disables here */}
+              <div className="space-y-3 pt-2 border-t">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Smart Pricing &amp; Offers</p>
+                <p className="text-xs text-muted-foreground">These change per item, so they&apos;re not in fulfillment. Smart Listing will flag them when listing to Mercari. Turn both off below to skip the flag.</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                    <Switch
+                      id="mercari-disable-smart-pricing"
+                      checked={!!mercariDefaults.smartPricingDisabled}
+                      onCheckedChange={(v) => setMercariDefault('smartPricingDisabled', v)}
+                    />
+                    <Label htmlFor="mercari-disable-smart-pricing" className="text-sm cursor-pointer">I don&apos;t use Smart Pricing (won&apos;t flag in Smart Listing)</Label>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                    <Switch
+                      id="mercari-disable-smart-offers"
+                      checked={!!mercariDefaults.smartOffersDisabled}
+                      onCheckedChange={(v) => setMercariDefault('smartOffersDisabled', v)}
+                    />
+                    <Label htmlFor="mercari-disable-smart-offers" className="text-sm cursor-pointer">I don&apos;t use Smart Offers (won&apos;t flag in Smart Listing)</Label>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">Mercari defaults save automatically. Smart Pricing and Smart Offers are set per listing.</p>
+            </div>
+                    )}
+
                     {/* Facebook-specific: defaults */}
                     {id === 'facebook' && (
             <div className="space-y-4 pt-2 border-t">
@@ -710,7 +906,13 @@ export default function FulfillmentSettings() {
                   <Label className="text-sm mb-1.5 block">Delivery Method</Label>
                   <Select
                     value={fbDefaults.deliveryMethod || ''}
-                    onValueChange={(v) => setFbDefault('deliveryMethod', v)}
+                    onValueChange={(v) => {
+                      setFbDefault('deliveryMethod', v);
+                      if (v === 'local_pickup') {
+                        setFbDefault('allowOffers', false);
+                        setFbDefault('minimumOfferPrice', '');
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select delivery method…" />
@@ -723,7 +925,7 @@ export default function FulfillmentSettings() {
                   </Select>
                 </div>
 
-                {(fbDefaults.deliveryMethod === 'shipping' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && (
+                {(fbDefaults.deliveryMethod === 'shipping_only' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && (
                   <div>
                     <Label className="text-sm mb-1.5 block">Shipping Option</Label>
                     <Select
@@ -746,7 +948,7 @@ export default function FulfillmentSettings() {
                 )}
               </div>
 
-              {(fbDefaults.deliveryMethod === 'shipping' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && fbDefaults.shippingOption !== 'prepaid' && (
+              {(fbDefaults.deliveryMethod === 'shipping_only' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && fbDefaults.shippingOption !== 'prepaid' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm mb-1.5 block">Preferred Carrier</Label>
@@ -785,7 +987,7 @@ export default function FulfillmentSettings() {
                 </div>
               )}
 
-              {(fbDefaults.deliveryMethod === 'shipping' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && fbDefaults.shippingOption !== 'prepaid' && (
+              {(fbDefaults.deliveryMethod === 'shipping_only' || fbDefaults.deliveryMethod === 'shipping_and_pickup') && fbDefaults.shippingOption !== 'prepaid' && (
                 <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
                   <Switch
                     id="fb-default-free-shipping"
@@ -811,45 +1013,18 @@ export default function FulfillmentSettings() {
                   />
                   <p className="text-xs text-muted-foreground mt-1">Used for local pickup listings.</p>
                 </div>
-                <div>
-                  <Label className="text-sm mb-1.5 block">Minimum Offer Price ($)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="e.g. 10.00"
-                    value={fbDefaults.minimumOfferPrice || ''}
-                    onChange={(e) => setFbDefault('minimumOfferPrice', e.target.value)}
-                    disabled={!fbDefaults.allowOffers}
-                    className={!fbDefaults.allowOffers ? 'opacity-50 cursor-not-allowed bg-muted' : ''}
-                  />
-                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 flex-1">
-                  <Switch
-                    id="fb-default-allow-offers"
-                    checked={fbDefaults.allowOffers !== false}
-                    onCheckedChange={(v) => {
-                      setFbDefault('allowOffers', v);
-                      if (!v) setFbDefault('minimumOfferPrice', '');
-                    }}
-                  />
-                  <Label htmlFor="fb-default-allow-offers" className="text-sm leading-tight cursor-pointer">
-                    Allow offers by default
-                  </Label>
-                </div>
-                <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2 flex-1">
-                  <Switch
-                    id="fb-default-hide-friends"
-                    checked={!!fbDefaults.hideFromFriends}
-                    onCheckedChange={(v) => setFbDefault('hideFromFriends', v)}
-                  />
-                  <Label htmlFor="fb-default-hide-friends" className="text-sm leading-tight cursor-pointer">
-                    Hide from Facebook friends by default
-                  </Label>
-                </div>
+              {/* Allow Offers is NOT in fulfillment settings — it gets flagged in Smart Listing when delivery is Shipping Only or Shipping & Local Pickup. Set delivery to Local Pickup Only above to avoid the flag. */}
+              <div className="flex items-center gap-3 rounded-md border border-dashed border-muted-foreground/40 px-3 py-2">
+                <Switch
+                  id="fb-default-hide-friends"
+                  checked={!!fbDefaults.hideFromFriends}
+                  onCheckedChange={(v) => setFbDefault('hideFromFriends', v)}
+                />
+                <Label htmlFor="fb-default-hide-friends" className="text-sm leading-tight cursor-pointer">
+                  Hide from Facebook friends by default
+                </Label>
               </div>
 
               <p className="text-xs text-muted-foreground">Facebook defaults save automatically.</p>

@@ -280,6 +280,13 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       if (fbStored) facebookDefaults = JSON.parse(fbStored);
     } catch (e) { /* ignore */ }
 
+    // Load saved Mercari defaults from localStorage
+    let mercariDefaults = {};
+    try {
+      const mcStored = localStorage.getItem('mercari-defaults');
+      if (mcStored) mercariDefaults = JSON.parse(mcStored);
+    } catch (e) { /* ignore */ }
+
     const result = await preflightSelectedMarketplaces(
       selectedMarketplaces,
       forms.generalForm,
@@ -291,6 +298,7 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
         ...validationOptions,
         ebayDefaults,
         facebookDefaults,
+        mercariDefaults,
         fulfillmentProfile: fulfillmentRef.current,
         autoApplyHighConfidence: autoFillMode === 'auto',
         onApplyPatch: autoFillMode === 'auto' ? applyFixOnly : null,

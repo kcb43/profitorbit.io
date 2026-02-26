@@ -510,8 +510,8 @@ const RETURN_REFUND_METHOD_OPTIONS = [
 ];
 
 const MERCARI_DELIVERY_METHOD_OPTIONS = [
-  { id: 'prepaid', label: 'Mercari Prepaid (Buyer pays shipping)' },
-  { id: 'seller_ship', label: 'Seller ships (Seller pays shipping)' }
+  { id: 'prepaid', label: 'Mercari Prepaid Label' },
+  { id: 'ship_on_own', label: 'Ship on Your Own' },
 ];
 
 /**
@@ -955,7 +955,8 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
  * @param {Object} mercariForm - Mercari-specific form data
  * @returns {Issue[]} Array of validation issues
  */
-export function validateMercariForm(generalForm, mercariForm) {
+export function validateMercariForm(generalForm, mercariForm, options = {}) {
+  const mercariDefaults = options.mercariDefaults || {};
   const issues = [];
   
   // Photos validation
@@ -1105,6 +1106,65 @@ export function validateMercariForm(generalForm, mercariForm) {
       patchTarget: 'mercari'
     });
   }
+
+  // Ships From (zip) — use fulfillment defaults if missing
+  const shipsFrom = mercariForm.shipsFrom || generalForm.zip;
+  if (!shipsFrom || String(shipsFrom).trim().length < 5) {
+    const defaultVal = mercariDefaults.shipsFrom;
+    issues.push({
+      marketplace: 'mercari',
+      field: 'shipsFrom',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Ships From (zip code) is required',
+      patchTarget: 'mercari',
+      suggested: defaultVal
+        ? { label: defaultVal, confidence: 0.97, reasoning: 'From your saved Mercari defaults' }
+        : (generalForm.zip ? { label: generalForm.zip, confidence: 0.9, reasoning: 'From your general zip' } : undefined),
+    });
+  }
+
+  // Delivery Method — use fulfillment defaults if missing
+  if (!mercariForm.deliveryMethod) {
+    const defaultVal = mercariDefaults.deliveryMethod || 'prepaid';
+    issues.push({
+      marketplace: 'mercari',
+      field: 'deliveryMethod',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Delivery method is required',
+      options: MERCARI_DELIVERY_METHOD_OPTIONS,
+      patchTarget: 'mercari',
+      suggested: {
+        id: defaultVal,
+        label: MERCARI_DELIVERY_METHOD_OPTIONS.find(o => o.id === defaultVal)?.label || defaultVal,
+        confidence: 0.97,
+        reasoning: mercariDefaults.deliveryMethod ? 'From your saved Mercari defaults' : 'Mercari Prepaid is most common',
+      },
+    });
+  }
+
+  // Smart Pricing & Smart Offers — always call out unless user disabled in fulfillment settings
+  if (!mercariDefaults.smartPricingDisabled) {
+    issues.push({
+      marketplace: 'mercari',
+      field: 'smartPricing',
+      type: 'suggestion',
+      severity: 'suggestion',
+      message: 'Smart Pricing lets Mercari adjust your price for better visibility. Set per listing. To skip this, turn it off in Settings → Fulfillment → Mercari.',
+      patchTarget: 'mercari',
+    });
+  }
+  if (!mercariDefaults.smartOffersDisabled) {
+    issues.push({
+      marketplace: 'mercari',
+      field: 'smartOffers',
+      type: 'suggestion',
+      severity: 'suggestion',
+      message: 'Smart Offers lets buyers send offers. Set per listing. To skip this, turn it off in Settings → Fulfillment → Mercari.',
+      patchTarget: 'mercari',
+    });
+  }
   
   return issues;
 }
@@ -1115,11 +1175,11 @@ export function validateMercariForm(generalForm, mercariForm) {
  * @param {Object} facebookForm - Facebook-specific form data
  * @returns {Issue[]} Array of validation issues
  */
-// Facebook delivery method options
+// Facebook delivery method options (IDs match CrosslistComposer form)
 const FACEBOOK_DELIVERY_METHOD_OPTIONS = [
   { id: 'shipping_and_pickup', label: 'Shipping and Local Pickup' },
-  { id: 'shipping', label: 'Shipping Only' },
-  { id: 'local_only', label: 'Local Pickup Only' },
+  { id: 'shipping_only', label: 'Shipping Only' },
+  { id: 'local_pickup', label: 'Local Pickup Only' },
 ];
 
 const FACEBOOK_SHIPPING_OPTION_OPTIONS = [
@@ -1307,8 +1367,8 @@ export function validateFacebookForm(generalForm, facebookForm, options = {}) {
     });
   } else {
     const deliveryMethod = facebookForm.deliveryMethod;
-    const hasShipping = deliveryMethod === 'shipping' || deliveryMethod === 'shipping_and_pickup';
-    const isPrepaid = facebookForm.shippingOption === 'prepaid';
+    const hasShipping = deliveryMethod === 'shipping_only' || deliveryMethod === 'shipping_and_pickup';
+    const isPrepaid = facebookForm.shippingOption === 'prepaid' || facebookForm.shippingOption === 'prepaid_label';
 
     // Shipping Option — if shipping enabled
     if (hasShipping && !facebookForm.shippingOption) {
@@ -1386,8 +1446,11 @@ export function validateFacebookForm(generalForm, facebookForm, options = {}) {
     }
   }
 
-  // Allow Offers — advisory if not configured
-  if (facebookForm.allowOffers && !facebookForm.minimumOfferPrice) {
+  // Allow Offers — flag when shipping so user can decide (skip when form is Local Pickup or fulfillment is Pickup Only)
+  const isLocalOnly = facebookForm.deliveryMethod === 'local_pickup';
+  const hasShipping = facebookForm.deliveryMethod === 'shipping_only' || facebookForm.deliveryMethod === 'shipping_and_pickup';
+  const fbPrefersPickupOnly = facebookDefaults.deliveryMethod === 'local_pickup';
+  if (hasShipping && !fbPrefersPickupOnly && facebookForm.allowOffers && !facebookForm.minimumOfferPrice) {
     const defaultVal = facebookDefaults.minimumOfferPrice;
     if (defaultVal) {
       issues.push({
@@ -1395,7 +1458,7 @@ export function validateFacebookForm(generalForm, facebookForm, options = {}) {
         field: 'minimumOfferPrice',
         type: 'missing',
         severity: 'warning',
-        message: 'Offers are enabled but no minimum offer price is set',
+        message: 'Offers are enabled but no minimum offer price is set. To skip allow-offers prompts, set "Local Pickup Only" in Settings → Fulfillment → Facebook.',
         patchTarget: 'facebook',
         suggested: {
           id: defaultVal,

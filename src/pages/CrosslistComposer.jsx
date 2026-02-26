@@ -7499,10 +7499,18 @@ export default function CrosslistComposer() {
     // Merge with saved form data (saved data takes precedence over initial state)
     // General defaults (e.g. zip) are applied between item data and saved changes so they
     // persist across items but can still be overridden by item-specific saved state.
+    // eBay package defaults from Fulfillment settings apply to general form for calculated shipping
+    const ebayPackage = (ebayDefaults || {});
+    const ebayPackageFields = ['packageWeight', 'packageLength', 'packageWidth', 'packageHeight', 'packageDetails'];
+    const ebayPackageMerged = Object.fromEntries(
+      ebayPackageFields
+        .filter((k) => ebayPackage[k] != null && ebayPackage[k] !== '')
+        .map((k) => [k, ebayPackage[k]])
+    );
     const merged = {
       general: savedGeneral
-        ? { ...initial.forms.general, ...(generalDefaults || {}), ...savedGeneral }
-        : { ...initial.forms.general, ...(generalDefaults || {}) },
+        ? { ...initial.forms.general, ...(generalDefaults || {}), ...ebayPackageMerged, ...savedGeneral }
+        : { ...initial.forms.general, ...(generalDefaults || {}), ...ebayPackageMerged },
       ebay: savedEbay ? { ...initial.forms.ebay, ...savedEbay } : { ...initial.forms.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.forms.etsy, ...savedEtsy } : initial.forms.etsy,
       mercari: savedMercari ? { ...initial.forms.mercari, ...savedMercari } : { ...initial.forms.mercari, ...(mercariDefaults || {}) },
@@ -9222,7 +9230,7 @@ export default function CrosslistComposer() {
             shippingPrice:       facebookForm.shippingPrice ? parseFloat(facebookForm.shippingPrice) : null,
             displayFreeShipping: !!facebookForm.displayFreeShipping,
 
-            // ── Prepaid label (only used when shippingOption === 'prepaid_label') ──
+            // ── Prepaid label (only used when shippingOption === 'prepaid') ──
             shippingCarrier:    facebookForm.shippingCarrier    || null,
             packageWeightClass: facebookForm.packageWeightClass || null,
             packageWeightLbs:   facebookForm.packageWeightLbs   ? parseFloat(facebookForm.packageWeightLbs)  : null,
@@ -16181,7 +16189,7 @@ export default function CrosslistComposer() {
               {(() => {
                 const isLocalPickup = facebookForm.deliveryMethod === "local_pickup";
                 const hasShipping = facebookForm.deliveryMethod === "shipping_only" || facebookForm.deliveryMethod === "shipping_and_pickup";
-                const isPrepaid = facebookForm.shippingOption === "prepaid_label";
+                const isPrepaid = facebookForm.shippingOption === "prepaid" || facebookForm.shippingOption === "prepaid_label";
                 return (
                   <div className="space-y-4">
                     {/* Row 1: Delivery Method + Shipping Option */}
@@ -16222,7 +16230,7 @@ export default function CrosslistComposer() {
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="own_label">Use your own shipping label</SelectItem>
-                              <SelectItem value="prepaid_label">Use a prepaid shipping label</SelectItem>
+                              <SelectItem value="prepaid">Use a prepaid shipping label</SelectItem>
                             </SelectContent>
                           </Select>
                           {isPrepaid && (
@@ -16378,7 +16386,8 @@ export default function CrosslistComposer() {
                         )}
                       </div>
 
-                      {/* Allow Offers */}
+                      {/* Allow Offers — hidden when Local Pickup Only */}
+                      {facebookForm.deliveryMethod !== 'local_pickup' && (
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <Label className="text-sm block">Allow Offers</Label>
@@ -16410,6 +16419,7 @@ export default function CrosslistComposer() {
                           </div>
                         )}
                       </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -22210,7 +22220,7 @@ export default function CrosslistComposer() {
                       {(() => {
                         const isLocalPickup = facebookForm.deliveryMethod === "local_pickup";
                         const hasShipping = facebookForm.deliveryMethod === "shipping_only" || facebookForm.deliveryMethod === "shipping_and_pickup";
-                        const isPrepaid = facebookForm.shippingOption === "prepaid_label";
+                        const isPrepaid = facebookForm.shippingOption === "prepaid" || facebookForm.shippingOption === "prepaid_label";
                         return (
                           <div className="space-y-4">
                             {/* Row 1: Delivery Method + Shipping Option */}
@@ -22250,7 +22260,7 @@ export default function CrosslistComposer() {
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="own_label">Use your own shipping label</SelectItem>
-                                      <SelectItem value="prepaid_label">Use a prepaid shipping label</SelectItem>
+                                      <SelectItem value="prepaid">Use a prepaid shipping label</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   {isPrepaid && (
@@ -22401,6 +22411,7 @@ export default function CrosslistComposer() {
                                 )}
                               </div>
 
+                              {facebookForm.deliveryMethod !== 'local_pickup' && (
                               <div>
                                 <div className="flex items-center justify-between mb-1.5">
                                   <Label className="text-sm block">Allow Offers</Label>
@@ -22430,6 +22441,7 @@ export default function CrosslistComposer() {
                                   </div>
                                 )}
                               </div>
+                              )}
                             </div>
                           </div>
                         );

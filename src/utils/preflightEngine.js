@@ -83,7 +83,9 @@ export async function preflightSelectedMarketplaces(
           break;
 
         case 'mercari':
-          issues = validateMercariForm(generalForm, mercariForm);
+          issues = validateMercariForm(generalForm, mercariForm, {
+            mercariDefaults: validationOptions.mercariDefaults || {},
+          });
           break;
 
         case 'facebook':
