@@ -105,6 +105,7 @@ import SmartListingModal from '@/components/SmartListingModal';
 import { useSmartListing as checkSmartListingEnabled } from '@/config/features';
 import { Checkbox } from '@/components/ui/checkbox';
 import { setMercariCategories, setFacebookCategories } from '@/utils/listingValidation';
+import { getTagsForMarketplace } from '@/utils/preflightEngine';
 import { FACEBOOK_CATEGORIES } from '@/data/facebookCategories';
 
 const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
@@ -4686,6 +4687,14 @@ const TEMPLATE_DISPLAY_NAMES = {
   facebook: "Facebook Marketplace",
 };
 
+// Tag limits per marketplace (eBay and Mercari don't use tags)
+const TAG_LIMITS_BY_MARKETPLACE = [
+  { name: 'Poshmark', limit: 3 },
+  { name: 'Depop', limit: 5 },
+  { name: 'Grailed', limit: 10 },
+  { name: 'Etsy', limit: 13 },
+];
+
 const GENERAL_TEMPLATE_DEFAULT = {
   photos: [],
   title: "",
@@ -9264,6 +9273,9 @@ export default function CrosslistComposer() {
             category: facebookForm.category || generalForm.category,
             condition: facebookCondition,
 
+            // ── Tags (truncated to Facebook limit of 20) ──
+            tags: getTagsForMarketplace(facebookForm.tags || generalForm.tags || '', 'facebook'),
+
             // ── Delivery & shipping ──
             deliveryMethod:      facebookForm.deliveryMethod || 'shipping_and_pickup',
             shippingOption:      facebookForm.shippingOption || 'own_label',
@@ -9408,7 +9420,7 @@ export default function CrosslistComposer() {
                     const title = facebookForm.title || generalForm.title || '';
                     const description = facebookForm.description || generalForm.description || '';
                     const price = facebookForm.price || generalForm.price || '';
-                    const tags = facebookForm.tags || generalForm.tags || '';
+                    const tags = getTagsForMarketplace(facebookForm.tags || generalForm.tags || '', 'facebook');
                     const meetUpLocation = facebookForm.meetUpLocation || '';
                     const draft = [
                       `Title: ${title}`,
@@ -10109,14 +10121,15 @@ export default function CrosslistComposer() {
 
             const result = await ext.createFacebookListing({
               inventory_item_id: currentEditingItemId || null,
-              payload: { 
-                title, 
-                description, 
+              payload: {
+                title,
+                description,
                 price: priceNum,
                 images: photosToUse,
                 categoryId: facebookCategoryId,
                 category: facebookForm.category || generalForm.category,
                 condition: facebookCondition,
+                tags: getTagsForMarketplace(facebookForm.tags || generalForm.tags || '', 'facebook'),
                 deliveryMethod:      facebookForm.deliveryMethod || 'shipping_and_pickup',
                 shippingOption:      facebookForm.shippingOption || 'own_label',
                 shippingPrice:       facebookForm.shippingPrice ? parseFloat(facebookForm.shippingPrice) : null,
@@ -11997,6 +12010,16 @@ export default function CrosslistComposer() {
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Helps your item get found. (comma or enter)
                 </p>
+                {(() => {
+                  const tagCount = (generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length;
+                  const exceeded = TAG_LIMITS_BY_MARKETPLACE.filter((t) => tagCount > t.limit);
+                  const msg = exceeded.length > 0 ? exceeded.map((t) => `${t.name}: ${t.limit} limit`).join(' - ') : null;
+                  return msg ? (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                      {msg}
+                    </p>
+                  ) : null;
+                })()}
                 {((generalForm?.description || '').trim().length >= 20) && (
                   <div className="mt-3">
                     <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -18090,6 +18113,16 @@ export default function CrosslistComposer() {
                         <p className="mt-1.5 text-xs text-muted-foreground">
                           Helps your item get found. (comma or enter)
                         </p>
+                        {(() => {
+                          const tagCount = (generalForm.tags || '').split(',').map((t) => t.trim()).filter(Boolean).length;
+                          const exceeded = TAG_LIMITS_BY_MARKETPLACE.filter((t) => tagCount > t.limit);
+                          const msg = exceeded.length > 0 ? exceeded.map((t) => `${t.name}: ${t.limit} limit`).join(' - ') : null;
+                          return msg ? (
+                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                              {msg}
+                            </p>
+                          ) : null;
+                        })()}
                         {((generalForm?.description || '').trim().length >= 20) && (
                           <div className="mt-3">
                             <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">

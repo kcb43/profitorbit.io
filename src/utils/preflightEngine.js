@@ -3,6 +3,25 @@
  * Runs validation checks without actually posting to marketplaces
  */
 
+// Tag limits per marketplace (eBay and Mercari don't use tags)
+export const TAG_LIMITS = {
+  facebook: 20,
+  etsy: 13,
+  poshmark: 3,
+  depop: 5,
+  grailed: 10,
+};
+
+/**
+ * Get tags truncated to marketplace limit (first N tags)
+ */
+export function getTagsForMarketplace(tagsString, marketplace) {
+  const limit = TAG_LIMITS[marketplace];
+  if (limit == null) return tagsString || '';
+  const arr = (tagsString || '').split(',').map((t) => t.trim()).filter(Boolean);
+  return arr.slice(0, limit).join(', ');
+}
+
 import {
   validateEbayForm,
   validateMercariForm,
@@ -53,7 +72,8 @@ export async function preflightSelectedMarketplaces(
   ];
   const getPhotoUrls = (photos) =>
     (photos || []).map(p => (typeof p === 'string' ? p : p?.url || p?.imageUrl || '')).filter(Boolean);
-  const hasGeneralFormChanged = generalFormBaseline && (() => {
+  // When baseline is missing, require review (safe default). When present, compare to detect changes.
+  const hasGeneralFormChanged = !generalFormBaseline || (() => {
     for (const k of GENERAL_FORM_COMPARE_FIELDS) {
       const a = generalFormBaseline[k];
       const b = generalForm[k];
@@ -102,6 +122,30 @@ export async function preflightSelectedMarketplaces(
         message: 'Before your first listing, head over to Settings → Fulfillment to set up your shipping and pickup preferences. This only takes a minute and helps us fill in marketplace-specific details like shipping carriers, handling time, and options such as Hide from Friends on Facebook.',
         patchTarget: 'general',
       });
+    }
+
+    // Tag limit check — flag when user has more tags than marketplace allows
+    const tagLimit = TAG_LIMITS[marketplace];
+    if (tagLimit != null) {
+      const mpForm = formByMarketplace[marketplace] || {};
+      const tagsRaw = mpForm.tags ?? generalForm.tags ?? '';
+      const tagArr = (tagsRaw || '').split(',').map((t) => t.trim()).filter(Boolean);
+      if (tagArr.length > tagLimit) {
+        const truncated = tagArr.slice(0, tagLimit).join(', ');
+        issues.push({
+          marketplace,
+          field: 'tags',
+          type: 'suggestion',
+          severity: 'blocking',
+          message: `You have ${tagArr.length} tags but ${marketplace.charAt(0).toUpperCase() + marketplace.slice(1)} allows only ${tagLimit}. Only the first ${tagLimit} tags will be used when listing.`,
+          patchTarget: marketplace,
+          suggested: {
+            label: truncated,
+            confidence: 0.95,
+            reasoning: `Use first ${tagLimit} tags for ${marketplace}`,
+          },
+        });
+      }
     }
 
     try {
@@ -400,6 +444,9 @@ export function getFieldLabel(field) {
 
     // Facebook
     category: 'Category',
+
+    // Tags (marketplace-specific)
+    tags: 'Tags',
 
     // Special
     _connection: 'Connection',
