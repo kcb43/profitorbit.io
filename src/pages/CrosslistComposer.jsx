@@ -22912,11 +22912,12 @@ export default function CrosslistComposer() {
       <DescriptionGenerator
         open={descriptionGeneratorOpen}
         onOpenChange={setDescriptionGeneratorOpen}
-        onSelectDescription={(description) => {
-          if (activeForm === "general") {
+        onSelectDescription={(description, marketplace) => {
+          const target = marketplace && marketplace !== 'general' ? marketplace : activeForm;
+          if (target === "general") {
             handleGeneralChange("description", description);
           } else {
-            handleMarketplaceChange(activeForm, "description", description);
+            handleMarketplaceChange(target, "description", description);
           }
         }}
         marketplace={activeForm}
@@ -23061,6 +23062,17 @@ export default function CrosslistComposer() {
           isSubmitting={smartListing.isSubmitting}
           onSaveEbayDefault={updateEbayDefault}
           onSaveFacebookDefault={updateFacebookDefault}
+          listingData={{
+            title: generalForm.title,
+            description: facebookForm.description || generalForm.description || '',
+            price: generalForm.price,
+            imageUrl: (generalForm.photos && generalForm.photos.length > 0)
+              ? (typeof generalForm.photos[0] === 'string' ? generalForm.photos[0] : generalForm.photos[0]?.url || generalForm.photos[0]?.imageUrl || '')
+              : '',
+            location: generalForm.zip || '',
+            condition: generalForm.condition || 'New',
+            category: generalForm.category || '',
+          }}
         />
       )}
 

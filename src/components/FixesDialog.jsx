@@ -19,6 +19,10 @@ import {
   XCircle,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
+  Eye,
+  MapPin,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -27,6 +31,84 @@ import {
   isMarketplaceReady,
 } from '@/utils/preflightEngine';
 import IssuesList from './IssuesList';
+
+const FB_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg';
+
+function ListingPreview({ listingData }) {
+  const { title, description, price, imageUrl, location, condition, category } = listingData || {};
+  if (!title && !imageUrl) return null;
+
+  const formattedPrice = price
+    ? `$${parseFloat(price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+    : '$0';
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 dark:bg-muted/40 border-b border-gray-200 dark:border-border">
+        <img src={FB_LOGO} alt="Facebook" className="w-5 h-5" />
+        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          Facebook Marketplace Preview
+        </span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row">
+        {/* Image */}
+        {imageUrl && (
+          <div className="sm:w-[200px] sm:min-w-[200px] aspect-square bg-gray-100 dark:bg-muted overflow-hidden">
+            <img
+              src={imageUrl}
+              alt={title || 'Listing'}
+              className="w-full h-full object-cover"
+              crossOrigin="anonymous"
+            />
+          </div>
+        )}
+
+        {/* Details */}
+        <div className="flex-1 min-w-0 p-4 flex flex-col gap-2">
+          <div className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+            {formattedPrice}
+          </div>
+          <div className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
+            {title || 'Untitled Listing'}
+          </div>
+          {location && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="w-3 h-3" />
+              {location}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {condition && (
+              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <Tag className="w-2.5 h-2.5" />
+                {condition}
+              </span>
+            )}
+            {category && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-muted text-muted-foreground border border-gray-200 dark:border-border">
+                {category}
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          {description && (
+            <div className="mt-2 border-t border-gray-100 dark:border-border pt-2">
+              <div className="text-xs font-medium text-muted-foreground mb-1">Description</div>
+              <ScrollArea className="max-h-[120px]">
+                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed pr-2">
+                  {description}
+                </p>
+              </ScrollArea>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * FixesDialog component
@@ -49,8 +131,10 @@ export default function FixesDialog({
   isSubmitting = false,
   onSaveEbayDefault,
   onSaveFacebookDefault,
+  listingData,
 }) {
   const [activeMarketplace, setActiveMarketplace] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   
   // Auto-select first marketplace with issues when dialog opens
   useEffect(() => {
@@ -212,6 +296,26 @@ export default function FixesDialog({
           </div>
         </div>
         
+        {/* Listing Preview — collapsible */}
+        {listingData && (listingData.title || listingData.imageUrl) && (
+          <div className="border-t">
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(!previewOpen)}
+              className="w-full flex items-center gap-2 px-6 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              Listing Preview
+              <ChevronDown className={cn('w-4 h-4 ml-auto transition-transform', previewOpen && 'rotate-180')} />
+            </button>
+            {previewOpen && (
+              <div className="px-6 pb-4">
+                <ListingPreview listingData={listingData} />
+              </div>
+            )}
+          </div>
+        )}
+
         <DialogFooter className="px-6 py-4 border-t">
           <Button
             variant="outline"

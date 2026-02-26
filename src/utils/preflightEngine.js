@@ -40,8 +40,13 @@ export async function preflightSelectedMarketplaces(
   const {
     autoApplyHighConfidence = false,
     onApplyPatch = null,
+    fulfillmentProfile = null,
     ...validationOptions
   } = options;
+
+  const fulfillmentConfigured =
+    fulfillmentProfile &&
+    (fulfillmentProfile.pickup_enabled || fulfillmentProfile.shipping_enabled);
 
   const ready = [];
   const fixesNeeded = [];
@@ -51,6 +56,17 @@ export async function preflightSelectedMarketplaces(
 
   for (const marketplace of selectedMarketplaces) {
     let issues = [];
+
+    if (!fulfillmentConfigured) {
+      issues.push({
+        marketplace,
+        field: '_fulfillment',
+        type: 'missing',
+        severity: 'warning',
+        message: 'Fulfillment settings not configured. Visit Settings → Fulfillment to set up shipping details, pickup locations, and marketplace-specific options (e.g. Hide from Friends on Facebook).',
+        patchTarget: 'general',
+      });
+    }
 
     try {
       switch (marketplace) {

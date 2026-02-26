@@ -4,9 +4,10 @@
  * To be integrated into CrosslistComposer
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { preflightSelectedMarketplaces, getPreflightSummary } from '@/utils/preflightEngine';
+import { getFulfillmentProfile } from '@/api/fulfillmentApi';
 import { debugLog } from '@/config/features';
 
 /**
@@ -43,6 +44,17 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
   const [fixesDialogOpen, setFixesDialogOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fulfillment profile — fetched once to check if user has configured shipping
+  const fulfillmentRef = useRef(null);
+  const fulfillmentFetched = useRef(false);
+  useEffect(() => {
+    if (!enabled || fulfillmentFetched.current) return;
+    fulfillmentFetched.current = true;
+    getFulfillmentProfile()
+      .then((data) => { fulfillmentRef.current = data; })
+      .catch(() => {})
+  }, [enabled]);
   
   /**
    * Check marketplace connections
@@ -279,8 +291,8 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
         ...validationOptions,
         ebayDefaults,
         facebookDefaults,
+        fulfillmentProfile: fulfillmentRef.current,
         autoApplyHighConfidence: autoFillMode === 'auto',
-        // Use applyFixOnly here — NOT handleApplyFix — to avoid circular re-entry
         onApplyPatch: autoFillMode === 'auto' ? applyFixOnly : null,
       }
     );
