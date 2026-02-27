@@ -1065,15 +1065,37 @@ function ImageEditorInner({
   // useUpdateEffect can race with tab switches; calling updateStateFnRef
   // directly ensures the Konva Design layer receives finetunes/filters
   // so they persist when switching to Finetune or Watermark tabs.
-  // includeAdjustments=true  → called on initial load/template apply (restores crop/rotation/flip)
-  // includeAdjustments=false → called from MutationObserver tab-switch recovery (only restores
-  //   finetunes + filter, which FIE resets on tab transitions; adjustments persist on their own
-  //   and must NOT be re-applied or they'll snap crop handles back to the stored position).
+  //
+  // includeAdjustments=true  → called on initial load/template apply.
+  //   Uses the adjustments from loadedDesignState (restores saved crop/rotation/flip).
+  //
+  // includeAdjustments=false → called from MutationObserver tab-switch recovery.
+  //   Uses the USER'S CURRENT adjustments from currentDesignStateRef, NOT the
+  //   stored template adjustments. This is critical for two reasons:
+  //     1. The user's crop must be visible in Finetune/Watermark tab previews —
+  //        FIE partially reinitialises its canvas on tab transitions, so we must
+  //        re-inject the adjustments explicitly.
+  //     2. We must NOT revert to the originally-loaded crop (that caused the
+  //        old snap-back bug); using currentDesignStateRef gives us whatever
+  //        the user has right now, including any drag repositioning they did.
   const applyLoadedTemplate = useCallback((includeAdjustments = false) => {
     if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
-    const { adjustments, ...withoutAdjustments } = loadedDesignState;
+    const { adjustments: loadedAdjustments, ...withoutAdjustments } = loadedDesignState;
+
+    // Determine which adjustments to include in the payload.
+    let adjustmentsPayload;
+    if (includeAdjustments) {
+      // Initial load: restore the saved crop/rotation/flip from the template/DB.
+      adjustmentsPayload = loadedAdjustments;
+    } else {
+      // Tab-switch recovery: use the user's live adjustments so their crop
+      // appears correctly in Finetune/Watermark and isn't snapped back.
+      adjustmentsPayload = currentDesignStateRef.current?.adjustments ?? null;
+    }
+
     const payload = {
-      ...(includeAdjustments ? loadedDesignState : withoutAdjustments),
+      ...withoutAdjustments,
+      ...(adjustmentsPayload ? { adjustments: adjustmentsPayload } : {}),
       finetunes: finetunesStrsToClasses(loadedDesignState.finetunes),
       filter: filterStrToClass(loadedDesignState.filter),
     };
@@ -1091,10 +1113,26 @@ function ImageEditorInner({
     return () => cancelAnimationFrame(id);
   }, [loadedDesignState, applyLoadedTemplate]);
 
-  // Re-apply template when switching to Finetune or Watermark tabs.
-  // FIE resets Konva state during tab transitions; re-applying at multiple intervals restores the design.
+  // Re-apply design state when the user switches away from the Adjust tab.
+  //
+  // Problem: FIE partially reinitialises its Konva canvas on every tab transition.
+  // This clears two things:
+  //   a) Finetune / filter state (from a loaded template or DB)
+  //   b) The user's current crop / rotation / flip adjustments (so the cropped
+  //      image is NOT shown in the Finetune or Watermark previews)
+  //
+  // Fix: after any aria-selected change fires (which happens on real tab clicks
+  // AND on crop-preset button selection), if we are now on a non-Adjust tab:
+  //   • Re-inject the current adjustments (user's live crop/rotation/flip) so
+  //     Finetune and Watermark always show the cropped image.
+  //   • If a saved template/DB state is loaded, also re-inject its
+  //     finetunes + filter (which FIE resets on transitions).
+  //
+  // Snap-back prevention: we use currentDesignStateRef.current (the live state
+  // at the moment of calling) rather than any stored template adjustments, so
+  // the user's dragged crop position is always honoured.
   useEffect(() => {
-    if (!open || !loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
+    if (!open) return;
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
@@ -1105,6 +1143,22 @@ function ImageEditorInner({
     let timeoutIds = [];
     let intervalId = null;
 
+    const doApply = () => {
+      if (isAdjustTab()) return; // never interfere while crop handles are visible
+
+      if (loadedDesignState && Object.keys(loadedDesignState).length > 0) {
+        // Has a saved state / template: re-apply finetunes + filter AND current adjustments.
+        applyLoadedTemplate();
+      } else {
+        // Fresh image (no template/DB state): just re-inject the user's current
+        // adjustments so their crop is visible in Finetune / Watermark.
+        const adjustments = currentDesignStateRef.current?.adjustments;
+        if (adjustments) {
+          updateStateFnRef.current?.({ adjustments });
+        }
+      }
+    };
+
     const scheduleReapply = () => {
       timeoutIds.forEach(id => clearTimeout(id));
       timeoutIds = [];
@@ -1112,15 +1166,15 @@ function ImageEditorInner({
         clearInterval(intervalId);
         intervalId = null;
       }
-      // Re-apply immediately and at staggered intervals
+      // Re-apply at staggered intervals to overcome FIE's async tab-switch resets
       [0, 50, 150, 350, 800].forEach((delay) => {
         const id = setTimeout(() => {
-          if (!isAdjustTab()) applyLoadedTemplate();
+          doApply();
           timeoutIds = timeoutIds.filter(x => x !== id);
         }, delay);
         timeoutIds.push(id);
       });
-      // Poll every 200ms for 2s to overcome FIE's async tab-switch resets
+      // Poll every 200ms for 2s to overcome FIE's lingering async resets
       let elapsed = 0;
       intervalId = setInterval(() => {
         elapsed += 200;
@@ -1129,15 +1183,13 @@ function ImageEditorInner({
           intervalId = null;
           return;
         }
-        if (!isAdjustTab()) applyLoadedTemplate();
+        doApply();
       }, 200);
     };
 
-    // Only fire scheduleReapply when the user actually switches tabs
-    // (aria-selected changes on a tab button). childList mutations fire
-    // constantly during crop-handle dragging (canvas repaints) and would
-    // wrongly trigger template re-application, snapping the crop handles
-    // back to their stored position on every drag event.
+    // Only fire scheduleReapply when aria-selected changes. We do NOT observe
+    // childList because canvas repaints during crop-handle dragging fire childList
+    // mutations constantly and would wrongly trigger re-application mid-drag.
     const obs = new MutationObserver((mutations) => {
       const hasTabSwitch = mutations.some(
         (m) => m.type === 'attributes' && m.attributeName === 'aria-selected'
@@ -1148,8 +1200,6 @@ function ImageEditorInner({
       subtree: true,
       attributes: true,
       attributeFilter: ['aria-selected'],
-      // childList deliberately omitted — canvas repaints must not trigger
-      // template re-application while the user is dragging crop handles.
     });
     return () => {
       obs.disconnect();
