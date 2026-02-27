@@ -143,7 +143,7 @@ export default function InventoryPage() {
       badgeClass: "text-xs px-3 py-1.5",
       titleClass: "text-base font-bold",
       dataTextClass: "text-sm",
-      hoverEffect: "hover:scale-105 transition-transform duration-300",
+      hoverEffect: "",
       buttonSizeClass: "h-9 w-9",
       iconSizeClass: "h-4 w-4"
     },
@@ -2571,12 +2571,10 @@ export default function InventoryPage() {
                             </Badge>
                           </div>
                           
-                          <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-1 sm:mb-3 w-full text-left">
-                            <h3 className="text-xl font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer break-words line-clamp-2 text-left"
-                              style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
-                              {item.item_name || 'Untitled Item'}
-                            </h3>
-                          </Link>
+                          <h3 className="text-xl font-bold text-foreground break-words line-clamp-2 text-left mb-1 sm:mb-3"
+                            style={{ letterSpacing: '0.3px', lineHeight: '1.35' }}>
+                            {item.item_name || 'Untitled Item'}
+                          </h3>
 
                           <div className="space-y-1.5 text-xs sm:text-sm mb-2 sm:mb-4 text-gray-700 dark:text-gray-300 break-words">
                             <div>
@@ -3025,11 +3023,9 @@ export default function InventoryPage() {
                             </div>
                           </div>
 
-                          <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-3">
-                            <h3 className="text-lg font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
-                              {item.item_name || "Untitled Item"}
-                            </h3>
-                          </Link>
+                          <h3 className="text-lg font-bold text-foreground break-words line-clamp-2 mb-3">
+                            {item.item_name || "Untitled Item"}
+                          </h3>
 
                           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-base">
                             <div className="flex items-center justify-between gap-3">
