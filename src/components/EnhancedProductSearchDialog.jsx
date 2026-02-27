@@ -258,13 +258,10 @@ function SoldDetailPanel({ productId, listItem }) {
           <p className="text-sm">Loading product details…</p>
         </div>
       )}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="w-4 h-4" />
-          <AlertDescription>Could not load details: {error}</AlertDescription>
-        </Alert>
+      {error && !loading && (
+        <p className="text-xs text-muted-foreground italic">Extended details unavailable for this listing.</p>
       )}
-      {images.length > 0 && <SoldImageGallery images={images} />}
+      {images.length > 0 && <SoldImageGallery images={images} />
       <div className="space-y-2">
         <p className="font-semibold text-base leading-snug">{pr?.title || listItem?.title}</p>
         {pr?.subtitle && <p className="text-xs text-muted-foreground">{pr.subtitle}</p>}

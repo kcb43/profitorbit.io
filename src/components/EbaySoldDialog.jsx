@@ -292,11 +292,8 @@ function DetailPanel({ productId, listItem }) {
         </div>
       )}
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="w-4 h-4" />
-          <AlertDescription>Could not load details: {error}. Showing basic listing info.</AlertDescription>
-        </Alert>
+      {error && !loading && (
+        <p className="text-xs text-muted-foreground italic">Extended details unavailable for this listing.</p>
       )}
 
       {/* Gallery */}
