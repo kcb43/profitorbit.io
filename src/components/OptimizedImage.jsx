@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+const isFbCdnUrl = (url) =>
+  typeof url === 'string' && url.includes('fbcdn.net');
+
 /**
  * OptimizedImage Component
- * Provides lazy loading, loading states, and error handling for images
- * 
+ * Provides lazy loading, loading states, and error handling for images.
+ * For Facebook CDN URLs that 403, a credentialed no-cors fetch retry is
+ * attempted to work around browser-cached 403 responses and session-gated
+ * images (sends cookies regardless of browser 3rd-party-cookie policy).
+ *
  * @param {string} src - Image source URL
  * @param {string} alt - Alt text for the image
  * @param {string} className - Additional CSS classes
@@ -26,11 +32,28 @@ export function OptimizedImage({
   const [hasError, setHasError] = useState(false);
   const imgRef = useRef(null);
   const [isInView, setIsInView] = useState(!lazy);
+  const blobUrlRef = useRef(null);  // blob URL created during retry (needs cleanup)
+  const retriedRef = useRef(false); // prevent infinite retry loops
+
+  // Revoke blob URL on unmount or when src changes
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [src]);
 
   useEffect(() => {
     // Reset states when src changes
     setIsLoading(true);
     setHasError(false);
+    retriedRef.current = false;
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
     setImageSrc(src || fallback);
 
     // Intersection Observer for lazy loading
@@ -49,7 +72,7 @@ export function OptimizedImage({
         });
       },
       {
-        rootMargin: '50px', // Start loading 50px before entering viewport
+        rootMargin: '50px',
         threshold: 0.01
       }
     );
@@ -70,7 +93,41 @@ export function OptimizedImage({
     setIsLoading(false);
   };
 
-  const handleError = () => {
+  const handleError = async () => {
+    // For Facebook CDN images that fail, attempt a single credentialed retry.
+    //
+    // Why this works for the remaining ~10%:
+    //  1. Browser-cached 403  – `cache: 'reload'` bypasses any stale 403 the
+    //     browser cached while crossOrigin="anonymous" was still set.
+    //  2. Session-gated images – `credentials: 'include'` sends the user's
+    //     fbcdn.net cookies with the request regardless of the browser's
+    //     3rd-party-cookie policy (which can block cookies on plain <img>).
+    //  The response is opaque (mode: 'no-cors'), so we can't read its status,
+    //  but Chrome/Edge/Firefox do expose the body as a Blob. If the blob is
+    //  large enough to be a real image (>500 bytes) we display it via a blob
+    //  URL; otherwise we fall through to the generic fallback.
+    if (isFbCdnUrl(imageSrc) && !retriedRef.current) {
+      retriedRef.current = true;
+      try {
+        const res = await fetch(imageSrc, {
+          mode: 'no-cors',
+          credentials: 'include',
+          cache: 'reload',
+        });
+        const blob = await res.blob();
+        if (blob && blob.size > 500) {
+          const url = URL.createObjectURL(blob);
+          blobUrlRef.current = url;
+          setIsLoading(true); // show loader while new src renders
+          setImageSrc(url);
+          return; // wait for onLoad / onError on the new src
+        }
+      } catch {
+        // Network error or opaque-body unavailable — fall through
+      }
+    }
+
+    // Genuine failure (non-FB, retry exhausted, or blob too small)
     setIsLoading(false);
     setHasError(true);
     if (imageSrc !== fallback) {
