@@ -1060,8 +1060,18 @@ function ImageEditorInner({
   // so they persist when switching to Finetune or Watermark tabs.
   const applyLoadedTemplate = useCallback(() => {
     if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
+
+    // Exclude adjustments (crop / rotation / flip) once the user has started
+    // editing. FIE does NOT reset adjustments when switching tabs — it only
+    // resets finetunes and filters. Re-applying the stored adjustments after
+    // the user has dragged crop handles would snap the handles back to their
+    // stored position, overwriting the user's work.
+    // On the very first application (before any user edit), include adjustments
+    // so that a saved crop ratio / rotation is restored from the DB or template.
+    const { adjustments, ...withoutAdjustments } = loadedDesignState;
+    const base = userHasEditedRef.current ? withoutAdjustments : loadedDesignState;
     const payload = {
-      ...loadedDesignState,
+      ...base,
       finetunes: finetunesStrsToClasses(loadedDesignState.finetunes),
       filter: filterStrToClass(loadedDesignState.filter),
     };
@@ -1118,12 +1128,23 @@ function ImageEditorInner({
       }, 200);
     };
 
-    const obs = new MutationObserver(scheduleReapply);
+    // Only fire scheduleReapply when the user actually switches tabs
+    // (aria-selected changes on a tab button). childList mutations fire
+    // constantly during crop-handle dragging (canvas repaints) and would
+    // wrongly trigger template re-application, snapping the crop handles
+    // back to their stored position on every drag event.
+    const obs = new MutationObserver((mutations) => {
+      const hasTabSwitch = mutations.some(
+        (m) => m.type === 'attributes' && m.attributeName === 'aria-selected'
+      );
+      if (hasTabSwitch) scheduleReapply();
+    });
     obs.observe(editorArea, {
-      childList: true,
       subtree: true,
       attributes: true,
       attributeFilter: ['aria-selected'],
+      // childList deliberately omitted — canvas repaints must not trigger
+      // template re-application while the user is dragging crop handles.
     });
     return () => {
       obs.disconnect();
