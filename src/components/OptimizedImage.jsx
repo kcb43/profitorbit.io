@@ -1,18 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+const FACEBOOK_CDN_HOSTS = ['fbcdn.net', 'fbsbx.com', 'cdninstagram.com'];
+
+function isFacebookCdnUrl(url) {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return FACEBOOK_CDN_HOSTS.some(h => host.endsWith(h));
+  } catch {
+    return false;
+  }
+}
+
+function toProxyUrl(url) {
+  return `/api/proxy/image?url=${encodeURIComponent(url)}`;
+}
+
 /**
  * OptimizedImage Component
  * Provides lazy loading, loading states, and error handling for images.
  *
- * Facebook CDN (fbcdn.net) notes:
- *  - `referrerPolicy="no-referrer"` suppresses the Referer header, which
- *    fixes the vast majority of Facebook Marketplace image 403s.
- *  - A small percentage of Facebook Marketplace images 403 even without a
- *    Referer. These are images whose signed `oh=` HMAC token has been
- *    revoked by Facebook because the listing was sold/deleted. No
- *    client-side technique (cookie injection, cache-busting, proxying) can
- *    load a URL that Facebook's CDN has permanently invalidated. They
- *    gracefully fall through to the generic placeholder below.
+ * Facebook CDN (fbcdn.net) strategy:
+ *  1. First attempt — load directly with referrerPolicy="no-referrer".
+ *     Suppressing the Referer header fixes ~90% of Facebook Marketplace 403s.
+ *  2. On failure — retry through our backend proxy (/api/proxy/image).
+ *     A server-side request omits browser-specific headers (sec-fetch-site,
+ *     sec-fetch-mode, etc.) that Facebook CDN uses to block cross-site loads,
+ *     and sets Referer: https://www.facebook.com/marketplace/ so the CDN
+ *     treats the request as coming from the Facebook context.
+ *  3. Final failure — fall through to the generic placeholder.
  *
  * @param {string} src - Image source URL
  * @param {string} alt - Alt text for the image
@@ -36,9 +52,12 @@ export function OptimizedImage({
   const [hasError, setHasError] = useState(false);
   const imgRef = useRef(null);
   const [isInView, setIsInView] = useState(!lazy);
+  // Track proxy retry state so we only attempt it once per src
+  const proxyTriedRef = useRef(false);
 
   useEffect(() => {
     // Reset states when src changes
+    proxyTriedRef.current = false;
     setIsLoading(true);
     setHasError(false);
     setImageSrc(src || fallback);
@@ -82,6 +101,18 @@ export function OptimizedImage({
 
   const handleError = () => {
     setIsLoading(false);
+
+    // For Facebook CDN images: retry once through our server-side proxy before
+    // giving up. The proxy omits browser headers (sec-fetch-site: cross-site)
+    // that Facebook CDN uses to block third-party loads, and sets the correct
+    // Referer so the CDN accepts the request.
+    if (!proxyTriedRef.current && isFacebookCdnUrl(imageSrc)) {
+      proxyTriedRef.current = true;
+      setIsLoading(true);
+      setImageSrc(toProxyUrl(imageSrc));
+      return;
+    }
+
     setHasError(true);
     if (imageSrc !== fallback) {
       setImageSrc(fallback);
