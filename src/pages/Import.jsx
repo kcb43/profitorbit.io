@@ -44,17 +44,25 @@ const SOURCES = [
 const getImageUrl = (imageUrl, source) => {
   if (!imageUrl) return '';
 
+  // Only accept absolute HTTP(S) URLs. The Facebook browser extension
+  // occasionally stores just a bare filename (e.g. "585083755_…jpg") instead
+  // of the full CDN URL for sold/expired listings. Passing that to <img>
+  // would resolve it as a relative URL against our own domain, resulting in
+  // a 403 and a confusing console error. Skip it and let OptimizedImage show
+  // its fallback placeholder instead.
+  if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    return '';
+  }
+
   // Mercari images need to be proxied due to CORS restrictions.
   if (source === 'mercari' && imageUrl.includes('mercdn.net')) {
     return `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
   }
 
   // Facebook CDN (fbcdn.net) — pass the URL through unchanged.
-  // OptimizedImage no longer sets crossOrigin="anonymous", so the browser
-  // makes a plain <img> request without an Origin header. Facebook Marketplace
-  // listing images are publicly accessible and should load fine that way.
-  // If a URL has expired the existing onError fallback handles it gracefully.
-
+  // OptimizedImage uses referrerPolicy="no-referrer" which fixes the vast
+  // majority of 403s. Remaining failures (sold/deleted listings with revoked
+  // HMAC tokens) fall through to the placeholder gracefully.
   return imageUrl;
 };
 
