@@ -17,18 +17,15 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { SOURCE_GROUPS, ALL_SOURCES, PLATFORM_GROUPS, ALL_PLATFORMS, getLogoUrl } from "@/constants/marketplaces";
 import { useCustomSources } from "@/hooks/useCustomSources";
 import { BrandCombobox } from "@/components/BrandCombobox";
-import { ArrowLeft, Save, Calculator, Calendar as CalendarIcon, BarChart, Globe, Camera, Truck, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, Calculator, Calendar as CalendarIcon, BarChart, Camera, Truck, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogOverlay
-} from "@/components/ui/dialog";
 import ClearableDateInput from "../components/ClearableDateInput";
+import EbaySoldDialog from "@/components/EbaySoldDialog";
 
 import { extractCustomFees, getCustomFeesTotal, injectCustomFees } from "@/utils/customFees";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
-const FACEBOOK_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
 const PREDEFINED_CATEGORIES = [
   "Antiques",
   "Books, Movies & Music",
@@ -174,8 +171,7 @@ export default function AddSale() {
   const { customSources, addCustomSource, removeCustomSource } = useCustomSources("orben_custom_sources");
   const { customSources: customPlatforms, addCustomSource: addCustomPlatform, removeCustomSource: removeCustomPlatform } = useCustomSources("orben_custom_platforms");
   const [isUploading, setIsUploading] = useState(false);
-  const [soldDialogOpen, setSoldDialogOpen] = useState(false); // New state for sold listings dialog
-  const [activeMarket, setActiveMarket] = useState('ebay_sold');
+  const [soldDialogOpen, setSoldDialogOpen] = useState(false);
   const imageInputRef = useRef(null);
   const [base44Tags, setBase44Tags] = useState("");
 
@@ -660,37 +656,6 @@ export default function AddSale() {
   const otherCostsPlaceholder = '0.00';
   const customFeesTotal = isEbay ? getCustomFeesTotal(customFees) : 0;
 
-  const buildSearchQuery = (name) => {
-    if (!name) return "";
-    return name
-      .replace(/[^\w\s-]/g, " ")
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 7)
-      .join(" ");
-  };
-
-  const q = buildSearchQuery(formData.item_name);
-
-  const ebaySoldUrl = q
-    ? `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Sold=1&LH_Complete=1`
-    : "https://www.ebay.com";
-
-  const googleAllMarketsUrl = q
-    ? `https://www.google.com/shopping?q=${encodeURIComponent(q + "")}`
-    : "https://www.google.com/shopping";
-
-  const mercariSoldGoogle = q
-    ? `https://www.google.com/search?q=${encodeURIComponent(q + " site:mercari.com")}`
-    : "https://www.google.com";
-
-  const fbMarketplaceGoogle = q
-    ? `https://www.google.com/search?q=${encodeURIComponent(q + " site:facebook.com/marketplace")}`
-    : "https://www.google.com";
-
-  const etsySoldGoogle = q
-    ? `https://www.google.com/search?q=${encodeURIComponent(q + " site:etsy.com sold")}`
-    : "https://www.google.com";
 
 
   return (
@@ -824,7 +789,7 @@ export default function AddSale() {
                       className="w-full"
                     >
                       <BarChart className="w-4 h-4 mr-2" />
-                      Search Sold Listings
+                      Search
                     </Button>
                   </div>
                 )}
@@ -1603,204 +1568,11 @@ export default function AddSale() {
         </Card>
       </div>
 
-      <Dialog open={soldDialogOpen} onOpenChange={setSoldDialogOpen}>
-        <DialogOverlay className="
-          bg-black/60 backdrop-blur-sm
-          data-[state=open]:animate-in data-[state=open]:fade-in-0
-          data-[state=closed]:animate-out data-[state=closed]:fade-out-0
-        " />
-        <DialogContent className="
-          w-[92vw] sm:w-[90vw]
-          max-w-lg sm:max-w-xl md:max-w-2xl
-          mx-auto
-          max-h-[90vh] overflow-y-auto overflow-x-hidden
-          rounded-lg sm:rounded-xl shadow-2xl
-          p-4 sm:p-6
-          duration-200
-          data-[state=open]:animate-in
-          data-[state=open]:fade-in-0
-          data-[state=open]:slide-in-from-bottom-4 sm:data-[state=open]:zoom-in-95
-          data-[state=closed]:animate-out
-          data-[state=closed]:fade-out-0
-          data-[state=closed]:slide-out-to-bottom-4 sm:data-[state=closed]:zoom-out-95
-        ">
-          <div className="space-y-4 overflow-x-hidden break-words whitespace-normal hyphens-auto">
-            <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl font-semibold">
-                Sold Listings Lookup
-              </DialogTitle>
-              <DialogDescription className="text-sm sm:text-base leading-relaxed">
-                Quick search links based on "{q || "your item name"}".
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="text-sm text-muted-foreground">
-              💡Tip:  <br className="block sm:hidden" /> Keep names tight (brand + model + size). You can refine once the page opens.
-            </div>
-
-            {/* Marketplace chips */}
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Marketplaces
-              </p>
-
-              {/* Row 1: eBay, Mercari, Facebook */}
-              <div className="grid grid-cols-3 gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveMarket('ebay_sold')}
-                  className={`
-                    inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium
-                    border border-border transition
-                    bg-muted/70 hover:bg-muted
-                    dark:bg-muted/40 dark:hover:bg-muted/60
-                    text-foreground
-                    ${activeMarket === 'ebay_sold' ? '!bg-foreground !text-background dark:!bg-foreground dark:!text-background' : ''}
-                  `}
-                >
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg"
-                    alt="eBay"
-                    className="w-5 h-5 object-contain"
-                  />
-                  <span className="hidden sm:inline">eBay</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMarket('mercari')}
-                  className={`
-                    inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium
-                    border border-border transition
-                    bg-muted/70 hover:bg-muted
-                    dark:bg-muted/40 dark:hover:bg-muted/60
-                    text-foreground
-                    ${activeMarket === 'mercari' ? '!bg-foreground !text-background dark:!bg-foreground dark:!text-background' : ''}
-                  `}
-                >
-                  <img
-                    src="https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B"
-                    alt="Mercari"
-                    className="w-5 h-5 object-contain"
-                  />
-                  <span className="hidden sm:inline">Mercari</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMarket('facebook')}
-                  className={`
-                    inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium
-                    border border-border transition
-                    bg-muted/70 hover:bg-muted
-                    dark:bg-muted/40 dark:hover:bg-muted/60
-                    text-foreground
-                    ${activeMarket === 'facebook' ? '!bg-foreground !text-background dark:!bg-foreground dark:!text-background' : ''}
-                  `}
-                >
-
-                  <img
-                    src={FACEBOOK_ICON_URL}
-                    alt="Facebook"
-                    className="w-4 h-4 object-contain"
-                  />
-
-                  <span className="hidden sm:inline">Facebook</span>
-                </button>
-              </div>
-
-              {/* Row 2: Etsy, All markets */}
-              <div className="grid grid-cols-2 gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveMarket('etsy')}
-                  className={`
-                    inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium
-                    border border-border transition
-                    bg-muted/70 hover:bg-muted
-                    dark:bg-muted/40 dark:hover:bg-muted/60
-                    text-foreground
-                    ${activeMarket === 'etsy' ? '!bg-foreground !text-background dark:!bg-foreground dark:!text-background' : ''}
-                  `}
-                >
-                  <img
-                    src="https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B"
-                    alt="Etsy"
-                    className="w-5 h-5 object-contain"
-                  />
-                  <span className="hidden sm:inline">Etsy</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMarket('all')}
-                  className={`
-                    inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium
-                    border border-border transition
-                    bg-muted/70 hover:bg-muted
-                    dark:bg-muted/40 dark:hover:bg-muted/60
-                    text-foreground
-                    ${activeMarket === 'all' ? '!bg-foreground !text-background dark:!bg-foreground dark:!text-background' : ''}
-                  `}
-                >
-                  <Globe className="w-5 h-5 object-contain" />
-                  <span className="hidden sm:inline">All markets</span>
-                </button>
-              </div>
-
-              {/* Helper text */}
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Completed + Sold
-              </p>
-            </div>
-
-            {/* Market-specific content */}
-            <div className="space-y-3 min-w-0 pt-2">
-              {activeMarket === 'ebay_sold' && (
-                <>
-                  <div className="flex flex-col sm:flex-row gap-2 min-w-0">
-                    <Button asChild className="bg-blue-600 hover:bg-blue-700 max-w-full truncate">
-                      <a href={ebaySoldUrl} target="_blank" rel="noreferrer">Open eBay Sold</a>
-                    </Button>
-                    <Button variant="outline" onClick={() => navigator.clipboard.writeText(q || "")} className="max-w-full truncate">
-                      Copy Title
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {activeMarket === 'mercari' && (
-                <>
-                  <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={mercariSoldGoogle} target="_blank" rel="noreferrer">Search Mercari</a>
-                  </Button>
-                </>
-              )}
-
-              {activeMarket === 'facebook' && (
-                <>
-                  <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={fbMarketplaceGoogle} target="_blank" rel="noreferrer">Search Facebook</a>
-                  </Button>
-                </>
-              )}
-
-              {activeMarket === 'etsy' && (
-                <>
-                  <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={etsySoldGoogle} target="_blank" rel="noreferrer">Search Etsy</a>
-                  </Button>
-                </>
-              )}
-
-              {activeMarket === 'all' && (
-                <>
-                  <Button asChild variant="outline" className="max-w-full truncate">
-                    <a href={googleAllMarketsUrl} target="_blank" rel="noreferrer">Search All Markets</a>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EbaySoldDialog
+        open={soldDialogOpen}
+        onOpenChange={setSoldDialogOpen}
+        initialQuery={formData.item_name || ""}
+      />
     </div>
   );
 }

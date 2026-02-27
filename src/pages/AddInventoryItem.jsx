@@ -21,9 +21,8 @@ import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import ClearableDateInput from "../components/ClearableDateInput";
-import SoldLookupDialog from "../components/SoldLookupDialog";
 import ReceiptScannerDialog from "@/components/ReceiptScannerDialog";
-const EbaySearchDialog = React.lazy(() => import("@/components/EbaySearchDialog"));
+const EnhancedProductSearchDialog = React.lazy(() => import("@/components/EnhancedProductSearchDialog"));
 import { ImageEditor } from "@/components/ImageEditor";
 import { scanReceipt } from "@/api/receiptScanner";
 
@@ -139,14 +138,12 @@ export default function AddInventoryItem() {
   const { customSources, addCustomSource, removeCustomSource } = useCustomSources("orben_custom_sources");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
-  const [soldDialogOpen, setSoldDialogOpen] = useState(false);
-  const [soldDialogName, setSoldDialogName] = useState("");
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchDialogQuery, setSearchDialogQuery] = useState("");
   const imageInputRef = useRef(null);
   const photoInputRef = useRef(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [isReceiptScanning, setIsReceiptScanning] = useState(false);
-  const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
-  const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [descGenOpen, setDescGenOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null });
@@ -685,7 +682,7 @@ export default function AddInventoryItem() {
       // Don't modify notes field when selecting eBay item
       return next;
     });
-    setEbaySearchDialogOpen(false);
+    setSearchDialogOpen(false);
   };
 
   const handleSourceSelectChange = (value) => {
@@ -976,8 +973,8 @@ export default function AddInventoryItem() {
                               type="button"
                               variant="outline"
                               onClick={() => {
-                                setSoldDialogName(formData.item_name || "");
-                                setSoldDialogOpen(true);
+                                setSearchDialogQuery(formData.item_name || "");
+                                setSearchDialogOpen(true);
                               }}
                               className="whitespace-nowrap"
                             >
@@ -1386,28 +1383,19 @@ export default function AddInventoryItem() {
         </Card>
       </div>
 
-      <SoldLookupDialog
-        open={soldDialogOpen}
-        onOpenChange={setSoldDialogOpen}
-        itemName={soldDialogName}
-        onEbaySearch={() => {
-          setEbaySearchInitialQuery(soldDialogName || "");
-          setEbaySearchDialogOpen(true);
-        }}
-      />
       <ReceiptScannerDialog
         open={receiptDialogOpen}
         onOpenChange={setReceiptDialogOpen}
         onScan={handleReceiptScan}
         isScanning={isReceiptScanning}
       />
-      {ebaySearchDialogOpen ? (
+      {searchDialogOpen ? (
         <React.Suspense fallback={null}>
-          <EbaySearchDialog
-            open={ebaySearchDialogOpen}
-            onOpenChange={setEbaySearchDialogOpen}
+          <EnhancedProductSearchDialog
+            open={searchDialogOpen}
+            onOpenChange={setSearchDialogOpen}
+            initialQuery={searchDialogQuery}
             onSelectItem={handleEbayItemSelect}
-            initialSearchQuery={ebaySearchInitialQuery}
           />
         </React.Suspense>
       ) : null}
