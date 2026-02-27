@@ -391,7 +391,11 @@ function ActiveDetailPanel({ item, onClose }) {
   const location = item.itemLocation
     ? [item.itemLocation.city, item.itemLocation.stateOrProvince].filter(Boolean).join(', ')
     : null;
-  const shippingCost = item.shippingOptions?.shippingCost;
+  const shipping = Array.isArray(item.shippingOptions) ? item.shippingOptions[0] : item.shippingOptions;
+  const isAuction = item.buyingOptions?.includes('AUCTION');
+  const listedAgo = formatRelativeDate(item.itemCreationDate || item.itemOriginDate);
+  const timeLeft = isAuction && item.itemEndDate ? formatTimeLeft(item.itemEndDate) : null;
+  const hasAuthGuarantee = item.qualifiedPrograms?.includes('AUTHENTICITY_GUARANTEE');
 
   return (
     <div className="space-y-4">
@@ -402,33 +406,70 @@ function ActiveDetailPanel({ item, onClose }) {
         <ChevronLeft className="w-4 h-4" />
         Back to results
       </button>
+
       {imageUrl && (
         <div className="bg-muted rounded-lg overflow-hidden aspect-square w-full max-w-[220px] mx-auto">
           <img src={imageUrl} alt={item.title} className="w-full h-full object-contain p-2" />
         </div>
       )}
+
       <div className="space-y-2">
         <p className="font-semibold text-base leading-snug">{item.title}</p>
         <div className="flex flex-wrap items-center gap-2">
-          {price && (
-            <Badge className="bg-primary hover:bg-primary text-primary-foreground font-bold text-base px-3 py-1">
-              {price}
-            </Badge>
+          <Badge className="bg-primary hover:bg-primary text-primary-foreground font-bold text-base px-3 py-1">
+            {isAuction && item.currentBidPrice ? formatEbayPrice(item.currentBidPrice) : price}
+          </Badge>
+          {isAuction && item.currentBidPrice && (
+            <span className="text-xs text-muted-foreground">current bid</span>
           )}
           {condition && <Badge variant="outline" className="text-xs">{condition}</Badge>}
           {buyingOption && <Badge variant="outline" className="text-xs">{buyingOption.text}</Badge>}
         </div>
+        <div className="flex flex-wrap gap-1.5">
+          {hasAuthGuarantee && (
+            <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">✓ Authenticity Guarantee</Badge>
+          )}
+          {item.topRatedBuyingExperience && (
+            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Top Rated+</Badge>
+          )}
+          {item.availableCoupons && (
+            <Badge variant="outline" className="text-xs text-green-600 border-green-300">Coupon Available</Badge>
+          )}
+        </div>
+        {isAuction && (
+          <div className="flex items-center gap-3 text-sm">
+            {item.bidCount != null && (
+              <span className="text-muted-foreground">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
+            )}
+            {timeLeft && (
+              <span className={cn('font-medium', timeLeft === 'Ended' ? 'text-muted-foreground' : 'text-amber-600')}>
+                ⏱ {timeLeft}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
       <Separator />
-      {(shippingCost || item.shippingOptions) && (
+
+      {listedAgo && (
+        <SoldDetailSection icon={CheckCircle2} title="Listed">
+          <span className="text-muted-foreground">{listedAgo}</span>
+        </SoldDetailSection>
+      )}
+
+      {shipping && (
         <SoldDetailSection icon={Truck} title="Shipping">
           <span className="text-muted-foreground">
-            {shippingCost?.value != null
-              ? (parseFloat(shippingCost.value) === 0 ? 'Free Shipping' : formatEbayPrice(shippingCost))
-              : 'See listing'}
+            {shipping.shippingCostType === 'CALCULATED'
+              ? 'Calculated (varies by location)'
+              : shipping.shippingCost?.value != null
+                ? (parseFloat(shipping.shippingCost.value) === 0 ? 'Free Shipping' : formatEbayPrice(shipping.shippingCost))
+                : 'See listing'}
           </span>
         </SoldDetailSection>
       )}
+
       {(item.seller?.username || sellerFeedback) && (
         <SoldDetailSection icon={Star} title="Seller">
           <div className="flex flex-wrap gap-3 text-muted-foreground">
@@ -439,14 +480,25 @@ function ActiveDetailPanel({ item, onClose }) {
                 {sellerFeedback} positive
               </span>
             )}
+            {item.seller?.feedbackScore != null && (
+              <span className="text-xs">{item.seller.feedbackScore.toLocaleString()} ratings</span>
+            )}
           </div>
         </SoldDetailSection>
       )}
+
       {location && (
         <SoldDetailSection icon={MapPin} title="Location">
           <span className="text-muted-foreground">{location}</span>
         </SoldDetailSection>
       )}
+
+      {item.watchCount != null && item.watchCount > 0 && (
+        <SoldDetailSection icon={Eye} title="Watchers">
+          <span className="text-muted-foreground">{item.watchCount.toLocaleString()} watching</span>
+        </SoldDetailSection>
+      )}
+
       <Button
         variant="outline"
         className="w-full gap-2"
@@ -1561,6 +1613,42 @@ function ProductRow({ product, onAddToWatchlist, onImageClick }) {
   );
 }
 
+// ─── Date helpers ──────────────────────────────────────────────────────────────
+
+function formatRelativeDate(dateStr) {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) {
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours === 0) {
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      return diffMins <= 1 ? 'Just listed' : `${diffMins}m ago`;
+    }
+    return `${diffHours}h ago`;
+  }
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 30) return `${diffDays}d ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return diffMonths === 1 ? '1mo ago' : `${diffMonths}mo ago`;
+}
+
+function formatTimeLeft(dateStr) {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = date - now;
+  if (diffMs <= 0) return 'Ended';
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (diffDays > 0) return `${diffDays}d ${diffHours}h left`;
+  if (diffHours > 0) return `${diffHours}h ${diffMins}m left`;
+  return `${diffMins}m left`;
+}
+
 // eBay Results Component - Table Format with All Details
 function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNextPage, isFetchingNextPage, searchQuery, scrollAreaRef, total }) {
   if (error) {
@@ -1608,7 +1696,7 @@ function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNex
               <th className="py-3 px-3 text-center w-24">Format</th>
               <th className="py-3 px-3 text-left w-32">Seller</th>
               <th className="py-3 px-3 text-right w-24">Shipping</th>
-              <th className="py-3 px-3 text-left w-32">Location</th>
+              <th className="py-3 px-3 text-left w-32">Listed</th>
               <th className="py-3 px-3 text-center w-28">Actions</th>
             </tr>
           </thead>
@@ -1650,18 +1738,22 @@ function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNex
 // eBay Table Row Component
 function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
   const imageUrl = item?.image?.imageUrl || null;
-  const buyingOption = item.buyingOptions && item.buyingOptions.length > 0 
-    ? formatEbayBuyingOption(item.buyingOptions) 
+  const buyingOption = item.buyingOptions && item.buyingOptions.length > 0
+    ? formatEbayBuyingOption(item.buyingOptions)
     : null;
-  const sellerFeedback = item.seller?.feedbackPercentage 
+  const sellerFeedback = item.seller?.feedbackPercentage
     ? `${item.seller.feedbackPercentage}%`
     : null;
-  const itemLocation = item.itemLocation 
-    ? `${item.itemLocation.city || ''}, ${item.itemLocation.stateOrProvince || ''}`.trim().replace(/^,\s*/, '')
+  const itemLocation = item.itemLocation
+    ? [item.itemLocation.city, item.itemLocation.stateOrProvince].filter(Boolean).join(', ')
     : null;
+  const isAuction = item.buyingOptions?.includes('AUCTION');
+  const listedAgo = formatRelativeDate(item.itemCreationDate || item.itemOriginDate);
+  const timeLeft = isAuction && item.itemEndDate ? formatTimeLeft(item.itemEndDate) : null;
+  const hasAuthGuarantee = item.qualifiedPrograms?.includes('AUTHENTICITY_GUARANTEE');
 
   return (
-    <tr 
+    <tr
       className={cn(
         "border-b last:border-b-0 cursor-pointer transition-all",
         isSelected && "bg-primary/10 ring-2 ring-primary ring-inset",
@@ -1692,11 +1784,29 @@ function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
       <td className="py-2 px-3">
         <div className="max-w-md">
           <div className="font-medium text-sm line-clamp-2 mb-1">{item.title}</div>
-          {!isAvailable && (
-            <Badge variant="destructive" className="text-xs">Sold Out</Badge>
-          )}
-          {item.quantityLimitPerBuyer && (
-            <div className="text-xs text-muted-foreground mt-1">Max Qty: {item.quantityLimitPerBuyer}</div>
+          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+            {!isAvailable && <Badge variant="destructive" className="text-xs">Sold Out</Badge>}
+            {hasAuthGuarantee && (
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 dark:border-blue-700">✓ Auth</Badge>
+            )}
+            {item.topRatedBuyingExperience && (
+              <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 dark:border-amber-700">Top Rated+</Badge>
+            )}
+            {item.availableCoupons && (
+              <Badge variant="outline" className="text-xs text-green-600 border-green-300">Coupon</Badge>
+            )}
+          </div>
+          {isAuction && (
+            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              {item.bidCount != null && (
+                <span className="font-medium">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
+              )}
+              {timeLeft && (
+                <span className={cn('font-medium', timeLeft.includes('m left') && !timeLeft.includes('h') ? 'text-red-500' : 'text-amber-600')}>
+                  ⏱ {timeLeft}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </td>
@@ -1715,11 +1825,14 @@ function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
       {/* Price */}
       <td className="py-2 px-3 text-right">
         <span className="text-lg font-bold text-primary">
-          {formatEbayPrice(item.price)}
+          {formatEbayPrice(isAuction && item.currentBidPrice ? item.currentBidPrice : item.price)}
         </span>
+        {isAuction && item.currentBidPrice && (
+          <div className="text-xs text-muted-foreground">current bid</div>
+        )}
       </td>
 
-      {/* Buying Option */}
+      {/* Format (Buying Option) */}
       <td className="py-2 px-3 text-center">
         {buyingOption ? (
           <Badge variant="outline" className="text-xs">
@@ -1734,11 +1847,16 @@ function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
       <td className="py-2 px-3">
         <div className="text-sm">
           {item.seller?.username && (
-            <div className="font-medium truncate">{item.seller.username}</div>
+            <div className="font-medium truncate max-w-[100px]">{item.seller.username}</div>
           )}
           {sellerFeedback && (
             <div className="text-xs text-green-600 dark:text-green-400">
               ⭐ {sellerFeedback}
+            </div>
+          )}
+          {item.seller?.feedbackScore != null && (
+            <div className="text-xs text-muted-foreground">
+              {item.seller.feedbackScore.toLocaleString()} ratings
             </div>
           )}
         </div>
@@ -1750,27 +1868,32 @@ function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
           const shipping = Array.isArray(item.shippingOptions)
             ? item.shippingOptions[0]
             : item.shippingOptions;
-          const cost = shipping?.shippingCost;
+          if (!shipping) return <span className="text-xs text-muted-foreground">—</span>;
+          const costType = shipping.shippingCostType;
+          if (costType === 'CALCULATED') {
+            return <span className="text-xs text-muted-foreground italic">Calculated</span>;
+          }
+          const cost = shipping.shippingCost;
           if (!cost) return <span className="text-xs text-muted-foreground">—</span>;
           const val = parseFloat(cost.value);
-          return (
-            <div className="text-sm">
-              {isNaN(val) ? '—' : val === 0 ? (
-                <span className="text-emerald-600 font-medium text-xs">Free</span>
-              ) : formatEbayPrice(cost)}
-            </div>
-          );
+          if (isNaN(val) || val === 0 || costType === 'FREE') {
+            return <span className="text-emerald-600 font-medium text-xs">Free</span>;
+          }
+          return <div className="text-sm">{formatEbayPrice(cost)}</div>;
         })()}
       </td>
 
-      {/* Location + Watchers */}
+      {/* Listed (date + location + watchers) */}
       <td className="py-2 px-3">
-        <div className="text-xs text-muted-foreground truncate">
-          {itemLocation || '—'}
-        </div>
+        {listedAgo && (
+          <div className="text-xs font-medium text-foreground">{listedAgo}</div>
+        )}
+        {itemLocation && (
+          <div className="text-xs text-muted-foreground truncate mt-0.5">{itemLocation}</div>
+        )}
         {item.watchCount != null && item.watchCount > 0 && (
           <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-0.5">
-            <Eye className="w-3 h-3" />{item.watchCount} watching
+            <Eye className="w-3 h-3" />{item.watchCount.toLocaleString()}
           </div>
         )}
       </td>
