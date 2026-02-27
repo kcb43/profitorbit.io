@@ -1141,15 +1141,22 @@ function ImageEditorInner({
 
     const fn = updateStateFnRef.current;
 
-    // Builds an explicit adjustments block with every field zeroed / nulled
-    // so FIE's deepMerge actually clears existing rotation / flip / crop
-    // rather than leaving them untouched (merging {} is a no-op).
-    const buildAdjustments = (src) => ({
-      rotation:   src?.rotation   || 0,
-      isFlippedX: src?.isFlippedX || false,
-      isFlippedY: src?.isFlippedY || false,
-      crop:       src?.crop       ?? null,
-    });
+    // Builds an explicit adjustments object that FIE can safely deep-merge.
+    //
+    // IMPORTANT: Never include `crop: null` — FIE crashes immediately trying to
+    // read null.x / null.ratio inside its crop-calculation pipeline.
+    // When there is no previous crop to restore, omit the crop key entirely.
+    // Crop state is cleared by the setSwitchCount(…) remount below instead.
+    const buildAdjustments = (src) => {
+      const adj = {
+        rotation:   src?.rotation   || 0,
+        isFlippedX: src?.isFlippedX || false,
+        isFlippedY: src?.isFlippedY || false,
+      };
+      // Only propagate crop when it is a real non-null object.
+      if (src?.crop && typeof src.crop === 'object') adj.crop = src.crop;
+      return adj;
+    };
 
     if (prevState && Object.keys(prevState).length > 0) {
       // Restore the captured state (finetunes + filter + adjustments).
@@ -1172,13 +1179,17 @@ function ImageEditorInner({
       toast({ title: 'Reverted' });
     } else {
       // No saved revert point — clear ALL edits back to the original image state.
+      // Clearing finetunes/filter/rotation/flip via fn is safe; crop cannot be
+      // nulled via fn (FIE crashes). Instead, force a FIE remount via
+      // setSwitchCount which reloads the original image with zero adjustments.
       setLoadedDesignState(null);
       if (fn) fn({
         finetunesProps: {},
         finetunes: [],
         filter: null,
-        adjustments: buildAdjustments(null),
+        adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false },
       });
+      setSwitchCount(c => c + 1); // remount FIE → also clears any pending crop
       toast({ title: 'Edits cleared' });
     }
 
@@ -1219,13 +1230,16 @@ function ImageEditorInner({
       //    to refetch and push updated allImages props through.
       //    Pass explicit zero values for every adjustment field: passing {}
       //    is a no-op deep-merge that leaves rotation / flip intact.
+      // Crop cannot be cleared by passing null — FIE crashes on null.x.
+      // Omit it here; the setSwitchCount remount below reloads FIE fresh
+      // with the original image and no adjustments (including no crop).
       const fn = updateStateFnRef.current;
       if (fn) {
         fn({
           finetunesProps: {},
           finetunes: [],
           filter: null,
-          adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false, crop: null },
+          adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false },
         });
       }
 
