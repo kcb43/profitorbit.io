@@ -328,18 +328,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   }, [debouncedQuery, searchMode, open, universalSearch]);
 
-  // Handle search based on mode
-  const handleSearch = () => {
-    if (searchMode === 'all') {
-      universalSearch(searchQuery.trim());
-    } else if (ebayView === 'sold') {
-      handleSoldSearch();
-    } else {
-      setDebouncedQuery(searchQuery.trim());
-    }
-  };
-
-  // Sold listings search (SerpAPI)
+  // Sold listings search (SerpAPI) - defined before handleSearch so it can be called from it
   const handleSoldSearch = async (overrideQuery) => {
     const q = (overrideQuery ?? searchQuery).trim();
     if (q.length < 2) return;
@@ -358,6 +347,25 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       setSoldError(err.message || 'Search failed. Please try again.');
     } finally {
       setSoldLoading(false);
+    }
+  };
+
+  // Auto-trigger sold search when switching to sold view if there's already a query
+  useEffect(() => {
+    if (ebayView === 'sold' && searchMode === 'ebay' && searchQuery.trim().length >= 2) {
+      handleSoldSearch(searchQuery.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ebayView]);
+
+  // Handle search based on mode
+  const handleSearch = () => {
+    if (searchMode === 'all') {
+      universalSearch(searchQuery.trim());
+    } else if (ebayView === 'sold') {
+      handleSoldSearch();
+    } else {
+      setDebouncedQuery(searchQuery.trim());
     }
   };
 
