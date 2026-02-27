@@ -102,10 +102,10 @@ export function OptimizedImage({
   const handleError = () => {
     setIsLoading(false);
 
-    // For Facebook CDN images: retry once through our server-side proxy before
-    // giving up. The proxy omits browser headers (sec-fetch-site: cross-site)
-    // that Facebook CDN uses to block third-party loads, and sets the correct
-    // Referer so the CDN accepts the request.
+    // For raw Facebook CDN URLs that weren't pre-proxied (e.g. rendered outside
+    // of Import.jsx): retry once through our server-side proxy before giving up.
+    // Import.jsx routes all Facebook CDN images through the proxy upfront, so
+    // this path mainly covers other callers that pass a raw fbcdn.net URL.
     if (!proxyTriedRef.current && isFacebookCdnUrl(imageSrc)) {
       proxyTriedRef.current = true;
       setIsLoading(true);

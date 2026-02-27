@@ -40,6 +40,18 @@ const SOURCES = [
   { id: "etsy", label: "Etsy", icon: ETSY_ICON_URL, available: false },
 ];
 
+// Hosts served by Facebook's CDN that require special handling.
+const FACEBOOK_CDN_HOSTS = ['fbcdn.net', 'fbsbx.com', 'cdninstagram.com'];
+
+function isFacebookCdnUrl(url) {
+  try {
+    const host = new URL(url).hostname;
+    return FACEBOOK_CDN_HOSTS.some(h => host.endsWith(h));
+  } catch {
+    return false;
+  }
+}
+
 // Helper function to handle marketplace image URLs.
 const getImageUrl = (imageUrl, source) => {
   if (!imageUrl) return '';
@@ -59,10 +71,22 @@ const getImageUrl = (imageUrl, source) => {
     return `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
   }
 
-  // Facebook CDN (fbcdn.net) — pass the URL through unchanged.
-  // OptimizedImage uses referrerPolicy="no-referrer" which fixes the vast
-  // majority of 403s. Remaining failures (sold/deleted listings with revoked
-  // HMAC tokens) fall through to the placeholder gracefully.
+  // Facebook CDN images are always routed through our server-side proxy.
+  //
+  // Why: browsers attach sec-fetch-site: cross-site and sec-fetch-mode: no-cors
+  // headers to cross-origin <img> requests. Facebook's CDN uses these to block
+  // third-party hotlinking for a significant portion of images (especially sold/
+  // older listings). Routing through our proxy:
+  //   1. Eliminates browser-specific blocking headers the CDN rejects.
+  //   2. Sets Referer: https://www.facebook.com/marketplace/ so the CDN treats
+  //      the request as coming from the Facebook context.
+  //   3. Bypasses any browser-cached 403 responses from before this fix.
+  // Images that are genuinely revoked by Facebook (permanently deleted) will
+  // still return 403 from the proxy and gracefully fall to the placeholder.
+  if (isFacebookCdnUrl(imageUrl)) {
+    return `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
+  }
+
   return imageUrl;
 };
 
