@@ -128,11 +128,11 @@ function SoldResultCard({ item, isSelected, onClick }) {
 
             <div className="flex flex-wrap items-center gap-1.5">
               <ConditionBadge condition={item.condition} />
+              {item.topRated && (
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Top Rated</Badge>
+              )}
               {item.buyingFormat && (
                 <Badge variant="outline" className="text-xs">{item.buyingFormat}</Badge>
-              )}
-              {item.totalBids != null && (
-                <Badge variant="outline" className="text-xs">{item.totalBids} bids</Badge>
               )}
             </div>
 
@@ -141,11 +141,31 @@ function SoldResultCard({ item, isSelected, onClick }) {
               {item.shippingRaw && (
                 <span className="flex items-center gap-0.5">
                   <Truck className="w-3 h-3" />
-                  {item.isFreeShipping ? 'Free shipping' : item.shippingRaw}
+                  {item.shippingRaw}
                 </span>
               )}
-              {item.dateSold && <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{item.dateSold}</span>}
+              {item.returns && (
+                <span className="flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                  <RotateCcw className="w-3 h-3" />
+                  {item.returns}
+                </span>
+              )}
+              {item.watchersRaw && (
+                <span className="flex items-center gap-0.5">
+                  <Eye className="w-3 h-3" />
+                  {item.watchersRaw}
+                </span>
+              )}
+              {item.quantitySoldRaw && (
+                <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {item.quantitySoldRaw}
+                </span>
+              )}
             </div>
+            {item.promotion && (
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">{item.promotion}</p>
+            )}
 
             <Button
               variant="ghost"
@@ -299,25 +319,41 @@ function DetailPanel({ productId, listItem }) {
           {pr?.condition && <ConditionBadge condition={pr.condition} />}
         </div>
 
-        {/* Trending / social proof */}
+        {/* Trending / social proof from product detail */}
         {pr?.banner_status && <TrendingBanner text={pr.banner_status} />}
         {pr?.watch_count != null && <WatchCount count={pr.watch_count} />}
-        {pr?.quantity?.sold != null && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-            <span>{pr.quantity.sold} sold</span>
-          </div>
+
+        {/* Social proof from list data */}
+        <div className="flex flex-wrap gap-3">
+          {listItem?.watchersRaw && !pr?.watch_count && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Eye className="w-3.5 h-3.5" />
+              <span>{listItem.watchersRaw}</span>
+            </div>
+          )}
+          {(listItem?.quantitySoldRaw || pr?.quantity?.sold != null) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+              <span>{listItem?.quantitySoldRaw || `${pr.quantity.sold} sold`}</span>
+            </div>
+          )}
+          {listItem?.topRated && (
+            <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Top Rated</Badge>
+          )}
+        </div>
+        {listItem?.promotion && (
+          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">{listItem.promotion}</p>
         )}
       </div>
 
       <Separator />
 
       {/* Shipping */}
-      {(shipping || listItem?.shippingRaw) && (
+      {(shipping?.options?.length > 0 || listItem?.shippingRaw) && (
         <DetailSection icon={Truck} title="Shipping">
-          {shipping ? (
+          {shipping?.options?.length > 0 ? (
             <div className="space-y-1 text-muted-foreground">
-              {shipping.options?.map((opt, i) => (
+              {shipping.options.map((opt, i) => (
                 <div key={i} className="flex items-start gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" />
                   <span>
@@ -330,30 +366,27 @@ function DetailPanel({ productId, listItem }) {
                 </div>
               ))}
               {shipping.from && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Ships from: {shipping.from}
-                </p>
-              )}
-              {shipping.handling_time?.snippets?.[0]?.text && (
-                <p className="text-xs text-muted-foreground">
-                  {shipping.handling_time.snippets[0].text}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Ships from: {shipping.from}</p>
               )}
             </div>
           ) : (
-            <span className="text-muted-foreground">{listItem.shippingRaw}</span>
+            <span className="text-muted-foreground">{listItem?.shippingRaw}</span>
           )}
         </DetailSection>
       )}
 
       {/* Returns */}
-      {returns && (
+      {(returns || listItem?.returns) && (
         <DetailSection icon={RotateCcw} title="Returns">
-          <div className="space-y-1 text-muted-foreground">
-            {returns.snippets?.map((s, i) => (
-              <p key={i} className="text-xs">{s.text}</p>
-            ))}
-          </div>
+          {returns?.snippets ? (
+            <div className="space-y-1 text-muted-foreground">
+              {returns.snippets.map((s, i) => (
+                <p key={i} className="text-xs">{s.text}</p>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-green-600 dark:text-green-400">{listItem?.returns}</span>
+          )}
         </DetailSection>
       )}
 
@@ -361,17 +394,19 @@ function DetailPanel({ productId, listItem }) {
       {(seller || listItem?.seller) && (
         <DetailSection icon={Star} title="Seller">
           <div className="flex flex-wrap gap-3 text-muted-foreground">
-            {(seller?.name || listItem?.seller) && (
-              <span className="font-medium text-foreground">{seller?.name || listItem?.seller}</span>
-            )}
-            {seller?.positive_feedback_percent != null && (
+            <span className="font-medium text-foreground">
+              {seller?.name || listItem?.seller}
+            </span>
+            {(seller?.positive_feedback_percent ?? listItem?.sellerFeedback) != null && (
               <span className="flex items-center gap-0.5 text-xs">
                 <Star className="w-3 h-3 text-amber-400" />
-                {seller.positive_feedback_percent}% positive
+                {seller?.positive_feedback_percent ?? listItem?.sellerFeedback}% positive
               </span>
             )}
-            {seller?.feedback_score != null && (
-              <span className="text-xs">{seller.feedback_score.toLocaleString()} ratings</span>
+            {(seller?.feedback_score ?? listItem?.sellerReviews) != null && (
+              <span className="text-xs">
+                {(seller?.feedback_score ?? listItem?.sellerReviews)?.toLocaleString()} ratings
+              </span>
             )}
           </div>
         </DetailSection>
