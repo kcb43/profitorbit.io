@@ -97,6 +97,27 @@ function extractTemplateFields(ds) {
   return tpl;
 }
 
+// Normalises a FIE design state to a stable JSON string for change-detection.
+// Strips volatile runtime fields (the HTMLImageElement, display dimensions,
+// blob URL, undo-stack internals) so only semantically meaningful edits
+// — finetunes, filter, crop ratio, rotation, flip — trigger a diff.
+function normalizeForComparison(ds) {
+  if (!ds) return '';
+  // Destructure away fields that change on every render / aren't user edits.
+  // eslint-disable-next-line no-unused-vars
+  const { originalImage, imgSrc, shownImageDimensions, selectionsIds,
+          isDesignState, ...rest } = ds;
+  // Normalise finetune class-refs to plain strings so the comparison is stable
+  // across React re-renders that may produce different class instances.
+  if (rest.finetunes) {
+    rest.finetunes = (rest.finetunes || [])
+      .map(f => (typeof f === 'string' ? f : (f?.finetuneName ?? '')))
+      .filter(Boolean)
+      .sort();
+  }
+  return JSON.stringify(rest);
+}
+
 function loadTemplates() {
   try {
     const raw = JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]');
@@ -346,6 +367,7 @@ function ImageEditorInner({
   // by comparing subsequent onModify calls to the first (baseline) FIE fires on load.
   const initialDesignStateRef = useRef(null);
   const [userHasEdited, setUserHasEdited] = useState(false);
+  const userHasEditedRef = useRef(false); // mirror of userHasEdited usable inside closures
   // The design state to restore when the user clicks Revert.
   // Set to the pre-template state when a template is loaded, and to the
   // pre-edit baseline when the first manual change is detected.
@@ -517,6 +539,8 @@ function ImageEditorInner({
     setCurrentDesignState(null);
     setLoadedDesignState(null);
     initialDesignStateRef.current = null;
+    prevDesignStateRef.current = null;
+    userHasEditedRef.current = false;
     setUserHasEdited(false);
   }, [imageIndex, imageSrc]);
 
@@ -531,6 +555,45 @@ function ImageEditorInner({
       document.body.style.overflow = prevBody;
       document.documentElement.style.overflow = prevHtml;
     };
+  }, [open]);
+
+  // ── Adjust-tab: direct click detection ───────────────────────────────────
+  // FIE does not always fire onModify for every action inside the Adjust tab
+  // (crop-profile select, rotate, flip). We listen for clicks on those controls
+  // directly so the Revert/Reset buttons appear the moment the user interacts,
+  // without waiting for them to switch to another tab.
+  useEffect(() => {
+    if (!open) return;
+    const editorArea = editorAreaRef.current;
+    if (!editorArea) return;
+
+    const handleClick = (e) => {
+      // Target FIE's rotate, flip, and crop-preset button hierarchy.
+      const hit = e.target.closest(
+        '[class*="FIE_rotate-"], [class*="FIE_flip-"], ' +
+        '[class*="FIE_crop-presets"] *, [class*="FIE_crop-preset"], ' +
+        '[class*="FIE_resize-options"] *'
+      );
+      if (!hit) return;
+
+      // Give FIE ~150 ms to commit the change into its Redux store, then
+      // ensure the Revert/Reset buttons are visible regardless of whether
+      // onModify fired with a detected diff.
+      setTimeout(() => {
+        if (ignoringModify.current) return; // in the middle of an image switch
+        if (!userHasEditedRef.current) {
+          prevDesignStateRef.current = extractTemplateFields(
+            initialDesignStateRef.current || {}
+          );
+        }
+        setUserHasEdited(true);
+        userHasEditedRef.current = true;
+      }, 150);
+    };
+
+    editorArea.addEventListener('click', handleClick, true);
+    return () => editorArea.removeEventListener('click', handleClick, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // ── Load saved design state from DB when editor opens ────────────────────
@@ -780,6 +843,7 @@ function ImageEditorInner({
     ignoringModify.current = true;
     initialDesignStateRef.current = null; // reset baseline for the incoming image
     prevDesignStateRef.current = null;    // no revert point on a fresh image
+    userHasEditedRef.current = false;
     setUserHasEdited(false);
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
@@ -797,26 +861,22 @@ function ImageEditorInner({
       return;
     }
 
-    // On subsequent calls, check if anything meaningful changed vs the baseline.
-    // FIE stores crop/rotation/flip under ds.adjustments, NOT at the top level.
+    // On subsequent calls, compare the full normalised state against the baseline.
+    // normalizeForComparison strips volatile runtime fields and serialises
+    // everything else — finetunes, filter, crop, rotation, flip, annotations —
+    // so any meaningful user action is detected regardless of which FIE tab it
+    // came from (Adjust, Finetune, Watermark, etc.).
     const base = initialDesignStateRef.current;
-    const changed =
-      JSON.stringify(ds.finetunesProps)                !== JSON.stringify(base.finetunesProps)                ||
-      ds.filter                                        !== base.filter                                        ||
-      (ds.adjustments?.rotation     || 0)              !== (base.adjustments?.rotation     || 0)              ||
-      !!ds.adjustments?.isFlippedX                     !== !!base.adjustments?.isFlippedX                     ||
-      !!ds.adjustments?.isFlippedY                     !== !!base.adjustments?.isFlippedY                     ||
-      (ds.finetunes?.length         || 0)              !== (base.finetunes?.length         || 0)              ||
-      (ds.annotations?.length       || 0)              !== (base.annotations?.length       || 0)              ||
-      JSON.stringify(ds.adjustments?.crop)             !== JSON.stringify(base.adjustments?.crop);
+    const changed = normalizeForComparison(ds) !== normalizeForComparison(base);
 
-    if (changed && !userHasEdited) {
+    if (changed && !userHasEditedRef.current) {
       // First meaningful change since the last checkpoint. Save the pre-edit
-      // baseline as the Revert target (overwrites any previous revert point so
-      // that clicking Revert undoes only the most recent action).
+      // baseline as the Revert target.
       prevDesignStateRef.current = extractTemplateFields(base);
+      userHasEditedRef.current = true;
       setUserHasEdited(true);
     } else if (changed) {
+      userHasEditedRef.current = true;
       setUserHasEdited(true);
     }
   }, []);
@@ -1081,6 +1141,16 @@ function ImageEditorInner({
 
     const fn = updateStateFnRef.current;
 
+    // Builds an explicit adjustments block with every field zeroed / nulled
+    // so FIE's deepMerge actually clears existing rotation / flip / crop
+    // rather than leaving them untouched (merging {} is a no-op).
+    const buildAdjustments = (src) => ({
+      rotation:   src?.rotation   || 0,
+      isFlippedX: src?.isFlippedX || false,
+      isFlippedY: src?.isFlippedY || false,
+      crop:       src?.crop       ?? null,
+    });
+
     if (prevState && Object.keys(prevState).length > 0) {
       // Restore the captured state (finetunes + filter + adjustments).
       if (fn) {
@@ -1088,7 +1158,7 @@ function ImageEditorInner({
           finetunesProps: prevState.finetunesProps || {},
           finetunes: finetunesStrsToClasses(prevState.finetunes || []),
           filter: filterStrToClass(prevState.filter),
-          adjustments: prevState.adjustments || {},
+          adjustments: buildAdjustments(prevState.adjustments),
         });
       }
       // Sync loadedDesignState so the template re-apply loop picks it up.
@@ -1101,14 +1171,21 @@ function ImageEditorInner({
       }
       toast({ title: 'Reverted' });
     } else {
-      // No saved revert point — clear all edits back to the original image state.
+      // No saved revert point — clear ALL edits back to the original image state.
       setLoadedDesignState(null);
-      if (fn) fn({ finetunesProps: {}, finetunes: [], filter: null, adjustments: {} });
+      if (fn) fn({
+        finetunesProps: {},
+        finetunes: [],
+        filter: null,
+        adjustments: buildAdjustments(null),
+      });
       toast({ title: 'Edits cleared' });
     }
 
     // Reset edit tracking so the next change starts fresh.
     initialDesignStateRef.current = null;
+    prevDesignStateRef.current = null;
+    userHasEditedRef.current = false;
     setUserHasEdited(false);
   }, []);
 
@@ -1131,23 +1208,51 @@ function ImageEditorInner({
 
     setIsProcessing(true);
     try {
+      // 1. Persist original URLs to the database (fire-and-forget per image).
       for (let i = 0; i < urlsToRestore.length; i++) {
         const url = urlsToRestore[i];
         if (url && onSave) await onSave(url, i);
       }
-      // Clear all per-image design states so FIE reloads clean
+
+      // 2. Explicitly clear FIE's Konva/Redux state so the canvas shows the
+      //    original pixels immediately — without waiting for the parent query
+      //    to refetch and push updated allImages props through.
+      //    Pass explicit zero values for every adjustment field: passing {}
+      //    is a no-op deep-merge that leaves rotation / flip intact.
+      const fn = updateStateFnRef.current;
+      if (fn) {
+        fn({
+          finetunesProps: {},
+          finetunes: [],
+          filter: null,
+          adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false, crop: null },
+        });
+      }
+
+      // 3. Clear all per-image design states.
       imageDesignStates.current = {};
       setModifiedSet(new Set());
       setCurrentDesignState(null);
       setLoadedDesignState(null);
       setHasSavedInSession(false);
-      // These restored URLs become the new baseline for this session
+      initialDesignStateRef.current = null;
+      prevDesignStateRef.current = null;
+      userHasEditedRef.current = false;
+      setUserHasEdited(false);
+
+      // 4. These restored URLs become the new baseline for this session.
       originalUrls.current = urlsToRestore;
-      // Remove persisted originals — images are now back to baseline
+
+      // 5. Remove persisted originals — images are now back to baseline.
       if (ORIG_KEY) {
         localStorage.removeItem(ORIG_KEY);
         setPersistedOriginals(null);
       }
+
+      // 6. Force FIE to remount with the original image source so the canvas
+      //    reflects the reset pixels even before the parent query refetches.
+      setSwitchCount(c => c + 1);
+
       toast({ title: 'All images reset to original' });
     } catch (err) {
       toast({ title: 'Reset failed', description: err.message, variant: 'destructive' });
