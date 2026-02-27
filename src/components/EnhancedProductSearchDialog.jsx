@@ -56,6 +56,24 @@ import { supabase } from '@/integrations/supabase';
 import { ProductCardV1List } from '@/components/ProductCardVariations';
 import { getMerchantLogoOrColor } from '@/utils/merchantLogos';
 
+// ─── Daily search cap (soft limit, resets at midnight local time) ─────────────
+const DAILY_SEARCH_LIMIT = 150;
+const SEARCH_COUNT_KEY = 'orben_daily_searches';
+
+function getDailySearchCount() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SEARCH_COUNT_KEY) || '{}');
+    if (stored.date !== new Date().toDateString()) return 0;
+    return stored.count || 0;
+  } catch { return 0; }
+}
+
+function incrementDailySearch() {
+  const count = getDailySearchCount() + 1;
+  localStorage.setItem(SEARCH_COUNT_KEY, JSON.stringify({ count, date: new Date().toDateString() }));
+  return count;
+}
+
 // ─── Inline Sold Results (for eBay tab "Sold" sub-view) ───────────────────────
 
 function SoldResultCardInline({ item, isSelected, onClick }) {
@@ -525,7 +543,6 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef(null);
-  const universalScrollRef = useRef(null);
 
   // Universal Search (shared hook)
   const {
@@ -669,22 +686,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     return () => viewport.removeEventListener('scroll', handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchMode, ebayView]);
 
-  // Set up infinite scroll for universal/all search
-  useEffect(() => {
-    if (!universalScrollRef.current || !universalHasMore || universalLoadingMore || searchMode !== 'all') return;
-
-    const container = universalScrollRef.current;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      if (scrollHeight - scrollTop - clientHeight < 300 && universalHasMore && !universalLoadingMore) {
-        universalLoadMore();
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [universalHasMore, universalLoadingMore, searchMode, universalProducts.length, universalLoadMore]);
+  // Universal "load more" is triggered by an explicit button — no auto-scroll
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -707,12 +709,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   }, [open, initialQuery, universalReset]);
 
-  // Auto-search for "All Marketplaces" mode when debouncedQuery changes
-  useEffect(() => {
-    if (searchMode === 'all' && debouncedQuery.trim().length >= 3 && open) {
-      universalSearch(debouncedQuery);
-    }
-  }, [debouncedQuery, searchMode, open, universalSearch]);
+  // All Marketplaces requires an explicit Search button click — no auto-search on type
 
   // Sold listings search (SerpAPI) - defined before handleSearch so it can be called from it
   const handleSoldSearch = async (overrideQuery) => {
@@ -774,14 +771,25 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ebayView]);
 
-  // Handle search based on mode
+  // Handle search based on mode (with daily cap)
   const handleSearch = () => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 2) return;
+    if (getDailySearchCount() >= DAILY_SEARCH_LIMIT) {
+      toast({
+        title: 'Daily search limit reached',
+        description: `You've used all ${DAILY_SEARCH_LIMIT} searches for today. Limit resets at midnight.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    incrementDailySearch();
     if (searchMode === 'all') {
-      universalSearch(searchQuery.trim());
+      universalSearch(q);
     } else if (ebayView === 'sold') {
       handleSoldSearch();
     } else {
-      setDebouncedQuery(searchQuery.trim());
+      setDebouncedQuery(q);
     }
   };
 
@@ -927,7 +935,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 placeholder={searchMode === 'all' ? 'Type to search all marketplaces...' : 'Search eBay listings...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchMode === 'ebay' && handleSearch()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-10 h-12 text-base"
                 disabled={isLoading}
                 autoFocus={false}
@@ -961,20 +969,24 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
               {searchMode === 'all' && (
                 <>
                   <Button
-                    variant="outline"
+                    onClick={handleSearch}
+                    disabled={universalLoading || !searchQuery.trim() || searchQuery.trim().length < 2}
                     size="lg"
-                    onClick={() => universalSearch(searchQuery.trim())}
-                    disabled={universalLoading || !searchQuery.trim()}
-                    className="px-3"
-                    title="Force refresh (bypass cache)"
+                    className="flex-1 sm:flex-none sm:px-8"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    {universalLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Searching...
+                      </>
+                    ) : 'Search'}
                   </Button>
                   <Button
                     variant="outline"
                     size="lg"
                     onClick={() => setShowFilters(!showFilters)}
-                    className={cn(showFilters && 'bg-muted')}
+                    className={cn(showFilters && 'bg-muted', 'px-3')}
+                    title="Filters"
                   >
                     <SlidersHorizontal className="h-4 w-4" />
                   </Button>
@@ -1206,7 +1218,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
         {/* Results */}
         <div className="flex-1 min-h-0 flex overflow-hidden">
           {searchMode === 'all' ? (
-            <div ref={universalScrollRef} className="flex-1 overflow-auto px-6 py-4 min-h-0">
+            <div className="flex-1 overflow-auto px-6 py-4 min-h-0">
               <UniversalResults
                 loading={universalLoading}
                 products={filteredProducts}
@@ -1214,6 +1226,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 onImageClick={setLightboxImage}
                 loadingMore={universalLoadingMore}
                 hasMore={universalHasMore}
+                onLoadMore={universalLoadMore}
               />
             </div>
           ) : ebayView === 'sold' ? (
@@ -1322,7 +1335,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 }
 
 // Universal Results Component - Table on Desktop, Cards on Mobile
-function UniversalResults({ loading, products, onAddToWatchlist, onImageClick, loadingMore, hasMore }) {
+function UniversalResults({ loading, products, onAddToWatchlist, onImageClick, loadingMore, hasMore, onLoadMore }) {
   if (loading) {
     return <LoadingState />;
   }
@@ -1382,18 +1395,28 @@ function UniversalResults({ loading, products, onAddToWatchlist, onImageClick, l
         </table>
       </div>
 
-      {loadingMore && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
-          <span className="text-sm text-muted-foreground">Loading more products...</span>
-        </div>
-      )}
-
-      {!hasMore && products.length > 0 && !loadingMore && (
-        <div className="text-center py-3 text-xs text-muted-foreground">
-          Showing all {products.length} results
-        </div>
-      )}
+      <div className="text-center py-4">
+        {hasMore ? (
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-md border text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading…
+              </>
+            ) : (
+              'Load More Results'
+            )}
+          </button>
+        ) : (
+          products.length > 0 && (
+            <p className="text-xs text-muted-foreground">Showing all {products.length} results</p>
+          )
+        )}
+      </div>
     </>
   );
 }
