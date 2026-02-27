@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, Package, ExternalLink, Check, BarChart } from "lucide-react";
-import { useEbaySearch, useEbaySearchInfinite } from "@/hooks/useEbaySearch";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import {
+  Search,
+  Loader2,
+  Package,
+  ExternalLink,
+  Check,
+  ChevronLeft,
+  Truck,
+  Star,
+  MapPin,
+} from "lucide-react";
+import { useEbaySearchInfinite } from "@/hooks/useEbaySearch";
 import {
   ebayItemToInventory,
   formatEbayPrice,
@@ -18,10 +31,122 @@ import {
   getEbayItemUrl,
   isEbayItemAvailable,
 } from "@/utils/ebayHelpers";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+
+// ─── Active Item Detail Panel ─────────────────────────────────────────────────
+
+function ActiveItemDetail({ item, onClose }) {
+  if (!item) return null;
+  const imageUrl = item?.image?.imageUrl;
+  const price = formatEbayPrice(item.price);
+  const condition = item.condition ? formatEbayCondition(item.condition) : null;
+  const buyingOption = item.buyingOptions?.length
+    ? formatEbayBuyingOption(item.buyingOptions)
+    : null;
+  const sellerFeedback = item.seller?.feedbackPercentage
+    ? `${item.seller.feedbackPercentage}%`
+    : null;
+  const location = item.itemLocation
+    ? [item.itemLocation.city, item.itemLocation.stateOrProvince].filter(Boolean).join(', ')
+    : null;
+  const shippingCost = item.shippingOptions?.shippingCost;
+  const ebayUrl = getEbayItemUrl(item.itemId, item.itemWebUrl);
+
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={onClose}
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Back to results
+      </button>
+
+      {imageUrl && (
+        <div className="bg-muted rounded-lg overflow-hidden aspect-square w-full max-w-[220px] mx-auto">
+          <img src={imageUrl} alt={item.title} className="w-full h-full object-contain p-2" />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <p className="font-semibold text-base leading-snug">{item.title}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {price && (
+            <Badge className="bg-primary hover:bg-primary text-primary-foreground font-bold text-base px-3 py-1">
+              {price}
+            </Badge>
+          )}
+          {condition && <Badge variant="outline" className="text-xs">{condition}</Badge>}
+          {buyingOption && <Badge variant="outline" className="text-xs">{buyingOption.text}</Badge>}
+        </div>
+      </div>
+
+      <Separator />
+
+      {(shippingCost || item.shippingOptions) && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Truck className="w-3.5 h-3.5" />
+            <span>Shipping</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {shippingCost?.value != null
+              ? (parseFloat(shippingCost.value) === 0 ? 'Free Shipping' : formatEbayPrice(shippingCost))
+              : 'See listing for shipping details'}
+          </div>
+        </div>
+      )}
+
+      {(item.seller?.username || sellerFeedback) && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Star className="w-3.5 h-3.5" />
+            <span>Seller</span>
+          </div>
+          <div className="flex flex-wrap gap-3 text-muted-foreground">
+            {item.seller?.username && (
+              <span className="text-sm font-medium text-foreground">{item.seller.username}</span>
+            )}
+            {sellerFeedback && (
+              <span className="text-xs flex items-center gap-0.5">
+                <Star className="w-3 h-3 text-amber-400" />
+                {sellerFeedback} positive
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {location && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <MapPin className="w-3.5 h-3.5" />
+            <span>Location</span>
+          </div>
+          <div className="text-sm text-muted-foreground">{location}</div>
+        </div>
+      )}
+
+      {item.itemId && (
+        <>
+          <Separator />
+          <p className="text-xs text-muted-foreground">Item ID: {item.itemId}</p>
+        </>
+      )}
+
+      <Button
+        variant="outline"
+        className="w-full gap-2"
+        onClick={() => window.open(ebayUrl, '_blank', 'noopener,noreferrer')}
+      >
+        <ExternalLink className="w-4 h-4" />
+        View Full Listing on eBay
+      </Button>
+    </div>
+  );
+}
+
+// ─── Main Dialog ──────────────────────────────────────────────────────────────
 
 function EbaySearchDialogInner({
   open,
@@ -32,32 +157,29 @@ function EbaySearchDialogInner({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
-  const [limit] = useState(100); // Increased to 100 items
+  const [showDetail, setShowDetail] = useState(false);
+  const [limit] = useState(100);
   const scrollAreaRef = React.useRef(null);
 
-  // Set initial search query when dialog opens
   useEffect(() => {
     if (open && initialSearchQuery) {
       setSearchQuery(initialSearchQuery);
       setDebouncedQuery(initialSearchQuery);
     } else if (!open) {
-      // Reset when dialog closes
       setSearchQuery("");
       setDebouncedQuery("");
       setSelectedItem(null);
+      setShowDetail(false);
     }
   }, [open, initialSearchQuery]);
 
-  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Perform search - only when we have a valid query (2+ characters after trim)
   const trimmedQuery = debouncedQuery?.trim() || '';
   const hasValidQuery = trimmedQuery.length >= 2;
 
@@ -68,96 +190,78 @@ function EbaySearchDialogInner({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    refetch,
   } = useEbaySearchInfinite(
+    { q: trimmedQuery, limit },
     {
-      q: trimmedQuery,
-      limit,
-      // No sort parameter specified - eBay defaults to "Best Match" sorting
-      // Best Match considers relevance, popularity, seller performance, etc.
-      // This ensures the most relevant items (like consoles for "Gamecube") appear first
-    },
-    {
-      enabled: hasValidQuery, // Only search if we have a valid query
-      retry: false, // Don't retry failed searches automatically
-      refetchOnWindowFocus: false, // Don't refetch when window regains focus
+      enabled: hasValidQuery,
+      retry: false,
+      refetchOnWindowFocus: false,
     }
   );
 
-  // Flatten all pages into a single array of itemSummaries
-  const searchResults = React.useMemo(() => {
+  const searchResults = useMemo(() => {
     if (!searchResultsData?.pages) return null;
-    
-    // Combine all itemSummaries from all pages
     const allItems = searchResultsData.pages
       .flatMap((page) => page?.itemSummaries || [])
       .filter(Boolean);
-    
-    // Get total from the first page (should be same across all pages)
     const total = searchResultsData.pages[0]?.total || 0;
-    
-    return {
-      itemSummaries: allItems,
-      total,
-    };
+    return { itemSummaries: allItems, total };
   }, [searchResultsData]);
 
-  // Set up infinite scroll - detect when user scrolls near bottom
+  // Infinite scroll
   useEffect(() => {
     if (!scrollAreaRef.current || !hasNextPage || isFetchingNextPage) return;
-
-    const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-    if (!viewport) return;
-
+    const container = scrollAreaRef.current;
     const handleScroll = () => {
-      const scrollTop = viewport.scrollTop;
-      const scrollHeight = viewport.scrollHeight;
-      const clientHeight = viewport.clientHeight;
-      
-      // Load more when within 200px of bottom
+      const { scrollTop, scrollHeight, clientHeight } = container;
       if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       }
     };
-
-    viewport.addEventListener('scroll', handleScroll);
-    return () => viewport.removeEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Use eBay's native "Best Match" sorting (default when no sort parameter is specified)
-  // eBay's Best Match algorithm considers:
-  // - Relevance to search terms
-  // - Listing popularity and performance
-  // - Seller performance and feedback
-  // - Category relevance
-  // - Item quality and condition
-  // We preserve the original order from eBay's API results (sorted by Best Match)
-  const items = React.useMemo(() => {
+  const items = useMemo(() => {
     if (!searchResults?.itemSummaries) return [];
-    
-    // Return items in their original order from eBay (sorted by Best Match/relevance)
-    // This matches what users see on eBay.com when searching
-    return (searchResults.itemSummaries || [])
-      .filter(Boolean);
+    return (searchResults.itemSummaries || []).filter(Boolean);
   }, [searchResults?.itemSummaries]);
 
+  // Price stats for active listings
+  const priceStats = useMemo(() => {
+    if (!items.length) return null;
+    const prices = items
+      .map(item => parseFloat(item.price?.value))
+      .filter(p => !isNaN(p) && p > 0);
+    if (!prices.length) return null;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+    return { min, max, avg };
+  }, [items]);
+
   const handleSearch = () => {
-    const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery.length >= 2) {
-      // Immediately update debouncedQuery to bypass debounce delay when user clicks search
-      setDebouncedQuery(trimmedQuery);
+    const trimmed = searchQuery.trim();
+    if (trimmed.length >= 2) {
+      setDebouncedQuery(trimmed);
     }
   };
 
   const handleSelectItem = (item) => {
-    setSelectedItem(item);
+    if (selectedItem?.itemId === item.itemId && showDetail) {
+      setShowDetail(false);
+      setSelectedItem(null);
+    } else {
+      setSelectedItem(item);
+      setShowDetail(true);
+    }
   };
 
   const handleConfirmSelection = () => {
     if (selectedItem) {
       const inventoryData = ebayItemToInventory(selectedItem);
       onSelectItem?.(inventoryData);
-      handleClose();
+      handleClose(false);
     }
   };
 
@@ -166,273 +270,217 @@ function EbaySearchDialogInner({
       setSearchQuery("");
       setDebouncedQuery("");
       setSelectedItem(null);
+      setShowDetail(false);
     }
     onOpenChange?.(openState);
   };
 
-  // Build eBay sold listings URL
-  const ebaySoldUrl = React.useMemo(() => {
-    if (!debouncedQuery || debouncedQuery.trim().length < 2) {
-      return "https://www.ebay.com/sch/i.html?_nkw=&LH_Sold=1&LH_Complete=1";
-    }
-    const query = debouncedQuery.trim();
-    return `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`;
-  }, [debouncedQuery]);
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[70rem] max-h-[90vh] flex flex-col p-0">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[80rem] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-4 h-4" />
             Search eBay for Items
           </DialogTitle>
           <DialogDescription>
-            Live listings. Select item &gt; add to inventory & edit.
+            Live listings. Select item &gt; add to inventory &amp; edit.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 flex flex-col min-h-0">
-          {/* Search Input */}
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search eBay... (e.g., iPhone 15 Pro, Nike Sneakers)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearch();
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                onClick={handleSearch}
-                disabled={isLoading || searchQuery.trim().length < 2}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4 mr-2" />
-                )}
-                Search
-              </Button>
-            </div>
-            {/* View Sold Button */}
-            {hasValidQuery && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    window.open(ebaySoldUrl, "_blank", "noopener,noreferrer");
-                  }}
-                  disabled={isLoading}
-                  className="gap-2"
-                >
-                  <BarChart className="w-4 h-4" />
-                  View All Sold
-                </Button>
-              </div>
-            )}
-            {searchQuery && searchQuery.trim().length < 2 && (
-              <p className="text-xs text-muted-foreground">
-                Enter at least 2 characters to search
-              </p>
-            )}
+        {/* Search bar */}
+        <div className="px-6 py-3 border-b flex-shrink-0">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Search eBay... (e.g., iPhone 15 Pro, Nike Sneakers)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+            />
+            <Button
+              onClick={handleSearch}
+              disabled={isLoading || searchQuery.trim().length < 2}
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 mr-2" />
+              )}
+              Search
+            </Button>
           </div>
+          {searchQuery && searchQuery.trim().length < 2 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter at least 2 characters to search
+            </p>
+          )}
+        </div>
 
-          {/* Error Display */}
-          {error && (
+        {/* Price stats bar */}
+        {priceStats && !isLoading && items.length > 0 && (
+          <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6 flex-shrink-0">
+            <span className="font-semibold">{items.length} Active Listings</span>
+            <span className="text-muted-foreground">
+              ${priceStats.min.toFixed(2)} – ${priceStats.max.toFixed(2)}
+            </span>
+            <span className="text-muted-foreground">Avg: ${priceStats.avg.toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="px-6 pt-3 flex-shrink-0">
             <Alert variant="destructive">
               <AlertDescription>
                 {error.message || "Failed to search eBay. Please try again."}
               </AlertDescription>
             </Alert>
-          )}
+          </div>
+        )}
 
-          {/* Search Results */}
-          <ScrollArea 
+        {/* Two-panel results area */}
+        <div className={cn('flex-1 min-h-0 flex overflow-hidden', showDetail ? 'flex-col lg:flex-row' : 'flex-col')}>
+          {/* Results list */}
+          <div
             ref={scrollAreaRef}
-            className="h-[500px] w-full"
+            className={cn(
+              'flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3',
+              showDetail && 'lg:max-w-sm lg:border-r'
+            )}
           >
-            <div className="pr-4 space-y-3">
-              {isLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    Searching eBay...
-                  </span>
-                </div>
-              )}
+            {isLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Searching eBay...</span>
+              </div>
+            )}
 
-              {!isLoading && !error && debouncedQuery && items.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No items found. Try a different search term.</p>
-                </div>
-              )}
+            {!isLoading && !error && debouncedQuery && items.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No items found. Try a different search term.</p>
+              </div>
+            )}
 
-              {!isLoading && !error && !debouncedQuery && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Search className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>Enter a search term to find items on eBay</p>
-                </div>
-              )}
+            {!isLoading && !error && !debouncedQuery && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Enter a search term to find items on eBay</p>
+              </div>
+            )}
 
-              {!isLoading && !error && items.length > 0 && (
-                <>
-                {items.map((item) => {
-                  const isSelected = selectedItem?.itemId === item.itemId;
-                  const isAvailable = isEbayItemAvailable(item);
-                  const imageUrl = item?.image?.imageUrl || null;
+            {!isLoading && !error && items.length > 0 && items.map((item) => {
+              const isSelected = selectedItem?.itemId === item.itemId;
+              const isAvailable = isEbayItemAvailable(item);
+              const imageUrl = item?.image?.imageUrl || null;
 
-                  return (
-                    <Card
-                      key={item.itemId}
-                      className={`cursor-pointer transition-all ${
-                        isSelected
-                          ? "ring-2 ring-primary border-primary"
-                          : "hover:border-primary/50"
-                      } ${!isAvailable ? "opacity-60" : ""}`}
-                      onClick={() => isAvailable && handleSelectItem(item)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex gap-4">
-                          {/* Item Image */}
-                          {imageUrl && (
-                            <img
-                              src={imageUrl}
-                              alt={item.title}
-                              className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-                            />
-                          )}
-
-                          {/* Item Details */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h3 className="font-semibold text-sm line-clamp-2">
-                                {item.title}
-                              </h3>
-                              {isSelected && (
-                                <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                              )}
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <Badge variant="default" className="font-semibold">
-                                {formatEbayPrice(item.price)}
-                              </Badge>
-                              {item.buyingOptions && item.buyingOptions.length > 0 && (() => {
-                                const buyingOption = formatEbayBuyingOption(item.buyingOptions);
-                                return (
-                                  <Badge variant="outline" className="text-foreground">
-                                    {buyingOption.text}
-                                  </Badge>
-                                );
-                              })()}
-                              {item.condition && (
-                                <Badge variant="outline" className="text-foreground">
-                                  {formatEbayCondition(item.condition)}
-                                </Badge>
-                              )}
-                              {!isAvailable && (
-                                <Badge variant="destructive" className="font-semibold">Sold</Badge>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                              {item.seller?.username && (
-                                <span>Seller: {item.seller.username}</span>
-                              )}
-                              {item.shippingOptions?.shippingCost?.value && (
-                                <span>
-                                  Shipping:{" "}
-                                  {formatEbayPrice(item.shippingOptions.shippingCost)}
-                                </span>
-                              )}
-                              {item.quantityLimitPerBuyer && (
-                                <span>Max Qty: {item.quantityLimitPerBuyer}</span>
-                              )}
-                              {item.itemLocation?.city && item.itemLocation.stateOrProvince && (
-                                <span>
-                                  Location: {item.itemLocation.city}, {item.itemLocation.stateOrProvince}
-                                </span>
-                              )}
-                              {item.estimatedAvailabilities?.length > 0 && (
-                                <span>
-                                  Est. Delivery: {item.estimatedAvailabilities[0]?.estimatedAvailabilityDate 
-                                    ? new Date(item.estimatedAvailabilities[0].estimatedAvailabilityDate).toLocaleDateString()
-                                    : 'N/A'}
-                                </span>
-                              )}
-                            </div>
-
-                            {item.itemId && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="mt-2 h-7 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const ebayUrl = getEbayItemUrl(item.itemId, item.itemWebUrl);
-                                  window.open(ebayUrl, "_blank", "noopener,noreferrer");
-                                }}
-                              >
-                                <ExternalLink className="w-3 h-3 mr-1" />
-                                View on eBay
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-                
-                {/* Loading indicator for next page */}
-                {isFetchingNextPage && (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
-                    <span className="text-sm text-muted-foreground">Loading more items...</span>
+              return (
+                <div
+                  key={item.itemId}
+                  className={cn(
+                    'flex gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+                    isSelected
+                      ? 'border-primary ring-1 ring-primary bg-primary/5'
+                      : 'hover:border-primary/50 hover:bg-muted/30',
+                    !isAvailable && 'opacity-60'
+                  )}
+                  onClick={() => isAvailable && handleSelectItem(item)}
+                >
+                  {imageUrl && (
+                    <img
+                      src={imageUrl}
+                      alt={item.title}
+                      className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="font-medium text-sm line-clamp-2 leading-snug">{item.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="default" className="font-semibold text-xs">
+                        {formatEbayPrice(item.price)}
+                      </Badge>
+                      {item.buyingOptions?.length > 0 && (() => {
+                        const opt = formatEbayBuyingOption(item.buyingOptions);
+                        return <Badge variant="outline" className="text-xs">{opt.text}</Badge>;
+                      })()}
+                      {item.condition && (
+                        <Badge variant="outline" className="text-xs">
+                          {formatEbayCondition(item.condition)}
+                        </Badge>
+                      )}
+                      {!isAvailable && (
+                        <Badge variant="destructive" className="text-xs">Sold</Badge>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      {item.seller?.username && <span>Seller: {item.seller.username}</span>}
+                      {item.shippingOptions?.shippingCost?.value && (
+                        <span>Shipping: {formatEbayPrice(item.shippingOptions.shippingCost)}</span>
+                      )}
+                      {item.itemLocation?.city && (
+                        <span>{item.itemLocation.city}{item.itemLocation.stateOrProvince ? `, ${item.itemLocation.stateOrProvince}` : ''}</span>
+                      )}
+                    </div>
                   </div>
-                )}
-                
-                {/* End of results message */}
-                {!hasNextPage && items.length > 0 && (
-                  <div className="text-center py-4 text-sm text-muted-foreground">
-                    <p>No more items to load</p>
+                  <div className="flex-shrink-0 flex items-center text-muted-foreground">
+                    {isSelected
+                      ? <Check className="w-4 h-4 text-primary" />
+                      : <ExternalLink className="w-3.5 h-3.5 opacity-40" />
+                    }
                   </div>
-                )}
-                </>
-              )}
+                </div>
+              );
+            })}
+
+            {isFetchingNextPage && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
+                <span className="text-sm text-muted-foreground">Loading more items...</span>
+              </div>
+            )}
+
+            {!hasNextPage && items.length > 0 && !isFetchingNextPage && (
+              <div className="text-center py-3 text-xs text-muted-foreground">
+                Showing all {items.length}{searchResults?.total && searchResults.total > items.length ? ` of ${searchResults.total}` : ''} items
+              </div>
+            )}
+          </div>
+
+          {/* Detail panel */}
+          {showDetail && selectedItem && (
+            <div className="lg:w-[400px] flex-shrink-0 border-t lg:border-t-0 overflow-y-auto">
+              <div className="p-4">
+                <ActiveItemDetail
+                  item={selectedItem}
+                  onClose={() => { setShowDetail(false); setSelectedItem(null); }}
+                />
+              </div>
             </div>
-          </ScrollArea>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-4 border-t">
-          <div className="flex flex-col gap-2">
-            <div className="text-sm text-muted-foreground">
-              {items.length > 0 && (
-                <span>
-                  Showing {items.length} {items.length === 1 ? "item" : "items"}
-                  {searchResults?.total && searchResults.total > items.length && (
-                    <span> of {searchResults.total} total</span>
-                  )}
-                </span>
-              )}
-            </div>
+        <div className="px-6 py-4 border-t flex-shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            {items.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {items.length} {items.length === 1 ? "item" : "items"}
+                {searchResults?.total && searchResults.total > items.length && (
+                  <span> of {searchResults.total} total</span>
+                )}
+              </span>
+            )}
             {debouncedQuery && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs text-primary p-0"
                 onClick={() => {
-                  const ebaySearchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(debouncedQuery)}`;
-                  window.open(ebaySearchUrl, "_blank", "noopener,noreferrer");
+                  window.open(
+                    `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(debouncedQuery)}`,
+                    "_blank",
+                    "noopener,noreferrer"
+                  );
                 }}
               >
                 <ExternalLink className="w-3 h-3 mr-1" />
@@ -444,10 +492,7 @@ function EbaySearchDialogInner({
             <Button variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleConfirmSelection}
-              disabled={!selectedItem}
-            >
+            <Button onClick={handleConfirmSelection} disabled={!selectedItem}>
               Use Selected Item
             </Button>
           </div>
@@ -457,10 +502,7 @@ function EbaySearchDialogInner({
   );
 }
 
-// Wrapper: don't mount the heavy dialog (and its hooks) unless it's actually open.
-// This prevents crashes on pages that include the dialog component but keep it closed.
 export default function EbaySearchDialog(props) {
   if (!props?.open) return null;
   return <EbaySearchDialogInner {...props} />;
 }
-

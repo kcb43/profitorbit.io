@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
 import {
   Search,
   Star,
@@ -18,6 +19,7 @@ import {
   Heart,
   BarChart3,
   TrendingDown,
+  TrendingUp,
   Filter,
   Loader2,
   Package,
@@ -26,6 +28,7 @@ import {
   Store,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   Truck,
   X,
   RefreshCw,
@@ -35,6 +38,8 @@ import {
   CheckCircle2,
   ChevronRight,
   AlertCircle,
+  CreditCard,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEbaySearchInfinite } from '@/hooks/useEbaySearch';
@@ -169,6 +174,291 @@ function EbaySoldResults({ loading, error, results, total, searchQuery, selected
   );
 }
 
+// ─── Sold Detail Panel helpers ─────────────────────────────────────────────────
+
+function SoldDetailSection({ icon: Icon, title, children }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Icon className="w-3.5 h-3.5" />
+        <span>{title}</span>
+      </div>
+      <div className="text-sm">{children}</div>
+    </div>
+  );
+}
+
+function SoldImageGallery({ images }) {
+  const [active, setActive] = useState(0);
+  if (!images || images.length === 0) return null;
+  const mainSrc = typeof images[active] === 'string' ? images[active] : images[active]?.link;
+  return (
+    <div className="space-y-2">
+      <div className="bg-muted rounded-lg overflow-hidden aspect-square w-full max-w-[220px] mx-auto">
+        <img src={mainSrc} alt="Product" className="w-full h-full object-contain p-2" />
+      </div>
+      {images.length > 1 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 justify-center flex-wrap">
+          {images.slice(0, 6).map((img, i) => {
+            const src = typeof img === 'string' ? img : img?.link;
+            return (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className={cn(
+                  'w-10 h-10 rounded border-2 overflow-hidden flex-shrink-0 transition-all',
+                  active === i ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100',
+                )}
+              >
+                <img src={src} alt="" className="w-full h-full object-cover" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SoldDetailPanel({ productId, listItem }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!productId) return;
+    setDetail(null);
+    setError(null);
+    setLoading(true);
+    fetch(`/api/ebay/sold-search?product_id=${encodeURIComponent(productId)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setDetail(data.product_results || null);
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [productId]);
+
+  const pr = detail;
+  const images = pr?.media
+    ? pr.media.filter(m => m.type === 'image').flatMap(m => m.image || []).filter(img => img?.size?.width >= 400 || !img?.size).map(img => img.link)
+    : listItem?.imageUrl ? [listItem.imageUrl] : [];
+  const price = pr?.buy?.buy_it_now?.price?.amount ?? pr?.buy?.auction?.current_price?.amount ?? listItem?.price;
+  const currency = pr?.buy?.buy_it_now?.price?.currency ?? 'USD';
+  const shipping = pr?.shipping;
+  const returns = pr?.returns?.[0]?.[0];
+  const seller = pr?.seller;
+
+  return (
+    <div className="space-y-4">
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+          <Loader2 className="w-7 h-7 animate-spin" />
+          <p className="text-sm">Loading product details…</p>
+        </div>
+      )}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>Could not load details: {error}</AlertDescription>
+        </Alert>
+      )}
+      {images.length > 0 && <SoldImageGallery images={images} />}
+      <div className="space-y-2">
+        <p className="font-semibold text-base leading-snug">{pr?.title || listItem?.title}</p>
+        {pr?.subtitle && <p className="text-xs text-muted-foreground">{pr.subtitle}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          {price != null && (
+            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-bold text-base px-3 py-1">
+              {currency === 'USD' ? '$' : ''}{Number(price).toFixed(2)}
+            </Badge>
+          )}
+        </div>
+        {pr?.banner_status && (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-md px-2.5 py-1.5">
+            <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{pr.banner_status}</span>
+          </div>
+        )}
+        {pr?.watch_count != null && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Eye className="w-3.5 h-3.5" />
+            <span>{pr.watch_count.toLocaleString()} watching</span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-3">
+          {listItem?.watchersRaw && !pr?.watch_count && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Eye className="w-3.5 h-3.5" /><span>{listItem.watchersRaw}</span>
+            </div>
+          )}
+          {(listItem?.quantitySoldRaw || pr?.quantity?.sold != null) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+              <span>{listItem?.quantitySoldRaw || `${pr.quantity.sold} sold`}</span>
+            </div>
+          )}
+          {listItem?.topRated && (
+            <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Top Rated</Badge>
+          )}
+        </div>
+      </div>
+      <Separator />
+      {(shipping?.options?.length > 0 || listItem?.shippingRaw) && (
+        <SoldDetailSection icon={Truck} title="Shipping">
+          {shipping?.options?.length > 0 ? (
+            <div className="space-y-1 text-muted-foreground">
+              {shipping.options.map((opt, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>
+                    {opt.via && <span className="font-medium text-foreground">{opt.via} — </span>}
+                    {opt.price?.amount != null ? (opt.price.amount === 0 ? 'Free' : `$${opt.price.amount.toFixed(2)}`) : ''}
+                    {opt.dates?.list?.length > 0 && ` · Est. ${opt.dates.list.join(' – ')}`}
+                  </span>
+                </div>
+              ))}
+              {shipping.from && <p className="text-xs text-muted-foreground mt-1">Ships from: {shipping.from}</p>}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">{listItem?.shippingRaw}</span>
+          )}
+        </SoldDetailSection>
+      )}
+      {(returns || listItem?.returns) && (
+        <SoldDetailSection icon={RotateCcw} title="Returns">
+          {returns?.snippets ? (
+            <div className="space-y-1 text-muted-foreground">
+              {returns.snippets.map((s, i) => <p key={i} className="text-xs">{s.text}</p>)}
+            </div>
+          ) : (
+            <span className="text-sm text-green-600 dark:text-green-400">{listItem?.returns}</span>
+          )}
+        </SoldDetailSection>
+      )}
+      {pr?.short_description && (
+        <SoldDetailSection icon={Package} title="Description">
+          <p className="text-sm text-muted-foreground leading-relaxed">{pr.short_description}</p>
+        </SoldDetailSection>
+      )}
+      {(seller || listItem?.seller) && (
+        <SoldDetailSection icon={Star} title="Seller">
+          <div className="flex flex-wrap gap-3 text-muted-foreground">
+            <span className="font-medium text-foreground">{seller?.name || listItem?.seller}</span>
+            {(seller?.positive_feedback_percent ?? listItem?.sellerFeedback) != null && (
+              <span className="flex items-center gap-0.5 text-xs">
+                <Star className="w-3 h-3 text-amber-400" />
+                {seller?.positive_feedback_percent ?? listItem?.sellerFeedback}% positive
+              </span>
+            )}
+            {(seller?.feedback_score ?? listItem?.sellerReviews) != null && (
+              <span className="text-xs">{(seller?.feedback_score ?? listItem?.sellerReviews)?.toLocaleString()} ratings</span>
+            )}
+          </div>
+        </SoldDetailSection>
+      )}
+      {pr?.payment_methods?.payments?.length > 0 && (
+        <SoldDetailSection icon={CreditCard} title="Payment">
+          <div className="flex flex-wrap gap-1.5">
+            {pr.payment_methods.payments.map((p, i) => (
+              <Badge key={i} variant="outline" className="text-xs">{p.title}</Badge>
+            ))}
+          </div>
+        </SoldDetailSection>
+      )}
+      <Button
+        variant="outline"
+        className="w-full gap-2"
+        onClick={() => window.open(listItem?.productUrl || `https://www.ebay.com/itm/${productId}`, '_blank', 'noopener,noreferrer')}
+      >
+        <ExternalLink className="w-4 h-4" />
+        View Full Listing on eBay
+      </Button>
+    </div>
+  );
+}
+
+// ─── Active Listing Detail Panel ────────────────────────────────────────────────
+
+function ActiveDetailPanel({ item, onClose }) {
+  if (!item) return null;
+  const imageUrl = item?.image?.imageUrl;
+  const price = formatEbayPrice(item.price);
+  const condition = item.condition ? formatEbayCondition(item.condition) : null;
+  const buyingOption = item.buyingOptions?.length ? formatEbayBuyingOption(item.buyingOptions) : null;
+  const sellerFeedback = item.seller?.feedbackPercentage ? `${item.seller.feedbackPercentage}%` : null;
+  const location = item.itemLocation
+    ? [item.itemLocation.city, item.itemLocation.stateOrProvince].filter(Boolean).join(', ')
+    : null;
+  const shippingCost = item.shippingOptions?.shippingCost;
+
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={onClose}
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Back to results
+      </button>
+      {imageUrl && (
+        <div className="bg-muted rounded-lg overflow-hidden aspect-square w-full max-w-[220px] mx-auto">
+          <img src={imageUrl} alt={item.title} className="w-full h-full object-contain p-2" />
+        </div>
+      )}
+      <div className="space-y-2">
+        <p className="font-semibold text-base leading-snug">{item.title}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {price && (
+            <Badge className="bg-primary hover:bg-primary text-primary-foreground font-bold text-base px-3 py-1">
+              {price}
+            </Badge>
+          )}
+          {condition && <Badge variant="outline" className="text-xs">{condition}</Badge>}
+          {buyingOption && <Badge variant="outline" className="text-xs">{buyingOption.text}</Badge>}
+        </div>
+      </div>
+      <Separator />
+      {(shippingCost || item.shippingOptions) && (
+        <SoldDetailSection icon={Truck} title="Shipping">
+          <span className="text-muted-foreground">
+            {shippingCost?.value != null
+              ? (parseFloat(shippingCost.value) === 0 ? 'Free Shipping' : formatEbayPrice(shippingCost))
+              : 'See listing'}
+          </span>
+        </SoldDetailSection>
+      )}
+      {(item.seller?.username || sellerFeedback) && (
+        <SoldDetailSection icon={Star} title="Seller">
+          <div className="flex flex-wrap gap-3 text-muted-foreground">
+            {item.seller?.username && <span className="font-medium text-foreground">{item.seller.username}</span>}
+            {sellerFeedback && (
+              <span className="flex items-center gap-0.5 text-xs">
+                <Star className="w-3 h-3 text-amber-400" />
+                {sellerFeedback} positive
+              </span>
+            )}
+          </div>
+        </SoldDetailSection>
+      )}
+      {location && (
+        <SoldDetailSection icon={MapPin} title="Location">
+          <span className="text-muted-foreground">{location}</span>
+        </SoldDetailSection>
+      )}
+      <Button
+        variant="outline"
+        className="w-full gap-2"
+        onClick={() => window.open(getEbayItemUrl(item.itemId, item.itemWebUrl), '_blank', 'noopener,noreferrer')}
+      >
+        <ExternalLink className="w-4 h-4" />
+        View on eBay
+      </Button>
+    </div>
+  );
+}
+
 /**
  * Enhanced Product Search Dialog
  * Combines Universal Product Search (all marketplaces) + eBay-specific search
@@ -262,6 +552,19 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     return ebaySearchResults.itemSummaries.filter(Boolean);
   }, [ebaySearchResults?.itemSummaries]);
 
+  // Price stats for active eBay listings
+  const ebayPriceStats = useMemo(() => {
+    if (!ebayItems.length) return null;
+    const prices = ebayItems
+      .map(item => parseFloat(item.price?.value))
+      .filter(p => !isNaN(p) && p > 0);
+    if (!prices.length) return null;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+    return { min, max, avg };
+  }, [ebayItems]);
+
   // Set up infinite scroll for eBay
   useEffect(() => {
     if (!scrollAreaRef.current || !hasNextPage || isFetchingNextPage || searchMode !== 'ebay') return;
@@ -349,6 +652,19 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       setSoldLoading(false);
     }
   };
+
+  // Price stats for sold listings
+  const soldPriceStats = useMemo(() => {
+    if (!soldResults.length) return null;
+    const prices = soldResults
+      .map(item => typeof item.price === 'number' ? item.price : parseFloat(item.price))
+      .filter(p => !isNaN(p) && p > 0);
+    if (!prices.length) return null;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+    return { min, max, avg };
+  }, [soldResults]);
 
   // Auto-trigger sold search when switching to sold view if there's already a query
   useEffect(() => {
@@ -472,7 +788,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[70rem] max-h-[90vh] flex flex-col p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0">
+      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[80rem] max-h-[90vh] flex flex-col p-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0">
         {/* Header */}
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
@@ -597,17 +913,6 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                   Sold Listings
                 </button>
               </div>
-              {ebayView === 'active' && hasValidQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.open(ebaySoldUrl, '_blank', 'noopener,noreferrer')}
-                  className="gap-1 text-xs h-7 text-muted-foreground"
-                >
-                  <BarChart3 className="w-3 h-3" />
-                  View All Sold
-                </Button>
-              )}
             </div>
           )}
 
@@ -676,57 +981,103 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
           )}
         </div>
 
-        {/* Stats Bar (Universal) */}
+        {/* Stats Bars */}
         {searchMode === 'all' && universalStats && !universalLoading && (
-          <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6">
+          <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6 flex-shrink-0">
             <span className="font-semibold">{filteredProducts.length} Results</span>
             {universalStats.priceStats.lowest !== Infinity && (
               <>
                 <span className="text-muted-foreground">
-                  ${universalStats.priceStats.lowest.toFixed(2)} - ${universalStats.priceStats.highest.toFixed(2)}
+                  ${universalStats.priceStats.lowest.toFixed(2)} – ${universalStats.priceStats.highest.toFixed(2)}
                 </span>
-                <span className="text-muted-foreground">
-                  Avg: ${universalStats.priceStats.average}
-                </span>
+                <span className="text-muted-foreground">Avg: ${universalStats.priceStats.average}</span>
               </>
             )}
           </div>
         )}
+        {searchMode === 'ebay' && ebayView === 'active' && ebayItems.length > 0 && !ebayLoading && ebayPriceStats && (
+          <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6 flex-shrink-0">
+            <span className="font-semibold">{ebayItems.length} Active Listings</span>
+            <span className="text-muted-foreground">${ebayPriceStats.min.toFixed(2)} – ${ebayPriceStats.max.toFixed(2)}</span>
+            <span className="text-muted-foreground">Avg: ${ebayPriceStats.avg.toFixed(2)}</span>
+          </div>
+        )}
+        {searchMode === 'ebay' && ebayView === 'sold' && soldResults.length > 0 && !soldLoading && soldPriceStats && (
+          <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6 flex-shrink-0">
+            <span className="font-semibold">{soldResults.length} Sold Listings</span>
+            <span className="text-muted-foreground">${soldPriceStats.min.toFixed(2)} – ${soldPriceStats.max.toFixed(2)}</span>
+            <span className="text-muted-foreground">Avg: ${soldPriceStats.avg.toFixed(2)}</span>
+          </div>
+        )}
 
         {/* Results */}
-        <div ref={searchMode === 'all' ? universalScrollRef : undefined} className="flex-1 overflow-auto px-6 py-4 min-h-0">
+        <div className="flex-1 min-h-0 flex overflow-hidden">
           {searchMode === 'all' ? (
-            <UniversalResults
-              loading={universalLoading}
-              products={filteredProducts}
-              onAddToWatchlist={handleAddToWatchlist}
-              onImageClick={setLightboxImage}
-              loadingMore={universalLoadingMore}
-              hasMore={universalHasMore}
-            />
+            <div ref={universalScrollRef} className="flex-1 overflow-auto px-6 py-4 min-h-0">
+              <UniversalResults
+                loading={universalLoading}
+                products={filteredProducts}
+                onAddToWatchlist={handleAddToWatchlist}
+                onImageClick={setLightboxImage}
+                loadingMore={universalLoadingMore}
+                hasMore={universalHasMore}
+              />
+            </div>
           ) : ebayView === 'sold' ? (
-            <EbaySoldResults
-              loading={soldLoading}
-              error={soldError}
-              results={soldResults}
-              total={soldTotal}
-              searchQuery={searchQuery}
-              selectedItem={soldSelectedItem}
-              onSelectItem={setSoldSelectedItem}
-            />
+            <>
+              <div className={cn('flex-1 min-h-0 overflow-y-auto px-4 py-4', soldSelectedItem && 'lg:max-w-sm lg:border-r')}>
+                <EbaySoldResults
+                  loading={soldLoading}
+                  error={soldError}
+                  results={soldResults}
+                  total={soldTotal}
+                  searchQuery={searchQuery}
+                  selectedItem={soldSelectedItem}
+                  onSelectItem={setSoldSelectedItem}
+                />
+              </div>
+              {soldSelectedItem && (
+                <div className="lg:w-[400px] flex-shrink-0 border-t lg:border-t-0 overflow-y-auto">
+                  <div className="p-4 space-y-4">
+                    <button
+                      onClick={() => setSoldSelectedItem(null)}
+                      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Back to results
+                    </button>
+                    <SoldDetailPanel productId={soldSelectedItem.product_id} listItem={soldSelectedItem} />
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
-            <EbayResults
-              loading={ebayLoading}
-              error={ebayError}
-              items={ebayItems}
-              selectedItem={selectedEbayItem}
-              onSelectItem={handleSelectEbayItem}
-              hasNextPage={hasNextPage}
-              isFetchingNextPage={isFetchingNextPage}
-              searchQuery={debouncedQuery}
-              scrollAreaRef={scrollAreaRef}
-              total={ebaySearchResults?.total}
-            />
+            <>
+              <div className={cn('flex-1 min-h-0', selectedEbayItem && 'lg:max-w-sm lg:border-r')}>
+                <EbayResults
+                  loading={ebayLoading}
+                  error={ebayError}
+                  items={ebayItems}
+                  selectedItem={selectedEbayItem}
+                  onSelectItem={handleSelectEbayItem}
+                  hasNextPage={hasNextPage}
+                  isFetchingNextPage={isFetchingNextPage}
+                  searchQuery={debouncedQuery}
+                  scrollAreaRef={scrollAreaRef}
+                  total={ebaySearchResults?.total}
+                />
+              </div>
+              {selectedEbayItem && (
+                <div className="lg:w-[400px] flex-shrink-0 border-t lg:border-t-0 overflow-y-auto">
+                  <div className="p-4">
+                    <ActiveDetailPanel
+                      item={selectedEbayItem}
+                      onClose={() => setSelectedEbayItem(null)}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
