@@ -4,12 +4,155 @@
  * Renders tiles grouped by category.
  * Each tile routes to its section page at /Settings/<id>.
  * Includes a live search bar that filters tiles by title, description, and keywords.
+ * Also shows an extension install/status banner at the top.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { ExternalLink, Puzzle, Check, Download } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { getSectionsByCategory } from '@/modules/settingsRegistry';
 import SettingsTile from '@/components/settings/SettingsTile';
 import SettingsSearch from '@/components/settings/SettingsSearch';
+
+// Chrome Web Store listing for the Orben extension
+const EXTENSION_STORE_URL =
+  'https://chromewebstore.google.com/detail/kdnpgdiacfolpadndicmfobgdfmnkbke';
+
+// ── Extension status banner ───────────────────────────────────────────────────
+
+function ExtensionBanner() {
+  const [status, setStatus] = useState('checking'); // 'checking' | 'installed' | 'not-installed'
+  const [version, setVersion] = useState(null);
+
+  useEffect(() => {
+    const check = () => {
+      try {
+        const ext = window?.ProfitOrbitExtension;
+        const installed =
+          typeof ext?.isAvailable === 'function' ? !!ext.isAvailable() : !!ext;
+
+        if (installed) {
+          setStatus('installed');
+          // Try common version exposure patterns
+          const ver =
+            ext?.version ??
+            ext?.getVersion?.() ??
+            window?.__PROFIT_ORBIT_EXTENSION_VERSION ??
+            null;
+          if (ver) setVersion(String(ver));
+        } else {
+          setStatus('not-installed');
+        }
+      } catch {
+        setStatus('not-installed');
+      }
+    };
+
+    // Give the bridge 600 ms to initialise before first check
+    const t = setTimeout(check, 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  const isInstalled = status === 'installed';
+  const isChecking  = status === 'checking';
+
+  return (
+    <div
+      className={cn(
+        'relative rounded-2xl border overflow-hidden',
+        'bg-gradient-to-br from-indigo-500/5 via-background to-violet-500/5',
+        isInstalled
+          ? 'border-green-200 dark:border-green-900/60'
+          : 'border-indigo-200 dark:border-indigo-900/60',
+      )}
+    >
+      {/* Decorative background orb */}
+      <div className="pointer-events-none absolute -top-6 -right-6 w-32 h-32 rounded-full bg-indigo-500/8 blur-2xl" />
+
+      <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5">
+        {/* Icon */}
+        <div
+          className={cn(
+            'flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-md',
+            'bg-gradient-to-br from-indigo-500 to-violet-600',
+          )}
+        >
+          <Puzzle className="w-6 h-6 text-white" />
+        </div>
+
+        {/* Text */}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground">
+              Orben Browser Extension
+            </h2>
+
+            {/* Status badge */}
+            {!isChecking && (
+              isInstalled ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40 text-[11px] py-0"
+                >
+                  <Check className="w-3 h-3" />
+                  Installed{version ? ` · v${version}` : ''}
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-[11px] py-0"
+                >
+                  Not installed
+                </Badge>
+              )
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+            {isInstalled
+              ? 'The extension is active and ready. It enables marketplace connections, cross-listing, and live status syncing.'
+              : 'Required for marketplace connections and cross-listing. Install from the Chrome Web Store to get started.'}
+          </p>
+        </div>
+
+        {/* Action */}
+        {!isChecking && (
+          <a
+            href={EXTENSION_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-shrink-0"
+          >
+            <Button
+              size="sm"
+              variant={isInstalled ? 'outline' : 'default'}
+              className={cn(
+                'gap-1.5 text-xs h-8',
+                !isInstalled && 'bg-indigo-600 hover:bg-indigo-700 text-white border-none',
+              )}
+            >
+              {isInstalled ? (
+                <>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View in Chrome Store
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  Install Extension
+                </>
+              )}
+            </Button>
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 const categories = getSectionsByCategory();
 
@@ -23,6 +166,9 @@ export default function Settings() {
           Manage your account, preferences, and integrations.
         </p>
       </div>
+
+      {/* Extension install / status banner */}
+      <ExtensionBanner />
 
       {/* Search + grouped tiles */}
       <SettingsSearch>
