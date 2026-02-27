@@ -49,14 +49,11 @@ const getImageUrl = (imageUrl, source) => {
     return `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
   }
 
-  // Facebook CDN (fbcdn.net) URLs are session-bound: they embed tokens tied
-  // to the user's facebook.com cookies, which are never sent from profitorbit.io
-  // (different origin). Every attempt results in a 403. Return empty string so
-  // OptimizedImage skips the request and shows the placeholder immediately
-  // instead of spamming the console with network errors.
-  if (imageUrl.includes('fbcdn.net')) {
-    return '';
-  }
+  // Facebook CDN (fbcdn.net) — pass the URL through unchanged.
+  // OptimizedImage no longer sets crossOrigin="anonymous", so the browser
+  // makes a plain <img> request without an Origin header. Facebook Marketplace
+  // listing images are publicly accessible and should load fine that way.
+  // If a URL has expired the existing onError fallback handles it gracefully.
 
   return imageUrl;
 };
