@@ -390,6 +390,13 @@ function DetailPanel({ productId, listItem }) {
         </DetailSection>
       )}
 
+      {/* Description */}
+      {pr?.short_description && (
+        <DetailSection icon={Package} title="Description">
+          <p className="text-sm text-muted-foreground leading-relaxed">{pr.short_description}</p>
+        </DetailSection>
+      )}
+
       {/* Seller */}
       {(seller || listItem?.seller) && (
         <DetailSection icon={Star} title="Seller">
@@ -515,7 +522,7 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-[90vw] max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[58rem] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <DollarSign className="w-5 h-5 text-emerald-600" />
