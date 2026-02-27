@@ -18,6 +18,7 @@ export function OptimizedImage({
   fallback = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png",
   lazy = true,
   style = {},
+  crossOrigin,
   ...props 
 }) {
   const [imageSrc, setImageSrc] = useState(src || fallback);
@@ -113,7 +114,7 @@ export function OptimizedImage({
           } ${className}`}
           loading={lazy ? 'lazy' : 'eager'}
           decoding="async"
-          crossOrigin="anonymous"
+          {...(crossOrigin ? { crossOrigin } : {})}
           onLoad={handleLoad}
           onError={handleError}
           style={{

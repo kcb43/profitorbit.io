@@ -634,6 +634,7 @@ function ImageEditorInner({
           leftGroup.style.setProperty('display', 'flex', 'important');
           leftGroup.style.setProperty('justify-content', 'center', 'important');
           leftGroup.style.setProperty('flex-shrink', '0', 'important');
+          leftGroup.style.setProperty('margin-left', '-0.5rem', 'important');
         }
         // Right-side group (undo/redo/close) — compact children, NO absolute positioning
         const rightGroup = topbar.querySelector('[class*="21g986-2"]') || topbar.lastElementChild;
@@ -695,12 +696,14 @@ function ImageEditorInner({
         topbarEl.style.setProperty('justify-content', 'space-between', 'important');
         topbarEl.style.setProperty('align-items', 'center', 'important');
 
-        // ── Center element: absolutely centred, pointer-events preserved ──
+        // ── Center element: centred over the canvas area (not the full topbar) ──
+        // The FIE_tabs sidebar is 88px wide, so the canvas spans from 88px → 100%.
+        // Its midpoint is at 88/2 + 50% = 44px + 50% of the topbar width.
         const centerEl = topbarEl.querySelector('.FIE_topbar-center-options')
           || topbarEl.querySelector('[class*="topbar-center"]');
         if (centerEl) {
           centerEl.style.setProperty('position', 'absolute', 'important');
-          centerEl.style.setProperty('left', '50%', 'important');
+          centerEl.style.setProperty('left', 'calc(50% + 44px)', 'important');
           centerEl.style.setProperty('top', '50%', 'important');
           centerEl.style.setProperty('transform', 'translate(-50%,-50%)', 'important');
           centerEl.style.setProperty('pointer-events', 'auto', 'important');
@@ -790,16 +793,17 @@ function ImageEditorInner({
     }
 
     // On subsequent calls, check if anything meaningful changed vs the baseline.
+    // FIE stores crop/rotation/flip under ds.adjustments, NOT at the top level.
     const base = initialDesignStateRef.current;
     const changed =
-      JSON.stringify(ds.finetunesProps)  !== JSON.stringify(base.finetunesProps)  ||
-      ds.filter                          !== base.filter                           ||
-      (ds.rotation || 0)                 !== (base.rotation || 0)                 ||
-      ds.isFlippedX                      !== base.isFlippedX                      ||
-      ds.isFlippedY                      !== base.isFlippedY                      ||
-      (ds.finetunes?.length  || 0)       !== (base.finetunes?.length  || 0)       ||
-      (ds.annotations?.length || 0)      !== (base.annotations?.length || 0)      ||
-      JSON.stringify(ds.crop)            !== JSON.stringify(base.crop);
+      JSON.stringify(ds.finetunesProps)                !== JSON.stringify(base.finetunesProps)                ||
+      ds.filter                                        !== base.filter                                        ||
+      (ds.adjustments?.rotation     || 0)              !== (base.adjustments?.rotation     || 0)              ||
+      !!ds.adjustments?.isFlippedX                     !== !!base.adjustments?.isFlippedX                     ||
+      !!ds.adjustments?.isFlippedY                     !== !!base.adjustments?.isFlippedY                     ||
+      (ds.finetunes?.length         || 0)              !== (base.finetunes?.length         || 0)              ||
+      (ds.annotations?.length       || 0)              !== (base.annotations?.length       || 0)              ||
+      JSON.stringify(ds.adjustments?.crop)             !== JSON.stringify(base.adjustments?.crop);
 
     if (changed) setUserHasEdited(true);
   }, []);
@@ -1344,6 +1348,16 @@ function ImageEditorInner({
     return () => document.removeEventListener('mousedown', handler);
   }, [showTemplateMenu]);
 
+  // ── Recalculate portal position whenever the menu opens ───────────────────
+  // useLayoutEffect fires synchronously after the DOM is painted, so the
+  // button's bounding rect is always fresh — no click-handler timing issues.
+  useEffect(() => {
+    if (!showTemplateMenu) { setMenuPos(null); return; }
+    if (!loadBtnRef.current) return;
+    const r = loadBtnRef.current.getBoundingClientRect();
+    setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+  }, [showTemplateMenu]);
+
   if (!open || !imageSrc) return null;
 
   const hasMultiple = allImages.length > 1;
@@ -1533,13 +1547,7 @@ function ImageEditorInner({
           <div className="relative shrink-0" data-template-menu>
             <button
               ref={loadBtnRef}
-              onClick={() => {
-                if (!showTemplateMenu && loadBtnRef.current) {
-                  const r = loadBtnRef.current.getBoundingClientRect();
-                  setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
-                }
-                setShowTemplateMenu(v => !v);
-              }}
+              onClick={() => setShowTemplateMenu(v => !v)}
               title="Load a saved edit template"
               className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors ${btnBase}`}
             >
