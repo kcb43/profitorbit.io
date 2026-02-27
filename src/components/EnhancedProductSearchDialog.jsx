@@ -540,6 +540,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const [soldLoading, setSoldLoading] = useState(false);
   const [soldError, setSoldError] = useState(null);
   const [soldSelectedItem, setSoldSelectedItem] = useState(null);
+  const [visibleSoldCount, setVisibleSoldCount] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef(null);
@@ -720,6 +721,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     setSoldResults([]);
     setSoldTotal(0);
     setSoldSelectedItem(null);
+    setVisibleSoldCount(10);
     try {
       const resp = await fetch(`/api/ebay/sold-search?q=${encodeURIComponent(q)}&num=50`);
       const data = await resp.json();
@@ -749,6 +751,9 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
     return results;
   }, [soldResults, soldFilters]);
+
+  // Reset visible count when filters change so the user sees 10 from the new filtered set
+  useEffect(() => { setVisibleSoldCount(10); }, [soldFilters]);
 
   // Price stats for sold listings (using filtered results)
   const soldPriceStats = useMemo(() => {
@@ -1235,12 +1240,27 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 <EbaySoldResults
                   loading={soldLoading}
                   error={soldError}
-                  results={filteredSoldResults}
+                  results={filteredSoldResults.slice(0, visibleSoldCount)}
                   total={soldTotal}
                   searchQuery={searchQuery}
                   selectedItem={soldSelectedItem}
                   onSelectItem={setSoldSelectedItem}
                 />
+                {!soldLoading && visibleSoldCount < filteredSoldResults.length && (
+                  <div className="text-center pt-2 pb-4">
+                    <button
+                      onClick={() => setVisibleSoldCount(c => c + 10)}
+                      className="inline-flex items-center gap-2 px-5 py-2 rounded-md border text-sm font-medium transition-colors hover:bg-muted"
+                    >
+                      Load More ({filteredSoldResults.length - visibleSoldCount} remaining)
+                    </button>
+                  </div>
+                )}
+                {!soldLoading && filteredSoldResults.length > 0 && visibleSoldCount >= filteredSoldResults.length && (
+                  <p className="text-center text-xs text-muted-foreground pb-4">
+                    Showing all {filteredSoldResults.length} results
+                  </p>
+                )}
               </div>
               {soldSelectedItem && (
                 <div className="lg:w-[400px] flex-shrink-0 border-t lg:border-t-0 overflow-y-auto">
