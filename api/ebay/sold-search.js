@@ -59,23 +59,30 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required parameter: q or product_id' });
     }
 
-    const params = new URLSearchParams({
-      engine: 'ebay',
-      _nkw: q.trim(),
-      show_only: 'Complete,Sold', // SerpAPI eBay engine filter for completed + sold items
-      _sop: '13',                 // sort: most recently ended first
-      _ipg: sanitizePageSize(num),
-      api_key: apiKey,
-    });
+    // Build params manually so the comma in show_only is NOT percent-encoded
+    // (URLSearchParams encodes commas as %2C which some servers reject)
+    const paramParts = [
+      `engine=ebay`,
+      `_nkw=${encodeURIComponent(q.trim())}`,
+      `show_only=Sold`,          // filter to sold/completed items
+      `_ipg=${sanitizePageSize(num)}`,
+      `api_key=${encodeURIComponent(apiKey)}`,
+    ];
+    const url = `${SERPAPI_BASE}?${paramParts.join('&')}`;
 
-    const response = await fetch(`${SERPAPI_BASE}?${params}`);
+    console.log('SerpAPI eBay sold search URL:', url.replace(apiKey, '[KEY]'));
+
+    const response = await fetch(url);
     const data = await response.json();
 
-    if (!response.ok || data.error) {
-      console.error('SerpAPI ebay search error:', response.status, data.error);
-      return res.status(response.ok ? 400 : response.status).json({
-        error: data.error || 'SerpAPI request failed',
-      });
+    if (data.error) {
+      console.error('SerpAPI error response:', data.error);
+      return res.status(400).json({ error: `SerpAPI: ${data.error}` });
+    }
+
+    if (!response.ok) {
+      console.error('SerpAPI HTTP error:', response.status, data);
+      return res.status(response.status).json({ error: 'SerpAPI request failed', details: data });
     }
 
     // Normalise the organic_results array from the eBay SERP engine
