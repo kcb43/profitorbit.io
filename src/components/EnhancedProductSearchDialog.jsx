@@ -496,7 +496,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   // Image lightbox state
   const [lightboxImage, setLightboxImage] = useState(null);
   
-  // Filters
+  // Filters (universal)
   const [filters, setFilters] = useState({
     minPrice: '',
     maxPrice: '',
@@ -504,6 +504,21 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     minRating: 0,
     sortBy: 'relevance',
     marketplace: 'all'
+  });
+
+  // eBay active listing filters (passed to Browse API)
+  const [ebayActiveFilters, setEbayActiveFilters] = useState({
+    condition: '',   // '' | '1000'=New | '3000'=Used | '2500'=Refurbished
+    minPrice: '',
+    maxPrice: '',
+    sort: '',        // '' | 'price' | '-price' | 'newlyListed' | 'endingSoonest'
+  });
+
+  // Sold listing filters (client-side)
+  const [soldFilters, setSoldFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    sort: 'default', // 'default' | 'price_low' | 'price_high'
   });
 
   // Debounce search query - 800ms like ProductSearch page
@@ -518,6 +533,21 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const trimmedQuery = debouncedQuery?.trim() || '';
   const hasValidQuery = trimmedQuery.length >= 2;
 
+  // Build eBay Browse API filter string from active filters
+  const ebayFilterString = useMemo(() => {
+    const parts = [];
+    if (ebayActiveFilters.condition) {
+      parts.push(`conditions:{${ebayActiveFilters.condition}}`);
+    }
+    if (ebayActiveFilters.minPrice || ebayActiveFilters.maxPrice) {
+      const min = ebayActiveFilters.minPrice || '0';
+      const max = ebayActiveFilters.maxPrice || '*';
+      parts.push(`price:[${min}..${max}]`);
+      parts.push('priceCurrency:USD');
+    }
+    return parts.length ? parts.join(',') : undefined;
+  }, [ebayActiveFilters]);
+
   const {
     data: ebaySearchResultsData,
     isLoading: ebayLoading,
@@ -529,6 +559,8 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     {
       q: trimmedQuery,
       limit: 100,
+      filter: ebayFilterString,
+      sort: ebayActiveFilters.sort || undefined,
     },
     {
       enabled: hasValidQuery && searchMode === 'ebay' && open,
@@ -653,10 +685,27 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   };
 
-  // Price stats for sold listings
+  // Client-side filtered + sorted sold results
+  const filteredSoldResults = useMemo(() => {
+    let results = soldResults;
+    if (soldFilters.minPrice !== '' && !isNaN(Number(soldFilters.minPrice))) {
+      results = results.filter(r => (r.price || 0) >= Number(soldFilters.minPrice));
+    }
+    if (soldFilters.maxPrice !== '' && !isNaN(Number(soldFilters.maxPrice))) {
+      results = results.filter(r => (r.price || 0) <= Number(soldFilters.maxPrice));
+    }
+    if (soldFilters.sort === 'price_low') {
+      results = [...results].sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (soldFilters.sort === 'price_high') {
+      results = [...results].sort((a, b) => (b.price || 0) - (a.price || 0));
+    }
+    return results;
+  }, [soldResults, soldFilters]);
+
+  // Price stats for sold listings (using filtered results)
   const soldPriceStats = useMemo(() => {
-    if (!soldResults.length) return null;
-    const prices = soldResults
+    if (!filteredSoldResults.length) return null;
+    const prices = filteredSoldResults
       .map(item => typeof item.price === 'number' ? item.price : parseFloat(item.price))
       .filter(p => !isNaN(p) && p > 0);
     if (!prices.length) return null;
@@ -664,7 +713,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     const max = Math.max(...prices);
     const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
     return { min, max, avg };
-  }, [soldResults]);
+  }, [filteredSoldResults]);
 
   // Auto-trigger sold search when switching to sold view if there's already a query
   useEffect(() => {
@@ -883,10 +932,11 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             </div>
           </div>
 
-          {/* eBay sub-filter: Active / Sold toggle */}
+          {/* eBay sub-filter: Active / Sold toggle + filters */}
           {searchMode === 'ebay' && (
-            <div className="flex items-center gap-2 mt-3">
-              <div className="flex rounded-lg border bg-muted p-0.5 gap-0.5">
+            <div className="mt-3 space-y-2">
+              {/* Active / Sold pills */}
+              <div className="flex rounded-lg border bg-muted p-0.5 gap-0.5 w-fit">
                 <button
                   type="button"
                   onClick={() => setEbayView('active')}
@@ -913,6 +963,98 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                   Sold Listings
                 </button>
               </div>
+
+              {/* Active listing filters */}
+              {ebayView === 'active' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="h-7 text-xs border border-border rounded-md px-2 bg-background text-foreground"
+                    value={ebayActiveFilters.condition}
+                    onChange={e => setEbayActiveFilters(f => ({ ...f, condition: e.target.value }))}
+                  >
+                    <option value="">All Conditions</option>
+                    <option value="1000">New</option>
+                    <option value="3000">Used</option>
+                    <option value="2500">Seller Refurbished</option>
+                  </select>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      placeholder="Min $"
+                      className="h-7 w-20 text-xs px-2"
+                      value={ebayActiveFilters.minPrice}
+                      onChange={e => setEbayActiveFilters(f => ({ ...f, minPrice: e.target.value }))}
+                    />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input
+                      type="number"
+                      placeholder="Max $"
+                      className="h-7 w-20 text-xs px-2"
+                      value={ebayActiveFilters.maxPrice}
+                      onChange={e => setEbayActiveFilters(f => ({ ...f, maxPrice: e.target.value }))}
+                    />
+                  </div>
+                  <select
+                    className="h-7 text-xs border border-border rounded-md px-2 bg-background text-foreground"
+                    value={ebayActiveFilters.sort}
+                    onChange={e => setEbayActiveFilters(f => ({ ...f, sort: e.target.value }))}
+                  >
+                    <option value="">Best Match</option>
+                    <option value="price">Price: Low–High</option>
+                    <option value="-price">Price: High–Low</option>
+                    <option value="newlyListed">Newly Listed</option>
+                    <option value="endingSoonest">Ending Soonest</option>
+                  </select>
+                  {(ebayActiveFilters.condition || ebayActiveFilters.minPrice || ebayActiveFilters.maxPrice || ebayActiveFilters.sort) && (
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                      onClick={() => setEbayActiveFilters({ condition: '', minPrice: '', maxPrice: '', sort: '' })}
+                    >
+                      <X className="w-3 h-3" />Clear
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Sold listing filters */}
+              {ebayView === 'sold' && soldResults.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      placeholder="Min $"
+                      className="h-7 w-20 text-xs px-2"
+                      value={soldFilters.minPrice}
+                      onChange={e => setSoldFilters(f => ({ ...f, minPrice: e.target.value }))}
+                    />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input
+                      type="number"
+                      placeholder="Max $"
+                      className="h-7 w-20 text-xs px-2"
+                      value={soldFilters.maxPrice}
+                      onChange={e => setSoldFilters(f => ({ ...f, maxPrice: e.target.value }))}
+                    />
+                  </div>
+                  <select
+                    className="h-7 text-xs border border-border rounded-md px-2 bg-background text-foreground"
+                    value={soldFilters.sort}
+                    onChange={e => setSoldFilters(f => ({ ...f, sort: e.target.value }))}
+                  >
+                    <option value="default">Default Order</option>
+                    <option value="price_low">Price: Low–High</option>
+                    <option value="price_high">Price: High–Low</option>
+                  </select>
+                  {(soldFilters.minPrice || soldFilters.maxPrice || soldFilters.sort !== 'default') && (
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                      onClick={() => setSoldFilters({ minPrice: '', maxPrice: '', sort: 'default' })}
+                    >
+                      <X className="w-3 h-3" />Clear
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1002,9 +1144,9 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             <span className="text-muted-foreground">Avg: ${ebayPriceStats.avg.toFixed(2)}</span>
           </div>
         )}
-        {searchMode === 'ebay' && ebayView === 'sold' && soldResults.length > 0 && !soldLoading && soldPriceStats && (
+        {searchMode === 'ebay' && ebayView === 'sold' && filteredSoldResults.length > 0 && !soldLoading && soldPriceStats && (
           <div className="px-6 py-2 bg-muted/30 border-b text-sm flex items-center gap-6 flex-shrink-0">
-            <span className="font-semibold">{soldResults.length} Sold Listings</span>
+            <span className="font-semibold">{filteredSoldResults.length}{filteredSoldResults.length !== soldResults.length ? ` of ${soldResults.length}` : ''} Sold Listings</span>
             <span className="text-muted-foreground">${soldPriceStats.min.toFixed(2)} – ${soldPriceStats.max.toFixed(2)}</span>
             <span className="text-muted-foreground">Avg: ${soldPriceStats.avg.toFixed(2)}</span>
           </div>
@@ -1029,7 +1171,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
                 <EbaySoldResults
                   loading={soldLoading}
                   error={soldError}
-                  results={soldResults}
+                  results={filteredSoldResults}
                   total={soldTotal}
                   searchQuery={searchQuery}
                   selectedItem={soldSelectedItem}
@@ -1463,11 +1605,11 @@ function EbayResults({ loading, error, items, selectedItem, onSelectItem, hasNex
               <th className="py-3 px-3 text-left">Item Title</th>
               <th className="py-3 px-3 text-center w-24">Condition</th>
               <th className="py-3 px-3 text-right w-24">Price</th>
-              <th className="py-3 px-3 text-center w-28">Buying Option</th>
+              <th className="py-3 px-3 text-center w-24">Format</th>
               <th className="py-3 px-3 text-left w-32">Seller</th>
               <th className="py-3 px-3 text-right w-24">Shipping</th>
               <th className="py-3 px-3 text-left w-32">Location</th>
-              <th className="py-3 px-3 text-center w-32">Actions</th>
+              <th className="py-3 px-3 text-center w-28">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1604,28 +1746,31 @@ function EbayTableRow({ item, isSelected, isAvailable, onSelectItem }) {
 
       {/* Shipping Cost */}
       <td className="py-2 px-3 text-right">
-        {item.shippingOptions?.shippingCost?.value ? (
-          <div className="text-sm">
-            {formatEbayPrice(item.shippingOptions.shippingCost)}
-          </div>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        )}
-        {item.estimatedAvailabilities?.length > 0 && item.estimatedAvailabilities[0]?.estimatedAvailabilityDate && (
-          <div className="text-xs text-muted-foreground mt-1">
-            Est: {new Date(item.estimatedAvailabilities[0].estimatedAvailabilityDate).toLocaleDateString()}
-          </div>
-        )}
+        {(() => {
+          const shipping = Array.isArray(item.shippingOptions)
+            ? item.shippingOptions[0]
+            : item.shippingOptions;
+          const cost = shipping?.shippingCost;
+          if (!cost) return <span className="text-xs text-muted-foreground">—</span>;
+          const val = parseFloat(cost.value);
+          return (
+            <div className="text-sm">
+              {isNaN(val) ? '—' : val === 0 ? (
+                <span className="text-emerald-600 font-medium text-xs">Free</span>
+              ) : formatEbayPrice(cost)}
+            </div>
+          );
+        })()}
       </td>
 
-      {/* Location */}
+      {/* Location + Watchers */}
       <td className="py-2 px-3">
         <div className="text-xs text-muted-foreground truncate">
           {itemLocation || '—'}
         </div>
-        {item.itemId && (
-          <div className="text-xs text-muted-foreground mt-1">
-            ID: {item.itemId.slice(-8)}
+        {item.watchCount != null && item.watchCount > 0 && (
+          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-0.5">
+            <Eye className="w-3 h-3" />{item.watchCount} watching
           </div>
         )}
       </td>
