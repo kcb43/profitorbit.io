@@ -21,6 +21,7 @@ import {
   Truck,
   Star,
   MapPin,
+  Eye,
 } from "lucide-react";
 import { useEbaySearchInfinite } from "@/hooks/useEbaySearch";
 import {
@@ -124,6 +125,18 @@ function ActiveItemDetail({ item, onClose }) {
             <span>Location</span>
           </div>
           <div className="text-sm text-muted-foreground">{location}</div>
+        </div>
+      )}
+
+      {item.watchCount != null && item.watchCount > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Eye className="w-3.5 h-3.5" />
+            <span>Watchers</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {item.watchCount.toLocaleString()} watching
+          </div>
         </div>
       )}
 
@@ -419,6 +432,11 @@ function EbaySearchDialogInner({
                       )}
                       {item.itemLocation?.city && (
                         <span>{item.itemLocation.city}{item.itemLocation.stateOrProvince ? `, ${item.itemLocation.stateOrProvince}` : ''}</span>
+                      )}
+                      {item.watchCount != null && item.watchCount > 0 && (
+                        <span className="flex items-center gap-0.5">
+                          <Eye className="w-3 h-3" />{item.watchCount.toLocaleString()}
+                        </span>
                       )}
                     </div>
                   </div>
