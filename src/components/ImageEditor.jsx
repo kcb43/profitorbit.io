@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import FilerobotImageEditor, { TABS } from 'react-filerobot-image-editor';
 import finetunesStrsToClasses from 'react-filerobot-image-editor/lib/utils/finetunesStrsToClasses';
 import filterStrToClass from 'react-filerobot-image-editor/lib/utils/filterStrToClass';
@@ -341,6 +342,10 @@ function ImageEditorInner({
   // of its internal reset/dimension-recalc when resetOnImageSourceChange fires.
   // That is not a real user edit and should not light up the Reset All button.
   const ignoringModify = useRef(false);
+  // Tracks whether the user has made any meaningful edit (including crop/flip/rotate)
+  // by comparing subsequent onModify calls to the first (baseline) FIE fires on load.
+  const initialDesignStateRef = useRef(null);
+  const [userHasEdited, setUserHasEdited] = useState(false);
 
   // ── Template management ──────────────────────────────────────────────────
   const [templates, setTemplates]           = useState(loadTemplates);
@@ -507,6 +512,8 @@ function ImageEditorInner({
     setModifiedSet(new Set());
     setCurrentDesignState(null);
     setLoadedDesignState(null);
+    initialDesignStateRef.current = null;
+    setUserHasEdited(false);
   }, [imageIndex, imageSrc]);
 
   // ── Lock body + html scroll while editor is open ─────────────────────────
@@ -764,16 +771,37 @@ function ImageEditorInner({
     // displayed image dimensions for the new image. Neither of those is a real
     // user edit. The flag is cleared in img.onload + a 300 ms grace period.
     ignoringModify.current = true;
+    initialDesignStateRef.current = null; // reset baseline for the incoming image
+    setUserHasEdited(false);
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
 
   // ── onModify: keep currentDesignState in sync in real time ──────────────
   const handleModify = useCallback((ds) => {
-    // Ignore modifications fired by FIE's internal reset/recalc during an
-    // image switch. ignoringModify is cleared after the new image loads.
+    // Ignore modifications fired by FIE's internal reset/recalc during image switches.
     if (ignoringModify.current) return;
     setCurrentDesignState(ds);
+
+    // First call after (re)load = FIE's baseline state. Store it and do nothing else.
+    if (initialDesignStateRef.current === null) {
+      initialDesignStateRef.current = ds;
+      return;
+    }
+
+    // On subsequent calls, check if anything meaningful changed vs the baseline.
+    const base = initialDesignStateRef.current;
+    const changed =
+      JSON.stringify(ds.finetunesProps)  !== JSON.stringify(base.finetunesProps)  ||
+      ds.filter                          !== base.filter                           ||
+      (ds.rotation || 0)                 !== (base.rotation || 0)                 ||
+      ds.isFlippedX                      !== base.isFlippedX                      ||
+      ds.isFlippedY                      !== base.isFlippedY                      ||
+      (ds.finetunes?.length  || 0)       !== (base.finetunes?.length  || 0)       ||
+      (ds.annotations?.length || 0)      !== (base.annotations?.length || 0)      ||
+      JSON.stringify(ds.crop)            !== JSON.stringify(base.crop);
+
+    if (changed) setUserHasEdited(true);
   }, []);
 
   // ── Persist original URLs before the first save of a session ────────────
@@ -1337,8 +1365,8 @@ function ImageEditorInner({
     )
   );
   // Show reset/revert whenever there's anything to undo: persisted originals, in-session saves,
-  // modified images, loaded template, or live edits in the current image
-  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate || hasCurrentEdits);
+  // modified images, loaded template, live finetune/filter edits, or any crop/flip/rotate change
+  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate || hasCurrentEdits || userHasEdited);
 
   return (
     <div
@@ -1518,8 +1546,9 @@ function ImageEditorInner({
               <FolderOpen className="w-3.5 h-3.5" />
               Load
             </button>
-            {showTemplateMenu && menuPos && (
+            {showTemplateMenu && menuPos && createPortal(
               <div
+                data-template-menu
                 className="rounded-lg overflow-hidden"
                 style={{
                   position: 'fixed',
@@ -1529,7 +1558,7 @@ function ImageEditorInner({
                   backgroundColor: isDark ? '#1c1c1c' : '#ffffff',
                   border: `1px solid ${isDark ? '#333' : '#e5e5e5'}`,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                  zIndex: 99999,
+                  zIndex: 999999,
                 }}
               >
                 {templates.length === 0 ? (
@@ -1567,7 +1596,8 @@ function ImageEditorInner({
                     ))}
                   </div>
                 )}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 
