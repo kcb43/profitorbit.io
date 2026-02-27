@@ -40,15 +40,24 @@ const SOURCES = [
   { id: "etsy", label: "Etsy", icon: ETSY_ICON_URL, available: false },
 ];
 
-// Helper function to proxy Mercari images through our API to avoid CORS issues
+// Helper function to handle marketplace image URLs.
 const getImageUrl = (imageUrl, source) => {
   if (!imageUrl) return '';
-  
-  // Mercari images need to be proxied due to CORS restrictions
+
+  // Mercari images need to be proxied due to CORS restrictions.
   if (source === 'mercari' && imageUrl.includes('mercdn.net')) {
     return `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
   }
-  
+
+  // Facebook CDN (fbcdn.net) URLs are session-bound: they embed tokens tied
+  // to the user's facebook.com cookies, which are never sent from profitorbit.io
+  // (different origin). Every attempt results in a 403. Return empty string so
+  // OptimizedImage skips the request and shows the placeholder immediately
+  // instead of spamming the console with network errors.
+  if (imageUrl.includes('fbcdn.net')) {
+    return '';
+  }
+
   return imageUrl;
 };
 
