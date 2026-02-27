@@ -2253,7 +2253,7 @@ export default function InventoryPage() {
                       className="group block"
                       ref={highlightId && item.id === highlightId ? highlightRef : null}
                     >
-                      <div className={`relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-border/60'} bg-card/60 hover:bg-muted/40 transition-colors`}>
+                      <div className={`relative overflow-hidden rounded-2xl border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-border/60'} bg-card/60`}>
                         <div 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2357,7 +2357,7 @@ export default function InventoryPage() {
                     >
                       {/* Mobile/Tablet list layout - Restructured */}
                       <div
-                        className={`lg:hidden product-list-item relative flex flex-col mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''} cursor-pointer hover:shadow-md transition-shadow`}
+                        className={`lg:hidden product-list-item relative flex flex-col mb-6 sm:mb-6 min-w-0 w-full bg-white dark:bg-card border ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200 dark:border-border'} shadow-sm dark:shadow-lg ${isDeleted ? 'opacity-75' : ''}`}
                         style={{
                           minHeight: 'auto',
                           height: 'auto',
@@ -3205,7 +3205,7 @@ export default function InventoryPage() {
             return (
               <Card 
                 key={item.id} 
-                className={`group overflow-hidden transition-all duration-300 ${gridVariations[viewVariation].hoverEffect} bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg ${gridVariations[viewVariation].cardClass} ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-border'}`}
+                className={`group overflow-hidden bg-gradient-to-br from-white to-gray-50 dark:from-card dark:to-card/80 shadow-sm dark:shadow-lg ${gridVariations[viewVariation].cardClass} ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : ''} ${isDeleted ? 'opacity-75 border-2 border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-border'}`}
               >
                 <div className={`relative ${gridVariations[viewVariation].imageWrapperClass} overflow-hidden bg-gray-50 dark:bg-card/70`}
                 >
