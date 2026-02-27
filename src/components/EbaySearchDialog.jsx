@@ -181,7 +181,7 @@ function EbaySearchDialogInner({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[64rem] max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[70rem] max-h-[90vh] flex flex-col p-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-4 h-4" />
