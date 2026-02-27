@@ -507,6 +507,14 @@ function ImageEditorInner({
     setLoadedDesignState(null);
   }, [imageIndex, imageSrc]);
 
+  // ── Lock body scroll while editor is open ────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   // ── Load saved design state from DB when editor opens ────────────────────
   useEffect(() => {
     if (!open || !itemId || !imageSrc) return;
@@ -561,6 +569,7 @@ function ImageEditorInner({
         fill:  #ffffff !important;
         stroke: #ffffff !important;
       }
+      .FIE_root ::-webkit-scrollbar { display: none !important; }
     `;
 
     function paintTabs() {
@@ -692,14 +701,8 @@ function ImageEditorInner({
           ? closeBtn.parentElement
           : (topbarEl.querySelector('[class*="21g986-2"]') || topbarEl.lastElementChild);
         if (rightGroup) {
-          rightGroup.style.setProperty('display', 'flex', 'important');
-          rightGroup.style.setProperty('gap', '0px', 'important');
-          rightGroup.style.setProperty('align-items', 'center', 'important');
-          rightGroup.style.setProperty('margin-right', '3rem', 'important');
-          // Remove any stale absolute positioning from previous builds
-          rightGroup.style.removeProperty('position');
-          rightGroup.style.removeProperty('right');
-          rightGroup.style.removeProperty('transform');
+          // Hide FIE's built-in undo/redo/close — our custom bar handles these
+          rightGroup.style.setProperty('display', 'none', 'important');
         }
       }
     }
@@ -1008,12 +1011,11 @@ function ImageEditorInner({
 
   // ── Revert template / last change ───────────────────────────────────────
   const handleRevertTemplate = useCallback(() => {
-    if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
     setLoadedDesignState(null);
     const fn = updateStateFnRef.current;
     if (fn) fn({ finetunesProps: {}, finetunes: [], filter: null });
-    toast({ title: 'Template reverted' });
-  }, [loadedDesignState]);
+    toast({ title: hasTemplate ? 'Template reverted' : 'Edits cleared' });
+  }, [loadedDesignState, hasTemplate]);
 
   // ── Template: delete ─────────────────────────────────────────────────────
   const handleDeleteTemplate = useCallback((id, e) => {
@@ -1416,13 +1418,13 @@ function ImageEditorInner({
         {/* Right-side controls – absolutely positioned at top-right */}
         <div
           className="flex items-center gap-2 min-w-0"
-          style={{ position: 'absolute', right: 48, top: '50%', transform: 'translateY(-50%)' }}
+          style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}
         >
-          {/* Revert template (undo last change when template was applied) */}
-          {hasTemplate && (
+          {/* Revert – shown whenever there are any edits (template or otherwise) */}
+          {canReset && (
             <button
               onClick={handleRevertTemplate}
-              title="Revert the template you just applied"
+              title="Revert filter and adjustment edits on this image"
               className="flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0"
               style={{
                 backgroundColor: isDark ? '#1e3a5f' : '#eff6ff',
@@ -1490,12 +1492,13 @@ function ImageEditorInner({
             </button>
             {showTemplateMenu && (
               <div
-                className="absolute right-0 top-full mt-1.5 rounded-lg overflow-hidden z-50"
+                className="absolute right-0 top-full mt-1.5 rounded-lg overflow-hidden"
                 style={{
                   width: 220,
                   backgroundColor: isDark ? '#1c1c1c' : '#ffffff',
                   border: `1px solid ${isDark ? '#333' : '#e5e5e5'}`,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  zIndex: 99999,
                 }}
               >
                 {templates.length === 0 ? (
@@ -1584,6 +1587,20 @@ function ImageEditorInner({
               Save template
             </button>
           )}
+
+          {/* Close button – sits after Save Template with breathing room from screen edge */}
+          <button
+            onClick={handleClose}
+            title="Close editor"
+            className="flex items-center justify-center w-8 h-8 rounded text-sm font-medium transition-colors shrink-0 ml-2"
+            style={{
+              backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+              color: isDark ? '#a3a3a3' : '#555',
+              border: `1px solid ${isDark ? '#404040' : '#d4d4d4'}`,
+            }}
+          >
+            ✕
+          </button>
         </div>
       </div>
 
