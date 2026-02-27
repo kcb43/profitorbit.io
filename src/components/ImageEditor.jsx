@@ -347,6 +347,8 @@ function ImageEditorInner({
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName]     = useState('');
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState(null); // fixed-position coords for Load dropdown
+  const loadBtnRef = useRef(null);
 
   // ── Apply-to-all progress ────────────────────────────────────────────────
   const [applyingToAll, setApplyingToAll]   = useState(false);
@@ -507,12 +509,17 @@ function ImageEditorInner({
     setLoadedDesignState(null);
   }, [imageIndex, imageSrc]);
 
-  // ── Lock body scroll while editor is open ────────────────────────────────
+  // ── Lock body + html scroll while editor is open ─────────────────────────
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
   }, [open]);
 
   // ── Load saved design state from DB when editor opens ────────────────────
@@ -928,6 +935,7 @@ function ImageEditorInner({
       setModifiedSet(prev => new Set([...prev, activeIndex]));
     }
     setShowTemplateMenu(false);
+    setMenuPos(null);
     toast({ title: `Template "${tpl.name}" applied` });
   }, [activeIndex]);
 
@@ -1318,8 +1326,19 @@ function ImageEditorInner({
     : 'bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300';
   const canApply = !!(currentDesignState || imageDesignStates.current[activeIndex]);
   const hasTemplate = !!(loadedDesignState && Object.keys(loadedDesignState).length > 0);
-  // Show reset button if originals were persisted cross-session OR any save happened in-session OR template/edits applied
-  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate);
+  // True when the user has applied non-zero finetunes, a filter, or annotations in the current session
+  const hasCurrentEdits = !!(
+    currentDesignState && (
+      (currentDesignState.finetunesProps &&
+        Object.values(currentDesignState.finetunesProps).some(v => v != null && v !== 0)) ||
+      currentDesignState.filter ||
+      currentDesignState.finetunes?.length ||
+      currentDesignState.annotations?.length
+    )
+  );
+  // Show reset/revert whenever there's anything to undo: persisted originals, in-session saves,
+  // modified images, loaded template, or live edits in the current image
+  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate || hasCurrentEdits);
 
   return (
     <div
@@ -1485,17 +1504,27 @@ function ImageEditorInner({
           {/* Load template */}
           <div className="relative shrink-0" data-template-menu>
             <button
-              onClick={() => setShowTemplateMenu(v => !v)}
+              ref={loadBtnRef}
+              onClick={() => {
+                if (!showTemplateMenu && loadBtnRef.current) {
+                  const r = loadBtnRef.current.getBoundingClientRect();
+                  setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+                }
+                setShowTemplateMenu(v => !v);
+              }}
               title="Load a saved edit template"
               className={`flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors ${btnBase}`}
             >
               <FolderOpen className="w-3.5 h-3.5" />
               Load
             </button>
-            {showTemplateMenu && (
+            {showTemplateMenu && menuPos && (
               <div
-                className="absolute right-0 top-full mt-1.5 rounded-lg overflow-hidden"
+                className="rounded-lg overflow-hidden"
                 style={{
+                  position: 'fixed',
+                  top: menuPos.top,
+                  right: menuPos.right,
                   width: 220,
                   backgroundColor: isDark ? '#1c1c1c' : '#ffffff',
                   border: `1px solid ${isDark ? '#333' : '#e5e5e5'}`,
