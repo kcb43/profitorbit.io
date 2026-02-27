@@ -1036,23 +1036,22 @@ export default function InventoryPage() {
       
       console.log('Queries refetched - Edit Item page should now show edited image');
       
-      // Update imageToEdit to point to new edited URL so editor shows correct image
-      setImageToEdit({
+      // Update imageToEdit to point to the saved URL (preserve imageIndex).
+      setImageToEdit(prev => ({
+        ...prev,
         url: fileUrl,
-        itemId: variables.itemId
-      });
-      
+        itemId: variables.itemId,
+        imageIndex: variables.imageIndex ?? prev?.imageIndex ?? 0,
+      }));
+
       toast({
         title: "Image Updated",
         description: "The item image has been successfully updated.",
       });
-      
-      // Don't close editor if multiple images - let user continue editing
-      const item = inventoryItems.find(i => i.id === variables.itemId);
-      if (!item?.images || item.images.length <= 1) {
-        setEditorOpen(false);
-        setImageToEdit({ url: null, itemId: null });
-      }
+
+      // Do NOT close the editor here. ImageEditor.handleSave already calls
+      // onOpenChange(false) for normal saves, and Reset All must keep the
+      // editor open so the user can continue working.
     },
     onError: (error) => {
       console.error("Error updating image:", error);

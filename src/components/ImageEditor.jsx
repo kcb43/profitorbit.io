@@ -346,6 +346,10 @@ function ImageEditorInner({
   // by comparing subsequent onModify calls to the first (baseline) FIE fires on load.
   const initialDesignStateRef = useRef(null);
   const [userHasEdited, setUserHasEdited] = useState(false);
+  // The design state to restore when the user clicks Revert.
+  // Set to the pre-template state when a template is loaded, and to the
+  // pre-edit baseline when the first manual change is detected.
+  const prevDesignStateRef = useRef(null);
 
   // ── Template management ──────────────────────────────────────────────────
   const [templates, setTemplates]           = useState(loadTemplates);
@@ -775,6 +779,7 @@ function ImageEditorInner({
     // user edit. The flag is cleared in img.onload + a 300 ms grace period.
     ignoringModify.current = true;
     initialDesignStateRef.current = null; // reset baseline for the incoming image
+    prevDesignStateRef.current = null;    // no revert point on a fresh image
     setUserHasEdited(false);
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
@@ -805,7 +810,15 @@ function ImageEditorInner({
       (ds.annotations?.length       || 0)              !== (base.annotations?.length       || 0)              ||
       JSON.stringify(ds.adjustments?.crop)             !== JSON.stringify(base.adjustments?.crop);
 
-    if (changed) setUserHasEdited(true);
+    if (changed && !userHasEdited) {
+      // First meaningful change since the last checkpoint. Save the pre-edit
+      // baseline as the Revert target (overwrites any previous revert point so
+      // that clicking Revert undoes only the most recent action).
+      prevDesignStateRef.current = extractTemplateFields(base);
+      setUserHasEdited(true);
+    } else if (changed) {
+      setUserHasEdited(true);
+    }
   }, []);
 
   // ── Persist original URLs before the first save of a session ────────────
@@ -958,6 +971,12 @@ function ImageEditorInner({
 
   // ── Template: load ───────────────────────────────────────────────────────
   const handleLoadTemplate = useCallback((tpl) => {
+    // Save the current state as the Revert target BEFORE applying the template,
+    // so clicking Revert after a template load undoes the template application.
+    prevDesignStateRef.current = currentDesignState
+      ? extractTemplateFields(currentDesignState)
+      : {};
+
     const safe = extractTemplateFields(tpl.designState);
     const ds = Object.keys(safe).length ? safe : null;
     designStateSourceRef.current = 'template';
@@ -968,8 +987,12 @@ function ImageEditorInner({
     }
     setShowTemplateMenu(false);
     setMenuPos(null);
+    // Reset edit tracking so that manual edits made AFTER the template
+    // will correctly capture the template state as their own revert point.
+    initialDesignStateRef.current = null;
+    setUserHasEdited(false);
     toast({ title: `Template "${tpl.name}" applied` });
-  }, [activeIndex]);
+  }, [activeIndex, currentDesignState]);
 
   // Force template into FIE store when loaded. FIE's loadableDesignState
   // useUpdateEffect can race with tab switches; calling updateStateFnRef
@@ -1049,15 +1072,45 @@ function ImageEditorInner({
     };
   }, [open, loadedDesignState, applyLoadedTemplate]);
 
-  // ── Revert template / last change ───────────────────────────────────────
+  // ── Revert: restore the state that existed before the last significant action ──
+  // "Last action" is either loading a template or the first manual edit since
+  // the last checkpoint. prevDesignStateRef always holds that pre-action state.
   const handleRevertTemplate = useCallback(() => {
-    // Compute before clearing state — loadedDesignState still holds current value here
-    const wasTemplate = !!(loadedDesignState && Object.keys(loadedDesignState).length > 0);
-    setLoadedDesignState(null);
+    const prevState = prevDesignStateRef.current;
+    prevDesignStateRef.current = null; // consume the revert point
+
     const fn = updateStateFnRef.current;
-    if (fn) fn({ finetunesProps: {}, finetunes: [], filter: null });
-    toast({ title: wasTemplate ? 'Template reverted' : 'Edits cleared' });
-  }, [loadedDesignState]);
+
+    if (prevState && Object.keys(prevState).length > 0) {
+      // Restore the captured state (finetunes + filter + adjustments).
+      if (fn) {
+        fn({
+          finetunesProps: prevState.finetunesProps || {},
+          finetunes: finetunesStrsToClasses(prevState.finetunes || []),
+          filter: filterStrToClass(prevState.filter),
+          adjustments: prevState.adjustments || {},
+        });
+      }
+      // Sync loadedDesignState so the template re-apply loop picks it up.
+      const clean = extractTemplateFields(prevState);
+      if (Object.keys(clean).length > 0) {
+        designStateSourceRef.current = 'template';
+        setLoadedDesignState(clean);
+      } else {
+        setLoadedDesignState(null);
+      }
+      toast({ title: 'Reverted' });
+    } else {
+      // No saved revert point — clear all edits back to the original image state.
+      setLoadedDesignState(null);
+      if (fn) fn({ finetunesProps: {}, finetunes: [], filter: null, adjustments: {} });
+      toast({ title: 'Edits cleared' });
+    }
+
+    // Reset edit tracking so the next change starts fresh.
+    initialDesignStateRef.current = null;
+    setUserHasEdited(false);
+  }, []);
 
   // ── Template: delete ─────────────────────────────────────────────────────
   const handleDeleteTemplate = useCallback((id, e) => {
