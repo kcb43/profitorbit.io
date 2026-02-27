@@ -2341,6 +2341,28 @@ export default function Import() {
               </div>
             </div>
 
+            {/* Facebook image note: some sold/deleted listings have revoked CDN
+                tokens that cannot be loaded from any origin. A re-sync fetches
+                fresh URLs for currently active listings. */}
+            {selectedSource === "facebook" && !isLoading && paginatedListings.length > 0 && (
+              <div className="flex items-center gap-2 px-1 pb-1 text-xs text-muted-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span>
+                  Sold or deleted listings may show a placeholder image.{" "}
+                  <button
+                    className="underline underline-offset-2 hover:text-foreground transition-colors"
+                    onClick={handleRefresh}
+                    disabled={!canSync}
+                  >
+                    Sync Facebook
+                  </button>{" "}
+                  to refresh your listings with current availability.
+                </span>
+              </div>
+            )}
+
             {/* Listings Grid */}
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
