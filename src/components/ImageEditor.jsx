@@ -1187,14 +1187,25 @@ function ImageEditorInner({
       }, 200);
     };
 
-    // Only fire scheduleReapply when aria-selected changes. We do NOT observe
-    // childList because canvas repaints during crop-handle dragging fire childList
-    // mutations constantly and would wrongly trigger re-application mid-drag.
+    // Fire scheduleReapply ONLY when a main FIE navigation tab button (Adjust,
+    // Finetune, Watermark — class "FIE_tab") changes its aria-selected value.
+    //
+    // We deliberately EXCLUDE crop-preset button aria-selected changes (those
+    // buttons have class FIE_crop-preset / live inside FIE_crop-presets, not
+    // FIE_tab). Crop-preset selections previously triggered scheduleReapply,
+    // which started a 2-second polling interval. If isAdjustTab() ever returned
+    // false momentarily during FIE's DOM rebuild (which happens on preset select),
+    // doApply() would push old adjustments back into FIE mid-drag → snap-back.
     const obs = new MutationObserver((mutations) => {
-      const hasTabSwitch = mutations.some(
-        (m) => m.type === 'attributes' && m.attributeName === 'aria-selected'
+      const hasMainTabSwitch = mutations.some(
+        (m) =>
+          m.type === 'attributes' &&
+          m.attributeName === 'aria-selected' &&
+          // m.target is a main FIE nav tab (has "FIE_tab" in its class list)
+          typeof m.target.className === 'string' &&
+          m.target.className.includes('FIE_tab')
       );
-      if (hasTabSwitch) scheduleReapply();
+      if (hasMainTabSwitch) scheduleReapply();
     });
     obs.observe(editorArea, {
       subtree: true,
@@ -1524,47 +1535,13 @@ function ImageEditorInner({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeSrc, activeIndex]);
 
-  // ── Preserve crop adjustments across tab switches ──────────────────────────
-  // FIE resets crop visuals when switching from Adjust to Finetune/Watermark.
-  // Re-apply the crop adjustments from the last captured design state so the
-  // user's crop selection isn't lost when they change brightness, etc.
-  useEffect(() => {
-    if (!open) return;
-    const editorArea = editorAreaRef.current;
-    if (!editorArea) return;
-
-    let wasAdjustTab = true; // editor starts on Adjust tab
-
-    const checkTabSwitch = () => {
-      const isAdjust = !!editorArea.querySelector(
-        '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
-      );
-
-      // Just left the Adjust tab — push crop/rotation state back into FIE
-      if (wasAdjustTab && !isAdjust) {
-        const ds = designStateRef.current;
-        if (ds?.adjustments) {
-          const fn = updateStateFnRef.current;
-          if (fn) {
-            // Staggered re-apply to overcome FIE's async tab transition resets
-            [0, 50, 150, 350].forEach(delay => {
-              setTimeout(() => fn({ adjustments: { ...ds.adjustments } }), delay);
-            });
-          }
-        }
-      }
-      wasAdjustTab = isAdjust;
-    };
-
-    const obs = new MutationObserver(checkTabSwitch);
-    obs.observe(editorArea, {
-      childList: true, subtree: true, attributes: true,
-      attributeFilter: ['aria-selected'],
-    });
-
-    return () => obs.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, activeIndex]);
+  // NOTE: The "Preserve crop adjustments across tab switches" effect was removed.
+  // It used childList:true which fired on every canvas repaint during crop-handle
+  // dragging. FIE briefly removes/re-adds crop-tool DOM elements when a preset is
+  // selected, causing the observer's isAdjust check to return false momentarily.
+  // That false negative scheduled fn({adjustments}) timeouts that fired mid-drag,
+  // snapping the crop box back to its pre-drag position. The scheduleReapply effect
+  // above (aria-selected only, no childList) covers this use-case without the bug.
 
   // ── Touch swipe on the top bar to navigate ───────────────────────────────
   const swipeTouchStart = useRef(null);
