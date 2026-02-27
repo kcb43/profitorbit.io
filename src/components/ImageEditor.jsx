@@ -368,6 +368,9 @@ function ImageEditorInner({
   const initialDesignStateRef = useRef(null);
   const [userHasEdited, setUserHasEdited] = useState(false);
   const userHasEditedRef = useRef(false); // mirror of userHasEdited usable inside closures
+  // Ref mirror of currentDesignState updated synchronously in handleModify.
+  // Used by the Adjust-tab click handler to capture the pre-action state for Revert.
+  const currentDesignStateRef = useRef(null);
   // The design state to restore when the user clicks Revert.
   // Set to the pre-template state when a template is loaded, and to the
   // pre-edit baseline when the first manual change is detected.
@@ -575,17 +578,20 @@ function ImageEditorInner({
         '[class*="FIE_resize-options"] *'
       );
       if (!hit) return;
+      if (ignoringModify.current) return; // image switch in progress — skip
 
-      // Give FIE ~150 ms to commit the change into its Redux store, then
-      // ensure the Revert/Reset buttons are visible regardless of whether
-      // onModify fired with a detected diff.
+      // Capture the revert point SYNCHRONOUSLY (before FIE processes the click
+      // and before any 150ms delay). currentDesignStateRef holds the latest
+      // design state updated by handleModify. This is the state to return to
+      // when Revert is clicked, regardless of whether the user has already
+      // made other edits (we always want "undo last discrete action").
+      const stateToRevert = currentDesignStateRef.current || initialDesignStateRef.current;
+      prevDesignStateRef.current = extractTemplateFields(stateToRevert || {});
+
+      // After a short delay, mark the user as having edited so Revert/Reset
+      // buttons appear (FIE needs time to commit the action to its store).
       setTimeout(() => {
-        if (ignoringModify.current) return; // in the middle of an image switch
-        if (!userHasEditedRef.current) {
-          prevDesignStateRef.current = extractTemplateFields(
-            initialDesignStateRef.current || {}
-          );
-        }
+        if (ignoringModify.current) return;
         setUserHasEdited(true);
         userHasEditedRef.current = true;
       }, 150);
@@ -854,6 +860,7 @@ function ImageEditorInner({
     // Ignore modifications fired by FIE's internal reset/recalc during image switches.
     if (ignoringModify.current) return;
     setCurrentDesignState(ds);
+    currentDesignStateRef.current = ds; // sync ref for click-handler capture
 
     // First call after (re)load = FIE's baseline state. Store it and do nothing else.
     if (initialDesignStateRef.current === null) {
@@ -1058,20 +1065,15 @@ function ImageEditorInner({
   // useUpdateEffect can race with tab switches; calling updateStateFnRef
   // directly ensures the Konva Design layer receives finetunes/filters
   // so they persist when switching to Finetune or Watermark tabs.
-  const applyLoadedTemplate = useCallback(() => {
+  // includeAdjustments=true  → called on initial load/template apply (restores crop/rotation/flip)
+  // includeAdjustments=false → called from MutationObserver tab-switch recovery (only restores
+  //   finetunes + filter, which FIE resets on tab transitions; adjustments persist on their own
+  //   and must NOT be re-applied or they'll snap crop handles back to the stored position).
+  const applyLoadedTemplate = useCallback((includeAdjustments = false) => {
     if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
-
-    // Exclude adjustments (crop / rotation / flip) once the user has started
-    // editing. FIE does NOT reset adjustments when switching tabs — it only
-    // resets finetunes and filters. Re-applying the stored adjustments after
-    // the user has dragged crop handles would snap the handles back to their
-    // stored position, overwriting the user's work.
-    // On the very first application (before any user edit), include adjustments
-    // so that a saved crop ratio / rotation is restored from the DB or template.
     const { adjustments, ...withoutAdjustments } = loadedDesignState;
-    const base = userHasEditedRef.current ? withoutAdjustments : loadedDesignState;
     const payload = {
-      ...base,
+      ...(includeAdjustments ? loadedDesignState : withoutAdjustments),
       finetunes: finetunesStrsToClasses(loadedDesignState.finetunes),
       filter: filterStrToClass(loadedDesignState.filter),
     };
@@ -1081,8 +1083,11 @@ function ImageEditorInner({
 
   useEffect(() => {
     if (!loadedDesignState || Object.keys(loadedDesignState).length === 0) return;
-    applyLoadedTemplate();
-    const id = requestAnimationFrame(applyLoadedTemplate);
+    // Pass true so the initial application restores crop / rotation / flip from
+    // the DB or template.  The recurring MutationObserver path calls
+    // applyLoadedTemplate() with the default false (adjustments excluded).
+    applyLoadedTemplate(true);
+    const id = requestAnimationFrame(() => applyLoadedTemplate(true));
     return () => cancelAnimationFrame(id);
   }, [loadedDesignState, applyLoadedTemplate]);
 
