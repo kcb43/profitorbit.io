@@ -594,6 +594,11 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
       parts.push(`price:[${min}..${max}]`);
       parts.push('priceCurrency:USD');
     }
+    // "Ending Soonest" only makes sense for auctions (they have end dates).
+    // Fixed-price listings have no end date and would otherwise swamp results.
+    if (ebayActiveFilters.sort === 'endingSoonest') {
+      parts.push('buyingOptions:{AUCTION}');
+    }
     return parts.length ? parts.join(',') : undefined;
   }, [ebayActiveFilters]);
 
@@ -646,18 +651,15 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     return { min, max, avg };
   }, [ebayItems]);
 
-  // Set up infinite scroll for eBay
+  // Set up infinite scroll for eBay active listings
   useEffect(() => {
-    if (!scrollAreaRef.current || !hasNextPage || isFetchingNextPage || searchMode !== 'ebay') return;
+    if (!scrollAreaRef.current || !hasNextPage || isFetchingNextPage || searchMode !== 'ebay' || ebayView !== 'active') return;
 
     const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
     if (!viewport) return;
 
     const handleScroll = () => {
-      const scrollTop = viewport.scrollTop;
-      const scrollHeight = viewport.scrollHeight;
-      const clientHeight = viewport.clientHeight;
-      
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
       if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       }
@@ -665,7 +667,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
 
     viewport.addEventListener('scroll', handleScroll);
     return () => viewport.removeEventListener('scroll', handleScroll);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchMode]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchMode, ebayView]);
 
   // Set up infinite scroll for universal/all search
   useEffect(() => {
@@ -1244,7 +1246,7 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             </>
           ) : (
             <>
-              <div className={cn('flex-1 min-h-0', selectedEbayItem && 'lg:max-w-sm lg:border-r')}>
+              <div className={cn('flex-1 min-h-0 overflow-hidden', selectedEbayItem && 'lg:max-w-sm lg:border-r')}>
                 <EbayResults
                   loading={ebayLoading}
                   error={ebayError}
