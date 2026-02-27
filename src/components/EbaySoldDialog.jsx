@@ -453,7 +453,12 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
       setResults(data.results || []);
       setTotal(data.total || data.results?.length || 0);
     } catch (err) {
-      setError(err.message || 'Search failed. Please try again.');
+      const msg = err.message || '';
+      if (msg.includes('SERPAPI_KEY') || msg.includes('not configured')) {
+        setError('eBay sold search requires a SERPAPI_KEY. Add it to your Vercel environment variables at serpapi.com, then redeploy.');
+      } else {
+        setError(msg || 'Search failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -545,9 +550,9 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
 
               {/* Error */}
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="mx-1">
                   <AlertCircle className="w-4 h-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription className="text-sm leading-snug">{error}</AlertDescription>
                 </Alert>
               )}
 
