@@ -9,7 +9,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -522,7 +521,7 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[58rem] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-[92vw] max-w-[70rem] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -560,9 +559,9 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
         </div>
 
         {/* Body: two-panel layout on lg+ */}
-        <div className={cn('flex-1 overflow-hidden flex', showDetail ? 'flex-col lg:flex-row' : 'flex-col')}>
+        <div className={cn('flex-1 min-h-0 flex', showDetail ? 'flex-col lg:flex-row' : 'flex-col')}>
           {/* Results list */}
-          <ScrollArea className={cn('flex-1', showDetail && 'lg:max-w-sm lg:border-r')}>
+          <div className={cn('flex-1 min-h-0 overflow-y-auto', showDetail && 'lg:max-w-sm lg:border-r')}>
             <div className="p-4 space-y-3">
               {/* Idle state */}
               {!loading && !error && results.length === 0 && !searchQuery && (
@@ -608,11 +607,11 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
                 />
               ))}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Detail panel */}
           {showDetail && selectedItem && (
-            <ScrollArea className="lg:w-[420px] flex-shrink-0 border-t lg:border-t-0">
+            <div className="lg:w-[420px] flex-shrink-0 border-t lg:border-t-0 overflow-y-auto">
               <div className="p-4 space-y-4">
                 <button
                   onClick={() => { setShowDetail(false); setSelectedItem(null); }}
@@ -626,7 +625,7 @@ function EbaySoldDialogInner({ open, onOpenChange, initialQuery = '' }) {
                   listItem={selectedItem}
                 />
               </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
 

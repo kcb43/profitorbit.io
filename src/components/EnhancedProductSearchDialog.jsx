@@ -28,7 +28,13 @@ import {
   ChevronUp,
   Truck,
   X,
-  RefreshCw
+  RefreshCw,
+  DollarSign,
+  Eye,
+  RotateCcw,
+  CheckCircle2,
+  ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEbaySearchInfinite } from '@/hooks/useEbaySearch';
@@ -45,6 +51,124 @@ import { supabase } from '@/integrations/supabase';
 import { ProductCardV1List } from '@/components/ProductCardVariations';
 import { getMerchantLogoOrColor } from '@/utils/merchantLogos';
 
+// ─── Inline Sold Results (for eBay tab "Sold" sub-view) ───────────────────────
+
+function SoldResultCardInline({ item, isSelected, onClick }) {
+  const price = item.price != null ? `$${Number(item.price).toFixed(2)}` : item.priceRaw;
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        'flex gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+        isSelected ? 'border-primary ring-1 ring-primary bg-primary/5' : 'hover:border-primary/50 hover:bg-muted/40',
+      )}
+    >
+      <div className="w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            <Package className="w-6 h-6 opacity-40" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 space-y-1">
+        <p className="text-sm font-medium line-clamp-2 leading-snug">{item.title}</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {price && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-600 text-white text-xs font-bold">{price}</span>
+          )}
+          {item.condition && (
+            <span className="text-xs border border-border rounded px-1.5 py-0.5">{item.condition}</span>
+          )}
+          {item.topRated && (
+            <span className="text-xs border border-amber-400 text-amber-600 rounded px-1.5 py-0.5">Top Rated</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          {item.seller && <span>Seller: {item.seller}</span>}
+          {item.shippingRaw && (
+            <span className="flex items-center gap-0.5">
+              <Truck className="w-3 h-3" />{item.shippingRaw}
+            </span>
+          )}
+          {item.watchersRaw && (
+            <span className="flex items-center gap-0.5">
+              <Eye className="w-3 h-3" />{item.watchersRaw}
+            </span>
+          )}
+          {item.quantitySoldRaw && (
+            <span className="flex items-center gap-0.5 text-emerald-600">
+              <CheckCircle2 className="w-3 h-3" />{item.quantitySoldRaw}
+            </span>
+          )}
+        </div>
+        <a
+          href={item.productUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          <ExternalLink className="w-3 h-3" />View on eBay
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function EbaySoldResults({ loading, error, results, total, searchQuery, selectedItem, onSelectItem }) {
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+        <Loader2 className="w-7 h-7 animate-spin" />
+        <p className="text-sm">Searching eBay sold listings…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="w-4 h-4" />
+        <AlertDescription className="text-sm">{error}</AlertDescription>
+      </Alert>
+    );
+  }
+  if (!searchQuery || searchQuery.trim().length < 2) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+        <DollarSign className="w-12 h-12 opacity-30" />
+        <p className="font-medium">Search for sold eBay listings</p>
+        <p className="text-sm">Enter a product name and click Search to see recent sold prices</p>
+      </div>
+    );
+  }
+  if (results.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+        <Package className="w-12 h-12 opacity-30" />
+        <p className="font-medium">No sold listings found</p>
+        <p className="text-sm">Try a different search term</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground pb-1">
+        Showing {results.length}{total > results.length ? ` of ${total.toLocaleString()}` : ''} sold items
+      </p>
+      {results.map((item, idx) => (
+        <SoldResultCardInline
+          key={item.product_id || idx}
+          item={item}
+          isSelected={selectedItem?.product_id === item.product_id}
+          onClick={() => onSelectItem(selectedItem?.product_id === item.product_id ? null : item)}
+        />
+      ))}
+    </div>
+  );
+}
+
 /**
  * Enhanced Product Search Dialog
  * Combines Universal Product Search (all marketplaces) + eBay-specific search
@@ -53,6 +177,12 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchMode, setSearchMode] = useState('all'); // 'all' or 'ebay'
+  const [ebayView, setEbayView] = useState('active'); // 'active' or 'sold' (eBay tab sub-filter)
+  const [soldResults, setSoldResults] = useState([]);
+  const [soldTotal, setSoldTotal] = useState(0);
+  const [soldLoading, setSoldLoading] = useState(false);
+  const [soldError, setSoldError] = useState(null);
+  const [soldSelectedItem, setSoldSelectedItem] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef(null);
@@ -202,8 +332,32 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
   const handleSearch = () => {
     if (searchMode === 'all') {
       universalSearch(searchQuery.trim());
+    } else if (ebayView === 'sold') {
+      handleSoldSearch();
     } else {
       setDebouncedQuery(searchQuery.trim());
+    }
+  };
+
+  // Sold listings search (SerpAPI)
+  const handleSoldSearch = async (overrideQuery) => {
+    const q = (overrideQuery ?? searchQuery).trim();
+    if (q.length < 2) return;
+    setSoldLoading(true);
+    setSoldError(null);
+    setSoldResults([]);
+    setSoldTotal(0);
+    setSoldSelectedItem(null);
+    try {
+      const resp = await fetch(`/api/ebay/sold-search?q=${encodeURIComponent(q)}&num=50`);
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      setSoldResults(data.results || []);
+      setSoldTotal(data.total || data.results?.length || 0);
+    } catch (err) {
+      setSoldError(err.message || 'Search failed. Please try again.');
+    } finally {
+      setSoldLoading(false);
     }
   };
 
@@ -362,11 +516,15 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
               {searchMode === 'ebay' && (
                 <Button
                   onClick={handleSearch}
-                  disabled={isLoading || !searchQuery.trim() || searchQuery.trim().length < 2}
+                  disabled={
+                    (ebayView === 'active' ? isLoading : soldLoading) ||
+                    !searchQuery.trim() ||
+                    searchQuery.trim().length < 2
+                  }
                   size="lg"
                   className="flex-1 sm:flex-none sm:px-8"
                 >
-                  {isLoading ? (
+                  {(ebayView === 'active' ? isLoading : soldLoading) ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Searching...
@@ -401,19 +559,47 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
             </div>
           </div>
 
-          {/* eBay View Sold Button */}
-          {searchMode === 'ebay' && hasValidQuery && (
+          {/* eBay sub-filter: Active / Sold toggle */}
+          {searchMode === 'ebay' && (
             <div className="flex items-center gap-2 mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(ebaySoldUrl, "_blank", "noopener,noreferrer")}
-                disabled={isLoading}
-                className="gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                View All Sold
-              </Button>
+              <div className="flex rounded-lg border bg-muted p-0.5 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setEbayView('active')}
+                  className={cn(
+                    'px-3 py-1 rounded-md text-xs font-medium transition-colors',
+                    ebayView === 'active'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  Active Listings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEbayView('sold')}
+                  className={cn(
+                    'px-3 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1',
+                    ebayView === 'sold'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <DollarSign className="w-3 h-3" />
+                  Sold Listings
+                </button>
+              </div>
+              {ebayView === 'active' && hasValidQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(ebaySoldUrl, '_blank', 'noopener,noreferrer')}
+                  className="gap-1 text-xs h-7 text-muted-foreground"
+                >
+                  <BarChart3 className="w-3 h-3" />
+                  View All Sold
+                </Button>
+              )}
             </div>
           )}
 
@@ -509,6 +695,16 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
               onImageClick={setLightboxImage}
               loadingMore={universalLoadingMore}
               hasMore={universalHasMore}
+            />
+          ) : ebayView === 'sold' ? (
+            <EbaySoldResults
+              loading={soldLoading}
+              error={soldError}
+              results={soldResults}
+              total={soldTotal}
+              searchQuery={searchQuery}
+              selectedItem={soldSelectedItem}
+              onSelectItem={setSoldSelectedItem}
             />
           ) : (
             <EbayResults
