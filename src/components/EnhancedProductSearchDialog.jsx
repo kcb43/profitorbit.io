@@ -710,7 +710,15 @@ export function EnhancedProductSearchDialog({ open, onOpenChange, initialQuery =
     }
   }, [open, initialQuery, universalReset]);
 
-  // All Marketplaces requires an explicit Search button click — no auto-search on type
+  // Auto-search for "All Marketplaces" mode after 3+ characters (debounced)
+  useEffect(() => {
+    if (searchMode === 'all' && debouncedQuery.trim().length >= 3 && open) {
+      if (getDailySearchCount() < DAILY_SEARCH_LIMIT) {
+        incrementDailySearch();
+        universalSearch(debouncedQuery);
+      }
+    }
+  }, [debouncedQuery, searchMode, open, universalSearch]);
 
   // Sold listings search (SerpAPI) - defined before handleSearch so it can be called from it
   const handleSoldSearch = async (overrideQuery) => {

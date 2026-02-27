@@ -102,7 +102,7 @@ export function useProductSearch() {
       providers: 'auto',
       country: 'US',
       page: String(page),
-      limit: '10',
+      limit: '30',
       cache_version: 'v10_pagination',
     });
 
@@ -130,7 +130,7 @@ export function useProductSearch() {
       const items = await fetchPage(trimmed, 1);
       const transformed = items.map(transformItem);
       setProducts(transformed);
-      setHasMore(transformed.length >= 10 && transformed.length < MAX_ITEMS);
+      setHasMore(transformed.length >= 3 && transformed.length < MAX_ITEMS);
       updateStats(transformed);
       prefetchMerchantOffers(transformed);
     } catch (err) {
@@ -162,7 +162,7 @@ export function useProductSearch() {
       }
 
       pageRef.current = nextPage;
-      setHasMore(items.length >= 10 && (products.length + newItems.length) < MAX_ITEMS);
+      setHasMore(items.length >= 3 && (products.length + newItems.length) < MAX_ITEMS);
     } catch (err) {
       console.error('Load more error:', err);
     } finally {
