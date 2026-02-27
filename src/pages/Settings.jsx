@@ -8,17 +8,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, Puzzle, Check, Download } from 'lucide-react';
+import { Puzzle, Check, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getSectionsByCategory } from '@/modules/settingsRegistry';
 import SettingsTile from '@/components/settings/SettingsTile';
 import SettingsSearch from '@/components/settings/SettingsSearch';
-
-// Chrome Web Store listing for the Orben extension
-const EXTENSION_STORE_URL =
-  'https://chromewebstore.google.com/detail/kdnpgdiacfolpadndicmfobgdfmnkbke';
 
 // ── Extension status banner ───────────────────────────────────────────────────
 
@@ -113,39 +108,26 @@ function ExtensionBanner() {
           <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
             {isInstalled
               ? 'The extension is active and ready. It enables marketplace connections, cross-listing, and live status syncing.'
-              : 'Required for marketplace connections and cross-listing. Install from the Chrome Web Store to get started.'}
+              : (
+                <>
+                  Extension not detected. Open{' '}
+                  <code className="px-1 py-0.5 rounded bg-muted text-[11px] font-mono select-all">
+                    chrome://extensions
+                  </code>
+                  , enable <strong>Developer mode</strong>, and load the Orben extension folder. Then refresh this page.
+                </>
+              )}
           </p>
         </div>
 
-        {/* Action */}
-        {!isChecking && (
-          <a
-            href={EXTENSION_STORE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex-shrink-0"
-          >
-            <Button
-              size="sm"
-              variant={isInstalled ? 'outline' : 'default'}
-              className={cn(
-                'gap-1.5 text-xs h-8',
-                !isInstalled && 'bg-indigo-600 hover:bg-indigo-700 text-white border-none',
-              )}
-            >
-              {isInstalled ? (
-                <>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  View in Chrome Store
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5" />
-                  Install Extension
-                </>
-              )}
-            </Button>
-          </a>
+        {/* Not-installed action hint */}
+        {!isChecking && !isInstalled && (
+          <div className="flex-shrink-0">
+            <span className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <AlertCircle className="w-3.5 h-3.5" />
+              Action required
+            </span>
+          </div>
         )}
       </div>
     </div>
