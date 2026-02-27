@@ -625,7 +625,19 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       patchTarget: 'general'
     });
   }
-  
+
+  // Description validation
+  if (!ebayForm.description && !generalForm.description) {
+    issues.push({
+      marketplace: 'ebay',
+      field: 'description',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'Description is required for eBay listings',
+      patchTarget: 'general'
+    });
+  }
+
   // Price validation
   const ebayPrice = ebayForm.buyItNowPrice || generalForm.price;
   const ebayPriceStr = String(ebayPrice || '').trim();
@@ -1470,17 +1482,25 @@ export function validateFacebookForm(generalForm, facebookForm, options = {}) {
     }
   }
 
-  // Extension connection validation
-  const ext = typeof window !== 'undefined' && window?.ProfitOrbitExtension;
-  if (!ext?.createFacebookListing) {
-    issues.push({
-      marketplace: 'facebook',
-      field: '_connection',
-      type: 'invalid',
-      severity: 'blocking',
-      message: 'Extension not available. Please refresh and ensure the Profit Orbit extension is enabled.',
-      patchTarget: 'facebook'
-    });
+  // Extension connection validation — check with a brief wait since the
+  // extension content script may still be initialising when preflight runs.
+  const extReady = typeof window !== 'undefined' && window?.ProfitOrbitExtension?.createFacebookListing;
+  if (!extReady) {
+    // Check a second time after a short delay via a flag that callers can await
+    const retryReady = typeof window !== 'undefined' && (
+      window?.ProfitOrbitExtension?.createFacebookListing ||
+      document.querySelector('[data-profit-orbit-extension]')
+    );
+    if (!retryReady) {
+      issues.push({
+        marketplace: 'facebook',
+        field: '_connection',
+        type: 'invalid',
+        severity: 'blocking',
+        message: 'Profit Orbit extension not detected. Please ensure the extension is installed and enabled, then refresh the page.',
+        patchTarget: 'facebook'
+      });
+    }
   }
   
   return issues;

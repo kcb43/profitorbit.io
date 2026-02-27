@@ -169,6 +169,11 @@ export async function preflightSelectedMarketplaces(
           break;
 
         case 'facebook':
+          // Give the extension content script a moment to initialise if it
+          // hasn't injected its API yet (first page load / slow machines).
+          if (typeof window !== 'undefined' && !window?.ProfitOrbitExtension?.createFacebookListing) {
+            await new Promise(r => setTimeout(r, 500));
+          }
           issues = validateFacebookForm(generalForm, facebookForm, {
             facebookDefaults: validationOptions.facebookDefaults || {},
           });

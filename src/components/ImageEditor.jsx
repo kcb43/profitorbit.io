@@ -601,10 +601,16 @@ function ImageEditorInner({
         topbar.style.setProperty('min-height', 'unset', 'important');
         topbar.style.setProperty('width', '100%', 'important');
         topbar.style.setProperty('box-sizing', 'border-box', 'important');
-        // Left-side group (save button)
+        // Left-side group (save button) — align with the Adjust tab in the sidebar below.
+        // The sidebar (FIE_tabs) is 88px wide; centering the save button in that width
+        // makes it visually aligned with the tab icons underneath.
         const leftGroup = topbar.querySelector('[class*="21g986-1"]') || topbar.firstElementChild;
         if (leftGroup) {
           leftGroup.style.setProperty('padding-left', '0', 'important');
+          leftGroup.style.setProperty('width', '88px', 'important');
+          leftGroup.style.setProperty('display', 'flex', 'important');
+          leftGroup.style.setProperty('justify-content', 'center', 'important');
+          leftGroup.style.setProperty('flex-shrink', '0', 'important');
         }
         // Right-side group (undo/redo/close) — compact children, NO absolute positioning
         const rightGroup = topbar.querySelector('[class*="21g986-2"]') || topbar.lastElementChild;
@@ -655,11 +661,10 @@ function ImageEditorInner({
         el.style.setProperty('scrollbar-width', 'none', 'important');
       });
 
-      // FIE topbar: separate centering of pixels/zoom vs undo/redo/close.
-      // Strategy: topbar is position:relative flex. The dimensions/zoom element
-      // (.FIE_topbar-center-options) is absolutely centred at left:50%.
-      // The right group (undo/redo/close) stays in the normal flex flow at
-      // the far right with 1rem breathing room — entirely separate elements.
+      // FIE topbar: three independent sections on one line.
+      // 1. Left (save button) — fixed 88px width, centred within, aligned with tab sidebar
+      // 2. Centre (pixel dimensions / zoom) — absolutely centred on the full topbar width
+      // 3. Right (undo/redo/close) — pushed to far right edge, tight gap
       const topbarEl = document.querySelector('.FIE_topbar');
       if (topbarEl) {
         topbarEl.style.setProperty('position', 'relative', 'important');
@@ -1187,7 +1192,10 @@ function ImageEditorInner({
       );
       const hasFinetunes = designStateRef.current?.finetunesProps &&
         Object.keys(designStateRef.current.finetunesProps).length > 0;
-      if (!isAdjustTab && !hasFinetunes) {
+      const hasCropAdjustment = designStateRef.current?.adjustments?.crop &&
+        designStateRef.current.adjustments.crop.ratio != null &&
+        designStateRef.current.adjustments.crop.ratio !== 'original';
+      if (!isAdjustTab && !hasFinetunes && !hasCropAdjustment) {
         oImg.style.display = 'none';
         return;
       }
@@ -1223,6 +1231,48 @@ function ImageEditorInner({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeSrc, activeIndex]);
+
+  // ── Preserve crop adjustments across tab switches ──────────────────────────
+  // FIE resets crop visuals when switching from Adjust to Finetune/Watermark.
+  // Re-apply the crop adjustments from the last captured design state so the
+  // user's crop selection isn't lost when they change brightness, etc.
+  useEffect(() => {
+    if (!open) return;
+    const editorArea = editorAreaRef.current;
+    if (!editorArea) return;
+
+    let wasAdjustTab = true; // editor starts on Adjust tab
+
+    const checkTabSwitch = () => {
+      const isAdjust = !!editorArea.querySelector(
+        '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
+      );
+
+      // Just left the Adjust tab — push crop/rotation state back into FIE
+      if (wasAdjustTab && !isAdjust) {
+        const ds = designStateRef.current;
+        if (ds?.adjustments) {
+          const fn = updateStateFnRef.current;
+          if (fn) {
+            // Staggered re-apply to overcome FIE's async tab transition resets
+            [0, 50, 150, 350].forEach(delay => {
+              setTimeout(() => fn({ adjustments: { ...ds.adjustments } }), delay);
+            });
+          }
+        }
+      }
+      wasAdjustTab = isAdjust;
+    };
+
+    const obs = new MutationObserver(checkTabSwitch);
+    obs.observe(editorArea, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ['aria-selected'],
+    });
+
+    return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeIndex]);
 
   // ── Touch swipe on the top bar to navigate ───────────────────────────────
   const swipeTouchStart = useRef(null);

@@ -203,6 +203,7 @@ export default function InventoryPage() {
   useEffect(() => {
     localStorage.setItem('inventory_view_mode', viewMode);
   }, [viewMode]);
+
   
   // Hybrid variation logic based on user preference:
   // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
@@ -2231,6 +2232,7 @@ export default function InventoryPage() {
                 {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-1" /> : <Rows className="w-4 h-4 mr-1" />}
                 {viewMode === "list" ? "Grid" : "List"}
               </Button>
+
             </div>
           )}
 
@@ -2945,369 +2947,228 @@ export default function InventoryPage() {
                     </div>
                     </div>
                     
-                    {/* Desktop list layout (new) */}
+                    {/* Desktop list layout */}
+                    {(
                     <div
-                        onClick={(e) => {
-                          // Only toggle if NOT clicking on an interactive element
-                          const target = e.target;
-                          const isInteractive = target.closest('button, a, input, textarea, select, [role="button"]');
-                          if (!isInteractive) {
-                            handleSelect(item.id);
-                          }
-                        }}
-                        className={`hidden lg:block product-list-item group relative overflow-hidden ${listVariations[viewVariation].gridCols === "grid-cols-[220px_1fr_280px]" ? 'rounded-2xl' : 'rounded-xl'} border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
-                      >
-                        <div className={`grid ${listVariations[viewVariation].gridCols} min-w-0`}>
-                          {/* Image */}
-                          <div className={listVariations[viewVariation].padding}>
-                            <div
-                              onClick={() => handleSelect(item.id)}
-                              className={`relative overflow-hidden rounded-xl border cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80 aspect-square`}
-                              title="Click image to select"
-                            >
-                              {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
-                                <ImageCarousel
-                                  images={(item.images || [])
-                                    .filter(Boolean)
-                                    .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
-                                  imageClassName="object-cover"
-                                  counterPosition="bottom"
-                                />
-                              ) : (
-                                <OptimizedImage
-                                  src={item.image_url || DEFAULT_IMAGE_URL}
-                                  alt={item.item_name}
-                                  fallback={DEFAULT_IMAGE_URL}
-                                  className="w-full h-full object-cover"
-                                  lazy={true}
-                                />
-                              )}
-
-                              {selectedItems.includes(item.id) && (
-                                <div className="absolute top-2 left-2 z-20">
-                                  <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                                    <Check className="w-4 h-4 text-white" />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Details */}
-                          <div className={`min-w-0 px-5 ${listVariations[viewVariation].padding} ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
-                            <div className={`flex items-start justify-between gap-3 ${viewVariation === 2 ? 'mb-4' : 'mb-3'}`}>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className={`${statusColors[item.status]} ${gridVariations[viewVariation].badgeClass} rounded-xl`}>
-                                  {statusLabels[item.status] || statusLabels.available}
-                                </Badge>
-                                {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
-                                  <Badge variant="outline" className="text-[10px] px-2 py-1 rounded-xl border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10">
-                                    Return in {daysRemaining}d
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleFavorite(item.id);
-                                  }}
-                                  className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition ${
-                                    favoriteMarked
-                                      ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                      : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                                  }`}
-                                  title={favoriteMarked ? "Unfavorite" : "Favorite"}
-                                >
-                                  <Star className={`${listVariations[viewVariation].iconSizeClass} ${favoriteMarked ? "fill-current" : ""}`} />
-                                </button>
-
-                                {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditImage(e, item);
-                                    }}
-                                    className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20`}
-                                    title="Edit photo"
-                                  >
-                                    <ImageIcon className={listVariations[viewVariation].iconSizeClass} />
-                                  </button>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setItemToView(item);
-                                    setViewDialogOpen(true);
-                                  }}
-                                  className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20`}
-                                  title="View details"
-                                >
-                                  <Search className={listVariations[viewVariation].iconSizeClass} />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClick(item);
-                                  }}
-                                  className={`inline-flex ${listVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20`}
-                                  title="Delete"
-                                >
-                                  <Trash2 className={listVariations[viewVariation].iconSizeClass} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <Link
-                              to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
-                              state={returnStateForInventory}
-                              className={`block ${viewVariation === 2 ? 'mb-3' : 'mb-2'}`}
-                            >
-                              <h3 className={`${listVariations[viewVariation].titleClass} text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2`}>
-                                {item.item_name || "Untitled Item"}
-                              </h3>
-                            </Link>
-
-                            <div className={`grid grid-cols-2 gap-x-8 gap-y-2 ${listVariations[viewVariation].dataTextClass}`}>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Price</span>
-                                <span className="font-bold text-foreground tabular-nums">
-                                  ${Number(item.purchase_price || 0).toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Qty</span>
-                                <span className="font-bold text-foreground tabular-nums">
-                                  {item.quantity}
-                                  {quantitySold > 0 && (
-                                    <span className={`ml-2 text-xs font-semibold ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                                      {isSoldOut ? 'Sold out' : `${quantitySold} sold`}
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Purchased</span>
-                                <span className="font-semibold text-foreground tabular-nums">
-                                  {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Available</span>
-                                <span className="font-semibold text-foreground tabular-nums">
-                                  {Math.max((item.quantity || 0) - (quantitySold || 0), 0)}
-                                </span>
-                              </div>
-                              {(item.condition || item.brand || item.size || item.category || item.source) && (
-                                <>
-                                  {item.condition && (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="text-muted-foreground text-xs font-semibold">Condition</span>
-                                      <span className="font-semibold text-foreground text-right truncate">
-                                        {item.condition}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {item.brand && (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="text-muted-foreground text-xs font-semibold">Brand</span>
-                                      <span className="font-semibold text-foreground text-right truncate">
-                                        {item.brand}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {item.size && (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="text-muted-foreground text-xs font-semibold">Size</span>
-                                      <span className="font-semibold text-foreground text-right truncate">
-                                        {item.size}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {item.category && (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="text-muted-foreground text-xs font-semibold">Category</span>
-                                      <span className="font-semibold text-foreground text-right truncate">
-                                        {item.category}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {item.source && (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="text-muted-foreground text-xs font-semibold">Source</span>
-                                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                        {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt={item.source} className="w-3 h-3" />}
-                                        {item.source}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {/* Show Mercari metrics for items from Mercari (on_sale/available status only) */}
-                                  {item.source === 'Mercari' && (item.mercari_likes > 0 || item.mercari_views > 0) && (item.status === 'available' || item.status === 'listed' || item.status === 'on_sale') && (
-                                    <>
-                                      {item.mercari_likes > 0 && (
-                                        <div className="flex items-center justify-between gap-3">
-                                          <span className="text-muted-foreground text-xs font-semibold inline-flex items-center gap-1">
-                                            <svg className="w-3 h-3 text-pink-600 dark:text-pink-400" fill="currentColor" viewBox="0 0 20 20">
-                                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                                            </svg>
-                                            Likes
-                                          </span>
-                                          <span className="font-bold text-pink-600 dark:text-pink-400 text-right">
-                                            {item.mercari_likes}
-                                          </span>
-                                        </div>
-                                      )}
-                                      {item.mercari_views > 0 && (
-                                        <div className="flex items-center justify-between gap-3">
-                                          <span className="text-muted-foreground text-xs font-semibold inline-flex items-center gap-1">
-                                            <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                            </svg>
-                                            Views
-                                          </span>
-                                          <span className="font-bold text-blue-600 dark:text-blue-400 text-right">
-                                            {item.mercari_views}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-                                </>
-                              )}
-                            </div>
-
-                            {itemTags.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {itemTags.map((tag) => (
-                                  <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px]">
-                                    {tag}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70"
-                                      title="Remove tag"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-
-                            {isDeleted && daysUntilPermanentDelete !== null && (
-                              <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-xs">
-                                <p className="font-semibold flex items-center gap-1">
-                                  <AlarmClock className="w-3 h-3" />
-                                  {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Actions */}
-                          <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
-                            <Button
-                              onClick={() => {
-                                setItemToView(item);
-                                setViewDialogOpen(true);
-                              }}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs h-9 shadow-sm"
-                            >
-                              View Details
-                            </Button>
-
-                            {isDeleted ? (
-                              <>
-                                <Button
-                                  onClick={() => recoverItemMutation.mutate(item.id)}
-                                  disabled={recoverItemMutation.isPending}
-                                  className="w-full bg-green-600 hover:bg-green-700 rounded-xl text-xs h-9"
-                                >
-                                  <ArchiveRestore className="w-4 h-4 mr-2" />
-                                  {recoverItemMutation.isPending ? "Recovering..." : "Recover"}
-                                </Button>
-                                <Button
-                                  onClick={() => {
-                                    setItemToPermanentlyDelete(item);
-                                    setPermanentDeleteDialogOpen(true);
-                                  }}
-                                  disabled={permanentDeleteMutation.isPending}
-                                  className="w-full bg-red-600 hover:bg-red-700 rounded-xl text-xs h-9"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  {permanentDeleteMutation.isPending ? "Deleting..." : "Delete Forever"}
-                                </Button>
-                              </>
+                      onClick={(e) => {
+                        const isInteractive = e.target.closest('button, a, input, textarea, select, [role="button"]');
+                        if (!isInteractive) handleSelect(item.id);
+                      }}
+                      className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
+                    >
+                      <div className="grid grid-cols-[200px_1fr_240px] min-w-0">
+                        {/* Image */}
+                        <div className="p-5">
+                          <div
+                            onClick={(e) => { e.stopPropagation(); handleSelect(item.id); }}
+                            className="relative overflow-hidden rounded-xl border cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80 aspect-square"
+                            title="Click image to select"
+                          >
+                            {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
+                              <ImageCarousel
+                                images={(item.images || []).filter(Boolean).map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
+                                imageClassName="object-cover"
+                                counterPosition="bottom"
+                              />
                             ) : (
-                              <>
-                                {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
-                                  <Button
-                                    onClick={() => handleMarkAsSold(item)}
-                                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl text-xs h-9 shadow-sm shadow-green-500/15"
-                                  >
-                                    Mark as Sold
-                                  </Button>
-                                )}
-
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    const query = item.item_name || "";
-                                    if (isMobile) {
-                                      // On mobile, navigate to ProductSearch page
-                                      navigate(`/product-search?q=${encodeURIComponent(query)}&from=inventory`);
-                                    } else {
-                                      // On desktop, open dialog
-                                      setProductSearchQuery(query);
-                                      setProductSearchOpen(true);
-                                    }
-                                  }}
-                                  className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900"
-                                >
-                                  <BarChart className="w-4 h-4 mr-2" />
-                                  Search
-                                </Button>
-
-                                <Link
-                                  to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
-                                  state={returnStateForInventory}
-                                  className="w-full"
-                                >
-                                  <Button
-                                    variant="outline"
-                                    className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900"
-                                  >
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Item
-                                  </Button>
-                                </Link>
-
-                                {isConnected() && !isSoldOut && item.status !== 'sold' && (
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                      setItemForFacebookListing(item);
-                                      setFacebookListingDialogOpen(true);
-                                    }}
-                                    className="w-full rounded-xl text-xs h-9 border-blue-600/40 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                                  >
-                                    <Facebook className="w-4 h-4 mr-2" />
-                                    List on FB
-                                  </Button>
-                                )}
-                              </>
+                              <OptimizedImage
+                                src={item.image_url || DEFAULT_IMAGE_URL}
+                                alt={item.item_name}
+                                fallback={DEFAULT_IMAGE_URL}
+                                className="w-full h-full object-cover"
+                                lazy={true}
+                              />
+                            )}
+                            {selectedItems.includes(item.id) && (
+                              <div className="absolute top-2 left-2 z-20">
+                                <div className="bg-green-600 rounded-full p-1 shadow-lg">
+                                  <Check className="w-4 h-4 text-white" />
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
+
+                        {/* Details */}
+                        <div className={`min-w-0 px-5 p-5 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={`${statusColors[item.status]} text-xs px-3 py-1.5 rounded-xl`}>
+                                {statusLabels[item.status] || statusLabels.available}
+                              </Badge>
+                              {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
+                                <Badge variant="outline" className="text-[10px] px-2 py-1 rounded-xl border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10">
+                                  Return in {daysRemaining}d
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
+                                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition ${favoriteMarked ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25" : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"}`}
+                                title={favoriteMarked ? "Unfavorite" : "Favorite"}>
+                                <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
+                              </button>
+                              {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
+                                <button type="button" onClick={(e) => { e.stopPropagation(); handleEditImage(e, item); }}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20" title="Edit photo">
+                                  <ImageIcon className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setItemToView(item); setViewDialogOpen(true); }}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20" title="View details">
+                                <Search className="h-4 w-4" />
+                              </button>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteClick(item); }}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20" title="Delete">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="block mb-3">
+                            <h3 className="text-lg font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-words line-clamp-2">
+                              {item.item_name || "Untitled Item"}
+                            </h3>
+                          </Link>
+
+                          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-base">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground text-xs font-semibold">Price</span>
+                              <span className="font-bold text-foreground tabular-nums">${Number(item.purchase_price || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground text-xs font-semibold">Qty</span>
+                              <span className="font-bold text-foreground tabular-nums">
+                                {item.quantity}
+                                {quantitySold > 0 && (
+                                  <span className={`ml-2 text-xs font-semibold ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                    {isSoldOut ? 'Sold out' : `${quantitySold} sold`}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground text-xs font-semibold">Purchased</span>
+                              <span className="font-semibold text-foreground tabular-nums">
+                                {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-muted-foreground text-xs font-semibold">Available</span>
+                              <span className="font-semibold text-foreground tabular-nums">
+                                {Math.max((item.quantity || 0) - (quantitySold || 0), 0)}
+                              </span>
+                            </div>
+                            {item.condition && (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Condition</span>
+                                <span className="font-semibold text-foreground text-right truncate">{item.condition}</span>
+                              </div>
+                            )}
+                            {item.brand && (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Brand</span>
+                                <span className="font-semibold text-foreground text-right truncate">{item.brand}</span>
+                              </div>
+                            )}
+                            {item.size && (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Size</span>
+                                <span className="font-semibold text-foreground text-right truncate">{item.size}</span>
+                              </div>
+                            )}
+                            {item.category && (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Category</span>
+                                <span className="font-semibold text-foreground text-right truncate">{item.category}</span>
+                              </div>
+                            )}
+                            {item.source && (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground text-xs font-semibold">Source</span>
+                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                  {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt={item.source} className="w-3 h-3" />}
+                                  {item.source}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {itemTags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {itemTags.map((tag) => (
+                                <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px]">
+                                  {tag}
+                                  <button type="button" onClick={() => handleRemoveTagFromItem(item.id, tag)}
+                                    className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70" title="Remove tag">
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {isDeleted && daysUntilPermanentDelete !== null && (
+                            <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-xs">
+                              <p className="font-semibold flex items-center gap-1">
+                                <AlarmClock className="w-3 h-3" />
+                                {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
+                          <Button onClick={(e) => { e.stopPropagation(); setItemToView(item); setViewDialogOpen(true); }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs h-9 shadow-sm">
+                            View Details
+                          </Button>
+                          {isDeleted ? (
+                            <>
+                              <Button onClick={(e) => { e.stopPropagation(); recoverItemMutation.mutate(item.id); }}
+                                disabled={recoverItemMutation.isPending}
+                                className="w-full bg-green-600 hover:bg-green-700 rounded-xl text-xs h-9">
+                                <ArchiveRestore className="w-4 h-4 mr-2" /> {recoverItemMutation.isPending ? "Recovering..." : "Recover"}
+                              </Button>
+                              <Button onClick={(e) => { e.stopPropagation(); setItemToPermanentlyDelete(item); setPermanentDeleteDialogOpen(true); }}
+                                disabled={permanentDeleteMutation.isPending}
+                                className="w-full bg-red-600 hover:bg-red-700 rounded-xl text-xs h-9">
+                                <Trash2 className="w-4 h-4 mr-2" /> {permanentDeleteMutation.isPending ? "Deleting..." : "Delete Forever"}
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
+                                <Button onClick={(e) => { e.stopPropagation(); handleMarkAsSold(item); }}
+                                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl text-xs h-9 shadow-sm shadow-green-500/15">
+                                  Mark as Sold
+                                </Button>
+                              )}
+                              <Button variant="outline" onClick={(e) => {
+                                e.stopPropagation();
+                                const query = item.item_name || "";
+                                setProductSearchQuery(query); setProductSearchOpen(true);
+                              }} className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
+                                <BarChart className="w-4 h-4 mr-2" /> Search
+                              </Button>
+                              <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="w-full" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
+                                  <Edit className="w-4 h-4 mr-2" /> Edit Item
+                                </Button>
+                              </Link>
+                              {isConnected() && !isSoldOut && item.status !== 'sold' && (
+                                <Button variant="outline" onClick={(e) => { e.stopPropagation(); setItemForFacebookListing(item); setFacebookListingDialogOpen(true); }}
+                                  className="w-full rounded-xl text-xs h-9 border-blue-600/40 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20">
+                                  <Facebook className="w-4 h-4 mr-2" /> List on FB
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
+                    </div>
+                    )}
                     </div>
                   );
                 })}

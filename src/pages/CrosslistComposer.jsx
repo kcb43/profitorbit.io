@@ -104,7 +104,7 @@ import { SmartListingSection } from '@/components/SmartListingSection';
 import SmartListingModal from '@/components/SmartListingModal';
 import { useSmartListing as checkSmartListingEnabled } from '@/config/features';
 import { Checkbox } from '@/components/ui/checkbox';
-import { setMercariCategories, setFacebookCategories } from '@/utils/listingValidation';
+import { setMercariCategories, setFacebookCategories, mapCondition } from '@/utils/listingValidation';
 import { getTagsForMarketplace } from '@/utils/preflightEngine';
 import { FACEBOOK_CATEGORIES } from '@/data/facebookCategories';
 
@@ -4952,6 +4952,21 @@ const createInitialTemplateState = (item) => {
         description: general.description || "",
         buyItNowPrice: general.price,
         shippingLocation: general.zip,
+        ebayBrand: general.brand || "",
+        brand: general.brand || "",
+        color: general.color1 || "",
+        categoryId: general.categoryId || "",
+        categoryName: general.category || "",
+        condition: (() => {
+          // Map general condition to eBay condition
+          const ebayCondMap = {
+            "New With Tags/Box": "New",
+            "New Without Tags/Box": "Open Box",
+            "Pre - Owned - Good": "Used",
+            "Poor (Major flaws)": "Used",
+          };
+          return ebayCondMap[general.condition] || "";
+        })(),
       },
       etsy: {
         ...MARKETPLACE_TEMPLATE_DEFAULTS.etsy,
@@ -4959,22 +4974,33 @@ const createInitialTemplateState = (item) => {
         title: general.title || "",
         description: general.description || "",
         tags: general.tags,
+        brand: general.brand || "",
+        color1: general.color1 || "",
       },
       mercari: {
         ...MARKETPLACE_TEMPLATE_DEFAULTS.mercari,
         photos: general.photos || [],
         title: general.title || "",
         description: general.description || "",
+        brand: general.brand || "",
+        condition: (() => {
+          const mapped = mapCondition(general.condition, 'mercari');
+          return mapped ? mapped.id : "";
+        })(),
         shippingPrice: general.price ? (Number(general.price) >= 100 ? "Free" : "Buyer pays") : "",
       },
       facebook: {
         ...MARKETPLACE_TEMPLATE_DEFAULTS.facebook,
-      photos: general.photos || [],
-      title: general.title || "",
-      description: general.description || "",
-      meetUpLocation: general.zip ? `Meet near ${general.zip}` : "",
-      shippingPrice: general.price ? (Number(general.price) >= 75 ? "Free shipping" : "") : "",
-    },
+        photos: general.photos || [],
+        title: general.title || "",
+        description: general.description || "",
+        condition: (() => {
+          const mapped = mapCondition(general.condition, 'facebook');
+          return mapped ? mapped.id : "";
+        })(),
+        meetUpLocation: general.zip ? `Meet near ${general.zip}` : "",
+        shippingPrice: general.price ? (Number(general.price) >= 75 ? "Free shipping" : "") : "",
+      },
     },
     autoPopulated,
   };
@@ -7555,10 +7581,25 @@ export default function CrosslistComposer() {
         .filter((k) => ebayPackage[k] != null && ebayPackage[k] !== '')
         .map((k) => [k, ebayPackage[k]])
     );
+    // Merge general defaults with item data: defaults only fill in empty/missing fields
+    // so item-specific values (brand, condition, etc.) are never overridden by defaults.
+    const applyDefaultsToEmptyFields = (formData, defaults) => {
+      if (!defaults || typeof defaults !== 'object') return formData;
+      const result = { ...formData };
+      for (const [key, defaultValue] of Object.entries(defaults)) {
+        const current = result[key];
+        // Only apply default if the field is empty/missing (not if item provides a value)
+        if (current === undefined || current === null || current === '') {
+          result[key] = defaultValue;
+        }
+      }
+      return result;
+    };
+
     const merged = {
       general: savedGeneral
-        ? { ...initial.forms.general, ...(generalDefaults || {}), ...ebayPackageMerged, ...savedGeneral }
-        : { ...initial.forms.general, ...(generalDefaults || {}), ...ebayPackageMerged },
+        ? { ...applyDefaultsToEmptyFields(initial.forms.general, generalDefaults), ...ebayPackageMerged, ...savedGeneral }
+        : { ...applyDefaultsToEmptyFields(initial.forms.general, generalDefaults), ...ebayPackageMerged },
       ebay: savedEbay ? { ...initial.forms.ebay, ...savedEbay } : { ...initial.forms.ebay, ...(ebayDefaults || {}) },
       etsy: savedEtsy ? { ...initial.forms.etsy, ...savedEtsy } : initial.forms.etsy,
       mercari: savedMercari ? { ...initial.forms.mercari, ...savedMercari } : { ...initial.forms.mercari, ...(mercariDefaults || {}) },
@@ -8379,12 +8420,21 @@ export default function CrosslistComposer() {
       if (field === "price") {
         next.mercari.shippingPrice = Number(value) >= 100 ? "Free" : "Buyer pays";
       }
+      if (field === "brand") next.mercari.brand = value;
+      if (field === "condition") {
+        const mappedMercari = mapCondition(value, 'mercari');
+        if (mappedMercari) next.mercari.condition = mappedMercari.id;
+      }
 
       // Facebook sync
       next.facebook = { ...next.facebook };
       if (field === "title") next.facebook.title = value;
       if (field === "description") next.facebook.description = value;
       if (field === "photos") next.facebook.photos = value;
+      if (field === "condition") {
+        const mappedFb = mapCondition(value, 'facebook');
+        if (mappedFb) next.facebook.condition = mappedFb.id;
+      }
       if (field === "zip") {
         next.facebook.meetUpLocation = value ? `Meet near ${value}` : "";
       }
@@ -8537,13 +8587,16 @@ export default function CrosslistComposer() {
     copied.color = generalData.color1 || "";
     copied.brand = generalData.brand || "";
     
-    // Handle condition mapping for eBay
+    // Handle condition mapping per marketplace
     if (marketplaceKey === 'ebay') {
       const mappedCondition = mapGeneralConditionToEbay(generalData.condition || "");
       if (mappedCondition) {
         copied.condition = mappedCondition;
       }
       copied.ebayBrand = generalData.brand || "";
+    } else if (marketplaceKey === 'mercari' || marketplaceKey === 'facebook') {
+      const mapped = mapCondition(generalData.condition, marketplaceKey);
+      copied.condition = mapped ? mapped.id : (generalData.condition || "");
     } else {
       copied.condition = generalData.condition || "";
     }
@@ -11506,7 +11559,12 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                    {renderGeneralDefaultToggle("brand", generalForm.brand, (v) =>
+                      handleGeneralChange("brand", v)
+                    )}
+                  </div>
                   <BrandCombobox
                     value={generalForm.brand || ''}
                     onChange={(brand) => {
@@ -11516,7 +11574,12 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="general-condition" className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="general-condition" className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                    {renderGeneralDefaultToggle("condition", generalForm.condition, (v) =>
+                      handleGeneralChange("condition", v)
+                    )}
+                  </div>
                   <Select
                     value={generalForm.condition ? String(generalForm.condition) : undefined}
                     onValueChange={(value) => {
@@ -11544,7 +11607,12 @@ export default function CrosslistComposer() {
                 </div>
                 {generalForm.size && (
                   <div>
-                    <Label htmlFor="general-size" className="text-sm mb-1.5 block">Size</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="general-size" className="text-sm mb-1.5 block">Size</Label>
+                      {renderGeneralDefaultToggle("size", generalForm.size, (v) =>
+                        handleGeneralChange("size", v)
+                      )}
+                    </div>
                     <Input
                       id="general-size"
                       name="general-size"
@@ -11565,7 +11633,12 @@ export default function CrosslistComposer() {
                   />
                 </div>
                 <div>
-                  <Label className="text-sm mb-1.5 block">Primary Color</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm mb-1.5 block">Primary Color</Label>
+                    {renderGeneralDefaultToggle("color1", generalForm.color1, (v) =>
+                      handleGeneralChange("color1", v)
+                    )}
+                  </div>
                   <Button
                     type="button"
                     variant={generalForm.color1 ? "default" : "outline"}
@@ -17631,7 +17704,12 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm mb-1.5 block">Brand <span className="text-red-500">*</span></Label>
+                            {renderGeneralDefaultToggle("brand", generalForm.brand, (v) =>
+                              handleGeneralChange("brand", v)
+                            )}
+                          </div>
                           <BrandCombobox
                             value={generalForm.brand || ''}
                             onChange={(brand) => {
@@ -17641,7 +17719,12 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="general-condition" className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="general-condition" className="text-sm mb-1.5 block">Condition <span className="text-red-500">*</span></Label>
+                            {renderGeneralDefaultToggle("condition", generalForm.condition, (v) =>
+                              handleGeneralChange("condition", v)
+                            )}
+                          </div>
                           <Select
                             value={generalForm.condition ? String(generalForm.condition) : undefined}
                             onValueChange={(value) => {
@@ -17668,7 +17751,12 @@ export default function CrosslistComposer() {
                         </div>
                         {generalForm.size && (
                           <div>
-                            <Label htmlFor="general-size-bulk" className="text-sm mb-1.5 block">Size</Label>
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="general-size-bulk" className="text-sm mb-1.5 block">Size</Label>
+                              {renderGeneralDefaultToggle("size", generalForm.size, (v) =>
+                                handleGeneralChange("size", v)
+                              )}
+                            </div>
                             <Input
                               id="general-size-bulk"
                               name="general-size-bulk"
@@ -17689,7 +17777,12 @@ export default function CrosslistComposer() {
                           />
                         </div>
                         <div>
-                          <Label className="text-sm mb-1.5 block">Primary Color</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm mb-1.5 block">Primary Color</Label>
+                            {renderGeneralDefaultToggle("color1", generalForm.color1, (v) =>
+                              handleGeneralChange("color1", v)
+                            )}
+                          </div>
                           <Button
                             type="button"
                             variant={generalForm.color1 ? "default" : "outline"}
