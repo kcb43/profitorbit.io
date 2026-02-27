@@ -114,6 +114,7 @@ export function OptimizedImage({
           } ${className}`}
           loading={lazy ? 'lazy' : 'eager'}
           decoding="async"
+          referrerPolicy="no-referrer"
           {...(crossOrigin ? { crossOrigin } : {})}
           onLoad={handleLoad}
           onError={handleError}
