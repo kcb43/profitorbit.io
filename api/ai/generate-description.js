@@ -154,7 +154,9 @@ OUTPUT FORMAT (valid JSON, all keys required):
   "mercari": "...",
   "facebook": "...",
   "tags": ["tag1", "tag2", ...],
-  "suggestedCategories": ["Category > Subcategory > Leaf", "Category2 > Sub2", ...]
+  "ebaySuggestedCategories": ["Category > Subcategory > Leaf", ...],
+  "mercariSuggestedCategories": ["Category > Subcategory", ...],
+  "facebookSuggestedCategories": ["Category > Subcategory", ...]
 }
 
 PLATFORM REQUIREMENTS:
@@ -187,10 +189,20 @@ Tags — search-optimized:
   • Include: brand, product type, key descriptors, synonyms, category terms
   • Mix specific (exact product names) and broad (category-level) terms
 
-suggestedCategories — 3-5 category breadcrumbs:
-  • Based on the item, suggest 3 to 5 marketplace category paths (most specific first)
-  • Format: "Parent Category > Subcategory > Leaf" (use " > " as separator)
-  • These are general categories a reseller would use on eBay or Mercari`;
+ebaySuggestedCategories — 3-5 eBay-specific category breadcrumbs:
+  • Use eBay's actual category hierarchy (e.g. "Clothing, Shoes & Accessories > Men > Men's Clothing > Shirts")
+  • 3 to 5 paths, most specific first
+  • Format: "Parent > Subcategory > Leaf" (use " > " as separator)
+
+mercariSuggestedCategories — 3-5 Mercari-specific category breadcrumbs:
+  • Use Mercari's actual category hierarchy (e.g. "Electronics > Computers & Laptops > Laptops")
+  • 3 to 5 paths, most specific first
+  • Format: "Parent > Subcategory > Leaf"
+
+facebookSuggestedCategories — 3-5 Facebook Marketplace category breadcrumbs:
+  • Use Facebook Marketplace's actual category hierarchy (e.g. "Electronics > Phones > Smartphones")
+  • 3 to 5 paths, most specific first
+  • Format: "Parent > Subcategory > Leaf"`;
 
   const userLines = [
     title     ? `Title: ${title}` : '',
@@ -347,12 +359,22 @@ export default async function handler(req, res) {
     if (!brand && !itemFacts.brand) warnings.push('Brand not provided.');
     if (parsed._parseError) warnings.push('AI response could not be fully parsed — showing partial output.');
 
-    const tags               = Array.isArray(parsed.tags) ? parsed.tags.filter(Boolean) : [];
-    const suggestedCategories = Array.isArray(parsed.suggestedCategories)
-      ? parsed.suggestedCategories.filter(Boolean).slice(0, 5)
-      : [];
-    const ebay    = String(parsed.ebay    || '').trim();
-    const mercari = String(parsed.mercari || '').trim();
+    const tags = Array.isArray(parsed.tags) ? parsed.tags.filter(Boolean) : [];
+
+    const parseCats = (key) =>
+      Array.isArray(parsed[key]) ? parsed[key].filter(Boolean).slice(0, 5) : [];
+
+    const ebaySuggestedCategories     = parseCats('ebaySuggestedCategories');
+    const mercariSuggestedCategories  = parseCats('mercariSuggestedCategories');
+    const facebookSuggestedCategories = parseCats('facebookSuggestedCategories');
+
+    // Legacy fallback: old single-array field (kept for backward compat)
+    const suggestedCategories = parseCats('suggestedCategories').length > 0
+      ? parseCats('suggestedCategories')
+      : ebaySuggestedCategories;
+
+    const ebay     = String(parsed.ebay     || '').trim();
+    const mercari  = String(parsed.mercari  || '').trim();
     const facebook = String(parsed.facebook || '').trim();
 
     return res.status(200).json({
@@ -360,7 +382,10 @@ export default async function handler(req, res) {
       mercari,
       facebook,
       tags,
-      suggestedCategories,
+      ebaySuggestedCategories,
+      mercariSuggestedCategories,
+      facebookSuggestedCategories,
+      suggestedCategories, // legacy compat
       warnings,
       descriptions: [ebay, mercari, facebook].filter(Boolean),
     });

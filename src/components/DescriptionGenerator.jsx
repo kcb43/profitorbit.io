@@ -87,7 +87,7 @@ const PLATFORM_ICONS = [
 // Cache helpers
 // ---------------------------------------------------------------------------
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2'; // bumped: per-marketplace category suggestions
 
 function getCacheKey(itemId, title) {
   const keyBase = itemId || (title ? `title:${title.slice(0, 40)}` : null);
@@ -150,7 +150,7 @@ function GeneratingIndicator() {
 // Category Suggestions Section
 // ---------------------------------------------------------------------------
 
-function CategorySuggestions({ categories, onSelectCategory }) {
+function CategorySuggestions({ categories, onSelectCategory, platformLabel }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -176,7 +176,7 @@ function CategorySuggestions({ categories, onSelectCategory }) {
             <FolderOpen className="w-3.5 h-3.5 text-primary" />
           </div>
           <p className="text-xs font-semibold text-primary uppercase tracking-wide">
-            Suggested Categories
+            {platformLabel ? `${platformLabel} ` : ''}Suggested Categories
           </p>
           <span className="text-xs text-muted-foreground ml-1">— click to apply to General Form</span>
         </div>
@@ -420,6 +420,18 @@ export function DescriptionGenerator({
   const activePlatform = PLATFORM_ICONS.find(p => p.key === activeTab);
   const tagCount = result?.tags?.length || editedTexts.tags?.split('\n').filter(Boolean).length || 0;
 
+  // Pick per-marketplace category suggestions based on the active tab.
+  // New API returns ebaySuggestedCategories / mercariSuggestedCategories / facebookSuggestedCategories.
+  // Fall back to the legacy single suggestedCategories array for cached results generated before this change.
+  const activeCategories = (() => {
+    if (!result || activeTab === 'tags') return [];
+    const perPlatformKey = `${activeTab}SuggestedCategories`;
+    const perPlatform = result[perPlatformKey];
+    if (Array.isArray(perPlatform) && perPlatform.length > 0) return perPlatform;
+    // Legacy fallback
+    return Array.isArray(result.suggestedCategories) ? result.suggestedCategories : [];
+  })();
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -533,10 +545,11 @@ export function DescriptionGenerator({
                 })}
               </div>
 
-              {/* Category suggestions (animated reveal) */}
-              {onSelectCategory && (
+              {/* Category suggestions — per-marketplace, updates when the tab changes */}
+              {onSelectCategory && activeTab !== 'tags' && (
                 <CategorySuggestions
-                  categories={result?.suggestedCategories}
+                  categories={activeCategories}
+                  platformLabel={activePlatform?.label}
                   onSelectCategory={(cat) => {
                     onSelectCategory(cat);
                     toast({ title: 'Category applied', description: cat });
