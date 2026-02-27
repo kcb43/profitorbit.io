@@ -1011,11 +1011,13 @@ function ImageEditorInner({
 
   // ── Revert template / last change ───────────────────────────────────────
   const handleRevertTemplate = useCallback(() => {
+    // Compute before clearing state — loadedDesignState still holds current value here
+    const wasTemplate = !!(loadedDesignState && Object.keys(loadedDesignState).length > 0);
     setLoadedDesignState(null);
     const fn = updateStateFnRef.current;
     if (fn) fn({ finetunesProps: {}, finetunes: [], filter: null });
-    toast({ title: hasTemplate ? 'Template reverted' : 'Edits cleared' });
-  }, [loadedDesignState, hasTemplate]);
+    toast({ title: wasTemplate ? 'Template reverted' : 'Edits cleared' });
+  }, [loadedDesignState]);
 
   // ── Template: delete ─────────────────────────────────────────────────────
   const handleDeleteTemplate = useCallback((id, e) => {
