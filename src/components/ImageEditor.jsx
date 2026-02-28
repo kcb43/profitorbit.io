@@ -1260,20 +1260,20 @@ function ImageEditorInner({
 
   // ── Auto-switch to Custom after any sized preset to allow free drag ─────────
   //
-  // FIE's fixed-ratio presets (Landscape, Portrait, Square, etc.) cause the crop
-  // box to snap back to a "natural" (centred / max-fit) position on every state
-  // update while that preset is active, because FIE re-normalises the crop
-  // around the aspect-ratio constraint internally.
+  // FIE's fixed-ratio presets (Landscape, Portrait, Square, etc.) internally
+  // re-normalise the crop box position on every state update, snapping the box
+  // back to its "natural" centred/max-fit position.  Switching to "Custom" mode
+  // keeps the preset shape but disables the normalisation, so the user can
+  // drag the crop box freely.
   //
-  // The user discovered that clicking "Custom" AFTER a preset keeps the preset
-  // shape but removes the snap-back: FIE is now in free-form mode and honours
-  // whatever position Konva reports.
+  // Detection: we watch for aria-selected changes on crop-preset elements via
+  // MutationObserver.  This is more reliable than a click listener because
+  // FIE may call stopPropagation() internally on preset button clicks.
   //
-  // This effect automates that workaround: when the user clicks any preset except
-  // "Custom", we wait 120 ms for FIE to position the crop box, then
-  // programmatically click "Custom" to unlock free repositioning.
-  //
-  // "Original" is also included so the user can drag the original-ratio box.
+  // Timing: we wait 150 ms after the preset's aria-selected changes so that
+  // FIE has had time to call onModify (which populates currentDesignStateRef
+  // with the crop's x/y/width/height).  We then click "Custom" to switch FIE's
+  // UI to free-form mode.
   useEffect(() => {
     if (!open) return;
     const editorArea = editorAreaRef.current;
@@ -1281,35 +1281,52 @@ function ImageEditorInner({
 
     let timer = null;
 
-    const handlePresetClick = (e) => {
-      const presetBtn = e.target.closest('[class*="FIE_crop-preset"]');
-      if (!presetBtn) return;
-
-      // If the user explicitly clicked "Custom", do nothing.
-      const label = (presetBtn.textContent ?? '').trim().toLowerCase();
-      if (label === 'custom') return;
-
-      // Cancel any pending auto-switch from a previous click.
-      if (timer) { clearTimeout(timer); timer = null; }
-
-      timer = setTimeout(() => {
-        timer = null;
-        const area = editorAreaRef.current;
-        if (!area) return;
-        const allPresets = area.querySelectorAll('[class*="FIE_crop-preset"]');
-        const customBtn = Array.from(allPresets).find(
-          (btn) => (btn.textContent ?? '').trim().toLowerCase() === 'custom'
-        );
-        // Only click if Custom is not already the active selection.
-        if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
-          customBtn.click();
-        }
-      }, 120);
+    const switchToCustom = () => {
+      const area = editorAreaRef.current;
+      if (!area) return;
+      const allPresets = area.querySelectorAll('[class*="FIE_crop-preset"]');
+      const customBtn = Array.from(allPresets).find(
+        (btn) => (btn.textContent ?? '').trim().toLowerCase().includes('custom')
+      );
+      if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
+        customBtn.click();
+      }
     };
 
-    editorArea.addEventListener('click', handlePresetClick);
+    const obs = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type !== 'attributes' || m.attributeName !== 'aria-selected') continue;
+        // Only process newly-selected buttons (not deselections)
+        if (m.target.getAttribute('aria-selected') !== 'true') continue;
+
+        // Must be a crop-preset element, not a main nav tab
+        const isCropPreset =
+          (typeof m.target.className === 'string' &&
+            m.target.className.includes('FIE_crop-preset')) ||
+          !!m.target.closest?.('[class*="FIE_crop-preset"]');
+        if (!isCropPreset) continue;
+
+        // Skip if the Custom button itself was just selected (we triggered it)
+        const label = (m.target.textContent ?? '').trim().toLowerCase();
+        if (label.includes('custom')) continue;
+
+        if (timer) { clearTimeout(timer); timer = null; }
+        // 150 ms: give FIE time to call onModify with the crop x/y/w/h
+        timer = setTimeout(() => {
+          timer = null;
+          switchToCustom();
+        }, 150);
+      }
+    });
+
+    obs.observe(editorArea, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-selected'],
+    });
+
     return () => {
-      editorArea.removeEventListener('click', handlePresetClick);
+      obs.disconnect();
       if (timer) clearTimeout(timer);
     };
   }, [open]);
@@ -1580,20 +1597,31 @@ function ImageEditorInner({
         }
       }
 
-      // Show overlay on Adjust tab for sharp crop/rotate preview.
-      // On Finetune/Watermark: keep overlay visible when we have a loaded template
-      // (finetunesProps), because FIE's Konva layer often fails to apply loadableDesignState
-      // on tab switch — hiding would reveal the raw image. Once Konva has the design,
-      // both overlay and Konva match; overlay has pointer-events:none so interaction works.
-      const isAdjustTab = !!editorArea.querySelector(
-        '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
-      );
-      const hasFinetunes = designStateRef.current?.finetunesProps &&
-        Object.keys(designStateRef.current.finetunesProps).length > 0;
-      const hasCropAdjustment = designStateRef.current?.adjustments?.crop &&
-        designStateRef.current.adjustments.crop.ratio != null &&
-        designStateRef.current.adjustments.crop.ratio !== 'original';
-      if (!isAdjustTab && !hasFinetunes && !hasCropAdjustment) {
+      // ── Overlay visibility ──────────────────────────────────────────────────
+      // • Adjust tab  → always show overlay (sharp image behind crop handles).
+      // • Finetune/Watermark + any active crop → HIDE overlay.
+      //     The overlay shows the FULL uncropped image, so keeping it visible
+      //     hides FIE's cropped canvas.  Hiding it lets FIE's Konva layer
+      //     render the cropped preview; doApply() ensures the crop state is
+      //     pushed into FIE on every tab switch.
+      // • Finetune/Watermark + finetunes only (no crop) → show overlay with
+      //     CSS filters so the user sees a sharp, colour-adjusted preview
+      //     while FIE's Konva layer catches up asynchronously.
+      // • Finetune/Watermark + nothing → hide overlay (plain image is fine).
+      //
+      // isAdjustTab uses offsetParent (null == display:none) so the check is
+      // correct whether FIE unmounts the tab panel or just hides it with CSS.
+      const cropToolEl = editorArea.querySelector('[class*="FIE_crop-tool"]');
+      const adjFallback = editorArea.querySelector('[class*="FIE_rotate-tool"], [class*="FIE_flip"]');
+      const isAdjustTab = (cropToolEl && cropToolEl.offsetParent !== null) ||
+                          (adjFallback && adjFallback.offsetParent !== null);
+
+      const hasFinetunes = !!(designStateRef.current?.finetunesProps &&
+        Object.keys(designStateRef.current.finetunesProps).length > 0);
+      // ANY active crop (ratio-constrained OR Custom mode) → hide overlay.
+      const hasCrop = !!(designStateRef.current?.adjustments?.crop);
+
+      if (!isAdjustTab && (hasCrop || !hasFinetunes)) {
         oImg.style.display = 'none';
         return;
       }
