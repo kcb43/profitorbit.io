@@ -359,6 +359,21 @@ function ImageEditorInner({
   const [currentDesignState, setCurrentDesignState] = useState(null);
   const [loadedDesignState, setLoadedDesignState]   = useState(null);
   const updateStateFnRef = useRef(null);
+  // ── Stable reference for FIE's loadableDesignState prop ──────────────────
+  // CRITICAL: This must use useMemo so the object reference is stable across
+  // renders. The old IIFE `(() => {...})()` in the JSX created a NEW object on
+  // every render. Every call to setCurrentDesignState (fired by handleModify on
+  // every onModify during drag) triggered a re-render which produced a new
+  // loadableDesignState reference, causing FIE's internal useUpdateEffect to
+  // re-apply the stored design state (including crop position) mid-drag —
+  // SNAPPING THE CROP BOX BACK. useMemo only recomputes when loadedDesignState
+  // itself changes (template load / reset), never during normal drag rendering.
+  const stableLoadableDesignState = useMemo(() => {
+    if (!loadedDesignState) return null;
+    // eslint-disable-next-line no-unused-vars
+    const { imgSrc, ...rest } = loadedDesignState;
+    return rest;
+  }, [loadedDesignState]);
   // Suppresses onModify calls during image switches. FIE fires onModify as part
   // of its internal reset/dimension-recalc when resetOnImageSourceChange fires.
   // That is not a real user edit and should not light up the Reset All button.
@@ -1140,11 +1155,22 @@ function ImageEditorInner({
       '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
     );
 
+    // ── Drag guard ───────────────────────────────────────────────────────────
+    // Track whether the user is actively pressing a pointer inside the editor.
+    // doApply() must never call updateStateFnRef during a drag because FIE would
+    // treat the incoming state as a new position and snap the crop back.
+    let pointerDown = false;
+    const onPointerDown = () => { pointerDown = true; };
+    const onPointerUp   = () => { setTimeout(() => { pointerDown = false; }, 150); };
+    editorArea.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointerup', onPointerUp, true);
+
     let timeoutIds = [];
     let intervalId = null;
 
     const doApply = () => {
-      if (isAdjustTab()) return; // never interfere while crop handles are visible
+      if (pointerDown) return;          // never interfere during a drag
+      if (isAdjustTab()) return;        // never interfere while crop handles are visible
 
       if (loadedDesignState && Object.keys(loadedDesignState).length > 0) {
         // Has a saved state / template: re-apply finetunes + filter AND current adjustments.
@@ -1187,25 +1213,26 @@ function ImageEditorInner({
       }, 200);
     };
 
-    // Fire scheduleReapply ONLY when a main FIE navigation tab button (Adjust,
-    // Finetune, Watermark — class "FIE_tab") changes its aria-selected value.
+    // Fire scheduleReapply when a FIE navigation tab (Adjust/Finetune/Watermark)
+    // changes its aria-selected, but NOT when a crop-preset button does.
     //
-    // We deliberately EXCLUDE crop-preset button aria-selected changes (those
-    // buttons have class FIE_crop-preset / live inside FIE_crop-presets, not
-    // FIE_tab). Crop-preset selections previously triggered scheduleReapply,
-    // which started a 2-second polling interval. If isAdjustTab() ever returned
-    // false momentarily during FIE's DOM rebuild (which happens on preset select),
-    // doApply() would push old adjustments back into FIE mid-drag → snap-back.
+    // FIE uses at least two DOM patterns for nav tabs (.FIE_tab, and
+    // .SfxDrawer-item > div) — both set aria-selected. We catch all of these
+    // by EXCLUDING crop-preset elements (which also use aria-selected) rather
+    // than trying to match a specific nav-tab class name.
     const obs = new MutationObserver((mutations) => {
-      const hasMainTabSwitch = mutations.some(
+      const hasTabSwitch = mutations.some(
         (m) =>
           m.type === 'attributes' &&
           m.attributeName === 'aria-selected' &&
-          // m.target is a main FIE nav tab (has "FIE_tab" in its class list)
-          typeof m.target.className === 'string' &&
-          m.target.className.includes('FIE_tab')
+          // Exclude crop-preset buttons (they also flip aria-selected on click)
+          !m.target.closest?.('[class*="FIE_crop-presets"]') &&
+          !(
+            typeof m.target.className === 'string' &&
+            m.target.className.includes('FIE_crop-preset')
+          )
       );
-      if (hasMainTabSwitch) scheduleReapply();
+      if (hasTabSwitch) scheduleReapply();
     });
     obs.observe(editorArea, {
       subtree: true,
@@ -1214,6 +1241,8 @@ function ImageEditorInner({
     });
     return () => {
       obs.disconnect();
+      editorArea.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('pointerup', onPointerUp, true);
       timeoutIds.forEach(id => clearTimeout(id));
       if (intervalId) clearInterval(intervalId);
     };
@@ -1914,7 +1943,7 @@ function ImageEditorInner({
           onClose={handleClose}
           onModify={handleModify}
           observePluginContainerSize={true}
-          loadableDesignState={designStateSourceRef.current !== 'none' && loadedDesignState ? (() => { const { imgSrc, ...rest } = loadedDesignState; return rest; })() : null}
+          loadableDesignState={stableLoadableDesignState}
           updateStateFnRef={updateStateFnRef}
           annotationsCommon={{
             fill: '#3b82f6', stroke: '#1d4ed8', strokeWidth: 2,

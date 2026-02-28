@@ -51,12 +51,23 @@ export default async function handler(req, res) {
     if (isFb) {
       // Facebook CDN: set Referer to facebook.com to match expected origin
       fetchHeaders['Referer'] = 'https://www.facebook.com/marketplace/';
+      fetchHeaders['Origin'] = 'https://www.facebook.com';
     }
 
-    // Fetch the image from the external source
-    const response = await fetch(decodedUrl, { headers: fetchHeaders });
+    // Abort before Vercel's 10-second function timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    let response;
+    try {
+      response = await fetch(decodedUrl, { headers: fetchHeaders, signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
+      // no-store so the browser doesn't cache failures — allows retry after resync
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(response.status).json({ error: 'Failed to fetch image' });
     }
 
