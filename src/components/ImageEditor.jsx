@@ -411,6 +411,16 @@ function ImageEditorInner({
   const hasFinetuneEditsRef = useRef(false);
   const [hasFinetuneEdits, setHasFinetuneEdits] = useState(false);
 
+  // ── Preset detection bridge (handleModify ↔ unlockCrop useEffect) ────────
+  // handleModify calls scheduleUnlockCropRef when crop.ratio changes to a
+  // non-custom value (user clicked Portrait / Landscape / Ellipse / Original).
+  // The unlockCrop useEffect sets this ref to its scheduling function.
+  const scheduleUnlockCropRef = useRef(null);
+  // Set to true before any programmatic fn() dispatch that may change crop.ratio.
+  // Prevents handleModify from treating our own dispatches as user preset clicks.
+  // Consumed (reset to false) on the next handleModify invocation.
+  const skipNextPresetDetectionRef = useRef(false);
+
   // ── Template management ──────────────────────────────────────────────────
   const [templates, setTemplates]           = useState(loadTemplates);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -584,6 +594,7 @@ function ImageEditorInner({
     setPresetHistoryLen(0);
     hasFinetuneEditsRef.current = false;
     setHasFinetuneEdits(false);
+    skipNextPresetDetectionRef.current = false;
   }, [imageIndex, imageSrc]);
 
   // ── Lock body + html scroll while editor is open ─────────────────────────
@@ -610,8 +621,9 @@ function ImageEditorInner({
     if (!editorArea) return;
 
     const handleClick = (e) => {
-      // Crop preset clicks are handled separately by the presetHistoryRef system
-      // (in the unlockCrop useEffect below). Do not capture revert here for them.
+      // Crop preset clicks are detected in handleModify via ratio changes.
+      // Skip them here (the FIE_crop-presets-menu container is an ancestor of
+      // all preset buttons so closest() correctly catches them).
       if (e.target.closest('[class*="FIE_crop-presets"], [class*="FIE_crop-preset"]')) return;
 
       // Target FIE's rotate and flip buttons only.
@@ -897,6 +909,7 @@ function ImageEditorInner({
     setPresetHistoryLen(0);
     hasFinetuneEditsRef.current = false;
     setHasFinetuneEdits(false);
+    skipNextPresetDetectionRef.current = false;
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
@@ -905,12 +918,20 @@ function ImageEditorInner({
   const handleModify = useCallback((ds) => {
     // Ignore modifications fired by FIE's internal reset/recalc during image switches.
     if (ignoringModify.current) return;
+
+    // Capture the previous crop ratio BEFORE updating the ref.
+    // Used below to detect when the user selects a crop preset.
+    const prevAdjustments = currentDesignStateRef.current?.adjustments ?? null;
+    const prevRatio = prevAdjustments?.crop?.ratio;
+    const newRatio  = ds?.adjustments?.crop?.ratio;
+
     setCurrentDesignState(ds);
     currentDesignStateRef.current = ds; // sync ref for click-handler capture
 
     // First call after (re)load = FIE's baseline state. Store it and do nothing else.
     if (initialDesignStateRef.current === null) {
       initialDesignStateRef.current = ds;
+      skipNextPresetDetectionRef.current = false;
       return;
     }
 
@@ -952,6 +973,28 @@ function ImageEditorInner({
         hasFinetuneEditsRef.current = true;
         setHasFinetuneEdits(true);
       }
+    }
+
+    // ── Crop preset detection ─────────────────────────────────────────────
+    // FIE's SET_CROP action always fires onModify. We detect preset selection
+    // by watching for crop.ratio changing TO a non-custom value. This is the
+    // only reliable way — DOM class selectors don't work because FIE's preset
+    // buttons use @scaleflex/ui StyledMenuItem (styled-component hash classes),
+    // not FIE_crop-preset class names.
+    //
+    // skipNextPresetDetectionRef suppresses our own programmatic dispatches
+    // (unlockCrop, handleRevertTemplate) from triggering false detections.
+    const isUserPresetClick =
+      !skipNextPresetDetectionRef.current &&
+      newRatio !== undefined &&
+      newRatio !== 'custom' &&   // 'custom' = the CUSTOM_CROP constant in FIE
+      newRatio !== prevRatio;    // ratio actually changed (not just a position update)
+
+    skipNextPresetDetectionRef.current = false; // always consume the flag
+
+    if (isUserPresetClick && scheduleUnlockCropRef.current) {
+      // prevAdjustments is the state BEFORE this preset click — used for Revert history.
+      scheduleUnlockCropRef.current({ adjustments: prevAdjustments }, newRatio);
     }
   }, []);
 
@@ -1170,7 +1213,13 @@ function ImageEditorInner({
       filter: filterStrToClass(loadedDesignState.filter),
     };
     const fn = updateStateFnRef.current;
-    if (fn) fn(payload);
+    if (fn) {
+      // Suppress preset detection: applying a template may set a crop ratio
+      // that differs from the current state, which would otherwise look like
+      // a user preset click to handleModify.
+      skipNextPresetDetectionRef.current = true;
+      fn(payload);
+    }
   }, [loadedDesignState]);
 
   useEffect(() => {
@@ -1245,6 +1294,7 @@ function ImageEditorInner({
         // adjustments so their crop is visible in Finetune / Watermark.
         const adjustments = currentDesignStateRef.current?.adjustments;
         if (adjustments) {
+          skipNextPresetDetectionRef.current = true;
           updateStateFnRef.current?.({ adjustments });
         }
       }
@@ -1315,151 +1365,91 @@ function ImageEditorInner({
 
   // ── Auto-switch to Custom after any sized preset to allow free drag ─────────
   //
-  // FIE's fixed-ratio presets (Landscape, Portrait, Square, etc.) internally
-  // re-normalise the crop box position on every state update, snapping the box
-  // back to its "natural" centred/max-fit position.  Switching to "Custom" mode
-  // keeps the preset shape but disables the normalisation, so the user can
-  // drag the crop box freely.
+  // Problem: FIE's fixed-ratio presets (Portrait, Landscape, etc.) call
+  // saveBoundedCropWithLatestConfig() on every ratio change, centering the
+  // crop box and re-applying the ratio constraint on every drag — causing
+  // snap-back.
   //
-  // Detection: we watch for aria-selected changes on crop-preset elements via
-  // MutationObserver.  This is more reliable than a click listener because
-  // FIE may call stopPropagation() internally on preset button clicks.
+  // Root causes discovered from FIE source inspection:
+  //   1. FIE's preset buttons use @scaleflex/ui StyledMenuItem (styled-component
+  //      hash class names). Selectors like [class*="FIE_crop-preset"] NEVER
+  //      match the actual button elements — they only match outer containers.
+  //      DOM-based click detection is therefore completely unreliable.
+  //   2. FIE's deepMerge explicitly skips undefined values
+  //      (`if (void 0 !== f)`). Dispatching ratio: undefined via fn() leaves
+  //      the old ratio intact. Must use ratio: 'custom' (the string constant).
   //
-  // Timing: we wait 150 ms after the preset's aria-selected changes so that
-  // FIE has had time to call onModify (which populates currentDesignStateRef
-  // with the crop's x/y/width/height).  We then click "Custom" to switch FIE's
-  // UI to free-form mode.
+  // Fix: detect preset selection in handleModify (which is always called by
+  // FIE after every SET_CROP dispatch) by watching for crop.ratio changing to
+  // a non-custom value. Then dispatch ratio: 'custom' via fn() to switch FIE
+  // into free-form mode, preserving the crop position but removing the
+  // ratio constraint so the user can drag freely.
+  //
+  // scheduleUnlockCropRef is set here and called from handleModify.
   useEffect(() => {
     if (!open) return;
-    const editorArea = editorAreaRef.current;
-    if (!editorArea) return;
 
     let timer = null;
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-    // Find the leaf preset elements (individual buttons, not container wrappers).
-    // e.g. querySelectorAll('[class*="FIE_crop-preset"]') returns BOTH the
-    // "FIE_crop-presets" container (whose textContent includes ALL preset labels)
-    // AND the individual "FIE_crop-preset-item" buttons. We must filter to only
-    // the leaf nodes so textContent comparisons match single-button labels.
-    const getLeafPresets = (area) => {
-      const all = area.querySelectorAll('[class*="FIE_crop-preset"]');
-      return Array.from(all).filter(el => !el.querySelector('[class*="FIE_crop-preset"]'));
-    };
+    // Dispatch ratio: 'custom' to FIE to remove the ratio constraint.
+    // selectedRatio is the FIE constant for the just-selected preset
+    // ('Crop' = ORIGINAL_CROP, 'custom' = CUSTOM_CROP, '1.777…' etc.).
+    const unlockCrop = (selectedRatio) => {
+      const fn = updateStateFnRef.current;
+      if (!fn) return;
 
-    // Primary: directly zero out the ratio in FIE's state via updateStateFnRef.
-    // Secondary: also click the "Custom" DOM button so FIE's UI reflects it.
-    // Using updateStateFnRef as the primary means snap-back prevention works
-    // even if the "Custom" button can't be found (e.g. FIE changes its class).
-    const unlockCrop = () => {
-      // Direct state push: preserve crop position but clear ratio constraint.
-      const fn  = updateStateFnRef.current;
-      const adj = currentDesignStateRef.current?.adjustments;
-      if (fn && adj?.crop) {
-        fn({
-          adjustments: {
-            ...adj,
-            crop: { ...adj.crop, ratio: undefined, ratioTitleKey: 'custom' },
-          },
-        });
-      }
-      // UI sync: try to click the "Custom" leaf button so FIE's preset row shows it.
-      const area = editorAreaRef.current;
-      if (area) {
-        const leafPresets = getLeafPresets(area);
-        const customBtn = leafPresets.find(
-          btn => (btn.textContent ?? '').trim().toLowerCase().includes('custom')
-        );
-        if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
-          customBtn.click();
+      // Suppress the next handleModify call from detecting this as a new
+      // user-driven preset click (it is our own programmatic dispatch).
+      skipNextPresetDetectionRef.current = true;
+
+      if (selectedRatio === 'Crop') {
+        // "Original" preset: FIE centers the crop at the original image ratio
+        // using the PREVIOUS crop dimensions, which may produce a small box.
+        // Override explicitly to fill the full displayed image (x=0, y=0,
+        // w=shownImageDimensions.width, h=shownImageDimensions.height).
+        const siz = currentDesignStateRef.current?.shownImageDimensions;
+        if (siz?.width && siz?.height) {
+          fn({
+            adjustments: {
+              crop: {
+                ratio: 'custom',
+                ratioTitleKey: 'custom',
+                x: 0,
+                y: 0,
+                width:  siz.width,
+                height: siz.height,
+              },
+            },
+          });
+          return;
         }
       }
+
+      // All other presets: keep the centered position FIE chose, but clear
+      // the ratio constraint so the user can drag the box anywhere.
+      fn({
+        adjustments: {
+          crop: { ratio: 'custom', ratioTitleKey: 'custom' },
+        },
+      });
     };
 
-    // ── Capture-phase click listener ──────────────────────────────────────
-    // Fires BEFORE FIE processes the click, so we can capture the pre-click
-    // state for the preset history (Revert) and schedule unlockCrop afterward.
-    const onPresetClick = (e) => {
-      // Walk up from e.target to find the first leaf preset element.
-      // A leaf is a FIE_crop-preset element that contains no other such elements
-      // (i.e. it's an individual button, not a container or group header).
-      let el = e.target;
-      let leafPreset = null;
-      while (el && el !== editorArea) {
-        if (
-          typeof el.className === 'string' &&
-          el.className.includes('FIE_crop-preset') &&
-          !el.querySelector('[class*="FIE_crop-preset"]')
-        ) {
-          leafPreset = el;
-          break;
-        }
-        el = el.parentElement;
-      }
-      if (!leafPreset) return;
-
-      const label = (leafPreset.textContent ?? '').trim().toLowerCase();
-      if (label.includes('custom')) return; // Custom is auto-clicked by us — skip
-
-      // ── Capture pre-click state for Revert history ────────────────────
-      // currentDesignStateRef has the state BEFORE FIE processes this click.
-      const snap = currentDesignStateRef.current
-        ? { adjustments: currentDesignStateRef.current.adjustments ?? null }
-        : {};
+    // Exposed to handleModify. Called when a preset ratio change is detected.
+    // snap  = { adjustments } captured BEFORE the preset was applied (for Revert).
+    // ratio = the newRatio value FIE just stored (e.g. 0.5625, 'Crop', 'ellipse').
+    scheduleUnlockCropRef.current = (snap, ratio) => {
       presetHistoryRef.current.push(snap);
       setPresetHistoryLen(presetHistoryRef.current.length);
-
-      // Schedule unlockCrop with a longer delay than rAF so FIE's onModify
-      // has time to fire and populate currentDesignStateRef with the preset's
-      // crop position (especially important for "Original" which is computed).
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { timer = null; unlockCrop(); }, 200);
+      // Wait 250 ms so FIE's centering useEffect (which fires after the ratio
+      // changes) has time to run and update crop.x/y/width/height via onModify
+      // before we override with 'custom'. This ensures we preserve the correct
+      // centered position, not stale coordinates.
+      timer = setTimeout(() => { timer = null; unlockCrop(ratio); }, 250);
     };
-    editorArea.addEventListener('click', onPresetClick, true); // capture phase
-
-    // ── MutationObserver fallback ─────────────────────────────────────────
-    // Belt-and-suspenders: also watch aria-selected changes in case the click
-    // event doesn't propagate (e.g. FIE calls stopPropagation internally).
-    const obs = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type !== 'attributes' || m.attributeName !== 'aria-selected') continue;
-        if (m.target.getAttribute('aria-selected') !== 'true') continue;
-
-        // Must be a leaf crop-preset element (not a container or nav tab)
-        const isLeafPreset =
-          typeof m.target.className === 'string' &&
-          m.target.className.includes('FIE_crop-preset') &&
-          !m.target.querySelector?.('[class*="FIE_crop-preset"]');
-        if (!isLeafPreset) continue;
-
-        const label = (m.target.textContent ?? '').trim().toLowerCase();
-        if (label.includes('custom')) continue; // skip our own auto-click
-
-        // The click listener (capture phase) fires before FIE handlers, so it
-        // usually captures state and sets the timer first. The MutationObserver
-        // is a last-resort fallback for edge cases where the click listener
-        // didn't run (e.g. non-click activations). Only act when timer is unset.
-        if (!timer) {
-          // Also capture state so Revert has an entry.
-          const fallbackSnap = currentDesignStateRef.current
-            ? { adjustments: currentDesignStateRef.current.adjustments ?? null }
-            : {};
-          presetHistoryRef.current.push(fallbackSnap);
-          setPresetHistoryLen(presetHistoryRef.current.length);
-          timer = setTimeout(() => { timer = null; unlockCrop(); }, 200);
-        }
-      }
-    });
-
-    obs.observe(editorArea, {
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['aria-selected'],
-    });
 
     return () => {
-      obs.disconnect();
-      editorArea.removeEventListener('click', onPresetClick, true);
+      scheduleUnlockCropRef.current = null;
       if (timer) clearTimeout(timer);
     };
   }, [open]);
@@ -1501,6 +1491,7 @@ function ImageEditorInner({
       if (prevCrop && typeof prevCrop === 'object') {
         // Restore the crop from before the last preset click.
         // This brings back whatever shape/position was active previously.
+        skipNextPresetDetectionRef.current = true;
         fn?.({
           adjustments: buildAdjustments(prevAdj),
         });
@@ -1530,6 +1521,7 @@ function ImageEditorInner({
 
     if (prevState && Object.keys(prevState).length > 0) {
       if (fn) {
+        skipNextPresetDetectionRef.current = true;
         fn({
           finetunesProps: prevState.finetunesProps || {},
           finetunes: finetunesStrsToClasses(prevState.finetunes || []),
@@ -1547,12 +1539,15 @@ function ImageEditorInner({
       toast({ title: 'Reverted' });
     } else {
       setLoadedDesignState(null);
-      if (fn) fn({
-        finetunesProps: {},
-        finetunes: [],
-        filter: null,
-        adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false },
-      });
+      if (fn) {
+        skipNextPresetDetectionRef.current = true;
+        fn({
+          finetunesProps: {},
+          finetunes: [],
+          filter: null,
+          adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false },
+        });
+      }
       setSwitchCount(c => c + 1);
       toast({ title: 'Edits cleared' });
     }
@@ -1609,6 +1604,7 @@ function ImageEditorInner({
       setPresetHistoryLen(0);
       hasFinetuneEditsRef.current = false;
       setHasFinetuneEdits(false);
+      skipNextPresetDetectionRef.current = false;
 
       // 4. These restored URLs become the new baseline for this session.
       if (urlsToRestore.length) originalUrls.current = urlsToRestore;
