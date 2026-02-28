@@ -115,6 +115,15 @@ function normalizeForComparison(ds) {
       .filter(Boolean)
       .sort();
   }
+  // Exclude crop entirely from change detection:
+  //   - x, y, width, height: free-dragging the adjuster box is NOT a user edit
+  //   - ratio, ratioTitleKey: preset clicks are tracked separately via presetHistoryRef
+  // Rotation and flip stay in `adjustments` and ARE detected as user edits.
+  if (rest.adjustments) {
+    // eslint-disable-next-line no-unused-vars
+    const { crop, ...adjWithoutCrop } = rest.adjustments;
+    rest.adjustments = adjWithoutCrop;
+  }
   return JSON.stringify(rest);
 }
 
@@ -391,6 +400,17 @@ function ImageEditorInner({
   // pre-edit baseline when the first manual change is detected.
   const prevDesignStateRef = useRef(null);
 
+  // ── Preset history for Revert (Issues 4 & 5) ────────────────────────────
+  // Each entry is the full design state captured BEFORE a crop preset button
+  // (Portrait, Landscape, Ellipse, etc.) was clicked. Revert pops these one
+  // at a time. Free dragging the adjuster box does NOT add an entry.
+  const presetHistoryRef = useRef([]);
+  const [presetHistoryLen, setPresetHistoryLen] = useState(0); // reactive for UI
+  // Tracks whether any finetune/filter/watermark edits were made this session.
+  // Only these trigger the Reset All button (per Issue 5).
+  const hasFinetuneEditsRef = useRef(false);
+  const [hasFinetuneEdits, setHasFinetuneEdits] = useState(false);
+
   // ── Template management ──────────────────────────────────────────────────
   const [templates, setTemplates]           = useState(loadTemplates);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -560,6 +580,10 @@ function ImageEditorInner({
     prevDesignStateRef.current = null;
     userHasEditedRef.current = false;
     setUserHasEdited(false);
+    presetHistoryRef.current = [];
+    setPresetHistoryLen(0);
+    hasFinetuneEditsRef.current = false;
+    setHasFinetuneEdits(false);
   }, [imageIndex, imageSrc]);
 
   // ── Lock body + html scroll while editor is open ─────────────────────────
@@ -586,10 +610,13 @@ function ImageEditorInner({
     if (!editorArea) return;
 
     const handleClick = (e) => {
-      // Target FIE's rotate, flip, and crop-preset button hierarchy.
+      // Crop preset clicks are handled separately by the presetHistoryRef system
+      // (in the unlockCrop useEffect below). Do not capture revert here for them.
+      if (e.target.closest('[class*="FIE_crop-presets"], [class*="FIE_crop-preset"]')) return;
+
+      // Target FIE's rotate and flip buttons only.
       const hit = e.target.closest(
         '[class*="FIE_rotate-"], [class*="FIE_flip-"], ' +
-        '[class*="FIE_crop-presets"] *, [class*="FIE_crop-preset"], ' +
         '[class*="FIE_resize-options"] *'
       );
       if (!hit) return;
@@ -866,6 +893,10 @@ function ImageEditorInner({
     prevDesignStateRef.current = null;    // no revert point on a fresh image
     userHasEditedRef.current = false;
     setUserHasEdited(false);
+    presetHistoryRef.current = [];
+    setPresetHistoryLen(0);
+    hasFinetuneEditsRef.current = false;
+    setHasFinetuneEdits(false);
     setActiveIndex(newIndex);
     setSwitchCount(c => c + 1);
   }, [activeIndex, currentDesignState, loadedDesignState]);
@@ -883,11 +914,9 @@ function ImageEditorInner({
       return;
     }
 
-    // On subsequent calls, compare the full normalised state against the baseline.
-    // normalizeForComparison strips volatile runtime fields and serialises
-    // everything else — finetunes, filter, crop, rotation, flip, annotations —
-    // so any meaningful user action is detected regardless of which FIE tab it
-    // came from (Adjust, Finetune, Watermark, etc.).
+    // On subsequent calls, compare the normalised state against the baseline.
+    // normalizeForComparison excludes crop (so free-dragging and preset clicks
+    // don't trigger this path) and detects finetune / rotation / flip changes.
     const base = initialDesignStateRef.current;
     const changed = normalizeForComparison(ds) !== normalizeForComparison(base);
 
@@ -900,6 +929,29 @@ function ImageEditorInner({
     } else if (changed) {
       userHasEditedRef.current = true;
       setUserHasEdited(true);
+    }
+
+    // Track finetune/filter changes specifically so Reset All can show only
+    // when these (not just crop) have been modified.
+    if (base && !hasFinetuneEditsRef.current) {
+      const baseFt = JSON.stringify({
+        fp: base.finetunesProps ?? {},
+        f:  base.filter ?? null,
+        fi: (base.finetunes ?? [])
+              .map(x => (typeof x === 'string' ? x : (x?.finetuneName ?? '')))
+              .filter(Boolean).sort(),
+      });
+      const curFt = JSON.stringify({
+        fp: ds.finetunesProps ?? {},
+        f:  ds.filter ?? null,
+        fi: (ds.finetunes ?? [])
+              .map(x => (typeof x === 'string' ? x : (x?.finetuneName ?? '')))
+              .filter(Boolean).sort(),
+      });
+      if (baseFt !== curFt) {
+        hasFinetuneEditsRef.current = true;
+        setHasFinetuneEdits(true);
+      }
     }
   }, []);
 
@@ -1069,6 +1121,9 @@ function ImageEditorInner({
     }
     setShowTemplateMenu(false);
     setMenuPos(null);
+    // Loading a template is a finetune/edit action → show Reset All button.
+    hasFinetuneEditsRef.current = true;
+    setHasFinetuneEdits(true);
     // Reset edit tracking so that manual edits made AFTER the template
     // will correctly capture the template state as their own revert point.
     initialDesignStateRef.current = null;
@@ -1279,7 +1334,18 @@ function ImageEditorInner({
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
-    let raf = null;
+    let timer = null;
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    // Find the leaf preset elements (individual buttons, not container wrappers).
+    // e.g. querySelectorAll('[class*="FIE_crop-preset"]') returns BOTH the
+    // "FIE_crop-presets" container (whose textContent includes ALL preset labels)
+    // AND the individual "FIE_crop-preset-item" buttons. We must filter to only
+    // the leaf nodes so textContent comparisons match single-button labels.
+    const getLeafPresets = (area) => {
+      const all = area.querySelectorAll('[class*="FIE_crop-preset"]');
+      return Array.from(all).filter(el => !el.querySelector('[class*="FIE_crop-preset"]'));
+    };
 
     // Primary: directly zero out the ratio in FIE's state via updateStateFnRef.
     // Secondary: also click the "Custom" DOM button so FIE's UI reflects it.
@@ -1297,12 +1363,12 @@ function ImageEditorInner({
           },
         });
       }
-      // UI sync: try to click the "Custom" button so FIE's preset row shows it.
+      // UI sync: try to click the "Custom" leaf button so FIE's preset row shows it.
       const area = editorAreaRef.current;
       if (area) {
-        const allPresets = area.querySelectorAll('[class*="FIE_crop-preset"]');
-        const customBtn = Array.from(allPresets).find(
-          (btn) => (btn.textContent ?? '').trim().toLowerCase().includes('custom')
+        const leafPresets = getLeafPresets(area);
+        const customBtn = leafPresets.find(
+          btn => (btn.textContent ?? '').trim().toLowerCase().includes('custom')
         );
         if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
           customBtn.click();
@@ -1310,40 +1376,78 @@ function ImageEditorInner({
       }
     };
 
-    // Also listen for clicks in capture phase (fires before FIE's own handlers)
-    // as a belt-and-suspenders in case aria-selected is set without a mutation.
+    // ── Capture-phase click listener ──────────────────────────────────────
+    // Fires BEFORE FIE processes the click, so we can capture the pre-click
+    // state for the preset history (Revert) and schedule unlockCrop afterward.
     const onPresetClick = (e) => {
-      const presetEl = e.target.closest('[class*="FIE_crop-preset"]');
-      if (!presetEl) return;
-      const label = (presetEl.textContent ?? '').trim().toLowerCase();
-      if (label.includes('custom')) return;
-      // Schedule unlockCrop one rAF after the click so FIE has rendered first.
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => { raf = null; unlockCrop(); });
+      // Walk up from e.target to find the first leaf preset element.
+      // A leaf is a FIE_crop-preset element that contains no other such elements
+      // (i.e. it's an individual button, not a container or group header).
+      let el = e.target;
+      let leafPreset = null;
+      while (el && el !== editorArea) {
+        if (
+          typeof el.className === 'string' &&
+          el.className.includes('FIE_crop-preset') &&
+          !el.querySelector('[class*="FIE_crop-preset"]')
+        ) {
+          leafPreset = el;
+          break;
+        }
+        el = el.parentElement;
+      }
+      if (!leafPreset) return;
+
+      const label = (leafPreset.textContent ?? '').trim().toLowerCase();
+      if (label.includes('custom')) return; // Custom is auto-clicked by us — skip
+
+      // ── Capture pre-click state for Revert history ────────────────────
+      // currentDesignStateRef has the state BEFORE FIE processes this click.
+      const snap = currentDesignStateRef.current
+        ? { adjustments: currentDesignStateRef.current.adjustments ?? null }
+        : {};
+      presetHistoryRef.current.push(snap);
+      setPresetHistoryLen(presetHistoryRef.current.length);
+
+      // Schedule unlockCrop with a longer delay than rAF so FIE's onModify
+      // has time to fire and populate currentDesignStateRef with the preset's
+      // crop position (especially important for "Original" which is computed).
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { timer = null; unlockCrop(); }, 200);
     };
     editorArea.addEventListener('click', onPresetClick, true); // capture phase
 
+    // ── MutationObserver fallback ─────────────────────────────────────────
+    // Belt-and-suspenders: also watch aria-selected changes in case the click
+    // event doesn't propagate (e.g. FIE calls stopPropagation internally).
     const obs = new MutationObserver((mutations) => {
       for (const m of mutations) {
         if (m.type !== 'attributes' || m.attributeName !== 'aria-selected') continue;
-        // Only process newly-selected buttons (not deselections)
         if (m.target.getAttribute('aria-selected') !== 'true') continue;
 
-        // Must be a crop-preset element, not a main nav tab
-        const isCropPreset =
-          (typeof m.target.className === 'string' &&
-            m.target.className.includes('FIE_crop-preset')) ||
-          !!m.target.closest?.('[class*="FIE_crop-preset"]');
-        if (!isCropPreset) continue;
+        // Must be a leaf crop-preset element (not a container or nav tab)
+        const isLeafPreset =
+          typeof m.target.className === 'string' &&
+          m.target.className.includes('FIE_crop-preset') &&
+          !m.target.querySelector?.('[class*="FIE_crop-preset"]');
+        if (!isLeafPreset) continue;
 
-        // Skip if the Custom button itself was just selected (we triggered it)
         const label = (m.target.textContent ?? '').trim().toLowerCase();
-        if (label.includes('custom')) continue;
+        if (label.includes('custom')) continue; // skip our own auto-click
 
-        // Fire after one animation frame so FIE has rendered and onModify has
-        // populated currentDesignStateRef with the preset's crop position.
-        if (raf) cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(() => { raf = null; unlockCrop(); });
+        // The click listener (capture phase) fires before FIE handlers, so it
+        // usually captures state and sets the timer first. The MutationObserver
+        // is a last-resort fallback for edge cases where the click listener
+        // didn't run (e.g. non-click activations). Only act when timer is unset.
+        if (!timer) {
+          // Also capture state so Revert has an entry.
+          const fallbackSnap = currentDesignStateRef.current
+            ? { adjustments: currentDesignStateRef.current.adjustments ?? null }
+            : {};
+          presetHistoryRef.current.push(fallbackSnap);
+          setPresetHistoryLen(presetHistoryRef.current.length);
+          timer = setTimeout(() => { timer = null; unlockCrop(); }, 200);
+        }
       }
     });
 
@@ -1356,17 +1460,18 @@ function ImageEditorInner({
     return () => {
       obs.disconnect();
       editorArea.removeEventListener('click', onPresetClick, true);
-      if (raf) cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
     };
   }, [open]);
 
   // ── Revert: restore the state that existed before the last significant action ──
-  // "Last action" is either loading a template or the first manual edit since
-  // the last checkpoint. prevDesignStateRef always holds that pre-action state.
+  // Priority order:
+  //   1. Crop preset history (Issue 4): each preset click (Portrait, Landscape…)
+  //      pushed the pre-click state onto presetHistoryRef. Revert pops one entry
+  //      and restores just the crop — or remounts FIE if there was no prior crop.
+  //   2. Template / rotation / flip revert (existing behaviour): prevDesignStateRef
+  //      captures the state before a template load or a rotate/flip action.
   const handleRevertTemplate = useCallback(() => {
-    const prevState = prevDesignStateRef.current;
-    prevDesignStateRef.current = null; // consume the revert point
-
     const fn = updateStateFnRef.current;
 
     // Builds an explicit adjustments object that FIE can safely deep-merge.
@@ -1381,13 +1486,49 @@ function ImageEditorInner({
         isFlippedX: src?.isFlippedX || false,
         isFlippedY: src?.isFlippedY || false,
       };
-      // Only propagate crop when it is a real non-null object.
       if (src?.crop && typeof src.crop === 'object') adj.crop = src.crop;
       return adj;
     };
 
+    // ── 1. Preset history revert ──────────────────────────────────────────
+    if (presetHistoryRef.current.length > 0) {
+      const snap = presetHistoryRef.current.pop();
+      setPresetHistoryLen(presetHistoryRef.current.length);
+
+      const prevAdj = snap?.adjustments ?? null;
+      const prevCrop = prevAdj?.crop;
+
+      if (prevCrop && typeof prevCrop === 'object') {
+        // Restore the crop from before the last preset click.
+        // This brings back whatever shape/position was active previously.
+        fn?.({
+          adjustments: buildAdjustments(prevAdj),
+        });
+      } else {
+        // The state before the last preset had no crop (original full image).
+        // We must remount FIE to clear the crop (setting crop: null crashes FIE).
+        // Preserve any existing finetunes so they survive the remount.
+        const cur = currentDesignStateRef.current;
+        if (cur) {
+          const preserve = extractTemplateFields(cur);
+          // Strip crop from the preserved state so remount starts with no crop.
+          if (preserve.adjustments?.crop) delete preserve.adjustments.crop;
+          if (Object.keys(preserve).length > 0) {
+            designStateSourceRef.current = 'template';
+            setLoadedDesignState(preserve);
+          }
+        }
+        setSwitchCount(c => c + 1); // remount FIE → full image, no crop
+      }
+      toast({ title: 'Reverted' });
+      return;
+    }
+
+    // ── 2. Template / rotation / flip revert (existing behaviour) ────────
+    const prevState = prevDesignStateRef.current;
+    prevDesignStateRef.current = null;
+
     if (prevState && Object.keys(prevState).length > 0) {
-      // Restore the captured state (finetunes + filter + adjustments).
       if (fn) {
         fn({
           finetunesProps: prevState.finetunesProps || {},
@@ -1396,7 +1537,6 @@ function ImageEditorInner({
           adjustments: buildAdjustments(prevState.adjustments),
         });
       }
-      // Sync loadedDesignState so the template re-apply loop picks it up.
       const clean = extractTemplateFields(prevState);
       if (Object.keys(clean).length > 0) {
         designStateSourceRef.current = 'template';
@@ -1406,10 +1546,6 @@ function ImageEditorInner({
       }
       toast({ title: 'Reverted' });
     } else {
-      // No saved revert point — clear ALL edits back to the original image state.
-      // Clearing finetunes/filter/rotation/flip via fn is safe; crop cannot be
-      // nulled via fn (FIE crashes). Instead, force a FIE remount via
-      // setSwitchCount which reloads the original image with zero adjustments.
       setLoadedDesignState(null);
       if (fn) fn({
         finetunesProps: {},
@@ -1417,7 +1553,7 @@ function ImageEditorInner({
         filter: null,
         adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false },
       });
-      setSwitchCount(c => c + 1); // remount FIE → also clears any pending crop
+      setSwitchCount(c => c + 1);
       toast({ title: 'Edits cleared' });
     }
 
@@ -1440,50 +1576,42 @@ function ImageEditorInner({
 
   // ── Reset all images to their original state ──────────────────────────────
   const handleResetAll = useCallback(async () => {
-    // Prefer cross-session originals (stored before earlier saves); fall back to
-    // in-session originals (captured when the editor opened this time).
+    // ── Session reset (Issue 5): reset the current image to how it looked
+    // when the editor was first opened this session. This clears all edits:
+    // crop, finetune, watermark, loaded templates, etc.
+    // If there are cross-session saved originals, also restore those URLs.
     const urlsToRestore = persistedOriginals || originalUrls.current.filter(Boolean);
-    if (!urlsToRestore.length) return;
 
     setIsProcessing(true);
     try {
-      // 1. Persist original URLs to the database (fire-and-forget per image).
-      for (let i = 0; i < urlsToRestore.length; i++) {
-        const url = urlsToRestore[i];
-        if (url && onSave) await onSave(url, i);
+      // 1. Restore original URLs to the database (only when saved originals exist).
+      if (urlsToRestore.length) {
+        for (let i = 0; i < urlsToRestore.length; i++) {
+          const url = urlsToRestore[i];
+          if (url && onSave) await onSave(url, i);
+        }
       }
 
-      // 2. Explicitly clear FIE's Konva/Redux state so the canvas shows the
-      //    original pixels immediately — without waiting for the parent query
-      //    to refetch and push updated allImages props through.
-      //    Pass explicit zero values for every adjustment field: passing {}
-      //    is a no-op deep-merge that leaves rotation / flip intact.
-      // Crop cannot be cleared by passing null — FIE crashes on null.x.
-      // Omit it here; the setSwitchCount remount below reloads FIE fresh
-      // with the original image and no adjustments (including no crop).
-      const fn = updateStateFnRef.current;
-      if (fn) {
-        fn({
-          finetunesProps: {},
-          finetunes: [],
-          filter: null,
-          adjustments: { rotation: 0, isFlippedX: false, isFlippedY: false },
-        });
-      }
-
-      // 3. Clear all per-image design states.
+      // 2. Clear all per-image design states.
       imageDesignStates.current = {};
       setModifiedSet(new Set());
       setCurrentDesignState(null);
       setLoadedDesignState(null);
+      designStateSourceRef.current = 'none';
       setHasSavedInSession(false);
+
+      // 3. Clear all edit tracking refs.
       initialDesignStateRef.current = null;
       prevDesignStateRef.current = null;
       userHasEditedRef.current = false;
       setUserHasEdited(false);
+      presetHistoryRef.current = [];
+      setPresetHistoryLen(0);
+      hasFinetuneEditsRef.current = false;
+      setHasFinetuneEdits(false);
 
       // 4. These restored URLs become the new baseline for this session.
-      originalUrls.current = urlsToRestore;
+      if (urlsToRestore.length) originalUrls.current = urlsToRestore;
 
       // 5. Remove persisted originals — images are now back to baseline.
       if (ORIG_KEY) {
@@ -1784,9 +1912,16 @@ function ImageEditorInner({
       currentDesignState.annotations?.length
     )
   );
-  // Show reset/revert whenever there's anything to undo: persisted originals, in-session saves,
-  // modified images, loaded template, live finetune/filter edits, or any crop/flip/rotate change
-  const canReset = !!(persistedOriginals || hasSavedInSession || modifiedSet.size > 0 || hasTemplate || hasCurrentEdits || userHasEdited);
+  // Revert button: shows when there is a preset in history (Portrait, Landscape…),
+  // a loaded template, or a rotation/flip edit to undo (userHasEdited).
+  // Does NOT show for free crop-box dragging (crop excluded from normalizeForComparison).
+  const canRevert = presetHistoryLen > 0 || hasTemplate || userHasEdited;
+  // Reset All button: shows only for finetune/filter/watermark edits and loaded
+  // templates (per Issue 5). Does NOT show for crop-only or drag-only changes.
+  // Also shows when there are saved images to restore (persisted originals).
+  const canResetAll = hasFinetuneEdits || hasTemplate || persistedOriginals || hasSavedInSession;
+  // Keep canReset for any other downstream usage that may reference it.
+  const canReset = canRevert || canResetAll;
 
   return (
     <div
@@ -1889,11 +2024,16 @@ function ImageEditorInner({
           className="flex items-center gap-2 min-w-0"
           style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}
         >
-          {/* Revert – shown whenever there are any edits (template or otherwise) */}
-          {canReset && (
+          {/* Revert – shown for preset changes (Portrait/Landscape/…), template
+               loads, rotation, and flip. NOT shown for free crop-box dragging. */}
+          {canRevert && (
             <button
               onClick={handleRevertTemplate}
-              title="Revert filter and adjustment edits on this image"
+              title={
+                presetHistoryLen > 0
+                  ? 'Undo the last crop preset (go back one step)'
+                  : 'Revert filter and adjustment edits on this image'
+              }
               className="flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0"
               style={{
                 backgroundColor: isDark ? '#1e3a5f' : '#eff6ff',
@@ -1905,15 +2045,16 @@ function ImageEditorInner({
               Revert
             </button>
           )}
-          {/* Reset All */}
-          {canReset && (
+          {/* Reset All – shown only for finetune/watermark changes or loaded
+               templates. Resets the image back to its session-initial state. */}
+          {canResetAll && (
             <button
               onClick={handleResetAll}
               disabled={isProcessing}
               title={
                 persistedOriginals
                   ? 'Reset all images back to their state before any edits were saved'
-                  : 'Reset all images back to how they looked when you opened this editor'
+                  : 'Reset all edits (finetune, watermark, templates) for this session'
               }
               className="flex items-center gap-1.5 px-3 h-8 rounded text-xs font-medium transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
