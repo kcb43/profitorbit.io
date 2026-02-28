@@ -1279,19 +1279,49 @@ function ImageEditorInner({
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
-    let timer = null;
+    let raf = null;
 
-    const switchToCustom = () => {
+    // Primary: directly zero out the ratio in FIE's state via updateStateFnRef.
+    // Secondary: also click the "Custom" DOM button so FIE's UI reflects it.
+    // Using updateStateFnRef as the primary means snap-back prevention works
+    // even if the "Custom" button can't be found (e.g. FIE changes its class).
+    const unlockCrop = () => {
+      // Direct state push: preserve crop position but clear ratio constraint.
+      const fn  = updateStateFnRef.current;
+      const adj = currentDesignStateRef.current?.adjustments;
+      if (fn && adj?.crop) {
+        fn({
+          adjustments: {
+            ...adj,
+            crop: { ...adj.crop, ratio: undefined, ratioTitleKey: 'custom' },
+          },
+        });
+      }
+      // UI sync: try to click the "Custom" button so FIE's preset row shows it.
       const area = editorAreaRef.current;
-      if (!area) return;
-      const allPresets = area.querySelectorAll('[class*="FIE_crop-preset"]');
-      const customBtn = Array.from(allPresets).find(
-        (btn) => (btn.textContent ?? '').trim().toLowerCase().includes('custom')
-      );
-      if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
-        customBtn.click();
+      if (area) {
+        const allPresets = area.querySelectorAll('[class*="FIE_crop-preset"]');
+        const customBtn = Array.from(allPresets).find(
+          (btn) => (btn.textContent ?? '').trim().toLowerCase().includes('custom')
+        );
+        if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
+          customBtn.click();
+        }
       }
     };
+
+    // Also listen for clicks in capture phase (fires before FIE's own handlers)
+    // as a belt-and-suspenders in case aria-selected is set without a mutation.
+    const onPresetClick = (e) => {
+      const presetEl = e.target.closest('[class*="FIE_crop-preset"]');
+      if (!presetEl) return;
+      const label = (presetEl.textContent ?? '').trim().toLowerCase();
+      if (label.includes('custom')) return;
+      // Schedule unlockCrop one rAF after the click so FIE has rendered first.
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => { raf = null; unlockCrop(); });
+    };
+    editorArea.addEventListener('click', onPresetClick, true); // capture phase
 
     const obs = new MutationObserver((mutations) => {
       for (const m of mutations) {
@@ -1310,12 +1340,10 @@ function ImageEditorInner({
         const label = (m.target.textContent ?? '').trim().toLowerCase();
         if (label.includes('custom')) continue;
 
-        if (timer) { clearTimeout(timer); timer = null; }
-        // 150 ms: give FIE time to call onModify with the crop x/y/w/h
-        timer = setTimeout(() => {
-          timer = null;
-          switchToCustom();
-        }, 150);
+        // Fire after one animation frame so FIE has rendered and onModify has
+        // populated currentDesignStateRef with the preset's crop position.
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => { raf = null; unlockCrop(); });
       }
     });
 
@@ -1327,7 +1355,8 @@ function ImageEditorInner({
 
     return () => {
       obs.disconnect();
-      if (timer) clearTimeout(timer);
+      editorArea.removeEventListener('click', onPresetClick, true);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, [open]);
 
@@ -1597,17 +1626,17 @@ function ImageEditorInner({
         }
       }
 
-      // ── Overlay visibility ──────────────────────────────────────────────────
-      // • Adjust tab  → always show overlay (sharp image behind crop handles).
-      // • Finetune/Watermark + any active crop → HIDE overlay.
-      //     The overlay shows the FULL uncropped image, so keeping it visible
-      //     hides FIE's cropped canvas.  Hiding it lets FIE's Konva layer
-      //     render the cropped preview; doApply() ensures the crop state is
-      //     pushed into FIE on every tab switch.
-      // • Finetune/Watermark + finetunes only (no crop) → show overlay with
-      //     CSS filters so the user sees a sharp, colour-adjusted preview
-      //     while FIE's Konva layer catches up asynchronously.
-      // • Finetune/Watermark + nothing → hide overlay (plain image is fine).
+      // ── Overlay visibility & crop clipping ─────────────────────────────────
+      //
+      // The overlay is a full-resolution <img> that sits between Konva's canvas
+      // layers.  On the Adjust tab it provides a sharper image behind the crop
+      // handles.  On Finetune/Watermark we use CSS clip-path to show ONLY the
+      // selected crop region, so the user always sees the correctly cropped
+      // preview regardless of whether FIE's Konva layer has applied the crop.
+      //
+      // Coordinate system: crop.x / crop.y / crop.width / crop.height are in
+      // display-space pixels relative to the image node — the same coordinate
+      // space as effW / effH — so they map directly to inset() values.
       //
       // isAdjustTab uses offsetParent (null == display:none) so the check is
       // correct whether FIE unmounts the tab panel or just hides it with CSS.
@@ -1616,18 +1645,47 @@ function ImageEditorInner({
       const isAdjustTab = (cropToolEl && cropToolEl.offsetParent !== null) ||
                           (adjFallback && adjFallback.offsetParent !== null);
 
-      const hasFinetunes = !!(designStateRef.current?.finetunesProps &&
-        Object.keys(designStateRef.current.finetunesProps).length > 0);
-      // ANY active crop (ratio-constrained OR Custom mode) → hide overlay.
-      const hasCrop = !!(designStateRef.current?.adjustments?.crop);
+      // Use the synchronously-updated ref so we always have the latest state
+      // even if the designStateRef useEffect hasn't committed yet this frame.
+      const liveState  = currentDesignStateRef.current ?? designStateRef.current;
+      const cropAdj    = liveState?.adjustments?.crop;
+      const hasCropCoords = cropAdj &&
+        cropAdj.x != null && cropAdj.y != null &&
+        cropAdj.width != null && cropAdj.height != null;
+      const hasAnyFinetunes = !!(liveState?.finetunesProps &&
+        Object.keys(liveState.finetunesProps).length > 0);
 
-      if (!isAdjustTab && (hasCrop || !hasFinetunes)) {
-        oImg.style.display = 'none';
-        return;
+      if (!isAdjustTab) {
+        if (hasCropCoords) {
+          // Clip overlay to the crop rectangle so Finetune/Watermark show the
+          // cropped preview at full <img> quality (no reliance on FIE canvas).
+          const top    = Math.max(0, cropAdj.y);
+          const right  = Math.max(0, effW - (cropAdj.x + cropAdj.width));
+          const bottom = Math.max(0, effH - (cropAdj.y + cropAdj.height));
+          const left   = Math.max(0, cropAdj.x);
+          const cv = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+          if (oImg.style.clipPath !== cv) oImg.style.clipPath = cv;
+        } else if (cropAdj) {
+          // Crop preset selected but coordinates not yet populated → hide
+          // overlay to avoid flashing the full uncropped image.
+          oImg.style.display = 'none';
+          return;
+        } else if (!hasAnyFinetunes) {
+          // No crop, no finetunes → overlay not needed on Finetune/Watermark.
+          oImg.style.display = 'none';
+          return;
+        } else {
+          // Finetune-only (no crop) → show full overlay with CSS filter.
+          if (oImg.style.clipPath) oImg.style.clipPath = '';
+        }
+      } else {
+        // Adjust tab → full overlay, no clip.
+        if (oImg.style.clipPath) oImg.style.clipPath = '';
       }
+
       if (oImg.style.display === 'none' && inserted) oImg.style.display = 'block';
 
-      const fp = designStateRef.current?.finetunesProps || {};
+      const fp = liveState?.finetunesProps || {};
       const br = fp.brightness ?? 0;
       const ct = fp.contrast ?? 0;
       const gm = fp.gammaBrightness ?? 0;
