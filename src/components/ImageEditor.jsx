@@ -1151,9 +1151,19 @@ function ImageEditorInner({
     const editorArea = editorAreaRef.current;
     if (!editorArea) return;
 
-    const isAdjustTab = () => !!editorAreaRef.current?.querySelector(
-      '[class*="FIE_crop-tool"], [class*="FIE_rotate-tool"], [class*="FIE_flip"]'
-    );
+    // Returns true only when the Adjust tab is CURRENTLY VISIBLE.
+    // FIE may keep all tab panels in the DOM and toggle display:none, so
+    // a simple querySelector is not enough — we must check visibility.
+    // offsetParent === null  ⟹  element (or an ancestor) has display:none.
+    const isAdjustTab = () => {
+      const area = editorAreaRef.current;
+      if (!area) return false;
+      const cropTool = area.querySelector('[class*="FIE_crop-tool"]');
+      if (cropTool) return cropTool.offsetParent !== null;
+      // Fallback: check rotate / flip controls
+      const fallback = area.querySelector('[class*="FIE_rotate-tool"], [class*="FIE_flip"]');
+      return !!fallback && fallback.offsetParent !== null;
+    };
 
     // ── Drag guard ───────────────────────────────────────────────────────────
     // Track whether the user is actively pressing a pointer inside the editor.
@@ -1247,6 +1257,62 @@ function ImageEditorInner({
       if (intervalId) clearInterval(intervalId);
     };
   }, [open, loadedDesignState, applyLoadedTemplate]);
+
+  // ── Auto-switch to Custom after any sized preset to allow free drag ─────────
+  //
+  // FIE's fixed-ratio presets (Landscape, Portrait, Square, etc.) cause the crop
+  // box to snap back to a "natural" (centred / max-fit) position on every state
+  // update while that preset is active, because FIE re-normalises the crop
+  // around the aspect-ratio constraint internally.
+  //
+  // The user discovered that clicking "Custom" AFTER a preset keeps the preset
+  // shape but removes the snap-back: FIE is now in free-form mode and honours
+  // whatever position Konva reports.
+  //
+  // This effect automates that workaround: when the user clicks any preset except
+  // "Custom", we wait 120 ms for FIE to position the crop box, then
+  // programmatically click "Custom" to unlock free repositioning.
+  //
+  // "Original" is also included so the user can drag the original-ratio box.
+  useEffect(() => {
+    if (!open) return;
+    const editorArea = editorAreaRef.current;
+    if (!editorArea) return;
+
+    let timer = null;
+
+    const handlePresetClick = (e) => {
+      const presetBtn = e.target.closest('[class*="FIE_crop-preset"]');
+      if (!presetBtn) return;
+
+      // If the user explicitly clicked "Custom", do nothing.
+      const label = (presetBtn.textContent ?? '').trim().toLowerCase();
+      if (label === 'custom') return;
+
+      // Cancel any pending auto-switch from a previous click.
+      if (timer) { clearTimeout(timer); timer = null; }
+
+      timer = setTimeout(() => {
+        timer = null;
+        const area = editorAreaRef.current;
+        if (!area) return;
+        const allPresets = area.querySelectorAll('[class*="FIE_crop-preset"]');
+        const customBtn = Array.from(allPresets).find(
+          (btn) => (btn.textContent ?? '').trim().toLowerCase() === 'custom'
+        );
+        // Only click if Custom is not already the active selection.
+        if (customBtn && customBtn.getAttribute('aria-selected') !== 'true') {
+          customBtn.click();
+        }
+      }, 120);
+    };
+
+    editorArea.addEventListener('click', handlePresetClick);
+    return () => {
+      editorArea.removeEventListener('click', handlePresetClick);
+      if (timer) clearTimeout(timer);
+    };
+  }, [open]);
 
   // ── Revert: restore the state that existed before the last significant action ──
   // "Last action" is either loading a template or the first manual edit since
