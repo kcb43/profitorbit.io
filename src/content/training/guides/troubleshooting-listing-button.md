@@ -41,7 +41,7 @@ If your marketplace connection expired, the button may silently fail.
 Some ad blockers and privacy extensions (uBlock Origin, Privacy Badger) can block the API calls Orben makes to marketplace platforms.
 
 **Fix:**
-1. Temporarily disable your ad blocker for profitorbit.io
+1. Temporarily disable your ad blocker for orben.io
 2. Try posting again
 3. If it works, whitelist the site in your extension settings
 

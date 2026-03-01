@@ -87,6 +87,6 @@ Host permissions for:
 - Poshmark.com
 - eBay.com
 - Etsy.com
-- profitorbit.io
+- orben.io
 - localhost (for development)
 

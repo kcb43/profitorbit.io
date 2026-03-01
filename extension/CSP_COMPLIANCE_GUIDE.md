@@ -25,7 +25,7 @@ All marketplaces (Mercari, Facebook, eBay, Poshmark, Etsy) must follow CSP-safe 
 ### Current Setup (CSP-Safe)
 
 ```
-Profit Orbit Web App (profitorbit.io)
+Profit Orbit Web App (orben.io)
   ↓
 profit-orbit-bridge.js (content script)
   ↓

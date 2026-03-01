@@ -18,14 +18,14 @@
 ## Step 3: Verify URL Matching
 
 The manifest.json has these URL patterns:
-- `https://profitorbit.io/*`
+- `https://orben.io/*`
 - `http://localhost:5173/*`
 - `http://localhost:5174/*`
 
 **Check:**
 1. What URL are you actually on? (Check browser address bar)
 2. Does it match one of the patterns above?
-3. Note: `https://profitorbit.io` (no trailing slash) SHOULD match `https://profitorbit.io/*`
+3. Note: `https://orben.io` (no trailing slash) SHOULD match `https://orben.io/*`
 
 ## Step 4: Check for JavaScript Errors
 
@@ -45,7 +45,7 @@ Check that these files exist in your extension folder:
 
 In the extension console (service worker), try:
 ```javascript
-chrome.tabs.query({url: 'https://profitorbit.io/*'}, (tabs) => {
+chrome.tabs.query({url: 'https://orben.io/*'}, (tabs) => {
   console.log('Found tabs:', tabs);
   if (tabs.length > 0) {
     chrome.scripting.executeScript({
@@ -59,7 +59,7 @@ chrome.tabs.query({url: 'https://profitorbit.io/*'}, (tabs) => {
 ## Common Issues:
 
 1. **Extension not reloaded**: After code changes, you MUST reload the extension
-2. **Wrong URL**: Make sure you're on `https://profitorbit.io` or localhost
+2. **Wrong URL**: Make sure you're on `https://orben.io` or localhost
 3. **File missing**: Verify `profit-orbit-bridge.js` exists in extension folder
 4. **Manifest error**: Check for JSON syntax errors in manifest.json
 5. **CSP blocking**: Shouldn't be an issue since we use separate file, but check Network tab

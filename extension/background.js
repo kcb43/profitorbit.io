@@ -428,7 +428,7 @@ try {
 function isProfitOrbitAppUrl(rawUrl) {
   try {
     const u = new URL(rawUrl);
-    if (u.hostname === 'profitorbit.io') return true;
+    if (u.hostname === 'orben.io') return true;
     if (u.hostname.endsWith('.vercel.app')) return true;
     if (u.hostname === 'localhost' && (u.port === '5173' || u.port === '5174')) return true;
     return false;
@@ -454,7 +454,7 @@ const MERCARI_SERVER_SYNC_DEBOUNCE_MS = 10_000; // max once per 10s
 
 async function getOrbenAuthToken() {
   const ORBIT_URLS = [
-    'https://profitorbit.io/*',
+    'https://orben.io/*',
     'https://*.vercel.app/*',
     'http://localhost:5173/*',
     'http://localhost:5174/*',
@@ -522,8 +522,8 @@ async function syncMercariTokensToServer() {
     } catch (_) {}
 
     // Determine the API base URL from the open Orben tab
-    const tabs = await chrome.tabs.query({ url: ['https://profitorbit.io/*', 'https://*.vercel.app/*', 'http://localhost:5173/*', 'http://localhost:5174/*'] }).catch(() => []);
-    let apiBase = 'https://profitorbit.io';
+    const tabs = await chrome.tabs.query({ url: ['https://orben.io/*', 'https://*.vercel.app/*', 'http://localhost:5173/*', 'http://localhost:5174/*'] }).catch(() => []);
+    let apiBase = 'https://orben.io';
     for (const tab of tabs) {
       if (tab?.url) {
         const u = new URL(tab.url);
@@ -557,7 +557,7 @@ async function syncMercariTokensToServer() {
 async function notifyProfitOrbit(message) {
   const tabs = await chrome.tabs.query({
     url: [
-      'https://profitorbit.io/*',
+      'https://orben.io/*',
       'https://*.vercel.app/*',
       'http://localhost:5173/*',
       'http://localhost:5174/*',
@@ -600,7 +600,7 @@ async function getProfitOrbitBaseUrlForTemplates() {
   // otherwise fall back to production.
   const candidates = await chrome.tabs.query({
     url: [
-      'https://profitorbit.io/*',
+      'https://orben.io/*',
       'https://*.vercel.app/*',
       'http://localhost:5173/*',
       'http://localhost:5174/*',
@@ -621,7 +621,7 @@ async function getProfitOrbitBaseUrlForTemplates() {
       if (u.hostname.endsWith('.vercel.app')) return `${u.protocol}//${u.host}`;
     } catch (_) {}
   }
-  return 'https://profitorbit.io';
+  return 'https://orben.io';
 }
 
 async function fetchFacebookGoldenTemplates() {
@@ -4354,7 +4354,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   error: 'missing_facebook_recording',
                   inMemoryCount: inMemoryRecords.length,
                   hint:
-                    'On a profitorbit.io tab, run ProfitOrbitExtension.startFacebookApiRecording(), then in a facebook.com tab delete/delist a Marketplace listing, then run ProfitOrbitExtension.stopFacebookApiRecording().',
+                    'On a orben.io tab, run ProfitOrbitExtension.startFacebookApiRecording(), then in a facebook.com tab delete/delist a Marketplace listing, then run ProfitOrbitExtension.stopFacebookApiRecording().',
                 },
               },
               () => {}
@@ -4927,7 +4927,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   savedCount: typeof last?.count === 'number' ? last.count : null,
                   runtimeId: chrome?.runtime?.id || null,
                   hint:
-                    'On a profitorbit.io tab, run ProfitOrbitExtension.startFacebookApiRecording(), then in a facebook.com tab create a Marketplace item and upload at least 1 photo, then run ProfitOrbitExtension.stopFacebookApiRecording().',
+                    'On a orben.io tab, run ProfitOrbitExtension.startFacebookApiRecording(), then in a facebook.com tab create a Marketplace item and upload at least 1 photo, then run ProfitOrbitExtension.stopFacebookApiRecording().',
                 },
               },
               () => {}

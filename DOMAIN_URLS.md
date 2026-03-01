@@ -1,8 +1,8 @@
-# Domain URLs Reference: profitorbit.io
+# Domain URLs Reference: orben.io
 
 ## 🌐 Your Domain
 
-**Primary Domain**: `profitorbit.io`  
+**Primary Domain**: `orben.io`  
 **Backup Domain**: `profit-pulse-2.vercel.app` (still works)
 
 ---
@@ -13,18 +13,18 @@
 
 **App Domains:**
 ```
-profitorbit.io
+orben.io
 ```
 
 **Site URL:**
 ```
-https://profitorbit.io
+https://orben.io
 ```
 
 **Valid OAuth Redirect URIs:**
 ```
-https://profitorbit.io/api/facebook/callback
-https://www.profitorbit.io/api/facebook/callback
+https://orben.io/api/facebook/callback
+https://www.orben.io/api/facebook/callback
 ```
 
 **Facebook App Settings Pages:**
@@ -37,7 +37,7 @@ https://www.profitorbit.io/api/facebook/callback
 
 **Accepted Auth URL (OAuth Redirect URI):**
 ```
-https://profitorbit.io/api/ebay/callback
+https://orben.io/api/ebay/callback
 ```
 
 **eBay Developer Console:**
@@ -48,7 +48,7 @@ https://profitorbit.io/api/ebay/callback
 ### Vercel Environment Variable (Optional)
 
 **Name**: `BASE_URL`  
-**Value**: `https://profitorbit.io`  
+**Value**: `https://orben.io`  
 **Environments**: Production, Preview, Development
 
 **Vercel Dashboard:**
@@ -60,27 +60,27 @@ https://profitorbit.io/api/ebay/callback
 
 **Homepage:**
 ```
-https://profitorbit.io
+https://orben.io
 ```
 
 **Settings Page (Facebook Login):**
 ```
-https://profitorbit.io/Settings
+https://orben.io/Settings
 ```
 
 **Crosslist Composer (eBay Connection):**
 ```
-https://profitorbit.io/CrosslistComposer
+https://orben.io/CrosslistComposer
 ```
 
 **Facebook OAuth Debug:**
 ```
-https://profitorbit.io/api/facebook/auth?debug=true
+https://orben.io/api/facebook/auth?debug=true
 ```
 
 **eBay OAuth Debug:**
 ```
-https://profitorbit.io/api/ebay/auth?debug=true
+https://orben.io/api/ebay/auth?debug=true
 ```
 
 ---
@@ -89,11 +89,11 @@ https://profitorbit.io/api/ebay/auth?debug=true
 
 Copy these URLs when updating settings:
 
-- [ ] Facebook App Domains: `profitorbit.io`
-- [ ] Facebook Site URL: `https://profitorbit.io`
-- [ ] Facebook OAuth Redirect: `https://profitorbit.io/api/facebook/callback`
-- [ ] eBay OAuth Redirect: `https://profitorbit.io/api/ebay/callback`
-- [ ] Vercel BASE_URL (optional): `https://profitorbit.io`
+- [ ] Facebook App Domains: `orben.io`
+- [ ] Facebook Site URL: `https://orben.io`
+- [ ] Facebook OAuth Redirect: `https://orben.io/api/facebook/callback`
+- [ ] eBay OAuth Redirect: `https://orben.io/api/ebay/callback`
+- [ ] Vercel BASE_URL (optional): `https://orben.io`
 
 ---
 

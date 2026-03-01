@@ -26,30 +26,8 @@ import EbaySoldDialog from "@/components/EbaySoldDialog";
 import { extractCustomFees, getCustomFeesTotal, injectCustomFees } from "@/utils/customFees";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 
-const PREDEFINED_CATEGORIES = [
-  "Antiques",
-  "Books, Movies & Music",
-  "Clothing & Apparel",
-  "Collectibles",
-  "Electronics",
-  "Gym/Workout",
-  "Health & Beauty",
-  "Home & Garden",
-  "Jewelry & Watches",
-  "Kitchen",
-  "Makeup",
-  "Mic/Audio Equipment",
-  "Motorcycle",
-  "Motorcycle Accessories",
-  "Pets",
-  "Pool Equipment",
-  "Shoes/Sneakers",
-  "Stereos & Speakers",
-  "Sporting Goods",
-  "Tools",
-  "Toys & Hobbies",
-  "Yoga"
-];
+import { CATEGORIES, UNCATEGORIZED } from "@/lib/categories";
+const PREDEFINED_CATEGORIES = [...CATEGORIES, UNCATEGORIZED];
 
 const MoneyPrinterIcon = ({ className = "" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className}>
@@ -949,19 +927,18 @@ export default function AddSale() {
                       )}
                     </SelectContent>
                   </Select>
-                  {customSources.length > 0 && (
+                  {/* Show removable chip only for the currently selected custom source */}
+                  {formData.source && customSources.includes(formData.source) && (
                     <div className="flex flex-wrap gap-1 pt-1">
-                      {customSources.map(src => (
-                        <span key={src} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
-                          {src}
-                          <button
-                            type="button"
-                            onClick={() => { removeCustomSource(src); if (formData.source === src) handleChange('source', ''); }}
-                            className="hover:text-destructive ml-0.5 leading-none"
-                            title={`Remove "${src}"`}
-                          >×</button>
-                        </span>
-                      ))}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
+                        {formData.source}
+                        <button
+                          type="button"
+                          onClick={() => { removeCustomSource(formData.source); handleChange('source', ''); }}
+                          className="hover:text-destructive ml-0.5 leading-none"
+                          title={`Remove "${formData.source}"`}
+                        >×</button>
+                      </span>
                     </div>
                   )}
                 </div>

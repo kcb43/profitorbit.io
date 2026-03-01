@@ -39,7 +39,7 @@ eBay tokens expire after 18 months. Orben will notify you when your token needs 
 ## Troubleshooting
 
 **Redirected to eBay but nothing happened**
-- Disable any popup blockers for profitorbit.io
+- Disable any popup blockers for orben.io
 - Try in an incognito/private window
 
 **Import shows 0 items**

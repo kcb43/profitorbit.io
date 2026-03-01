@@ -14,7 +14,7 @@ import DatePickerInput from "@/components/DatePickerInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2, Plus } from "lucide-react";
+import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2, Plus, RefreshCw } from "lucide-react";
 import { format, parseISO, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -46,6 +46,7 @@ import { supabase } from "@/api/supabaseClient";
 import { openAuthExport } from "@/utils/exportWithAuth";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
+import { syncSalesForInventoryItemIds } from "@/services/salesSync";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
@@ -84,29 +85,8 @@ const getResaleValue = (profit, roi) => {
   }
 };
 
-const PREDEFINED_CATEGORIES = [
-  "Antiques",
-  "Books, Movies & Music",
-  "Clothing & Apparel",
-  "Collectibles",
-  "Electronics",
-  "Gym/Workout",
-  "Health & Beauty",
-  "Home & Garden",
-  "Jewelry & Watches",
-  "Kitchen",
-  "Makeup",
-  "Mic/Audio Equipment",
-  "Motorcycle",
-  "Motorcycle Accessories",
-  "Pets",
-  "Pool Equipment",
-  "Shoes/Sneakers",
-  "Sporting Goods",
-  "Stereos & Speakers",
-  "Tools",
-  "Toys & Hobbies",
-  "Yoga",
+import { CATEGORIES, UNCATEGORIZED } from "@/lib/categories";
+const PREDEFINED_CATEGORIES = [...CATEGORIES, UNCATEGORIZED,
 ];
 
 export default function SalesHistory() {
@@ -114,6 +94,7 @@ export default function SalesHistory() {
   const highlightId = searchParams.get('highlight');
   const highlightRef = useRef(null);
   
+  const [syncLoading, setSyncLoading] = useState(false);
   const [filters, setFilters] = useState({
     searchTerm: "",
     platform: "all",
@@ -1242,6 +1223,50 @@ export default function SalesHistory() {
             <p className="text-muted-foreground mt-1 break-words">View and manage all your sales</p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={syncLoading}
+              onClick={async () => {
+                try {
+                  setSyncLoading(true);
+                  toast({ title: "Syncing sales...", description: "Checking Mercari + eBay listing statuses." });
+                  // Get auth session for API call
+                  let session = null;
+                  for (let i = 0; i < 8; i++) {
+                    const res = await supabase.auth.getSession();
+                    session = res?.data?.session || null;
+                    if (session?.access_token) break;
+                    await new Promise((r) => setTimeout(r, 150));
+                  }
+                  const authHeaders = {
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                    ...(session?.user?.id ? { 'x-user-id': session.user.id } : {}),
+                  };
+                  const idsResp = await fetch("/api/inventory?fields=id&exclude_deleted=true&exclude_status=sold&limit=5000", { headers: authHeaders });
+                  const idsData = await idsResp.json();
+                  const ids = Array.isArray(idsData?.data) ? idsData.data.map((i) => i.id).filter(Boolean) : [];
+                  if (ids.length === 0) {
+                    toast({ title: "No items to sync", description: "No active inventory items found." });
+                    return;
+                  }
+                  const summary = await syncSalesForInventoryItemIds(ids, { marketplaces: ["mercari", "ebay"] });
+                  toast({
+                    title: "Sales sync complete",
+                    description: `Sold: ${summary.sold} \u2022 Delisted: ${summary.delisted} \u2022 Sales created: ${summary.createdSales}`,
+                  });
+                  queryClient.invalidateQueries(["sales"]);
+                  queryClient.invalidateQueries(["inventoryItems"]);
+                } catch (e) {
+                  toast({ title: "Sync failed", description: e?.message, variant: "destructive" });
+                } finally {
+                  setSyncLoading(false);
+                }
+              }}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncLoading ? "animate-spin" : ""}`} />
+              Sync Sales
+            </Button>
             <Button
               onClick={() => navigate(createPageUrl("PlatformPerformance"))}
               className="bg-green-600 hover:bg-green-700 text-white"

@@ -78,27 +78,64 @@ export default async function handler(req, res) {
         const proxiedImageUrl = proxyImageUrl(item.imageUrl);
         const proxiedPictureURLs = (item.pictureURLs || []).map(proxyImageUrl);
         
-        // Check if inventory item already exists (by title and price for Mercari)
-        // Mercari has item IDs but they're not stored in our DB, so match by title + price
+        // Smart-match dedup: check by mercari_item_id first, then title+price fallback.
         let inventoryId = null;
         let isExistingItem = false;
-        
-        const { data: existingItem, error: searchError } = await supabase
-          .from('inventory_items')
-          .select('id, item_name, status, listing_price')
-          .eq('user_id', userId)
-          .eq('source', 'Mercari')
-          .ilike('item_name', item.title) // Exact title match
-          .is('deleted_at', null)
-          .maybeSingle();
-        
-        if (existingItem) {
-          // Double-check price is similar (within $5)
-          const priceDiff = Math.abs((existingItem.listing_price || 0) - (item.price || 0));
-          if (priceDiff <= 5) {
-            inventoryId = existingItem.id;
+
+        // 1. Try exact match by mercari_item_id (most reliable)
+        if (item.itemId) {
+          const { data: idMatch } = await supabase
+            .from('inventory_items')
+            .select('id, item_name, status, listing_price, quantity, quantity_sold')
+            .eq('user_id', userId)
+            .eq('mercari_item_id', String(item.itemId))
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          if (idMatch) {
+            inventoryId = idMatch.id;
             isExistingItem = true;
-            console.log(`✅ Found existing inventory item: ${existingItem.item_name} (ID: ${inventoryId})`);
+            console.log(`✅ Found existing item by mercari_item_id: ${idMatch.item_name} (ID: ${inventoryId})`);
+          }
+        }
+
+        // 2. Try matching by marketplace_listings table
+        if (!isExistingItem && item.itemId) {
+          const { data: listingMatch } = await supabase
+            .from('marketplace_listings')
+            .select('inventory_item_id')
+            .eq('user_id', userId)
+            .eq('marketplace', 'mercari')
+            .eq('marketplace_listing_id', String(item.itemId))
+            .maybeSingle();
+
+          if (listingMatch) {
+            inventoryId = listingMatch.inventory_item_id;
+            isExistingItem = true;
+            console.log(`✅ Found existing item via marketplace_listings: ${inventoryId}`);
+          }
+        }
+
+        // 3. Fallback: match any inventory item by exact title + similar price (any source)
+        if (!isExistingItem) {
+          const { data: titleMatch } = await supabase
+            .from('inventory_items')
+            .select('id, item_name, status, listing_price, quantity, quantity_sold')
+            .eq('user_id', userId)
+            .ilike('item_name', item.title)
+            .is('deleted_at', null)
+            .limit(5);
+
+          if (titleMatch && titleMatch.length > 0) {
+            const bestMatch = titleMatch.find(m => {
+              const priceDiff = Math.abs((m.listing_price || 0) - (item.price || 0));
+              return priceDiff <= 10;
+            });
+            if (bestMatch) {
+              inventoryId = bestMatch.id;
+              isExistingItem = true;
+              console.log(`✅ Found existing item by title+price match: ${bestMatch.item_name} (ID: ${inventoryId})`);
+            }
           }
         }
         
@@ -148,30 +185,57 @@ export default async function handler(req, res) {
           inventoryId = insertData.id;
           console.log(`✅ Created new inventory item with ID ${inventoryId}`);
         } else {
-          // If it's a sold item, update the inventory status to 'sold'
-          if (isSoldItem && existingItem.status !== 'sold') {
-            const { error: updateError } = await supabase
+          // Existing item — update mercari_item_id if not set
+          if (item.itemId) {
+            await supabase
               .from('inventory_items')
-              .update({ status: 'sold' })
-              .eq('id', inventoryId);
-            
-            if (updateError) {
-              console.error(`⚠️ Failed to update inventory status to sold:`, updateError);
-            } else {
-              console.log(`✅ Updated inventory item status to 'sold'`);
-            }
+              .update({ mercari_item_id: String(item.itemId) })
+              .eq('id', inventoryId)
+              .is('mercari_item_id', null);
           }
-          
-          // Always update Mercari metrics for existing items (likes/views can change)
-          if (!isSoldItem) {
+
+          if (isSoldItem) {
+            // Fetch current item to check quantity
+            const { data: currentItem } = await supabase
+              .from('inventory_items')
+              .select('status, quantity, quantity_sold')
+              .eq('id', inventoryId)
+              .single();
+
+            if (currentItem) {
+              const qty = currentItem.quantity || 1;
+              const qtySold = currentItem.quantity_sold || 0;
+              const newQtySold = qtySold + 1;
+
+              const newStatus = newQtySold >= qty ? 'sold' : currentItem.status;
+              const updates = {
+                quantity_sold: newQtySold,
+                mercari_likes: item.numLikes || 0,
+                mercari_views: item.views || 0,
+              };
+              if (newStatus !== currentItem.status) updates.status = newStatus;
+
+              const { error: updateError } = await supabase
+                .from('inventory_items')
+                .update(updates)
+                .eq('id', inventoryId);
+
+              if (updateError) {
+                console.error(`⚠️ Failed to update inventory quantity/status:`, updateError);
+              } else {
+                console.log(`✅ Updated inventory: quantity_sold ${qtySold} → ${newQtySold}, status: ${newStatus}`);
+              }
+            }
+          } else {
+            // Always update Mercari metrics for existing active items
             const { error: metricsError } = await supabase
               .from('inventory_items')
-              .update({ 
+              .update({
                 mercari_likes: item.numLikes || 0,
-                mercari_views: item.views || 0
+                mercari_views: item.views || 0,
               })
               .eq('id', inventoryId);
-            
+
             if (metricsError) {
               console.error(`⚠️ Failed to update Mercari metrics:`, metricsError);
             } else {
@@ -179,7 +243,27 @@ export default async function handler(req, res) {
             }
           }
         }
-        
+
+        // Upsert marketplace_listings record
+        try {
+          await supabase
+            .from('marketplace_listings')
+            .upsert(
+              {
+                user_id: userId,
+                inventory_item_id: inventoryId,
+                marketplace: 'mercari',
+                marketplace_listing_id: item.itemId ? String(item.itemId) : null,
+                status: isSoldItem ? 'sold' : 'active',
+                listed_at: item.listingDate || item.startTime || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'inventory_item_id,marketplace' }
+            );
+        } catch (linkErr) {
+          console.error(`⚠️ Failed to upsert marketplace_listings:`, linkErr);
+        }
+
         console.log(`📊 Item data received:`, {
           itemId: item.itemId,
           title: item.title?.substring(0, 50),

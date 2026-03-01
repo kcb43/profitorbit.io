@@ -167,7 +167,7 @@ extension/
    - Open extension popup to see status
 
 2. **Test Profit Orbit integration:**
-   - Go to profitorbit.io/settings
+   - Go to orben.io/settings
    - Click "Mercari Login" (should open popup)
    - Log in on Mercari
    - Click "Connect Mercari"
@@ -204,7 +204,7 @@ To publish to Chrome Web Store:
 
 ## Security Notes
 
-- Extension only runs on mercari.com and profitorbit.io
+- Extension only runs on mercari.com and orben.io
 - No data sent to third parties
 - Session data stored locally only
 - Review manifest permissions carefully

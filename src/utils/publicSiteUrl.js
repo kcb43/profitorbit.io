@@ -1,7 +1,7 @@
 /**
  * Canonical public site URL helper.
  *
- * In production we want OAuth redirects to land on `profitorbit.io` (custom domain),
+ * In production we want OAuth redirects to land on `orben.io` (custom domain),
  * not a Vercel preview domain. This prevents "logged out after reopening" issues
  * caused by sessions being persisted on a different origin.
  */

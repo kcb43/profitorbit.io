@@ -29,32 +29,12 @@ import { scanReceipt } from "@/api/receiptScanner";
 import { ReactSortable } from "react-sortablejs";
 import { splitBase44Tags, mergeBase44Tags } from "@/utils/base44Notes";
 import { DescriptionGenerator } from "@/components/DescriptionGenerator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CATEGORIES, UNCATEGORIZED, migrateLegacyCategory } from "@/lib/categories";
+import { SmartSizeField } from "@/components/SmartSizeField";
 
 const MAX_PHOTOS = 12;
-const PREDEFINED_CATEGORIES = [
-  "Antiques",
-  "Books, Movies & Music",
-  "Clothing & Apparel",
-  "Collectibles",
-  "Electronics",
-  "Gym/Workout",
-  "Health & Beauty",
-  "Home & Garden",
-  "Jewelry & Watches",
-  "Kitchen",
-  "Makeup",
-  "Mic/Audio Equipment",
-  "Motorcycle",
-  "Motorcycle Accessories",
-  "Pets",
-  "Pool Equipment",
-  "Shoes/Sneakers",
-  "Sporting Goods",
-  "Stereos & Speakers",
-  "Tools",
-  "Toys & Hobbies",
-  "Yoga"
-];
+const PREDEFINED_CATEGORIES = [...CATEGORIES, UNCATEGORIZED];
 
 const CONDITION_OPTIONS = [
   "New",
@@ -130,7 +110,8 @@ export default function AddInventoryItem() {
     image_url: "",
     quantity: 1,
     return_deadline: "",
-    photos: []
+    photos: [],
+    is_free_or_gift: false
   });
   const [isOtherSource, setIsOtherSource] = useState(false);
   const [sourceSearch, setSourceSearch] = useState('');
@@ -212,24 +193,31 @@ export default function AddInventoryItem() {
         photos = [{ id: `photo_${Date.now()}`, imageUrl: dataToLoad.image_url, isMain: true }];
       }
 
+      // Migrate legacy category to new Mercari-based system
+      const migratedCategory = PREDEFINED_CATEGORIES.includes(initialCategory)
+        ? initialCategory
+        : migrateLegacyCategory(initialCategory);
+      const isFree = dataToLoad.purchase_price != null && parseFloat(dataToLoad.purchase_price) === 0 && dataToLoad.is_free_or_gift;
+
       setFormData({
         item_name: dataToLoad.item_name || "",
-        purchase_price: (dataToLoad.purchase_price != null && dataToLoad.purchase_price !== 0) ? String(dataToLoad.purchase_price) : "",
+        purchase_price: (dataToLoad.purchase_price != null && dataToLoad.purchase_price !== 0) ? String(dataToLoad.purchase_price) : (isFree ? "0" : ""),
         purchase_date: dataToLoad.purchase_date || new Date().toISOString().split('T')[0],
         source: initialSource,
         status: isCopying ? "available" : (dataToLoad.status || "available"),
-        category: initialCategory,
-        brand: dataToLoad.brand || "", // Load brand
-        condition: dataToLoad.condition || "", // Load condition
-        size: dataToLoad.size || "", // Load size
+        category: migratedCategory || initialCategory,
+        brand: dataToLoad.brand || "",
+        condition: dataToLoad.condition || "",
+        size: dataToLoad.size || "",
         description: isCopying ? "" : cleanHtmlText(dataToLoad.description || legacyDescriptionFromNotes),
         notes: isCopying ? "" : cleanNotes,
         image_url: dataToLoad.image_url || "",
         quantity: dataToLoad.quantity || 1,
         return_deadline: isCopying ? "" : (dataToLoad.return_deadline || ""),
         photos: photos,
-        mercari_likes: dataToLoad.mercari_likes || 0, // Load Mercari likes
-        mercari_views: dataToLoad.mercari_views || 0, // Load Mercari views
+        mercari_likes: dataToLoad.mercari_likes || 0,
+        mercari_views: dataToLoad.mercari_views || 0,
+        is_free_or_gift: !!isFree,
       });
       
       // Debug log to verify data is loaded
@@ -986,18 +974,30 @@ export default function AddInventoryItem() {
                     </div>
                      <div className="space-y-2 min-w-0">
                         <Label htmlFor="purchase_price" className="text-foreground break-words">
-                          Purchase Price / Cost {formData.source !== 'Facebook' && formData.source !== 'Mercari' && <span className="text-red-500">*</span>}
+                          Purchase Price / Cost {formData.source !== 'Facebook' && formData.source !== 'Mercari' && !formData.is_free_or_gift && <span className="text-red-500">*</span>}
                         </Label>
-                        <Input 
-                          id="purchase_price" 
-                          type="number" 
-                          step="0.01" 
-                          min="0" 
-                          value={formData.purchase_price} 
-                          onChange={(e) => handleChange('purchase_price', e.target.value)} 
+                        <div className="flex items-center gap-3 mb-1">
+                          <Checkbox
+                            id="free_or_gift"
+                            checked={!!formData.is_free_or_gift}
+                            onCheckedChange={(checked) => {
+                              handleChange('is_free_or_gift', checked);
+                              if (checked) handleChange('purchase_price', '0');
+                            }}
+                          />
+                          <Label htmlFor="free_or_gift" className="text-sm text-muted-foreground cursor-pointer">Free or Gift</Label>
+                        </div>
+                        <Input
+                          id="purchase_price"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.purchase_price}
+                          onChange={(e) => handleChange('purchase_price', e.target.value)}
                           placeholder={formData.source === 'Facebook' || formData.source === 'Mercari' ? "Optional - add your actual cost" : "0.00"}
-                          required={formData.source !== 'Facebook' && formData.source !== 'Mercari'}
-                          className="w-full text-foreground bg-background"
+                          required={formData.source !== 'Facebook' && formData.source !== 'Mercari' && !formData.is_free_or_gift}
+                          disabled={!!formData.is_free_or_gift}
+                          className={`w-full text-foreground bg-background ${formData.is_free_or_gift ? 'opacity-50 cursor-not-allowed' : ''}`}
                         />
                         {(formData.source === 'Facebook' || formData.source === 'Mercari') && (
                           <p className="text-xs text-muted-foreground">
@@ -1130,20 +1130,18 @@ export default function AddInventoryItem() {
                           )}
                         </SelectContent>
                       </Select>
-                      {/* Custom source management chips */}
-                      {customSources.length > 0 && (
+                      {/* Show removable chip only for the currently selected custom source */}
+                      {formData.source && customSources.includes(formData.source) && (
                         <div className="flex flex-wrap gap-1 pt-1">
-                          {customSources.map(src => (
-                            <span key={src} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
-                              {src}
-                              <button
-                                type="button"
-                                onClick={() => { removeCustomSource(src); if (formData.source === src) handleChange('source', ''); }}
-                                className="hover:text-destructive ml-0.5 leading-none"
-                                title={`Remove "${src}" from custom sources`}
-                              >×</button>
-                            </span>
-                          ))}
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">
+                            {formData.source}
+                            <button
+                              type="button"
+                              onClick={() => { removeCustomSource(formData.source); handleChange('source', ''); }}
+                              className="hover:text-destructive ml-0.5 leading-none"
+                              title={`Remove "${formData.source}" from custom sources`}
+                            >×</button>
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1255,17 +1253,14 @@ export default function AddInventoryItem() {
                         </Select>
                     </div>
 
-                    {/* Size Field (for clothing/shoes) */}
-                    <div className="space-y-2 min-w-0">
-                        <Label htmlFor="size" className="text-foreground break-words">Size (if applicable)</Label>
-                        <Input
-                            id="size"
-                            placeholder="e.g., M, 10, XL, 32x34"
-                            value={formData.size || ""}
-                            onChange={(e) => handleChange('size', e.target.value)}
-                            className="w-full text-foreground bg-background"
-                        />
-                    </div>
+                    {/* Smart Size Field — only shows for clothing/shoes/etc. */}
+                    <SmartSizeField
+                      title={formData.item_name}
+                      description={formData.description}
+                      category={formData.category}
+                      value={formData.size}
+                      onChange={(val) => handleChange('size', val)}
+                    />
 
 
                     <div className="space-y-2 md:col-span-2 min-w-0">

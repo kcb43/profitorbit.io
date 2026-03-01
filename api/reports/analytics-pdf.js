@@ -410,7 +410,7 @@ function buildHtml({ data, rangeLabel, generatedAt, from, to }) {
 
   <!-- Footer -->
   <div class="footer">
-    <span>Orben · profitorbit.io</span>
+    <span>Orben · orben.io</span>
     <span>This report is confidential. Generated ${generatedAt}</span>
   </div>
 

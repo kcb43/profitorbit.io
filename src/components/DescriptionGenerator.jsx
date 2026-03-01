@@ -356,6 +356,36 @@ export function DescriptionGenerator({
     });
   }
 
+  async function handleApplyAll() {
+    let applied = 0;
+    // Apply all marketplace descriptions
+    for (const platform of ['ebay', 'mercari', 'facebook']) {
+      const text = editedTexts[platform]?.trim();
+      if (text) {
+        onSelectDescription(text, platform);
+        applied++;
+      }
+    }
+    // Apply tags
+    const tagsText = editedTexts.tags?.trim();
+    if (tagsText && onApplyTags) {
+      const tagsArray = tagsText.split('\n').map(t => t.trim()).filter(Boolean);
+      if (tagsArray.length > 0) {
+        try {
+          await onApplyTags(tagsArray);
+          applied++;
+        } catch (err) {
+          console.error('Failed to apply tags:', err);
+        }
+      }
+    }
+    onOpenChange(false);
+    toast({
+      title: 'All descriptions & tags applied',
+      description: `Applied to ${applied} field${applied !== 1 ? 's' : ''}.`,
+    });
+  }
+
   async function handleApplyTags() {
     const tagsText = editedTexts.tags?.trim();
     if (!tagsText || !onApplyTags) return;
@@ -665,12 +695,26 @@ export function DescriptionGenerator({
               {isDone && activeTab !== 'tags' && (
                 <Button
                   size="sm"
+                  variant="outline"
                   onClick={handleApply}
                   disabled={!editedTexts[activeTab]?.trim()}
                   className="gap-1.5"
                 >
                   <Check className="w-3.5 h-3.5" />
                   Use {activePlatform?.label} Description
+                </Button>
+              )}
+
+              {/* Apply All — descriptions + tags in one click */}
+              {isDone && (
+                <Button
+                  size="sm"
+                  onClick={handleApplyAll}
+                  disabled={!editedTexts.ebay?.trim() && !editedTexts.mercari?.trim() && !editedTexts.facebook?.trim()}
+                  className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Apply All Descriptions & Tags
                 </Button>
               )}
             </div>

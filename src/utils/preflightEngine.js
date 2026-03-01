@@ -224,6 +224,66 @@ export async function preflightSelectedMarketplaces(
       }
     }
 
+    // Offer protection: auto-suggest minimum offer price at 70% of listing price
+    const price = parseFloat(generalForm.price);
+    if (!isNaN(price) && price > 0) {
+      const floorPrice = Math.round(price * 0.7);
+      if (marketplace === 'ebay') {
+        const form = formByMarketplace.ebay || {};
+        if (form.allowBestOffer && !form.minimumOfferPrice) {
+          issues.push({
+            marketplace,
+            field: 'minimumOfferPrice',
+            type: 'suggestion',
+            severity: 'warning',
+            message: `Best Offer is enabled but no minimum price is set. Buyers could offer very low amounts.`,
+            patchTarget: 'ebay',
+            suggested: {
+              label: String(floorPrice),
+              confidence: 0.9,
+              reasoning: `Auto-set to 70% of listing price ($${floorPrice})`,
+            },
+          });
+        }
+      }
+      if (marketplace === 'facebook') {
+        const form = formByMarketplace.facebook || {};
+        if (form.allowOffers && !form.minimumOfferPrice) {
+          issues.push({
+            marketplace,
+            field: 'minimumOfferPrice',
+            type: 'suggestion',
+            severity: 'warning',
+            message: `Offers are enabled but no minimum price is set. Buyers could offer very low amounts.`,
+            patchTarget: 'facebook',
+            suggested: {
+              label: String(floorPrice),
+              confidence: 0.9,
+              reasoning: `Auto-set to 70% of listing price ($${floorPrice})`,
+            },
+          });
+        }
+      }
+      if (marketplace === 'mercari') {
+        const form = formByMarketplace.mercari || {};
+        if (form.smartOffers && !form.floorPrice) {
+          issues.push({
+            marketplace,
+            field: 'floorPrice',
+            type: 'suggestion',
+            severity: 'warning',
+            message: `Smart Offers is enabled but no floor price is set.`,
+            patchTarget: 'mercari',
+            suggested: {
+              label: String(floorPrice),
+              confidence: 0.9,
+              reasoning: `Auto-set to 70% of listing price ($${floorPrice})`,
+            },
+          });
+        }
+      }
+    }
+
     const blockingIssues  = issues.filter(i => i.severity === 'blocking');
     const suggestionIssues = issues.filter(i => i.severity === 'suggestion');
 
@@ -265,13 +325,17 @@ export async function preflightSelectedMarketplaces(
         }
       }
 
-      // Auto-apply high-confidence suggestions if enabled
+      // Auto-apply high-confidence suggestions if enabled.
+      // In auto mode, also auto-apply warnings with suggestions (e.g., offer protection).
       if (autoApplyHighConfidence && onApplyPatch) {
         const fixesToApply = [];
 
         for (const { issues } of fixesNeeded) {
           for (const issue of issues) {
-            if (issue.suggested && issue.suggested.confidence >= 0.85) {
+            if (!issue.suggested) continue;
+            const isHighConfidence = issue.suggested.confidence >= 0.85;
+            const isAutoApplyWarning = issue.severity === 'warning' && issue.suggested;
+            if (isHighConfidence || isAutoApplyWarning) {
               fixesToApply.push({ issue, value: issue.suggested.id || issue.suggested.label });
             }
           }
@@ -286,9 +350,10 @@ export async function preflightSelectedMarketplaces(
         }
 
         // Remove auto-applied issues and re-check readiness
+        const appliedFields = new Set(fixesToApply.map(f => `${f.issue.marketplace}:${f.issue.field}`));
         for (const marketplaceData of fixesNeeded) {
           marketplaceData.issues = marketplaceData.issues.filter(
-            issue => !issue.suggested || issue.suggested.confidence < 0.85
+            issue => !appliedFields.has(`${issue.marketplace}:${issue.field}`)
           );
         }
 
@@ -328,9 +393,9 @@ async function getAISuggestions(
   fixesNeeded
 ) {
   try {
-    // Only send blocking issues to the AI (suggestions are client-side only)
+    // Send blocking issues + issues without suggestions to the AI for enrichment
     const allIssues = fixesNeeded.flatMap(({ issues }) =>
-      issues.filter(i => i.severity === 'blocking')
+      issues.filter(i => (i.severity === 'blocking' || i.severity === 'warning') && !i.suggested)
     );
 
     const response = await fetch('/api/ai/auto-fill-fields', {

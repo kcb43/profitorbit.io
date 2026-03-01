@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { getFulfillmentProfile, saveFulfillmentProfile } from '@/api/fulfillmentApi';
+import { usePreferences } from '@/lib/usePreferences';
 import {
   HANDLING_TIME_OPTIONS,
   FLAT_SHIPPING_SERVICES,
@@ -123,6 +124,8 @@ const PLATFORMS = [
 export default function FulfillmentSettings() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { prefs, updatePrefs } = usePreferences();
+  const [defaultZip, setDefaultZip] = useState('');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -139,6 +142,13 @@ export default function FulfillmentSettings() {
     shipping_notes:       '',
     platform_notes:       {},
   });
+
+  // Load default zip from user preferences
+  useEffect(() => {
+    if (prefs?.fulfillment?.defaultZip) {
+      setDefaultZip(prefs.fulfillment.defaultZip);
+    }
+  }, [prefs?.fulfillment?.defaultZip]);
 
   // Load existing profile on mount
   useEffect(() => {
@@ -234,6 +244,34 @@ export default function FulfillmentSettings() {
           option is enabled here. If disabled, no fulfillment text will appear in generated descriptions.
         </AlertDescription>
       </Alert>
+
+      {/* ── Default Zip Code ──────────────────────────────────────────────── */}
+      <section className="space-y-3 rounded-xl border p-5 bg-card">
+        <div className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          <div>
+            <h2 className="font-semibold">Default Zip Code</h2>
+            <p className="text-xs text-muted-foreground">Auto-fills the zip code on all new listings</p>
+          </div>
+        </div>
+        <div className="max-w-[200px]">
+          <Input
+            id="default_zip"
+            placeholder="e.g. 02356"
+            value={defaultZip}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9-]/g, '').slice(0, 10);
+              setDefaultZip(val);
+            }}
+            onBlur={() => {
+              if (defaultZip !== (prefs?.fulfillment?.defaultZip || '')) {
+                updatePrefs({ fulfillment: { defaultZip } });
+                toast({ title: 'Default zip code saved', duration: 2000 });
+              }
+            }}
+          />
+        </div>
+      </section>
 
       {/* ── Pickup ───────────────────────────────────────────────────────────── */}
       <section className="space-y-4 rounded-xl border p-5 bg-card">

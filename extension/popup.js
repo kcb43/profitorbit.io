@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Open Profit Orbit button
   openProfitOrbit.addEventListener('click', () => {
     chrome.tabs.create({
-      url: 'https://profitorbit.io',
+      url: 'https://orben.io',
       active: true
     });
   });
@@ -128,7 +128,7 @@ async function handleConnectMarketplace(marketplaceId) {
     // Get API URL and auth token from web app
     // First, try to get from web app via message
     const webAppTabs = await chrome.tabs.query({
-      url: ['https://profitorbit.io/*', 'http://localhost:5173/*', 'http://localhost:5174/*']
+      url: ['https://orben.io/*', 'http://localhost:5173/*', 'http://localhost:5174/*']
     });
 
     if (webAppTabs.length === 0) {

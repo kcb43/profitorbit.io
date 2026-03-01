@@ -704,6 +704,21 @@ export function validateEbayForm(generalForm, ebayForm, options = {}) {
       message: 'Brand is required for eBay',
       patchTarget: 'ebay',
     });
+  } else if (!ebayForm.ebayBrand && generalForm.brand === 'Unbranded') {
+    // User selected "No brand" — use "Unbranded" for eBay (eBay accepts this)
+    issues.push({
+      marketplace: 'ebay',
+      field: 'ebayBrand',
+      type: 'missing',
+      severity: 'blocking',
+      message: 'eBay brand is not set — will use "Unbranded"',
+      patchTarget: 'ebay',
+      suggested: {
+        label: 'Unbranded', confidence: 0.95,
+        reasoning: 'Using "Unbranded" since no brand was specified',
+        sourceField: 'brand', sourceValue: 'Unbranded',
+      },
+    });
   } else if (!ebayForm.ebayBrand && generalForm.brand) {
     // Brand is available from general form — add as a suggestion-aware blocking issue
     issues.push({
@@ -1080,7 +1095,8 @@ export function validateMercariForm(generalForm, mercariForm, options = {}) {
   
   // Brand validation
   const brand = mercariForm.brand || generalForm.brand;
-  if (!brand && !mercariForm.noBrand) {
+  const isUnbranded = generalForm.brand === 'Unbranded';
+  if (!brand && !mercariForm.noBrand && !isUnbranded) {
     issues.push({
       marketplace: 'mercari',
       field: 'brand',
@@ -1089,7 +1105,22 @@ export function validateMercariForm(generalForm, mercariForm, options = {}) {
       message: 'Brand is required. Enter a brand name or check "No Brand".',
       patchTarget: 'mercari',
     });
-  } else if (!mercariForm.brand && generalForm.brand && !mercariForm.noBrand) {
+  } else if (isUnbranded && !mercariForm.noBrand && !mercariForm.brand) {
+    // User selected "No brand" on general form — auto-suggest setting noBrand for Mercari
+    issues.push({
+      marketplace: 'mercari',
+      field: 'noBrand',
+      type: 'suggestion',
+      severity: 'blocking',
+      message: 'No brand specified — Mercari "No Brand" will be applied',
+      patchTarget: 'mercari',
+      suggested: {
+        label: true, confidence: 0.95,
+        reasoning: 'Setting "No Brand" since brand was marked as unbranded',
+        sourceField: 'brand', sourceValue: 'Unbranded',
+      },
+    });
+  } else if (!mercariForm.brand && generalForm.brand && !mercariForm.noBrand && !isUnbranded) {
     issues.push({
       marketplace: 'mercari',
       field: 'brand',

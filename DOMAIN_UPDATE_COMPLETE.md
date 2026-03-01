@@ -1,8 +1,8 @@
-# ✅ Domain Update Complete: profitorbit.io
+# ✅ Domain Update Complete: orben.io
 
 ## 🎉 What I've Updated
 
-All code references have been updated from `profit-pulse-2.vercel.app` to `profitorbit.io`:
+All code references have been updated from `profit-pulse-2.vercel.app` to `orben.io`:
 
 ### Code Files Updated:
 - ✅ `api/facebook/callback.js` - Production domain fallbacks
@@ -14,7 +14,7 @@ The code now uses dynamic domain detection with this priority:
 1. **BASE_URL** environment variable (if set)
 2. **VERCEL_URL** environment variable (from Vercel)
 3. **Request headers** (host, referer)
-4. **Fallback to profitorbit.io** (production domain)
+4. **Fallback to orben.io** (production domain)
 5. **localhost:5173** (local development)
 
 ---
@@ -29,7 +29,7 @@ If you haven't already:
 2. Click on **ProfitPulse-2** project
 3. Go to **Settings** → **Domains**
 4. Click **Add**
-5. Enter: `profitorbit.io`
+5. Enter: `orben.io`
 6. Add DNS records that Vercel shows you to GoDaddy DNS settings
 
 **See `GODADDY_SETUP_STEPS.md` for detailed instructions.**
@@ -39,12 +39,12 @@ If you haven't already:
 ### 2. Update Facebook App Settings
 
 1. Go to: https://developers.facebook.com/apps/1855278678430851/settings/basic/
-2. Add to **App Domains**: `profitorbit.io`
-3. Add to **Site URL**: `https://profitorbit.io`
+2. Add to **App Domains**: `orben.io`
+3. Add to **Site URL**: `https://orben.io`
 
 4. Go to: https://developers.facebook.com/apps/1855278678430851/fb-login/settings/
 5. Add to **Valid OAuth Redirect URIs**:
-   - `https://profitorbit.io/api/facebook/callback`
+   - `https://orben.io/api/facebook/callback`
    - (Keep the old Vercel URL too for now: `https://profit-pulse-2.vercel.app/api/facebook/callback`)
 
 ---
@@ -55,7 +55,7 @@ If you haven't already:
 2. Select your eBay application
 3. Go to **"Auth(new security)"** section
 4. Add **Accepted Auth URL**:
-   - `https://profitorbit.io/api/ebay/callback`
+   - `https://orben.io/api/ebay/callback`
    - (Keep the old Vercel URL too for now)
 
 ---
@@ -65,7 +65,7 @@ If you haven't already:
 In Vercel Dashboard → Your Project → Settings → Environment Variables:
 
 - **Name**: `BASE_URL`
-- **Value**: `https://profitorbit.io`
+- **Value**: `https://orben.io`
 - **Environment**: Production, Preview, Development
 
 This ensures the domain is always used correctly.
@@ -76,15 +76,15 @@ This ensures the domain is always used correctly.
 
 Once your domain is connected and DNS is propagated:
 
-1. **Test your domain**: Visit `https://profitorbit.io` (should show your app)
-2. **Test Facebook login**: Go to `https://profitorbit.io/Settings` → Click "Login with Facebook"
-3. **Test eBay connection**: Go to `https://profitorbit.io/CrosslistComposer` → Click "Connect eBay"
+1. **Test your domain**: Visit `https://orben.io` (should show your app)
+2. **Test Facebook login**: Go to `https://orben.io/Settings` → Click "Login with Facebook"
+3. **Test eBay connection**: Go to `https://orben.io/CrosslistComposer` → Click "Connect eBay"
 
 ---
 
 ## 🔄 Both Domains Work
 
-- ✅ `profitorbit.io` - Your new custom domain (primary)
+- ✅ `orben.io` - Your new custom domain (primary)
 - ✅ `profit-pulse-2.vercel.app` - Still works as backup
 
 Both URLs will work, so don't worry about breaking anything!
@@ -110,7 +110,7 @@ Both URLs will work, so don't worry about breaking anything!
 - [ ] Facebook OAuth Redirect URIs updated
 - [ ] eBay OAuth Redirect URIs updated
 - [ ] BASE_URL environment variable set (optional)
-- [ ] Tested domain: `https://profitorbit.io`
+- [ ] Tested domain: `https://orben.io`
 - [ ] Tested Facebook login
 - [ ] Tested eBay connection
 

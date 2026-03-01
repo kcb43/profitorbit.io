@@ -1,3 +1,5 @@
+import React from "react";
+
 /**
  * Marketplace & Source constants for the web app.
  *
@@ -172,3 +174,40 @@ export const PLATFORM_GROUPS = [
 
 // Flat lookup list for all predefined platforms
 export const ALL_PLATFORMS = PLATFORM_GROUPS.flatMap(g => g.items);
+
+// ─── CROSSLIST MARKETPLACES (active listing platforms with branded icons) ────
+
+const CROSSLIST_FACEBOOK_ICON = "https://upload.wikimedia.org/wikipedia/commons/b/b9/2023_Facebook_icon.svg";
+const CROSSLIST_MERCARI_ICON = "https://cdn.brandfetch.io/idjAt9LfED/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B";
+const CROSSLIST_EBAY_ICON = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg";
+const CROSSLIST_ETSY_ICON = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
+const CROSSLIST_POSHMARK_ICON = "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B";
+
+export const CROSSLIST_MARKETPLACES = [
+  { id: "ebay",     label: "eBay",     icon: CROSSLIST_EBAY_ICON },
+  { id: "facebook", label: "Facebook", icon: CROSSLIST_FACEBOOK_ICON },
+  { id: "mercari",  label: "Mercari",  icon: CROSSLIST_MERCARI_ICON },
+  { id: "etsy",     label: "Etsy",     icon: CROSSLIST_ETSY_ICON },
+  { id: "poshmark", label: "Poshmark", icon: CROSSLIST_POSHMARK_ICON },
+];
+
+export const renderMarketplaceIcon = (marketplace, sizeClass = "w-4 h-4") => {
+  if (typeof marketplace.icon === "string" && marketplace.icon.startsWith("http")) {
+    return (
+      <img
+        src={marketplace.icon}
+        alt={`${marketplace.label} icon`}
+        className={`${sizeClass} object-contain`}
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex items-center justify-center ${sizeClass} text-xs leading-none`}
+    >
+      {marketplace.icon}
+    </span>
+  );
+};

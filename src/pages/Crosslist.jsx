@@ -2440,14 +2440,8 @@ export default function Crosslist() {
                             onClick={(e) => {
                               e.stopPropagation();
                               const query = it.item_name || "";
-                              if (isMobile) {
-                                // On mobile, navigate to ProductSearch page
-                                navigate(`/product-search?q=${encodeURIComponent(query)}&from=crosslist`);
-                              } else {
-                                // On desktop, open dialog
-                                setProductSearchQuery(query);
-                                setProductSearchOpen(true);
-                              }
+                              setProductSearchQuery(query);
+                              setProductSearchOpen(true);
                             }}
                             variant="outline"
                             className="flex-1 bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground font-semibold py-2 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm border border-gray-200 dark:border-border"
@@ -2868,14 +2862,8 @@ export default function Crosslist() {
                       variant="outline"
                       onClick={() => {
                         const query = it.item_name || "";
-                        if (isMobile) {
-                          // On mobile, navigate to ProductSearch page
-                          navigate(`/product-search?q=${encodeURIComponent(query)}&from=crosslist`);
-                        } else {
-                          // On desktop, open dialog
-                          setProductSearchQuery(query);
-                          setProductSearchOpen(true);
-                        }
+                        setProductSearchQuery(query);
+                        setProductSearchOpen(true);
                       }}
                       className="w-full rounded-xl text-xs font-semibold h-9 bg-white/90 dark:bg-card/80 border border-gray-200/70 dark:border-border hover:bg-white dark:hover:bg-slate-900"
                     >

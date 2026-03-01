@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper, Truck } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper, Truck, Wand2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNewsBadge } from "@/api/newsApi";
-import CrossSquareIcon from "@/components/icons/CrossSquareIcon";
+// CrossSquareIcon import removed - Crosslist merged into Inventory
 import { EnhancedProductSearchDialog } from "@/components/EnhancedProductSearchDialog";
 import { ProfileSettings, UserAvatar } from "@/components/ProfileSettings";
 import NotificationCenter from "@/components/NotificationCenter";
@@ -40,7 +40,6 @@ const navigationCategories = [
   {
     title: "Tools",
     items: [
-      { title: "Crosslist", url: createPageUrl("Crosslist"), icon: CrossSquareIcon },
       { title: "Pro Tools", url: createPageUrl("Pro Tools"), icon: Sparkles },
       { title: "Import", url: createPageUrl("Import"), icon: Activity },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
@@ -51,7 +50,7 @@ const navigationCategories = [
     title: "Orben Intelligence",
     items: [
       { title: "Deal Feed", url: "/deals", icon: TrendingDown },
-      { title: "Product Search", url: "/product-search", icon: Search },
+      { title: "Deal Curator", url: "/admin/deals", icon: Wand2, adminOnly: true },
       { title: "News", url: "/news", icon: Newspaper, badgeKey: "news" },
       { title: "Training Center", url: "/training", icon: GraduationCap },
     ]
@@ -94,9 +93,8 @@ const ROUTE_MAP = [
   { path: '/Settings/reports',             label: 'Reports & Exports',   icon: Settings, parent: { label: 'Settings', path: '/Settings', icon: Settings } },
   { path: '/Settings',                     label: 'Settings',            icon: Settings },
   { path: '/Analytics',                    label: 'Analytics',           icon: BarChart3 },
-  { path: '/deals/submit',                 label: 'Submit Deal',         icon: TrendingDown, parent: { label: 'Deal Feed', path: '/deals', icon: TrendingDown } },
   { path: '/deals',                        label: 'Deal Feed',           icon: TrendingDown },
-  { path: '/product-search',               label: 'Product Search',      icon: Search },
+  { path: '/admin/deals',                  label: 'Deal Curator',        icon: Wand2, parent: { label: 'Orben Intelligence', path: '/deals', icon: TrendingDown } },
   { path: '/pro-tools/send-offers',        label: 'Send Offers',         icon: Sparkles, parent: { label: 'Pro Tools', path: '/pro-tools', icon: Sparkles } },
   { path: '/pro-tools/auto-offers',        label: 'Auto Offers',         icon: Sparkles, parent: { label: 'Pro Tools', path: '/pro-tools', icon: Sparkles } },
   { path: '/pro-tools/marketplace-sharing',label: 'Marketplace Sharing', icon: Sparkles, parent: { label: 'Pro Tools', path: '/pro-tools', icon: Sparkles } },
@@ -332,6 +330,10 @@ export default function Layout({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
+  // Admin check for sidebar filtering
+  const adminIds = (import.meta.env.VITE_ADMIN_USER_IDS || '82bdb1aa-b2d2-4001-80ef-1196e5563cb9').split(',').map(s => s.trim());
+  const isAdmin = currentUser?.id && adminIds.includes(currentUser.id);
+
   // News badge — poll every 10 min; disable when on /news (already marked seen)
   const { data: newsBadgeData } = useQuery({
     queryKey: ['newsBadge'],
@@ -345,12 +347,7 @@ export default function Layout({ children }) {
   const badges = { news: hasNewNews };
 
   const handleProductSearchClick = () => {
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) {
-      window.location.href = '/product-search';
-    } else {
-      setProductSearchOpen(true);
-    }
+    setProductSearchOpen(true);
   };
 
   // Keyboard shortcut: Cmd/Ctrl+K opens search
@@ -456,7 +453,7 @@ export default function Layout({ children }) {
                     {category.title}
                   </h4>
                   <ul className="flex flex-col list-none gap-1 text-sm">
-                    {category.items.map((item) => {
+                    {category.items.filter(item => !item.adminOnly || isAdmin).map((item) => {
                       const isActive = location.pathname === item.url;
                       const IconComponent = item.icon;
                       const showBadge = item.badgeKey && badges[item.badgeKey];

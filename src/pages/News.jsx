@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Search, ExternalLink, Loader2, X, Newspaper,
   ShoppingBag, TrendingUp, Store, RefreshCw,
-  Clock, ChevronRight, Flame, Zap, Tag
+  Clock, ChevronRight, Zap, Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getNewsFeed, getNewsFeeds, markNewsSeen, triggerIngest } from '@/api/newsApi';
@@ -23,54 +22,42 @@ const FILTER_CHIPS = [
   { id: 'trends',      label: 'Trends',       icon: TrendingUp },
 ];
 
-// Tag → display colour mapping
 const TAG_COLORS = {
-  marketplace: 'bg-blue-500/15 text-blue-600 border-blue-200',
-  ebay:        'bg-yellow-500/15 text-yellow-700 border-yellow-200',
-  mercari:     'bg-red-500/15 text-red-600 border-red-200',
-  poshmark:    'bg-pink-500/15 text-pink-600 border-pink-200',
-  depop:       'bg-orange-500/15 text-orange-600 border-orange-200',
-  product:     'bg-purple-500/15 text-purple-600 border-purple-200',
-  electronics: 'bg-cyan-500/15 text-cyan-600 border-cyan-200',
-  sneakers:    'bg-green-500/15 text-green-600 border-green-200',
-  luxury:      'bg-amber-500/15 text-amber-700 border-amber-200',
-  collectibles:'bg-violet-500/15 text-violet-600 border-violet-200',
-  recalls:     'bg-red-600/15 text-red-700 border-red-300',
-  trends:      'bg-emerald-500/15 text-emerald-600 border-emerald-200',
-  resale:      'bg-teal-500/15 text-teal-600 border-teal-200',
-  drops:       'bg-indigo-500/15 text-indigo-600 border-indigo-200',
-  restock:     'bg-lime-500/15 text-lime-700 border-lime-200',
-  outage:      'bg-rose-500/15 text-rose-600 border-rose-200',
+  marketplace: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  ebay:        'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  mercari:     'bg-red-500/10 text-red-600 dark:text-red-400',
+  poshmark:    'bg-pink-500/10 text-pink-600 dark:text-pink-400',
+  depop:       'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  product:     'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  electronics: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+  luxury:      'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  collectibles:'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  recalls:     'bg-red-600/10 text-red-700 dark:text-red-400',
+  trends:      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  resale:      'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+  drops:       'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  restock:     'bg-lime-500/10 text-lime-700 dark:text-lime-400',
+  outage:      'bg-rose-500/10 text-rose-600 dark:text-rose-400',
 };
 
 function tagClass(tag) {
-  return TAG_COLORS[tag] || 'bg-muted text-muted-foreground border-border';
+  return TAG_COLORS[tag] || 'bg-muted text-muted-foreground';
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Strip HTML, comments, numeric entities, and Reddit boilerplate from summaries */
 function cleanSummary(raw) {
   if (!raw) return null;
   let t = String(raw)
-    .replace(/<!--[\s\S]*?-->/g, '')      // HTML comments
-    .replace(/<[^>]*>/g, ' ')              // HTML tags
-    // numeric + named entities
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]*>/g, ' ')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    // Reddit submission boilerplate
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ')
     .replace(/submitted\s+by\s+\/u\/\S+/gi, '')
-    .replace(/\[link\]/gi, '')
-    .replace(/\[comments\]/gi, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+    .replace(/\[link\]/gi, '').replace(/\[comments\]/gi, '')
+    .replace(/\s{2,}/g, ' ').trim();
   return t || null;
 }
 
@@ -79,106 +66,103 @@ function relativeTime(item) {
   if (!raw) return null;
   try {
     return formatDistanceToNow(typeof raw === 'string' ? parseISO(raw) : new Date(raw), { addSuffix: true });
-  } catch {
-    return null;
+  } catch { return null; }
+}
+
+// Tag-based accent dot color
+const TAG_DOT_COLORS = {
+  marketplace: 'bg-blue-500',
+  product: 'bg-purple-500',
+  trends: 'bg-emerald-500',
+  resale: 'bg-teal-500',
+  recalls: 'bg-red-500',
+};
+
+function getAccentDot(tags) {
+  if (!tags?.length) return 'bg-muted-foreground/30';
+  for (const key of Object.keys(TAG_DOT_COLORS)) {
+    if (tags.includes(key)) return TAG_DOT_COLORS[key];
   }
+  return 'bg-muted-foreground/30';
 }
 
 // ─── News Card ───────────────────────────────────────────────────────────────
 
 function NewsCard({ item }) {
   const time = relativeTime(item);
-
-  // Pick a left-border accent based on primary tag
-  const accentClass = item.tags?.includes('marketplace')
-    ? 'border-l-blue-500'
-    : item.tags?.includes('product')
-    ? 'border-l-purple-500'
-    : item.tags?.includes('trends') || item.tags?.includes('resale')
-    ? 'border-l-emerald-500'
-    : item.tags?.includes('recalls')
-    ? 'border-l-red-500'
-    : 'border-l-muted-foreground/30';
+  const summary = cleanSummary(item.summary);
+  const dotColor = getAccentDot(item.tags);
 
   return (
-    <div className={cn('border rounded-lg p-4 transition-all hover:shadow-md bg-card border-l-4 group', accentClass)}>
-      <div className="flex items-start gap-3">
-        {/* Thumbnail */}
-        {item.thumbnail && (
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-            <img
-              src={item.thumbnail}
-              alt=""
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-              onError={(e) => { e.target.parentElement.style.display = 'none'; }}
-            />
-          </div>
-        )}
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block group"
+    >
+      <div className="rounded-xl border bg-card hover:shadow-md transition-all duration-200 overflow-hidden">
+        <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
+          {/* Accent dot */}
+          <div className={cn("w-1 rounded-full flex-shrink-0 self-stretch", dotColor)} />
 
-        <div className="flex-1 min-w-0">
-          {/* Title + external link */}
-          <div className="flex items-start gap-2 mb-1.5">
-            <h3 className="font-semibold text-sm sm:text-base leading-snug line-clamp-2 flex-1">
-              {item.title}
-            </h3>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 mt-0.5 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-              title="Open article"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-
-          {/* Summary */}
-          {cleanSummary(item.summary) && (
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2 leading-relaxed">
-              {cleanSummary(item.summary)}
-            </p>
+          {/* Thumbnail */}
+          {item.thumbnail && (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+              <img
+                src={item.thumbnail}
+                alt=""
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+              />
+            </div>
           )}
 
-          {/* Footer: source · time · tags · open button */}
-          <div className="flex flex-wrap items-center gap-2">
-            {item.source_name && (
-              <span className="text-xs text-muted-foreground font-medium">{item.source_name}</span>
-            )}
-            {time && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {time}
-              </span>
-            )}
-            {/* Tags */}
-            <div className="flex flex-wrap gap-1 ml-auto">
-              {(item.tags || []).slice(0, 3).map(tag => (
-                <span
-                  key={tag}
-                  className={cn('text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize', tagClass(tag))}
-                >
-                  {tag}
-                </span>
-              ))}
+          <div className="flex-1 min-w-0">
+            {/* Title */}
+            <div className="flex items-start gap-2 mb-1">
+              <h3 className="font-semibold text-sm sm:text-base leading-snug line-clamp-2 flex-1 group-hover:text-primary transition-colors">
+                {item.title}
+              </h3>
+              <ExternalLink className="w-4 h-4 flex-shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
 
-          {/* Open article button */}
-          <div className="mt-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
-            >
-              Read article
-              <ExternalLink className="w-3 h-3 ml-1" />
-            </Button>
+            {/* Summary */}
+            {summary && (
+              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2 leading-relaxed">
+                {summary}
+              </p>
+            )}
+
+            {/* Footer */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {item.source_name && (
+                <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-md bg-muted font-medium">
+                  {item.source_name}
+                </span>
+              )}
+              {time && (
+                <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {time}
+                </span>
+              )}
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1 ml-auto">
+                {(item.tags || []).slice(0, 3).map(tag => (
+                  <span
+                    key={tag}
+                    className={cn('text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md font-medium capitalize', tagClass(tag))}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </a>
   );
 }
 
@@ -186,16 +170,17 @@ function NewsCard({ item }) {
 
 function NewsCardSkeleton() {
   return (
-    <div className="border rounded-lg p-4 border-l-4 border-l-muted/30 bg-card space-y-2">
+    <div className="rounded-xl border bg-card p-4">
       <div className="flex gap-3">
-        <Skeleton className="w-20 h-20 rounded-md flex-shrink-0" />
+        <Skeleton className="w-1 rounded-full self-stretch" />
+        <Skeleton className="w-20 h-20 rounded-xl flex-shrink-0" />
         <div className="flex-1 space-y-2">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-2/3" />
-          <div className="flex gap-2 mt-3">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-3 w-16" />
+          <div className="flex gap-2 mt-2">
+            <Skeleton className="h-4 w-16 rounded-md" />
+            <Skeleton className="h-4 w-12 rounded-md" />
           </div>
         </div>
       </div>
@@ -214,7 +199,6 @@ function FeedSidebar({ activeTag, onTagSelect }) {
 
   const feeds = data?.feeds || [];
 
-  // Group by first tag
   const grouped = {};
   feeds.forEach(f => {
     const primary = (f.tags || [])[0] || 'other';
@@ -222,28 +206,21 @@ function FeedSidebar({ activeTag, onTagSelect }) {
     grouped[primary].push(f);
   });
 
-  const SECTION_ICONS = {
-    marketplace: Store,
-    product: ShoppingBag,
-    trends: TrendingUp,
-  };
-
-  const SECTION_LABELS = {
-    marketplace: 'Marketplace',
-    product: 'Products',
-    trends: 'Trends',
-  };
+  const SECTIONS = [
+    { key: 'marketplace', label: 'Marketplace', icon: Store },
+    { key: 'product',     label: 'Products',    icon: ShoppingBag },
+    { key: 'trends',      label: 'Trends',      icon: TrendingUp },
+  ];
 
   return (
-    <div className="space-y-4">
-      {Object.entries(SECTION_LABELS).map(([key, label]) => {
-        const Icon = SECTION_ICONS[key] || Tag;
+    <div className="space-y-5">
+      {SECTIONS.map(({ key, label, icon: Icon }) => {
         const items = grouped[key] || [];
         if (!items.length) return null;
         return (
           <div key={key}>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-2 px-1">
-              <Icon className="w-3.5 h-3.5" />
+            <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-2 px-1">
+              <Icon className="w-3 h-3" />
               {label}
             </h4>
             <ul className="space-y-0.5">
@@ -252,14 +229,14 @@ function FeedSidebar({ activeTag, onTagSelect }) {
                   <button
                     onClick={() => onTagSelect(key === activeTag ? 'all' : key)}
                     className={cn(
-                      'w-full text-left text-xs px-2 py-1.5 rounded-md transition-colors flex items-center justify-between group',
+                      'w-full text-left text-xs px-2.5 py-2 rounded-lg transition-colors flex items-center justify-between group/feed',
                       activeTag === key
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <span className="truncate">{feed.name}</span>
-                    <ChevronRight className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ChevronRight className="w-3 h-3 flex-shrink-0 opacity-0 group-hover/feed:opacity-100 transition-opacity" />
                   </button>
                 </li>
               ))}
@@ -277,11 +254,13 @@ function EmptyState({ searchQuery, onClear, isIngesting }) {
   if (searchQuery) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Search className="h-14 w-14 text-muted-foreground/30 mb-4" />
-        <h3 className="text-lg font-semibold mb-1">No results for &ldquo;{searchQuery}&rdquo;</h3>
+        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+          <Search className="h-7 w-7 text-muted-foreground/50" />
+        </div>
+        <h3 className="text-lg font-semibold mb-1">No results for "{searchQuery}"</h3>
         <p className="text-sm text-muted-foreground mb-4">Try a different keyword or clear the search.</p>
-        <Button variant="outline" onClick={onClear}>
-          <X className="w-4 h-4 mr-2" /> Clear search
+        <Button variant="outline" size="sm" onClick={onClear}>
+          <X className="w-3.5 h-3.5 mr-1.5" /> Clear search
         </Button>
       </div>
     );
@@ -289,15 +268,17 @@ function EmptyState({ searchQuery, onClear, isIngesting }) {
   if (isIngesting) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Loader2 className="h-14 w-14 text-primary/40 mb-4 animate-spin" />
-        <h3 className="text-lg font-semibold mb-1">Fetching articles…</h3>
-        <p className="text-sm text-muted-foreground">Pulling the latest news from our feeds. This takes about 10–20 seconds on first load.</p>
+        <Loader2 className="h-12 w-12 text-primary/40 mb-4 animate-spin" />
+        <h3 className="text-lg font-semibold mb-1">Fetching articles...</h3>
+        <p className="text-sm text-muted-foreground">Pulling the latest news from our feeds. This takes about 10-20 seconds.</p>
       </div>
     );
   }
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Newspaper className="h-14 w-14 text-muted-foreground/30 mb-4" />
+      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+        <Newspaper className="h-7 w-7 text-muted-foreground/50" />
+      </div>
       <h3 className="text-lg font-semibold mb-1">No news yet</h3>
       <p className="text-sm text-muted-foreground">Articles are fetched automatically. Try refreshing in a moment.</p>
     </div>
@@ -324,7 +305,6 @@ export default function News() {
   const sentinelRef  = useRef(null);
   const searchTimer  = useRef(null);
 
-  // Debounced search
   const handleSearchChange = useCallback((val) => {
     setInputValue(val);
     clearTimeout(searchTimer.current);
@@ -337,7 +317,6 @@ export default function News() {
     clearTimeout(searchTimer.current);
   }, []);
 
-  // Sticky search bar detection
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -349,23 +328,16 @@ export default function News() {
     return () => obs.disconnect();
   }, []);
 
-  // Mark news as seen on mount
   const { mutate: markSeen } = useMutation({
     mutationFn: markNewsSeen,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['newsBadge'] });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['newsBadge'] })
   });
 
-  useEffect(() => {
-    markSeen();
-  }, [markSeen]);
+  useEffect(() => { markSeen(); }, [markSeen]);
 
-  // Trigger ingest from client when there are no articles (serverless can't do background tasks)
   const { mutate: runIngest } = useMutation({
     mutationFn: triggerIngest,
     onSettled: () => {
-      // After ingest completes (success or fail), refetch and stop spinner
       setTimeout(() => {
         setIsIngesting(false);
         queryClient.invalidateQueries({ queryKey: ['newsFeed'] });
@@ -373,17 +345,9 @@ export default function News() {
     },
   });
 
-  // Infinite query
   const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching
+    data, fetchNextPage, hasNextPage, isFetchingNextPage,
+    isLoading, isError, error, refetch, isFetching
   } = useInfiniteQuery({
     queryKey: ['newsFeed', searchQuery, activeTag, sort],
     queryFn: ({ pageParam = 0 }) =>
@@ -393,15 +357,13 @@ export default function News() {
       return allPages.reduce((acc, p) => acc + (p.items?.length || 0), 0);
     },
     staleTime: 2 * 60_000,
-    refetchInterval: 10 * 60_000 // refresh every 10 min
+    refetchInterval: 10 * 60_000
   });
 
   const allItems   = data?.pages.flatMap(p => p.items || []) || [];
   const total      = data?.pages[0]?.total || 0;
   const needsIngest = data?.pages[0]?.needsIngest === true;
 
-  // When the API signals ingest is needed (empty DB or stale feeds), trigger it from the client.
-  // We only do this once per page visit to avoid repeat calls.
   useEffect(() => {
     if (!isLoading && needsIngest && !ingestTriggered.current) {
       ingestTriggered.current = true;
@@ -410,7 +372,6 @@ export default function News() {
     }
   }, [isLoading, needsIngest, runIngest]);
 
-  // Infinite scroll
   useEffect(() => {
     if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
     const obs = new IntersectionObserver(
@@ -423,18 +384,13 @@ export default function News() {
 
   return (
     <div className="p-2 sm:p-4 md:p-6 lg:p-8 min-h-screen bg-background">
-      {/* Sentinel for sticky detection */}
       <div ref={sentinelRef} className="h-px w-full" aria-hidden />
 
-      {/* ── Sticky search bar ── */}
-      <div
-        className={cn(
-          'sticky top-0 z-40 -mx-2 sm:-mx-4 md:-mx-6 lg:-mx-8 px-2 sm:px-4 md:px-6 lg:px-8 py-3 mb-4 transition-all duration-300',
-          isSticky
-            ? 'bg-background/80 backdrop-blur-xl border-b border-border/60 shadow-sm'
-            : 'bg-transparent'
-        )}
-      >
+      {/* Sticky search bar */}
+      <div className={cn(
+        'sticky top-0 z-40 -mx-2 sm:-mx-4 md:-mx-6 lg:-mx-8 px-2 sm:px-4 md:px-6 lg:px-8 py-3 mb-4 transition-all duration-300',
+        isSticky ? 'bg-background/80 backdrop-blur-xl border-b border-border/60 shadow-sm' : 'bg-transparent'
+      )}>
         <div className="max-w-7xl mx-auto">
           <div className="relative flex items-center">
             <div className={cn(
@@ -450,7 +406,7 @@ export default function News() {
               onChange={e => handleSearchChange(e.target.value)}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder="Search news…"
+              placeholder="Search news..."
               className={cn(
                 'pl-9 pr-10 h-11 rounded-xl border-2 transition-all duration-200 bg-card/60 text-sm',
                 isSearchFocused
@@ -473,14 +429,21 @@ export default function News() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* ── Page Header ── */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 flex-wrap">
-              <Newspaper className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2.5">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+                <Newspaper className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </div>
               News
+              {!isLoading && total > 0 && (
+                <span className="text-base font-normal text-muted-foreground ml-1">
+                  · {total.toLocaleString()} articles
+                </span>
+              )}
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-sm text-muted-foreground mt-1">
               Marketplace updates, product launches, and resale trends
             </p>
           </div>
@@ -491,13 +454,13 @@ export default function News() {
             disabled={isLoading || isFetching}
           >
             {(isLoading || isFetching)
-              ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Refreshing…</>
-              : <><RefreshCw className="w-4 h-4 mr-2" /> Refresh</>}
+              ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Refreshing</>
+              : <><RefreshCw className="w-4 h-4 mr-1.5" /> Refresh</>}
           </Button>
         </div>
 
-        {/* ── Filter Chips ── */}
-        <div className="flex flex-wrap gap-2 mb-5">
+        {/* Filter chips + sort */}
+        <div className="flex flex-wrap items-center gap-2 mb-5">
           {FILTER_CHIPS.map(chip => {
             const Icon = chip.icon;
             const active = activeTag === chip.id;
@@ -506,10 +469,10 @@ export default function News() {
                 key={chip.id}
                 onClick={() => setActiveTag(chip.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all',
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border transition-all',
                   active
                     ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                    : 'bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                    : 'bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -518,31 +481,35 @@ export default function News() {
             );
           })}
 
-          {/* Sort pills */}
-          <div className="ml-auto flex items-center gap-1 border rounded-full px-1 py-1 bg-card">
-            {['newest', 'relevance'].map(s => (
+          {/* Sort toggle */}
+          <div className="ml-auto flex items-center gap-0.5 border rounded-full px-1 py-0.5 bg-card">
+            {[
+              { id: 'newest', label: 'Newest', icon: Zap },
+              { id: 'relevance', label: 'Relevant', icon: TrendingUp },
+            ].map(s => (
               <button
-                key={s}
-                onClick={() => setSort(s)}
+                key={s.id}
+                onClick={() => setSort(s.id)}
                 className={cn(
-                  'text-xs px-2.5 py-1 rounded-full transition-all capitalize',
-                  sort === s
+                  'flex items-center gap-1 text-xs px-2.5 py-1 rounded-full transition-all',
+                  sort === s.id
                     ? 'bg-primary text-primary-foreground font-medium'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                {s === 'newest' ? <><Zap className="inline w-3 h-3 mr-1" />Newest</> : <><Flame className="inline w-3 h-3 mr-1" />Relevant</>}
+                <s.icon className="w-3 h-3" />
+                {s.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Two-column layout: left rail + main feed ── */}
+        {/* Two-column layout */}
         <div className="flex gap-6">
-          {/* Left rail – hidden on mobile */}
+          {/* Left rail */}
           <aside className="hidden lg:block w-52 flex-shrink-0">
             <div className="sticky top-24 bg-card border rounded-xl p-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+              <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
                 Feeds
               </h3>
               <FeedSidebar activeTag={activeTag} onTagSelect={setActiveTag} />
@@ -551,7 +518,6 @@ export default function News() {
 
           {/* Main feed */}
           <div className="flex-1 min-w-0">
-            {/* Result count */}
             {!isLoading && allItems.length > 0 && (
               <p className="text-xs text-muted-foreground mb-3 px-1">
                 {searchQuery
@@ -566,42 +532,40 @@ export default function News() {
               </div>
             ) : isError ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Newspaper className="h-14 w-14 text-muted-foreground/30 mb-4" />
+                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <Newspaper className="h-7 w-7 text-muted-foreground/50" />
+                </div>
                 <h3 className="text-lg font-semibold mb-1">Could not load news</h3>
-                <p className="text-sm text-muted-foreground mb-4">{error?.message || 'An error occurred. Please try again.'}</p>
-                <Button variant="outline" onClick={() => refetch()}>
-                  <RefreshCw className="w-4 h-4 mr-2" /> Try again
+                <p className="text-sm text-muted-foreground mb-4">{error?.message || 'An error occurred.'}</p>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Try again
                 </Button>
               </div>
             ) : allItems.length === 0 ? (
               <EmptyState searchQuery={searchQuery} onClear={clearSearch} isIngesting={isIngesting} />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {allItems.map(item => (
                   <NewsCard key={item.id} item={item} />
                 ))}
               </div>
             )}
 
-            {/* Infinite scroll trigger */}
             {hasNextPage && (
               <div ref={loadMoreRef} className="py-8 flex justify-center">
                 {isFetchingNextPage ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading more…
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading more...
                   </div>
                 ) : (
-                  <Button variant="outline" onClick={() => fetchNextPage()}>
-                    Load more
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => fetchNextPage()}>Load more</Button>
                 )}
               </div>
             )}
 
             {!isLoading && allItems.length > 0 && !hasNextPage && (
               <p className="text-center text-xs text-muted-foreground py-8">
-                You've reached the end · {allItems.length} articles shown
+                End of feed · {allItems.length} articles shown
               </p>
             )}
           </div>

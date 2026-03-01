@@ -323,6 +323,13 @@ input[type="number"] {
   color: rgb(17, 24, 39) !important; /* gray-900 */
 }
 
+/* Calendar month/year dropdown <option> elements — force themed bg.
+   Native <option> tags ignore Tailwind classes, so we use CSS variables. */
+.rdp-dropdown option {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
 /* Hide scrollbars but keep scrolling (used for dialogs like Profit Calendar day details) */
 .po-scrollbar-hide {
   -ms-overflow-style: none; /* IE/Edge */

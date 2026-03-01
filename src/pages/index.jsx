@@ -52,8 +52,7 @@ const MigrateData = React.lazy(() => import("./MigrateData"));
 
 // Orben Deal Intelligence
 const Deals = React.lazy(() => import("./Deals"));
-const ProductSearch = React.lazy(() => import("./ProductSearch"));
-const SubmitDeal = React.lazy(() => import("./SubmitDeal"));
+const DealCurator = React.lazy(() => import("./DealCurator"));
 
 // News
 const News = React.lazy(() => import("./News"));
@@ -263,15 +262,7 @@ function PagesContent() {
               
               <Route
                 path="/Crosslist"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Crosslist">
-                        {withSuspense(<Crosslist />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
+                element={<Navigate to="/Inventory" replace />}
               />
               
               <Route
@@ -539,6 +530,22 @@ function PagesContent() {
               <Route path="/PrivacyPolicy" element={withSuspense(<PrivacyPolicy />)} />
               <Route path="/FAQ" element={withSuspense(<FAQ />)} />
               
+              {/* Admin Routes */}
+              <Route
+                path="/admin/deals"
+                element={
+                  <AuthGuard>
+                    <AdminGuard>
+                      {withSuspense(
+                        <Layout currentPageName="Deal Curator">
+                          {withSuspense(<DealCurator />)}
+                        </Layout>
+                      )}
+                    </AdminGuard>
+                  </AuthGuard>
+                }
+              />
+
               {/* Orben Deal Intelligence Routes */}
               <Route
                 path="/deals"
@@ -552,31 +559,6 @@ function PagesContent() {
                   </AuthGuard>
                 }
               />
-              <Route
-                path="/deals/submit"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Submit Deal">
-                        {withSuspense(<SubmitDeal />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
-              />
-              <Route
-                path="/product-search"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Product Search">
-                        {withSuspense(<ProductSearch />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
-              />
-              
               <Route
                 path="/Rewards"
                 element={

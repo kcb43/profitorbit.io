@@ -24,7 +24,7 @@ import { debugLog } from '@/config/features';
  * @param {Object} connections - Marketplace connection status { ebayConnected, mercariConnected, facebookConnected }
  * @returns {Object} Smart listing state and handlers
  */
-export function useSmartListing(forms, validationOptions, setMarketplaceForm, handleSubmit, enabled = true, connections = {}) {
+export function useSmartListing(forms, validationOptions, setMarketplaceForm, handleSubmit, enabled = true, connections = {}, onListingSuccess = null) {
   const { toast } = useToast();
   
   // Modal state management
@@ -90,7 +90,9 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
     
     debugLog('Opening Smart Listing modal');
 
-    // Require title
+    // Only hard-require title, condition, and price to open the modal.
+    // Everything else (brand, category, zip, package dims, cost) is handled
+    // by preflight validation and can be AI-filled.
     const title = (forms.generalForm?.title || "").trim();
     if (!title) {
       toast({
@@ -101,7 +103,6 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       return;
     }
 
-    // Require condition
     const condition = (forms.generalForm?.condition || "").trim();
     if (!condition) {
       toast({
@@ -112,50 +113,6 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       return;
     }
 
-    // Require brand
-    const brand = (forms.generalForm?.brand || "").trim();
-    if (!brand) {
-      toast({
-        title: "Brand Required",
-        description: "Please enter a brand before using Smart Listing.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Pre-validate: Check if categories are set for selected marketplaces
-    const missingCategories = [];
-    
-    selectedMarketplaces.forEach(marketplace => {
-      if (marketplace === 'ebay') {
-        const finalCategoryId = forms.ebayForm?.categoryId || forms.generalForm?.categoryId;
-        if (!finalCategoryId || finalCategoryId === '0' || finalCategoryId === 0) {
-          missingCategories.push('eBay');
-        }
-      } else if (marketplace === 'mercari') {
-        if (!forms.mercariForm?.mercariCategory || !forms.mercariForm?.mercariCategoryId) {
-          missingCategories.push('Mercari');
-        }
-      } else if (marketplace === 'facebook') {
-        const category = forms.facebookForm?.category || forms.generalForm?.category;
-        const categoryId = forms.facebookForm?.categoryId || forms.generalForm?.categoryId;
-        if (!category || !categoryId) {
-          missingCategories.push('Facebook');
-        }
-      }
-    });
-    
-    // If categories are missing, show error and don't open modal
-    if (missingCategories.length > 0) {
-      toast({
-        title: "Categories Required",
-        description: `Please select categories for ${missingCategories.join(', ')} in the General form before using Smart Listing.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Require price
     const price = forms.generalForm?.price;
     if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
       toast({
@@ -166,18 +123,8 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
       return;
     }
 
-    // Require zip code
-    const zip = (forms.generalForm?.zip || "").trim();
-    if (!zip) {
-      toast({
-        title: "Zip Code Required",
-        description: "Please enter a zip code in the General form before using Smart Listing.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     checkConnections();
+    setPreflightResult(null);
     setModalState('idle');
     setModalOpen(true);
   }, [enabled, checkConnections, selectedMarketplaces, forms, toast]);
@@ -454,6 +401,8 @@ export function useSmartListing(forms, validationOptions, setMarketplaceForm, ha
         setSelectedMarketplaces([]);
         setPreflightResult(null);
         setModalState('idle');
+        // Notify caller so it can update baseline for re-validation
+        if (onListingSuccess) onListingSuccess(results);
       } else if (errors.length > 0) {
         // Some failed — stay on fixes/ready state so user can see what went wrong
         setModalState(preflightResult?.fixesNeeded?.length > 0 ? 'fixes' : 'ready');

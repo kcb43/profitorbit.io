@@ -37,6 +37,9 @@ import {
   isMarketplaceReady,
 } from '@/utils/preflightEngine';
 import IssuesList from './IssuesList';
+import { EbayPreview } from './marketplace-previews/EbayPreview';
+import { MercariPreview } from './marketplace-previews/MercariPreview';
+import { FacebookPreview } from './marketplace-previews/FacebookPreview';
 
 /**
  * Modal states:
@@ -82,8 +85,13 @@ export default function SmartListingModal({
   onReconnect,
   onSaveEbayDefault,
   onSaveFacebookDefault,
+  generalForm,
+  ebayForm,
+  mercariForm,
+  facebookForm,
 }) {
   const [activeMarketplace, setActiveMarketplace] = useState(null);
+  const [previewTab, setPreviewTab] = useState(null);
   
   // Auto-select first marketplace with issues when in fixes state
   useEffect(() => {
@@ -327,28 +335,77 @@ export default function SmartListingModal({
     </div>
   );
   
+  // Auto-select first marketplace for preview when entering ready state
+  useEffect(() => {
+    if (modalState === 'ready' && selectedMarketplaces.length > 0 && !previewTab) {
+      setPreviewTab(selectedMarketplaces[0]);
+    }
+  }, [modalState, selectedMarketplaces, previewTab]);
+
+  // Reset preview tab when modal closes
+  useEffect(() => {
+    if (!open) setPreviewTab(null);
+  }, [open]);
+
+  const PREVIEW_COLORS = { ebay: '#3665F3', mercari: '#EB5757', facebook: '#1877F2' };
+
+  const renderPreviewForMarketplace = (id) => {
+    switch (id) {
+      case 'ebay':
+        return <EbayPreview generalForm={generalForm} marketplaceForm={ebayForm} />;
+      case 'mercari':
+        return <MercariPreview generalForm={generalForm} marketplaceForm={mercariForm} />;
+      case 'facebook':
+        return <FacebookPreview generalForm={generalForm} marketplaceForm={facebookForm} />;
+      default:
+        return null;
+    }
+  };
+
   // Render ready state
   const renderReadyState = () => (
-    <div className="flex flex-col items-center justify-center py-8 sm:py-12 space-y-4 px-4">
-      <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-500" />
-      <div className="text-center space-y-2">
+    <div className="space-y-6 py-6 px-4">
+      {/* Success header */}
+      <div className="flex flex-col items-center space-y-2">
+        <CheckCircle className="w-12 h-12 sm:w-14 sm:h-14 text-green-500" />
         <h3 className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">All Ready!</h3>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          All {selectedCount} marketplace{selectedCount !== 1 ? 's' : ''} passed validation.
-          <br />
-          Click "List Now" to create your listings.
+        <p className="text-xs sm:text-sm text-muted-foreground text-center">
+          All {selectedCount} marketplace{selectedCount !== 1 ? 's' : ''} passed validation. Click "List Now" to create your listings.
         </p>
       </div>
-      <div className="flex flex-wrap gap-2 mt-4 justify-center">
-        {[...new Set(selectedMarketplaces)].map(id => {
-          const marketplace = marketplaces.find(m => m.id === id);
-          return (
-            <Badge key={id} variant="outline" className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-              {marketplace?.name}
-            </Badge>
-          );
-        })}
-      </div>
+
+      {/* Marketplace preview tabs */}
+      {selectedMarketplaces.length > 0 && (
+        <div>
+          <div className="flex border-b mb-4">
+            {[...new Set(selectedMarketplaces)].map(id => {
+              const marketplace = marketplaces.find(m => m.id === id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPreviewTab(id)}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium transition-colors relative",
+                    previewTab === id
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {marketplace?.name}
+                  {previewTab === id && (
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                      style={{ backgroundColor: PREVIEW_COLORS[id] }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {previewTab && renderPreviewForMarketplace(previewTab)}
+        </div>
+      )}
     </div>
   );
   

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
@@ -123,6 +123,9 @@ export default function Import() {
   const [importingStatus, setImportingStatus] = useState("not_imported");
   const [isSyncingFacebook, setIsSyncingFacebook] = useState(false);
   const [isSyncingMercari, setIsSyncingMercari] = useState(false);
+
+  // Track which sources have been auto-synced this visit
+  const autoSyncedRef = useRef(new Set());
 
   // Save listing status to localStorage for the current session (per-source)
   useEffect(() => {
@@ -1552,6 +1555,23 @@ export default function Import() {
     }
   };
 
+  // Auto-sync on page visit: trigger sync once per source when connected
+  useEffect(() => {
+    if (!isConnected || !userId || !canSync) return;
+    if (autoSyncedRef.current.has(selectedSource)) return;
+
+    // Mark as synced immediately to prevent re-triggering
+    autoSyncedRef.current.add(selectedSource);
+
+    // Small delay to let the UI settle before kicking off sync
+    const timer = setTimeout(() => {
+      console.log(`🔄 Auto-syncing ${selectedSource} on page visit`);
+      handleRefresh();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isConnected, userId, selectedSource, canSync]);
+
   // Listen for Facebook listings from extension
   useEffect(() => {
     const handleMessage = (event) => {
@@ -1714,354 +1734,272 @@ export default function Import() {
         </div>
       </div>
 
-      {/* Expired Token Banner */}
-      {selectedSource === "ebay" && !isConnected && userId && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>
-                Your eBay connection has expired. Please reconnect to continue importing items.
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(createPageUrl("Settings"))}
-                className="ml-4 bg-white hover:bg-white/90 text-red-600 border-red-200"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Go to Settings
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-          {/* Left Sidebar - Source Selection */}
-          <div className="space-y-6">
-            {/* Source Selector */}
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Select the source to import from</h3>
-              <Select value={selectedSource} onValueChange={setSelectedSource}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SOURCES.map((source) => (
-                    <SelectItem key={source.id} value={source.id} disabled={!source.available}>
-                      <div className="flex items-center gap-2">
-                        <img src={source.icon} alt={source.label} className="w-4 h-4" />
-                        <span>{source.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
 
-              {/* Source Icons Grid */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {SOURCES.map((source) => (
-                  <button
-                    key={source.id}
-                    onClick={() => source.available && setSelectedSource(source.id)}
-                    disabled={!source.available}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      selectedSource === source.id
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                    } ${!source.available ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <img src={source.icon} alt={source.label} className="w-8 h-8" />
-                      <span className="text-xs font-medium">{source.label}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+        {/* ── Marketplace Connection Banner ──────────────────────── */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground">Connect Your Marketplaces</h3>
+            <span className="text-xs text-muted-foreground">Connect to import and sync your listings</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {SOURCES.map((source) => {
+              const isEbay = source.id === 'ebay';
+              const isFb = source.id === 'facebook';
+              const isMerc = source.id === 'mercari';
+              const isEtsy = source.id === 'etsy';
 
-              {/* Coming Soon Dropdown */}
-              <div className="mt-3">
-                <Select disabled>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="More marketplaces coming soon..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="depop" disabled>Depop (Coming Soon)</SelectItem>
-                    <SelectItem value="poshmark" disabled>Poshmark (Coming Soon)</SelectItem>
-                    <SelectItem value="shopify" disabled>Shopify (Coming Soon)</SelectItem>
-                    <SelectItem value="grailed" disabled>Grailed (Coming Soon)</SelectItem>
-                    <SelectItem value="kidizen" disabled>Kidizen (Coming Soon)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </Card>
+              // Determine per-marketplace connection status
+              let connected = false;
+              if (isEbay) {
+                try {
+                  const stored = localStorage.getItem('ebay_user_token');
+                  if (stored) {
+                    const parsed = JSON.parse(stored);
+                    connected = !(parsed.expires_at && Date.now() >= parsed.expires_at);
+                  }
+                } catch {}
+              } else if (isFb) {
+                try {
+                  const bs = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
+                  const cache = localStorage.getItem('profit_orbit_facebook_listings');
+                  connected = bs.facebook?.loggedIn === true || (cache && JSON.parse(cache).length > 0);
+                } catch {}
+              } else if (isMerc) {
+                try {
+                  const mu = localStorage.getItem('profit_orbit_mercari_user');
+                  const cache = localStorage.getItem('profit_orbit_mercari_listings');
+                  connected = (mu && JSON.parse(mu)?.loggedIn) || (cache && JSON.parse(cache).length > 0);
+                } catch {}
+              }
 
-            {/* Search Bar */}
-            <Card className="p-4">
-              <Label className="text-sm font-medium mb-2 block">Search Items</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search by title or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {searchQuery && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Showing {filteredListings.length} result{filteredListings.length !== 1 ? 's' : ''}
-                </p>
+              const handleConnect = () => {
+                if (isEtsy) return;
+                if (connected) {
+                  setSelectedSource(source.id);
+                  return;
+                }
+                if (isEbay) {
+                  sessionStorage.setItem('ebay_oauth_return', '/import?source=ebay');
+                  window.location.href = '/api/ebay/auth';
+                } else if (isFb) {
+                  const w = 600, h = 700;
+                  window.open('https://www.facebook.com/marketplace', 'FacebookLogin',
+                    `width=${w},height=${h},left=${(screen.width-w)/2},top=${(screen.height-h)/2},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
+                  toast({ title: "Login to Facebook", description: "Log in to Facebook Marketplace in the popup, then come back and sync." });
+                } else if (isMerc) {
+                  window.open('https://www.mercari.com/mypage/', '_blank');
+                  toast({ title: "Login to Mercari", description: "Log in to Mercari in the new tab, then come back and sync." });
+                }
+              };
+
+              return (
+                <button
+                  key={source.id}
+                  onClick={handleConnect}
+                  disabled={isEtsy}
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all text-left ${
+                    isEtsy
+                      ? 'opacity-50 cursor-not-allowed border-border'
+                      : connected
+                        ? 'border-green-500/50 bg-green-50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20 cursor-pointer'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer'
+                  }`}
+                >
+                  <img src={source.icon} alt={source.label} className="w-6 h-6 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-medium block truncate">{source.label}</span>
+                    <span className={`text-[10px] ${
+                      isEtsy ? 'text-muted-foreground' : connected ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                    }`}>
+                      {isEtsy ? 'Coming Soon' : connected ? 'Connected' : 'Click to connect'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* ── Source Tabs ────────────────────────────────────────── */}
+        <div className="flex items-center gap-1 border-b border-border">
+          {SOURCES.filter(s => s.available).map((source) => (
+            <button
+              key={source.id}
+              onClick={() => setSelectedSource(source.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                selectedSource === source.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <img src={source.icon} alt="" className="w-4 h-4" />
+              {source.label}
+              {(selectedSource === source.id && (isLoading || isSyncingFacebook || isSyncingMercari)) && (
+                <RefreshCw className="w-3 h-3 animate-spin" />
               )}
-            </Card>
+            </button>
+          ))}
+        </div>
 
-            {/* Filters */}
-            {selectedSource === "ebay" && (
-              <Card className="p-4 space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">eBay Listing Status</label>
-                  <Select value={listingStatus} onValueChange={setListingStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Sold">Sold</SelectItem>
-                      <SelectItem value="All">All</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Importing Status</label>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant={importingStatus === "not_imported" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setImportingStatus("not_imported")}
-                      className={`w-full justify-start ${importingStatus === "not_imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                    >
-                      <Badge variant="secondary" className="mr-2">
-                        {notImportedCount}
-                      </Badge>
-                      Not Imported
-                    </Button>
-                    <Button
-                      variant={importingStatus === "imported" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setImportingStatus("imported")}
-                      className={`w-full justify-start ${importingStatus === "imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                    >
-                      <Badge variant="secondary" className="mr-2">
-                        {importedCount}
-                      </Badge>
-                      Imported
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {selectedSource === "facebook" && (
-              <Card className="p-4 space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Facebook Listing Status</label>
-                  <Select value={listingStatus} onValueChange={setListingStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="all">All</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Importing Status</label>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant={importingStatus === "not_imported" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setImportingStatus("not_imported")}
-                      className={`w-full justify-start ${importingStatus === "not_imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                    >
-                      <Badge variant="secondary" className="mr-2">
-                        {notImportedCount}
-                      </Badge>
-                      Not Imported
-                    </Button>
-                    <Button
-                      variant={importingStatus === "imported" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setImportingStatus("imported")}
-                      className={`w-full justify-start ${importingStatus === "imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                    >
-                      <Badge variant="secondary" className="mr-2">
-                        {importedCount}
-                      </Badge>
-                      Imported
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {selectedSource === "mercari" && (
-              <Card className="p-4 space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Mercari Listing Status</label>
-                  <Select value={listingStatus} onValueChange={setListingStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="on_sale">On Sale</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="all">All</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Importing Status</label>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant={importingStatus === "not_imported" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setImportingStatus("not_imported")}
-                      className={`w-full justify-start ${importingStatus === "not_imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                    >
-                      <Badge variant="secondary" className="mr-2">
-                        {notImportedCount}
-                      </Badge>
-                      Not Imported
-                    </Button>
-                    <Button
-                      variant={importingStatus === "imported" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setImportingStatus("imported")}
-                      className={`w-full justify-start ${importingStatus === "imported" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                    >
-                      <Badge variant="secondary" className="mr-2">
-                        {importedCount}
-                      </Badge>
-                      Imported
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
+        {/* ── Inline Filter Toolbar ─────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by title or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
           </div>
 
-          {/* Right Content - Listings Grid */}
-          <div className="space-y-4">
-            {/* Not Connected Alert */}
-            {!isConnected && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
-                      {selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} not connected
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Please connect your {selectedSource === "ebay" ? "eBay" : selectedSource} account to start importing.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {selectedSource === "ebay" && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                          // Save that we came from Import page
-                          sessionStorage.setItem('ebay_oauth_return', '/import?source=ebay');
-                          // Redirect to eBay OAuth
-                          window.location.href = '/api/ebay/auth';
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                          <line x1="19" y1="8" x2="19" y2="14"></line>
-                          <line x1="22" y1="11" x2="16" y2="11"></line>
-                        </svg>
-                        Connect eBay
-                      </Button>
-                    )}
-                    {selectedSource === "facebook" && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                          // Open Facebook Marketplace in centered popup window
-                          const width = 600;
-                          const height = 700;
-                          const left = (window.screen.width - width) / 2;
-                          const top = (window.screen.height - height) / 2;
-                          
-                          window.open(
-                            'https://www.facebook.com/marketplace',
-                            'FacebookLogin',
-                            `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
-                          );
-                          
-                          toast({
-                            title: "Login to Facebook",
-                            description: "Log in to Facebook Marketplace in the popup window, then come back and click 'Get Latest Items'",
-                          });
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                          <line x1="19" y1="8" x2="19" y2="14"></line>
-                          <line x1="22" y1="11" x2="16" y2="11"></line>
-                        </svg>
-                        Login to Facebook
-                      </Button>
-                    )}
-                    {selectedSource === "mercari" && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => {
-                          // Open Mercari in new tab for user to login
-                          window.open('https://www.mercari.com/mypage/', '_blank');
-                          toast({
-                            title: "Login to Mercari",
-                            description: "Log in to Mercari in the new tab, then come back and click 'Get Latest Items'",
-                          });
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                          <line x1="19" y1="8" x2="19" y2="14"></line>
-                          <line x1="22" y1="11" x2="16" y2="11"></line>
-                        </svg>
-                        Login to Mercari
-                      </Button>
-                    )}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
+          {/* Listing Status */}
+          <Select value={listingStatus} onValueChange={setListingStatus}>
+            <SelectTrigger className="w-[150px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {selectedSource === "ebay" && (
+                <>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Sold">Sold</SelectItem>
+                  <SelectItem value="All">All</SelectItem>
+                </>
+              )}
+              {selectedSource === "facebook" && (
+                <>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </>
+              )}
+              {selectedSource === "mercari" && (
+                <>
+                  <SelectItem value="on_sale">On Sale</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </>
+              )}
+            </SelectContent>
+          </Select>
 
-            {/* Show content only if connected */}
-            {isConnected && (
-              <>
-            {/* Debug/Error Info - Only show for the currently selected source */}
+          {/* Import Status Toggle */}
+          <div className="flex rounded-lg border border-border overflow-hidden h-9">
+            <button
+              onClick={() => setImportingStatus("not_imported")}
+              className={`px-3 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                importingStatus === "not_imported"
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              Not Imported
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[20px] justify-center">
+                {notImportedCount}
+              </Badge>
+            </button>
+            <button
+              onClick={() => setImportingStatus("imported")}
+              className={`px-3 text-xs font-medium flex items-center gap-1.5 border-l border-border transition-colors ${
+                importingStatus === "imported"
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              Imported
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[20px] justify-center">
+                {importedCount}
+              </Badge>
+            </button>
+          </div>
+
+          {searchQuery && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {filteredListings.length} result{filteredListings.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {/* ── Not Connected Alert (shown inline when disconnected) ── */}
+        {!isConnected && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  {selectedSource === "ebay" ? "eBay" : selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} not connected
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Connect your {selectedSource === "ebay" ? "eBay" : selectedSource} account above to start importing.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {selectedSource === "ebay" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => navigate(createPageUrl("Settings"))}
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        sessionStorage.setItem('ebay_oauth_return', '/import?source=ebay');
+                        window.location.href = '/api/ebay/auth';
+                      }}
+                    >
+                      Connect eBay
+                    </Button>
+                  </>
+                )}
+                {selectedSource === "facebook" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const w = 600, h = 700;
+                      window.open('https://www.facebook.com/marketplace', 'FacebookLogin',
+                        `width=${w},height=${h},left=${(screen.width-w)/2},top=${(screen.height-h)/2},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
+                      toast({ title: "Login to Facebook", description: "Log in to Facebook Marketplace in the popup window, then come back and sync." });
+                    }}
+                  >
+                    Login to Facebook
+                  </Button>
+                )}
+                {selectedSource === "mercari" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      window.open('https://www.mercari.com/mypage/', '_blank');
+                      toast({ title: "Login to Mercari", description: "Log in to Mercari in the new tab, then come back and sync." });
+                    }}
+                  >
+                    Login to Mercari
+                  </Button>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Show content only if connected */}
+        {isConnected && (
+          <>
+        {/* Debug/Error Info - Only show for the currently selected source */}
             {error && selectedSource === "ebay" && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -2800,10 +2738,8 @@ export default function Import() {
                 </Button>
               </div>
             )}
-              </>
-            )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}

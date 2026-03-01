@@ -36,9 +36,9 @@ export default async function handler(req, res) {
     else if (req.headers.host) {
       const host = req.headers.host;
       // If it's a preview deployment, try to use production domain
-      if (host.includes('vercel.app') && host !== 'profitorbit.io') {
+      if (host.includes('vercel.app') && host !== 'orben.io') {
         // Use production domain
-        const productionDomain = 'profitorbit.io';
+        const productionDomain = 'orben.io';
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         frontendUrl = `${protocol}://${productionDomain}`;
       } else {
@@ -50,8 +50,8 @@ export default async function handler(req, res) {
     else if (process.env.VERCEL_URL) {
       const vercelUrl = process.env.VERCEL_URL.replace(/^https?:\/\//, '');
       // If it's a preview deployment, use production domain instead
-      if (vercelUrl.includes('vercel.app') && !vercelUrl.startsWith('profitorbit.io')) {
-        frontendUrl = 'https://profitorbit.io';
+      if (vercelUrl.includes('vercel.app') && !vercelUrl.startsWith('orben.io')) {
+        frontendUrl = 'https://orben.io';
       } else {
         frontendUrl = `https://${vercelUrl}`;
       }
@@ -61,19 +61,19 @@ export default async function handler(req, res) {
       try {
         const refererUrl = new URL(req.headers.referer);
         // If referer is a preview deployment, use production domain
-        if (refererUrl.host.includes('vercel.app') && refererUrl.host !== 'profitorbit.io') {
-          frontendUrl = 'https://profitorbit.io';
+        if (refererUrl.host.includes('vercel.app') && refererUrl.host !== 'orben.io') {
+          frontendUrl = 'https://orben.io';
         } else {
           frontendUrl = refererUrl.origin;
         }
       } catch (e) {
         console.error('Error parsing referer:', e);
-        frontendUrl = 'https://profitorbit.io'; // Fallback to production
+        frontendUrl = 'https://orben.io'; // Fallback to production
       }
     }
     // 5. Last resort: use production domain
     else {
-      frontendUrl = 'https://profitorbit.io';
+      frontendUrl = 'https://orben.io';
     }
     
     // Default redirect path - redirect to CrosslistComposer (where connect button is)

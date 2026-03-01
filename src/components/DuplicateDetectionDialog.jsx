@@ -2,278 +2,316 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle, Link as LinkIcon, ExternalLink, X, Loader2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Merge, CheckCircle2, Loader2, Package, ShoppingCart } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient } from "@/api/base44Client";
+import { salesApi } from "@/api/salesApi";
 
 const DEFAULT_IMAGE_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/4abea2f77_box.png";
 
-export function DuplicateDetectionDialog({ 
-  isOpen, 
-  onClose, 
-  duplicates, 
-  onViewInventory,
-  onMergeComplete
+export function DuplicateDetectionDialog({
+  isOpen,
+  onClose,
+  inventoryDuplicates = [],
+  saleDuplicates = [],
+  onRefresh,
 }) {
-  const [selectedDuplicates, setSelectedDuplicates] = useState(new Set());
-  const [isMerging, setIsMerging] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [mergingGroupIdx, setMergingGroupIdx] = useState(null);
+  const [primarySelections, setPrimarySelections] = useState({});
   const { toast } = useToast();
 
-  if (!duplicates || Object.keys(duplicates).length === 0) {
-    return null;
-  }
+  const invCount = inventoryDuplicates.length;
+  const saleCount = saleDuplicates.length;
+  const totalCount = invCount + saleCount;
 
-  // Get the first imported item's duplicates for now
-  const importedItemId = Object.keys(duplicates)[0];
-  const duplicateData = duplicates[importedItemId] || {};
-  const importedItem = duplicateData.importedItem;
-  const matches = duplicateData.matches || [];
+  // ── Delete handlers ──────────────────────────────────────────────
 
-  const toggleSelect = (id) => {
-    const newSelected = new Set(selectedDuplicates);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
+  const handleDeleteInventoryItem = async (itemId) => {
+    setDeletingId(itemId);
+    try {
+      await apiClient.delete(`/api/inventory/${itemId}`);
+      toast({ title: "Item deleted", description: "Duplicate item has been removed." });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Delete error:', err);
+      toast({ title: "Delete failed", description: err.message || "Could not delete item.", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
     }
-    setSelectedDuplicates(newSelected);
   };
 
-  const handleMerge = async () => {
-    if (selectedDuplicates.size === 0) {
-      toast({
-        title: "No items selected",
-        description: "Please select at least one duplicate to merge",
-        variant: "destructive",
-      });
-      return;
+  const handleDeleteSale = async (saleId) => {
+    setDeletingId(saleId);
+    try {
+      await salesApi.delete(saleId, true);
+      toast({ title: "Sale deleted", description: "Duplicate sale has been removed." });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Delete error:', err);
+      toast({ title: "Delete failed", description: err.message || "Could not delete sale.", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
     }
+  };
 
-    setIsMerging(true);
+  // ── Merge handler ────────────────────────────────────────────────
 
+  const handleMergeGroup = async (groupIdx) => {
+    const group = inventoryDuplicates[groupIdx];
+    if (!group || group.items.length < 2) return;
+
+    const primaryId = primarySelections[groupIdx] || group.items[0].id;
+    const duplicateIds = group.items.filter(it => it.id !== primaryId).map(it => it.id);
+
+    setMergingGroupIdx(groupIdx);
     try {
       const response = await apiClient.post('/api/inventory/merge-duplicates', {
-        primaryItemId: importedItemId,
-        duplicateItemIds: Array.from(selectedDuplicates),
-        action: 'merge_and_delete'
+        primaryItemId: primaryId,
+        duplicateItemIds: duplicateIds,
+        action: 'merge_and_delete',
       });
 
       if (response.success) {
         toast({
-          title: "Items merged successfully",
-          description: `Merged ${response.mergedCount} duplicate${response.mergedCount > 1 ? 's' : ''} into your item`,
+          title: "Items merged",
+          description: `Merged ${duplicateIds.length} duplicate${duplicateIds.length > 1 ? 's' : ''} into one item.`,
         });
-
-        // Call callback to refresh data
-        if (onMergeComplete) {
-          onMergeComplete(importedItemId);
-        }
-
-        onClose();
+        if (onRefresh) onRefresh();
       } else {
-        throw new Error(response.error || 'Failed to merge items');
+        throw new Error(response.error || 'Merge failed');
       }
-    } catch (error) {
-      console.error('❌ Error merging items:', error);
-      toast({
-        title: "Merge failed",
-        description: error.message || "Failed to merge duplicate items",
-        variant: "destructive",
-      });
+    } catch (err) {
+      console.error('Merge error:', err);
+      toast({ title: "Merge failed", description: err.message || "Could not merge items.", variant: "destructive" });
     } finally {
-      setIsMerging(false);
+      setMergingGroupIdx(null);
     }
   };
 
-  const handleViewInInventory = () => {
-    if (onViewInventory) {
-      onViewInventory(importedItemId);
-    }
-    onClose();
-  };
+  // ── Render ───────────────────────────────────────────────────────
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            {totalCount > 0 ? (
+              <>
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Potential Duplicates Detected
-              </DialogTitle>
-              <DialogDescription className="mt-2">
-                We found {matches.length} item{matches.length > 1 ? 's' : ''} in your inventory that may be similar to the item you just imported.
-              </DialogDescription>
-            </div>
-          </div>
+                {totalCount} Duplicate Group{totalCount > 1 ? 's' : ''} Found
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                No Duplicates Found
+              </>
+            )}
+          </DialogTitle>
+          {totalCount === 0 && (
+            <DialogDescription>
+              Your inventory and sales look clean — no duplicate entries detected.
+            </DialogDescription>
+          )}
         </DialogHeader>
 
-        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800">
-          <AlertDescription className="text-sm">
-            <strong>Why am I seeing this?</strong> These items have similar titles or match marketplace IDs. Review them to avoid having duplicate inventory.
-          </AlertDescription>
-        </Alert>
+        {totalCount > 0 && (
+          <Tabs defaultValue="inventory" className="mt-2">
+            <TabsList className="w-full">
+              <TabsTrigger value="inventory" className="flex-1 gap-1.5">
+                <Package className="w-3.5 h-3.5" />
+                Inventory ({invCount})
+              </TabsTrigger>
+              <TabsTrigger value="sales" className="flex-1 gap-1.5">
+                <ShoppingCart className="w-3.5 h-3.5" />
+                Sales ({saleCount})
+              </TabsTrigger>
+            </TabsList>
 
-        <div className="space-y-4">
-          {/* Newly Imported Item */}
-          <div className="border-2 border-blue-500 rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
-            <div className="flex items-center gap-2 mb-3">
-              <Badge className="bg-blue-600 text-white">Just Imported</Badge>
-              {importedItem?.source && (
-                <Badge variant="outline">{importedItem.source}</Badge>
+            {/* ── Inventory Tab ─────────────────────────────────── */}
+            <TabsContent value="inventory" className="space-y-4 mt-4">
+              {invCount === 0 ? (
+                <EmptyState text="No inventory duplicates found." />
+              ) : (
+                inventoryDuplicates.map((group, gIdx) => (
+                  <InventoryGroup
+                    key={gIdx}
+                    group={group}
+                    groupIdx={gIdx}
+                    primaryId={primarySelections[gIdx] || group.items[0].id}
+                    onSetPrimary={(id) => setPrimarySelections(prev => ({ ...prev, [gIdx]: id }))}
+                    onDelete={handleDeleteInventoryItem}
+                    onMerge={() => handleMergeGroup(gIdx)}
+                    deletingId={deletingId}
+                    isMerging={mergingGroupIdx === gIdx}
+                  />
+                ))
               )}
-            </div>
-            <div className="flex gap-4">
-              <OptimizedImage
-                src={importedItem?.image_url || DEFAULT_IMAGE_URL}
-                alt={importedItem?.item_name || "Imported item"}
-                fallback={DEFAULT_IMAGE_URL}
-                className="w-24 h-24 object-cover rounded-md flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-foreground truncate">{importedItem?.item_name || "New Item"}</h3>
-                <div className="mt-1 text-sm text-muted-foreground space-y-1">
-                  {importedItem?.purchase_price && (
-                    <div>Price: ${parseFloat(importedItem.purchase_price).toFixed(2)}</div>
-                  )}
-                  {importedItem?.purchase_date && (
-                    <div>Date: {format(parseISO(importedItem.purchase_date), 'MMM dd, yyyy')}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+            </TabsContent>
 
-          {/* Potential Duplicates */}
-          <div>
-            <h4 className="font-semibold text-sm text-muted-foreground mb-2">
-              Potential Duplicates in Your Inventory:
-              {selectedDuplicates.size > 0 && (
-                <span className="ml-2 text-blue-600">({selectedDuplicates.size} selected)</span>
+            {/* ── Sales Tab ─────────────────────────────────────── */}
+            <TabsContent value="sales" className="space-y-4 mt-4">
+              {saleCount === 0 ? (
+                <EmptyState text="No sale duplicates found." />
+              ) : (
+                saleDuplicates.map((group, gIdx) => (
+                  <SalesGroup
+                    key={gIdx}
+                    group={group}
+                    onDelete={handleDeleteSale}
+                    deletingId={deletingId}
+                  />
+                ))
               )}
-            </h4>
-            <div className="space-y-2">
-              {matches.map((match) => (
-                <div 
-                  key={match.id}
-                  className={`border rounded-lg p-4 transition-colors ${
-                    selectedDuplicates.has(match.id) 
-                      ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/20 dark:border-blue-700' 
-                      : 'hover:bg-muted/50'
-                  }`}
-                >
-                  <div className="flex gap-4">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={selectedDuplicates.has(match.id)}
-                        onCheckedChange={() => toggleSelect(match.id)}
-                        className="mt-1"
-                      />
-                      <OptimizedImage
-                        src={match.image_url || DEFAULT_IMAGE_URL}
-                        alt={match.item_name}
-                        fallback={DEFAULT_IMAGE_URL}
-                        className="w-20 h-20 object-cover rounded-md flex-shrink-0"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-foreground">{match.item_name}</h3>
-                          {match.similarity && (
-                            <Badge variant="outline" className="mt-1 text-xs">
-                              {match.similarity.toFixed(0)}% match
-                            </Badge>
-                          )}
-                        </div>
-                        {match.source && (
-                          <Badge variant="outline" className="flex-shrink-0">{match.source}</Badge>
-                        )}
-                      </div>
-                      <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
-                        <div className="flex items-center gap-4 flex-wrap">
-                          {match.purchase_price && (
-                            <span>Price: ${parseFloat(match.purchase_price).toFixed(2)}</span>
-                          )}
-                          {match.status && (
-                            <Badge variant="secondary" className="text-xs">{match.status}</Badge>
-                          )}
-                          {match.quantity > 1 && (
-                            <span className="text-xs">Qty: {match.quantity}</span>
-                          )}
-                        </div>
-                        {(match.ebay_item_id || match.mercari_item_id || match.facebook_item_id) && (
-                          <div className="text-xs">
-                            {match.ebay_item_id && <span className="mr-3">eBay ID: {match.ebay_item_id}</span>}
-                            {match.mercari_item_id && <span className="mr-3">Mercari ID: {match.mercari_item_id}</span>}
-                            {match.facebook_item_id && <span>Facebook ID: {match.facebook_item_id}</span>}
-                          </div>
-                        )}
-                        {match.created_at && (
-                          <div className="text-xs">Added: {format(parseISO(match.created_at), 'MMM dd, yyyy')}</div>
-                        )}
-                      </div>
-                      
-                      {/* Show differences that user may want to merge */}
-                      {(match.description || match.brand || match.size || match.condition) && (
-                        <div className="mt-2 pt-2 border-t">
-                          <div className="text-xs text-muted-foreground">
-                            <strong>Additional data in this item:</strong>
-                            {match.description && <div>• Has description</div>}
-                            {match.brand && <div>• Brand: {match.brand}</div>}
-                            {match.size && <div>• Size: {match.size}</div>}
-                            {match.condition && <div>• Condition: {match.condition}</div>}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+            </TabsContent>
+          </Tabs>
+        )}
 
-        <div className="flex justify-between items-center pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            Found {matches.length} potential duplicate{matches.length > 1 ? 's' : ''}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} disabled={isMerging}>
-              <X className="w-4 h-4 mr-2" />
-              Dismiss
-            </Button>
-            {selectedDuplicates.size > 0 && (
-              <Button 
-                onClick={handleMerge} 
-                disabled={isMerging}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isMerging ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Merging...
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="w-4 h-4 mr-2" />
-                    Merge {selectedDuplicates.size} Item{selectedDuplicates.size > 1 ? 's' : ''}
-                  </>
-                )}
-              </Button>
-            )}
-            <Button onClick={handleViewInInventory} disabled={isMerging}>
-              <ExternalLink className="w-4 h-4 mr-2" />
-              View in Inventory
-            </Button>
-          </div>
+        <div className="flex justify-end pt-3 border-t">
+          <Button variant="outline" onClick={onClose}>Close</Button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Sub-components ──────────────────────────────────────────────────
+
+function EmptyState({ text }) {
+  return (
+    <div className="text-center py-8">
+      <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-green-500" />
+      <p className="text-muted-foreground text-sm">{text}</p>
+    </div>
+  );
+}
+
+function InventoryGroup({ group, groupIdx, primaryId, onSetPrimary, onDelete, onMerge, deletingId, isMerging }) {
+  return (
+    <div className="border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden">
+      <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-2 flex items-center justify-between">
+        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+          {group.items.length} similar items
+        </span>
+        <Button
+          size="sm"
+          onClick={onMerge}
+          disabled={isMerging || group.items.length < 2}
+          className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {isMerging ? (
+            <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Merging...</>
+          ) : (
+            <><Merge className="w-3 h-3 mr-1" /> Merge All</>
+          )}
+        </Button>
+      </div>
+      <div className="divide-y divide-border">
+        {group.items.map((item) => {
+          const isPrimary = item.id === primaryId;
+          return (
+            <div key={item.id} className={`flex gap-3 p-3 ${isPrimary ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+              <OptimizedImage
+                src={item.image_url || DEFAULT_IMAGE_URL}
+                alt={item.item_name}
+                fallback={DEFAULT_IMAGE_URL}
+                className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-medium text-foreground truncate">{item.item_name || 'Untitled'}</h4>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
+                      <span>${Number(item.purchase_price || 0).toFixed(2)}</span>
+                      {item.size && <span>Size: {item.size}</span>}
+                      <span>Qty: {item.quantity || 1}</span>
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{item.status || 'available'}</Badge>
+                      {item.created_at && <span>Added {format(parseISO(item.created_at), 'MMM d, yyyy')}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {isPrimary ? (
+                      <Badge className="bg-blue-600 text-white text-[9px] px-1.5">Keep</Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-1.5 text-[10px] text-blue-600 hover:text-blue-700"
+                        onClick={() => onSetPrimary(item.id)}
+                      >
+                        Set as primary
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={() => onDelete(item.id)}
+                      disabled={deletingId === item.id}
+                    >
+                      {deletingId === item.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SalesGroup({ group, onDelete, deletingId }) {
+  return (
+    <div className="border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden">
+      <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-2">
+        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+          {group.items.length} matching sales
+        </span>
+      </div>
+      <div className="divide-y divide-border">
+        {group.items.map((sale) => (
+          <div key={sale.id} className="flex items-center gap-3 p-3">
+            {sale.image_url && (
+              <OptimizedImage
+                src={sale.image_url}
+                alt={sale.item_name}
+                fallback={DEFAULT_IMAGE_URL}
+                className="w-12 h-12 object-cover rounded-md flex-shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-medium text-foreground truncate">{sale.item_name || 'Untitled'}</h4>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
+                <span>${Number(sale.selling_price ?? sale.sale_price ?? 0).toFixed(2)}</span>
+                {sale.sale_date && <span>{format(parseISO(sale.sale_date), 'MMM d, yyyy')}</span>}
+                {sale.platform && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{sale.platform}</Badge>}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0"
+              onClick={() => onDelete(sale.id)}
+              disabled={deletingId === sale.id}
+            >
+              {deletingId === sale.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

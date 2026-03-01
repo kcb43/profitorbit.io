@@ -293,7 +293,7 @@ ${includeItemList && tableHtml ? `
 
 <!-- Footer -->
 <div class="footer">
-  <span>ProfitOrbit · profitorbit.io</span>
+  <span>ProfitOrbit · orben.io</span>
   <span>Report: ${reportDef.id} · ${filterText}</span>
 </div>
 

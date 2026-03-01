@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { MERCARI_BRANDS, POPULAR_BRANDS } from "@/constants/mercari-brands";
 import { useCustomSources } from "@/hooks/useCustomSources";
 import { Sparkles, ChevronDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function BrandCombobox({
   value = '',
@@ -242,8 +243,20 @@ export function BrandCombobox({
         </PopoverContent>
       </Popover>
 
+      {/* No brand checkbox */}
+      <div className="flex items-center gap-2 mt-1.5">
+        <Checkbox
+          id="no-brand-check"
+          checked={value === 'Unbranded'}
+          onCheckedChange={(checked) => onChange(checked ? 'Unbranded' : '')}
+        />
+        <label htmlFor="no-brand-check" className="text-xs text-muted-foreground cursor-pointer select-none">
+          No brand / Not sure
+        </label>
+      </div>
+
       {/* Clear link */}
-      {value && (
+      {value && value !== 'Unbranded' && (
         <button
           type="button"
           className="text-xs text-muted-foreground hover:text-foreground underline mt-1 block"

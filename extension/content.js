@@ -1791,7 +1791,7 @@ async function submitFacebookForm() {
 async function createMercariListingWithPuppeteer(listingData) {
   try {
     // Get the API URL - try to get from storage or use default
-    let apiUrl = 'https://profitorbit.io'; // Default to production
+    let apiUrl = 'https://orben.io'; // Default to production
     
     // Try to get from chrome.storage if available
     try {

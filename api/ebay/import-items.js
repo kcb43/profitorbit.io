@@ -678,13 +678,33 @@ export default async function handler(req, res) {
           console.log(`✅ Created new inventory item with ID ${inventoryId}`);
         }
 
+        // Upsert marketplace_listings record for eBay
+        try {
+          await supabase
+            .from('marketplace_listings')
+            .upsert(
+              {
+                user_id: userId,
+                inventory_item_id: inventoryId,
+                marketplace: 'ebay',
+                marketplace_listing_id: itemDetails.itemId ? String(itemDetails.itemId) : null,
+                status: isSoldItem ? 'sold' : 'active',
+                listed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'inventory_item_id,marketplace' }
+            );
+        } catch (linkErr) {
+          console.error(`⚠️ Failed to upsert marketplace_listings:`, linkErr);
+        }
+
         imported++;
         const importResult = {
           itemId,
           inventoryId,
           isExistingItem, // Flag to show if it was a duplicate
         };
-        
+
         // If this is a sold item, also create a sale record
         if (isSoldItem && fullItemData) {
           try {

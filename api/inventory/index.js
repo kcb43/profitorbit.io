@@ -68,6 +68,10 @@ function buildSelectFromFields(fieldsCsv) {
     'facebook_listing_id',
     'mercari_listing_id',
     'marketplace_listings',
+    // marketplace item IDs (for dedup on import)
+    'ebay_item_id',
+    'mercari_item_id',
+    'facebook_item_id',
     // tags + fulfillment
     'internal_tags',
     'listing_keywords',

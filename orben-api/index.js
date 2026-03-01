@@ -100,11 +100,14 @@ fastify.get('/v1/health', async () => {
  * Get paginated deal feed with filters
  */
 fastify.get('/v1/deals/feed', async (request, reply) => {
-  const { q, merchant, category, min_score = 0, limit = 50, offset = 0 } = request.query;
+  const { q, merchant, category, categories, min_score = 0, limit = 50, offset = 0 } = request.query;
+
+  // Parse comma-separated categories into array (e.g. "amazon-deals,price-drops")
+  const categoriesArr = categories ? categories.split(',').filter(Boolean) : null;
 
   const cacheKey = `deal:feed:${crypto
     .createHash('sha1')
-    .update(JSON.stringify({ q, merchant, category, min_score, limit, offset }))
+    .update(JSON.stringify({ q, merchant, category, categories, min_score, limit, offset }))
     .digest('hex')}`;
 
   // Check cache
@@ -113,21 +116,36 @@ fastify.get('/v1/deals/feed', async (request, reply) => {
     return JSON.parse(cached);
   }
 
-  // Query via Supabase RPC function
-  const { data, error } = await supabase.rpc('get_deal_feed', {
+  // Query via Supabase RPC function (try with filter_categories, fall back to old signature)
+  const rpcParams = {
     search_query: q || null,
     filter_merchant: merchant || null,
     filter_category: category || null,
+    filter_categories: categoriesArr,
     min_score_val: parseInt(min_score, 10),
     page_limit: parseInt(limit, 10),
     page_offset: parseInt(offset, 10)
-  });
+  };
+
+  let { data, error } = await supabase.rpc('get_deal_feed', rpcParams);
+
+  // Fallback: if the RPC doesn't support filter_categories yet, retry without it
+  if (error && error.message && error.message.includes('filter_categories')) {
+    const { filter_categories, ...fallbackParams } = rpcParams;
+    ({ data, error } = await supabase.rpc('get_deal_feed', fallbackParams));
+  }
 
   if (error) {
     return reply.code(500).send({ error: error.message });
   }
 
-  const response = { items: data || [], count: data?.length || 0, total: data?.length || 0 };
+  // Mark admin-curated deals (source_id is null for deals published via Deal Curator)
+  const items = (data || []).map(d => ({
+    ...d,
+    curated: d.source_id === null,
+    source_id: undefined  // strip internal field from response
+  }));
+  const response = { items, count: items.length, total: items.length };
 
   // Cache for 30 seconds (reduced for "Live" feed freshness)
   await redis.set(cacheKey, JSON.stringify(response), 'EX', 30);
@@ -511,6 +529,21 @@ fastify.get('/v1/search/snapshot/:id', async (request, reply) => {
 });
 
 // ==========================================
+// ADMIN HELPERS
+// ==========================================
+
+const ADMIN_IDS = (process.env.ADMIN_USER_IDS || '82bdb1aa-b2d2-4001-80ef-1196e5563cb9')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+async function requireAdmin(request) {
+  const user = await requireUser(request);
+  if (!ADMIN_IDS.includes(user.id)) {
+    throw new Error('Admin access required');
+  }
+  return user;
+}
+
+// ==========================================
 // ADMIN ENDPOINTS
 // ==========================================
 
@@ -519,7 +552,7 @@ fastify.get('/v1/search/snapshot/:id', async (request, reply) => {
  * List all deal sources
  */
 fastify.get('/v1/admin/deals/sources', async (request, reply) => {
-  // TODO: Add admin check
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
 
   const { data, error } = await supabase
     .from('deal_sources')
@@ -538,7 +571,7 @@ fastify.get('/v1/admin/deals/sources', async (request, reply) => {
  * Create a new deal source
  */
 fastify.post('/v1/admin/deals/sources', async (request, reply) => {
-  // TODO: Add admin check
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
 
   const { name, type, base_url, rss_url, enabled, poll_interval_minutes, notes } = request.body || {};
 
@@ -572,7 +605,7 @@ fastify.post('/v1/admin/deals/sources', async (request, reply) => {
  * Update a deal source
  */
 fastify.patch('/v1/admin/deals/sources/:id', async (request, reply) => {
-  // TODO: Add admin check
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
 
   const { id } = request.params;
   const updates = request.body || {};
@@ -596,7 +629,7 @@ fastify.patch('/v1/admin/deals/sources/:id', async (request, reply) => {
  * Trigger manual ingestion run
  */
 fastify.post('/v1/admin/deals/ingest/run', async (request, reply) => {
-  // TODO: Add admin check
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
   // This would enqueue a job or trigger worker manually
   return { ok: true, message: 'Manual runs not yet implemented - worker polls automatically' };
 });
@@ -606,6 +639,7 @@ fastify.post('/v1/admin/deals/ingest/run', async (request, reply) => {
  * Get recent ingestion runs
  */
 fastify.get('/v1/admin/deals/ingest/runs', async (request, reply) => {
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
   const { limit = 50 } = request.query;
 
   const { data, error } = await supabase
@@ -626,6 +660,7 @@ fastify.get('/v1/admin/deals/ingest/runs', async (request, reply) => {
  * Get pending submissions
  */
 fastify.get('/v1/admin/deals/submissions', async (request, reply) => {
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
   const { status = 'pending' } = request.query;
 
   const { data, error } = await supabase
@@ -646,7 +681,7 @@ fastify.get('/v1/admin/deals/submissions', async (request, reply) => {
  * Approve/reject a submission
  */
 fastify.patch('/v1/admin/deals/submissions/:id', async (request, reply) => {
-  // TODO: Add admin check
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
 
   const { id } = request.params;
   const { status, rejection_reason } = request.body || {};
@@ -951,11 +986,383 @@ fastify.post('/v1/news/seen', async (request, reply) => {
  * Manually trigger a news ingestion run (admin)
  */
 fastify.post('/v1/admin/news/ingest', async (request, reply) => {
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
   if (!SERPAPI_KEY) {
     return reply.code(503).send({ error: 'SERPAPI_KEY not configured' });
   }
   const result = await runNewsIngestion();
   return result;
+});
+
+// ==========================================
+// AMAZON DEAL CURATOR
+// ==========================================
+
+/**
+ * Extract ASIN from an Amazon URL.
+ * Matches /dp/ASIN, /gp/product/ASIN, or a bare 10-char ASIN string.
+ */
+function extractAsin(input) {
+  if (!input) return null;
+  const urlMatch = input.match(/(?:\/dp\/|\/gp\/product\/|\/gp\/aw\/d\/)([A-Z0-9]{10})/i);
+  if (urlMatch) return urlMatch[1].toUpperCase();
+  const bare = input.trim();
+  if (/^[A-Z0-9]{10}$/i.test(bare)) return bare.toUpperCase();
+  return null;
+}
+
+/**
+ * Normalize a SerpAPI Amazon product response into a clean structure.
+ */
+function normalizeAmazonProduct(data) {
+  // Handle amazon_product engine response
+  if (data.product_results) {
+    const p = data.product_results;
+    const offers = [];
+
+    // Main product offer
+    if (p.buybox_winner) {
+      const bb = p.buybox_winner;
+      offers.push({
+        condition: bb.condition || 'New',
+        price: bb.price?.value || bb.price?.raw ? parseFloat(String(bb.price?.value || bb.price?.raw).replace(/[^0-9.]/g, '')) : null,
+        original_price: bb.rrp?.value || null,
+        seller: bb.seller?.name || 'Amazon.com',
+        prime: bb.is_prime || false,
+        availability: bb.availability?.raw || 'In Stock'
+      });
+    }
+
+    // Other sellers / used offers
+    if (data.other_sellers) {
+      for (const s of data.other_sellers) {
+        offers.push({
+          condition: s.condition || 'New',
+          price: s.price?.value || null,
+          original_price: null,
+          seller: s.seller?.name || 'Third Party',
+          prime: s.is_prime || false,
+          availability: s.availability || 'In Stock'
+        });
+      }
+    }
+
+    // Used/renewed/warehouse offers from buybox variants
+    if (data.buybox) {
+      for (const variant of data.buybox) {
+        if (variant.condition && variant.condition !== 'New') {
+          offers.push({
+            condition: variant.condition,
+            price: variant.price?.value || null,
+            original_price: null,
+            seller: variant.seller?.name || 'Amazon',
+            prime: variant.is_prime || false,
+            availability: variant.availability || 'In Stock'
+          });
+        }
+      }
+    }
+
+    return {
+      title: p.title || '',
+      image_url: p.images?.[0] || p.image || '',
+      images: p.images || (p.image ? [p.image] : []),
+      description: p.description || p.feature_bullets?.join(' ') || '',
+      rating: p.rating || null,
+      reviews_count: p.ratings_total || null,
+      offers,
+      asin: p.asin || null,
+      amazon_url: p.link || `https://amazon.com/dp/${p.asin || ''}`
+    };
+  }
+
+  // Fallback: google_shopping engine
+  if (data.shopping_results) {
+    const results = data.shopping_results.slice(0, 5);
+    return {
+      title: results[0]?.title || '',
+      image_url: results[0]?.thumbnail || '',
+      images: results.map(r => r.thumbnail).filter(Boolean),
+      description: '',
+      rating: results[0]?.rating || null,
+      reviews_count: results[0]?.reviews || null,
+      offers: results.map(r => ({
+        condition: 'New',
+        price: r.extracted_price || null,
+        original_price: r.extracted_old_price || null,
+        seller: r.source || 'Unknown',
+        prime: false,
+        availability: 'In Stock'
+      })),
+      asin: null,
+      amazon_url: results[0]?.link || ''
+    };
+  }
+
+  return { title: '', image_url: '', images: [], description: '', rating: null, reviews_count: null, offers: [], asin: null, amazon_url: '' };
+}
+
+/**
+ * POST /v1/admin/deals/amazon-lookup
+ * Look up an Amazon product by URL, ASIN, or search term.
+ * Returns product details with all offer types for admin curation.
+ */
+fastify.post('/v1/admin/deals/amazon-lookup', async (request, reply) => {
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
+
+  if (!SERPAPI_KEY) {
+    return reply.code(503).send({ error: 'SERPAPI_KEY not configured' });
+  }
+
+  const { query } = request.body || {};
+  if (!query || !query.trim()) {
+    return reply.code(400).send({ error: 'query is required (Amazon URL, ASIN, or search term)' });
+  }
+
+  const asin = extractAsin(query);
+
+  try {
+    let params;
+    if (asin) {
+      // Use amazon_product engine for direct ASIN lookup
+      params = new URLSearchParams({
+        engine: 'amazon_product',
+        api_key: SERPAPI_KEY,
+        asin,
+        amazon_domain: 'amazon.com'
+      });
+
+      const serpUrl = `https://serpapi.com/search?${params}`;
+      console.log('[DealCurator] Lookup URL:', serpUrl.replace(SERPAPI_KEY, '***'));
+      const res = await axios.get(serpUrl, { timeout: 15000 });
+      console.log('[DealCurator] Product lookup keys:', Object.keys(res.data));
+      const product = normalizeAmazonProduct(res.data);
+      return { product, engine: 'amazon_product' };
+    } else {
+      // Use amazon search engine for text queries
+      params = new URLSearchParams({
+        engine: 'amazon',
+        api_key: SERPAPI_KEY,
+        k: query.trim(),
+        amazon_domain: 'amazon.com'
+      });
+
+      const serpUrl = `https://serpapi.com/search?${params}`;
+      console.log('[DealCurator] Search URL:', serpUrl.replace(SERPAPI_KEY, '***'));
+      const res = await axios.get(serpUrl, { timeout: 15000 });
+      console.log('[DealCurator] Search keys:', Object.keys(res.data));
+      const rawResults = res.data.organic_results || res.data.results || [];
+      console.log('[DealCurator] Search results count:', rawResults.length);
+
+      if (rawResults.length === 0) {
+        return { product: { title: '', image_url: '', images: [], description: '', rating: null, reviews_count: null, offers: [], asin: null, amazon_url: '' }, engine: 'amazon' };
+      }
+
+      // Return the top result as a product with its price as an offer
+      const top = rawResults[0];
+      const product = {
+        title: top.title || '',
+        image_url: top.thumbnail || top.image || '',
+        images: [top.thumbnail || top.image].filter(Boolean),
+        description: '',
+        rating: top.rating || null,
+        reviews_count: top.reviews || null,
+        offers: rawResults.slice(0, 8).map(item => ({
+          condition: 'New',
+          price: item.extracted_price || null,
+          original_price: item.extracted_old_price || null,
+          seller: 'Amazon',
+          prime: item.is_prime || item.prime || false,
+          availability: 'In Stock',
+          title: item.title || '',
+          asin: item.asin || null,
+          url: item.link || (item.asin ? `https://amazon.com/dp/${item.asin}` : ''),
+        })),
+        asin: top.asin || null,
+        amazon_url: top.link || (top.asin ? `https://amazon.com/dp/${top.asin}` : '')
+      };
+
+      return { product, engine: 'amazon' };
+    }
+  } catch (err) {
+    console.error('[DealCurator] Amazon lookup error:', err.message);
+    return reply.code(502).send({ error: `Product lookup failed: ${err.message}` });
+  }
+});
+
+/**
+ * POST /v1/admin/deals/publish
+ * Publish one or more curated deals directly to the feed.
+ * Accepts an array of deals with enriched product data.
+ */
+fastify.post('/v1/admin/deals/publish', async (request, reply) => {
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
+
+  const { deals } = request.body || {};
+  if (!Array.isArray(deals) || deals.length === 0) {
+    return reply.code(400).send({ error: 'deals array is required' });
+  }
+
+  const results = [];
+  for (const deal of deals) {
+    const { title, url, price, original_price, merchant, category, image_url, condition, notes, score } = deal;
+    if (!title || !url) {
+      results.push({ title, error: 'title and url are required' });
+      continue;
+    }
+
+    const hash = crypto.createHash('sha256')
+      .update(`${title}|${url}|${price || ''}|${condition || ''}`)
+      .digest('hex');
+
+    const { data: newDeal, error } = await supabase
+      .from('deals')
+      .insert([{
+        source_id: null,
+        title,
+        url,
+        price: price || null,
+        original_price: original_price || null,
+        merchant: merchant || 'Amazon',
+        category: category || null,
+        image_url: image_url || null,
+        description: [condition, notes].filter(Boolean).join(' — '),
+        hash,
+        score: score || 75,
+        status: 'active',
+        posted_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      results.push({ title, error: error.message });
+    } else {
+      results.push({ title, id: newDeal.id, ok: true });
+    }
+  }
+
+  return { ok: true, results };
+});
+
+/**
+ * GET /v1/admin/deals/amazon-search
+ * Search Amazon for deals using SerpAPI's Amazon Search engine.
+ * Uses Amazon's deal/specials filters (rh parameter) to find discounted products.
+ * Admin can search by keyword, category, and filter by deal type.
+ */
+fastify.get('/v1/admin/deals/amazon-search', async (request, reply) => {
+  try { await requireAdmin(request); } catch (e) { return reply.code(403).send({ error: e.message }); }
+
+  if (!SERPAPI_KEY) {
+    return reply.code(503).send({ error: 'SERPAPI_KEY not configured' });
+  }
+
+  const { q, category, sort } = request.query;
+
+  // Default broad search terms to maximize deal discovery across categories
+  const DEFAULT_QUERIES = [
+    'todays deals',
+    'lightning deals',
+    'deal of the day',
+    'clearance sale',
+    'price drop',
+    'best sellers deals',
+    'limited time deal',
+    'amazon deals electronics',
+    'amazon deals home',
+    'amazon deals kitchen',
+  ];
+
+  // Pages per query — 7 pages per query × 10 queries = 70 API calls → ~3000+ results
+  const PAGES_PER_QUERY = 7;
+
+  try {
+    const baseParams = {
+      engine: 'amazon',
+      api_key: SERPAPI_KEY,
+      amazon_domain: 'amazon.com',
+    };
+
+    // If user typed a custom search, just search that with many pages
+    const queries = q ? [q] : DEFAULT_QUERIES;
+    const pagesPerQuery = q ? 10 : PAGES_PER_QUERY;
+
+    console.log(`[DealCurator] Fetching ${queries.length} queries × ${pagesPerQuery} pages = ${queries.length * pagesPerQuery} API calls`);
+
+    // Build all fetch promises across all queries and pages
+    const allPromises = [];
+    for (const query of queries) {
+      for (let pg = 1; pg <= pagesPerQuery; pg++) {
+        allPromises.push((async () => {
+          const params = new URLSearchParams(baseParams);
+          params.set('k', query);
+          if (category) params.set('node', category);
+          if (pg > 1) params.set('page', String(pg));
+          if (sort) params.set('s', sort);
+
+          const serpUrl = `https://serpapi.com/search?${params}`;
+          try {
+            const res = await axios.get(serpUrl, { timeout: 25000 });
+            return res.data.organic_results || res.data.results || [];
+          } catch (err) {
+            console.error(`[DealCurator] "${query}" page ${pg} failed:`, err.message);
+            return [];
+          }
+        })());
+      }
+    }
+
+    const allPages = await Promise.all(allPromises);
+    const rawResults = allPages.flat();
+    console.log('[DealCurator] Total raw results across all queries:', rawResults.length);
+
+    // Normalize and deduplicate by ASIN
+    const seen = new Set();
+    const results = [];
+    for (const item of rawResults) {
+      const asin = item.asin || null;
+      if (asin && seen.has(asin)) continue;
+      if (asin) seen.add(asin);
+
+      const price = item.extracted_price || null;
+      const oldPrice = item.extracted_old_price || null;
+      const discount = oldPrice && price && oldPrice > price
+        ? Math.round(((oldPrice - price) / oldPrice) * 100)
+        : (item.discount ? parseInt(String(item.discount).replace(/[^0-9]/g, ''), 10) || 0 : 0);
+
+      results.push({
+        position: results.length + 1,
+        asin,
+        title: item.title || '',
+        price,
+        original_price: oldPrice,
+        discount,
+        image_url: item.thumbnail || item.image || '',
+        url: item.link || (asin ? `https://amazon.com/dp/${asin}` : ''),
+        rating: item.rating || null,
+        reviews_count: item.reviews || null,
+        prime: item.is_prime || item.prime || false,
+        badges: item.badges || [],
+        bought_last_month: item.bought_last_month || null,
+        coupon: item.save_with_coupon || null,
+        offers: item.offers || [],
+        delivery: item.delivery || [],
+      });
+    }
+
+    console.log('[DealCurator] Deduplicated results:', results.length);
+
+    return {
+      items: results,
+      total: results.length,
+      queriesUsed: queries.length,
+      apiCalls: queries.length * pagesPerQuery,
+    };
+  } catch (err) {
+    console.error('[DealCurator] Amazon search error:', err.message);
+    return reply.code(502).send({ error: `Amazon search failed: ${err.message}` });
+  }
 });
 
 // ==========================================

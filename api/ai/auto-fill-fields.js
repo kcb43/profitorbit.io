@@ -1,6 +1,7 @@
 /**
  * AI Auto-Fill Endpoint
- * Automatically fills missing marketplace-specific fields using AI
+ * Automatically fills missing marketplace-specific fields using AI.
+ * Batches all missing fields into a single prompt per marketplace for speed.
  */
 
 import OpenAI from 'openai';
@@ -16,37 +17,27 @@ const FB_TOP_CATEGORIES = [
 ];
 
 // Initialize OpenAI client
-const openai = process.env.OPENAI_API_KEY 
+const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
 
-/**
- * Auto-fill missing fields for all marketplaces
- * @param {Object} req.body
- * @param {Object} req.body.generalForm - General form data
- * @param {Object} req.body.ebayForm - eBay form data
- * @param {Object} req.body.mercariForm - Mercari form data
- * @param {Object} req.body.facebookForm - Facebook form data
- * @param {Array<string>} req.body.selectedMarketplaces - Marketplaces to fill
- * @param {Array<Issue>} req.body.issues - Validation issues to fill
- */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   if (!openai) {
-    return res.status(503).json({ 
-      error: 'AI service not configured. Please add OPENAI_API_KEY to environment.' 
+    return res.status(503).json({
+      error: 'AI service not configured. Please add OPENAI_API_KEY to environment.'
     });
   }
 
   try {
-    const { 
-      generalForm, 
-      ebayForm, 
-      mercariForm, 
-      facebookForm, 
+    const {
+      generalForm,
+      ebayForm,
+      mercariForm,
+      facebookForm,
       selectedMarketplaces,
       issues,
       ebayDefaults = {},
@@ -66,45 +57,51 @@ export default async function handler(req, res) {
       issuesByMarketplace[issue.marketplace].push(issue);
     }
 
-    // Process each marketplace
+    // Process all marketplaces IN PARALLEL
     const suggestions = {};
-    
-    for (const marketplace of selectedMarketplaces) {
-      const marketplaceIssues = issuesByMarketplace[marketplace] || [];
-      if (marketplaceIssues.length === 0) continue;
+    const marketplaceForms = { ebay: ebayForm, mercari: mercariForm, facebook: facebookForm };
 
-      console.log(`Processing ${marketplace}: ${marketplaceIssues.length} issues`);
+    const results = await Promise.all(
+      selectedMarketplaces.map(async (marketplace) => {
+        const marketplaceIssues = issuesByMarketplace[marketplace] || [];
+        if (marketplaceIssues.length === 0) return { marketplace, suggestions: [] };
 
-      // Get suggestions for this marketplace
-      const marketplaceSuggestions = await fillMarketplaceFields(
-        marketplace,
-        generalForm,
-        { ebayForm, mercariForm, facebookForm }[`${marketplace}Form`],
-        marketplaceIssues,
-        marketplace === 'ebay' ? ebayDefaults : {}
-      );
+        console.log(`Processing ${marketplace}: ${marketplaceIssues.length} issues`);
 
-      suggestions[marketplace] = marketplaceSuggestions;
+        const result = await fillMarketplaceFields(
+          marketplace,
+          generalForm,
+          marketplaceForms[marketplace],
+          marketplaceIssues,
+          marketplace === 'ebay' ? ebayDefaults : {}
+        );
+
+        return { marketplace, suggestions: result };
+      })
+    );
+
+    for (const { marketplace, suggestions: s } of results) {
+      if (s && s.length > 0) suggestions[marketplace] = s;
     }
 
     return res.status(200).json({ suggestions });
 
   } catch (error) {
     console.error('AI Auto-Fill Error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to auto-fill fields',
-      details: error.message 
+      details: error.message
     });
   }
 }
 
 /**
- * Fill missing fields for a specific marketplace
+ * Fill missing fields for a specific marketplace.
+ * Uses saved defaults first, then batches remaining fields into a single AI call.
  */
 async function fillMarketplaceFields(marketplace, generalForm, marketplaceForm, issues, savedDefaults = {}) {
   const suggestions = [];
 
-  // Build context from general form
   const context = {
     title: generalForm.title || '',
     description: generalForm.description || '',
@@ -114,37 +111,35 @@ async function fillMarketplaceFields(marketplace, generalForm, marketplaceForm, 
     category: generalForm.category || '',
   };
 
-  // Process each issue
+  // Separate issues into: those with saved defaults vs those needing AI
+  const needsAI = [];
   for (const issue of issues) {
-    // Use saved default first if available (avoids unnecessary AI call)
+    if (issue.field.startsWith('_') || issue.field === 'photos') continue;
+
     if (savedDefaults[issue.field]) {
       suggestions.push({
         field: issue.field,
         value: savedDefaults[issue.field],
         confidence: 0.95,
-        reasoning: 'From your saved eBay shipping defaults',
+        reasoning: 'From your saved shipping defaults',
       });
-      continue;
+    } else {
+      needsAI.push(issue);
     }
+  }
 
+  // Batch all AI-needed fields into one call
+  if (needsAI.length > 0) {
     try {
-      const suggestion = await fillSingleField(
-        marketplace,
-        issue.field,
-        context,
-        marketplaceForm
-      );
-
-      if (suggestion) {
-        suggestions.push({
-          field: issue.field,
-          value: suggestion.value,
-          confidence: suggestion.confidence,
-          reasoning: suggestion.reasoning,
-        });
-      }
+      const aiSuggestions = await batchFillFields(marketplace, needsAI, context);
+      suggestions.push(...aiSuggestions);
     } catch (error) {
-      console.error(`Error filling ${issue.field}:`, error);
+      console.error(`Batch AI error for ${marketplace}:`, error);
+      // Fallback: try individual fields with hardcoded defaults
+      for (const issue of needsAI) {
+        const fallback = getHardcodedDefault(marketplace, issue.field, context);
+        if (fallback) suggestions.push(fallback);
+      }
     }
   }
 
@@ -152,122 +147,150 @@ async function fillMarketplaceFields(marketplace, generalForm, marketplaceForm, 
 }
 
 /**
- * Fill a single field using AI
+ * Single AI call that fills ALL missing fields for a marketplace at once.
  */
-async function fillSingleField(marketplace, field, context, marketplaceForm) {
-  // Skip special fields
-  if (field.startsWith('_')) return null;
-  if (field === 'photos') return null; // Can't generate photos
+async function batchFillFields(marketplace, issues, context) {
+  const fieldNames = issues.map(i => i.field);
 
-  // Build prompt based on field type
-  const prompt = buildFieldPrompt(marketplace, field, context);
-  if (!prompt) return null;
+  // Check for hardcoded defaults first (no AI needed for shipping boilerplate)
+  const results = [];
+  const aiFields = [];
+
+  for (const issue of issues) {
+    const hardcoded = getHardcodedDefault(marketplace, issue.field, context);
+    if (hardcoded) {
+      results.push(hardcoded);
+    } else {
+      aiFields.push(issue);
+    }
+  }
+
+  // If all fields had hardcoded defaults, skip AI call entirely
+  if (aiFields.length === 0) return results;
+
+  const fieldDescriptions = aiFields.map(issue => {
+    const desc = getFieldDescription(marketplace, issue.field);
+    return `- "${issue.field}": ${desc}`;
+  }).join('\n');
+
+  const categoryList = marketplace === 'facebook' ? `\nFacebook categories: ${FB_TOP_CATEGORIES.join(', ')}` : '';
+
+  const prompt = `Product: "${context.title}"
+Description: "${context.description}"
+Brand: "${context.brand}"
+Condition: "${context.condition}"
+Price: $${context.price}
+Category: "${context.category}"${categoryList}
+
+For the ${marketplace} marketplace, suggest values for these missing fields:
+${fieldDescriptions}
+
+Return a JSON object with field names as keys and suggested values as string values.
+Example: {"color": "Black", "size": "M"}
+Return ONLY valid JSON, no markdown.`;
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a product listing expert. Return only a JSON object with field values. Be concise and accurate.'
+      },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.3,
+    max_tokens: 300,
+    response_format: { type: 'json_object' },
+  });
+
+  const raw = response.choices[0]?.message?.content?.trim();
+  if (!raw) return results;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Cheap & fast model
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a product listing expert. Provide accurate, concise suggestions for missing fields based on product information. Return ONLY the suggested value, nothing else.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.3, // Low temperature for consistent results
-      max_tokens: 100,
-    });
-
-    const value = response.choices[0]?.message?.content?.trim();
-    if (!value) return null;
-
-    // Calculate confidence based on context quality
-    const confidence = calculateConfidence(field, context);
-
-    return {
-      value,
-      confidence,
-      reasoning: `Suggested based on: ${context.title || 'product information'}`
-    };
-
-  } catch (error) {
-    console.error(`OpenAI error for ${field}:`, error);
-    return null;
+    const parsed = JSON.parse(raw);
+    for (const issue of aiFields) {
+      const value = parsed[issue.field];
+      if (value !== undefined && value !== null && value !== '') {
+        results.push({
+          field: issue.field,
+          value: String(value),
+          confidence: calculateConfidence(issue.field, context),
+          reasoning: `AI suggested based on: ${context.title || 'product information'}`,
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse AI batch response:', e, raw);
   }
+
+  return results;
 }
 
 /**
- * Build prompt for specific field
+ * Hardcoded defaults for fields that don't need AI (shipping boilerplate, etc.)
  */
-function buildFieldPrompt(marketplace, field, context) {
-  const { title, description, brand, condition, price, category } = context;
-
-  // Common prompts for all marketplaces
-  const commonPrompts = {
-    color: `Product: ${title}\nDescription: ${description}\n\nWhat is the primary color of this item? Answer with just the color name (e.g., "Black", "Blue", "Red").`,
-    
-    size: `Product: ${title}\nCategory: ${category}\n\nWhat size is this item? Answer with just the size (e.g., "M", "L", "XL", "10", "42").`,
-    
-    brand: `Product: ${title}\nDescription: ${description}\n\nWhat brand is this item? Answer with just the brand name.`,
-  };
-
-  // Marketplace-specific prompts
+function getHardcodedDefault(marketplace, field, context) {
   if (marketplace === 'ebay') {
-    const ebayPrompts = {
-      handlingTime: `Return only: "1 business day"`,
-      shippingMethod: `Return only: "Standard: Small to medium items"`,
-      shippingCostType: `Return only: "Flat: Same cost regardless of buyer location"`,
-      shippingService: `Return only: "Standard Shipping (3 to 5 business days)"`,
-      shippingCost: price > 100 ? `Return only: "0.00"` : `Return only: "5.99"`,
-      duration: `Return only: "Good 'Til Canceled"`,
-      pricingFormat: `Return only: "fixed"`,
+    const ebayDefaults = {
+      handlingTime: '1 business day',
+      shippingMethod: 'Standard: Small to medium items',
+      shippingCostType: 'Flat: Same cost regardless of buyer location',
+      shippingService: 'Standard Shipping (3 to 5 business days)',
+      shippingCost: parseFloat(context.price) > 100 ? '0.00' : '5.99',
+      duration: "Good 'Til Canceled",
+      pricingFormat: 'fixed',
     };
-    
-    return ebayPrompts[field] || commonPrompts[field];
+    if (ebayDefaults[field]) {
+      return {
+        field,
+        value: ebayDefaults[field],
+        confidence: 0.9,
+        reasoning: 'Standard eBay default',
+      };
+    }
   }
 
-  if (marketplace === 'mercari') {
-    const mercariPrompts = {
-      mercariCategory: `Product: ${title}\nDescription: ${description}\n\nFrom this Mercari category list, which category best fits this item?\nWomen > Men > Kids > Home > Electronics > Toys & Hobbies > Entertainment > Handmade > Sports & Outdoors > Office Supplies > Tools\n\nReturn ONLY the top-level category name that best matches.`,
-    };
-    
-    return mercariPrompts[field] || commonPrompts[field];
-  }
+  return null;
+}
 
-  if (marketplace === 'facebook') {
-    const categoryList = FB_TOP_CATEGORIES.join(' | ');
-    const facebookPrompts = {
-      condition: `Product: ${title}\nCurrent condition: ${condition}\n\nMap this to Facebook condition: new | used_like_new | used_good | used_fair\nReturn only one of these exact values.`,
-      category: `Product: "${title}"\nDescription: "${description}"\nGeneral category hint: "${category}"\nBrand: "${brand}"\n\nFrom this list of Facebook Marketplace categories, which one best fits this product?\n${categoryList}\n\nReturn ONLY the category name exactly as shown above.`,
-    };
-    
-    return facebookPrompts[field] || commonPrompts[field];
-  }
-
-  return commonPrompts[field];
+/**
+ * Human-readable field descriptions for the AI prompt
+ */
+function getFieldDescription(marketplace, field) {
+  const descriptions = {
+    color: 'Primary color of the item (e.g., "Black", "Blue")',
+    size: 'Size of the item (e.g., "M", "L", "10", "One Size")',
+    brand: 'Brand name of the item',
+    condition: marketplace === 'facebook'
+      ? 'Facebook condition enum: new | used_like_new | used_good | used_fair'
+      : 'Item condition',
+    category: marketplace === 'facebook'
+      ? 'Best matching Facebook Marketplace category from the list above'
+      : marketplace === 'mercari'
+        ? 'Best matching Mercari top-level category: Women, Men, Kids, Home, Electronics, Beauty, Sports & Outdoors, Books, Toys & Collectibles, Tools, Other'
+        : 'Product category',
+    mercariCategory: 'Mercari top-level category: Women, Men, Kids, Home, Electronics, Beauty, Sports & Outdoors, Books, Toys & Collectibles, Tools, Other',
+    itemType: 'Product type or style',
+    model: 'Model name or number',
+  };
+  return descriptions[field] || `Value for the "${field}" field`;
 }
 
 /**
  * Calculate confidence score based on available context
  */
 function calculateConfidence(field, context) {
-  let score = 0.5; // Base confidence
-
-  // Higher confidence if we have rich context
+  let score = 0.5;
   if (context.title && context.title.length > 10) score += 0.2;
   if (context.description && context.description.length > 50) score += 0.2;
   if (context.brand) score += 0.1;
 
-  // Field-specific confidence adjustments
   if (field === 'color' && context.title.match(/\b(black|white|red|blue|green|yellow|pink|gray|grey)\b/i)) {
     score += 0.2;
   }
-
   if (field === 'brand' && context.brand) {
-    score = 0.95; // Very high if brand already exists
+    score = 0.95;
   }
 
-  return Math.min(score, 0.95); // Cap at 0.95
+  return Math.min(score, 0.95);
 }

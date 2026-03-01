@@ -62,6 +62,8 @@ import {
   Copy,
   Info,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import ColorPickerDialog from "../components/ColorPickerDialog";
 import SoldLookupDialog from "../components/SoldLookupDialog";
@@ -96,12 +98,14 @@ import { Check } from "lucide-react";
 import { listingJobsApi } from "@/api/listingApiClient";
 import { crosslistingEngine } from "@/services/CrosslistingEngine";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
+import { usePreferences } from "@/lib/usePreferences";
 
 // Smart Listing imports
 import { useSmartListing } from '@/hooks/useSmartListing';
 import FixesDialog from '@/components/FixesDialog';
 import { SmartListingSection } from '@/components/SmartListingSection';
 import SmartListingModal from '@/components/SmartListingModal';
+import ListingPreviewDialog from '@/components/ListingPreviewDialog';
 import { useSmartListing as checkSmartListingEnabled } from '@/config/features';
 import { Checkbox } from '@/components/ui/checkbox';
 import { setMercariCategories, setFacebookCategories, mapCondition } from '@/utils/listingValidation';
@@ -114,32 +118,9 @@ const EBAY_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_
 const ETSY_ICON_URL = "https://cdn.brandfetch.io/idzyTAzn6G/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B";
 const POSHMARK_ICON_URL = "https://cdn.brandfetch.io/idUxsADOAW/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B";
 
-// Predefined categories that should be cleared when loading items into crosslisting composer
-// to allow users to select from eBay category picklist instead
-const PREDEFINED_CATEGORIES = [
-  "Antiques",
-  "Books, Movies & Music",
-  "Clothing & Apparel",
-  "Collectibles",
-  "Electronics",
-  "Gym/Workout",
-  "Health & Beauty",
-  "Home & Garden",
-  "Jewelry & Watches",
-  "Kitchen",
-  "Makeup",
-  "Mic/Audio Equipment",
-  "Motorcycle",
-  "Motorcycle Accessories",
-  "Pets",
-  "Pool Equipment",
-  "Shoes/Sneakers",
-  "Sporting Goods",
-  "Stereos & Speakers",
-  "Tools",
-  "Toys & Hobbies",
-  "Yoga"
-];
+import { CATEGORIES, UNCATEGORIZED, migrateLegacyCategory, suggestCategoryFromTitle } from "@/lib/categories";
+// Predefined categories — now Mercari-based, imported from @/lib/categories
+const PREDEFINED_CATEGORIES = [...CATEGORIES, UNCATEGORIZED];
 
 // Mercari Category Tree
 const MERCARI_CATEGORIES = {
@@ -5125,8 +5106,11 @@ export default function CrosslistComposer() {
     return inventory.filter(item => itemIds.includes(item.id));
   }, [inventory, itemIds]);
   
+  const { prefs } = usePreferences();
   const [templateForms, setTemplateForms] = useState(() => createInitialTemplateState(null).forms);
   const [autoPopulatedFields, setAutoPopulatedFields] = useState({});
+  const [aiSuggestedFields, setAiSuggestedFields] = useState(new Set());
+  const [isFreeOrGift, setIsFreeOrGift] = useState(false);
   const [activeForm, setActiveForm] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
   const [isMercariListing, setIsMercariListing] = useState(false);
@@ -6337,7 +6321,7 @@ export default function CrosslistComposer() {
         // Check if URL matches expected patterns
         const currentUrl = window.location.href;
         const expectedPatterns = [
-          'https://profitorbit.io',
+          'https://orben.io',
           'http://localhost:5173',
           'http://localhost:5174'
         ];
@@ -6347,7 +6331,7 @@ export default function CrosslistComposer() {
           console.error('🔴 Profit Orbit: URL does not match expected patterns!');
           toast({
             title: 'Extension Not Detected',
-            description: 'The extension only works on profitorbit.io or localhost. Please check your URL.',
+            description: 'The extension only works on orben.io or localhost. Please check your URL.',
             variant: 'destructive',
             duration: 10000,
           });
@@ -7064,6 +7048,7 @@ export default function CrosslistComposer() {
 
   const [tagSuggestions, setTagSuggestions] = useState([]);
   const [tagSuggestionsLoading, setTagSuggestionsLoading] = useState(false);
+  const [tagSuggestionsCollapsed, setTagSuggestionsCollapsed] = useState(false);
   const tagSuggestDebounceRef = useRef(null);
 
   useEffect(() => {
@@ -7615,6 +7600,20 @@ export default function CrosslistComposer() {
       price: merged.general.price
     });
     
+    // Auto-fill zip from Settings > Fulfillment default if empty
+    if (!merged.general.zip && prefs?.fulfillment?.defaultZip) {
+      merged.general.zip = prefs.fulfillment.defaultZip;
+    }
+    // Auto-fill cost/free state
+    const itemCost = parseFloat(merged.general.cost);
+    if (item?.is_free_or_gift || (itemCost === 0 && merged.general.cost !== '')) {
+      setIsFreeOrGift(true);
+    } else {
+      setIsFreeOrGift(false);
+    }
+    // Reset AI suggested fields for new item
+    setAiSuggestedFields(new Set());
+
     setTemplateForms(merged);
     generalFormBaselineRef.current = { ...merged.general };
     console.log('🔧 Called setTemplateForms with merged data');
@@ -8446,6 +8445,21 @@ export default function CrosslistComposer() {
     });
   };
 
+  // AI category suggestion: when user finishes typing a title and category is empty,
+  // try to auto-suggest a category from the title keywords
+  const handleTitleBlurCategorySuggest = useCallback(() => {
+    const title = (generalForm?.title || '').trim();
+    const currentCategory = (generalForm?.category || '').trim();
+    // Only suggest if title is filled and category is empty
+    if (!title || currentCategory) return;
+    const suggestion = suggestCategoryFromTitle(title);
+    if (suggestion && suggestion.confidence >= 0.5) {
+      handleGeneralChange('category', suggestion.category);
+      handleGeneralChange('categoryId', suggestion.category);
+      setAiSuggestedFields(prev => new Set([...prev, 'category']));
+    }
+  }, [generalForm?.title, generalForm?.category, handleGeneralChange]);
+
   const addSuggestedTag = useCallback((tag) => {
     const current = (templateForms?.general?.tags || '').split(',').map(t => t.trim()).filter(Boolean);
     const lower = new Set(current.map(t => t.toLowerCase()));
@@ -8477,7 +8491,7 @@ export default function CrosslistComposer() {
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=8`,
-          { headers: { 'User-Agent': 'ProfitOrbit/1.0 (profitorbit.io)' } }
+          { headers: { 'User-Agent': 'ProfitOrbit/1.0 (orben.io)' } }
         );
         const data = await res.json();
         const seen = new Set();
@@ -8837,7 +8851,7 @@ export default function CrosslistComposer() {
             purchase_price: generalForm.cost ? parseFloat(generalForm.cost) : 0,
             listing_price: generalForm.price ? parseFloat(generalForm.price) : 0,
             purchase_date: new Date().toISOString().split('T')[0],
-            source: "Crosslist",
+            source: "",
             status: "available",
             category: generalForm.category || "",
             quantity: generalForm.quantity ? parseInt(generalForm.quantity, 10) : 1,
@@ -9852,29 +9866,17 @@ export default function CrosslistComposer() {
   };
 
   // Smart Listing: Can open only when all required general form fields (red star) are filled
+  // Smart Listing gate: only title, price, and condition are hard requirements.
+  // Everything else (category, cost, zip, package dims, description, brand) can be
+  // AI-filled or caught by preflight validation.
   const canUseSmartListing = useMemo(() => {
     const title = (generalForm?.title || "").trim();
     const price = generalForm?.price;
-    const cost = generalForm?.cost;
-    const description = (generalForm?.description || "").trim();
-    const brand = (generalForm?.brand || "").trim();
     const condition = (generalForm?.condition || "").trim();
-    const categoryId = generalForm?.categoryId;
-    const category = (generalForm?.category || "").trim();
-    const zip = (generalForm?.zip || "").trim();
-    const quantity = generalForm?.quantity;
-    const hasPackageDetails = !!(generalForm?.packageWeight && generalForm?.packageLength && generalForm?.packageWidth && generalForm?.packageHeight);
     return !!(
       title &&
       price && !isNaN(parseFloat(price)) && parseFloat(price) > 0 &&
-      cost && !isNaN(parseFloat(cost)) &&
-      description &&
-      brand &&
-      condition &&
-      (categoryId && categoryId !== "0" && categoryId !== 0) && category &&
-      zip &&
-      quantity && parseInt(quantity, 10) >= 1 &&
-      hasPackageDetails
+      condition
     );
   }, [generalForm]);
 
@@ -9928,6 +9930,10 @@ export default function CrosslistComposer() {
       ebayConnected: !!ebayToken, // eBay connected if token exists
       mercariConnected,
       facebookConnected,
+    },
+    // Update baseline after successful listing so re-validation catches subsequent changes
+    () => {
+      generalFormBaselineRef.current = { ...generalForm };
     }
   );
 
@@ -9938,6 +9944,8 @@ export default function CrosslistComposer() {
     }
     smartListing.openModal();
   }, [canUseSmartListing, smartListing]);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const getComposerItemIdsForSync = () => {
     try {
@@ -11444,6 +11452,12 @@ export default function CrosslistComposer() {
                   <Package className="h-3.5 w-3.5 text-muted-foreground" />
                   <Label className="text-xs font-medium">Item Details</Label>
                 </div>
+                {aiSuggestedFields.size > 0 && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="inline-block w-2.5 h-2.5 rounded ring-2 ring-purple-400/60" />
+                    <span>Purple border = AI suggested</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-3">
@@ -11456,6 +11470,7 @@ export default function CrosslistComposer() {
                       placeholder=""
                       value={generalForm.title || ""}
                       onChange={(e) => handleGeneralChange("title", e.target.value)}
+                      onBlur={handleTitleBlurCategorySuggest}
                       className="w-full h-9"
                     />
                     {generalForm.title?.trim() && (
@@ -11490,7 +11505,18 @@ export default function CrosslistComposer() {
                   <p className="mt-0.5 text-[10px] text-muted-foreground">Price you'll list this item for</p>
                 </div>
                 <div>
-                  <Label htmlFor="general-cost" className="text-sm mb-1.5 block">Purchase Price <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="general-cost" className="text-sm mb-1.5 block">Purchase Price</Label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Checkbox
+                      id="general-free-gift"
+                      checked={isFreeOrGift}
+                      onCheckedChange={(checked) => {
+                        setIsFreeOrGift(checked);
+                        if (checked) handleGeneralChange("cost", "0");
+                      }}
+                    />
+                    <Label htmlFor="general-free-gift" className="text-xs text-muted-foreground cursor-pointer">Free or Gift</Label>
+                  </div>
                   <Input
                     id="general-cost"
                     name="general-cost"
@@ -11500,6 +11526,8 @@ export default function CrosslistComposer() {
                     placeholder="0.00"
                     value={generalForm.cost || ""}
                     onChange={(e) => handleGeneralChange("cost", e.target.value)}
+                    disabled={isFreeOrGift}
+                    className={isFreeOrGift ? 'opacity-50 cursor-not-allowed' : ''}
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -12020,7 +12048,15 @@ export default function CrosslistComposer() {
                   )}
                   
                   {generalForm.category && (
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className={cn(
+                      "flex items-center gap-2 mt-2 relative",
+                      aiSuggestedFields.has('category') && "ring-2 ring-purple-400/60 rounded-md p-1.5"
+                    )}>
+                      {aiSuggestedFields.has('category') && (
+                        <span className="absolute -top-2 right-2 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium z-10">
+                          AI Suggested
+                        </span>
+                      )}
                       <Badge variant="secondary" className="text-xs">
                         Selected: {generalForm.category}
                       </Badge>
@@ -12032,6 +12068,7 @@ export default function CrosslistComposer() {
                           handleGeneralChange("category", "");
                           handleGeneralChange("categoryId", "");
                           setGeneralCategoryPath([]);
+                          setAiSuggestedFields(prev => { const next = new Set(prev); next.delete('category'); return next; });
                         }}
                         className="h-6 px-2 text-xs"
                       >
@@ -12097,15 +12134,20 @@ export default function CrosslistComposer() {
                 )}
                 {((generalForm?.description || '').trim().length >= 20) && (
                   <div className="mt-3">
-                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setTagSuggestionsCollapsed(prev => !prev)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2 hover:text-foreground transition-colors"
+                    >
                       {tagSuggestionsLoading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Sparkles className="h-3.5 w-3.5" />
                       )}
-                      Suggested tags
-                    </p>
-                    {tagSuggestions.length > 0 && (
+                      Suggested tags{tagSuggestions.length > 0 ? ` (${tagSuggestions.length})` : ''}
+                      {tagSuggestionsCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                    </button>
+                    {!tagSuggestionsCollapsed && tagSuggestions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {tagSuggestions.map((t) => (
                           <Badge
@@ -12200,15 +12242,21 @@ export default function CrosslistComposer() {
 
               {/* Smart Listing Section - Mobile General Form - List to Multiple Marketplaces */}
               {smartListingEnabled && (
-                <SmartListingSection onOpenModal={handleSmartListingOpen} />
+                <SmartListingSection
+                  onOpenModal={handleSmartListingOpen}
+                  onSave={() => handleTemplateSave("general")}
+                  onPreview={() => setPreviewOpen(true)}
+                />
               )}
 
-              <div className="flex flex-col sm:flex-row sm:justify-end gap-1.5">
-                <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto h-8 text-xs" onClick={() => handleTemplateSave("general")}>
-                  <Save className="h-3.5 w-3.5" />
-                  Save
-                </Button>
-              </div>
+              {!smartListingEnabled && (
+                <div className="flex flex-col sm:flex-row sm:justify-end gap-1.5">
+                  <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto h-8 text-xs" onClick={() => handleTemplateSave("general")}>
+                    <Save className="h-3.5 w-3.5" />
+                    Save
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -13725,7 +13773,11 @@ export default function CrosslistComposer() {
               {/* Smart Listing Section - List to Multiple Marketplaces */}
               {smartListingEnabled && (
                 <>
-                  <SmartListingSection onOpenModal={handleSmartListingOpen} />
+                  <SmartListingSection
+                    onOpenModal={handleSmartListingOpen}
+                    onSave={() => handleTemplateSave("ebay")}
+                    onPreview={() => setPreviewOpen(true)}
+                  />
                   <SmartListingModal
                     open={smartListing.modalOpen}
                     onClose={smartListing.closeModal}
@@ -13743,6 +13795,10 @@ export default function CrosslistComposer() {
                     onReconnect={smartListing.handleReconnect}
                     onSaveEbayDefault={updateEbayDefault}
                     onSaveFacebookDefault={updateFacebookDefault}
+                    generalForm={generalForm}
+                    ebayForm={ebayForm}
+                    mercariForm={mercariForm}
+                    facebookForm={facebookForm}
                   />
                 </>
               )}
@@ -16940,8 +16996,22 @@ export default function CrosslistComposer() {
             onReconnect={smartListing.handleReconnect}
             onSaveEbayDefault={updateEbayDefault}
             onSaveFacebookDefault={updateFacebookDefault}
+            generalForm={generalForm}
+            ebayForm={ebayForm}
+            mercariForm={mercariForm}
+            facebookForm={facebookForm}
           />
         )}
+
+        {/* Listing Preview Dialog */}
+        <ListingPreviewDialog
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          generalForm={generalForm}
+          ebayForm={ebayForm}
+          mercariForm={mercariForm}
+          facebookForm={facebookForm}
+        />
 
         {/* Footer */}
         <div className="flex justify-end items-center gap-4 pt-6 border-t">
@@ -18222,15 +18292,20 @@ export default function CrosslistComposer() {
                         )}
                         {((generalForm?.description || '').trim().length >= 20) && (
                           <div className="mt-3">
-                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setTagSuggestionsCollapsed(prev => !prev)}
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2 hover:text-foreground transition-colors"
+                            >
                               {tagSuggestionsLoading ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
                                 <Sparkles className="h-3.5 w-3.5" />
                               )}
-                              Suggested tags
-                            </p>
-                            {tagSuggestions.length > 0 && (
+                              Suggested tags{tagSuggestions.length > 0 ? ` (${tagSuggestions.length})` : ''}
+                              {tagSuggestionsCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                            </button>
+                            {!tagSuggestionsCollapsed && tagSuggestions.length > 0 && (
                               <div className="flex flex-wrap gap-1.5">
                                 {tagSuggestions.map((t) => (
                                   <Badge
@@ -18326,7 +18401,11 @@ export default function CrosslistComposer() {
                       {/* Smart Listing Section - Desktop General Form - List to Multiple Marketplaces */}
                       {smartListingEnabled && (
                         <>
-                          <SmartListingSection onOpenModal={handleSmartListingOpen} />
+                          <SmartListingSection
+                            onOpenModal={handleSmartListingOpen}
+                            onSave={() => handleTemplateSave("general")}
+                            onPreview={() => setPreviewOpen(true)}
+                          />
                           <SmartListingModal
                             open={smartListing.modalOpen}
                             onClose={smartListing.closeModal}
@@ -18348,12 +18427,14 @@ export default function CrosslistComposer() {
                         </>
                       )}
 
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("general")}>
-                          <Save className="h-4 w-4" />
-                          Save
-                        </Button>
-                      </div>
+                      {!smartListingEnabled && (
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" className="gap-2" onClick={() => handleTemplateSave("general")}>
+                            <Save className="h-4 w-4" />
+                            Save
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -19847,11 +19928,8 @@ export default function CrosslistComposer() {
                       {smartListingEnabled && (
                         <SmartListingSection
                           onOpenModal={handleSmartListingOpen}
-                          selectedMarketplaces={smartListing.selectedMarketplaces}
-                          toggleMarketplace={smartListing.toggleMarketplace}
-                          handleListToSelected={smartListing.handleListToSelected}
-                          isSubmitting={smartListing.isSubmitting}
-                          isSaving={isSaving}
+                          onSave={() => handleTemplateSave("ebay")}
+                          onPreview={() => setPreviewOpen(true)}
                         />
                       )}
 

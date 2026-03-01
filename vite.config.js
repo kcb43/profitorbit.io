@@ -38,9 +38,9 @@ export default defineConfig(({ command, mode }) => {
       proxy: {
         // Proxy API routes to Vercel during local development
         '/api': {
-          target: process.env.VITE_LOCAL_API 
-            ? 'https://localhost:3000' 
-            : 'https://profitorbit.io',
+          target: process.env.VITE_LOCAL_API
+            ? 'https://localhost:3000'
+            : (process.env.VITE_PROXY_TARGET || 'https://orben.io'),
           changeOrigin: true,
           secure: process.env.VITE_LOCAL_API ? false : true, // Allow self-signed certs for local API
           // Log proxy errors for debugging (but only once per URL to avoid spam)

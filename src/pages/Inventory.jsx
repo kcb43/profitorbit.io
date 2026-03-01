@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2, FolderPlus, Folders } from "lucide-react";
+import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2, FolderPlus, Folders, Camera, Rocket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import DatePickerInput from "@/components/DatePickerInput";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,10 @@ import ModeBanner from "@/components/ModeBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
+import { useMarketplaceListings } from "@/hooks/useMarketplaceListings";
+import { MarketplaceBadgesRow } from "@/components/MarketplaceBadgesRow";
+import { CROSSLIST_MARKETPLACES } from "@/constants/marketplaces";
+import { ListingJobTracker } from "@/components/ListingJobTracker";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -193,6 +197,35 @@ export default function InventoryPage() {
   
   const [editorOpen, setEditorOpen] = useState(false);
   const [imageToEdit, setImageToEdit] = useState({ url: null, itemId: null });
+
+  // ── Quick-upload for items with no image ──────────────────────────────────
+  const quickUploadRef = useRef(null);
+  const [quickUploadItemId, setQuickUploadItemId] = useState(null);
+
+  const handleQuickUpload = (itemId) => {
+    setQuickUploadItemId(itemId);
+    // Small timeout so the ref is set before click
+    setTimeout(() => quickUploadRef.current?.click(), 0);
+  };
+
+  const onQuickFileChosen = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !quickUploadItemId) return;
+    try {
+      await updateImageMutation.mutateAsync({ itemId: quickUploadItemId, file, imageIndex: 0 });
+      toast({ title: 'Photo uploaded' });
+    } catch (err) {
+      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setQuickUploadItemId(null);
+      // Reset the input so the same file can be re-selected
+      if (quickUploadRef.current) quickUploadRef.current.value = '';
+    }
+  };
+
+  // Helper: true when item has no real image
+  const itemHasNoImage = (item) => !item.image_url || item.image_url === DEFAULT_IMAGE_URL;
+
   const [viewMode, setViewMode] = useState(() => {
     // Load saved view mode from localStorage
     const saved = localStorage.getItem('inventory_view_mode');
@@ -222,10 +255,10 @@ export default function InventoryPage() {
   const [itemForFacebookListing, setItemForFacebookListing] = useState(null);
   const [ebaySearchDialogOpen, setEbaySearchDialogOpen] = useState(false);
   const [ebaySearchInitialQuery, setEbaySearchInitialQuery] = useState("");
-  const [itemDuplicates, setItemDuplicates] = useState({});
+  const [inventoryDuplicates, setInventoryDuplicates] = useState([]);
+  const [saleDuplicates, setSaleDuplicates] = useState([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
-  const [selectedItemForDuplicates, setSelectedItemForDuplicates] = useState(null);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [manageGroupsDialogOpen, setManageGroupsDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
@@ -371,6 +404,34 @@ export default function InventoryPage() {
   });
 
   const inventoryItems = React.useMemo(() => inventoryPage?.data || [], [inventoryPage]);
+
+  // === MARKETPLACE / CROSSLIST STATE ===
+  const {
+    getItemListings,
+    computeListingState,
+    isListedAnywhere,
+    activeJobs,
+    setActiveJobs,
+    handleJobComplete,
+  } = useMarketplaceListings(inventoryItems);
+
+  const [platformFilter, setPlatformFilter] = useState("all");
+  const [activeMkts, setActiveMkts] = useState([]);
+
+  const openComposer = (ids) => {
+    const itemIds = ids && ids.length > 0 ? ids : selectedItems.length > 0 ? selectedItems : [];
+    const params = new URLSearchParams();
+    if (itemIds.length > 0) {
+      params.set("ids", itemIds.join(","));
+    }
+    const prefillItems = itemIds
+      .map((id) => inventoryItems.find((it) => it?.id === id))
+      .filter(Boolean);
+    navigate(createPageUrl(`CrosslistComposer?${params.toString()}`), {
+      state: { prefillItems },
+    });
+  };
+
   const totalItems = Number.isFinite(Number(inventoryPage?.total)) ? Number(inventoryPage.total) : 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const canPrev = pageIndex > 0;
@@ -1091,35 +1152,17 @@ export default function InventoryPage() {
   });
 
   // Function to check for duplicates
-  const handleCheckDuplicates = async (itemId = null) => {
+  const handleCheckDuplicates = async () => {
     setCheckingDuplicates(true);
     try {
       const response = await apiClient.post('/api/inventory/check-duplicates', {
-        itemIds: itemId ? [itemId] : null,
-        checkAll: !itemId
+        checkAll: true
       });
 
       if (response.success) {
-        setItemDuplicates(response.duplicates || {});
-        toast({
-          title: "Duplicate Check Complete",
-          description: `Found ${response.duplicatesFound} item${response.duplicatesFound !== 1 ? 's' : ''} with potential duplicates`,
-        });
-        
-        // If checking a single item and duplicates found, open dialog
-        if (itemId && response.duplicates[itemId]) {
-          const item = inventoryItems.find(i => i.id === itemId);
-          setSelectedItemForDuplicates({
-            id: itemId,
-            item_name: item.item_name,
-            purchase_price: item.purchase_price,
-            purchase_date: item.purchase_date,
-            image_url: item.image_url,
-            images: item.images,
-            source: item.source,
-          });
-          setDuplicateDialogOpen(true);
-        }
+        setInventoryDuplicates(response.inventoryDuplicates || []);
+        setSaleDuplicates(response.saleDuplicates || []);
+        setDuplicateDialogOpen(true);
       }
     } catch (error) {
       console.error('Error checking duplicates:', error);
@@ -1460,6 +1503,22 @@ export default function InventoryPage() {
     });
   }, [filteredItems, sort]);
 
+  // Apply marketplace filter on top of sorted items
+  const displayItems = React.useMemo(() => {
+    if (platformFilter === "all" && activeMkts.length === 0) return sortedItems;
+    return sortedItems.filter((item) => {
+      const state = computeListingState(item);
+      const anyListed = Object.values(state).some(Boolean);
+      if (platformFilter === "listed" && !anyListed) return false;
+      if (platformFilter === "unlisted" && anyListed) return false;
+      if (activeMkts.length > 0) {
+        const isOnSelected = activeMkts.some((mktId) => state[mktId] === "active");
+        if (!isOnSelected) return false;
+      }
+      return true;
+    });
+  }, [sortedItems, platformFilter, activeMkts, computeListingState]);
+
   const handleSelect = (itemId) => {
     setSelectedItems(prev =>
       prev.includes(itemId)
@@ -1471,7 +1530,7 @@ export default function InventoryPage() {
   const handleSelectAll = (checked) => {
     const isChecked = checked === true;
     if (isChecked) {
-      setSelectedItems(sortedItems.map((item) => item.id));
+      setSelectedItems(displayItems.map((item) => item.id));
     } else {
       setSelectedItems([]);
     }
@@ -1926,6 +1985,26 @@ export default function InventoryPage() {
             </DialogContent>
           </Dialog>
 
+          {/* Active Listing Jobs */}
+          {Object.keys(activeJobs).length > 0 && (
+            <div className="space-y-2 mb-4">
+              {Object.entries(activeJobs).map(([itemId, jobId]) => (
+                <ListingJobTracker
+                  key={jobId}
+                  jobId={jobId}
+                  onComplete={handleJobComplete}
+                  onClose={() =>
+                    setActiveJobs((prev) => {
+                      const n = { ...prev };
+                      delete n[itemId];
+                      return n;
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+
           {/* Desktop Filter Card */}
           <Card className="hidden md:block border-0 shadow-lg mb-4">
             <CardHeader className="border-b bg-card">
@@ -1995,6 +2074,63 @@ export default function InventoryPage() {
                   </div>
                 </div>
               </div>
+              {/* Marketplace Filters */}
+              <div className="mt-3 pt-3 border-t border-border/40 flex flex-col md:flex-row md:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Marketplace:</Label>
+                  <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                    <SelectTrigger className="h-8 w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Items</SelectItem>
+                      <SelectItem value="listed">Listed</SelectItem>
+                      <SelectItem value="unlisted">Not Listed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {CROSSLIST_MARKETPLACES.map((m) => {
+                    const active = activeMkts.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() =>
+                          setActiveMkts((prev) =>
+                            active ? prev.filter((x) => x !== m.id) : [...prev, m.id]
+                          )
+                        }
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all ${
+                          active
+                            ? "bg-foreground text-background border-foreground shadow-sm"
+                            : "bg-muted/60 text-foreground border-border hover:bg-muted"
+                        }`}
+                        aria-pressed={active}
+                      >
+                        <img
+                          src={m.icon}
+                          alt={m.label}
+                          className="w-3.5 h-3.5 object-contain"
+                        />
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {(platformFilter !== "all" || activeMkts.length > 0) && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground underline ml-auto"
+                    onClick={() => {
+                      setPlatformFilter("all");
+                      setActiveMkts([]);
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
               <div className="mt-4 space-y-3 md:space-y-0 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3 min-w-0 overflow-x-hidden">
                 <div className="text-xs text-muted-foreground min-w-0 break-words">
                   Favorites let you flag items for quick actions such as returns.
@@ -2164,6 +2300,14 @@ export default function InventoryPage() {
               </span>
               <div className="flex flex-wrap gap-2 min-w-0">
                 <Button
+                  size="sm"
+                  onClick={() => openComposer(selectedItems)}
+                  className="min-w-0 max-w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white"
+                >
+                  <Rocket className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">List ({selectedItems.length})</span>
+                </Button>
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setGroupDialogOpen(true)}
@@ -2201,18 +2345,18 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {sortedItems.length > 0 && (
+          {displayItems.length > 0 && (
             <div className="flex items-center justify-between gap-3 p-4 bg-card rounded-t-lg">
               <div className="flex items-center gap-3">
                 <Checkbox
-                  checked={selectedItems.length === sortedItems.length && sortedItems.length > 0}
+                  checked={selectedItems.length === displayItems.length && displayItems.length > 0}
                   onCheckedChange={handleSelectAll}
                   id="select-all"
                   className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
                 />
                 <div className="flex flex-col">
                   <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
-                    Select All ({sortedItems.length})
+                    Select All ({displayItems.length})
                   </label>
                   <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
                     Tap image to select
@@ -2237,10 +2381,10 @@ export default function InventoryPage() {
 
           {isLoading ? (
             <div className="p-12 text-center text-muted-foreground">Loading...</div>
-          ) : sortedItems.length > 0 ? (
+          ) : displayItems.length > 0 ? (
             viewMode === "gallery" ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 overflow-x-hidden max-w-full">
-                {sortedItems.map((item) => {
+                {displayItems.map((item) => {
                   const rawQuantity = Number(item.quantity ?? 1);
                   const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
                   const rawSold = Number(item.quantity_sold ?? 0);
@@ -2267,6 +2411,16 @@ export default function InventoryPage() {
                             className="w-full h-full object-cover"
                             lazy={true}
                           />
+                          {/* Hover overlay for items with no photo */}
+                          {itemHasNoImage(item) && (
+                            <div
+                              onClick={(e) => { e.stopPropagation(); handleQuickUpload(item.id); }}
+                              className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                            >
+                              <Camera className="w-6 h-6 text-white" />
+                              <span className="text-white text-xs font-medium">Add Photo</span>
+                            </div>
+                          )}
                           {selectedItems.includes(item.id) && (
                             <div className="absolute top-2 left-2 z-20">
                               <div className="bg-green-600 rounded-full p-1 shadow-lg">
@@ -2277,6 +2431,12 @@ export default function InventoryPage() {
                           <div className="absolute top-2 right-2 rounded-full bg-black/70 text-white text-[11px] px-2 py-0.5">
                             x{remaining}
                           </div>
+                          {/* Listed indicator dot */}
+                          {isListedAnywhere(item) && (
+                            <div className="absolute bottom-2 left-2 z-10">
+                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-card shadow" title="Listed on marketplace" />
+                            </div>
+                          )}
                         </div>
                         <Link
                           to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
@@ -2326,7 +2486,7 @@ export default function InventoryPage() {
               </div>
             ) : viewMode === "list" ? (
               <div className="space-y-6 sm:space-y-6 overflow-x-hidden max-w-full mt-6">
-                {sortedItems.map(item => {
+                {displayItems.map(item => {
                   const today = new Date();
                   const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
                   const daysRemaining = deadline && isAfter(deadline, today) ? differenceInDays(deadline, today) + 1 : null;
@@ -2393,7 +2553,7 @@ export default function InventoryPage() {
                       {/* Row 1: Image and 4 Icon Buttons + Status/Tags */}
                       <div className="flex flex-row items-start gap-3 p-3">
                         {/* Image */}
-                        <div className="flex-shrink-0 w-[138px] sm:w-[173px] aspect-square">
+                        <div className="flex-shrink-0 w-[180px] sm:w-[220px] aspect-square">
                           <div
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2421,6 +2581,16 @@ export default function InventoryPage() {
                                 className="w-full h-full object-cover"
                                 lazy={true}
                               />
+                            )}
+                            {/* Hover overlay for items with no photo */}
+                            {itemHasNoImage(item) && (
+                              <div
+                                onClick={(e) => { e.stopPropagation(); handleQuickUpload(item.id); }}
+                                className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer z-10"
+                              >
+                                <Camera className="w-6 h-6 text-white" />
+                                <span className="text-white text-xs font-medium">Add Photo</span>
+                              </div>
                             )}
                             {selectedItems.includes(item.id) && (
                               <div className="absolute top-2 left-2 z-20">
@@ -2453,14 +2623,8 @@ export default function InventoryPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const query = item.item_name || "";
-                                if (isMobile) {
-                                  // On mobile, navigate to ProductSearch page with query and return path
-                                  navigate(`/product-search?q=${encodeURIComponent(query)}&from=inventory`);
-                                } else {
-                                  // On desktop, open dialog
-                                  setProductSearchQuery(query);
-                                  setProductSearchOpen(true);
-                                }
+                                setProductSearchQuery(query);
+                                setProductSearchOpen(true);
                               }}
                               className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card/80 hover:bg-gray-50 dark:hover:bg-slate-900 text-foreground transition-all shadow-md"
                             >
@@ -2545,11 +2709,18 @@ export default function InventoryPage() {
                             Tags
                           </button>
 
-                          {/* Status badge - on its own row, left-aligned */}
+                          {/* Availability indicator - on its own row, left-aligned */}
                           <div className="flex justify-start">
-                            <Badge variant="outline" className={`${statusColors[item.status]} text-[9px] px-1.5 py-0.5`}>
-                              {statusLabels[item.status] || statusLabels.available}
-                            </Badge>
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                              <span className={`w-2 h-2 rounded-full ${
+                                item.status === 'sold' || isSoldOut
+                                  ? 'bg-red-500'
+                                  : 'bg-green-500'
+                              }`} />
+                              {item.status === 'sold' || isSoldOut
+                                  ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
+                                  : `Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
+                            </span>
                           </div>
                         </div>
 
@@ -2583,18 +2754,23 @@ export default function InventoryPage() {
                                 {item.quantity > 1 && <span className="text-gray-600 dark:text-gray-400 ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>}
                               </span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span>Qty: {item.quantity}</span>
-                              {quantitySold > 0 && (
-                                <span className={`font-medium ${isSoldOut ? 'text-red-600 dark:text-red-400 font-bold' : 'text-blue-600 dark:text-blue-400'}`}>
-                                  {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
-                                </span>
-                              )}
-                            </div>
                             <div>
                               <span>Purchase Date: </span>
                               <span className="font-medium text-foreground">
                                 {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM dd, yyyy') : '—'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span>Availability: </span>
+                              <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                                <span className={`w-2 h-2 rounded-full ${
+                                  item.status === 'sold' || isSoldOut
+                                    ? 'bg-red-500'
+                                    : 'bg-green-500'
+                                }`} />
+                                {item.status === 'sold' || isSoldOut
+                                  ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
+                                  : `Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
                               </span>
                             </div>
                             {item.condition && (
@@ -2628,53 +2804,6 @@ export default function InventoryPage() {
                               </div>
                             )}
                             
-                            {/* Action icons below Purchase Date - Desktop only */}
-                            <div className="flex items-center gap-2 mt-3">
-                              <button
-                                type="button"
-                                onClick={() => toggleFavorite(item.id)}
-                                className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
-                                  favoriteMarked
-                                    ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
-                                    : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"
-                                }`}
-                              >
-                                <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
-                              </button>
-                              {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditImage(e, item);
-                                  }}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20"
-                                >
-                                  <ImageIcon className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setItemToView(item);
-                                  setViewDialogOpen(true);
-                                }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20"
-                              >
-                                <Search className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteClick(item);
-                                }}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
                           </div>
 
                           {isDeleted && daysUntilPermanentDelete !== null && (
@@ -2729,10 +2858,17 @@ export default function InventoryPage() {
                           {expandedDetails[item.id] && (
                             <div className="px-3 py-2 space-y-1.5 bg-white dark:bg-card border-t border-gray-200 dark:border-border">
                               <div className="flex justify-between items-center">
-                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Status:</span>
-                                <Badge variant="outline" className="text-[9px] px-2 py-0.5">
-                                  {statusLabels[item.status] || statusLabels.available}
-                                </Badge>
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Availability:</span>
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                                  <span className={`w-2 h-2 rounded-full ${
+                                    item.status === 'sold' || isSoldOut
+                                      ? 'bg-red-500'
+                                      : 'bg-green-500'
+                                  }`} />
+                                  {item.status === 'sold' || isSoldOut
+                                  ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
+                                  : `Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
+                                </span>
                               </div>
                               
                               <div className="flex justify-between items-center">
@@ -2747,18 +2883,6 @@ export default function InventoryPage() {
                                   {item.quantity > 1 && (
                                     <span className="text-gray-600 dark:text-gray-400 text-[10px] ml-1">
                                       (${(perItemPrice || 0).toFixed(2)} ea)
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                              
-                              <div className="flex justify-between items-center">
-                                <span className="text-[11px] text-gray-600 dark:text-gray-400">Quantity:</span>
-                                <span className="text-[11px] font-medium text-foreground">
-                                  {item.quantity}
-                                  {quantitySold > 0 && (
-                                    <span className={`ml-1 ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                                      {isSoldOut ? '(Sold Out)' : `(${quantitySold} sold)`}
                                     </span>
                                   )}
                                 </span>
@@ -2803,6 +2927,16 @@ export default function InventoryPage() {
                             </div>
                           )}
                         </div>
+                      </div>
+
+                      {/* Marketplace badges - Mobile */}
+                      <div className="sm:hidden w-full px-3 pb-2">
+                        <MarketplaceBadgesRow
+                          item={item}
+                          computeListingState={computeListingState}
+                          getItemListings={getItemListings}
+                          size="sm"
+                        />
                       </div>
 
                       {/* Listing keywords from DB (marketplace-facing, set in Crosslist) */}
@@ -2877,290 +3011,298 @@ export default function InventoryPage() {
                         </div>
                       )}
 
-                      <div className="hidden sm:flex flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-card/80 w-[200px] min-w-[200px] max-w-[200px]"
-                        style={{
-                          flexShrink: 0
-                        }}
+                      <div className="hidden sm:flex lg:hidden flex-col items-center justify-center gap-2 px-3 py-3 mr-0 flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-border bg-gray-50 dark:bg-card/80 w-[200px] min-w-[200px] max-w-[200px]"
+                        style={{ flexShrink: 0 }}
                       >
-                        {/* Desktop: Mark as Sold button */}
-                        {!isSoldOut && item.status !== 'sold' && (
-                          <Button
-                            onClick={() => handleMarkAsSold(item)}
-                            className="w-full text-white font-semibold py-2 px-3 rounded-md text-center transition-all shadow-md leading-tight text-xs bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                          >
-                            Mark as Sold
-                          </Button>
-                        )}
-                        
-                        {/* Desktop: View Details button */}
-                        <Button
-                          onClick={() => {
-                            setItemToView(item);
-                            setViewDialogOpen(true);
-                          }}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md text-center transition-all shadow-md leading-tight text-xs"
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                      
-                      {/* Mobile: Mark Sold and Edit buttons at bottom */}
-                      <div className="md:hidden w-full">
-                        {/* Buttons */}
-                        <div 
-                          onClick={(e) => {
-                            // Make card clickable for details (except image)
-                            const target = e.target;
-                            const isImage = target.closest('.glass');
-                            const isButton = target.closest('button');
-                            if (!isImage && !isButton) {
-                              setItemToView(item);
-                              setViewDialogOpen(true);
-                            }
-                          }}
-                          className="flex gap-2 px-2 pb-2 border-t border-gray-200 dark:border-border w-full pt-1.5"
-                        >
-                        {!isSoldOut && item.status !== 'sold' && (
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsSold(item);
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <button type="button" onClick={() => toggleFavorite(item.id)}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition ${
+                              favoriteMarked
+                                ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
+                                : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                            }`}
+                            title={favoriteMarked ? "Unfavorite" : "Favorite"}>
+                            <Star className={`h-3.5 w-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                          </button>
+                          <button type="button" onClick={() => {
+                              const query = item.item_name || "";
+                              setProductSearchQuery(query);
+                              setProductSearchOpen(true);
                             }}
-                            className="flex-1 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                          >
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                            title="Product Search">
+                            <Search className="h-3.5 w-3.5" />
+                          </button>
+                          <button type="button" onClick={() => handleDeleteClick(item)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                            title="Delete">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <Button
+                          onClick={() => openComposer([item.id])}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2 px-3 rounded-md text-xs shadow-sm"
+                        >
+                          <Rocket className="w-3.5 h-3.5 mr-1.5" /> List
+                        </Button>
+                        {!isSoldOut && item.status !== 'sold' && (
+                          <Button variant="outline" onClick={() => handleMarkAsSold(item)}
+                            className="w-full text-xs h-9 border-green-500/40 text-green-700 dark:text-green-400">
                             Mark Sold
                           </Button>
                         )}
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(createPageUrl(`AddInventoryItem?id=${item.id}`), { state: returnStateForInventory });
-                          }}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-2 rounded-md text-center transition-all shadow-md leading-tight text-sm"
-                        >
-                          Edit
+                        <Button variant="outline" onClick={() => { setItemToView(item); setViewDialogOpen(true); }}
+                          className="w-full text-xs h-9">
+                          Details
                         </Button>
                       </div>
-                    </div>
+                      
+                      {/* Mobile: Action buttons at bottom */}
+                      <div className="sm:hidden w-full">
+                        <div className="flex flex-col gap-1.5 px-2 pb-2 border-t border-gray-200 dark:border-border w-full pt-1.5">
+                          {/* Crosslist - prominent top button */}
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); openComposer([item.id]); }}
+                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2.5 px-2 rounded-md text-sm shadow-sm"
+                          >
+                            <Rocket className="w-4 h-4 mr-1.5" /> List
+                          </Button>
+                          <div className="flex gap-2">
+                            {!isSoldOut && item.status !== 'sold' && (
+                              <Button
+                                onClick={(e) => { e.stopPropagation(); handleMarkAsSold(item); }}
+                                variant="outline"
+                                className="flex-1 text-xs h-9 border-green-500/40 text-green-700 dark:text-green-400"
+                              >
+                                Mark Sold
+                              </Button>
+                            )}
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(createPageUrl(`AddInventoryItem?id=${item.id}`), { state: returnStateForInventory });
+                              }}
+                              variant="outline"
+                              className="flex-1 text-xs h-9"
+                            >
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
-                    {/* Desktop list layout */}
+                    {/* Desktop list layout — redesigned for 3-items-visible */}
                     {(
                     <div
                       onClick={(e) => {
                         const isInteractive = e.target.closest('button, a, input, textarea, select, [role="button"]');
                         if (!isInteractive) handleSelect(item.id);
                       }}
-                      className={`hidden lg:block product-list-item group relative overflow-hidden rounded-2xl border cursor-pointer ${selectedItems.includes(item.id) ? 'border-green-500 dark:border-green-500 ring-4 ring-green-500/50 shadow-lg shadow-green-500/30' : highlightId && item.id === highlightId ? 'border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/50 shadow-lg shadow-blue-500/30' : 'border-gray-200/80 dark:border-border'} bg-white/80 dark:bg-card/95 shadow-sm dark:shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/60 mb-4 ${isDeleted ? 'opacity-75' : ''}`}
+                      className={`hidden lg:grid grid-cols-[220px_1fr_160px] group relative overflow-hidden rounded-xl border cursor-pointer transition-shadow hover:shadow-md ${selectedItems.includes(item.id) ? 'border-green-500 ring-2 ring-green-500/40' : highlightId && item.id === highlightId ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-border/70'} bg-card mb-3 ${isDeleted ? 'opacity-75' : ''}`}
+                      style={{ minHeight: '240px' }}
                     >
-                      <div className="grid grid-cols-[200px_1fr_240px] min-w-0">
-                        {/* Image */}
-                        <div className="p-5">
+                      {/* Image column */}
+                      <div
+                        className="relative flex-shrink-0 cursor-pointer bg-muted/30 overflow-hidden"
+                        onClick={(e) => { e.stopPropagation(); handleSelect(item.id); }}
+                      >
+                        {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
+                          <ImageCarousel
+                            images={(item.images || []).filter(Boolean).map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
+                            imageClassName="object-cover w-full h-full"
+                            counterPosition="top"
+                            className="w-full h-full"
+                          />
+                        ) : (
+                          <OptimizedImage
+                            src={item.image_url || DEFAULT_IMAGE_URL}
+                            alt={item.item_name}
+                            fallback={DEFAULT_IMAGE_URL}
+                            className="w-full h-full object-cover"
+                            style={{ minHeight: '240px' }}
+                            lazy={true}
+                          />
+                        )}
+                        {itemHasNoImage(item) && (
                           <div
-                            onClick={(e) => { e.stopPropagation(); handleSelect(item.id); }}
-                            className="relative overflow-hidden rounded-xl border cursor-pointer transition border-gray-200/80 dark:border-border hover:border-gray-300 dark:hover:border-border/80 aspect-square"
-                            title="Click image to select"
+                            onClick={(e) => { e.stopPropagation(); handleQuickUpload(item.id); }}
+                            className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
                           >
-                            {Array.isArray(item.images) && item.images.filter(Boolean).length > 1 ? (
-                              <ImageCarousel
-                                images={(item.images || []).filter(Boolean).map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
-                                imageClassName="object-cover"
-                                counterPosition="bottom"
-                              />
-                            ) : (
-                              <OptimizedImage
-                                src={item.image_url || DEFAULT_IMAGE_URL}
-                                alt={item.item_name}
-                                fallback={DEFAULT_IMAGE_URL}
-                                className="w-full h-full object-cover"
-                                lazy={true}
-                              />
-                            )}
-                            {selectedItems.includes(item.id) && (
-                              <div className="absolute top-2 left-2 z-20">
-                                <div className="bg-green-600 rounded-full p-1 shadow-lg">
-                                  <Check className="w-4 h-4 text-white" />
-                                </div>
-                              </div>
-                            )}
+                            <Camera className="w-6 h-6 text-white" />
+                            <span className="text-white text-xs font-medium">Add Photo</span>
                           </div>
-                        </div>
+                        )}
+                        {selectedItems.includes(item.id) && (
+                          <div className="absolute top-2 left-2 z-20">
+                            <div className="bg-green-600 rounded-full p-1 shadow">
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        {availableToSell > 0 && (
+                          <div className="absolute bottom-2 right-2 z-10">
+                            <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 rounded-lg px-2 py-1 shadow-lg flex items-center gap-1">
+                              <Package className="w-3 h-3 text-white" />
+                              <span className="text-white font-semibold text-xs">
+                                {availableToSell}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-                        {/* Details */}
-                        <div className={`min-w-0 px-5 p-5 ${selectedItems.includes(item.id) ? '' : 'border-l border-r border-gray-200/70 dark:border-border'}`}>
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className={`${statusColors[item.status]} text-xs px-3 py-1.5 rounded-xl`}>
-                                {statusLabels[item.status] || statusLabels.available}
+                      {/* Details column */}
+                      <div className="flex flex-col justify-between p-4 min-w-0 border-x border-border/50">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className={`${statusColors[item.status]} text-[10px] px-2 py-0.5 rounded-lg`}>
+                              {statusLabels[item.status] || statusLabels.available}
+                            </Badge>
+                            {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 rounded-lg border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10">
+                                Return in {daysRemaining}d
                               </Badge>
-                              {item.return_deadline && daysRemaining !== null && !item.return_deadline_dismissed && (
-                                <Badge variant="outline" className="text-[10px] px-2 py-1 rounded-xl border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10">
-                                  Return in {daysRemaining}d
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button type="button" onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
-                                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition ${favoriteMarked ? "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25" : "text-muted-foreground hover:text-amber-500 hover:bg-muted/40"}`}
-                                title={favoriteMarked ? "Unfavorite" : "Favorite"}>
-                                <Star className={`h-4 w-4 ${favoriteMarked ? "fill-current" : ""}`} />
-                              </button>
-                              {item.image_url && item.image_url !== DEFAULT_IMAGE_URL && (
-                                <button type="button" onClick={(e) => { e.stopPropagation(); handleEditImage(e, item); }}
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-blue-400 hover:bg-blue-600/20" title="Edit photo">
-                                  <ImageIcon className="h-4 w-4" />
-                                </button>
-                              )}
-                              <button type="button" onClick={(e) => { e.stopPropagation(); setItemToView(item); setViewDialogOpen(true); }}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-green-400 hover:bg-green-600/20" title="View details">
-                                <Search className="h-4 w-4" />
-                              </button>
-                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteClick(item); }}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent transition text-muted-foreground hover:text-red-400 hover:bg-red-600/20" title="Delete">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            )}
                           </div>
 
-                          <h3 className="text-lg font-bold text-foreground break-words line-clamp-2 mb-3">
+                          <h3 className="text-sm font-bold text-foreground line-clamp-2 leading-snug mb-2">
                             {item.item_name || "Untitled Item"}
                           </h3>
 
-                          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-base">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-muted-foreground text-xs font-semibold">Price</span>
-                              <span className="font-bold text-foreground tabular-nums">${Number(item.purchase_price || 0).toFixed(2)}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-muted-foreground text-xs font-semibold">Qty</span>
-                              <span className="font-bold text-foreground tabular-nums">
-                                {item.quantity}
-                                {quantitySold > 0 && (
-                                  <span className={`ml-2 text-xs font-semibold ${isSoldOut ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                                    {isSoldOut ? 'Sold out' : `${quantitySold} sold`}
-                                  </span>
+                          <div className="space-y-1.5 text-xs text-muted-foreground mb-3">
+                            <div className="flex items-center gap-2">
+                              <span>Purchase Cost:</span>
+                              <span className="font-semibold text-foreground tabular-nums">
+                                ${Number(item.purchase_price || 0).toFixed(2)}
+                                {item.quantity > 1 && (
+                                  <span className="text-muted-foreground font-normal ml-1">(${(perItemPrice || 0).toFixed(2)} ea)</span>
                                 )}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-muted-foreground text-xs font-semibold">Purchased</span>
-                              <span className="font-semibold text-foreground tabular-nums">
-                                {item.purchase_date ? format(parseISO(item.purchase_date), 'MMM d, yyyy') : '—'}
+                            {item.purchase_date && (
+                              <div className="flex items-center gap-2">
+                                <span>Purchase Date:</span>
+                                <span className="font-medium text-foreground">{format(parseISO(item.purchase_date), 'MMM d, yyyy')}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <span>Availability:</span>
+                              <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                                <span className={`w-2 h-2 rounded-full ${
+                                  item.status === 'sold' || isSoldOut
+                                    ? 'bg-red-500'
+                                    : 'bg-green-500'
+                                }`} />
+                                {item.status === 'sold' || isSoldOut
+                                  ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
+                                  : `Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-muted-foreground text-xs font-semibold">Available</span>
-                              <span className="font-semibold text-foreground tabular-nums">
-                                {Math.max((item.quantity || 0) - (quantitySold || 0), 0)}
-                              </span>
-                            </div>
-                            {item.condition && (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Condition</span>
-                                <span className="font-semibold text-foreground text-right truncate">{item.condition}</span>
-                              </div>
-                            )}
-                            {item.brand && (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Brand</span>
-                                <span className="font-semibold text-foreground text-right truncate">{item.brand}</span>
-                              </div>
-                            )}
-                            {item.size && (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Size</span>
-                                <span className="font-semibold text-foreground text-right truncate">{item.size}</span>
-                              </div>
-                            )}
-                            {item.category && (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Category</span>
-                                <span className="font-semibold text-foreground text-right truncate">{item.category}</span>
-                              </div>
-                            )}
                             {item.source && (
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground text-xs font-semibold">Source</span>
-                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                  {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt={item.source} className="w-3 h-3" />}
+                              <div className="flex items-center gap-2">
+                                <span>Source:</span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-medium">
+                                  {sourceIcons[item.source] && <img src={sourceIcons[item.source]} alt="" className="w-3 h-3" />}
                                   {item.source}
                                 </span>
                               </div>
                             )}
                           </div>
 
-                          {itemTags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {itemTags.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="flex items-center gap-1 text-[11px]">
-                                  {tag}
-                                  <button type="button" onClick={() => handleRemoveTagFromItem(item.id, tag)}
-                                    className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-card text-muted-foreground hover:bg-gray-300 dark:hover:bg-card/70" title="Remove tag">
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-
-                          {isDeleted && daysUntilPermanentDelete !== null && (
-                            <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-xs">
-                              <p className="font-semibold flex items-center gap-1">
-                                <AlarmClock className="w-3 h-3" />
-                                {daysUntilPermanentDelete} day{daysUntilPermanentDelete !== 1 ? 's' : ''} until permanent deletion
-                              </p>
-                            </div>
-                          )}
+                          {/* Marketplace badges */}
+                          <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+                            <MarketplaceBadgesRow
+                              item={item}
+                              computeListingState={computeListingState}
+                              getItemListings={getItemListings}
+                              size="sm"
+                            />
+                          </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="p-4 bg-gray-50/80 dark:bg-card/80 flex flex-col gap-2">
-                          <Button onClick={(e) => { e.stopPropagation(); setItemToView(item); setViewDialogOpen(true); }}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs h-9 shadow-sm">
-                            View Details
-                          </Button>
-                          {isDeleted ? (
-                            <>
-                              <Button onClick={(e) => { e.stopPropagation(); recoverItemMutation.mutate(item.id); }}
-                                disabled={recoverItemMutation.isPending}
-                                className="w-full bg-green-600 hover:bg-green-700 rounded-xl text-xs h-9">
-                                <ArchiveRestore className="w-4 h-4 mr-2" /> {recoverItemMutation.isPending ? "Recovering..." : "Recover"}
+                        {/* Tags at bottom */}
+                        {itemTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-auto pt-2">
+                            {itemTags.slice(0, 3).map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-[9px] px-1.5">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {itemTags.length > 3 && (
+                              <span className="text-[9px] text-muted-foreground">+{itemTags.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+
+                        {isDeleted && daysUntilPermanentDelete !== null && (
+                          <div className="mt-2 p-1.5 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200 text-[10px]">
+                            <AlarmClock className="w-3 h-3 inline mr-1" />
+                            {daysUntilPermanentDelete}d until permanent deletion
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions column */}
+                      <div className="flex flex-col gap-2 p-3 bg-muted/20 justify-center flex-shrink-0">
+                        {isDeleted ? (
+                          <>
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); recoverItemMutation.mutate(item.id); }}
+                              disabled={recoverItemMutation.isPending}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8 rounded-lg">
+                              <ArchiveRestore className="w-3.5 h-3.5 mr-1.5" /> Recover
+                            </Button>
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); setItemToPermanentlyDelete(item); setPermanentDeleteDialogOpen(true); }}
+                              disabled={permanentDeleteMutation.isPending}
+                              className="w-full bg-red-600 hover:bg-red-700 text-white text-xs h-8 rounded-lg">
+                              <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-center gap-1 mb-1">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
+                                className={`inline-flex w-7 h-7 items-center justify-center rounded-md transition ${favoriteMarked ? "text-amber-500" : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"}`}
+                                title={favoriteMarked ? "Unfavorite" : "Favorite"}>
+                                <Star className={`w-3.5 h-3.5 ${favoriteMarked ? "fill-current" : ""}`} />
+                              </button>
+                              <button type="button" onClick={(e) => {
+                                  e.stopPropagation();
+                                  const query = item.item_name || "";
+                                  setProductSearchQuery(query);
+                                  setProductSearchOpen(true);
+                                }}
+                                className="inline-flex w-7 h-7 items-center justify-center rounded-md transition text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                                title="Product Search">
+                                <Search className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteClick(item); }}
+                                className="inline-flex w-7 h-7 items-center justify-center rounded-md transition text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                                title="Delete">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); openComposer([item.id]); }}
+                              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold text-xs h-9 rounded-lg shadow-sm">
+                              <Rocket className="w-3.5 h-3.5 mr-1.5" /> List
+                            </Button>
+                            {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
+                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleMarkAsSold(item); }}
+                                className="w-full text-xs h-8 rounded-lg border-green-600/40 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20">
+                                Mark Sold
                               </Button>
-                              <Button onClick={(e) => { e.stopPropagation(); setItemToPermanentlyDelete(item); setPermanentDeleteDialogOpen(true); }}
-                                disabled={permanentDeleteMutation.isPending}
-                                className="w-full bg-red-600 hover:bg-red-700 rounded-xl text-xs h-9">
-                                <Trash2 className="w-4 h-4 mr-2" /> {permanentDeleteMutation.isPending ? "Deleting..." : "Delete Forever"}
+                            )}
+                            <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="w-full" onClick={(e) => e.stopPropagation()}>
+                              <Button size="sm" variant="outline" className="w-full text-xs h-8 rounded-lg">
+                                <Edit className="w-3 h-3 mr-1" /> Edit
                               </Button>
-                            </>
-                          ) : (
-                            <>
-                              {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
-                                <Button onClick={(e) => { e.stopPropagation(); handleMarkAsSold(item); }}
-                                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-xl text-xs h-9 shadow-sm shadow-green-500/15">
-                                  Mark as Sold
-                                </Button>
-                              )}
-                              <Button variant="outline" onClick={(e) => {
-                                e.stopPropagation();
-                                const query = item.item_name || "";
-                                setProductSearchQuery(query); setProductSearchOpen(true);
-                              }} className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
-                                <BarChart className="w-4 h-4 mr-2" /> Search
-                              </Button>
-                              <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="w-full" onClick={(e) => e.stopPropagation()}>
-                                <Button variant="outline" className="w-full rounded-xl text-xs h-9 border-gray-300 dark:border-border hover:bg-white dark:hover:bg-slate-900">
-                                  <Edit className="w-4 h-4 mr-2" /> Edit Item
-                                </Button>
-                              </Link>
-                              {isConnected() && !isSoldOut && item.status !== 'sold' && (
-                                <Button variant="outline" onClick={(e) => { e.stopPropagation(); setItemForFacebookListing(item); setFacebookListingDialogOpen(true); }}
-                                  className="w-full rounded-xl text-xs h-9 border-blue-600/40 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20">
-                                  <Facebook className="w-4 h-4 mr-2" /> List on FB
-                                </Button>
-                              )}
-                            </>
-                          )}
-                        </div>
+                            </Link>
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setItemToView(item); setViewDialogOpen(true); }}
+                              className="w-full text-xs h-7 text-muted-foreground hover:text-foreground rounded-lg">
+                              <Eye className="w-3 h-3 mr-1" /> Details
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                     )}
@@ -3170,7 +3312,7 @@ export default function InventoryPage() {
               </div>
             ) : (
             <div className={`grid ${gridVariations[viewVariation].containerClass}`}>
-              {sortedItems.map(item => {
+              {displayItems.map(item => {
                 const today = new Date();
                 const deadline = item.return_deadline ? parseISO(item.return_deadline) : null;
                 const daysRemaining = deadline && isAfter(deadline, today) ? differenceInDays(deadline, today) + 1 : null;
@@ -3229,6 +3371,16 @@ export default function InventoryPage() {
                       />
                     )}
                   </div>
+                  {/* Hover overlay for items with no photo */}
+                  {itemHasNoImage(item) && (
+                    <div
+                      onClick={(e) => { e.stopPropagation(); handleQuickUpload(item.id); }}
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10 rounded-lg"
+                    >
+                      <Camera className="w-7 h-7 text-white" />
+                      <span className="text-white text-xs font-medium">Add Photo</span>
+                    </div>
+                  )}
                   {selectedItems.includes(item.id) && (
                     <div className="absolute top-2 left-2 z-20">
                       <div className="bg-green-600 rounded-full p-1 shadow-lg">
@@ -3236,37 +3388,17 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   )}
-                  <div className="absolute bottom-2 right-2 z-10">
+                  <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1">
+                    {daysRemaining !== null && !isDeleted && !item.return_deadline_dismissed && (
+                      <Badge variant="outline" className="bg-red-500/90 text-white border-red-600 backdrop-blur-sm text-[10px] px-1.5 py-0.5">
+                        <AlarmClock className="w-3 h-3 mr-0.5" />
+                        {daysRemaining}d return
+                      </Badge>
+                    )}
                     <Badge variant="outline" className={`${statusColors[item.status]} ${gridVariations[viewVariation].badgeClass} backdrop-blur-sm`}>
                       {statusLabels[item.status] || statusLabels.available}
                     </Badge>
                   </div>
-                  {itemDuplicates[item.id] && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedItemForDuplicates({
-                          id: item.id,
-                          item_name: item.item_name,
-                          purchase_price: item.purchase_price,
-                          purchase_date: item.purchase_date,
-                          image_url: item.image_url,
-                          images: item.images,
-                          source: item.source,
-                        });
-                        setDuplicateDialogOpen(true);
-                      }}
-                      className="absolute bottom-2 left-2 z-10"
-                    >
-                      <Badge 
-                        variant="outline" 
-                        className="bg-amber-500/90 text-white border-amber-600 backdrop-blur-sm hover:bg-amber-600 cursor-pointer transition-colors"
-                      >
-                        <AlertTriangle className="w-3 h-3 mr-1" />
-                        {itemDuplicates[item.id].duplicate_count} Duplicate{itemDuplicates[item.id].duplicate_count > 1 ? 's' : ''}
-                      </Badge>
-                    </button>
-                  )}
                 </div>
 
                     <CardContent className={gridVariations[viewVariation].paddingClass}>
@@ -3289,14 +3421,8 @@ export default function InventoryPage() {
                             type="button"
                             onClick={() => {
                               const query = item.item_name || "";
-                              if (isMobile) {
-                                // On mobile, navigate to ProductSearch page
-                                navigate(`/product-search?q=${encodeURIComponent(query)}&from=inventory`);
-                              } else {
-                                // On desktop, open dialog
-                                setProductSearchQuery(query);
-                                setProductSearchOpen(true);
-                              }
+                              setProductSearchQuery(query);
+                              setProductSearchOpen(true);
                             }}
                             className={`inline-flex ${gridVariations[viewVariation].buttonSizeClass} items-center justify-center rounded-md border border-transparent transition text-muted-foreground hover:text-blue-600 hover:bg-blue-600/10`}
                             title="Search"
@@ -3385,6 +3511,16 @@ export default function InventoryPage() {
                         )}
                       </div>
 
+                      {/* Marketplace badges */}
+                      <div className="mb-3">
+                        <MarketplaceBadgesRow
+                          item={item}
+                          computeListingState={computeListingState}
+                          getItemListings={getItemListings}
+                          size="sm"
+                        />
+                      </div>
+
                       {itemTags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-3">
                           {itemTags.map((tag) => (
@@ -3457,30 +3593,6 @@ export default function InventoryPage() {
                         </div>
                       )}
 
-                      {daysRemaining !== null && !isDeleted && (
-                        <div className="mb-3 p-1.5 bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500 rounded-r text-red-800 dark:text-red-200">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-semibold text-[10px] flex items-center gap-1">
-                              <AlarmClock className="w-3 h-3" />
-                              {daysRemaining}d to return
-                            </p>
-                            {filters.daysInStock === "returnDeadline" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleToggleReturnDeadlineDismiss(item.id, item.return_deadline_dismissed);
-                                }}
-                                className="h-5 px-2 py-0 text-[10px] text-red-700 hover:text-red-900 hover:bg-red-200 dark:text-red-300 dark:hover:text-red-100 dark:hover:bg-red-800"
-                              >
-                                {item.return_deadline_dismissed ? 'Restore' : 'Dismiss'}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
 
                       {isDeleted && daysUntilPermanentDelete !== null && (
                         <div className="mb-3 p-1.5 bg-orange-100 dark:bg-orange-900/30 border-l-2 border-orange-500 rounded-r text-orange-800 dark:text-orange-200">
@@ -3499,74 +3611,51 @@ export default function InventoryPage() {
                         </div>
                       )}
 
-                      <div className="space-y-2">
-                        <Button 
-                          onClick={() => {
-                            setItemToView(item);
-                            setViewDialogOpen(true);
-                          }}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md"
-                        >
-                          View Details
-                        </Button>
+                      <div className="flex flex-col gap-1.5 mt-1">
                         {isDeleted ? (
                           <>
-                            <Button 
-                              onClick={() => recoverItemMutation.mutate(item.id)} 
+                            <Button
+                              onClick={() => recoverItemMutation.mutate(item.id)}
                               disabled={recoverItemMutation.isPending}
                               className="w-full bg-green-600 hover:bg-green-700 h-8 text-xs"
                             >
                               <ArchiveRestore className="w-3 h-3 mr-1.5" />
-                              {recoverItemMutation.isPending ? "Recovering..." : "Recover Item"}
+                              {recoverItemMutation.isPending ? "Recovering..." : "Recover"}
                             </Button>
-                            <Button 
+                            <Button
                               onClick={() => {
                                 setItemToPermanentlyDelete(item);
                                 setPermanentDeleteDialogOpen(true);
-                              }} 
+                              }}
                               disabled={permanentDeleteMutation.isPending}
                               className="w-full bg-red-600 hover:bg-red-700 h-8 text-xs"
                             >
                               <Trash2 className="w-3 h-3 mr-1.5" />
-                              {permanentDeleteMutation.isPending ? "Deleting..." : "Permanently Delete"}
+                              Delete Forever
                             </Button>
                           </>
                         ) : (
-                          <div className="grid grid-cols-2 gap-2">
-                            {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
-                              <Button 
-                                onClick={() => handleMarkAsSold(item)} 
-                                className="bg-green-600 hover:bg-green-700 h-8 text-xs"
-                              >
-                                <ShoppingCart className="w-3 h-3 mr-1" />
-                                Mark Sold
+                          <>
+                            <Button size="sm" onClick={() => openComposer([item.id])}
+                              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold text-xs h-8 rounded-lg">
+                              <Rocket className="w-3 h-3 mr-1" /> List
+                            </Button>
+                            <div className="flex gap-1">
+                              {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
+                                <Button size="sm" variant="outline" onClick={() => handleMarkAsSold(item)}
+                                  className="flex-1 text-[10px] h-7 border-green-500/40 text-green-700 dark:text-green-400">
+                                  Sold
+                                </Button>
+                              )}
+                              <Link to={createPageUrl(`AddInventoryItem?id=${item.id}`)} state={returnStateForInventory} className="flex-1">
+                                <Button variant="outline" size="sm" className="w-full text-[10px] h-7">Edit</Button>
+                              </Link>
+                              <Button size="sm" variant="ghost" onClick={() => { setItemToView(item); setViewDialogOpen(true); }}
+                                className="flex-1 text-[10px] h-7">
+                                <Eye className="w-3 h-3" />
                               </Button>
-                            )}
-                            <Link
-                              to={createPageUrl(`AddInventoryItem?id=${item.id}`)}
-                              state={returnStateForInventory}
-                              className="flex-1"
-                            >
-                              <Button variant="outline" size="sm" className="w-full h-8 text-xs border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">
-                                <Edit className="w-3 h-3 mr-1" />
-                                Edit
-                              </Button>
-                            </Link>
-                            {isConnected() && !isSoldOut && item.status !== 'sold' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setItemForFacebookListing(item);
-                                  setFacebookListingDialogOpen(true);
-                                }}
-                                className="h-8 text-xs border-blue-600/50 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              >
-                                <Facebook className="w-3 h-3 mr-1" />
-                                List on FB
-                              </Button>
-                            )}
-                          </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </CardContent>
@@ -3815,6 +3904,14 @@ export default function InventoryPage() {
     </Dialog>
 
       {/* Image Editor */}
+      {/* Hidden file input for quick-upload on no-image items */}
+      <input
+        ref={quickUploadRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onQuickFileChosen}
+      />
       <ImageEditor
         open={editorOpen}
         onOpenChange={setEditorOpen}
@@ -3909,29 +4006,10 @@ export default function InventoryPage() {
       {/* Duplicate Detection Dialog */}
       <DuplicateDetectionDialog
         isOpen={duplicateDialogOpen}
-        onClose={() => {
-          setDuplicateDialogOpen(false);
-          setSelectedItemForDuplicates(null);
-        }}
-        duplicates={selectedItemForDuplicates ? {
-          [selectedItemForDuplicates.id]: {
-            importedItem: selectedItemForDuplicates,
-            matches: itemDuplicates[selectedItemForDuplicates.id]?.duplicates || []
-          }
-        } : {}}
-        onViewInventory={(inventoryId) => {
-          // Highlight the item (already on inventory page)
-          const element = document.querySelector(`[data-item-id="${inventoryId}"]`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element.classList.add('ring-4', 'ring-blue-500');
-            setTimeout(() => {
-              element.classList.remove('ring-4', 'ring-blue-500');
-            }, 2000);
-          }
-        }}
-        onMergeComplete={(primaryItemId) => {
-          // Refresh duplicates check after merge
+        onClose={() => setDuplicateDialogOpen(false)}
+        inventoryDuplicates={inventoryDuplicates}
+        saleDuplicates={saleDuplicates}
+        onRefresh={() => {
           queryClient.invalidateQueries(['inventoryItems']);
           handleCheckDuplicates();
         }}

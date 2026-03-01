@@ -10,7 +10,7 @@
 
 function isAllowedOrigin(origin) {
   if (!origin || typeof origin !== 'string') return false;
-  if (origin === 'https://profitorbit.io') return true;
+  if (origin === 'https://orben.io') return true;
   if (/^https:\/\/([a-z0-9-]+\.)?profitorbit\.io$/i.test(origin)) return true;
   if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
   if (/^http:\/\/localhost:\d+$/i.test(origin)) return true;

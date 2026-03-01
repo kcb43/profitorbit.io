@@ -20,7 +20,7 @@ function setCors(req, res) {
   const origin = req.headers?.origin;
   const allowed =
     !origin ||
-    origin === 'https://profitorbit.io' ||
+    origin === 'https://orben.io' ||
     /^https:\/\/([a-z0-9-]+\.)?profitorbit\.io$/i.test(origin) ||
     /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin) ||
     /^http:\/\/localhost:\d+$/i.test(origin);

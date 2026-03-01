@@ -87,27 +87,67 @@ export default async function handler(req, res) {
         
         console.log(`📂 Category mapping: FB "${facebookCategoryName}" (ID: ${item.categoryId}) → Orben "${orbenCategory}"`);
         
-        // Check if inventory item already exists (by title and approximate price for Facebook)
-        // Facebook doesn't have unique IDs like eBay, so we match by title similarity
+        // Smart-match dedup: check by facebook_item_id first, then title+price fallback.
+        // This prevents creating duplicate inventory records when re-importing.
         let inventoryId = null;
         let isExistingItem = false;
-        
-        const { data: existingItem, error: searchError } = await supabase
-          .from('inventory_items')
-          .select('id, item_name, status, listing_price')
-          .eq('user_id', userId)
-          .eq('source', 'Facebook')
-          .ilike('item_name', item.title) // Exact title match
-          .is('deleted_at', null)
-          .maybeSingle();
-        
-        if (existingItem) {
-          // Double-check price is similar (within $5)
-          const priceDiff = Math.abs((existingItem.listing_price || 0) - (item.price || 0));
-          if (priceDiff <= 5) {
-            inventoryId = existingItem.id;
+
+        // 1. Try exact match by facebook_item_id (most reliable)
+        if (item.itemId) {
+          const { data: idMatch } = await supabase
+            .from('inventory_items')
+            .select('id, item_name, status, listing_price')
+            .eq('user_id', userId)
+            .eq('facebook_item_id', String(item.itemId))
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          if (idMatch) {
+            inventoryId = idMatch.id;
             isExistingItem = true;
-            console.log(`✅ Found existing inventory item: ${existingItem.item_name} (ID: ${inventoryId})`);
+            console.log(`✅ Found existing item by facebook_item_id: ${idMatch.item_name} (ID: ${inventoryId})`);
+          }
+        }
+
+        // 2. Try matching by marketplace_listings table (if previously crosslisted)
+        if (!isExistingItem && item.itemId) {
+          const { data: listingMatch } = await supabase
+            .from('marketplace_listings')
+            .select('inventory_item_id')
+            .eq('user_id', userId)
+            .eq('marketplace', 'facebook')
+            .eq('marketplace_listing_id', String(item.itemId))
+            .maybeSingle();
+
+          if (listingMatch) {
+            inventoryId = listingMatch.inventory_item_id;
+            isExistingItem = true;
+            console.log(`✅ Found existing item via marketplace_listings: ${inventoryId}`);
+          }
+        }
+
+        // 3. Fallback: match any inventory item by exact title + similar price (any source)
+        // This catches items added manually or imported from another marketplace
+        if (!isExistingItem) {
+          const { data: titleMatch } = await supabase
+            .from('inventory_items')
+            .select('id, item_name, status, listing_price, quantity, quantity_sold')
+            .eq('user_id', userId)
+            .ilike('item_name', item.title)
+            .is('deleted_at', null)
+            .limit(5);
+
+          if (titleMatch && titleMatch.length > 0) {
+            // Find best match: prefer same source, then closest price
+            const bestMatch = titleMatch.find(m => {
+              const priceDiff = Math.abs((m.listing_price || 0) - (item.price || 0));
+              return priceDiff <= 10; // $10 tolerance for cross-marketplace price differences
+            });
+            if (bestMatch) {
+              inventoryId = bestMatch.id;
+              isExistingItem = true;
+              console.log(`✅ Found existing item by title+price match: ${bestMatch.item_name} (ID: ${inventoryId})`);
+            }
           }
         }
         
@@ -132,6 +172,7 @@ export default async function handler(req, res) {
               brand: item.brand || null, // From GraphQL attribute_data or extracted from title
               size: item.size || null, // From GraphQL attribute_data if available
               category: orbenCategory || facebookCategoryName || null, // Use mapped Orben category or fallback to FB category
+              facebook_item_id: item.itemId ? String(item.itemId) : null, // Store Facebook item ID for dedup
               facebook_category_id: item.categoryId || null, // Store Facebook category ID (e.g., "1670493229902393")
               facebook_category_name: facebookCategoryName || null, // Store Facebook category name if resolved
               purchase_date: new Date().toISOString(),
@@ -151,19 +192,65 @@ export default async function handler(req, res) {
           inventoryId = insertData.id;
           console.log(`✅ Created new inventory item with ID ${inventoryId}`);
         } else {
-          // If it's a sold item, update the inventory status to 'sold'
-          if (isSoldItem && existingItem.status !== 'sold') {
-            const { error: updateError } = await supabase
+          // Existing item found — update facebook_item_id if not set yet
+          if (item.itemId) {
+            await supabase
               .from('inventory_items')
-              .update({ status: 'sold' })
-              .eq('id', inventoryId);
-            
-            if (updateError) {
-              console.error(`⚠️ Failed to update inventory status to sold:`, updateError);
-            } else {
-              console.log(`✅ Updated inventory item status to 'sold'`);
+              .update({ facebook_item_id: String(item.itemId) })
+              .eq('id', inventoryId)
+              .is('facebook_item_id', null);
+          }
+
+          if (isSoldItem) {
+            // Fetch current item to check quantity
+            const { data: currentItem } = await supabase
+              .from('inventory_items')
+              .select('status, quantity, quantity_sold')
+              .eq('id', inventoryId)
+              .single();
+
+            if (currentItem) {
+              const qty = currentItem.quantity || 1;
+              const qtySold = currentItem.quantity_sold || 0;
+              const newQtySold = qtySold + 1;
+
+              // If all units are sold, mark as 'sold'; otherwise keep 'listed'
+              const newStatus = newQtySold >= qty ? 'sold' : currentItem.status;
+              const updates = { quantity_sold: newQtySold };
+              if (newStatus !== currentItem.status) updates.status = newStatus;
+
+              const { error: updateError } = await supabase
+                .from('inventory_items')
+                .update(updates)
+                .eq('id', inventoryId);
+
+              if (updateError) {
+                console.error(`⚠️ Failed to update inventory quantity/status:`, updateError);
+              } else {
+                console.log(`✅ Updated inventory: quantity_sold ${qtySold} → ${newQtySold}, status: ${newStatus}`);
+              }
             }
           }
+        }
+
+        // Upsert marketplace_listings record to track this item<>marketplace link
+        try {
+          await supabase
+            .from('marketplace_listings')
+            .upsert(
+              {
+                user_id: userId,
+                inventory_item_id: inventoryId,
+                marketplace: 'facebook',
+                marketplace_listing_id: item.itemId ? String(item.itemId) : null,
+                status: isSoldItem ? 'sold' : 'active',
+                listed_at: item.listingDate || item.startTime || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'inventory_item_id,marketplace' }
+            );
+        } catch (linkErr) {
+          console.error(`⚠️ Failed to upsert marketplace_listings:`, linkErr);
         }
 
         imported++;

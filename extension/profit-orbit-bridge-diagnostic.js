@@ -31,11 +31,11 @@ try {
   // Check if URL matches expected patterns
   const url = window.location.href;
   const matches = [
-    url.includes('profitorbit.io'),
+    url.includes('orben.io'),
     url.includes('localhost:5173'),
     url.includes('localhost:5174')
   ];
-  console.log('  - URL matches profitorbit.io:', matches[0]);
+  console.log('  - URL matches orben.io:', matches[0]);
   console.log('  - URL matches localhost:5173:', matches[1]);
   console.log('  - URL matches localhost:5174:', matches[2]);
 } catch (e) {
