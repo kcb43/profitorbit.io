@@ -237,7 +237,21 @@ export default function InventoryPage() {
     localStorage.setItem('inventory_view_mode', viewMode);
   }, [viewMode]);
 
-  
+  // One-time category migration: update old category names to new Orben system
+  useEffect(() => {
+    const migrationKey = 'orben_categories_migrated_v2';
+    if (localStorage.getItem(migrationKey)) return;
+    apiClient.post('/api/inventory/migrate-categories', {})
+      .then((res) => {
+        if (res.success && res.totalUpdated > 0) {
+          console.log(`✅ Migrated ${res.totalUpdated} categories (${res.inventoryUpdated} inventory, ${res.salesUpdated} sales)`);
+          queryClient.invalidateQueries(['inventory-items']);
+        }
+        localStorage.setItem(migrationKey, new Date().toISOString());
+      })
+      .catch((err) => console.error('Category migration error:', err));
+  }, []);
+
   // Hybrid variation logic based on user preference:
   // Desktop Grid = V1 (Compact), Desktop List = V2 (Showcase), Mobile = V2 (Showcase)
   const viewVariation = React.useMemo(() => {

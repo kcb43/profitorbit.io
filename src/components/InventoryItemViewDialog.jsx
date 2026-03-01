@@ -19,7 +19,7 @@ const statusColors = {
 };
 
 const statusLabels = {
-  available: "Available",
+  available: "In Stock",
   listed: "Listed",
   sold: "Sold",
 };
@@ -118,13 +118,13 @@ export function InventoryItemViewDialog({ item, isOpen, onClose, tags = [], isFa
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
-                  <p className={`font-semibold ${isSoldOut ? 'text-red-600' : 'text-green-600'}`}>
-                    {isSoldOut ? 'Sold Out' : `${availableToSell} Available`}
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Availability</p>
+                  <p className={`font-semibold flex items-center gap-1.5 ${isSoldOut ? 'text-red-600' : 'text-green-600'}`}>
+                    <span className={`inline-block w-2 h-2 rounded-full ${isSoldOut ? 'bg-red-500' : 'bg-green-500'}`} />
+                    {isSoldOut
+                      ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
+                      : `${availableToSell} Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
                   </p>
-                  {quantitySold > 0 && (
-                    <p className="text-xs text-gray-400">{quantitySold} sold</p>
-                  )}
                 </div>
               </div>
 
