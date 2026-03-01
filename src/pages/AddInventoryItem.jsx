@@ -698,13 +698,8 @@ export default function AddInventoryItem() {
   };
   
   const handleCategorySelectChange = (value) => {
-    if (value === 'other') {
-      setIsOtherCategory(true);
-      handleChange('category', '');
-    } else {
-      setIsOtherCategory(false);
-      handleChange('category', value);
-    }
+    setIsOtherCategory(false);
+    handleChange('category', value);
   };
 
   const handleSubmit = (e) => {
@@ -1205,23 +1200,9 @@ export default function AddInventoryItem() {
                                 {PREDEFINED_CATEGORIES.map(cat => (
                                     <SelectItem key={cat} value={cat} className="text-foreground">{cat}</SelectItem>
                                 ))}
-                                <SelectItem value="other" className="text-foreground">Other...</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-
-                    {isOtherCategory ? (
-                        <div className="space-y-2 md:col-span-2 min-w-0">
-                            <Label htmlFor="other_category" className="text-foreground break-words">Custom Category</Label>
-                            <Input
-                                id="other_category"
-                                placeholder="e.g., Video Games"
-                                value={formData.category}
-                                onChange={(e) => handleChange('category', e.target.value)}
-                                className="w-full text-foreground bg-background"
-                            />
-                        </div>
-                    ) : null}
 
                     {/* Brand Field */}
                     <div className="space-y-2 min-w-0">

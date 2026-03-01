@@ -558,13 +558,8 @@ export default function AddSale() {
   };
   
   const handleCategorySelectChange = (value) => {
-    if (value === 'other') {
-      setIsOtherCategory(true);
-      handleChange('category', '');
-    } else {
-      setIsOtherCategory(false);
-      handleChange('category', value);
-    }
+    setIsOtherCategory(false);
+    handleChange('category', value);
   };
 
   const calculateProfit = () => {
@@ -1298,23 +1293,9 @@ export default function AddSale() {
                       {PREDEFINED_CATEGORIES.map(cat => (
                         <SelectItem key={cat} value={cat} className="text-foreground">{cat}</SelectItem>
                       ))}
-                      <SelectItem value="other" className="text-foreground">Other...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                {isOtherCategory ? (
-                  <div className="space-y-2 min-w-0">
-                    <Label htmlFor="other_category" className="text-foreground">Custom Category</Label>
-                    <Input
-                      id="other_category"
-                      value={formData.category}
-                      onChange={(e) => handleChange('category', e.target.value)}
-                      placeholder="e.g., Video Games"
-                      className="w-full text-foreground bg-background"
-                    />
-                  </div>
-                ) : <div />}
 
                 {/* Brand field — same combobox as Add Inventory */}
                 <div className="space-y-2 min-w-0">

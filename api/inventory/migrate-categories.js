@@ -67,6 +67,7 @@ const TITLE_OVERRIDES = [
 
 /**
  * Given an old category and item title, determine the best new category.
+ * Always returns a valid category — falls back to "Other" for unknown custom categories.
  */
 function resolveNewCategory(oldCategory, itemName) {
   if (!oldCategory) return null;
@@ -82,7 +83,12 @@ function resolveNewCategory(oldCategory, itemName) {
   }
 
   // Fall back to the static map
-  return CATEGORY_MAP[oldCategory] || null;
+  if (CATEGORY_MAP[oldCategory]) {
+    return CATEGORY_MAP[oldCategory];
+  }
+
+  // Unknown custom category — try title-based guess, otherwise "Other"
+  return 'Other';
 }
 
 // Current valid categories — anything already in this set is left alone

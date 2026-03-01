@@ -239,7 +239,7 @@ export default function InventoryPage() {
 
   // One-time category migration: update old category names to new Orben system
   useEffect(() => {
-    const migrationKey = 'orben_categories_migrated_v2';
+    const migrationKey = 'orben_categories_migrated_v3';
     if (localStorage.getItem(migrationKey)) return;
     apiClient.post('/api/inventory/migrate-categories', {})
       .then((res) => {
