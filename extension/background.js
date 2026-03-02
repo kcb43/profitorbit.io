@@ -2241,6 +2241,82 @@ function shouldRecordMercariUrl(url) {
   );
 }
 
+// Always-on: capture Mercari GraphQL operations from webRequest (bypasses Service Worker issues)
+function captureMercariGraphQLFromRequest(details) {
+  try {
+    const url = details.url || '';
+    if (!url.includes('mercari.com')) return;
+    // Only care about API calls
+    if (!url.includes('/v1/api') && !url.includes('/api') && !url.includes('/graphql')) return;
+
+    let operationName = null;
+    let hash = null;
+    let variables = null;
+    let method = details.method || 'UNKNOWN';
+
+    // 1. Check URL query params (GET requests use operationName + extensions in URL)
+    try {
+      const u = new URL(url);
+      operationName = u.searchParams.get('operationName');
+      const extRaw = u.searchParams.get('extensions');
+      if (operationName && extRaw) {
+        const ext = JSON.parse(extRaw);
+        hash = ext?.persistedQuery?.sha256Hash || null;
+        const varsRaw = u.searchParams.get('variables');
+        if (varsRaw) variables = JSON.parse(varsRaw);
+      }
+    } catch {}
+
+    // 2. Check request body (POST requests send JSON body)
+    if (!operationName) {
+      const body = decodeRequestBody(details);
+      if (body) {
+        let text = null;
+        if (body.kind === 'rawText' && body.value) text = body.value;
+        else if (body.kind === 'formData' && body.value) {
+          // formData might have operationName, extensions, variables as fields
+          operationName = body.value.operationName?.[0] || null;
+          const extRaw = body.value.extensions?.[0] || null;
+          if (extRaw) {
+            try {
+              const ext = JSON.parse(extRaw);
+              hash = ext?.persistedQuery?.sha256Hash || null;
+            } catch {}
+          }
+          const varsRaw = body.value.variables?.[0] || null;
+          if (varsRaw) {
+            try { variables = JSON.parse(varsRaw); } catch {}
+          }
+        }
+
+        if (text && !operationName) {
+          try {
+            const parsed = JSON.parse(text);
+            operationName = parsed.operationName || null;
+            hash = parsed.extensions?.persistedQuery?.sha256Hash || null;
+            variables = parsed.variables || null;
+          } catch {}
+        }
+      }
+    }
+
+    if (!operationName || !hash) return;
+
+    console.log(`🎯 [webRequest] Captured Mercari GraphQL: ${operationName} (${method}) hash=${hash.slice(0, 16)}...`);
+
+    // Store in chrome.storage.local
+    chrome.storage.local.get('mercari_captured_ops', (result) => {
+      const ops = result.mercari_captured_ops || {};
+      if (ops[operationName]?.hash === hash) return; // Already captured
+      ops[operationName] = { hash, method, capturedAt: Date.now(), sampleVariables: variables };
+      chrome.storage.local.set({ mercari_captured_ops: ops });
+      console.log(`💾 Stored Mercari GraphQL op via webRequest: ${operationName}`);
+    });
+  } catch (e) {
+    // Silently ignore errors
+  }
+}
+
 function decodeRequestBody(details) {
   const rb = details?.requestBody;
   if (!rb) return null;
@@ -2351,6 +2427,9 @@ function pushFinalFacebookRecord(rec) {
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     try {
+      // Always capture GraphQL operations (even when recorder is off)
+      captureMercariGraphQLFromRequest(details);
+
       if (!mercariApiRecorder.enabled) return;
       if (!shouldRecordMercariUrl(details.url)) return;
       if (details.type === 'image' || details.type === 'media') return;
