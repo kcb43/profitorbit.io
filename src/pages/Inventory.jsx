@@ -59,9 +59,6 @@ import { MarketplaceBadgesRow } from "@/components/MarketplaceBadgesRow";
 import { CROSSLIST_MARKETPLACES } from "@/constants/marketplaces";
 import { ListingJobTracker } from "@/components/ListingJobTracker";
 import InventoryLayoutV1 from "@/components/inventory-ui/InventoryLayoutV1";
-import InventoryLayoutV2 from "@/components/inventory-ui/InventoryLayoutV2";
-import InventoryLayoutV3 from "@/components/inventory-ui/InventoryLayoutV3";
-import InventoryLayoutV4 from "@/components/inventory-ui/InventoryLayoutV4";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -123,13 +120,7 @@ export default function InventoryPage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
-  const [layoutVariant, setLayoutVariant] = useState(() => {
-    try { return Number(localStorage.getItem('inventory_layout_variant')) || 1; } catch { return 1; }
-  });
-  React.useEffect(() => {
-    try { localStorage.setItem('inventory_layout_variant', String(layoutVariant)); } catch {}
-  }, [layoutVariant]);
-  
+
   // Highlight functionality (for navigation from Import page)
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
@@ -1760,60 +1751,36 @@ export default function InventoryPage() {
       />
       <div className="p-4 md:p-6 lg:p-8" style={{ paddingTop: topOffset }}>
         <div className="max-w-7xl mx-auto space-y-6 min-w-0">
-          {/* ── Layout Variant Switcher ── */}
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-card/95 backdrop-blur-md border border-border shadow-lg rounded-full px-2 py-1.5">
-            {[1, 2, 3, 4].map(v => (
-              <button
-                key={v}
-                onClick={() => setLayoutVariant(v)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  layoutVariant === v
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                }`}
-              >
-                V{v}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Render chosen layout variant ── */}
-          {(() => {
-            const layoutProps = {
-              inventorySummary,
-              filters, setFilters,
-              sort, setSort,
-              platformFilter, setPlatformFilter,
-              activeMkts, setActiveMkts,
-              pageSize, setPageSize, pageIndex, setPageIndex,
-              totalPages, totalItems, canPrev, canNext,
-              inventoryItems,
-              selectedItems, displayItems, handleSelectAll,
-              viewMode, setViewMode,
-              onGalleryToggle: () => setViewMode(m => m === "gallery" ? "grid" : "gallery"),
-              onCheckDuplicates: handleCheckDuplicates,
-              checkingDuplicates,
-              onManageGroups: () => setManageGroupsDialogOpen(true),
-              onExport: () => {
-                const params = { exclude_deleted: 'true', limit: '5000' };
-                if (filters.search?.trim()) params.search = filters.search.trim();
-                if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') params.status = filters.status;
-                else if (filters.status === 'not_sold') params.exclude_status = 'sold';
-                if (favoriteIdsCsv) params.ids = favoriteIdsCsv;
-                openAuthExport('/api/inventory/export', params);
-              },
-              showFavoritesOnly, setShowFavoritesOnly, favoritesCount,
-              categoryFilter: filters.categoryFilter,
-              returnStateForInventory,
-              showDismissedReturns, setShowDismissedReturns, dismissedReturnsCount,
-              daysInStockFilter: filters.daysInStock,
-              hasActiveFilters,
-            };
-            const LayoutComponent = layoutVariant === 2 ? InventoryLayoutV2
-              : layoutVariant === 3 ? InventoryLayoutV3
-              : layoutVariant === 4 ? InventoryLayoutV4
-              : InventoryLayoutV1;
-            return <LayoutComponent {...layoutProps}>
+          <InventoryLayoutV1
+            inventorySummary={inventorySummary}
+            filters={filters} setFilters={setFilters}
+            sort={sort} setSort={setSort}
+            platformFilter={platformFilter} setPlatformFilter={setPlatformFilter}
+            activeMkts={activeMkts} setActiveMkts={setActiveMkts}
+            pageSize={pageSize} setPageSize={setPageSize} pageIndex={pageIndex} setPageIndex={setPageIndex}
+            totalPages={totalPages} totalItems={totalItems} canPrev={canPrev} canNext={canNext}
+            inventoryItems={inventoryItems}
+            selectedItems={selectedItems} displayItems={displayItems} handleSelectAll={handleSelectAll}
+            viewMode={viewMode} setViewMode={setViewMode}
+            onGalleryToggle={() => setViewMode(m => m === "gallery" ? "grid" : "gallery")}
+            onCheckDuplicates={handleCheckDuplicates}
+            checkingDuplicates={checkingDuplicates}
+            onManageGroups={() => setManageGroupsDialogOpen(true)}
+            onExport={() => {
+              const params = { exclude_deleted: 'true', limit: '5000' };
+              if (filters.search?.trim()) params.search = filters.search.trim();
+              if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') params.status = filters.status;
+              else if (filters.status === 'not_sold') params.exclude_status = 'sold';
+              if (favoriteIdsCsv) params.ids = favoriteIdsCsv;
+              openAuthExport('/api/inventory/export', params);
+            }}
+            showFavoritesOnly={showFavoritesOnly} setShowFavoritesOnly={setShowFavoritesOnly} favoritesCount={favoritesCount}
+            categoryFilter={filters.categoryFilter}
+            returnStateForInventory={returnStateForInventory}
+            showDismissedReturns={showDismissedReturns} setShowDismissedReturns={setShowDismissedReturns} dismissedReturnsCount={dismissedReturnsCount}
+            daysInStockFilter={filters.daysInStock}
+            hasActiveFilters={hasActiveFilters}
+          >
 
           {/* Active Listing Jobs */}
           {Object.keys(activeJobs).length > 0 && (
@@ -3242,8 +3209,7 @@ export default function InventoryPage() {
             </div>
           )}
 
-            </LayoutComponent>;
-          })()}
+          </InventoryLayoutV1>
         </div>
       </div>
 

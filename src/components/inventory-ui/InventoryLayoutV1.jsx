@@ -58,22 +58,24 @@ export default function InventoryLayoutV1({
 }) {
   return (
     <div className="space-y-2">
-      {/* ── Header: Title + inline stats + actions ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
-          <div className="hidden sm:flex items-center gap-2">
-            <Badge variant="secondary" className="font-mono text-xs gap-1">
-              <DollarSign className="w-3 h-3" />
-              {inventorySummary.totalInvested.toFixed(2)}
-            </Badge>
-            <span className="text-muted-foreground text-xs">·</span>
-            <Badge variant="secondary" className="font-mono text-xs gap-1">
-              <Package className="w-3 h-3" />
-              {inventorySummary.totalQuantity} items
-            </Badge>
-          </div>
+      {/* ── Stats bar ── */}
+      <div className="flex items-center gap-4 bg-muted/30 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-emerald-600" />
+          <span className="text-sm font-semibold text-foreground">${inventorySummary.totalInvested.toFixed(2)}</span>
+          <span className="text-xs text-muted-foreground">invested</span>
         </div>
+        <div className="w-px h-5 bg-border" />
+        <div className="flex items-center gap-2">
+          <Package className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-semibold text-foreground">{inventorySummary.totalQuantity}</span>
+          <span className="text-xs text-muted-foreground">items</span>
+        </div>
+      </div>
+
+      {/* ── Header: Title + actions ── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
         <div className="flex items-center gap-2">
           <Link to={createPageUrl("AddInventoryItem")} state={returnStateForInventory}>
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
@@ -115,17 +117,6 @@ export default function InventoryLayoutV1({
         </div>
       </div>
 
-      {/* Mobile stats row */}
-      <div className="flex sm:hidden items-center gap-2">
-        <Badge variant="secondary" className="font-mono text-xs gap-1">
-          <DollarSign className="w-3 h-3" />
-          ${inventorySummary.totalInvested.toFixed(2)}
-        </Badge>
-        <Badge variant="secondary" className="font-mono text-xs gap-1">
-          <Package className="w-3 h-3" />
-          {inventorySummary.totalQuantity} items
-        </Badge>
-      </div>
 
       {/* ── Category filter banner ── */}
       {filters.categoryFilter && (
