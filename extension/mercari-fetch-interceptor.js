@@ -39,37 +39,86 @@
   // Store original fetch
   const originalFetch = window.fetch;
 
+  // Resolve the URL string from any fetch argument type (string, URL, Request)
+  function resolveUrl(input) {
+    if (typeof input === 'string') return input;
+    if (input instanceof URL) return input.href;
+    if (input instanceof Request) return input.url;
+    try { return String(input); } catch { return ''; }
+  }
+
+  // Resolve the body from fetch arguments (could be in options or in a Request object)
+  function resolveBody(input, options) {
+    if (options?.body) return options.body;
+    if (input instanceof Request) {
+      // Request.body is a ReadableStream, but we can check the _bodyInit or clone
+      // For our purposes, we'll intercept via the options path
+    }
+    return null;
+  }
+
+  // Resolve headers from fetch arguments
+  function resolveHeaders(input, options) {
+    if (options?.headers) return options.headers;
+    if (input instanceof Request) {
+      const h = {};
+      try { input.headers.forEach((v, k) => { h[k] = v; }); } catch {}
+      return h;
+    }
+    return null;
+  }
+
   // Override fetch
   window.fetch = function(...args) {
-    const [url, options] = args;
+    const [input, options] = args;
+    const urlStr = resolveUrl(input);
 
-    // Check if this is a Mercari API call
-    if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
-      console.log('🔍 Intercepted Mercari API call (fetch):', url);
+    // Check if this is a Mercari API call (broad match)
+    const isMercariApi = urlStr.includes('mercari.com/v1/api') || urlStr.includes('mercari.com/graphql');
+
+    if (isMercariApi) {
+      console.log('🔍 Intercepted Mercari API call (fetch):', urlStr);
 
       // Check GET query params for operation info
-      if (!options?.method || options.method === 'GET') {
-        checkGetUrl(url);
-      }
+      checkGetUrl(urlStr);
 
       // Log the request body to see what queries are being made (POST)
-      if (options?.body) {
+      const body = resolveBody(input, options);
+      if (body) {
         try {
-          const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
-          if (body.operationName && body.extensions?.persistedQuery) {
-            console.log('📋 GraphQL Operation:', body.operationName);
-            console.log('🔑 Persisted Query Hash:', body.extensions.persistedQuery.sha256Hash);
-            console.log('📦 Variables:', body.variables);
-            captureGraphQLOp(body.operationName, body.extensions.persistedQuery.sha256Hash, body.variables, 'POST');
+          const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+          if (parsed.operationName && parsed.extensions?.persistedQuery) {
+            console.log('📋 GraphQL Operation:', parsed.operationName);
+            console.log('🔑 Persisted Query Hash:', parsed.extensions.persistedQuery.sha256Hash);
+            console.log('📦 Variables:', parsed.variables);
+            captureGraphQLOp(parsed.operationName, parsed.extensions.persistedQuery.sha256Hash, parsed.variables, 'POST');
           }
         } catch (e) {
           // Ignore parse errors
         }
       }
+
+      // If it's a Request object, also try to clone and read its body
+      if (input instanceof Request && !body) {
+        try {
+          const cloned = input.clone();
+          cloned.text().then(text => {
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed.operationName && parsed.extensions?.persistedQuery) {
+                console.log('📋 GraphQL Operation (from Request body):', parsed.operationName);
+                console.log('🔑 Persisted Query Hash:', parsed.extensions.persistedQuery.sha256Hash);
+                captureGraphQLOp(parsed.operationName, parsed.extensions.persistedQuery.sha256Hash, parsed.variables, 'POST');
+              }
+            } catch {}
+          }).catch(() => {});
+        } catch {}
+      }
       
       // Extract tokens from request
-      if (options?.headers) {
-        const headers = options.headers;
+      const resolvedHeaders = resolveHeaders(input, options);
+      if (resolvedHeaders) {
+        const headers = resolvedHeaders;
         let bearerToken = null;
         let csrfToken = null;
         let sellerId = null;
@@ -90,9 +139,10 @@
         }
         
         // Extract seller ID from request body
-        if (options.body) {
+        const bodyForSeller = resolveBody(input, options);
+        if (bodyForSeller) {
           try {
-            let bodyData = options.body;
+            let bodyData = bodyForSeller;
             
             // Handle URL-encoded body
             if (typeof bodyData === 'string' && bodyData.includes('variables=')) {
@@ -132,6 +182,11 @@
       }
     }
     
+    // Log any other mercari.com fetch calls we might be missing
+    if (!isMercariApi && urlStr.includes('mercari.com')) {
+      console.log('🔎 Other Mercari fetch (not /v1/api):', urlStr.substring(0, 120));
+    }
+
     // Call original fetch
     return originalFetch.apply(this, args);
   };
