@@ -11,6 +11,7 @@ import { EbayIntegration } from '@/integrations/ebay/EbayIntegration';
 import { MercariIntegration } from '@/integrations/mercari/MercariIntegration';
 import { PoshmarkIntegration } from '@/integrations/poshmark/PoshmarkIntegration';
 import { apiClient } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 
 const LS_KEY = 'marketplace_listings';
 
@@ -44,10 +45,14 @@ class CrosslistingEngine {
     try {
       const qs = new URLSearchParams(params).toString();
       const url = `/api/marketplace-listings${qs ? `?${qs}` : ''}`;
-      const opts = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-      };
+      const headers = { 'Content-Type': 'application/json' };
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      } catch {}
+      const opts = { method, headers };
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(url, opts);
       if (!res.ok) return null;
