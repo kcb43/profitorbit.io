@@ -516,15 +516,24 @@ export default function Layout({ children }) {
             </div>
           </SidebarContent>
 
-          {/* Minimal sidebar footer - just privacy policy */}
+          {/* Minimal sidebar footer */}
           <SidebarFooter className="border-t border-sidebar-border p-4">
-            <Link
-              to={createPageUrl("PrivacyPolicy")}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Shield className="w-3 h-3" />
-              <span>Privacy Policy</span>
-            </Link>
+            <div className="flex items-center justify-between">
+              <Link
+                to={createPageUrl("PrivacyPolicy")}
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Shield className="w-3 h-3" />
+                <span>Privacy Policy</span>
+              </Link>
+              <button
+                onClick={handleProductSearchClick}
+                className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Product Search (⌘K)"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </div>
           </SidebarFooter>
         </Sidebar>
 
@@ -612,7 +621,7 @@ export default function Layout({ children }) {
           </div>
 
           {/* Floating search bar — appears on scroll */}
-          <FloatingBar isScrolled={isScrolled} onSearchClick={handleProductSearchClick} />
+          <FloatingBar isScrolled={isScrolled} onSearchClick={handleProductSearchClick} pathname={location.pathname} />
 
           {/* Product Search Dialog */}
           <EnhancedProductSearchDialog
@@ -635,9 +644,29 @@ export default function Layout({ children }) {
   );
 }
 
-function FloatingBar({ isScrolled, onSearchClick }) {
+function FloatingBar({ isScrolled, onSearchClick, pathname }) {
   const selectionState = useSelectionBannerState();
   const hasSelection = selectionState && selectionState.selectedCount > 0;
+
+  // On Inventory/Sales pages, the floating bar becomes a local search input
+  const isInventory = pathname === '/Inventory';
+  const isSales = pathname === '/SalesHistory';
+  const isLocalSearch = isInventory || isSales;
+  const localPlaceholder = isInventory ? 'Search Inventory...' : isSales ? 'Search Sales...' : '';
+
+  const [localQuery, setLocalQuery] = React.useState('');
+
+  // Reset local query when navigating away
+  React.useEffect(() => {
+    setLocalQuery('');
+    window.dispatchEvent(new CustomEvent('floating-search', { detail: '' }));
+  }, [pathname]);
+
+  // Dispatch search events as user types
+  const handleLocalSearch = (value) => {
+    setLocalQuery(value);
+    window.dispatchEvent(new CustomEvent('floating-search', { detail: value }));
+  };
 
   return (
     <div
@@ -649,18 +678,43 @@ function FloatingBar({ isScrolled, onSearchClick }) {
       style={{ left: 'var(--sidebar-width, 16rem)' }}
     >
       <div className="flex items-center gap-3 px-6 py-2.5">
-        {/* Search button — shrinks when selection is active */}
-        <button
-          onClick={onSearchClick}
-          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground text-sm border border-border/50 transition-all ${
+        {isLocalSearch ? (
+          /* Local search input for Inventory/Sales */
+          <div className={`flex items-center gap-2.5 px-4 py-1 rounded-xl bg-muted/60 text-sm border border-border/50 transition-all ${
             hasSelection ? "w-auto flex-shrink-0" : "flex-1"
-          }`}
-          title="Search products (⌘K)"
-        >
-          <Search className="w-4 h-4 flex-shrink-0" />
-          {!hasSelection && <span className="flex-1 text-left">Search products...</span>}
-          <kbd className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border/50">⌘K</kbd>
-        </button>
+          }`}>
+            <Search className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+            <input
+              type="text"
+              value={localQuery}
+              onChange={(e) => handleLocalSearch(e.target.value)}
+              placeholder={localPlaceholder}
+              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground py-1.5"
+              autoComplete="off"
+            />
+            {localQuery && (
+              <button
+                onClick={() => handleLocalSearch('')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ) : (
+          /* Product search button for all other pages */
+          <button
+            onClick={onSearchClick}
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground text-sm border border-border/50 transition-all ${
+              hasSelection ? "w-auto flex-shrink-0" : "flex-1"
+            }`}
+            title="Search products (⌘K)"
+          >
+            <Search className="w-4 h-4 flex-shrink-0" />
+            {!hasSelection && <span className="flex-1 text-left">Search products...</span>}
+            <kbd className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border/50">⌘K</kbd>
+          </button>
+        )}
 
         {/* Selection info — appears on the same line */}
         {hasSelection && (

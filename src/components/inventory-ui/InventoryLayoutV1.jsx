@@ -56,6 +56,15 @@ export default function InventoryLayoutV1({
   hasActiveFilters,
   children,
 }) {
+  // Listen for floating search bar events from Layout
+  React.useEffect(() => {
+    const handler = (e) => {
+      setFilters(f => ({ ...f, search: e.detail || '' }));
+    };
+    window.addEventListener('floating-search', handler);
+    return () => window.removeEventListener('floating-search', handler);
+  }, [setFilters]);
+
   return (
     <div className="space-y-2">
       {/* ── Stats bar ── */}

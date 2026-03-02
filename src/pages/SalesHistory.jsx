@@ -127,6 +127,15 @@ export default function SalesHistory() {
   });
   const [sort, setSort] = useState({ by: "sale_date", order: "desc" });
 
+  // Listen for floating search bar events from Layout
+  useEffect(() => {
+    const handler = (e) => {
+      setFilters(f => ({ ...f, searchTerm: e.detail || '' }));
+    };
+    window.addEventListener('floating-search', handler);
+    return () => window.removeEventListener('floating-search', handler);
+  }, []);
+
   const [selectedSales, setSelectedSales] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState(null);
