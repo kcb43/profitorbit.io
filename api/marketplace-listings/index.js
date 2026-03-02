@@ -5,14 +5,11 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { getUserIdFromRequest } from '../_utils/auth.js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-function getUserId(req) {
-  return req.headers['x-user-id'] || null;
-}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,7 +18,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const userId = getUserId(req);
+  const userId = await getUserIdFromRequest(req, supabase);
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
