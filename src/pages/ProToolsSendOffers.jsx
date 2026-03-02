@@ -609,6 +609,7 @@ export default function ProToolsSendOffers() {
             earnings,
             listingUrl: it?.listingUrl || "",
             listingId: it?.listingId, // eBay item ID for API calls
+            marketplaceListingId: it?.listingId || it?.mercariItemId || "",
             offersSent: itemOfferCount,
             isImported: isImported,
             ebayItemId: it?.ebayItemId || it?.listingId, // For import action
@@ -644,6 +645,7 @@ export default function ProToolsSendOffers() {
           cog,
           earnings,
           listingUrl: url && url.startsWith("http") ? url : "",
+          marketplaceListingId: listing?.marketplace_listing_id || it?.mercari_item_id || "",
           offersSent: itemOfferCount,
         };
       });
@@ -812,7 +814,7 @@ export default function ProToolsSendOffers() {
           message: offerMessage || undefined,
           targets: targets.map((t) => ({
             inventoryItemId: t.id,
-            listingId: t.ebayItemId || t.id,
+            listingId: t.ebayItemId || t.marketplaceListingId || t.id,
             listingUrl: t.listingUrl,
             vendooPrice: t.vendooPrice,
             mktplacePrice: t.mktplacePrice,

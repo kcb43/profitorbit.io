@@ -254,46 +254,99 @@ async function sendEbayOffers(targets, options = {}) {
 }
 
 /**
- * Send offers on Mercari items
+ * Send offers on Mercari items via price drop.
+ * Mercari notifies all likers when a seller drops the price, so this uses
+ * the SimpleEditItemMutation to lower the price to the target offerPrice.
+ *
  * @param {Array} targets - Array of {inventoryItemId, listingUrl, vendooPrice, mktplacePrice, offerPrice}
  * @param {Object} options - {offerPct, offerPriceBasedOn, message}
  * @returns {Promise<{successCount: number, results: Array}>}
  */
 async function sendMercariOffers(targets, options = {}) {
-  console.log('🟣 [Mercari] Sending offers to', targets.length, 'items');
-  
-  // Mercari doesn't have a "send offer to likers" API
-  // Offers are sent by individual users who are interested
-  // We can use Mercari's price drop feature instead
-  
+  console.log('🟣 [Mercari] Sending price-drop offers to', targets.length, 'items');
+
   const results = [];
   let successCount = 0;
 
+  // Extract Mercari item ID from a URL like https://www.mercari.com/sell/edit/m59292232926/
+  // or https://www.mercari.com/us/item/m59292232926/
+  function extractMercariItemId(url) {
+    if (!url) return null;
+    const match = String(url).match(/\/(m\d+)\/?/);
+    return match ? match[1] : null;
+  }
+
   for (const target of targets) {
     try {
-      console.log(`🟣 [Mercari] Would send offer for item:`, {
-        inventoryItemId: target.inventoryItemId,
-        offerPrice: target.offerPrice,
-        message: options.message,
-      });
+      const offerPrice = Math.round(Number(target.offerPrice) || 0);
+      const currentPrice = Math.round(Number(target.mktplacePrice) || Number(target.vendooPrice) || 0);
 
-      // TODO: Implement Mercari price drop or promotion feature
-      // This could use the UpdateItemMutation GraphQL call to drop the price
-      // which notifies likers
-      
+      if (!offerPrice || offerPrice <= 0) {
+        results.push({
+          inventoryItemId: target.inventoryItemId,
+          success: false,
+          error: 'Invalid offer price',
+        });
+        continue;
+      }
+
+      if (offerPrice >= currentPrice) {
+        results.push({
+          inventoryItemId: target.inventoryItemId,
+          success: false,
+          error: `Offer price ($${offerPrice}) must be lower than current price ($${currentPrice}) to notify likers`,
+        });
+        continue;
+      }
+
+      // Get the Mercari item ID — try URL first, then listingId
+      let mercariItemId = extractMercariItemId(target.listingUrl) || target.listingId;
+
+      // If it looks like a UUID (inventory ID), it's not a Mercari ID
+      if (mercariItemId && mercariItemId.includes('-')) {
+        mercariItemId = null;
+      }
+
+      if (!mercariItemId) {
+        results.push({
+          inventoryItemId: target.inventoryItemId,
+          success: false,
+          error: 'Could not determine Mercari item ID. Make sure the item is linked to a Mercari listing.',
+        });
+        continue;
+      }
+
+      console.log(`🟣 [Mercari] Dropping price for ${mercariItemId}: $${currentPrice} → $${offerPrice}`);
+
+      // Use SimpleEditItemMutation to drop the price (notifies all likers)
+      const result = await mercariPersistedJson(
+        MERCARI_PERSISTED.simpleEditItem.operationName,
+        MERCARI_PERSISTED.simpleEditItem.sha256Hash,
+        { input: { itemId: mercariItemId, price: offerPrice } }
+      );
+
+      console.log(`✅ [Mercari] Price drop successful for ${mercariItemId}:`, result);
       results.push({
         inventoryItemId: target.inventoryItemId,
-        success: true, // Placeholder
-        message: 'Mercari offers are not fully implemented yet. Use Mercari\'s price drop feature.',
+        mercariItemId,
+        success: true,
+        oldPrice: currentPrice,
+        newPrice: offerPrice,
+        message: `Price dropped from $${currentPrice} to $${offerPrice} — all likers notified`,
       });
       successCount++;
-      
+
+      // Small delay between requests to avoid rate limiting
+      if (targets.indexOf(target) < targets.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
     } catch (error) {
       console.error(`❌ [Mercari] Failed to send offer:`, error);
       results.push({
         inventoryItemId: target.inventoryItemId,
         success: false,
-        error: error.message,
+        error: error.message || String(error),
       });
     }
   }
@@ -1527,6 +1580,10 @@ const MERCARI_PERSISTED = {
   updateItemStatus: {
     operationName: 'UpdateItemStatusMutation',
     sha256Hash: '55bd4e7d2bc2936638e1451da3231e484993635d7603431d1a2978e3d59656f8',
+  },
+  simpleEditItem: {
+    operationName: 'SimpleEditItemMutation',
+    sha256Hash: '9f7838012d4c03b70db8e03e441d8556ebe6a5110fe882280e4d969ff4c42116',
   },
 };
 
