@@ -329,6 +329,7 @@ export default function Layout({ children }) {
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Admin check for sidebar filtering
   const adminIds = (import.meta.env.VITE_ADMIN_USER_IDS || '82bdb1aa-b2d2-4001-80ef-1196e5563cb9').split(',').map(s => s.trim());
@@ -360,6 +361,22 @@ export default function Layout({ children }) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Scroll detection for enhanced search bar
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 80);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // Load user from Supabase auth
@@ -502,7 +519,7 @@ export default function Layout({ children }) {
         <main className="flex-1 flex flex-col min-h-screen">
 
           {/* ── Desktop Top Header ── */}
-          <header className="hidden md:flex items-center justify-end gap-2 bg-gradient-to-r from-background via-background/95 to-background border-b border-border/40 backdrop-blur-sm shadow-md sticky top-0 z-10 px-6 py-3">
+          <header className="hidden md:flex items-center justify-end gap-2 bg-background border-b border-border/40 backdrop-blur-sm shadow-md sticky top-0 z-10 px-6 py-3">
 
             {/* Search bar */}
             <button
@@ -580,6 +597,26 @@ export default function Layout({ children }) {
           <div className="flex-1 overflow-auto pb-24 md:pb-0">
             <PageBreadcrumb pathname={location.pathname} />
             {children}
+          </div>
+
+          {/* Floating search bar — appears on scroll */}
+          <div
+            className={`fixed top-0 right-0 z-50 hidden md:flex items-center transition-all duration-300 ease-out px-6 py-2.5 bg-background/95 backdrop-blur-md border-b border-border/40 shadow-md ${
+              isScrolled
+                ? "translate-y-0 opacity-100"
+                : "-translate-y-full opacity-0 pointer-events-none"
+            }`}
+            style={{ left: 'var(--sidebar-width, 16rem)' }}
+          >
+            <button
+              onClick={handleProductSearchClick}
+              className="flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground text-sm border border-border/50 transition-colors"
+              title="Search products (⌘K)"
+            >
+              <Search className="w-4 h-4 flex-shrink-0" />
+              <span className="flex-1 text-left">Search products...</span>
+              <kbd className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border/50">⌘K</kbd>
+            </button>
           </div>
 
           {/* Product Search Dialog */}

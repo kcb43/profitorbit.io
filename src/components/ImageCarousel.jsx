@@ -156,7 +156,7 @@ export function ImageCarousel({
       </div>
 
       {/* Image Counter */}
-      <div className={`absolute ${counterPosition === 'bottom' ? 'bottom-2' : 'top-2'} right-2 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded-full z-20 backdrop-blur-sm`}>
+      <div className={`absolute ${counterPosition === 'bottom' ? 'bottom-2 right-2' : 'top-2 left-1/2 -translate-x-1/2'} bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded-full z-20 backdrop-blur-sm`}>
         {currentIndex + 1} / {normalizedImages.length}
       </div>
 

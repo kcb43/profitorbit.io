@@ -58,6 +58,10 @@ import { useMarketplaceListings } from "@/hooks/useMarketplaceListings";
 import { MarketplaceBadgesRow } from "@/components/MarketplaceBadgesRow";
 import { CROSSLIST_MARKETPLACES } from "@/constants/marketplaces";
 import { ListingJobTracker } from "@/components/ListingJobTracker";
+import InventoryLayoutV1 from "@/components/inventory-ui/InventoryLayoutV1";
+import InventoryLayoutV2 from "@/components/inventory-ui/InventoryLayoutV2";
+import InventoryLayoutV3 from "@/components/inventory-ui/InventoryLayoutV3";
+import InventoryLayoutV4 from "@/components/inventory-ui/InventoryLayoutV4";
 
 const sourceIcons = {
   "Amazon": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e86fb5ac26f8511acce7ec/af08cfed1_Logo.png",
@@ -90,7 +94,7 @@ export default function InventoryPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [filters, setFilters] = useState({ search: "", status: "not_sold", daysInStock: "all" });
+  const [filters, setFilters] = useState({ search: "", status: "not_sold", daysInStock: "all", categoryFilter: "" });
   const [sort, setSort] = useState("newest");
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState({ search: "", status: "not_sold", daysInStock: "all" });
@@ -119,6 +123,12 @@ export default function InventoryPage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
   const [showDismissedReturns, setShowDismissedReturns] = useState(false);
+  const [layoutVariant, setLayoutVariant] = useState(() => {
+    try { return Number(localStorage.getItem('inventory_layout_variant')) || 1; } catch { return 1; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem('inventory_layout_variant', String(layoutVariant)); } catch {}
+  }, [layoutVariant]);
   
   // Highlight functionality (for navigation from Import page)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -241,15 +251,33 @@ export default function InventoryPage() {
   useEffect(() => {
     const migrationKey = 'orben_categories_migrated_v3';
     if (localStorage.getItem(migrationKey)) return;
-    apiClient.post('/api/inventory/migrate-categories', {})
-      .then((res) => {
-        if (res.success && res.totalUpdated > 0) {
-          console.log(`✅ Migrated ${res.totalUpdated} categories (${res.inventoryUpdated} inventory, ${res.salesUpdated} sales)`);
-          queryClient.invalidateQueries(['inventory-items']);
+
+    (async () => {
+      try {
+        const { supabase } = await import('@/api/supabaseClient');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const resp = await fetch('/api/inventory/migrate-categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({}),
+        });
+        const res = await resp.json();
+        if (res.success) {
+          if (res.totalUpdated > 0) {
+            console.log(`✅ Migrated ${res.totalUpdated} categories (${res.inventoryUpdated} inventory, ${res.salesUpdated} sales)`);
+            queryClient.invalidateQueries(['inventory-items']);
+          }
+          localStorage.setItem(migrationKey, new Date().toISOString());
         }
-        localStorage.setItem(migrationKey, new Date().toISOString());
-      })
-      .catch((err) => console.error('Category migration error:', err));
+      } catch (err) {
+        console.error('Category migration error:', err);
+      }
+    })();
   }, []);
 
   // Hybrid variation logic based on user preference:
@@ -384,10 +412,10 @@ export default function InventoryPage() {
   // Reset paging when key filters change
   useEffect(() => {
     setPageIndex(0);
-  }, [filters.search, filters.status, showFavoritesOnly, sort, pageSize]);
+  }, [filters.search, filters.status, filters.categoryFilter, showFavoritesOnly, sort, pageSize]);
 
   const { data: inventoryPage, isLoading } = useQuery({
-    queryKey: ['inventoryItems', 'inventory', pageIndex, pageSize, filters.search, filters.status, showFavoritesOnly, sort, favoriteIdsCsv],
+    queryKey: ['inventoryItems', 'inventory', pageIndex, pageSize, filters.search, filters.status, filters.categoryFilter, showFavoritesOnly, sort, favoriteIdsCsv],
     queryFn: async () => {
       const qs = new URLSearchParams();
       qs.set('paged', 'true');
@@ -402,6 +430,8 @@ export default function InventoryPage() {
 
       const search = (filters.search || '').trim();
       if (search) qs.set('search', search);
+
+      if (filters.categoryFilter) qs.set('category', filters.categoryFilter);
 
       if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') {
         qs.set('status', filters.status);
@@ -477,6 +507,15 @@ export default function InventoryPage() {
       if (allowedStatuses.includes(normalizedStatus)) {
         setFilters(prev => ({ ...prev, status: normalizedStatus }));
       }
+    }
+
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setFilters(prev => ({
+        ...prev,
+        categoryFilter: categoryParam === 'Uncategorized' ? '__uncategorized__' : categoryParam,
+        status: "all",
+      }));
     }
   }, [location.search]);
 
@@ -1345,6 +1384,14 @@ export default function InventoryPage() {
       const searchMatch = item.item_name.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.category?.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.source?.toLowerCase().includes(filters.search.toLowerCase());
+      let categoryMatch = true;
+      if (filters.categoryFilter) {
+        if (filters.categoryFilter === '__uncategorized__') {
+          categoryMatch = !item.category || item.category === '';
+        } else {
+          categoryMatch = item.category === filters.categoryFilter;
+        }
+      }
       const favoriteMatch = !showFavoritesOnly || isFavorite(item.id);
       
       let daysInStockMatch = true;
@@ -1372,7 +1419,7 @@ export default function InventoryPage() {
       }
     }
     
-      return statusMatch && searchMatch && daysInStockMatch && favoriteMatch;
+      return statusMatch && searchMatch && categoryMatch && daysInStockMatch && favoriteMatch;
     });
   }, [inventoryItems, showFavoritesOnly, showDismissedReturns, filters, isFavorite]);
 
@@ -1595,7 +1642,7 @@ export default function InventoryPage() {
   };
 
   const handleSaveFilters = () => {
-    setFilters(tempFilters);
+    setFilters(prev => ({ ...tempFilters, categoryFilter: prev.categoryFilter }));
     setSort(tempSort);
     setFiltersDialogOpen(false);
   };
@@ -1615,7 +1662,7 @@ export default function InventoryPage() {
   };
 
   // Check if filters are active (not default values)
-  const hasActiveFilters = filters.status !== "not_sold" || sort !== "newest";
+  const hasActiveFilters = filters.status !== "not_sold" || sort !== "newest" || !!filters.categoryFilter;
 
   const handleBulkUpdateConfirm = () => {
     const updates = buildBulkUpdatePayload();
@@ -1713,291 +1760,60 @@ export default function InventoryPage() {
       />
       <div className="p-4 md:p-6 lg:p-8" style={{ paddingTop: topOffset }}>
         <div className="max-w-7xl mx-auto space-y-6 min-w-0">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 min-w-0">
-            <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Inventory</h1>
-                <p className="hidden lg:block text-sm text-muted-foreground mt-1">Track items you have for sale.</p>
-              </div>
-              <Link to={createPageUrl("Settings")} className="lg:hidden inline-flex ml-4">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Settings className="w-5 h-5" />
-                </Button>
-              </Link>
-            </div>
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0">
-              <Button
-                variant="outline"
-                onClick={() => setViewMode((m) => (m === "gallery" ? "grid" : "gallery"))}
-                className="flex-shrink-0"
+          {/* ── Layout Variant Switcher ── */}
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-card/95 backdrop-blur-md border border-border shadow-lg rounded-full px-2 py-1.5">
+            {[1, 2, 3, 4].map(v => (
+              <button
+                key={v}
+                onClick={() => setLayoutVariant(v)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  layoutVariant === v
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
               >
-                <GalleryHorizontal className="w-4 h-4 mr-2" />
-                {viewMode === "gallery" ? "Exit Gallery" : "Gallery Mode"}
-              </Button>
-              <Button
-                onClick={() => handleCheckDuplicates()}
-                disabled={checkingDuplicates}
-                variant="outline"
-                className="flex-shrink-0"
-              >
-                {checkingDuplicates ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Check Duplicates
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => setManageGroupsDialogOpen(true)}
-                variant="outline"
-                className="flex-shrink-0"
-              >
-                <Folders className="w-4 h-4 mr-2" />
-                Manage Groups
-              </Button>
-              <Link
-                to={createPageUrl("Import")}
-                state={returnStateForInventory}
-                className="w-full sm:w-auto min-w-0"
-              >
-                <Button 
-                  className="w-full sm:w-auto gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Download className="w-4 h-4" />
-                  Import
-                </Button>
-              </Link>
-              <Link
-                to={createPageUrl("AddInventoryItem")}
-                state={returnStateForInventory}
-                className="w-full sm:w-auto min-w-0"
-              >
-                <Button className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-md w-full sm:w-auto">
-                  <Plus className="w-5 h-5 mr-2 flex-shrink-0" />
-                  Add Item
-                </Button>
-              </Link>
-            </div>
+                V{v}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg flex-shrink-0">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Invested</p>
-                  <p className="text-xl font-bold text-foreground">${inventorySummary.totalInvested.toFixed(2)}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
-                  <Package className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Items in Stock</p>
-                  <p className="text-xl font-bold text-foreground">{inventorySummary.totalQuantity}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Mobile Filter Bar */}
-          <div className="md:hidden mb-4">
-            <MobileFilterBar
-              search={filters.search}
-              onSearchChange={(val) => setFilters(f => ({ ...f, search: val }))}
-              showFavorites={showFavoritesOnly}
-              onShowFavoritesToggle={() => setShowFavoritesOnly((prev) => !prev)}
-              pageSize={pageSize}
-              onPageSizeChange={(val) => {
-                if (val === 25 || val === 50 || val === 100 || val === 200) setPageSize(val);
-              }}
-              onExportCSV={() => {
+          {/* ── Render chosen layout variant ── */}
+          {(() => {
+            const layoutProps = {
+              inventorySummary,
+              filters, setFilters,
+              sort, setSort,
+              platformFilter, setPlatformFilter,
+              activeMkts, setActiveMkts,
+              pageSize, setPageSize, pageIndex, setPageIndex,
+              totalPages, totalItems, canPrev, canNext,
+              inventoryItems,
+              selectedItems, displayItems, handleSelectAll,
+              viewMode, setViewMode,
+              onGalleryToggle: () => setViewMode(m => m === "gallery" ? "grid" : "gallery"),
+              onCheckDuplicates: handleCheckDuplicates,
+              checkingDuplicates,
+              onManageGroups: () => setManageGroupsDialogOpen(true),
+              onExport: () => {
                 const params = { exclude_deleted: 'true', limit: '5000' };
                 if (filters.search?.trim()) params.search = filters.search.trim();
                 if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') params.status = filters.status;
                 else if (filters.status === 'not_sold') params.exclude_status = 'sold';
                 if (favoriteIdsCsv) params.ids = favoriteIdsCsv;
                 openAuthExport('/api/inventory/export', params);
-              }}
-              pageInfo={{
-                currentPage: pageIndex + 1,
-                totalPages,
-                totalItems,
-              }}
-              onPrevPage={() => setPageIndex((p) => Math.max(0, p - 1))}
-              onNextPage={() => setPageIndex((p) => p + 1)}
-              onOpenFilters={handleOpenFiltersDialog}
-              onSaveFilters={handleSaveFilters}
-              onClearFilters={handleClearFilters}
-              renderAdditionalFilters={() => (
-                <>
-                  <div>
-                    <Label htmlFor="mobile-status" className="text-xs mb-1.5 block">Status</Label>
-                    <Select id="mobile-status" value={tempFilters.status} onValueChange={val => setTempFilters(f => ({ ...f, status: val }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="not_sold">In Stock/Listed</SelectItem>
-                        <SelectItem value="available">In Stock</SelectItem>
-                        <SelectItem value="listed">Listed</SelectItem>
-                        <SelectItem value="sold">Sold</SelectItem>
-                        <SelectItem value="all">All Items</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="mobile-sort" className="text-xs mb-1.5 block">Sort By</Label>
-                    <Select id="mobile-sort" value={tempSort} onValueChange={setTempSort}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="newest">Newest First</SelectItem>
-                        <SelectItem value="oldest">Oldest First</SelectItem>
-                        <SelectItem value="price-high">Price: High to Low</SelectItem>
-                        <SelectItem value="price-low">Price: Low to High</SelectItem>
-                        <SelectItem value="name-az">Name: A to Z</SelectItem>
-                        <SelectItem value="name-za">Name: Z to A</SelectItem>
-                        <SelectItem value="purchase-newest">Purchase: Newest</SelectItem>
-                        <SelectItem value="purchase-oldest">Purchase: Oldest</SelectItem>
-                        <SelectItem value="return-soon">Return Soon</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {tempFilters.daysInStock === "returnDeadline" && (
-                    <div>
-                      <Button
-                        variant={showDismissedReturns ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowDismissedReturns((prev) => !prev)}
-                        className="w-full"
-                      >
-                        <AlarmClock className="w-4 h-4 mr-2" />
-                        {showDismissedReturns ? "Showing Dismissed" : "Show Dismissed"}
-                        {dismissedReturnsCount > 0 && (
-                          <span className="ml-2 text-xs">({dismissedReturnsCount})</span>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            />
-          </div>
-
-          {/* Desktop Filters Dialog Trigger - Hidden since we show the filter card */}
-          <div className="hidden mb-4">
-            <div className="flex gap-2">
-              <Button
-                onClick={handleOpenFiltersDialog}
-                variant="outline"
-                className="flex-1 justify-between"
-                size="lg"
-              >
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  <span>Filters & Sort</span>
-                  {hasActiveFilters && (
-                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-              {hasActiveFilters && (
-                <Button
-                  onClick={() => {
-                    setFilters({ search: "", status: "not_sold", daysInStock: "all" });
-                    setSort("newest");
-                  }}
-                  variant="outline"
-                  size="lg"
-                  className="px-4"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Filters Dialog (Desktop & Mobile) */}
-          <Dialog open={filtersDialogOpen} onOpenChange={setFiltersDialogOpen}>
-            <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-3xl w-full">
-              <DialogHeader>
-                <DialogTitle>Filters & Sort</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="temp-status" className="text-xs mb-1.5 block">Status</Label>
-                    <Select id="temp-status" value={tempFilters.status} onValueChange={val => setTempFilters(f => ({ ...f, status: val }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="not_sold">In Stock/Listed</SelectItem>
-                        <SelectItem value="available">In Stock</SelectItem>
-                        <SelectItem value="listed">Listed</SelectItem>
-                        <SelectItem value="sold">Sold</SelectItem>
-                        <SelectItem value="all">All Items</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="temp-sort" className="text-xs mb-1.5 block">Sort By</Label>
-                    <Select id="temp-sort" value={tempSort} onValueChange={setTempSort}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="newest">Newest First</SelectItem>
-                        <SelectItem value="oldest">Oldest First</SelectItem>
-                        <SelectItem value="price-high">Price: High to Low</SelectItem>
-                        <SelectItem value="price-low">Price: Low to High</SelectItem>
-                        <SelectItem value="name-az">Name: A to Z</SelectItem>
-                        <SelectItem value="name-za">Name: Z to A</SelectItem>
-                        <SelectItem value="purchase-newest">Purchase: Newest</SelectItem>
-                        <SelectItem value="purchase-oldest">Purchase: Oldest</SelectItem>
-                        <SelectItem value="return-soon">Return Soon</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Showing <span className="font-semibold text-foreground">{inventoryItems.length}</span>
-                  {totalItems ? (
-                    <>
-                      {" "}
-                      of <span className="font-semibold text-foreground">{totalItems}</span>
-                    </>
-                  ) : null}
-                  {" "}items
-                  {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
-                  {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  onClick={handleSaveFilters}
-                  className="w-full"
-                >
-                  Save
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              },
+              showFavoritesOnly, setShowFavoritesOnly, favoritesCount,
+              categoryFilter: filters.categoryFilter,
+              returnStateForInventory,
+              showDismissedReturns, setShowDismissedReturns, dismissedReturnsCount,
+              daysInStockFilter: filters.daysInStock,
+              hasActiveFilters,
+            };
+            const LayoutComponent = layoutVariant === 2 ? InventoryLayoutV2
+              : layoutVariant === 3 ? InventoryLayoutV3
+              : layoutVariant === 4 ? InventoryLayoutV4
+              : InventoryLayoutV1;
+            return <LayoutComponent {...layoutProps}>
 
           {/* Active Listing Jobs */}
           {Object.keys(activeJobs).length > 0 && (
@@ -2019,233 +1835,6 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {/* Desktop Filter Card */}
-          <Card className="hidden md:block border-0 shadow-lg mb-4">
-            <CardHeader className="border-b bg-card">
-              <CardTitle className="text-base sm:text-lg text-foreground">Filters & Sort</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <Label htmlFor="search" className="text-xs mb-1.5 block">Search</Label>
-                  <div className="relative">
-                    <Input 
-                      id="search"
-                      placeholder="Search..." 
-                      value={filters.search} 
-                      onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} 
-                      className="pl-8"
-                    />
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="status" className="text-xs mb-1.5 block">Status</Label>
-                  <Select id="status" value={filters.status} onValueChange={val => setFilters(f => ({ ...f, status: val }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="not_sold">In Stock/Listed</SelectItem>
-                      <SelectItem value="available">In Stock</SelectItem>
-                      <SelectItem value="listed">Listed</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="all">All Items</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="sort" className="text-xs mb-1.5 block">Sort By</Label>
-                  <Select id="sort" value={sort} onValueChange={setSort}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                      <SelectItem value="oldest">Oldest First</SelectItem>
-                      <SelectItem value="price-high">Price: High to Low</SelectItem>
-                      <SelectItem value="price-low">Price: Low to High</SelectItem>
-                      <SelectItem value="name-az">Name: A to Z</SelectItem>
-                      <SelectItem value="name-za">Name: Z to A</SelectItem>
-                      <SelectItem value="purchase-newest">Purchase: Newest</SelectItem>
-                      <SelectItem value="purchase-oldest">Purchase: Oldest</SelectItem>
-                      <SelectItem value="return-soon">Return Soon</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <div className="text-xs text-muted-foreground">
-                    Showing <span className="font-semibold text-foreground">{inventoryItems.length}</span>
-                    {totalItems ? (
-                      <>
-                        {" "}
-                        of <span className="font-semibold text-foreground">{totalItems}</span>
-                      </>
-                    ) : null}
-                    {" "}items
-                    {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
-                    {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
-                  </div>
-                </div>
-              </div>
-              {/* Marketplace Filters */}
-              <div className="mt-3 pt-3 border-t border-border/40 flex flex-col md:flex-row md:items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Marketplace:</Label>
-                  <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                    <SelectTrigger className="h-8 w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Items</SelectItem>
-                      <SelectItem value="listed">Listed</SelectItem>
-                      <SelectItem value="unlisted">Not Listed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {CROSSLIST_MARKETPLACES.map((m) => {
-                    const active = activeMkts.includes(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() =>
-                          setActiveMkts((prev) =>
-                            active ? prev.filter((x) => x !== m.id) : [...prev, m.id]
-                          )
-                        }
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all ${
-                          active
-                            ? "bg-foreground text-background border-foreground shadow-sm"
-                            : "bg-muted/60 text-foreground border-border hover:bg-muted"
-                        }`}
-                        aria-pressed={active}
-                      >
-                        <img
-                          src={m.icon}
-                          alt={m.label}
-                          className="w-3.5 h-3.5 object-contain"
-                        />
-                        {m.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {(platformFilter !== "all" || activeMkts.length > 0) && (
-                  <button
-                    className="text-xs text-muted-foreground hover:text-foreground underline ml-auto"
-                    onClick={() => {
-                      setPlatformFilter("all");
-                      setActiveMkts([]);
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-4 space-y-3 md:space-y-0 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3 min-w-0 overflow-x-hidden">
-                <div className="text-xs text-muted-foreground min-w-0 break-words">
-                  Favorites let you flag items for quick actions such as returns.
-                </div>
-                <div className="flex flex-col md:flex-row gap-2 md:flex-wrap md:items-center items-start min-w-0 w-full md:w-auto">
-                  {/* Per Page Selector */}
-                  <div className="flex items-center gap-2 w-full md:w-auto">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">Per Page:</span>
-                    <Select
-                      value={String(pageSize)}
-                      onValueChange={(v) => {
-                        const n = Number(v);
-                        if (n === 50 || n === 100 || n === 200) setPageSize(n);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-[85px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                        <SelectItem value="200">200</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Pagination Buttons */}
-                  <div className="flex gap-2 items-center w-full md:w-auto">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!canPrev}
-                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                      className="flex-1 md:flex-initial"
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!canNext}
-                      onClick={() => setPageIndex((p) => p + 1)}
-                      className="flex-1 md:flex-initial"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                  
-                  {/* Export */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const params = { exclude_deleted: 'true', limit: '5000' };
-                      if (filters.search?.trim()) params.search = filters.search.trim();
-                      if (filters.status === 'available' || filters.status === 'listed' || filters.status === 'sold') params.status = filters.status;
-                      else if (filters.status === 'not_sold') params.exclude_status = 'sold';
-                      if (favoriteIdsCsv) params.ids = favoriteIdsCsv;
-                      openAuthExport('/api/inventory/export', params);
-                    }}
-                    className="self-start md:self-auto"
-                  >
-                    Export
-                  </Button>
-                  
-                  {/* Show Dismissed Returns */}
-                  {filters.daysInStock === "returnDeadline" && (
-                    <Button
-                      variant={showDismissedReturns ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowDismissedReturns((prev) => !prev)}
-                      className="flex items-center gap-2 min-w-0 max-w-full"
-                    >
-                      <AlarmClock className={`w-4 h-4 flex-shrink-0 ${showDismissedReturns ? "" : ""}`} />
-                      <span className="truncate">{showDismissedReturns ? "Showing Dismissed" : "Show Dismissed"}</span>
-                      {dismissedReturnsCount > 0 && (
-                        <span className="text-xs font-normal opacity-80 flex-shrink-0">({dismissedReturnsCount})</span>
-                      )}
-                    </Button>
-                  )}
-                  
-                  {/* Show Favorites */}
-                  {!showFavoritesOnly && (
-                    <Button
-                      variant={showFavoritesOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowFavoritesOnly((prev) => !prev)}
-                      className="flex items-center gap-2 min-w-0 max-w-full"
-                    >
-                      <Star className={`w-4 h-4 flex-shrink-0 ${showFavoritesOnly ? "fill-current" : ""}`} />
-                      <span className="truncate">{showFavoritesOnly ? "Showing Favorites" : "Show Favorites"}</span>
-                      {favoritesCount > 0 && (
-                        <span className="text-xs font-normal opacity-80 flex-shrink-0">({favoritesCount})</span>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Duplicate Items Alert */}
           {activeDuplicates.length > 0 && (
             <Alert className="mb-4 border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
@@ -2257,7 +1846,7 @@ export default function InventoryPage() {
                       <span className="font-semibold">Duplicate Items Detected</span>
                     </div>
                     <p className="text-sm mt-1">
-                      Found {activeDuplicates.length} item{activeDuplicates.length === 1 ? '' : 's'} with duplicate titles. Please check:
+                      Found {activeDuplicates.length} item{activeDuplicates.length === 1 ? '' : 's'} with duplicate titles.
                     </p>
                     <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
                       {activeDuplicates.slice(0, 5).map((dup, idx) => (
@@ -2286,7 +1875,7 @@ export default function InventoryPage() {
           )}
 
           {showDismissedReturns && (
-            <div className="sticky top-0 z-40 mb-4 p-4 bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 text-white rounded-lg shadow-lg border border-blue-400 dark:border-blue-500">
+            <div className="sticky top-0 z-40 mb-4 p-4 bg-blue-600 dark:bg-blue-700 text-white rounded-lg shadow-lg border border-blue-400 dark:border-blue-500">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <AlarmClock className="w-5 h-5 flex-shrink-0" />
@@ -2316,7 +1905,7 @@ export default function InventoryPage() {
                 <Button
                   size="sm"
                   onClick={() => openComposer(selectedItems)}
-                  className="min-w-0 max-w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white"
+                  className="min-w-0 max-w-full bg-green-600 hover:bg-green-500 text-white"
                 >
                   <Rocket className="w-4 h-4 mr-2 flex-shrink-0" />
                   <span className="truncate">List ({selectedItems.length})</span>
@@ -2359,39 +1948,6 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {displayItems.length > 0 && (
-            <div className="flex items-center justify-between gap-3 p-4 bg-card rounded-t-lg">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={selectedItems.length === displayItems.length && displayItems.length > 0}
-                  onCheckedChange={handleSelectAll}
-                  id="select-all"
-                  className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
-                />
-                <div className="flex flex-col">
-                  <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
-                    Select All ({displayItems.length})
-                  </label>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 md:hidden">
-                    Tap image to select
-                  </span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">Click image to select for bulk edit</span>
-                </div>
-              </div>
-              
-              {/* View toggle button (mobile and desktop) */}
-              <Button
-                variant="outline"
-                onClick={() => setViewMode((v) => (v === "list" ? "grid" : "list"))}
-                className="flex-shrink-0"
-                size="sm"
-              >
-                {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-1" /> : <Rows className="w-4 h-4 mr-1" />}
-                {viewMode === "list" ? "Grid" : "List"}
-              </Button>
-
-            </div>
-          )}
 
           {isLoading ? (
             <div className="p-12 text-center text-muted-foreground">Loading...</div>
@@ -2585,7 +2141,7 @@ export default function InventoryPage() {
                                   .filter(Boolean)
                                   .map((img) => (typeof img === "string" ? img : img.imageUrl || img.url || img))}
                                 imageClassName="object-cover"
-                                counterPosition="bottom"
+                                counterPosition={item.return_deadline ? "top" : "bottom"}
                               />
                             ) : (
                               <OptimizedImage
@@ -3475,7 +3031,7 @@ export default function InventoryPage() {
                             onClick={() => handleTagEditorToggle(item.id)}
                           >
                             <Tag className="h-3.5 w-3.5" />
-                            {tagEditorFor === item.id ? "Close" : "Add Tag"}
+                            {tagEditorFor === item.id ? "Close" : "+Tags"}
                           </Button>
                         </div>
                       </div>
@@ -3685,6 +3241,9 @@ export default function InventoryPage() {
               <p className="text-muted-foreground text-sm mt-1">Try adjusting your filters or add a new item.</p>
             </div>
           )}
+
+            </LayoutComponent>;
+          })()}
         </div>
       </div>
 

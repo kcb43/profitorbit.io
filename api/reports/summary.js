@@ -39,8 +39,10 @@ export default async function handler(req, res) {
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
 
-  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const taxYear = req.query.taxYear ? Number(req.query.taxYear) : now.getFullYear();
+  const yearStart = new Date(taxYear, 0, 1);
   const yearStartIso = startOfDayIso(yearStart);
+  const yearEndIso = startOfDayIso(new Date(taxYear + 1, 0, 1));
 
   let fromIso = null;
   let currentStart = null;
@@ -118,8 +120,8 @@ export default async function handler(req, res) {
       totals.totalProfit += profit;
       totals.totalRevenue += sellingPrice;
 
-      // YTD profit
-      if (saleDate >= yearStartIso) ytdProfit += profit;
+      // Year profit (YTD for current year, full year for past years)
+      if (saleDate >= yearStartIso && saleDate < yearEndIso) ytdProfit += profit;
 
       // Range-window buckets
       if (range.kind === 'days') {
@@ -251,6 +253,7 @@ export default async function handler(req, res) {
     categories: topCategories,
     platforms,
     ytdProfit,
+    taxYear,
   });
 }
 

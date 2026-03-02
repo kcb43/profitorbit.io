@@ -53,6 +53,7 @@ export const SOURCE_GROUPS = [
       { name: "Staples",         domain: "staples.com",            color: "#CC0000" },
       { name: "Dick's Sporting", domain: "dickssportinggoods.com", color: "#003087" },
       { name: "Academy Sports",  domain: "academy.com",            color: "#CC0000" },
+      { name: "Micro Center",   domain: "microcenter.com",        color: "#CF202E" },
     ],
   },
   {
